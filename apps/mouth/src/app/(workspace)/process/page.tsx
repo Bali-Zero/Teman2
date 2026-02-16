@@ -1,7 +1,13 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+} from "react";
+import { useRouter } from "next/navigation";
 import {
   FolderKanban,
   Search,
@@ -22,13 +28,13 @@ import {
   ArrowUp,
   ArrowDown,
   Download,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/toast';
-import { api } from '@/lib/api';
-import { logger } from '@/lib/logger';
-import { toError } from '@/lib/types/common';
-import type { Practice } from '@/lib/api/crm/crm.types';
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
+import { api } from "@/lib/api";
+import { logger } from "@/lib/logger";
+import { toError } from "@/lib/types/common";
+import type { Practice } from "@/lib/api/crm/crm.types";
 import {
   trackViewModeChange,
   trackFilterApplied,
@@ -38,31 +44,39 @@ import {
   trackCaseStatusChanged,
   trackPaginationChange,
   initializeAnalytics,
-} from '@/lib/analytics';
+} from "@/lib/analytics";
 
-type CaseStatus = 'inquiry' | 'quotation' | 'in_progress' | 'completed';
+type CaseStatus = "inquiry" | "quotation" | "in_progress" | "completed";
 
 // Backend status values mapped to frontend display names
 const STATUS_OPTIONS: { value: string; label: string; column: CaseStatus }[] = [
-  { value: 'inquiry', label: 'Inquiry', column: 'inquiry' },
-  { value: 'quotation_sent', label: 'Quotation Sent', column: 'quotation' },
-  { value: 'payment_pending', label: 'Payment Pending', column: 'quotation' },
-  { value: 'in_progress', label: 'In Progress', column: 'in_progress' },
-  { value: 'waiting_documents', label: 'Waiting Documents', column: 'in_progress' },
-  { value: 'submitted_to_gov', label: 'Submitted to Gov', column: 'in_progress' },
-  { value: 'approved', label: 'Approved', column: 'completed' },
-  { value: 'completed', label: 'Completed', column: 'completed' },
+  { value: "inquiry", label: "Inquiry", column: "inquiry" },
+  { value: "quotation_sent", label: "Quotation Sent", column: "quotation" },
+  { value: "payment_pending", label: "Payment Pending", column: "quotation" },
+  { value: "in_progress", label: "In Progress", column: "in_progress" },
+  {
+    value: "waiting_documents",
+    label: "Waiting Documents",
+    column: "in_progress",
+  },
+  {
+    value: "submitted_to_gov",
+    label: "Submitted to Gov",
+    column: "in_progress",
+  },
+  { value: "approved", label: "Approved", column: "completed" },
+  { value: "completed", label: "Completed", column: "completed" },
 ];
 
-type ViewMode = 'kanban' | 'list';
+type ViewMode = "kanban" | "list";
 type SortField =
-  | 'id'
-  | 'practice_type_code'
-  | 'client_name'
-  | 'client_lead'
-  | 'status'
-  | 'created_at';
-type SortOrder = 'asc' | 'desc';
+  | "id"
+  | "practice_type_code"
+  | "client_name"
+  | "client_lead"
+  | "status"
+  | "created_at";
+type SortOrder = "asc" | "desc";
 
 interface FilterState {
   status: string;
@@ -75,20 +89,25 @@ export default function PratichePage() {
   const toast = useToast();
   const [practices, setPractices] = useState<Practice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<ViewMode>('kanban');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<ViewMode>("kanban");
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
-    status: '',
-    type: '',
-    assigned_to: '',
+    status: "",
+    type: "",
+    assigned_to: "",
   });
-  const [sortField, setSortField] = useState<SortField>('created_at');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [sortField, setSortField] = useState<SortField>("created_at");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
 
   // Context Menu State
-  const [selectedPractice, setSelectedPractice] = useState<Practice | null>(null);
-  const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  const [selectedPractice, setSelectedPractice] = useState<Practice | null>(
+    null,
+  );
+  const [menuPosition, setMenuPosition] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const previousFiltersRef = useRef<FilterState>(filters);
@@ -108,11 +127,11 @@ export default function PratichePage() {
         setPractices(data);
       } catch (error) {
         logger.error(
-          'Failed to load practices',
-          { component: 'Process', action: 'loadPractices' },
-          toError(error)
+          "Failed to load practices",
+          { component: "Process", action: "loadPractices" },
+          toError(error),
         );
-        toast.error('Error', 'Failed to load process');
+        toast.error("Error", "Failed to load process");
       } finally {
         setIsLoading(false);
       }
@@ -135,8 +154,8 @@ export default function PratichePage() {
       ) {
         if (filters[key as keyof typeof filters]) {
           trackFilterApplied(
-            key as 'status' | 'type' | 'assigned_to',
-            filters[key as keyof typeof filters]
+            key as "status" | "type" | "assigned_to",
+            filters[key as keyof typeof filters],
           );
         } else {
           trackFilterRemoved(key);
@@ -166,8 +185,8 @@ export default function PratichePage() {
         setMenuPosition(null);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const handleStatusChange = async (practiceId: number, newStatus: string) => {
@@ -177,29 +196,38 @@ export default function PratichePage() {
 
       // Find old status for tracking
       const practice = practices.find((p) => p.id === practiceId);
-      const oldStatus = practice?.status || 'unknown';
+      const oldStatus = practice?.status || "unknown";
 
-      await api.crm.updatePractice(practiceId, { status: newStatus }, user.email);
+      await api.crm.updatePractice(
+        practiceId,
+        { status: newStatus },
+        user.email,
+      );
 
       // Update local state immediately for responsiveness
       setPractices((prev) =>
-        prev.map((p) => (p.id === practiceId ? { ...p, status: newStatus } : p))
+        prev.map((p) =>
+          p.id === practiceId ? { ...p, status: newStatus } : p,
+        ),
       );
 
       // Track status change
       trackCaseStatusChanged(practiceId, oldStatus, newStatus);
 
-      toast.success('Status Updated', `Process moved to ${newStatus.replace(/_/g, ' ')}`);
+      toast.success(
+        "Status Updated",
+        `Process moved to ${newStatus.replace(/_/g, " ")}`,
+      );
 
       setSelectedPractice(null);
       setMenuPosition(null);
     } catch (error) {
       logger.error(
-        'Failed to update status',
-        { component: 'Process', action: 'updateStatus' },
-        toError(error)
+        "Failed to update status",
+        { component: "Process", action: "updateStatus" },
+        toError(error),
       );
-      toast.error('Error', 'Failed to update process status');
+      toast.error("Error", "Failed to update process status");
     } finally {
       setUpdatingId(null);
     }
@@ -216,40 +244,41 @@ export default function PratichePage() {
   };
 
   const handleNewCase = () => {
-    router.push('/process/new');
+    router.push("/process/new");
   };
 
   const getStatusColumn = (status: string): CaseStatus => {
-    if (status === 'inquiry' || status === 'request') return 'inquiry';
+    if (status === "inquiry" || status === "request") return "inquiry";
     if (
-      status === 'quotation_sent' ||
-      status === 'payment_pending' ||
-      status === 'quotation' ||
-      status === 'quote'
+      status === "quotation_sent" ||
+      status === "payment_pending" ||
+      status === "quotation" ||
+      status === "quote"
     )
-      return 'quotation';
+      return "quotation";
     if (
-      status === 'in_progress' ||
-      status === 'waiting_documents' ||
-      status === 'submitted_to_gov' ||
-      status === 'active'
+      status === "in_progress" ||
+      status === "waiting_documents" ||
+      status === "submitted_to_gov" ||
+      status === "active"
     )
-      return 'in_progress';
-    if (status === 'completed' || status === 'approved' || status === 'done') return 'completed';
-    return 'inquiry';
+      return "in_progress";
+    if (status === "completed" || status === "approved" || status === "done")
+      return "completed";
+    return "inquiry";
   };
 
   const clearFilters = () => {
-    setFilters({ status: '', type: '', assigned_to: '' });
+    setFilters({ status: "", type: "", assigned_to: "" });
   };
 
   const toggleSort = useCallback((field: SortField) => {
     setSortField((prevField) => {
       if (prevField === field) {
-        setSortOrder((prevOrder) => (prevOrder === 'asc' ? 'desc' : 'asc'));
+        setSortOrder((prevOrder) => (prevOrder === "asc" ? "desc" : "asc"));
         return prevField;
       } else {
-        setSortOrder('asc');
+        setSortOrder("asc");
         return field;
       }
     });
@@ -266,8 +295,12 @@ export default function PratichePage() {
           if (searchQuery) {
             const matchesSearch =
               p.id.toString().includes(searchQuery) ||
-              p.client_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-              p.practice_type_code?.toLowerCase().includes(searchQuery.toLowerCase());
+              p.client_name
+                ?.toLowerCase()
+                .includes(searchQuery.toLowerCase()) ||
+              p.practice_type_code
+                ?.toLowerCase()
+                .includes(searchQuery.toLowerCase());
             if (!matchesSearch) return false;
           }
 
@@ -292,43 +325,58 @@ export default function PratichePage() {
           let comparison = 0;
 
           switch (sortField) {
-            case 'id':
+            case "id":
               comparison = (a.id || 0) - (b.id || 0);
               break;
-            case 'practice_type_code':
-              comparison = (a.practice_type_code || '').localeCompare(b.practice_type_code || '');
+            case "practice_type_code":
+              comparison = (a.practice_type_code || "").localeCompare(
+                b.practice_type_code || "",
+              );
               break;
-            case 'client_name':
-              comparison = (a.client_name || '').localeCompare(b.client_name || '');
+            case "client_name":
+              comparison = (a.client_name || "").localeCompare(
+                b.client_name || "",
+              );
               break;
-            case 'client_lead':
-              comparison = (a.client_lead || '').localeCompare(b.client_lead || '');
+            case "client_lead":
+              comparison = (a.client_lead || "").localeCompare(
+                b.client_lead || "",
+              );
               break;
-            case 'status':
-              comparison = (a.status || '').localeCompare(b.status || '');
+            case "status":
+              comparison = (a.status || "").localeCompare(b.status || "");
               break;
-            case 'created_at':
+            case "created_at":
               comparison =
-                new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+                new Date(a.created_at || 0).getTime() -
+                new Date(b.created_at || 0).getTime();
               break;
             default:
               comparison = 0;
           }
 
-          return sortOrder === 'asc' ? comparison : -comparison;
+          return sortOrder === "asc" ? comparison : -comparison;
         }),
-    [practices, searchQuery, filters, sortField, sortOrder]
+    [practices, searchQuery, filters, sortField, sortOrder],
   );
 
   // Memoize practices by status to avoid unnecessary recalculations
   const practicesByStatus = useMemo(
     () => ({
-      inquiry: filteredPractices.filter((p) => getStatusColumn(p.status) === 'inquiry'),
-      quotation: filteredPractices.filter((p) => getStatusColumn(p.status) === 'quotation'),
-      in_progress: filteredPractices.filter((p) => getStatusColumn(p.status) === 'in_progress'),
-      completed: filteredPractices.filter((p) => getStatusColumn(p.status) === 'completed'),
+      inquiry: filteredPractices.filter(
+        (p) => getStatusColumn(p.status) === "inquiry",
+      ),
+      quotation: filteredPractices.filter(
+        (p) => getStatusColumn(p.status) === "quotation",
+      ),
+      in_progress: filteredPractices.filter(
+        (p) => getStatusColumn(p.status) === "in_progress",
+      ),
+      completed: filteredPractices.filter(
+        (p) => getStatusColumn(p.status) === "completed",
+      ),
     }),
-    [filteredPractices]
+    [filteredPractices],
   );
 
   // Track search operations (moved after filteredPractices declaration)
@@ -362,7 +410,9 @@ export default function PratichePage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--foreground)]">Process</h1>
+          <h1 className="text-2xl font-bold text-[var(--foreground)]">
+            Process
+          </h1>
           <p className="text-sm text-[var(--foreground-muted)]">
             Manage KITAS, Visa, PT PMA, Tax and other processes
           </p>
@@ -391,7 +441,7 @@ export default function PratichePage() {
           </div>
           <div className="flex gap-2">
             <Button
-              variant={showFilters ? 'default' : 'outline'}
+              variant={showFilters ? "default" : "outline"}
               className="gap-2 border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)]"
               onClick={() => setShowFilters(!showFilters)}
             >
@@ -405,22 +455,22 @@ export default function PratichePage() {
             </Button>
             <div className="flex rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden">
               <button
-                onClick={() => setViewMode('kanban')}
+                onClick={() => setViewMode("kanban")}
                 className={`p-2 transition-all ${
-                  viewMode === 'kanban'
-                    ? 'bg-[var(--accent)]/10 text-[var(--accent)]'
-                    : 'text-[var(--foreground-muted)] hover:bg-[var(--background-elevated)]'
+                  viewMode === "kanban"
+                    ? "bg-[var(--accent)]/10 text-[var(--accent)]"
+                    : "text-[var(--foreground-muted)] hover:bg-[var(--background-elevated)]"
                 }`}
                 title="Kanban Board"
               >
                 <LayoutGrid className="w-4 h-4" />
               </button>
               <button
-                onClick={() => setViewMode('list')}
+                onClick={() => setViewMode("list")}
                 className={`p-2 transition-all ${
-                  viewMode === 'list'
-                    ? 'bg-[var(--accent)]/10 text-[var(--accent)]'
-                    : 'text-[var(--foreground-muted)] hover:bg-[var(--background-elevated)]'
+                  viewMode === "list"
+                    ? "bg-[var(--accent)]/10 text-[var(--accent)]"
+                    : "text-[var(--foreground-muted)] hover:bg-[var(--background-elevated)]"
                 }`}
                 title="List View"
               >
@@ -457,7 +507,9 @@ export default function PratichePage() {
                 <select
                   id="status-filter"
                   value={filters.status}
-                  onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                  onChange={(e) =>
+                    setFilters({ ...filters, status: e.target.value })
+                  }
                   className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
                 >
                   <option value="">All statuses</option>
@@ -479,7 +531,9 @@ export default function PratichePage() {
                 <select
                   id="type-filter"
                   value={filters.type}
-                  onChange={(e) => setFilters({ ...filters, type: e.target.value })}
+                  onChange={(e) =>
+                    setFilters({ ...filters, type: e.target.value })
+                  }
                   className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
                 >
                   <option value="">All types</option>
@@ -501,17 +555,21 @@ export default function PratichePage() {
                 <select
                   id="assigned-to-filter"
                   value={filters.assigned_to}
-                  onChange={(e) => setFilters({ ...filters, assigned_to: e.target.value })}
+                  onChange={(e) =>
+                    setFilters({ ...filters, assigned_to: e.target.value })
+                  }
                   className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
                 >
                   <option value="">All team members</option>
-                  {Array.from(new Set(practices.map((p) => p.client_lead).filter(Boolean))).map(
-                    (lead) => (
-                      <option key={lead} value={lead || ''}>
-                        {lead?.split('@')[0]}
-                      </option>
-                    )
-                  )}
+                  {Array.from(
+                    new Set(
+                      practices.map((p) => p.client_lead).filter(Boolean),
+                    ),
+                  ).map((lead) => (
+                    <option key={lead} value={lead || ""}>
+                      {lead?.split("@")[0]}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -520,159 +578,179 @@ export default function PratichePage() {
       </div>
 
       {/* Kanban Board View */}
-      {viewMode === 'kanban' && (
+      {viewMode === "kanban" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {(['Inquiry', 'Quotation', 'In Progress', 'Completed'] as const).map((column, idx) => {
-            const statusKey = ['inquiry', 'quotation', 'in_progress', 'completed'][
-              idx
-            ] as CaseStatus;
-            const columnPractices = practicesByStatus[statusKey] || [];
+          {(["Inquiry", "Quotation", "In Progress", "Completed"] as const).map(
+            (column, idx) => {
+              const statusKey = [
+                "inquiry",
+                "quotation",
+                "in_progress",
+                "completed",
+              ][idx] as CaseStatus;
+              const columnPractices = practicesByStatus[statusKey] || [];
 
-            return (
-              <div
-                key={column}
-                className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]/50 p-4 flex flex-col h-full min-h-[500px]"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`w-2 h-2 rounded-full ${
-                        idx === 0
-                          ? 'bg-blue-500'
-                          : idx === 1
-                            ? 'bg-yellow-500'
-                            : idx === 2
-                              ? 'bg-purple-500'
-                              : 'bg-green-500'
-                      }`}
-                    />
-                    <h3 className="font-semibold text-[var(--foreground)]">{column}</h3>
-                  </div>
-                  <span className="text-xs px-2 py-1 rounded-full bg-[var(--background-elevated)] text-[var(--foreground-muted)]">
-                    {columnPractices.length}
-                  </span>
-                </div>
-
-                <div className="flex-1 space-y-3">
-                  {isLoading ? (
-                    <div data-testid="loading-skeleton">
-                      <SkeletonCard />
-                      <SkeletonCard />
-                      <SkeletonCard />
-                    </div>
-                  ) : columnPractices.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-32 border border-dashed border-[var(--border)] rounded-lg bg-[var(--background-elevated)]/30">
-                      <FolderKanban className="w-8 h-8 text-[var(--foreground-muted)] opacity-20 mb-2" />
-                      <p className="text-xs text-[var(--foreground-muted)]">No process</p>
-                    </div>
-                  ) : (
-                    columnPractices.map((practice) => (
-                      <div
-                        key={practice.id}
-                        className={`p-3 rounded-lg border bg-[var(--background-elevated)] cursor-pointer transition-all hover:shadow-md relative group ${
-                          updatingId === practice.id ? 'opacity-70 pointer-events-none' : ''
-                        } ${
-                          selectedPractice?.id === practice.id
-                            ? 'border-[var(--accent)] ring-1 ring-[var(--accent)]/30'
-                            : 'border-[var(--border)] hover:border-[var(--accent)]/30'
+              return (
+                <div
+                  key={column}
+                  className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]/50 p-4 flex flex-col h-full min-h-[500px]"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          idx === 0
+                            ? "bg-blue-500"
+                            : idx === 1
+                              ? "bg-yellow-500"
+                              : idx === 2
+                                ? "bg-purple-500"
+                                : "bg-green-500"
                         }`}
-                        onClick={() => router.push(`/process/${practice.id}`)}
-                      >
-                        {updatingId === practice.id && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-[var(--background-elevated)]/80 rounded-lg z-10">
-                            <Loader2 className="w-5 h-5 animate-spin text-[var(--accent)]" />
-                          </div>
-                        )}
+                      />
+                      <h3 className="font-semibold text-[var(--foreground)]">
+                        {column}
+                      </h3>
+                    </div>
+                    <span className="text-xs px-2 py-1 rounded-full bg-[var(--background-elevated)] text-[var(--foreground-muted)]">
+                      {columnPractices.length}
+                    </span>
+                  </div>
 
-                        {/* Card Header */}
-                        <div className="flex items-start justify-between mb-1">
-                          <p className="text-sm font-medium text-[var(--foreground)] line-clamp-2 pr-6">
-                            {practice.practice_type_code?.toUpperCase().replace(/_/g, ' ') ||
-                              'Process'}
+                  <div className="flex-1 space-y-3">
+                    {isLoading ? (
+                      <div data-testid="loading-skeleton">
+                        <SkeletonCard />
+                        <SkeletonCard />
+                        <SkeletonCard />
+                      </div>
+                    ) : columnPractices.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center h-32 border border-dashed border-[var(--border)] rounded-lg bg-[var(--background-elevated)]/30">
+                        <FolderKanban className="w-8 h-8 text-[var(--foreground-muted)] opacity-20 mb-2" />
+                        <p className="text-xs text-[var(--foreground-muted)]">
+                          No process
+                        </p>
+                      </div>
+                    ) : (
+                      columnPractices.map((practice) => (
+                        <div
+                          key={practice.id}
+                          className={`p-3 rounded-lg border bg-[var(--background-elevated)] cursor-pointer transition-all hover:shadow-md relative group ${
+                            updatingId === practice.id
+                              ? "opacity-70 pointer-events-none"
+                              : ""
+                          } ${
+                            selectedPractice?.id === practice.id
+                              ? "border-[var(--accent)] ring-1 ring-[var(--accent)]/30"
+                              : "border-[var(--border)] hover:border-[var(--accent)]/30"
+                          }`}
+                          onClick={() => router.push(`/process/${practice.id}`)}
+                        >
+                          {updatingId === practice.id && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-[var(--background-elevated)]/80 rounded-lg z-10">
+                              <Loader2 className="w-5 h-5 animate-spin text-[var(--accent)]" />
+                            </div>
+                          )}
+
+                          {/* Card Header */}
+                          <div className="flex items-start justify-between mb-1">
+                            <p className="text-sm font-medium text-[var(--foreground)] line-clamp-2 pr-6">
+                              {practice.practice_type_code
+                                ?.toUpperCase()
+                                .replace(/_/g, " ") || "Process"}
+                            </p>
+
+                            {/* 3-Dot Menu Trigger */}
+                            <button
+                              className="absolute top-3 right-2 p-1 rounded-md text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background-secondary)] opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => handleMenuClick(e, practice)}
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+                          </div>
+
+                          <p className="text-xs text-[var(--foreground-muted)] truncate mb-2">
+                            {practice.client_name || "Unknown Client"}
                           </p>
 
-                          {/* 3-Dot Menu Trigger */}
-                          <button
-                            className="absolute top-3 right-2 p-1 rounded-md text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background-secondary)] opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={(e) => handleMenuClick(e, practice)}
-                          >
-                            <MoreVertical className="w-4 h-4" />
-                          </button>
-                        </div>
+                          <div className="flex items-center justify-between">
+                            {practice.client_lead ? (
+                              <div className="flex items-center gap-1.5 bg-[var(--accent)]/10 px-2 py-0.5 rounded text-[var(--accent)]">
+                                <User className="w-3 h-3" />
+                                <p className="text-[10px] font-medium truncate max-w-[80px]">
+                                  {practice.client_lead.split("@")[0]}
+                                </p>
+                              </div>
+                            ) : (
+                              <div />
+                            )}
+                            <span className="text-[10px] text-[var(--foreground-muted)]">
+                              #{practice.id}
+                            </span>
+                          </div>
 
-                        <p className="text-xs text-[var(--foreground-muted)] truncate mb-2">
-                          {practice.client_name || 'Unknown Client'}
-                        </p>
-
-                        <div className="flex items-center justify-between">
-                          {practice.client_lead ? (
-                            <div className="flex items-center gap-1.5 bg-[var(--accent)]/10 px-2 py-0.5 rounded text-[var(--accent)]">
-                              <User className="w-3 h-3" />
-                              <p className="text-[10px] font-medium truncate max-w-[80px]">
-                                {practice.client_lead.split('@')[0]}
-                              </p>
-                            </div>
-                          ) : (
-                            <div />
-                          )}
-                          <span className="text-[10px] text-[var(--foreground-muted)]">
-                            #{practice.id}
-                          </span>
-                        </div>
-
-                        {/* Quick Actions */}
-                        <div className="flex items-center gap-1 mt-3 pt-2 border-t border-[var(--border)]">
-                          {practice.client_phone && (
+                          {/* Quick Actions */}
+                          <div className="flex items-center gap-1 mt-3 pt-2 border-t border-[var(--border)]">
+                            {practice.client_phone && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const phone = practice.client_phone?.replace(
+                                    /\D/g,
+                                    "",
+                                  );
+                                  window.open(
+                                    `https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your process...`,
+                                    "_blank",
+                                  );
+                                }}
+                                className="p-1.5 rounded hover:bg-green-500/20 text-green-500 transition-colors"
+                                title="WhatsApp"
+                              >
+                                <MessageCircle className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            {practice.client_email && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  window.open(
+                                    `mailto:${practice.client_email}`,
+                                    "_blank",
+                                  );
+                                }}
+                                className="p-1.5 rounded hover:bg-blue-500/20 text-blue-500 transition-colors"
+                                title="Email"
+                              >
+                                <Mail className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                const phone = practice.client_phone?.replace(/\D/g, '');
-                                window.open(
-                                  `https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your process...`,
-                                  '_blank'
+                                router.push(
+                                  `/clients/${practice.client_id}?tab=documents`,
                                 );
                               }}
-                              className="p-1.5 rounded hover:bg-green-500/20 text-green-500 transition-colors"
-                              title="WhatsApp"
+                              className="p-1.5 rounded hover:bg-orange-500/20 text-orange-500 transition-colors ml-auto"
+                              title="View Documents"
                             >
-                              <MessageCircle className="w-3.5 h-3.5" />
+                              <FileText className="w-3.5 h-3.5" />
                             </button>
-                          )}
-                          {practice.client_email && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                window.open(`mailto:${practice.client_email}`, '_blank');
-                              }}
-                              className="p-1.5 rounded hover:bg-blue-500/20 text-blue-500 transition-colors"
-                              title="Email"
-                            >
-                              <Mail className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              router.push(`/clients/${practice.client_id}?tab=documents`);
-                            }}
-                            className="p-1.5 rounded hover:bg-orange-500/20 text-orange-500 transition-colors ml-auto"
-                            title="View Documents"
-                          >
-                            <FileText className="w-3.5 h-3.5" />
-                          </button>
+                          </div>
                         </div>
-                      </div>
-                    ))
-                  )}
+                      ))
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            },
+          )}
         </div>
       )}
 
       {/* List View */}
-      {viewMode === 'list' && (
+      {viewMode === "list" && (
         <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]/50 overflow-hidden">
           {isLoading ? (
             <div className="p-12 text-center">
@@ -697,84 +775,88 @@ export default function PratichePage() {
                 <thead className="bg-[var(--background-elevated)] border-b border-[var(--border)]">
                   <tr>
                     <th
-                      onClick={() => toggleSort('id')}
+                      onClick={() => toggleSort("id")}
                       className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)] cursor-pointer hover:bg-[var(--background)]/50 transition-colors"
                     >
                       <div className="flex items-center gap-2">
                         ID
-                        {sortField === 'id' &&
-                          (sortOrder === 'asc' ? (
+                        {sortField === "id" &&
+                          (sortOrder === "asc" ? (
                             <ArrowUp className="w-4 h-4" />
                           ) : (
                             <ArrowDown className="w-4 h-4" />
                           ))}
-                        {sortField !== 'id' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
+                        {sortField !== "id" && (
+                          <ArrowUpDown className="w-4 h-4 opacity-30" />
+                        )}
                       </div>
                     </th>
                     <th
-                      onClick={() => toggleSort('practice_type_code')}
+                      onClick={() => toggleSort("practice_type_code")}
                       className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)] cursor-pointer hover:bg-[var(--background)]/50 transition-colors"
                     >
                       <div className="flex items-center gap-2">
                         Process Type
-                        {sortField === 'practice_type_code' &&
-                          (sortOrder === 'asc' ? (
+                        {sortField === "practice_type_code" &&
+                          (sortOrder === "asc" ? (
                             <ArrowUp className="w-4 h-4" />
                           ) : (
                             <ArrowDown className="w-4 h-4" />
                           ))}
-                        {sortField !== 'practice_type_code' && (
+                        {sortField !== "practice_type_code" && (
                           <ArrowUpDown className="w-4 h-4 opacity-30" />
                         )}
                       </div>
                     </th>
                     <th
-                      onClick={() => toggleSort('client_name')}
+                      onClick={() => toggleSort("client_name")}
                       className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)] cursor-pointer hover:bg-[var(--background)]/50 transition-colors"
                     >
                       <div className="flex items-center gap-2">
                         Client
-                        {sortField === 'client_name' &&
-                          (sortOrder === 'asc' ? (
+                        {sortField === "client_name" &&
+                          (sortOrder === "asc" ? (
                             <ArrowUp className="w-4 h-4" />
                           ) : (
                             <ArrowDown className="w-4 h-4" />
                           ))}
-                        {sortField !== 'client_name' && (
+                        {sortField !== "client_name" && (
                           <ArrowUpDown className="w-4 h-4 opacity-30" />
                         )}
                       </div>
                     </th>
                     <th
-                      onClick={() => toggleSort('client_lead')}
+                      onClick={() => toggleSort("client_lead")}
                       className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)] cursor-pointer hover:bg-[var(--background)]/50 transition-colors"
                     >
                       <div className="flex items-center gap-2">
                         Assigned To
-                        {sortField === 'client_lead' &&
-                          (sortOrder === 'asc' ? (
+                        {sortField === "client_lead" &&
+                          (sortOrder === "asc" ? (
                             <ArrowUp className="w-4 h-4" />
                           ) : (
                             <ArrowDown className="w-4 h-4" />
                           ))}
-                        {sortField !== 'client_lead' && (
+                        {sortField !== "client_lead" && (
                           <ArrowUpDown className="w-4 h-4 opacity-30" />
                         )}
                       </div>
                     </th>
                     <th
-                      onClick={() => toggleSort('status')}
+                      onClick={() => toggleSort("status")}
                       className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)] cursor-pointer hover:bg-[var(--background)]/50 transition-colors"
                     >
                       <div className="flex items-center gap-2">
                         Status
-                        {sortField === 'status' &&
-                          (sortOrder === 'asc' ? (
+                        {sortField === "status" &&
+                          (sortOrder === "asc" ? (
                             <ArrowUp className="w-4 h-4" />
                           ) : (
                             <ArrowDown className="w-4 h-4" />
                           ))}
-                        {sortField !== 'status' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
+                        {sortField !== "status" && (
+                          <ArrowUpDown className="w-4 h-4 opacity-30" />
+                        )}
                       </div>
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)]">
@@ -793,39 +875,49 @@ export default function PratichePage() {
                         #{practice.id}
                       </td>
                       <td className="px-4 py-3 text-sm text-[var(--foreground)]">
-                        {practice.practice_type_code?.toUpperCase().replace(/_/g, ' ') || '-'}
+                        {practice.practice_type_code
+                          ?.toUpperCase()
+                          .replace(/_/g, " ") || "-"}
                       </td>
                       <td className="px-4 py-3 text-sm text-[var(--foreground)]">
-                        {practice.client_name || 'Unknown'}
+                        {practice.client_name || "Unknown"}
                       </td>
                       <td className="px-4 py-3 text-sm">
                         {practice.client_lead ? (
                           <div className="inline-flex items-center gap-1.5 bg-[var(--accent)]/10 px-2 py-0.5 rounded text-[var(--accent)]">
                             <User className="w-3 h-3" />
                             <span className="text-[10px] font-medium">
-                              {practice.client_lead.split('@')[0]}
+                              {practice.client_lead.split("@")[0]}
                             </span>
                           </div>
                         ) : (
-                          <span className="text-[var(--foreground-muted)]">-</span>
+                          <span className="text-[var(--foreground-muted)]">
+                            -
+                          </span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-sm">
                         <div className="inline-flex items-center gap-1">
                           <span
                             className={`w-2 h-2 rounded-full ${
-                              getStatusColumn(practice.status) === 'inquiry'
-                                ? 'bg-blue-500'
-                                : getStatusColumn(practice.status) === 'quotation'
-                                  ? 'bg-yellow-500'
-                                  : getStatusColumn(practice.status) === 'in_progress'
-                                    ? 'bg-purple-500'
-                                    : 'bg-green-500'
+                              getStatusColumn(practice.status) === "inquiry"
+                                ? "bg-blue-500"
+                                : getStatusColumn(practice.status) ===
+                                    "quotation"
+                                  ? "bg-yellow-500"
+                                  : getStatusColumn(practice.status) ===
+                                      "in_progress"
+                                    ? "bg-purple-500"
+                                    : "bg-green-500"
                             }`}
                           />
                           <span className="text-[var(--foreground)]">
-                            {practice.status?.replace(/_/g, ' ').charAt(0).toUpperCase() +
-                              practice.status?.replace(/_/g, ' ').slice(1) || '-'}
+                            {practice.status
+                              ?.replace(/_/g, " ")
+                              .charAt(0)
+                              .toUpperCase() +
+                              practice.status?.replace(/_/g, " ").slice(1) ||
+                              "-"}
                           </span>
                         </div>
                       </td>
@@ -838,10 +930,13 @@ export default function PratichePage() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                const phone = practice.client_phone?.replace(/\D/g, '');
+                                const phone = practice.client_phone?.replace(
+                                  /\D/g,
+                                  "",
+                                );
                                 window.open(
                                   `https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your process...`,
-                                  '_blank'
+                                  "_blank",
                                 );
                               }}
                               className="p-1.5 rounded hover:bg-green-500/20 text-green-500 transition-colors"
@@ -854,7 +949,10 @@ export default function PratichePage() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                window.open(`mailto:${practice.client_email}`, '_blank');
+                                window.open(
+                                  `mailto:${practice.client_email}`,
+                                  "_blank",
+                                );
                               }}
                               className="p-1.5 rounded hover:bg-blue-500/20 text-blue-500 transition-colors"
                               title="Email"
@@ -880,41 +978,53 @@ export default function PratichePage() {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)] bg-[var(--background-elevated)]">
                   <div className="text-sm text-[var(--foreground-muted)]">
-                    Showing {(listPageNumber - 1) * itemsPerPage + 1} to{' '}
-                    {Math.min(listPageNumber * itemsPerPage, filteredPractices.length)} of{' '}
-                    {filteredPractices.length} process
+                    Showing {(listPageNumber - 1) * itemsPerPage + 1} to{" "}
+                    {Math.min(
+                      listPageNumber * itemsPerPage,
+                      filteredPractices.length,
+                    )}{" "}
+                    of {filteredPractices.length} process
                   </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => setListPageNumber((p) => Math.max(1, p - 1))}
+                      onClick={() =>
+                        setListPageNumber((p) => Math.max(1, p - 1))
+                      }
                       disabled={listPageNumber === 1}
                       className="px-3 py-1 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] hover:bg-[var(--background)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       Previous
                     </button>
                     <div className="flex items-center gap-2 px-3 py-1">
-                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                        const pageNum = i + 1;
-                        return (
-                          <button
-                            key={pageNum}
-                            onClick={() => setListPageNumber(pageNum)}
-                            className={`px-2 py-1 rounded-lg transition-colors ${
-                              listPageNumber === pageNum
-                                ? 'bg-[var(--accent)] text-white'
-                                : 'bg-[var(--background-secondary)] text-[var(--foreground)] hover:bg-[var(--background)]'
-                            }`}
-                          >
-                            {pageNum}
-                          </button>
-                        );
-                      })}
+                      {Array.from(
+                        { length: Math.min(5, totalPages) },
+                        (_, i) => {
+                          const pageNum = i + 1;
+                          return (
+                            <button
+                              key={pageNum}
+                              onClick={() => setListPageNumber(pageNum)}
+                              className={`px-2 py-1 rounded-lg transition-colors ${
+                                listPageNumber === pageNum
+                                  ? "bg-[var(--accent)] text-white"
+                                  : "bg-[var(--background-secondary)] text-[var(--foreground)] hover:bg-[var(--background)]"
+                              }`}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        },
+                      )}
                       {totalPages > 5 && (
-                        <span className="text-[var(--foreground-muted)]">...</span>
+                        <span className="text-[var(--foreground-muted)]">
+                          ...
+                        </span>
                       )}
                     </div>
                     <button
-                      onClick={() => setListPageNumber((p) => Math.min(totalPages, p + 1))}
+                      onClick={() =>
+                        setListPageNumber((p) => Math.min(totalPages, p + 1))
+                      }
                       disabled={listPageNumber === totalPages}
                       className="px-3 py-1 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] hover:bg-[var(--background)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
@@ -931,7 +1041,8 @@ export default function PratichePage() {
       {/* Info Footer */}
       <div className="text-center py-8">
         <p className="text-xs text-[var(--foreground-muted)]">
-          Pro Tip: Right-click or use the menu on cards to quickly change process status.
+          Pro Tip: Right-click or use the menu on cards to quickly change
+          process status.
         </p>
       </div>
 
@@ -953,12 +1064,14 @@ export default function PratichePage() {
                 ? Math.max(10, menuPosition.x - 220) // Open to left if not enough space to right
                 : menuPosition.x,
             // Ensure menu never goes offscreen
-            maxHeight: 'calc(100vh - 20px)',
-            maxWidth: 'calc(100vw - 20px)',
+            maxHeight: "calc(100vh - 20px)",
+            maxWidth: "calc(100vw - 20px)",
           }}
         >
           <div className="px-3 py-2 border-b border-[var(--border)] bg-[var(--background-secondary)]/50 rounded-t-lg">
-            <p className="text-xs font-semibold text-[var(--foreground)]">Update Status</p>
+            <p className="text-xs font-semibold text-[var(--foreground)]">
+              Update Status
+            </p>
             <p className="text-[10px] text-[var(--foreground-muted)]">
               Process #{selectedPractice.id}
             </p>
@@ -967,24 +1080,29 @@ export default function PratichePage() {
             {STATUS_OPTIONS.map((option) => (
               <button
                 key={option.value}
-                onClick={() => handleStatusChange(selectedPractice.id, option.value)}
-                disabled={selectedPractice.status === option.value || updatingId !== null}
+                onClick={() =>
+                  handleStatusChange(selectedPractice.id, option.value)
+                }
+                disabled={
+                  selectedPractice.status === option.value ||
+                  updatingId !== null
+                }
                 className={`w-full px-3 py-2 text-left text-sm rounded-md transition-colors flex items-center justify-between group ${
                   selectedPractice.status === option.value
-                    ? 'bg-[var(--accent)]/10 text-[var(--accent)] font-medium'
-                    : 'text-[var(--foreground)] hover:bg-[var(--accent)]/10 hover:text-[var(--accent)]'
-                } ${updatingId !== null ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    ? "bg-[var(--accent)]/10 text-[var(--accent)] font-medium"
+                    : "text-[var(--foreground)] hover:bg-[var(--accent)]/10 hover:text-[var(--accent)]"
+                } ${updatingId !== null ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 <div className="flex items-center gap-2">
                   <span
                     className={`w-2 h-2 rounded-full ${
-                      option.column === 'inquiry'
-                        ? 'bg-blue-500'
-                        : option.column === 'quotation'
-                          ? 'bg-yellow-500'
-                          : option.column === 'in_progress'
-                            ? 'bg-purple-500'
-                            : 'bg-green-500'
+                      option.column === "inquiry"
+                        ? "bg-blue-500"
+                        : option.column === "quotation"
+                          ? "bg-yellow-500"
+                          : option.column === "in_progress"
+                            ? "bg-purple-500"
+                            : "bg-green-500"
                     }`}
                   />
                   {option.label}

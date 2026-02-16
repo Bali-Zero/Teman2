@@ -1,16 +1,16 @@
-import type { NextRequest } from 'next/server';
-import { logger } from '@/lib/logger';
-import { toError } from '@/lib/types/common';
+import type { NextRequest } from "next/server";
+import { logger } from "@/lib/logger";
+import { toError } from "@/lib/types/common";
 
 function normalizeBackendBaseUrl(url: string): string {
-  return url.replace(/\/+$/, '').replace(/\/api$/, '');
+  return url.replace(/\/+$/, "").replace(/\/api$/, "");
 }
 
 function getBackendBaseUrl(): string {
   const raw =
     process.env.NUZANTARA_API_URL ||
     process.env.NEXT_PUBLIC_API_URL ||
-    'https://nuzantara-rag.fly.dev';
+    "https://nuzantara-rag.fly.dev";
   return normalizeBackendBaseUrl(raw);
 }
 
@@ -20,22 +20,22 @@ async function proxy(req: NextRequest): Promise<Response> {
   const targetUrl = `${backendBase}${url.pathname}${url.search}`;
 
   // Extract correlation ID for logging
-  const correlationId = req.headers.get('X-Correlation-ID') || 'unknown';
-  const isStreamingEndpoint = url.pathname.includes('/agentic-rag/stream');
+  const correlationId = req.headers.get("X-Correlation-ID") || "unknown";
+  const isStreamingEndpoint = url.pathname.includes("/agentic-rag/stream");
 
   // Log requests in development
-  if (process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV !== "production") {
     logger.debug(`[Proxy] ${req.method} ${url.pathname} -> ${targetUrl}`, {
-      component: 'AUTO',
-      action: 'log',
+      component: "AUTO",
+      action: "log",
     });
   }
 
   // Log streaming requests
-  if (isStreamingEndpoint && process.env.NODE_ENV !== 'production') {
+  if (isStreamingEndpoint && process.env.NODE_ENV !== "production") {
     logger.debug(`[Proxy] SSE request start: ${req.method} ${url.pathname}`, {
-      component: 'AUTO',
-      action: 'log',
+      component: "AUTO",
+      action: "log",
       metadata: {
         correlationId,
       },
@@ -43,16 +43,16 @@ async function proxy(req: NextRequest): Promise<Response> {
   }
 
   const headers = new Headers(req.headers);
-  headers.delete('host');
-  headers.delete('connection');
-  headers.delete('content-length');
+  headers.delete("host");
+  headers.delete("connection");
+  headers.delete("content-length");
 
   // CRITICAL: Explicitly forward authentication cookies
   // In server-side Next.js, credentials: 'include' doesn't automatically forward cookies
   // We must extract cookies from the request and add them to headers
   const cookies = req.cookies;
-  const authCookie = cookies.get('nz_access_token');
-  const csrfCookie = cookies.get('nz_csrf_token');
+  const authCookie = cookies.get("nz_access_token");
+  const csrfCookie = cookies.get("nz_csrf_token");
 
   if (authCookie || csrfCookie) {
     const cookieParts: string[] = [];
@@ -63,26 +63,29 @@ async function proxy(req: NextRequest): Promise<Response> {
       cookieParts.push(`nz_csrf_token=${csrfCookie.value}`);
     }
 
-    const existingCookie = headers.get('cookie') || '';
-    const newCookieValue = cookieParts.join('; ');
-    headers.set('cookie', existingCookie ? `${existingCookie}; ${newCookieValue}` : newCookieValue);
+    const existingCookie = headers.get("cookie") || "";
+    const newCookieValue = cookieParts.join("; ");
+    headers.set(
+      "cookie",
+      existingCookie ? `${existingCookie}; ${newCookieValue}` : newCookieValue,
+    );
   }
 
   let body: BodyInit | undefined = undefined;
-  if (req.method !== 'GET' && req.method !== 'HEAD') {
-    const contentType = req.headers.get('content-type') || '';
-    if (contentType.includes('multipart/form-data')) {
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    const contentType = req.headers.get("content-type") || "";
+    if (contentType.includes("multipart/form-data")) {
       // CRITICAL: When passing FormData to fetch, fetch generates its own boundary.
       // We must delete the original Content-Type header so fetch can set the correct one.
-      headers.delete('content-type');
+      headers.delete("content-type");
       body = (await req.formData()) as unknown as BodyInit;
     } else {
       const buf = await req.arrayBuffer();
       body = buf.byteLength ? buf : undefined;
       // CRITICAL: Preserve Content-Type header for JSON and other body types
       // FastAPI needs this to parse request body correctly
-      if (contentType && !headers.has('content-type')) {
-        headers.set('content-type', contentType);
+      if (contentType && !headers.has("content-type")) {
+        headers.set("content-type", contentType);
       }
     }
   }
@@ -90,16 +93,20 @@ async function proxy(req: NextRequest): Promise<Response> {
   const upstreamStartTime = Date.now();
   try {
     // Debug logging for DELETE with body
-    if (req.method === 'DELETE' && body) {
-      logger.debug('🔍 [PROXY] DELETE with body detected:', {
-        component: 'AUTO',
-        action: 'log',
+    if (req.method === "DELETE" && body) {
+      logger.debug("🔍 [PROXY] DELETE with body detected:", {
+        component: "AUTO",
+        action: "log",
         metadata: {
           method: req.method,
           path: url.pathname,
           hasBody: !!body,
-          bodySize: body ? (typeof body === 'string' ? body.length : 'binary') : 'none',
-          contentType: headers.get('content-type'),
+          bodySize: body
+            ? typeof body === "string"
+              ? body.length
+              : "binary"
+            : "none",
+          contentType: headers.get("content-type"),
           targetUrl,
         },
       });
@@ -110,20 +117,20 @@ async function proxy(req: NextRequest): Promise<Response> {
     const requestInit: RequestInit = {
       method: req.method,
       headers,
-      redirect: 'manual',
-      credentials: 'include',
+      redirect: "manual",
+      credentials: "include",
     };
 
     // Only add body if it exists and method supports it
-    if (body && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
+    if (body && ["POST", "PUT", "DELETE", "PATCH"].includes(req.method)) {
       requestInit.body = body;
-      logger.debug('🔍 [PROXY] Body added to request:', {
-        component: 'AUTO',
-        action: 'log',
+      logger.debug("🔍 [PROXY] Body added to request:", {
+        component: "AUTO",
+        action: "log",
         metadata: {
           method: req.method,
           bodyIncluded: true,
-          bodyLength: typeof body === 'string' ? body.length : 'binary',
+          bodyLength: typeof body === "string" ? body.length : "binary",
         },
       });
     }
@@ -133,32 +140,38 @@ async function proxy(req: NextRequest): Promise<Response> {
     // Handle redirects manually to preserve cookies (fetch doesn't forward cookies on redirects)
     let redirectCount = 0;
     const maxRedirects = 5;
-    while (upstream.status >= 300 && upstream.status < 400 && redirectCount < maxRedirects) {
-      const location = upstream.headers.get('location');
+    while (
+      upstream.status >= 300 &&
+      upstream.status < 400 &&
+      redirectCount < maxRedirects
+    ) {
+      const location = upstream.headers.get("location");
       if (!location) break;
 
       // Resolve relative URLs against the backend base
-      const redirectUrl = location.startsWith('http')
-        ? location.replace(/^http:/, 'https:') // Force HTTPS
-        : `${backendBase}${location.startsWith('/') ? '' : '/'}${location}`;
+      const redirectUrl = location.startsWith("http")
+        ? location.replace(/^http:/, "https:") // Force HTTPS
+        : `${backendBase}${location.startsWith("/") ? "" : "/"}${location}`;
 
       // HTTP 307 and 308 preserve the original method (including POST/DELETE body)
       // HTTP 301, 302, 303 convert POST to GET (standard browser behavior)
       // For DELETE with body, we need to preserve the method and body
       const preserveMethod =
-        upstream.status === 307 || upstream.status === 308 || req.method === 'DELETE';
+        upstream.status === 307 ||
+        upstream.status === 308 ||
+        req.method === "DELETE";
       const redirectMethod = preserveMethod
         ? req.method
-        : req.method === 'POST'
-          ? 'GET'
+        : req.method === "POST"
+          ? "GET"
           : req.method;
 
       upstream = await fetch(redirectUrl, {
         method: redirectMethod,
         headers,
         body: preserveMethod && body ? body : undefined, // Preserve body for 307/308
-        redirect: 'manual',
-        credentials: 'include',
+        redirect: "manual",
+        credentials: "include",
       });
       redirectCount++;
     }
@@ -166,10 +179,10 @@ async function proxy(req: NextRequest): Promise<Response> {
     const upstreamDuration = Date.now() - upstreamStartTime;
 
     // Log streaming response status
-    if (isStreamingEndpoint && process.env.NODE_ENV !== 'production') {
+    if (isStreamingEndpoint && process.env.NODE_ENV !== "production") {
       logger.debug(`[Proxy] SSE upstream response: ${upstream.status}`, {
-        component: 'AUTO',
-        action: 'log',
+        component: "AUTO",
+        action: "log",
         metadata: {
           correlationId,
           durationMs: upstreamDuration,
@@ -186,45 +199,53 @@ async function proxy(req: NextRequest): Promise<Response> {
         logger.error(
           `[Proxy] Auth error ${upstream.status} for ${req.method} ${url.pathname}`,
           {
-            component: 'AUTO',
-            action: 'error',
+            component: "AUTO",
+            action: "error",
             metadata: {
               cookies: {
                 authCookie: !!authCookie,
                 csrfCookie: !!csrfCookie,
-                authCookieValue: authCookie ? `${authCookie.value.substring(0, 20)}...` : 'missing',
-                csrfCookieValue: csrfCookie ? `${csrfCookie.value.substring(0, 20)}...` : 'missing',
+                authCookieValue: authCookie
+                  ? `${authCookie.value.substring(0, 20)}...`
+                  : "missing",
+                csrfCookieValue: csrfCookie
+                  ? `${csrfCookie.value.substring(0, 20)}...`
+                  : "missing",
               },
               targetUrl,
               correlationId,
-              userAgent: req.headers.get('user-agent')?.substring(0, 50),
+              userAgent: req.headers.get("user-agent")?.substring(0, 50),
             },
           },
-          toError(`[Proxy] Auth error ${upstream.status} for ${req.method} ${url.pathname}`)
+          toError(
+            `[Proxy] Auth error ${upstream.status} for ${req.method} ${url.pathname}`,
+          ),
         );
-      } else if (process.env.NODE_ENV !== 'production') {
+      } else if (process.env.NODE_ENV !== "production") {
         // Log other errors only in development
         logger.error(
           `[Proxy] Error ${upstream.status} for ${req.method} ${url.pathname}`,
           {
-            component: 'AUTO',
-            action: 'error',
+            component: "AUTO",
+            action: "error",
             metadata: {
               targetUrl,
               correlationId,
             },
           },
-          toError(`[Proxy] Error ${upstream.status} for ${req.method} ${url.pathname}`)
+          toError(
+            `[Proxy] Error ${upstream.status} for ${req.method} ${url.pathname}`,
+          ),
         );
       }
     }
 
     // Forward headers from upstream
     const respHeaders = new Headers(upstream.headers);
-    respHeaders.delete('transfer-encoding');
+    respHeaders.delete("transfer-encoding");
 
     // CRITICAL: Prevent Fly.io edge from re-compressing our response
-    respHeaders.set('Cache-Control', 'no-transform');
+    respHeaders.set("Cache-Control", "no-transform");
 
     // For SSE (streaming) endpoints, pass through the body stream as-is
     // SSE endpoints are typically not compressed and need to stay as streams
@@ -239,8 +260,8 @@ async function proxy(req: NextRequest): Promise<Response> {
     // For non-streaming endpoints, read the body as ArrayBuffer
     // This fixes an issue where Vercel edge doesn't properly pass through
     // compressed response bodies from upstream
-    respHeaders.delete('content-encoding');
-    respHeaders.delete('content-length'); // Length may change after decompression
+    respHeaders.delete("content-encoding");
+    respHeaders.delete("content-length"); // Length may change after decompression
 
     const bodyBuffer = await upstream.arrayBuffer();
 
@@ -253,26 +274,26 @@ async function proxy(req: NextRequest): Promise<Response> {
     logger.error(
       `[Proxy] Fetch error for ${req.method} ${url.pathname}`,
       {
-        component: 'AUTO',
-        action: 'error',
+        component: "AUTO",
+        action: "error",
         metadata: {
           method: req.method,
           pathname: url.pathname,
           targetUrl,
         },
       },
-      toError(error)
+      toError(error),
     );
     return new Response(
       JSON.stringify({
-        error: 'Proxy error',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        error: "Proxy error",
+        message: error instanceof Error ? error.message : "Unknown error",
         targetUrl,
       }),
       {
         status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
+        headers: { "Content-Type": "application/json" },
+      },
     );
   }
 }

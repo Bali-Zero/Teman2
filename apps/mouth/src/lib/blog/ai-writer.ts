@@ -13,11 +13,12 @@ import type {
   ArticleListItem,
   READING_SPEED_WPM,
   ZANTARA_AI_AUTHOR,
-} from './types';
-import { logger } from '../logger';
-import { toError } from '../types/common';
+} from "./types";
+import { logger } from "../logger";
+import { toError } from "../types/common";
 
-const ZANTARA_API = process.env.NEXT_PUBLIC_ZANTARA_API_URL || process.env.ZANTARA_API_URL;
+const ZANTARA_API =
+  process.env.NEXT_PUBLIC_ZANTARA_API_URL || process.env.ZANTARA_API_URL;
 const ZANTARA_API_KEY = process.env.ZANTARA_API_KEY;
 
 // ============================================================================
@@ -28,12 +29,14 @@ export class ZantaraAIWriter {
   /**
    * Generate a complete article with Zantara AI
    */
-  static async generateArticle(request: AIGenerationRequest): Promise<Partial<Article>> {
+  static async generateArticle(
+    request: AIGenerationRequest,
+  ): Promise<Partial<Article>> {
     const response = await fetch(`${ZANTARA_API}/api/blog/ai-generate`, {
-      method: 'POST',
+      method: "POST",
       headers: {
         Authorization: `Bearer ${ZANTARA_API_KEY}`,
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         prompt: this.buildPrompt(request),
@@ -50,13 +53,19 @@ export class ZantaraAIWriter {
     const aiContent: AIGenerationResponse = await response.json();
 
     // Generate cover image with AI
-    const coverImage = await this.generateCoverImage(request.topic, request.category);
+    const coverImage = await this.generateCoverImage(
+      request.topic,
+      request.category,
+    );
 
     // Generate SEO metadata
     const seoData = this.generateSEO(aiContent.title, aiContent.excerpt);
 
     // Find related articles
-    const relatedIds = await this.findRelatedArticles(request.topic, request.category);
+    const relatedIds = await this.findRelatedArticles(
+      request.topic,
+      request.category,
+    );
 
     return {
       title: aiContent.title,
@@ -73,19 +82,19 @@ export class ZantaraAIWriter {
       aiGenerated: true,
       aiConfidenceScore: aiContent.confidence,
       relatedArticleIds: relatedIds,
-      status: 'review', // Always review AI-generated content
+      status: "review", // Always review AI-generated content
       author: {
-        id: 'zantara-ai',
-        name: 'Zantara AI',
-        avatar: '/static/zantara-avatar.png',
-        role: 'AI Research Assistant',
+        id: "zantara-ai",
+        name: "Zantara AI",
+        avatar: "/static/zantara-avatar.png",
+        role: "AI Research Assistant",
         isAI: true,
       },
       featured: false,
       trending: false,
       viewCount: 0,
       shareCount: 0,
-      locale: 'en',
+      locale: "en",
     };
   }
 
@@ -122,22 +131,22 @@ export class ZantaraAIWriter {
           const article = await this.generateArticle({
             topic: trigger.topic,
             category: trigger.category,
-            tone: trigger.urgency === 'high' ? 'urgent' : 'professional',
-            targetLength: 'medium',
+            tone: trigger.urgency === "high" ? "urgent" : "professional",
+            targetLength: "medium",
             includeData: true,
             sources: trigger.sources,
           });
 
           // Save draft via API
           await fetch(`${ZANTARA_API}/api/blog/articles`, {
-            method: 'POST',
+            method: "POST",
             headers: {
               Authorization: `Bearer ${ZANTARA_API_KEY}`,
-              'Content-Type': 'application/json',
+              "Content-Type": "application/json",
             },
             body: JSON.stringify({
               ...article,
-              status: 'review',
+              status: "review",
               metadata: {
                 triggerSource: trigger.source,
                 triggerDate: new Date(),
@@ -154,11 +163,11 @@ export class ZantaraAIWriter {
           logger.error(
             `Failed to generate article for trigger: ${trigger.topic}`,
             {
-              component: 'ZantaraAIWriter',
-              action: 'processTriggers',
+              component: "ZantaraAIWriter",
+              action: "processTriggers",
               metadata: { triggerTopic: trigger.topic },
             },
-            toError(error)
+            toError(error),
           );
         }
       }
@@ -176,12 +185,15 @@ export class ZantaraAIWriter {
    */
   static async getPersonalizedRecommendations(
     clientId: string,
-    limit = 5
+    limit = 5,
   ): Promise<ArticleListItem[]> {
     // Fetch client profile from Zantara
-    const clientResponse = await fetch(`${ZANTARA_API}/api/crm/clients/${clientId}`, {
-      headers: { Authorization: `Bearer ${ZANTARA_API_KEY}` },
-    });
+    const clientResponse = await fetch(
+      `${ZANTARA_API}/api/crm/clients/${clientId}`,
+      {
+        headers: { Authorization: `Bearer ${ZANTARA_API_KEY}` },
+      },
+    );
 
     if (!clientResponse.ok) {
       return [];
@@ -193,19 +205,22 @@ export class ZantaraAIWriter {
     const interests = await this.analyzeClientInterests(client);
 
     // Get matching articles
-    const articlesResponse = await fetch(`${ZANTARA_API}/api/blog/articles/recommend`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${ZANTARA_API_KEY}`,
-        'Content-Type': 'application/json',
+    const articlesResponse = await fetch(
+      `${ZANTARA_API}/api/blog/articles/recommend`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${ZANTARA_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          categories: interests.categories,
+          tags: interests.tags,
+          excludeRead: interests.readArticleIds,
+          limit: limit * 2, // Fetch more for scoring
+        }),
       },
-      body: JSON.stringify({
-        categories: interests.categories,
-        tags: interests.tags,
-        excludeRead: interests.readArticleIds,
-        limit: limit * 2, // Fetch more for scoring
-      }),
-    });
+    );
 
     if (!articlesResponse.ok) {
       return [];
@@ -230,13 +245,13 @@ export class ZantaraAIWriter {
    */
   static async translateArticle(
     articleId: string,
-    targetLocale: 'en' | 'id'
+    targetLocale: "en" | "id",
   ): Promise<Partial<Article>> {
     const response = await fetch(`${ZANTARA_API}/api/blog/ai-translate`, {
-      method: 'POST',
+      method: "POST",
       headers: {
         Authorization: `Bearer ${ZANTARA_API_KEY}`,
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         articleId,
@@ -257,15 +272,17 @@ export class ZantaraAIWriter {
 
   private static buildPrompt(request: AIGenerationRequest): string {
     const toneInstructions = {
-      professional: 'Use a professional, authoritative tone with clear explanations.',
-      casual: 'Use a friendly, conversational tone that is easy to understand.',
-      urgent: 'Use an urgent tone emphasizing time-sensitive information and immediate action.',
+      professional:
+        "Use a professional, authoritative tone with clear explanations.",
+      casual: "Use a friendly, conversational tone that is easy to understand.",
+      urgent:
+        "Use an urgent tone emphasizing time-sensitive information and immediate action.",
     };
 
     const lengthGuides = {
-      short: '800-1200 words',
-      medium: '1500-2500 words',
-      long: '3000-5000 words',
+      short: "800-1200 words",
+      medium: "1500-2500 words",
+      long: "3000-5000 words",
     };
 
     return `
@@ -283,8 +300,8 @@ Requirements:
 - Cite official sources when possible (government websites, regulations)
 - Use clear headings and well-structured content
 - Include practical examples and real scenarios
-${request.includeData ? '- Include relevant statistics and data points where applicable' : ''}
-${request.sources?.length ? `- Reference these sources: ${request.sources.join(', ')}` : ''}
+${request.includeData ? "- Include relevant statistics and data points where applicable" : ""}
+${request.sources?.length ? `- Reference these sources: ${request.sources.join(", ")}` : ""}
 
 Target audience: Expats, digital nomads, and entrepreneurs in Bali/Indonesia
 
@@ -303,7 +320,7 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
     `.trim();
   }
 
-  private static getTokenLimit(length: 'short' | 'medium' | 'long'): number {
+  private static getTokenLimit(length: "short" | "medium" | "long"): number {
     return { short: 2000, medium: 4000, long: 8000 }[length];
   }
 
@@ -315,31 +332,31 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
 
   private static async generateCoverImage(
     topic: string,
-    category: ArticleCategory
+    category: ArticleCategory,
   ): Promise<string> {
     const categoryThemes: Record<ArticleCategory, string> = {
-      immigration: 'passport, travel documents, airport, visa stamp',
-      business: 'office building, business meeting, corporate, professional',
-      'tax-legal': 'legal documents, scales of justice, contract, official',
-      property: 'luxury villa, Bali architecture, real estate, tropical home',
-      lifestyle: 'Bali sunset, rice terraces, beach, tropical paradise',
-      tech: 'laptop, digital nomad workspace, modern technology, coworking',
+      immigration: "passport, travel documents, airport, visa stamp",
+      business: "office building, business meeting, corporate, professional",
+      "tax-legal": "legal documents, scales of justice, contract, official",
+      property: "luxury villa, Bali architecture, real estate, tropical home",
+      lifestyle: "Bali sunset, rice terraces, beach, tropical paradise",
+      tech: "laptop, digital nomad workspace, modern technology, coworking",
     };
 
     try {
       const response = await fetch(`${ZANTARA_API}/api/v1/image/generate`, {
-        method: 'POST',
+        method: "POST",
         headers: {
           Authorization: `Bearer ${ZANTARA_API_KEY}`,
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           prompt: `Professional editorial photography for article about ${topic}.
                    Theme: ${categoryThemes[category]}, Bali Indonesia.
                    Style: cinematic, moody lighting, premium magazine quality.
                    Aspect ratio: 16:9, high quality.`,
-          style: 'editorial',
-          aspectRatio: '16:9',
+          style: "editorial",
+          aspectRatio: "16:9",
         }),
       });
 
@@ -349,9 +366,13 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
       }
     } catch (error) {
       logger.error(
-        'Image generation failed',
-        { component: 'ZantaraAIWriter', action: 'generateCoverImage', metadata: { category } },
-        toError(error)
+        "Image generation failed",
+        {
+          component: "ZantaraAIWriter",
+          action: "generateCoverImage",
+          metadata: { category },
+        },
+        toError(error),
       );
     }
 
@@ -360,36 +381,37 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
 
   private static getDefaultCoverImage(category: ArticleCategory): string {
     const defaults: Record<ArticleCategory, string> = {
-      immigration: '/static/blog/default-immigration.jpg',
-      business: '/static/blog/default-business.jpg',
-      'tax-legal': '/static/blog/default-tax-legal.jpg',
-      property: '/static/blog/default-property.jpg',
-      lifestyle: '/static/blog/default-lifestyle.jpg',
-      tech: '/static/blog/default-tech.jpg',
+      immigration: "/static/blog/default-immigration.jpg",
+      business: "/static/blog/default-business.jpg",
+      "tax-legal": "/static/blog/default-tax-legal.jpg",
+      property: "/static/blog/default-property.jpg",
+      lifestyle: "/static/blog/default-lifestyle.jpg",
+      tech: "/static/blog/default-tech.jpg",
     };
     return defaults[category];
   }
 
   private static generateSEO(
     title: string,
-    excerpt: string
+    excerpt: string,
   ): { title: string; description: string } {
     return {
-      title: title.length > 60 ? title.slice(0, 57) + '...' : title,
-      description: excerpt.length > 160 ? excerpt.slice(0, 157) + '...' : excerpt,
+      title: title.length > 60 ? title.slice(0, 57) + "..." : title,
+      description:
+        excerpt.length > 160 ? excerpt.slice(0, 157) + "..." : excerpt,
     };
   }
 
   private static async findRelatedArticles(
     topic: string,
-    category: ArticleCategory
+    category: ArticleCategory,
   ): Promise<string[]> {
     try {
       const response = await fetch(`${ZANTARA_API}/api/blog/articles/similar`, {
-        method: 'POST',
+        method: "POST",
         headers: {
           Authorization: `Bearer ${ZANTARA_API_KEY}`,
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ text: topic, category, limit: 5 }),
       });
@@ -400,13 +422,13 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
       }
     } catch (error) {
       logger.error(
-        'Failed to find related articles',
+        "Failed to find related articles",
         {
-          component: 'ZantaraAIWriter',
-          action: 'findRelatedArticles',
+          component: "ZantaraAIWriter",
+          action: "findRelatedArticles",
           metadata: { topic, category },
         },
-        toError(error)
+        toError(error),
       );
     }
 
@@ -421,9 +443,12 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
     // - djkn.kemenkeu.go.id
 
     try {
-      const response = await fetch(`${ZANTARA_API}/api/intel/monitor/government`, {
-        headers: { Authorization: `Bearer ${ZANTARA_API_KEY}` },
-      });
+      const response = await fetch(
+        `${ZANTARA_API}/api/intel/monitor/government`,
+        {
+          headers: { Authorization: `Bearer ${ZANTARA_API_KEY}` },
+        },
+      );
 
       if (response.ok) {
         const { updates } = await response.json();
@@ -431,25 +456,25 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
           (update: {
             title: string;
             category: ArticleCategory;
-            urgency: 'low' | 'medium' | 'high';
+            urgency: "low" | "medium" | "high";
             sourceUrl: string;
           }) => ({
             id: crypto.randomUUID(),
-            source: 'government' as const,
+            source: "government" as const,
             topic: update.title,
             category: update.category,
             urgency: update.urgency,
             sources: [update.sourceUrl],
             detectedAt: new Date(),
             processed: false,
-          })
+          }),
         );
       }
     } catch (error) {
       logger.error(
-        'Failed to check government sources',
-        { component: 'ZantaraAIWriter', action: 'checkGovernmentSources' },
-        toError(error)
+        "Failed to check government sources",
+        { component: "ZantaraAIWriter", action: "checkGovernmentSources" },
+        toError(error),
       );
     }
 
@@ -466,22 +491,28 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
         const { articles } = await response.json();
         return articles
           .filter((a: { relevanceScore: number }) => a.relevanceScore > 0.7)
-          .map((article: { title: string; category: ArticleCategory; url: string }) => ({
-            id: crypto.randomUUID(),
-            source: 'news' as const,
-            topic: article.title,
-            category: article.category,
-            urgency: 'medium' as const,
-            sources: [article.url],
-            detectedAt: new Date(),
-            processed: false,
-          }));
+          .map(
+            (article: {
+              title: string;
+              category: ArticleCategory;
+              url: string;
+            }) => ({
+              id: crypto.randomUUID(),
+              source: "news" as const,
+              topic: article.title,
+              category: article.category,
+              urgency: "medium" as const,
+              sources: [article.url],
+              detectedAt: new Date(),
+              processed: false,
+            }),
+          );
       }
     } catch (error) {
       logger.error(
-        'Failed to check news sources',
-        { component: 'ZantaraAIWriter', action: 'checkNewsSources' },
-        toError(error)
+        "Failed to check news sources",
+        { component: "ZantaraAIWriter", action: "checkNewsSources" },
+        toError(error),
       );
     }
 
@@ -497,39 +528,48 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
       if (response.ok) {
         const { gaps } = await response.json();
         return gaps.map(
-          (gap: { question: string; frequency: number; category: ArticleCategory }) => ({
+          (gap: {
+            question: string;
+            frequency: number;
+            category: ArticleCategory;
+          }) => ({
             id: crypto.randomUUID(),
-            source: 'client_question' as const,
+            source: "client_question" as const,
             topic: gap.question,
             category: gap.category,
-            urgency: gap.frequency > 10 ? 'high' : 'medium',
+            urgency: gap.frequency > 10 ? "high" : "medium",
             sources: [],
             detectedAt: new Date(),
             processed: false,
-          })
+          }),
         );
       }
     } catch (error) {
       logger.error(
-        'Failed to analyze client questions',
-        { component: 'ZantaraAIWriter', action: 'analyzeClientQuestions' },
-        toError(error)
+        "Failed to analyze client questions",
+        { component: "ZantaraAIWriter", action: "analyzeClientQuestions" },
+        toError(error),
       );
     }
 
     return [];
   }
 
-  private static async checkSimilarArticleExists(topic: string): Promise<boolean> {
+  private static async checkSimilarArticleExists(
+    topic: string,
+  ): Promise<boolean> {
     try {
-      const response = await fetch(`${ZANTARA_API}/api/blog/articles/check-duplicate`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${ZANTARA_API_KEY}`,
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `${ZANTARA_API}/api/blog/articles/check-duplicate`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${ZANTARA_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ topic, similarityThreshold: 0.85 }),
         },
-        body: JSON.stringify({ topic, similarityThreshold: 0.85 }),
-      });
+      );
 
       if (response.ok) {
         const { exists } = await response.json();
@@ -537,9 +577,13 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
       }
     } catch (error) {
       logger.error(
-        'Failed to check for duplicates',
-        { component: 'ZantaraAIWriter', action: 'checkSimilarArticleExists', metadata: { topic } },
-        toError(error)
+        "Failed to check for duplicates",
+        {
+          component: "ZantaraAIWriter",
+          action: "checkSimilarArticleExists",
+          metadata: { topic },
+        },
+        toError(error),
       );
     }
 
@@ -548,17 +592,17 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
 
   private static async notifyEditorialTeam(
     article: Partial<Article>,
-    trigger: AIContentTrigger
+    trigger: AIContentTrigger,
   ): Promise<void> {
     try {
       await fetch(`${ZANTARA_API}/api/notifications/editorial`, {
-        method: 'POST',
+        method: "POST",
         headers: {
           Authorization: `Bearer ${ZANTARA_API_KEY}`,
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          type: 'ai_article_generated',
+          type: "ai_article_generated",
           title: `New AI Article: ${article.title}`,
           message: `Zantara AI generated a new article based on ${trigger.source} trigger. Please review.`,
           articleData: {
@@ -575,13 +619,13 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
       });
     } catch (error) {
       logger.error(
-        'Failed to notify editorial team',
+        "Failed to notify editorial team",
         {
-          component: 'ZantaraAIWriter',
-          action: 'notifyEditorialTeam',
+          component: "ZantaraAIWriter",
+          action: "notifyEditorialTeam",
           metadata: { articleTitle: article.title },
         },
-        toError(error)
+        toError(error),
       );
     }
   }
@@ -602,13 +646,13 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
 
     // Analyze visa type
     if (client.visaType) {
-      categories.add('immigration');
+      categories.add("immigration");
       tags.add(client.visaType.toLowerCase());
     }
 
     // Analyze business type
     if (client.businessType) {
-      categories.add('business');
+      categories.add("business");
       tags.add(client.businessType.toLowerCase());
     }
 
@@ -616,16 +660,16 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
     if (client.interests) {
       client.interests.forEach((interest) => {
         const categoryMap: Record<string, ArticleCategory> = {
-          visa: 'immigration',
-          immigration: 'immigration',
-          company: 'business',
-          business: 'business',
-          tax: 'tax-legal',
-          legal: 'tax-legal',
-          property: 'property',
-          real_estate: 'property',
-          lifestyle: 'lifestyle',
-          tech: 'tech',
+          visa: "immigration",
+          immigration: "immigration",
+          company: "business",
+          business: "business",
+          tax: "tax-legal",
+          legal: "tax-legal",
+          property: "property",
+          real_estate: "property",
+          lifestyle: "lifestyle",
+          tech: "tech",
         };
         const category = categoryMap[interest.toLowerCase()];
         if (category) categories.add(category);
@@ -653,7 +697,7 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
       categories: ArticleCategory[];
       tags: string[];
       readArticleIds: string[];
-    }
+    },
   ): number {
     let score = 0;
 
@@ -681,7 +725,8 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
 
     // Recency bonus (up to +20 points)
     const daysSincePublished = Math.floor(
-      (Date.now() - new Date(article.publishedAt).getTime()) / (1000 * 60 * 60 * 24)
+      (Date.now() - new Date(article.publishedAt).getTime()) /
+        (1000 * 60 * 60 * 24),
     );
     score += Math.max(0, 20 - daysSincePublished);
 
@@ -710,6 +755,9 @@ export async function runContentMonitor() {
   return ZantaraAIWriter.monitorAndGenerate();
 }
 
-export async function translateArticle(articleId: string, targetLocale: 'en' | 'id') {
+export async function translateArticle(
+  articleId: string,
+  targetLocale: "en" | "id",
+) {
   return ZantaraAIWriter.translateArticle(articleId, targetLocale);
 }

@@ -288,7 +288,7 @@ http://localhost:3000/api/docs
        tags: [YourTag]
        summary: Description
        responses:
-         '200':
+         "200":
            description: Success
    ```
 
@@ -306,7 +306,7 @@ http://localhost:3000/api/docs
 2. **Reuse with `$ref`**
    ```yaml
    schema:
-     $ref: '#/components/schemas/YourSchema'
+     $ref: "#/components/schemas/YourSchema"
    ```
 3. **Validate** changes
 

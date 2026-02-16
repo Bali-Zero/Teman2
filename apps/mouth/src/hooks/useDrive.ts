@@ -4,17 +4,17 @@ import {
   useMutation,
   useQueryClient,
   QueryClient,
-} from '@tanstack/react-query';
-import { useCallback, useMemo } from 'react';
-import { api } from '@/lib/api';
-import { driveLogger } from '@/lib/logging/drive-logger';
+} from "@tanstack/react-query";
+import { useCallback, useMemo } from "react";
+import { api } from "@/lib/api";
+import { driveLogger } from "@/lib/logging/drive-logger";
 import type {
   FileItem,
   CreateFolderRequest,
   DocType,
   FileListResponse,
   BreadcrumbItem,
-} from '@/lib/api/drive/drive.types';
+} from "@/lib/api/drive/drive.types";
 
 /** Type for drive file list query data */
 interface DriveFilesData {
@@ -29,9 +29,12 @@ const DEFAULT_PAGE_SIZE = 50;
  * Hook for fetching drive files with infinite scroll pagination
  * Supports automatic loading of more files when scrolling
  */
-export function useDriveFiles(folderId: string | null, searchQuery: string = '') {
+export function useDriveFiles(
+  folderId: string | null,
+  searchQuery: string = "",
+) {
   const infiniteQuery = useInfiniteQuery({
-    queryKey: ['drive', 'files', folderId, searchQuery],
+    queryKey: ["drive", "files", folderId, searchQuery],
     queryFn: async ({ pageParam }) => {
       if (searchQuery) {
         // Search doesn't support pagination yet
@@ -88,9 +91,9 @@ export function usePrefetchFolder() {
   const prefetchFolder = useCallback(
     (folderId: string) => {
       // Only prefetch if not already in cache
-      const cached = queryClient.getQueryData(['drive', 'files', folderId, '']);
+      const cached = queryClient.getQueryData(["drive", "files", folderId, ""]);
       if (cached) {
-        driveLogger.logPrefetchSkipped(folderId, 'cached');
+        driveLogger.logPrefetchSkipped(folderId, "cached");
         return;
       }
 
@@ -99,7 +102,7 @@ export function usePrefetchFolder() {
 
       // Prefetch as infinite query to match main query structure
       queryClient.prefetchInfiniteQuery({
-        queryKey: ['drive', 'files', folderId, ''],
+        queryKey: ["drive", "files", folderId, ""],
         queryFn: async () => {
           try {
             const result = await api.drive.listFiles({
@@ -107,12 +110,16 @@ export function usePrefetchFolder() {
               page_size: DEFAULT_PAGE_SIZE,
             });
             const duration = Math.round(performance.now() - startTime);
-            driveLogger.logPrefetchCompleted(folderId, duration, result.files.length);
+            driveLogger.logPrefetchCompleted(
+              folderId,
+              duration,
+              result.files.length,
+            );
             return result;
           } catch (error) {
             driveLogger.logPrefetchError(
               folderId,
-              error instanceof Error ? error : new Error(String(error))
+              error instanceof Error ? error : new Error(String(error)),
             );
             throw error;
           }
@@ -121,7 +128,7 @@ export function usePrefetchFolder() {
         staleTime: 1000 * 60, // 1 minute
       });
     },
-    [queryClient]
+    [queryClient],
   );
 
   return { prefetchFolder };
@@ -129,7 +136,7 @@ export function usePrefetchFolder() {
 
 export function useDriveStatus() {
   return useQuery({
-    queryKey: ['drive', 'status'],
+    queryKey: ["drive", "status"],
     queryFn: () => api.drive.getStatus(),
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
@@ -139,20 +146,27 @@ export function useDriveMutations() {
   const queryClient = useQueryClient();
 
   const invalidateFiles = () => {
-    queryClient.invalidateQueries({ queryKey: ['drive', 'files'] });
+    queryClient.invalidateQueries({ queryKey: ["drive", "files"] });
   };
 
   const createFolder = useMutation({
     mutationFn: (variable: { name: string; parentId: string | null }) =>
-      api.drive.createFolder({ name: variable.name, parent_id: variable.parentId || 'root' }),
+      api.drive.createFolder({
+        name: variable.name,
+        parent_id: variable.parentId || "root",
+      }),
     onSuccess: invalidateFiles,
   });
 
   const createDoc = useMutation({
-    mutationFn: (variable: { name: string; parentId: string | null; docType: DocType }) =>
+    mutationFn: (variable: {
+      name: string;
+      parentId: string | null;
+      docType: DocType;
+    }) =>
       api.drive.createDoc({
         name: variable.name,
-        parent_id: variable.parentId || 'root',
+        parent_id: variable.parentId || "root",
         doc_type: variable.docType,
       }),
     onSuccess: invalidateFiles,
@@ -162,23 +176,25 @@ export function useDriveMutations() {
     mutationFn: (fileId: string) => api.drive.deleteFile(fileId),
     onMutate: async (fileId) => {
       // Optimistic update: Remove file from list immediately
-      await queryClient.cancelQueries({ queryKey: ['drive', 'files'] });
-      const previousData = queryClient.getQueriesData({ queryKey: ['drive', 'files'] });
+      await queryClient.cancelQueries({ queryKey: ["drive", "files"] });
+      const previousData = queryClient.getQueriesData({
+        queryKey: ["drive", "files"],
+      });
 
       // Update infinite query data structure (pages array)
-      queryClient.setQueriesData<{ pages: FileListResponse[]; pageParams: unknown[] }>(
-        { queryKey: ['drive', 'files'] },
-        (old) => {
-          if (!old?.pages) return old;
-          return {
-            ...old,
-            pages: old.pages.map((page) => ({
-              ...page,
-              files: page.files?.filter((f) => f.id !== fileId) || [],
-            })),
-          };
-        }
-      );
+      queryClient.setQueriesData<{
+        pages: FileListResponse[];
+        pageParams: unknown[];
+      }>({ queryKey: ["drive", "files"] }, (old) => {
+        if (!old?.pages) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) => ({
+            ...page,
+            files: page.files?.filter((f) => f.id !== fileId) || [],
+          })),
+        };
+      });
 
       return { previousData };
     },
@@ -203,7 +219,7 @@ export function useDriveMutations() {
     mutationFn: (variable: { fileIds: string[]; targetFolderId: string }) =>
       api.drive.moveFiles(
         variable.fileIds,
-        variable.targetFolderId === 'root' ? '' : variable.targetFolderId
+        variable.targetFolderId === "root" ? "" : variable.targetFolderId,
       ),
     onSuccess: invalidateFiles,
   });

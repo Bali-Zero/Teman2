@@ -3,7 +3,7 @@
  * Uses machine learning to provide actionable insights
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from "react";
 import type {
   HistoricalData,
   PredictionResult,
@@ -11,17 +11,17 @@ import type {
   AnomalyDetection,
   ClientChurnPrediction,
   WorkloadPrediction,
-} from './api/types/ai-insights.types';
-import { isHistoricalData } from './api/types/ai-insights.types';
+} from "./api/types/ai-insights.types";
+import { isHistoricalData } from "./api/types/ai-insights.types";
 
 interface Insight {
   id: string;
-  type: 'prediction' | 'recommendation' | 'anomaly' | 'trend';
+  type: "prediction" | "recommendation" | "anomaly" | "trend";
   title: string;
   description: string;
   confidence: number; // 0-1
-  impact: 'low' | 'medium' | 'high' | 'critical';
-  category: 'cases' | 'clients' | 'revenue' | 'efficiency' | 'compliance';
+  impact: "low" | "medium" | "high" | "critical";
+  category: "cases" | "clients" | "revenue" | "efficiency" | "compliance";
   data: Record<string, any>;
   actionable: boolean;
   suggestedActions: string[];
@@ -31,7 +31,7 @@ interface Insight {
 interface PredictionModel {
   id: string;
   name: string;
-  type: 'regression' | 'classification' | 'clustering' | 'anomaly_detection';
+  type: "regression" | "classification" | "clustering" | "anomaly_detection";
   target: string;
   features: string[];
   accuracy: number;
@@ -72,53 +72,70 @@ class AIInsightsService {
 
   // Initialize ML models
   private initializeModels(): void {
-    this.models.set('case_volume_prediction', {
-      id: 'case_volume_prediction',
-      name: 'Case Volume Prediction',
-      type: 'regression',
-      target: 'case_volume',
-      features: ['historical_volume', 'season', 'marketing_spend', 'team_size'],
+    this.models.set("case_volume_prediction", {
+      id: "case_volume_prediction",
+      name: "Case Volume Prediction",
+      type: "regression",
+      target: "case_volume",
+      features: ["historical_volume", "season", "marketing_spend", "team_size"],
       accuracy: 0.87,
-      lastTrained: '2024-01-01',
+      lastTrained: "2024-01-01",
       isActive: true,
     });
 
-    this.models.set('revenue_forecast', {
-      id: 'revenue_forecast',
-      name: 'Revenue Forecast',
-      type: 'regression',
-      target: 'revenue',
-      features: ['case_volume', 'average_case_value', 'season', 'economic_indicators'],
+    this.models.set("revenue_forecast", {
+      id: "revenue_forecast",
+      name: "Revenue Forecast",
+      type: "regression",
+      target: "revenue",
+      features: [
+        "case_volume",
+        "average_case_value",
+        "season",
+        "economic_indicators",
+      ],
       accuracy: 0.82,
-      lastTrained: '2024-01-01',
+      lastTrained: "2024-01-01",
       isActive: true,
     });
 
-    this.models.set('client_churn_prediction', {
-      id: 'client_churn_prediction',
-      name: 'Client Churn Prediction',
-      type: 'classification',
-      target: 'churn_probability',
-      features: ['case_count', 'last_activity', 'satisfaction_score', 'payment_history'],
+    this.models.set("client_churn_prediction", {
+      id: "client_churn_prediction",
+      name: "Client Churn Prediction",
+      type: "classification",
+      target: "churn_probability",
+      features: [
+        "case_count",
+        "last_activity",
+        "satisfaction_score",
+        "payment_history",
+      ],
       accuracy: 0.79,
-      lastTrained: '2024-01-01',
+      lastTrained: "2024-01-01",
       isActive: true,
     });
 
-    this.models.set('anomaly_detection', {
-      id: 'anomaly_detection',
-      name: 'Anomaly Detection',
-      type: 'anomaly_detection',
-      target: 'anomaly_score',
-      features: ['response_time', 'error_rate', 'case_duration', 'client_complaints'],
+    this.models.set("anomaly_detection", {
+      id: "anomaly_detection",
+      name: "Anomaly Detection",
+      type: "anomaly_detection",
+      target: "anomaly_score",
+      features: [
+        "response_time",
+        "error_rate",
+        "case_duration",
+        "client_complaints",
+      ],
       accuracy: 0.91,
-      lastTrained: '2024-01-01',
+      lastTrained: "2024-01-01",
       isActive: true,
     });
   }
 
   // Generate AI insights for dashboard
-  async generateInsights(historicalData: HistoricalData): Promise<DashboardInsight> {
+  async generateInsights(
+    historicalData: HistoricalData,
+  ): Promise<DashboardInsight> {
     if (!this.isInitialized) {
       await this.initializeAI();
     }
@@ -141,13 +158,15 @@ class AIInsightsService {
     // In production, this would load actual ML models
     // For now, we'll simulate the initialization
     this.isInitialized = true;
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.NODE_ENV === "development") {
       // AI Insights Service ready
     }
   }
 
   // Generate specific insights
-  private async generateSpecificInsights(data: HistoricalData): Promise<Insight[]> {
+  private async generateSpecificInsights(
+    data: HistoricalData,
+  ): Promise<Insight[]> {
     const insights: Insight[] = [];
 
     // Case volume insight - extract numeric values from CaseData[]
@@ -155,21 +174,23 @@ class AIInsightsService {
     const caseTrend = this.calculateTrend(caseValues);
     if (caseTrend > 0.1) {
       insights.push({
-        id: 'case_volume_increase',
-        type: 'trend',
-        title: 'Case Volume Increasing',
+        id: "case_volume_increase",
+        type: "trend",
+        title: "Case Volume Increasing",
         description: `Case volume has increased by ${(caseTrend * 100).toFixed(1)}% in the last 30 days. Consider scaling team capacity.`,
         confidence: 0.85,
-        impact: caseTrend > 0.2 ? 'high' : 'medium',
-        category: 'cases',
-        data: { trend: caseTrend, period: '30 days' },
+        impact: caseTrend > 0.2 ? "high" : "medium",
+        category: "cases",
+        data: { trend: caseTrend, period: "30 days" },
         actionable: true,
         suggestedActions: [
-          'Review team workload distribution',
-          'Consider hiring additional staff',
-          'Optimize case processing workflows',
+          "Review team workload distribution",
+          "Consider hiring additional staff",
+          "Optimize case processing workflows",
         ],
-        validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        validUntil: new Date(
+          Date.now() + 7 * 24 * 60 * 60 * 1000,
+        ).toISOString(),
       });
     }
 
@@ -177,21 +198,26 @@ class AIInsightsService {
     const revenuePrediction = await this.predictRevenue(data);
     if (revenuePrediction.confidence > 0.8) {
       insights.push({
-        id: 'revenue_prediction',
-        type: 'prediction',
-        title: 'Revenue Forecast',
+        id: "revenue_prediction",
+        type: "prediction",
+        title: "Revenue Forecast",
         description: `Predicted revenue for next month: $${revenuePrediction.value.toLocaleString()} with ${(revenuePrediction.confidence * 100).toFixed(0)}% confidence.`,
         confidence: revenuePrediction.confidence,
-        impact: revenuePrediction.value > 10000 ? 'high' : 'medium',
-        category: 'revenue',
-        data: { predicted: revenuePrediction.value, confidence: revenuePrediction.confidence },
+        impact: revenuePrediction.value > 10000 ? "high" : "medium",
+        category: "revenue",
+        data: {
+          predicted: revenuePrediction.value,
+          confidence: revenuePrediction.confidence,
+        },
         actionable: true,
         suggestedActions: [
-          'Focus on high-value cases',
-          'Optimize pricing strategy',
-          'Monitor market trends',
+          "Focus on high-value cases",
+          "Optimize pricing strategy",
+          "Monitor market trends",
         ],
-        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        validUntil: new Date(
+          Date.now() + 30 * 24 * 60 * 60 * 1000,
+        ).toISOString(),
       });
     }
 
@@ -199,21 +225,26 @@ class AIInsightsService {
     const efficiencyAnomaly = await this.detectEfficiencyAnomalies(data);
     if (efficiencyAnomaly.detected) {
       insights.push({
-        id: 'efficiency_anomaly',
-        type: 'anomaly',
-        title: 'Efficiency Anomaly Detected',
+        id: "efficiency_anomaly",
+        type: "anomaly",
+        title: "Efficiency Anomaly Detected",
         description: `Case processing efficiency has dropped by ${(efficiencyAnomaly.deviation * 100).toFixed(1)}% compared to normal levels.`,
         confidence: 0.92,
-        impact: 'high',
-        category: 'efficiency',
-        data: { deviation: efficiencyAnomaly.deviation, metric: 'processing_time' },
+        impact: "high",
+        category: "efficiency",
+        data: {
+          deviation: efficiencyAnomaly.deviation,
+          metric: "processing_time",
+        },
         actionable: true,
         suggestedActions: [
-          'Review recent process changes',
-          'Check for system issues',
-          'Provide additional team training',
+          "Review recent process changes",
+          "Check for system issues",
+          "Provide additional team training",
         ],
-        validUntil: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+        validUntil: new Date(
+          Date.now() + 3 * 24 * 60 * 60 * 1000,
+        ).toISOString(),
       });
     }
 
@@ -221,21 +252,26 @@ class AIInsightsService {
     const churnRisk = await this.predictClientChurn(data);
     if (churnRisk.highRiskClients.length > 0) {
       insights.push({
-        id: 'client_churn_risk',
-        type: 'recommendation',
-        title: 'Client Churn Risk Alert',
+        id: "client_churn_risk",
+        type: "recommendation",
+        title: "Client Churn Risk Alert",
         description: `${churnRisk.highRiskClients.length} clients at high risk of churn. Immediate action recommended.`,
         confidence: 0.78,
-        impact: 'critical',
-        category: 'clients',
-        data: { atRiskCount: churnRisk.highRiskClients.length, clients: churnRisk.highRiskClients },
+        impact: "critical",
+        category: "clients",
+        data: {
+          atRiskCount: churnRisk.highRiskClients.length,
+          clients: churnRisk.highRiskClients,
+        },
         actionable: true,
         suggestedActions: [
-          'Contact at-risk clients immediately',
-          'Offer special discounts or incentives',
-          'Review service quality issues',
+          "Contact at-risk clients immediately",
+          "Offer special discounts or incentives",
+          "Review service quality issues",
         ],
-        validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        validUntil: new Date(
+          Date.now() + 7 * 24 * 60 * 60 * 1000,
+        ).toISOString(),
       });
     }
 
@@ -269,15 +305,17 @@ class AIInsightsService {
     efficiency: Array<{ date: string; value: number; prediction: boolean }>;
   }> {
     // Extract numeric values from CaseData[] and RevenueData[]
-    const caseValues = (data.cases || []).map(() => Math.floor(Math.random() * 100)); // Placeholder - extract actual values
+    const caseValues = (data.cases || []).map(() =>
+      Math.floor(Math.random() * 100),
+    ); // Placeholder - extract actual values
     const revenueValues = (data.revenue || []).map((r) =>
-      typeof r === 'object' && 'amount' in r ? r.amount : 0
+      typeof r === "object" && "amount" in r ? r.amount : 0,
     );
     const efficiencyValues = data.efficiency || [];
 
-    const caseVolume = this.generateTrendData(caseValues, 'cases');
-    const revenue = this.generateTrendData(revenueValues, 'revenue');
-    const efficiency = this.generateTrendData(efficiencyValues, 'efficiency');
+    const caseVolume = this.generateTrendData(caseValues, "cases");
+    const revenue = this.generateTrendData(revenueValues, "revenue");
+    const efficiency = this.generateTrendData(efficiencyValues, "efficiency");
 
     return { caseVolume, revenue, efficiency };
   }
@@ -301,7 +339,10 @@ class AIInsightsService {
     }> = [];
 
     // Check for response time anomalies
-    const responseTimeAnomaly = this.detectMetricAnomaly(data.responseTime || [], 'response_time');
+    const responseTimeAnomaly = this.detectMetricAnomaly(
+      data.responseTime || [],
+      "response_time",
+    );
     if (responseTimeAnomaly) {
       anomalies.push({
         metric: responseTimeAnomaly.metric,
@@ -313,7 +354,10 @@ class AIInsightsService {
     }
 
     // Check for error rate anomalies
-    const errorRateAnomaly = this.detectMetricAnomaly(data.errorRate || [], 'error_rate');
+    const errorRateAnomaly = this.detectMetricAnomaly(
+      data.errorRate || [],
+      "error_rate",
+    );
     if (errorRateAnomaly) {
       anomalies.push({
         metric: errorRateAnomaly.metric,
@@ -339,7 +383,9 @@ class AIInsightsService {
     return (recent - older) / older;
   }
 
-  private async predictCaseVolume(data: HistoricalData): Promise<PredictionResult> {
+  private async predictCaseVolume(
+    data: HistoricalData,
+  ): Promise<PredictionResult> {
     // Simplified prediction logic - count cases
     const historical = data.cases || [];
     if (historical.length === 0) {
@@ -356,16 +402,19 @@ class AIInsightsService {
     };
   }
 
-  private async predictRevenue(data: HistoricalData): Promise<PredictionResult> {
+  private async predictRevenue(
+    data: HistoricalData,
+  ): Promise<PredictionResult> {
     const historical = data.revenue || [];
     if (historical.length === 0) {
       return { value: 0, confidence: 0.5 };
     }
     // Extract amount values from RevenueData[]
     const revenueValues = historical.map((r) =>
-      typeof r === 'object' && 'amount' in r ? r.amount : 0
+      typeof r === "object" && "amount" in r ? r.amount : 0,
     );
-    const average = revenueValues.reduce((a, b) => a + b, 0) / revenueValues.length;
+    const average =
+      revenueValues.reduce((a, b) => a + b, 0) / revenueValues.length;
     const trend = this.calculateTrend(revenueValues);
     const prediction = average * (1 + trend);
 
@@ -375,20 +424,25 @@ class AIInsightsService {
     };
   }
 
-  private async predictClientChurn(data: HistoricalData): Promise<ClientChurnPrediction> {
+  private async predictClientChurn(
+    data: HistoricalData,
+  ): Promise<ClientChurnPrediction> {
     // Simplified churn prediction
     const clients = data.clients || [];
     const highRiskClients = clients
       .filter((client) => {
-        const lastActivity = typeof client.lastActivity === 'number' ? client.lastActivity : 0;
+        const lastActivity =
+          typeof client.lastActivity === "number" ? client.lastActivity : 0;
         const satisfactionScore =
-          typeof client.satisfactionScore === 'number' ? client.satisfactionScore : 5;
+          typeof client.satisfactionScore === "number"
+            ? client.satisfactionScore
+            : 5;
         return lastActivity > 30 || satisfactionScore < 3;
       })
       .map((client) => ({
         clientId: client.id,
         riskScore: 0.7, // Simplified
-        reasons: ['Low activity', 'Low satisfaction'],
+        reasons: ["Low activity", "Low satisfaction"],
       }));
 
     return {
@@ -397,7 +451,9 @@ class AIInsightsService {
     };
   }
 
-  private async predictWorkload(data: HistoricalData): Promise<WorkloadPrediction> {
+  private async predictWorkload(
+    data: HistoricalData,
+  ): Promise<WorkloadPrediction> {
     // Generate 30-day workload forecast
     const values: number[] = [];
     let currentWorkload = data.currentWorkload || 10;
@@ -410,23 +466,24 @@ class AIInsightsService {
 
     return {
       values,
-      period: '30 days',
+      period: "30 days",
       confidence: 0.75,
     };
   }
 
   private generateTrendData(
     data: number[],
-    type: string
+    type: string,
   ): Array<{ date: string; value: number; prediction: boolean }> {
     const result = [];
     const now = new Date();
 
     for (let i = 29; i >= 0; i--) {
       const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-      const value = data[data.length - 30 + i] || Math.floor(Math.random() * 100);
+      const value =
+        data[data.length - 30 + i] || Math.floor(Math.random() * 100);
       result.push({
-        date: date.toISOString().split('T')[0],
+        date: date.toISOString().split("T")[0],
         value,
         prediction: false,
       });
@@ -438,7 +495,7 @@ class AIInsightsService {
       const lastValue: number = result[result.length - 1]?.value || 50;
       const prediction = lastValue + (Math.random() - 0.5) * 10;
       result.push({
-        date: date.toISOString().split('T')[0],
+        date: date.toISOString().split("T")[0],
         value: Math.max(0, prediction),
         prediction: true,
       });
@@ -449,7 +506,7 @@ class AIInsightsService {
 
   private detectMetricAnomaly(
     data: number[],
-    metric: string
+    metric: string,
   ): {
     metric: string;
     value: number;
@@ -462,7 +519,8 @@ class AIInsightsService {
     const recent = data.slice(-5);
     const historical = data.slice(-20, -5);
     if (historical.length === 0 || recent.length === 0) return null;
-    const historicalAvg = historical.reduce((a, b) => a + b, 0) / historical.length;
+    const historicalAvg =
+      historical.reduce((a, b) => a + b, 0) / historical.length;
     const recentAvg = recent.reduce((a, b) => a + b, 0) / recent.length;
 
     if (historicalAvg === 0) return null; // Avoid division by zero
@@ -490,9 +548,12 @@ class AIInsightsService {
 
     const recent = efficiency.slice(-5);
     const historical = efficiency.slice(-20, -5);
-    if (historical.length === 0 || recent.length === 0) return { detected: false, deviation: 0 };
-    const historicalAvg = historical.reduce((a: number, b: number) => a + b, 0) / historical.length;
-    const recentAvg = recent.reduce((a: number, b: number) => a + b, 0) / recent.length;
+    if (historical.length === 0 || recent.length === 0)
+      return { detected: false, deviation: 0 };
+    const historicalAvg =
+      historical.reduce((a: number, b: number) => a + b, 0) / historical.length;
+    const recentAvg =
+      recent.reduce((a: number, b: number) => a + b, 0) / recent.length;
 
     if (historicalAvg === 0) return { detected: false, deviation: 0 }; // Avoid division by zero
     const deviation = Math.abs(recentAvg - historicalAvg) / historicalAvg;
@@ -517,8 +578,10 @@ class AIInsightsService {
     model.lastTrained = new Date().toISOString();
     model.accuracy = Math.min(0.95, model.accuracy + 0.02);
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`🤖 Model ${modelId} retrained. New accuracy: ${model.accuracy}`);
+    if (process.env.NODE_ENV === "development") {
+      console.log(
+        `🤖 Model ${modelId} retrained. New accuracy: ${model.accuracy}`,
+      );
     }
     return true;
   }
@@ -541,7 +604,9 @@ export function useAIInsights() {
       const result = await aiInsights.generateInsights(data);
       setInsights(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to generate insights');
+      setError(
+        err instanceof Error ? err.message : "Failed to generate insights",
+      );
     } finally {
       setLoading(false);
     }
@@ -559,7 +624,7 @@ export function useAIInsights() {
 
 // Higher-order component for AI insights
 export function withAIInsights<P extends object>(
-  Component: React.ComponentType<P & { ai?: ReturnType<typeof useAIInsights> }>
+  Component: React.ComponentType<P & { ai?: ReturnType<typeof useAIInsights> }>,
 ) {
   const WrappedComponent = (props: P) => {
     const ai = useAIInsights();

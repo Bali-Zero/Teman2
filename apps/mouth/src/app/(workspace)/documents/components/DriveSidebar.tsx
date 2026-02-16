@@ -1,21 +1,23 @@
-'use client';
+"use client";
 
-import { motion } from 'framer-motion';
-import { Plus, HardDrive, Cloud } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { motion } from "framer-motion";
+import { Plus, HardDrive, Cloud } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
 
 interface DriveSidebarProps {
   isCollapsed?: boolean;
   onNewClick: (e: React.MouseEvent) => void;
   onUploadClick: () => void;
-  activeView: 'my-drive' | 'recent' | 'starred' | 'trash';
-  onViewChange: (view: 'my-drive' | 'recent' | 'starred' | 'trash') => void;
+  activeView: "my-drive" | "recent" | "starred" | "trash";
+  onViewChange: (view: "my-drive" | "recent" | "starred" | "trash") => void;
   storageUsed?: number;
   storageTotal?: number;
 }
 
-const navItems = [{ id: 'my-drive' as const, label: 'Bali Zero Drive', icon: HardDrive }];
+const navItems = [
+  { id: "my-drive" as const, label: "Bali Zero Drive", icon: HardDrive },
+];
 
 export function DriveSidebar({
   isCollapsed = false,
@@ -64,8 +66,8 @@ export function DriveSidebar({
                 w-full flex items-center justify-center p-3 rounded-full transition-colors
                 ${
                   activeView === item.id
-                    ? 'bg-[#e8f0fe] text-[#1a73e8]'
-                    : 'text-[#5f6368] hover:bg-[#f1f3f4]'
+                    ? "bg-[#e8f0fe] text-[#1a73e8]"
+                    : "text-[#5f6368] hover:bg-[#f1f3f4]"
                 }
               `}
               title={item.label}
@@ -113,8 +115,8 @@ export function DriveSidebar({
                 w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors
                 ${
                   isActive
-                    ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                    ? "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400"
+                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60"
                 }
               `}
             >
@@ -134,7 +136,9 @@ export function DriveSidebar({
               Spazio
             </span>
           </div>
-          <span className="text-[10px] text-slate-400">{formatStorage(storageTotal)}</span>
+          <span className="text-[10px] text-slate-400">
+            {formatStorage(storageTotal)}
+          </span>
         </div>
 
         {/* Progress bar - Thin elegant style */}

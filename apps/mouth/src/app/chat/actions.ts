@@ -1,6 +1,6 @@
-'use server';
+"use server";
 
-import { cookies } from 'next/headers';
+import { cookies } from "next/headers";
 
 // Types
 export interface ChatImage {
@@ -12,7 +12,7 @@ export interface ChatImage {
 
 export interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   images?: ChatImage[];
   sources?: Source[];
@@ -30,7 +30,7 @@ export interface Source {
 }
 
 export interface AgentStep {
-  type: 'status' | 'tool_start' | 'tool_end' | 'phase' | 'reasoning_step';
+  type: "status" | "tool_start" | "tool_end" | "phase" | "reasoning_step";
   data: unknown;
   timestamp: Date;
 }
@@ -46,21 +46,22 @@ export interface MessageMetadata {
  * Stream event types for useOptimisticChat hook
  */
 export type StreamEvent =
-  | { type: 'token'; data: string }
-  | { type: 'status'; data: string }
-  | { type: 'sources'; data: Source[] }
-  | { type: 'error'; data: string }
-  | { type: 'done' };
+  | { type: "token"; data: string }
+  | { type: "status"; data: string }
+  | { type: "sources"; data: Source[] }
+  | { type: "error"; data: string }
+  | { type: "done" };
 
 // Backend API URL
-const BACKEND_URL = process.env.BACKEND_RAG_URL || 'https://nuzantara-rag.fly.dev';
+const BACKEND_URL =
+  process.env.BACKEND_RAG_URL || "https://nuzantara-rag.fly.dev";
 
 /**
  * Server Action: Get auth token from cookies
  */
 async function getAuthToken(): Promise<string | null> {
   const cookieStore = await cookies();
-  return cookieStore.get('nz_access_token')?.value || null;
+  return cookieStore.get("nz_access_token")?.value || null;
 }
 
 /**
@@ -68,7 +69,7 @@ async function getAuthToken(): Promise<string | null> {
  */
 export async function saveConversation(
   messages: ChatMessage[],
-  sessionId: string
+  sessionId: string,
 ): Promise<{ success: boolean; conversationId?: number }> {
   const token = await getAuthToken();
 
@@ -77,25 +78,28 @@ export async function saveConversation(
   }
 
   try {
-    const response = await fetch(`${BACKEND_URL}/api/bali-zero/conversations/save`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+    const response = await fetch(
+      `${BACKEND_URL}/api/bali-zero/conversations/save`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+          messages: messages.map((m) => ({
+            role: m.role,
+            content: m.content,
+            sources: m.sources,
+            timestamp: m.timestamp.toISOString(),
+          })),
+        }),
       },
-      body: JSON.stringify({
-        session_id: sessionId,
-        messages: messages.map((m) => ({
-          role: m.role,
-          content: m.content,
-          sources: m.sources,
-          timestamp: m.timestamp.toISOString(),
-        })),
-      }),
-    });
+    );
 
     if (!response.ok) {
-      throw new Error('Failed to save');
+      throw new Error("Failed to save");
     }
 
     const data = await response.json();
@@ -115,32 +119,37 @@ export async function loadConversations(): Promise<{
   const token = await getAuthToken();
 
   if (!token) {
-    return { conversations: [], error: 'Not authenticated' };
+    return { conversations: [], error: "Not authenticated" };
   }
 
   try {
-    const response = await fetch(`${BACKEND_URL}/api/bali-zero/conversations/list`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
+    const response = await fetch(
+      `${BACKEND_URL}/api/bali-zero/conversations/list`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        next: { revalidate: 60 }, // Cache for 60 seconds
       },
-      next: { revalidate: 60 }, // Cache for 60 seconds
-    });
+    );
 
     if (!response.ok) {
-      throw new Error('Failed to load');
+      throw new Error("Failed to load");
     }
 
     const data = await response.json();
     return { conversations: data.conversations || [] };
   } catch {
-    return { conversations: [], error: 'Failed to load conversations' };
+    return { conversations: [], error: "Failed to load conversations" };
   }
 }
 
 /**
  * Server Action: Delete conversation
  */
-export async function deleteConversation(id: number): Promise<{ success: boolean }> {
+export async function deleteConversation(
+  id: number,
+): Promise<{ success: boolean }> {
   const token = await getAuthToken();
 
   if (!token) {
@@ -148,12 +157,15 @@ export async function deleteConversation(id: number): Promise<{ success: boolean
   }
 
   try {
-    const response = await fetch(`${BACKEND_URL}/api/bali-zero/conversations/${id}`, {
-      method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${token}`,
+    const response = await fetch(
+      `${BACKEND_URL}/api/bali-zero/conversations/${id}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       },
-    });
+    );
 
     return { success: response.ok };
   } catch {
@@ -165,29 +177,32 @@ export async function deleteConversation(id: number): Promise<{ success: boolean
  * Server Action: Toggle clock in/out
  */
 export async function toggleClockStatus(
-  currentStatus: boolean
+  currentStatus: boolean,
 ): Promise<{ isClockIn: boolean; error?: string }> {
   const token = await getAuthToken();
 
   if (!token) {
-    return { isClockIn: currentStatus, error: 'Not authenticated' };
+    return { isClockIn: currentStatus, error: "Not authenticated" };
   }
 
   try {
-    const endpoint = currentStatus ? 'clock-out' : 'clock-in';
-    const response = await fetch(`${BACKEND_URL}/api/bali-zero/team/${endpoint}`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
+    const endpoint = currentStatus ? "clock-out" : "clock-in";
+    const response = await fetch(
+      `${BACKEND_URL}/api/bali-zero/team/${endpoint}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       },
-    });
+    );
 
     if (!response.ok) {
-      throw new Error('Clock toggle failed');
+      throw new Error("Clock toggle failed");
     }
 
     return { isClockIn: !currentStatus };
   } catch {
-    return { isClockIn: currentStatus, error: 'Failed to toggle clock' };
+    return { isClockIn: currentStatus, error: "Failed to toggle clock" };
   }
 }

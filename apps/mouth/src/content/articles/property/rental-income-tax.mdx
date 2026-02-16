@@ -76,8 +76,8 @@ import {
   ComparisonTable,
   InfoCard,
   Checklist,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Rental Income Tax in Indonesia 2026: Landlord Guide
 
@@ -89,6 +89,7 @@ If you rent out property in Indonesia, you need to understand how rental income 
 Rental income from land and buildings in Indonesia is subject to **10% final income tax (PPh Final)** on the gross rental amount.
 
 "Final" means this is the complete tax - you don't add it to your other income for progressive rates.
+
 </InfoCard>
 
 ---
@@ -97,14 +98,15 @@ Rental income from land and buildings in Indonesia is subject to **10% final inc
 
 ### Tax Rate and Base
 
-| Element | Detail |
-|---------|--------|
-| Tax rate | 10% |
-| Tax base | Gross rent received |
-| Tax type | PPh Final (Article 4(2)) |
-| Deductions | None allowed |
+| Element    | Detail                   |
+| ---------- | ------------------------ |
+| Tax rate   | 10%                      |
+| Tax base   | Gross rent received      |
+| Tax type   | PPh Final (Article 4(2)) |
+| Deductions | None allowed             |
 
 ### Important Points
+
 - Calculated on **gross rent** (no expense deductions)
 - **Final** tax - not combined with other income
 - Applies to all types of rental (residential, commercial)
@@ -159,7 +161,8 @@ Rental income from land and buildings in Indonesia is subject to **10% final inc
       currency: "IDR",
       note: `Effective monthly tax: IDR ${Math.round(monthlyTax).toLocaleString()}`
     };
-  }}
+
+}}
 />
 
 ---
@@ -169,18 +172,21 @@ Rental income from land and buildings in Indonesia is subject to **10% final inc
 ### Corporate Tenants (Withholding)
 
 If your tenant is a company (tax subject):
+
 1. Tenant withholds 10% from rent payment
 2. Tenant pays the tax to the government
 3. Tenant gives you **Bukti Potong** (tax slip)
 4. You receive net rent (90%)
 
 <InfoCard variant="note" title="Bukti Potong is Your Proof">
-The Bukti Potong proves your tax was paid. Keep it for your records and include in your annual tax return.
+  The Bukti Potong proves your tax was paid. Keep it for your records and
+  include in your annual tax return.
 </InfoCard>
 
 ### Individual Tenants (Self-Pay)
 
 If your tenant is an individual:
+
 1. You receive full rent (100%)
 2. **You** must pay 10% tax
 3. Pay via bank or tax office
@@ -202,42 +208,42 @@ If your tenant is an individual:
       label: "Calculate 10% tax on rent received",
       description: "Each payment period",
       required: true,
-      category: "calculate"
+      category: "calculate",
     },
     {
       id: "payment",
       label: "Pay tax by 15th of following month",
       description: "Via bank or e-filing",
       required: true,
-      category: "payment"
+      category: "payment",
     },
     {
       id: "spt-monthly",
       label: "Report on monthly SPT (if applicable)",
       description: "For business landlords",
       required: false,
-      category: "reporting"
+      category: "reporting",
     },
     {
       id: "spt-annual",
       label: "Include in annual SPT",
       description: "Report total rental income and tax paid",
       required: true,
-      category: "reporting"
+      category: "reporting",
     },
     {
       id: "records",
       label: "Keep payment receipts",
       description: "NTPN numbers for verification",
       required: true,
-      category: "records"
-    }
+      category: "records",
+    },
   ]}
   categories={[
     { id: "calculate", label: "Calculate", color: "blue" },
     { id: "payment", label: "Payment", color: "green" },
     { id: "reporting", label: "Reporting", color: "amber" },
-    { id: "records", label: "Records", color: "purple" }
+    { id: "records", label: "Records", color: "purple" },
   ]}
   showProgress={true}
 />
@@ -255,38 +261,38 @@ If your tenant is an individual:
       subtitle: "House or apartment rental",
       values: {
         "Tax Rate": "10%",
-        "Collection": "Usually self-pay",
-        "Reporting": "Annual SPT"
-      }
+        Collection: "Usually self-pay",
+        Reporting: "Annual SPT",
+      },
     },
     {
       name: "Commercial Property",
       subtitle: "Office, retail, warehouse",
       values: {
         "Tax Rate": "10%",
-        "Collection": "Often withheld",
-        "Reporting": "Annual SPT"
+        Collection: "Often withheld",
+        Reporting: "Annual SPT",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "Villa Rental",
       subtitle: "Short-term vacation rental",
       values: {
         "Tax Rate": "10%",
-        "Collection": "Self-pay",
-        "Reporting": "Annual SPT"
-      }
+        Collection: "Self-pay",
+        Reporting: "Annual SPT",
+      },
     },
     {
       name: "Through PT PMA",
       subtitle: "Company owns property",
       values: {
         "Tax Rate": "10%",
-        "Collection": "Company pays",
-        "Reporting": "Corporate SPT"
-      }
-    }
+        Collection: "Company pays",
+        Reporting: "Corporate SPT",
+      },
+    },
   ]}
 />
 
@@ -297,6 +303,7 @@ If your tenant is an individual:
 For short-term/vacation rentals:
 
 ### Tax Applies to Each Rental
+
 - 10% on each rental payment
 - Applies even to nightly rates
 - Management company may collect and pay
@@ -304,16 +311,16 @@ For short-term/vacation rentals:
 ### If Using Management Company
 
 Many villa owners use management companies that:
+
 1. Collect rent from guests
 2. Withhold and pay 10% tax
 3. Provide you with documentation
 4. Handle reporting
 
 <InfoCard variant="tip" title="Clarify Tax Handling">
-When hiring a villa management company, clarify:
-- Who pays the 10% rental tax?
-- Will they provide Bukti Potong?
-- Is tax included in their fee structure?
+  When hiring a villa management company, clarify: - Who pays the 10% rental
+  tax? - Will they provide Bukti Potong? - Is tax included in their fee
+  structure?
 </InfoCard>
 
 ---
@@ -324,16 +331,17 @@ Besides rental income tax, property owners also pay:
 
 ### PBB (Land and Building Tax)
 
-| Aspect | Detail |
-|--------|--------|
-| Rate | 0.1% - 0.3% of NJOP |
-| Frequency | Annual |
-| Payment | By August 31 |
-| Who pays | Property owner |
+| Aspect    | Detail              |
+| --------- | ------------------- |
+| Rate      | 0.1% - 0.3% of NJOP |
+| Frequency | Annual              |
+| Payment   | By August 31        |
+| Who pays  | Property owner      |
 
 **NJOP** = Nilai Jual Objek Pajak (taxable value, often below market)
 
 ### BPHTB (Transfer Tax)
+
 - 5% when buying property
 - Paid by buyer
 - One-time at purchase
@@ -345,6 +353,7 @@ Besides rental income tax, property owners also pay:
 ### If You're Tax Resident
 
 Report rental income on your annual SPT (Form 1770):
+
 - Include in income section
 - Report tax already paid
 - No additional tax (it's final)
@@ -356,11 +365,9 @@ Report rental income on your annual SPT (Form 1770):
 - Consider getting DGT form for reduced withholding on other income
 
 <InfoCard variant="warning" title="Don't Ignore Rental Tax">
-Failing to pay rental income tax can result in:
-- Back taxes plus interest
-- Penalties up to 200%
-- Issues with future property transactions
-- Problems with visa renewal (if applicable)
+  Failing to pay rental income tax can result in: - Back taxes plus interest -
+  Penalties up to 200% - Issues with future property transactions - Problems
+  with visa renewal (if applicable)
 </InfoCard>
 
 ---
@@ -368,6 +375,7 @@ Failing to pay rental income tax can result in:
 ## Record Keeping
 
 Keep these records:
+
 - Rental agreements
 - Payment receipts from tenants
 - Bukti Potong from corporate tenants
@@ -387,7 +395,7 @@ Keep these records:
     "Can I deduct property expenses?",
     "What if tenant doesn't withhold?",
     "How do I pay the tax online?",
-    "Is Airbnb income taxed differently?"
+    "Is Airbnb income taxed differently?",
   ]}
 />
 

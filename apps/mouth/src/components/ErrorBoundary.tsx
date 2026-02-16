@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { logger } from '@/lib/logger';
+import React from "react";
+import { logger } from "@/lib/logger";
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -15,7 +15,10 @@ interface ErrorBoundaryProps {
   onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
 }
 
-export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+export class ErrorBoundary extends React.Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false };
@@ -30,13 +33,13 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
     // Log error for debugging
     logger.error(
-      'ErrorBoundary caught an error',
+      "ErrorBoundary caught an error",
       {
-        component: 'ErrorBoundary',
-        action: 'componentDidCatch',
-        metadata: { componentStack: errorInfo.componentStack ?? '' },
+        component: "ErrorBoundary",
+        action: "componentDidCatch",
+        metadata: { componentStack: errorInfo.componentStack ?? "" },
       },
-      error
+      error,
     );
 
     // Call custom error handler if provided
@@ -45,8 +48,8 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     }
 
     // Track error for analytics
-    if (typeof window !== 'undefined' && window.gtag) {
-      window.gtag('event', 'exception', {
+    if (typeof window !== "undefined" && window.gtag) {
+      window.gtag("event", "exception", {
         description: error.message,
         fatal: false,
       });
@@ -67,7 +70,13 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 }
 
-function DefaultErrorFallback({ error, retry }: { error?: Error; retry: () => void }) {
+function DefaultErrorFallback({
+  error,
+  retry,
+}: {
+  error?: Error;
+  retry: () => void;
+}) {
   return (
     <div className="min-h-[400px] flex items-center justify-center">
       <div className="text-center space-y-4 p-6 rounded-lg border border-red-500/20 bg-red-500/10 max-w-md">
@@ -87,9 +96,11 @@ function DefaultErrorFallback({ error, retry }: { error?: Error; retry: () => vo
           </svg>
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-red-500">Something went wrong</h3>
+          <h3 className="text-lg font-semibold text-red-500">
+            Something went wrong
+          </h3>
           <p className="text-sm text-red-500/80 mt-1">
-            {error?.message || 'An unexpected error occurred'}
+            {error?.message || "An unexpected error occurred"}
           </p>
         </div>
         <div className="space-y-2">
@@ -106,10 +117,14 @@ function DefaultErrorFallback({ error, retry }: { error?: Error; retry: () => vo
             Reload Page
           </button>
         </div>
-        {process.env.NODE_ENV === 'development' && error && (
+        {process.env.NODE_ENV === "development" && error && (
           <details className="mt-4 text-left">
-            <summary className="text-xs text-red-500/60 cursor-pointer">Error Details</summary>
-            <pre className="text-xs text-red-500/40 mt-2 whitespace-pre-wrap">{error.stack}</pre>
+            <summary className="text-xs text-red-500/60 cursor-pointer">
+              Error Details
+            </summary>
+            <pre className="text-xs text-red-500/40 mt-2 whitespace-pre-wrap">
+              {error.stack}
+            </pre>
           </details>
         )}
       </div>
@@ -118,20 +133,24 @@ function DefaultErrorFallback({ error, retry }: { error?: Error; retry: () => vo
 }
 
 // Specialized error boundaries for different parts of the app
-export function DashboardErrorBoundary({ children }: { children: React.ReactNode }) {
+export function DashboardErrorBoundary({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <ErrorBoundary
       fallback={DashboardErrorFallback}
       onError={(error, errorInfo) => {
         // Track dashboard-specific errors
         logger.error(
-          'Dashboard Error',
+          "Dashboard Error",
           {
-            component: 'DashboardErrorBoundary',
-            action: 'onError',
-            metadata: { componentStack: errorInfo.componentStack ?? '' },
+            component: "DashboardErrorBoundary",
+            action: "onError",
+            metadata: { componentStack: errorInfo.componentStack ?? "" },
           },
-          error
+          error,
         );
       }}
     >
@@ -140,7 +159,13 @@ export function DashboardErrorBoundary({ children }: { children: React.ReactNode
   );
 }
 
-function DashboardErrorFallback({ error, retry }: { error?: Error; retry: () => void }) {
+function DashboardErrorFallback({
+  error,
+  retry,
+}: {
+  error?: Error;
+  retry: () => void;
+}) {
   return (
     <div className="space-y-8">
       <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-6">
@@ -185,13 +210,13 @@ export function ApiErrorBoundary({ children }: { children: React.ReactNode }) {
       onError={(error, errorInfo) => {
         // Track API-specific errors
         logger.error(
-          'API Error',
+          "API Error",
           {
-            component: 'ApiErrorBoundary',
-            action: 'onError',
-            metadata: { componentStack: errorInfo.componentStack ?? '' },
+            component: "ApiErrorBoundary",
+            action: "onError",
+            metadata: { componentStack: errorInfo.componentStack ?? "" },
           },
-          error
+          error,
         );
       }}
     >
@@ -200,7 +225,13 @@ export function ApiErrorBoundary({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ApiErrorFallback({ error, retry }: { error?: Error; retry: () => void }) {
+function ApiErrorFallback({
+  error,
+  retry,
+}: {
+  error?: Error;
+  retry: () => void;
+}) {
   return (
     <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4">
       <div className="flex items-center gap-3">

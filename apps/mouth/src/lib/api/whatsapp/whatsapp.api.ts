@@ -3,8 +3,8 @@
  * Optimized for Omnichannel Dashboard using the conversations table.
  */
 
-import type { IApiClient } from '../types/api-client.types';
-import type { WhatsAppConversation, WhatsAppMessage } from './whatsapp.types';
+import type { IApiClient } from "../types/api-client.types";
+import type { WhatsAppConversation, WhatsAppMessage } from "./whatsapp.types";
 
 export class WhatsAppApi {
   constructor(private client: IApiClient) {}
@@ -16,19 +16,22 @@ export class WhatsAppApi {
     params: {
       limit?: number;
       offset?: number;
-    } = {}
+    } = {},
   ): Promise<WhatsAppConversation[]> {
     return await this.client.request<WhatsAppConversation[]>(
-      `/api/whatsapp/conversations?limit=${params.limit || 50}&offset=${params.offset || 0}`
+      `/api/whatsapp/conversations?limit=${params.limit || 50}&offset=${params.offset || 0}`,
     );
   }
 
   /**
    * Get messages for a specific phone number
    */
-  async getMessages(phone: string, limit: number = 100): Promise<WhatsAppMessage[]> {
+  async getMessages(
+    phone: string,
+    limit: number = 100,
+  ): Promise<WhatsAppMessage[]> {
     return await this.client.request<WhatsAppMessage[]>(
-      `/api/whatsapp/messages/${phone}?limit=${limit}`
+      `/api/whatsapp/messages/${phone}?limit=${limit}`,
     );
   }
 
@@ -38,18 +41,18 @@ export class WhatsAppApi {
   async sendMessage(
     phone: string,
     text: string,
-    replyToMessageId?: string
+    replyToMessageId?: string,
   ): Promise<{ success: boolean; message_id?: string }> {
     return await this.client.request<{ success: boolean; message_id?: string }>(
-      '/api/whatsapp/send',
+      "/api/whatsapp/send",
       {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify({
           phone,
           text,
           reply_to: replyToMessageId,
         }),
-      }
+      },
     );
   }
 }

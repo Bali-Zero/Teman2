@@ -1,10 +1,17 @@
-'use client';
+"use client";
 
-import * as React from 'react';
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Check, Circle, Download, RotateCcw, ListChecks, Printer } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import * as React from "react";
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import {
+  Check,
+  Circle,
+  Download,
+  RotateCcw,
+  ListChecks,
+  Printer,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // ============================================================================
 // Types
@@ -57,7 +64,9 @@ export function Checklist({
     return (
       <div className="p-6 bg-blue-500/10 rounded-xl border border-blue-500/20 text-blue-400">
         <p className="font-medium">Checklist</p>
-        <p className="text-sm text-blue-400/70 mt-1">Configuration required: items array</p>
+        <p className="text-sm text-blue-400/70 mt-1">
+          Configuration required: items array
+        </p>
       </div>
     );
   }
@@ -66,7 +75,7 @@ export function Checklist({
 
   // Initialize checked items
   const [checked, setChecked] = useState<Set<string>>(() => {
-    if (typeof window === 'undefined' || !persist) return new Set();
+    if (typeof window === "undefined" || !persist) return new Set();
     try {
       const saved = localStorage.getItem(storageKey);
       if (saved) return new Set(JSON.parse(saved));
@@ -78,7 +87,7 @@ export function Checklist({
 
   // Persist to localStorage
   useEffect(() => {
-    if (!persist || typeof window === 'undefined') return;
+    if (!persist || typeof window === "undefined") return;
     localStorage.setItem(storageKey, JSON.stringify(Array.from(checked)));
   }, [checked, persist, storageKey]);
 
@@ -98,7 +107,7 @@ export function Checklist({
   // Reset all
   const reset = () => {
     setChecked(new Set());
-    if (persist && typeof window !== 'undefined') {
+    if (persist && typeof window !== "undefined") {
       localStorage.removeItem(storageKey);
     }
   };
@@ -106,16 +115,18 @@ export function Checklist({
   // Calculate progress
   const progress = (checked.size / items.length) * 100;
   const requiredItems = items.filter((i) => i.required);
-  const requiredComplete = requiredItems.filter((i) => checked.has(i.id)).length;
+  const requiredComplete = requiredItems.filter((i) =>
+    checked.has(i.id),
+  ).length;
 
   // Group items by group
-  const groups = Array.from(new Set(items.map((i) => i.group || 'Items')));
+  const groups = Array.from(new Set(items.map((i) => i.group || "Items")));
   const itemsByGroup = groups.reduce(
     (acc, group) => {
-      acc[group] = items.filter((i) => (i.group || 'Items') === group);
+      acc[group] = items.filter((i) => (i.group || "Items") === group);
       return acc;
     },
-    {} as Record<string, ChecklistItem[]>
+    {} as Record<string, ChecklistItem[]>,
   );
 
   // Handle print
@@ -125,7 +136,10 @@ export function Checklist({
 
   return (
     <div
-      className={cn('bg-black/40 rounded-2xl border border-white/10 overflow-hidden', className)}
+      className={cn(
+        "bg-black/40 rounded-2xl border border-white/10 overflow-hidden",
+        className,
+      )}
     >
       {/* Header */}
       <div className="px-6 py-4 border-b border-white/10">
@@ -135,8 +149,12 @@ export function Checklist({
               <ListChecks className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-serif text-xl font-semibold text-white">{title}</h3>
-              {subtitle && <p className="text-white/60 text-sm mt-0.5">{subtitle}</p>}
+              <h3 className="font-serif text-xl font-semibold text-white">
+                {title}
+              </h3>
+              {subtitle && (
+                <p className="text-white/60 text-sm mt-0.5">{subtitle}</p>
+              )}
             </div>
           </div>
 
@@ -176,7 +194,8 @@ export function Checklist({
               {checked.size} of {items.length} completed
             </span>
             <span className="text-white/40">
-              {requiredItems.length > 0 && `${requiredComplete}/${requiredItems.length} required`}
+              {requiredItems.length > 0 &&
+                `${requiredComplete}/${requiredItems.length} required`}
             </span>
           </div>
           <div className="h-2 bg-white/10 rounded-full overflow-hidden">
@@ -184,10 +203,10 @@ export function Checklist({
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
               className={cn(
-                'h-full rounded-full',
+                "h-full rounded-full",
                 progress === 100
-                  ? 'bg-gradient-to-r from-emerald-500 to-emerald-400'
-                  : 'bg-gradient-to-r from-[#2251ff] to-[#4d73ff]'
+                  ? "bg-gradient-to-r from-emerald-500 to-emerald-400"
+                  : "bg-gradient-to-r from-[#2251ff] to-[#4d73ff]",
               )}
             />
           </div>
@@ -217,17 +236,19 @@ export function Checklist({
                     <button
                       onClick={() => toggle(item.id)}
                       className={cn(
-                        'w-full flex items-start gap-3 p-3 rounded-xl text-left transition-colors',
+                        "w-full flex items-start gap-3 p-3 rounded-xl text-left transition-colors",
                         isChecked
-                          ? 'bg-emerald-500/10 border border-emerald-500/30'
-                          : 'bg-white/5 border border-transparent hover:bg-white/10'
+                          ? "bg-emerald-500/10 border border-emerald-500/30"
+                          : "bg-white/5 border border-transparent hover:bg-white/10",
                       )}
                     >
                       {/* Checkbox */}
                       <div
                         className={cn(
-                          'flex-shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors mt-0.5',
-                          isChecked ? 'bg-emerald-500 border-emerald-500' : 'border-white/30'
+                          "flex-shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors mt-0.5",
+                          isChecked
+                            ? "bg-emerald-500 border-emerald-500"
+                            : "border-white/30",
                         )}
                       >
                         {isChecked && <Check className="w-3 h-3 text-white" />}
@@ -238,8 +259,10 @@ export function Checklist({
                         <div className="flex items-center gap-2">
                           <span
                             className={cn(
-                              'font-medium transition-colors',
-                              isChecked ? 'text-emerald-400 line-through opacity-70' : 'text-white'
+                              "font-medium transition-colors",
+                              isChecked
+                                ? "text-emerald-400 line-through opacity-70"
+                                : "text-white",
                             )}
                           >
                             {item.label}
@@ -253,8 +276,8 @@ export function Checklist({
                         {item.description && (
                           <p
                             className={cn(
-                              'text-sm mt-0.5 transition-colors',
-                              isChecked ? 'text-white/30' : 'text-white/50'
+                              "text-sm mt-0.5 transition-colors",
+                              isChecked ? "text-white/30" : "text-white/50",
                             )}
                           >
                             {item.description}

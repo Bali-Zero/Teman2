@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   Sparkles,
   Users,
@@ -14,11 +14,11 @@ import {
   UserPlus,
   ArrowRight,
   Loader2,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { api } from '@/lib/api';
-import type { AutoCRMStats } from '@/lib/api/crm/crm.types';
-import type { CreateClientParams } from '@/lib/api/crm/crm.types';
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
+import type { AutoCRMStats } from "@/lib/api/crm/crm.types";
+import type { CreateClientParams } from "@/lib/api/crm/crm.types";
 
 interface AutoCRMWidgetProps {
   className?: string;
@@ -32,10 +32,10 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
   const [showQuickCreate, setShowQuickCreate] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [quickForm, setQuickForm] = useState<CreateClientParams>({
-    full_name: '',
-    email: '',
-    phone: '',
-    nationality: '',
+    full_name: "",
+    email: "",
+    phone: "",
+    nationality: "",
   });
 
   useEffect(() => {
@@ -46,8 +46,8 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
         const data = await api.crm.getAutoCRMStats(7);
         setStats(data);
       } catch (err) {
-        console.error('Failed to load AUTO CRM stats:', err);
-        setError('Failed to load statistics');
+        console.error("Failed to load AUTO CRM stats:", err);
+        setError("Failed to load statistics");
       } finally {
         setIsLoading(false);
       }
@@ -62,7 +62,7 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
   const handleQuickCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickForm.full_name.trim()) {
-      alert('Name is required');
+      alert("Name is required");
       return;
     }
 
@@ -70,16 +70,16 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
     try {
       const user = await api.getProfile();
       await api.crm.createClient(quickForm, user.email);
-      setQuickForm({ full_name: '', email: '', phone: '', nationality: '' });
+      setQuickForm({ full_name: "", email: "", phone: "", nationality: "" });
       setShowQuickCreate(false);
       // Reload stats
       const data = await api.crm.getAutoCRMStats(7);
       setStats(data);
       // Navigate to clients page
-      router.push('/clients');
+      router.push("/clients");
     } catch (err) {
-      console.error('Failed to create client:', err);
-      const message = err instanceof Error ? err.message : 'Unknown error';
+      console.error("Failed to create client:", err);
+      const message = err instanceof Error ? err.message : "Unknown error";
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const detail = (err as any).detail;
       alert(`Failed to create client: ${detail || message}`);
@@ -91,7 +91,7 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
   if (isLoading && !stats) {
     return (
       <div
-        className={`rounded-lg border border-white/10 bg-white/5 p-6 backdrop-blur-sm ${className || ''}`}
+        className={`rounded-lg border border-white/10 bg-white/5 p-6 backdrop-blur-sm ${className || ""}`}
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-white/90 uppercase tracking-wider flex items-center gap-2">
@@ -107,7 +107,7 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
   if (error && !stats) {
     return (
       <div
-        className={`rounded-lg border border-red-500/20 bg-red-500/10 p-6 backdrop-blur-sm ${className || ''}`}
+        className={`rounded-lg border border-red-500/20 bg-red-500/10 p-6 backdrop-blur-sm ${className || ""}`}
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-white/90 uppercase tracking-wider flex items-center gap-2">
@@ -124,12 +124,14 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
 
   const successRate =
     stats.total_extractions > 0
-      ? Math.round((stats.successful_extractions / stats.total_extractions) * 100)
+      ? Math.round(
+          (stats.successful_extractions / stats.total_extractions) * 100,
+        )
       : 0;
 
   return (
     <div
-      className={`rounded-lg border border-white/10 bg-white/5 p-6 backdrop-blur-sm ${className || ''}`}
+      className={`rounded-lg border border-white/10 bg-white/5 p-6 backdrop-blur-sm ${className || ""}`}
     >
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-white/90 uppercase tracking-wider flex items-center gap-2">
@@ -148,7 +150,7 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
           size="sm"
           variant="outline"
           className="flex-1 bg-white/5 border-white/10 text-white hover:bg-white/10"
-          onClick={() => router.push('/clients/new')}
+          onClick={() => router.push("/clients/new")}
         >
           <UserPlus className="w-3 h-3 mr-1" />
           New Client
@@ -157,7 +159,7 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
           size="sm"
           variant="outline"
           className="flex-1 bg-white/5 border-white/10 text-white hover:bg-white/10"
-          onClick={() => router.push('/process')}
+          onClick={() => router.push("/process")}
         >
           <FolderKanban className="w-3 h-3 mr-1" />
           Practices
@@ -172,7 +174,9 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
               type="text"
               placeholder="Full Name *"
               value={quickForm.full_name}
-              onChange={(e) => setQuickForm({ ...quickForm, full_name: e.target.value })}
+              onChange={(e) =>
+                setQuickForm({ ...quickForm, full_name: e.target.value })
+              }
               className="w-full px-2 py-1 text-sm rounded bg-white/5 border border-white/10 text-white placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-purple-400"
               required
             />
@@ -181,14 +185,18 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
                 type="email"
                 placeholder="Email"
                 value={quickForm.email}
-                onChange={(e) => setQuickForm({ ...quickForm, email: e.target.value })}
+                onChange={(e) =>
+                  setQuickForm({ ...quickForm, email: e.target.value })
+                }
                 className="px-2 py-1 text-sm rounded bg-white/5 border border-white/10 text-white placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-purple-400"
               />
               <input
                 type="tel"
                 placeholder="Phone"
                 value={quickForm.phone}
-                onChange={(e) => setQuickForm({ ...quickForm, phone: e.target.value })}
+                onChange={(e) =>
+                  setQuickForm({ ...quickForm, phone: e.target.value })
+                }
                 className="px-2 py-1 text-sm rounded bg-white/5 border border-white/10 text-white placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-purple-400"
               />
             </div>
@@ -218,7 +226,12 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
                 className="bg-white/5 border-white/10 text-white hover:bg-white/10"
                 onClick={() => {
                   setShowQuickCreate(false);
-                  setQuickForm({ full_name: '', email: '', phone: '', nationality: '' });
+                  setQuickForm({
+                    full_name: "",
+                    email: "",
+                    phone: "",
+                    nationality: "",
+                  });
                 }}
               >
                 Cancel
@@ -248,7 +261,7 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
             <span className="text-sm text-white/80">Success Rate</span>
           </div>
           <span
-            className={`text-sm font-medium ${successRate >= 80 ? 'text-green-400' : successRate >= 60 ? 'text-yellow-400' : 'text-red-400'}`}
+            className={`text-sm font-medium ${successRate >= 80 ? "text-green-400" : successRate >= 60 ? "text-yellow-400" : "text-red-400"}`}
           >
             {successRate}%
           </span>
@@ -260,7 +273,9 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
             <Sparkles className="w-4 h-4 text-purple-400" />
             <span className="text-sm text-white/80">Total Extractions</span>
           </div>
-          <span className="text-sm font-medium text-white/90">{stats.total_extractions}</span>
+          <span className="text-sm font-medium text-white/90">
+            {stats.total_extractions}
+          </span>
         </div>
 
         {/* Clients Created */}
@@ -270,10 +285,12 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
             <span className="text-sm text-white/80">Clients Created</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-green-400">{stats.clients_created}</span>
+            <span className="text-sm font-medium text-green-400">
+              {stats.clients_created}
+            </span>
             {stats.clients_created > 0 && (
               <button
-                onClick={() => router.push('/clients')}
+                onClick={() => router.push("/clients")}
                 className="text-xs text-white/60 hover:text-white/90 transition-colors"
               >
                 <ArrowRight className="w-3 h-3" />
@@ -289,10 +306,12 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
             <span className="text-sm text-white/80">Practices Created</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-green-400">{stats.practices_created}</span>
+            <span className="text-sm font-medium text-green-400">
+              {stats.practices_created}
+            </span>
             {stats.practices_created > 0 && (
               <button
-                onClick={() => router.push('/process')}
+                onClick={() => router.push("/process")}
                 className="text-xs text-white/60 hover:text-white/90 transition-colors"
               >
                 <ArrowRight className="w-3 h-3" />
@@ -312,15 +331,21 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
           <div className="grid grid-cols-3 gap-2 text-xs">
             <div>
               <div className="text-white/60">Extractions</div>
-              <div className="text-white/90 font-medium">{stats.last_24h.extractions}</div>
+              <div className="text-white/90 font-medium">
+                {stats.last_24h.extractions}
+              </div>
             </div>
             <div>
               <div className="text-white/60">Clients</div>
-              <div className="text-white/90 font-medium">{stats.last_24h.clients}</div>
+              <div className="text-white/90 font-medium">
+                {stats.last_24h.clients}
+              </div>
             </div>
             <div>
               <div className="text-white/60">Practices</div>
-              <div className="text-white/90 font-medium">{stats.last_24h.practices}</div>
+              <div className="text-white/90 font-medium">
+                {stats.last_24h.practices}
+              </div>
             </div>
           </div>
         </div>
@@ -333,7 +358,7 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
               <span className="text-sm text-white/80">Avg Confidence</span>
             </div>
             <span
-              className={`text-sm font-medium ${stats.extraction_confidence_avg >= 0.7 ? 'text-green-400' : stats.extraction_confidence_avg >= 0.5 ? 'text-yellow-400' : 'text-red-400'}`}
+              className={`text-sm font-medium ${stats.extraction_confidence_avg >= 0.7 ? "text-green-400" : stats.extraction_confidence_avg >= 0.5 ? "text-yellow-400" : "text-red-400"}`}
             >
               {Math.round(stats.extraction_confidence_avg * 100)}%
             </span>
@@ -360,7 +385,9 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
                   }}
                 >
                   <div className="text-white/90 truncate">
-                    {extraction.client_name || extraction.summary || 'Extraction'}
+                    {extraction.client_name ||
+                      extraction.summary ||
+                      "Extraction"}
                   </div>
                   {extraction.practice_type_code && (
                     <div className="text-white/60 text-[10px] mt-0.5">
@@ -377,13 +404,13 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
         <div className="pt-2 border-t border-white/10">
           <div className="flex gap-2">
             <button
-              onClick={() => router.push('/clients')}
+              onClick={() => router.push("/clients")}
               className="flex-1 text-xs px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-colors"
             >
               View All Clients
             </button>
             <button
-              onClick={() => router.push('/process')}
+              onClick={() => router.push("/process")}
               className="flex-1 text-xs px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-colors"
             >
               View Practices

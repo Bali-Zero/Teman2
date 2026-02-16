@@ -1,91 +1,101 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
 /**
  * E2E Tests per CRM Flow
  * Testa le operazioni CRM (se accessibili dal frontend)
  */
 
-test.describe('CRM Flow', () => {
+test.describe("CRM Flow", () => {
   test.beforeEach(async ({ page }) => {
-    await page.route('**/api/auth/login', async (route) => {
+    await page.route("**/api/auth/login", async (route) => {
       await route.fulfill({
         status: 200,
-        contentType: 'application/json',
+        contentType: "application/json",
         body: JSON.stringify({
           success: true,
-          message: 'Login successful',
+          message: "Login successful",
           data: {
-            token: 'mock-jwt-token',
-            token_type: 'Bearer',
+            token: "mock-jwt-token",
+            token_type: "Bearer",
             expiresIn: 3600,
-            user: { id: '1', email: 'test@balizero.com', name: 'Test User', role: 'user' },
+            user: {
+              id: "1",
+              email: "test@balizero.com",
+              name: "Test User",
+              role: "user",
+            },
           },
         }),
       });
     });
 
-    await page.goto('/login');
-    await page.fill('input#email, input[name="email"]', 'test@balizero.com');
-    await page.fill('input#pin, input[name="pin"]', '123456');
+    await page.goto("/login");
+    await page.fill('input#email, input[name="email"]', "test@balizero.com");
+    await page.fill('input#pin, input[name="pin"]', "123456");
     await page.click('button[type="submit"]');
-    await page.waitForURL('/chat');
+    await page.waitForURL("/chat");
   });
 
-  test('should extract CRM data from chat conversation', async ({ page }) => {
+  test("should extract CRM data from chat conversation", async ({ page }) => {
     // Mock chat response che include informazioni CRM
-    await page.route('**/api/bali-zero/chat-stream**', async (route) => {
+    await page.route("**/api/bali-zero/chat-stream**", async (route) => {
       await route.fulfill({
         status: 200,
-        contentType: 'text/event-stream',
+        contentType: "text/event-stream",
         body: `data: ${JSON.stringify({
-          content: 'Ho creato un nuovo client: John Doe (john@example.com)',
+          content: "Ho creato un nuovo client: John Doe (john@example.com)",
           done: true,
         })}\n\n`,
       });
     });
 
     // Mock API per creazione client CRM
-    await page.route('**/api/crm/clients**', async (route) => {
-      if (route.request().method() === 'POST') {
+    await page.route("**/api/crm/clients**", async (route) => {
+      if (route.request().method() === "POST") {
         await route.fulfill({
           status: 201,
-          contentType: 'application/json',
+          contentType: "application/json",
           body: JSON.stringify({
             id: 1,
-            full_name: 'John Doe',
-            email: 'john@example.com',
-            status: 'active',
+            full_name: "John Doe",
+            email: "john@example.com",
+            status: "active",
           }),
         });
       }
     });
 
     const input = page.locator('textarea, input[type="text"]').first();
-    await input.fill('Crea un nuovo client: John Doe, john@example.com');
+    await input.fill("Crea un nuovo client: John Doe, john@example.com");
     await page.locator('button[aria-label="Send message"]').click();
 
     // Verifica che la risposta menzioni il client creato
-    await expect(page.locator('text=/John Doe|client creato/i')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator("text=/John Doe|client creato/i")).toBeVisible({
+      timeout: 10000,
+    });
   });
 
-  test('should display conversation history', async ({ page }) => {
+  test("should display conversation history", async ({ page }) => {
     // Mock API per caricare conversazioni
-    await page.route('**/api/bali-zero/conversations/history**', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify([
-          {
-            id: 1,
-            messages: [
-              { role: 'user', content: 'Hello' },
-              { role: 'assistant', content: 'Hi there!' },
-            ],
-            created_at: new Date().toISOString(),
-          },
-        ]),
-      });
-    });
+    await page.route(
+      "**/api/bali-zero/conversations/history**",
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify([
+            {
+              id: 1,
+              messages: [
+                { role: "user", content: "Hello" },
+                { role: "assistant", content: "Hi there!" },
+              ],
+              created_at: new Date().toISOString(),
+            },
+          ]),
+        });
+      },
+    );
 
     // Cerca sidebar o menu per conversazioni
     const sidebarButton = page
@@ -100,16 +110,16 @@ test.describe('CRM Flow', () => {
     }
   });
 
-  test('should handle CRM search functionality', async ({ page }) => {
+  test("should handle CRM search functionality", async ({ page }) => {
     // Mock API per ricerca clienti
-    await page.route('**/api/crm/shared-memory/search**', async (route) => {
+    await page.route("**/api/crm/shared-memory/search**", async (route) => {
       await route.fulfill({
         status: 200,
-        contentType: 'application/json',
+        contentType: "application/json",
         body: JSON.stringify({
           clients: [
-            { id: 1, full_name: 'John Doe', email: 'john@example.com' },
-            { id: 2, full_name: 'Jane Smith', email: 'jane@example.com' },
+            { id: 1, full_name: "John Doe", email: "john@example.com" },
+            { id: 2, full_name: "Jane Smith", email: "jane@example.com" },
           ],
         }),
       });
@@ -117,7 +127,7 @@ test.describe('CRM Flow', () => {
 
     // Se c'è una funzione di ricerca nel chat
     const input = page.locator('textarea, input[type="text"]').first();
-    await input.fill('Cerca clienti con KITAS in scadenza');
+    await input.fill("Cerca clienti con KITAS in scadenza");
     await page.locator('button[aria-label="Send message"]').click();
 
     // Verifica risposta
@@ -125,38 +135,40 @@ test.describe('CRM Flow', () => {
     // La risposta dovrebbe includere informazioni sui clienti
   });
 
-  test('should create practice from chat', async ({ page }) => {
+  test("should create practice from chat", async ({ page }) => {
     // Mock creazione pratica
-    await page.route('**/api/crm/practices**', async (route) => {
-      if (route.request().method() === 'POST') {
+    await page.route("**/api/crm/practices**", async (route) => {
+      if (route.request().method() === "POST") {
         await route.fulfill({
           status: 201,
-          contentType: 'application/json',
+          contentType: "application/json",
           body: JSON.stringify({
             id: 1,
             client_id: 1,
-            practice_type_code: 'KITAS',
-            status: 'inquiry',
+            practice_type_code: "KITAS",
+            status: "inquiry",
           }),
         });
       }
     });
 
-    await page.route('**/api/bali-zero/chat-stream**', async (route) => {
+    await page.route("**/api/bali-zero/chat-stream**", async (route) => {
       await route.fulfill({
         status: 200,
-        contentType: 'text/event-stream',
+        contentType: "text/event-stream",
         body: `data: ${JSON.stringify({
-          content: 'Ho creato una nuova pratica KITAS per il client John Doe',
+          content: "Ho creato una nuova pratica KITAS per il client John Doe",
           done: true,
         })}\n\n`,
       });
     });
 
     const input = page.locator('textarea, input[type="text"]').first();
-    await input.fill('Crea una pratica KITAS per John Doe');
+    await input.fill("Crea una pratica KITAS per John Doe");
     await page.locator('button[aria-label="Send message"]').click();
 
-    await expect(page.locator('text=/pratica KITAS|creata/i')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator("text=/pratica KITAS|creata/i")).toBeVisible({
+      timeout: 10000,
+    });
   });
 });

@@ -77,8 +77,8 @@ import {
   Checklist,
   ComparisonTable,
   InfoCard,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Annual Tax Return (SPT) Guide for Expats in Indonesia 2026
 
@@ -86,11 +86,11 @@ If you're an Indonesian tax resident, you must file an annual tax return (SPT Ta
 
 ## Key Dates
 
-| Deadline | What |
-|----------|------|
+| Deadline       | What                                   |
+| -------------- | -------------------------------------- |
 | **January 31** | Employer provides Bukti Potong 1721-A1 |
-| **March 31** | Individual SPT deadline |
-| **April 30** | Corporate SPT deadline |
+| **March 31**   | Individual SPT deadline                |
+| **April 30**   | Corporate SPT deadline                 |
 
 <InfoCard variant="warning" title="Don't Miss the Deadline">
 Late filing penalty: **IDR 100,000** for individuals
@@ -98,6 +98,7 @@ Late filing penalty: **IDR 100,000** for individuals
 Late payment: **2% per month** on unpaid tax
 
 File even if you owe nothing - it's mandatory for tax residents.
+
 </InfoCard>
 
 ---
@@ -112,39 +113,39 @@ File even if you owe nothing - it's mandatory for tax residents.
       name: "1770SS",
       subtitle: "Simplest form",
       values: {
-        "Income": "Under IDR 60M/year",
-        "Sources": "Single employer only",
-        "Complexity": "Simplest",
-        "Foreign Income": "No"
-      }
+        Income: "Under IDR 60M/year",
+        Sources: "Single employer only",
+        Complexity: "Simplest",
+        "Foreign Income": "No",
+      },
     },
     {
       name: "1770S",
       subtitle: "Standard employee",
       values: {
-        "Income": "Any amount",
-        "Sources": "Employment only",
-        "Complexity": "Medium",
-        "Foreign Income": "No"
+        Income: "Any amount",
+        Sources: "Employment only",
+        Complexity: "Medium",
+        "Foreign Income": "No",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "1770",
       subtitle: "Full form",
       values: {
-        "Income": "Any amount",
-        "Sources": "Multiple/business/foreign",
-        "Complexity": "Most complex",
-        "Foreign Income": "Yes"
-      }
-    }
+        Income: "Any amount",
+        Sources: "Multiple/business/foreign",
+        Complexity: "Most complex",
+        "Foreign Income": "Yes",
+      },
+    },
   ]}
 />
 
 <InfoCard variant="note" title="Most Expats Use 1770S or 1770">
-- **1770S**: If you only have Indonesian employment income
-- **1770**: If you have foreign income, investments, business income, or multiple sources
+  - **1770S**: If you only have Indonesian employment income - **1770**: If you
+  have foreign income, investments, business income, or multiple sources
 </InfoCard>
 
 ---
@@ -166,8 +167,8 @@ File even if you owe nothing - it's mandatory for tax residents.
         "Bukti Potong 1721-A1 (from employer)",
         "Other income records",
         "Foreign income documentation",
-        "Foreign tax paid certificates"
-      ]
+        "Foreign tax paid certificates",
+      ],
     },
     {
       id: "efin",
@@ -178,8 +179,8 @@ File even if you owe nothing - it's mandatory for tax residents.
       tips: [
         "Apply at KPP or online",
         "Needed for DJP Online access",
-        "Only need to do once"
-      ]
+        "Only need to do once",
+      ],
     },
     {
       id: "login",
@@ -190,8 +191,8 @@ File even if you owe nothing - it's mandatory for tax residents.
       tips: [
         "Use NPWP and password",
         "Reset password if forgotten",
-        "Chrome browser recommended"
-      ]
+        "Chrome browser recommended",
+      ],
     },
     {
       id: "fill",
@@ -202,8 +203,8 @@ File even if you owe nothing - it's mandatory for tax residents.
       tips: [
         "Use e-Form or e-Filing",
         "Input all Bukti Potong data",
-        "Report foreign income if applicable"
-      ]
+        "Report foreign income if applicable",
+      ],
     },
     {
       id: "review",
@@ -214,8 +215,8 @@ File even if you owe nothing - it's mandatory for tax residents.
       tips: [
         "Nihil = no payment due",
         "Kurang Bayar = underpaid (must pay)",
-        "Lebih Bayar = overpaid (can claim refund)"
-      ]
+        "Lebih Bayar = overpaid (can claim refund)",
+      ],
     },
     {
       id: "pay",
@@ -226,8 +227,8 @@ File even if you owe nothing - it's mandatory for tax residents.
       tips: [
         "Pay via bank or online",
         "Get NTPN (payment reference)",
-        "Must pay before filing"
-      ]
+        "Must pay before filing",
+      ],
     },
     {
       id: "submit",
@@ -238,9 +239,9 @@ File even if you owe nothing - it's mandatory for tax residents.
       tips: [
         "Receive BPE (electronic receipt)",
         "Save for your records",
-        "Proof of filing"
-      ]
-    }
+        "Proof of filing",
+      ],
+    },
   ]}
 />
 
@@ -258,48 +259,48 @@ File even if you owe nothing - it's mandatory for tax residents.
       label: "Bukti Potong 1721-A1",
       description: "From employer - shows salary and tax withheld",
       required: true,
-      category: "income"
+      category: "income",
     },
     {
       id: "other-income",
       label: "Other Indonesian income records",
       description: "Interest, dividends, rental, etc.",
       required: false,
-      category: "income"
+      category: "income",
     },
     {
       id: "foreign-income",
       label: "Foreign income documentation",
       description: "If you have overseas income",
       required: false,
-      category: "foreign"
+      category: "foreign",
     },
     {
       id: "foreign-tax",
       label: "Foreign tax paid certificates",
       description: "For claiming tax credits",
       required: false,
-      category: "foreign"
+      category: "foreign",
     },
     {
       id: "efin",
       label: "EFIN number",
       description: "For DJP Online access",
       required: true,
-      category: "access"
+      category: "access",
     },
     {
       id: "npwp",
       label: "NPWP card/number",
       description: "Your tax ID",
       required: true,
-      category: "access"
-    }
+      category: "access",
+    },
   ]}
   categories={[
     { id: "income", label: "Income Docs", color: "blue" },
     { id: "foreign", label: "Foreign", color: "green" },
-    { id: "access", label: "Access", color: "purple" }
+    { id: "access", label: "Access", color: "purple" },
   ]}
   showProgress={true}
   allowExport={true}
@@ -310,12 +311,11 @@ File even if you owe nothing - it's mandatory for tax residents.
 ## Common Mistakes
 
 <InfoCard variant="error" title="Avoid These Mistakes">
-1. **Missing deadline** - File by March 31
-2. **Wrong form** - Use 1770 if you have foreign income
-3. **Forgetting foreign income** - Residents must report worldwide income
-4. **Not claiming foreign tax credits** - Avoid double taxation
-5. **Filing without EFIN** - Get it first
-6. **Not keeping records** - Save BPE and supporting docs
+  1. **Missing deadline** - File by March 31 2. **Wrong form** - Use 1770 if you
+  have foreign income 3. **Forgetting foreign income** - Residents must report
+  worldwide income 4. **Not claiming foreign tax credits** - Avoid double
+  taxation 5. **Filing without EFIN** - Get it first 6. **Not keeping records**
+  - Save BPE and supporting docs
 </InfoCard>
 
 ---
@@ -329,7 +329,7 @@ File even if you owe nothing - it's mandatory for tax residents.
     "What if I file late?",
     "Can I get help filing SPT?",
     "How do I claim a refund?",
-    "What if I have no income?"
+    "What if I have no income?",
   ]}
 />
 

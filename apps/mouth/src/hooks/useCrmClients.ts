@@ -4,10 +4,10 @@
  * Hook ottimizzato per gestione clienti CRM con caching e sincronizzazione
  */
 
-import { useCallback, useEffect, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import type { Client, CreateClientParams } from '@/lib/api/crm/crm.types';
+import { useCallback, useEffect, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import type { Client, CreateClientParams } from "@/lib/api/crm/crm.types";
 
 interface UseCrmClientsOptions {
   status?: string;
@@ -25,13 +25,13 @@ interface ClientsResponse {
 
 // Debug helper
 const debug = (...args: any[]) => {
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[CRM]', ...args);
+  if (process.env.NODE_ENV === "development") {
+    console.log("[CRM]", ...args);
   }
 };
 
 const logError = (...args: any[]) => {
-  console.error('[CRM]', ...args);
+  console.error("[CRM]", ...args);
 };
 
 /**
@@ -42,7 +42,7 @@ export function useCrmClients(options: UseCrmClientsOptions = {}) {
   const queryClient = useQueryClient();
   const [offset, setOffset] = useState(0);
 
-  const queryKey = ['crm', 'clients', { status, assigned_to, search, offset }];
+  const queryKey = ["crm", "clients", { status, assigned_to, search, offset }];
 
   const {
     data,
@@ -102,9 +102,9 @@ export function useCrmClient(clientId: number | null) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ['crm', 'clients', clientId],
+    queryKey: ["crm", "clients", clientId],
     queryFn: async (): Promise<Client> => {
-      if (!clientId) throw new Error('Client ID required');
+      if (!clientId) throw new Error("Client ID required");
       return api.crm.getClient(clientId);
     },
     enabled: !!clientId,
@@ -112,7 +112,7 @@ export function useCrmClient(clientId: number | null) {
   });
 
   const invalidate = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['crm', 'clients', clientId] });
+    queryClient.invalidateQueries({ queryKey: ["crm", "clients", clientId] });
   }, [queryClient, clientId]);
 
   return {
@@ -128,18 +128,24 @@ export function useCreateClient() {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: async ({ data, createdBy }: { data: CreateClientParams; createdBy: string }) => {
+    mutationFn: async ({
+      data,
+      createdBy,
+    }: {
+      data: CreateClientParams;
+      createdBy: string;
+    }) => {
       return api.crm.createClient(data, createdBy);
     },
     onSuccess: (newClient) => {
       // Invalidate clients list
-      queryClient.invalidateQueries({ queryKey: ['crm', 'clients'] });
+      queryClient.invalidateQueries({ queryKey: ["crm", "clients"] });
       // Add to cache
-      queryClient.setQueryData(['crm', 'clients', newClient.id], newClient);
-      debug('Client created:', newClient.id);
+      queryClient.setQueryData(["crm", "clients", newClient.id], newClient);
+      debug("Client created:", newClient.id);
     },
     onError: (err) => {
-      logError('Failed to create client:', err);
+      logError("Failed to create client:", err);
     },
   });
 
@@ -164,13 +170,13 @@ export function useUpdateClient(clientId: number) {
     },
     onSuccess: (updatedClient) => {
       // Update cache
-      queryClient.setQueryData(['crm', 'clients', clientId], updatedClient);
+      queryClient.setQueryData(["crm", "clients", clientId], updatedClient);
       // Invalidate list
-      queryClient.invalidateQueries({ queryKey: ['crm', 'clients'] });
-      debug('Client updated:', clientId);
+      queryClient.invalidateQueries({ queryKey: ["crm", "clients"] });
+      debug("Client updated:", clientId);
     },
     onError: (err) => {
-      logError('Failed to update client:', err);
+      logError("Failed to update client:", err);
     },
   });
 
@@ -182,7 +188,7 @@ export function useUpdateClient(clientId: number) {
  */
 export function useCrmStats() {
   return useQuery({
-    queryKey: ['crm', 'stats'],
+    queryKey: ["crm", "stats"],
     queryFn: async () => {
       const [practiceStats, interactionStats] = await Promise.all([
         api.crm.getPracticeStats(),

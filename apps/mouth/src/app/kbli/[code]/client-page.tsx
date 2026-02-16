@@ -1,9 +1,16 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { ArrowLeft, Building2, FileText, AlertCircle, CheckCircle, ArrowRight } from 'lucide-react';
-import { logger } from '@/lib/logger';
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  Building2,
+  FileText,
+  AlertCircle,
+  CheckCircle,
+  ArrowRight,
+} from "lucide-react";
+import { logger } from "@/lib/logger";
 
 interface KBLIData {
   code: string;
@@ -23,19 +30,19 @@ interface KBLIData {
  * Get risk level badge color
  */
 function getRiskBadgeColor(level?: string): string {
-  if (!level) return 'bg-gray-100 text-gray-700';
+  if (!level) return "bg-gray-100 text-gray-700";
 
   const normalized = level.toLowerCase();
-  if (normalized.includes('rendah') || normalized.includes('low')) {
-    return 'bg-green-100 text-green-700';
+  if (normalized.includes("rendah") || normalized.includes("low")) {
+    return "bg-green-100 text-green-700";
   }
-  if (normalized.includes('sedang') || normalized.includes('medium')) {
-    return 'bg-yellow-100 text-yellow-700';
+  if (normalized.includes("sedang") || normalized.includes("medium")) {
+    return "bg-yellow-100 text-yellow-700";
   }
-  if (normalized.includes('tinggi') || normalized.includes('high')) {
-    return 'bg-red-100 text-red-700';
+  if (normalized.includes("tinggi") || normalized.includes("high")) {
+    return "bg-red-100 text-red-700";
   }
-  return 'bg-gray-100 text-gray-700';
+  return "bg-gray-100 text-gray-700";
 }
 
 /**
@@ -45,8 +52,12 @@ function getPMABadge(status?: string) {
   if (!status) return null;
 
   const normalized = status.toLowerCase();
-  const isAllowed = normalized.includes('diizinkan') || normalized.includes('allowed') || normalized.includes('terbuka');
-  const isProhibited = normalized.includes('dilarang') || normalized.includes('prohibited');
+  const isAllowed =
+    normalized.includes("diizinkan") ||
+    normalized.includes("allowed") ||
+    normalized.includes("terbuka");
+  const isProhibited =
+    normalized.includes("dilarang") || normalized.includes("prohibited");
 
   if (isAllowed) {
     return (
@@ -81,7 +92,9 @@ export default function KBLICodePageClient({ code }: { code: string }) {
   useEffect(() => {
     async function fetchData() {
       try {
-        const response = await fetch(`https://nuzantara-rag.fly.dev/api/v1/kbli-notebook/inspect/${code}`);
+        const response = await fetch(
+          `https://nuzantara-rag.fly.dev/api/v1/kbli-notebook/inspect/${code}`,
+        );
 
         if (!response.ok) {
           setError(true);
@@ -95,16 +108,20 @@ export default function KBLICodePageClient({ code }: { code: string }) {
           code: json.code || code,
           title_id: json.title || `KBLI ${code}`,
           title_en: json.title || `KBLI ${code}`,
-          description: json.description || '',
-          category: json.sector || 'Business',
-          section: json.sector || '',
+          description: json.description || "",
+          category: json.sector || "Business",
+          section: json.sector || "",
           risk_level: json.risk_profile,
           pma_status: json.pma_status,
           required_licenses: json.licenses?.map((l: any) => l.type) || [],
           capital_requirement: json.licensing_status,
         });
       } catch (err) {
-        logger.error('Failed to fetch KBLI data', { error: err });
+        logger.error(
+          "Failed to fetch KBLI data",
+          {},
+          err instanceof Error ? err : new Error(String(err)),
+        );
         setError(true);
       } finally {
         setLoading(false);
@@ -119,8 +136,12 @@ export default function KBLICodePageClient({ code }: { code: string }) {
       <div className="mx-auto min-h-screen max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="flex items-center justify-center">
           <div className="text-center">
-            <div className="mb-4 text-xl font-semibold">Loading KBLI {code}...</div>
-            <div className="text-muted-foreground">Fetching business classification data</div>
+            <div className="mb-4 text-xl font-semibold">
+              Loading KBLI {code}...
+            </div>
+            <div className="text-muted-foreground">
+              Fetching business classification data
+            </div>
           </div>
         </div>
       </div>
@@ -169,12 +190,16 @@ export default function KBLICodePageClient({ code }: { code: string }) {
             <Building2 className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <p className="text-sm font-medium text-muted-foreground">KBLI Code</p>
+            <p className="text-sm font-medium text-muted-foreground">
+              KBLI Code
+            </p>
             <h1 className="text-4xl font-bold tracking-tight">{data.code}</h1>
           </div>
         </div>
 
-        <h2 className="mb-4 text-2xl font-semibold text-foreground">{data.title_en}</h2>
+        <h2 className="mb-4 text-2xl font-semibold text-foreground">
+          {data.title_en}
+        </h2>
         {data.title_id !== data.title_en && (
           <p className="text-lg text-muted-foreground">{data.title_id}</p>
         )}
@@ -191,7 +216,9 @@ export default function KBLICodePageClient({ code }: { code: string }) {
           </span>
         )}
         {data.risk_level && (
-          <span className={`rounded-full px-4 py-1.5 text-sm font-medium ${getRiskBadgeColor(data.risk_level)}`}>
+          <span
+            className={`rounded-full px-4 py-1.5 text-sm font-medium ${getRiskBadgeColor(data.risk_level)}`}
+          >
             {data.risk_level}
           </span>
         )}
@@ -211,14 +238,20 @@ export default function KBLICodePageClient({ code }: { code: string }) {
 
           {data.capital_requirement && (
             <div className="mb-4">
-              <p className="text-sm font-medium text-muted-foreground">Minimum Capital</p>
-              <p className="text-lg font-semibold">{data.capital_requirement}</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                Minimum Capital
+              </p>
+              <p className="text-lg font-semibold">
+                {data.capital_requirement}
+              </p>
             </div>
           )}
 
           {data.required_licenses && data.required_licenses.length > 0 && (
             <div>
-              <p className="mb-2 text-sm font-medium text-muted-foreground">Required Licenses</p>
+              <p className="mb-2 text-sm font-medium text-muted-foreground">
+                Required Licenses
+              </p>
               <ul className="space-y-2">
                 {data.required_licenses.map((license, i) => (
                   <li key={i} className="flex items-start gap-2">
@@ -234,10 +267,12 @@ export default function KBLICodePageClient({ code }: { code: string }) {
 
       {/* CTA Section */}
       <div className="mb-12 rounded-xl bg-gradient-to-r from-primary/10 to-primary/5 p-8">
-        <h3 className="mb-2 text-2xl font-bold">Need Help Setting Up Your Business?</h3>
+        <h3 className="mb-2 text-2xl font-bold">
+          Need Help Setting Up Your Business?
+        </h3>
         <p className="mb-6 text-muted-foreground">
-          Our experts can guide you through the complete PT PMA setup process, including KBLI selection,
-          licensing, and compliance.
+          Our experts can guide you through the complete PT PMA setup process,
+          including KBLI selection, licensing, and compliance.
         </p>
         <div className="flex flex-col gap-3 sm:flex-row">
           <Link
@@ -267,7 +302,9 @@ export default function KBLICodePageClient({ code }: { code: string }) {
             <Building2 className="h-5 w-5 text-primary" />
             <div>
               <p className="font-medium">KBLI Explorer</p>
-              <p className="text-sm text-muted-foreground">Search all business codes</p>
+              <p className="text-sm text-muted-foreground">
+                Search all business codes
+              </p>
             </div>
           </Link>
           <Link
@@ -277,7 +314,9 @@ export default function KBLICodePageClient({ code }: { code: string }) {
             <FileText className="h-5 w-5 text-primary" />
             <div>
               <p className="font-medium">PT PMA Setup</p>
-              <p className="text-sm text-muted-foreground">Company registration guide</p>
+              <p className="text-sm text-muted-foreground">
+                Company registration guide
+              </p>
             </div>
           </Link>
         </div>

@@ -1,6 +1,6 @@
-import Link from 'next/link';
-import { buttonVariants } from '@/components/ui/button';
-import { FileQuestion } from 'lucide-react';
+import Link from "next/link";
+import { buttonVariants } from "@/components/ui/button";
+import { FileQuestion } from "lucide-react";
 
 export default function NotFound() {
   return (
@@ -17,10 +17,10 @@ export default function NotFound() {
       </div>
 
       <div className="flex gap-4">
-        <Link href="/" className={buttonVariants({ variant: 'default' })}>
+        <Link href="/" className={buttonVariants({ variant: "default" })}>
           Return Home
         </Link>
-        <Link href="/chat" className={buttonVariants({ variant: 'outline' })}>
+        <Link href="/chat" className={buttonVariants({ variant: "outline" })}>
           Go to Chat
         </Link>
       </div>

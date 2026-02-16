@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { BookOpen, RefreshCw } from 'lucide-react';
+import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { BookOpen, RefreshCw } from "lucide-react";
 
 export default function KnowledgeError({
   error,
@@ -12,7 +12,7 @@ export default function KnowledgeError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error('Knowledge Error:', error);
+    console.error("Knowledge Error:", error);
   }, [error]);
 
   return (
@@ -22,9 +22,12 @@ export default function KnowledgeError({
       </div>
 
       <div className="mt-6 text-center space-y-2 max-w-md">
-        <h2 className="text-2xl font-semibold tracking-tight">Knowledge Base Error</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">
+          Knowledge Base Error
+        </h2>
         <p className="text-muted-foreground">
-          We couldn&apos;t load the knowledge base. Please check your connection and try again.
+          We couldn&apos;t load the knowledge base. Please check your connection
+          and try again.
         </p>
       </div>
 

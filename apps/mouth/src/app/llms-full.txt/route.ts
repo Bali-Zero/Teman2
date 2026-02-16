@@ -73,7 +73,7 @@ export async function GET() {
         sections.push(`### ${full.title}`);
         sections.push(`URL: ${baseUrl}/${full.category}/${full.slug}`);
         sections.push(
-          `Published: ${new Date(full.publishedAt).toISOString().split("T")[0]}`,
+          `Published: ${full.publishedAt ? new Date(full.publishedAt).toISOString().split("T")[0] : "Unknown"}`,
         );
         if (full.updatedAt) {
           sections.push(

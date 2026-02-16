@@ -1,13 +1,16 @@
-export { StatsCard } from './StatsCard';
-export { PratichePreview } from './PratichePreview';
-export type { PraticaPreview } from './PratichePreview';
-export { WhatsAppPreview } from './WhatsAppPreview';
-export type { WhatsAppMessage } from './WhatsAppPreview';
-export { AiPulseWidget } from './AiPulseWidget';
-export { AutoCRMWidget } from './AutoCRMWidget';
-export { FinancialRealityWidget } from './FinancialRealityWidget';
-export { NusantaraHealthWidget } from './NusantaraHealthWidget';
-export { EmailPreview } from './EmailPreview';
-export { GrafanaWidget } from './GrafanaWidget';
-export { FeaturedArticlesWidget } from './FeaturedArticlesWidget';
-export { HomepagePreviewWidget, HomepagePreviewCompact } from './HomepagePreviewWidget';
+export { StatsCard } from "./StatsCard";
+export { PratichePreview } from "./PratichePreview";
+export type { PraticaPreview } from "./PratichePreview";
+export { WhatsAppPreview } from "./WhatsAppPreview";
+export type { WhatsAppMessage } from "./WhatsAppPreview";
+export { AiPulseWidget } from "./AiPulseWidget";
+export { AutoCRMWidget } from "./AutoCRMWidget";
+export { FinancialRealityWidget } from "./FinancialRealityWidget";
+export { NusantaraHealthWidget } from "./NusantaraHealthWidget";
+export { EmailPreview } from "./EmailPreview";
+export { GrafanaWidget } from "./GrafanaWidget";
+export { FeaturedArticlesWidget } from "./FeaturedArticlesWidget";
+export {
+  HomepagePreviewWidget,
+  HomepagePreviewCompact,
+} from "./HomepagePreviewWidget";

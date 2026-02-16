@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect, useState, useRef } from 'react';
-import { conversationMonitor } from '@/lib/monitoring';
-import { monitoringDashboard } from '@/lib/monitoring-dashboard';
+import { useEffect, useState, useRef } from "react";
+import { conversationMonitor } from "@/lib/monitoring";
+import { monitoringDashboard } from "@/lib/monitoring-dashboard";
 
 interface MonitoringStats {
   activeSessions: number;
@@ -19,26 +19,32 @@ interface MonitoringStats {
 export function MonitoringWidget() {
   const [stats, setStats] = useState<MonitoringStats | null>(null);
   const [isVisible, setIsVisible] = useState(false);
-  const [alerts, setAlerts] = useState<Array<{ type: string; count: number }>>([]);
+  const [alerts, setAlerts] = useState<Array<{ type: string; count: number }>>(
+    [],
+  );
   const isMountedRef = useRef(true);
 
   const buildAlerts = (
-    activeSessions: ReturnType<typeof conversationMonitor.getActiveSessions>
+    activeSessions: ReturnType<typeof conversationMonitor.getActiveSessions>,
   ) => {
     const alertCounts: Record<string, number> = {};
 
     activeSessions.forEach((session) => {
       if (session.turnCount >= 15) {
-        alertCounts['LONG_CONVERSATION'] = (alertCounts['LONG_CONVERSATION'] || 0) + 1;
+        alertCounts["LONG_CONVERSATION"] =
+          (alertCounts["LONG_CONVERSATION"] || 0) + 1;
       }
       if (session.errors.length >= 3) {
-        alertCounts['MULTIPLE_ERRORS'] = (alertCounts['MULTIPLE_ERRORS'] || 0) + 1;
+        alertCounts["MULTIPLE_ERRORS"] =
+          (alertCounts["MULTIPLE_ERRORS"] || 0) + 1;
       }
       if (session.timeouts >= 2) {
-        alertCounts['MULTIPLE_TIMEOUTS'] = (alertCounts['MULTIPLE_TIMEOUTS'] || 0) + 1;
+        alertCounts["MULTIPLE_TIMEOUTS"] =
+          (alertCounts["MULTIPLE_TIMEOUTS"] || 0) + 1;
       }
       if (session.rateLimitHits >= 2) {
-        alertCounts['RATE_LIMIT_ISSUES'] = (alertCounts['RATE_LIMIT_ISSUES'] || 0) + 1;
+        alertCounts["RATE_LIMIT_ISSUES"] =
+          (alertCounts["RATE_LIMIT_ISSUES"] || 0) + 1;
       }
     });
 
@@ -52,7 +58,7 @@ export function MonitoringWidget() {
     isMountedRef.current = true;
 
     // Only show in development or if explicitly enabled
-    const showWidget = localStorage.getItem('showMonitoringWidget') === 'true';
+    const showWidget = localStorage.getItem("showMonitoringWidget") === "true";
 
     if (!showWidget) {
       return;
@@ -92,7 +98,9 @@ export function MonitoringWidget() {
   return (
     <div className="fixed bottom-4 right-4 bg-[var(--background-secondary)] border border-[var(--border)] rounded-lg p-4 shadow-lg z-50 max-w-sm">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-semibold text-[var(--foreground)]">📊 Monitoring</h3>
+        <h3 className="text-sm font-semibold text-[var(--foreground)]">
+          📊 Monitoring
+        </h3>
         <button
           onClick={() => setIsVisible(false)}
           className="text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
@@ -104,18 +112,26 @@ export function MonitoringWidget() {
 
       <div className="space-y-2 text-xs">
         <div className="flex justify-between">
-          <span className="text-[var(--foreground-muted)]">Active Sessions:</span>
-          <span className="text-[var(--foreground)] font-medium">{stats.activeSessions}</span>
+          <span className="text-[var(--foreground-muted)]">
+            Active Sessions:
+          </span>
+          <span className="text-[var(--foreground)] font-medium">
+            {stats.activeSessions}
+          </span>
         </div>
         <div className="flex justify-between">
           <span className="text-[var(--foreground-muted)]">Total Turns:</span>
-          <span className="text-[var(--foreground)] font-medium">{stats.totalTurns}</span>
+          <span className="text-[var(--foreground)] font-medium">
+            {stats.totalTurns}
+          </span>
         </div>
         <div className="flex justify-between">
           <span className="text-[var(--foreground-muted)]">Errors:</span>
           <span
             className={`font-medium ${
-              stats.totalErrors > 0 ? 'text-[var(--error)]' : 'text-[var(--foreground)]'
+              stats.totalErrors > 0
+                ? "text-[var(--error)]"
+                : "text-[var(--foreground)]"
             }`}
           >
             {stats.totalErrors}
@@ -125,7 +141,9 @@ export function MonitoringWidget() {
           <span className="text-[var(--foreground-muted)]">Timeouts:</span>
           <span
             className={`font-medium ${
-              stats.totalTimeouts > 0 ? 'text-yellow-500' : 'text-[var(--foreground)]'
+              stats.totalTimeouts > 0
+                ? "text-yellow-500"
+                : "text-[var(--foreground)]"
             }`}
           >
             {stats.totalTimeouts}
@@ -135,7 +153,9 @@ export function MonitoringWidget() {
           <span className="text-[var(--foreground-muted)]">Rate Limits:</span>
           <span
             className={`font-medium ${
-              stats.totalRateLimitHits > 0 ? 'text-orange-500' : 'text-[var(--foreground)]'
+              stats.totalRateLimitHits > 0
+                ? "text-orange-500"
+                : "text-[var(--foreground)]"
             }`}
           >
             {stats.totalRateLimitHits}

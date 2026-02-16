@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import React, { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import {
   Loader2,
   Building2,
@@ -13,12 +13,16 @@ import {
   Clock,
   ChevronLeft,
   Shield,
-} from 'lucide-react';
-import { api } from '@/lib/api';
-import { useToast } from '@/components/ui/toast';
-import { cn } from '@/lib/utils';
-import type { PortalCompany, CompanyLicense, ComplianceItem } from '@/lib/api/portal/portal.types';
-import { Button } from '@/components/ui/button';
+} from "lucide-react";
+import { api } from "@/lib/api";
+import { useToast } from "@/components/ui/toast";
+import { cn } from "@/lib/utils";
+import type {
+  PortalCompany,
+  CompanyLicense,
+  ComplianceItem,
+} from "@/lib/api/portal/portal.types";
+import { Button } from "@/components/ui/button";
 
 export default function CompanyDetailPage() {
   const params = useParams();
@@ -43,7 +47,7 @@ export default function CompanyDetailPage() {
       const data = await api.portal.getCompanyDetail(companyId);
       setCompany(data);
     } catch (err) {
-      error('Failed to load company details', 'Please try again later');
+      error("Failed to load company details", "Please try again later");
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -62,8 +66,14 @@ export default function CompanyDetailPage() {
     return (
       <div className="text-center py-12">
         <Building2 className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
-        <h2 className="text-lg font-semibold text-muted-foreground">Company not found</h2>
-        <Button variant="ghost" className="mt-4" onClick={() => router.push('/portal/vault')}>
+        <h2 className="text-lg font-semibold text-muted-foreground">
+          Company not found
+        </h2>
+        <Button
+          variant="ghost"
+          className="mt-4"
+          onClick={() => router.push("/portal/vault")}
+        >
           <ChevronLeft className="w-4 h-4 mr-1" />
           Back to Vault
         </Button>
@@ -74,7 +84,12 @@ export default function CompanyDetailPage() {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Back Button */}
-      <Button variant="ghost" size="sm" onClick={() => router.back()} className="-ml-2">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => router.back()}
+        className="-ml-2"
+      >
         <ChevronLeft className="w-4 h-4 mr-1" />
         Back
       </Button>
@@ -87,14 +102,20 @@ export default function CompanyDetailPage() {
               <Building2 className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight">{company.name}</h1>
+              <h1 className="text-xl font-bold tracking-tight">
+                {company.name}
+              </h1>
               <p className="text-sm text-muted-foreground">{company.type}</p>
             </div>
           </div>
           <StatusBadge status={company.status} />
         </div>
 
-        {company.address && <p className="mt-4 text-sm text-muted-foreground">{company.address}</p>}
+        {company.address && (
+          <p className="mt-4 text-sm text-muted-foreground">
+            {company.address}
+          </p>
+        )}
 
         {company.isPrimary && (
           <div className="mt-4 px-3 py-1.5 bg-primary/10 text-primary text-xs font-medium rounded-full inline-flex items-center gap-1.5">
@@ -135,7 +156,10 @@ export default function CompanyDetailPage() {
         {company.compliance && company.compliance.length > 0 ? (
           <div className="space-y-3">
             {company.compliance
-              .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+              .sort(
+                (a, b) =>
+                  new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime(),
+              )
               .map((item) => (
                 <ComplianceCard key={item.id} item={item} />
               ))}
@@ -184,17 +208,19 @@ export default function CompanyDetailPage() {
 
 // Sub-components
 
-function StatusBadge({ status }: { status: 'active' | 'pending' }) {
+function StatusBadge({ status }: { status: "active" | "pending" }) {
   const config = {
     active: {
       icon: CheckCircle,
-      label: 'Active',
-      className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+      label: "Active",
+      className:
+        "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
     },
     pending: {
       icon: Clock,
-      label: 'Pending',
-      className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+      label: "Pending",
+      className:
+        "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
     },
   };
 
@@ -203,8 +229,8 @@ function StatusBadge({ status }: { status: 'active' | 'pending' }) {
   return (
     <div
       className={cn(
-        'px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-medium',
-        className
+        "px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-medium",
+        className,
       )}
     >
       <Icon className="w-3.5 h-3.5" />
@@ -216,29 +242,33 @@ function StatusBadge({ status }: { status: 'active' | 'pending' }) {
 function LicenseCard({ license }: { license: CompanyLicense }) {
   const getStatusConfig = (status: string) => {
     switch (status) {
-      case 'active':
+      case "active":
         return {
           icon: CheckCircle,
-          className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-          borderClass: 'border-emerald-200 dark:border-emerald-800',
+          className:
+            "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+          borderClass: "border-emerald-200 dark:border-emerald-800",
         };
-      case 'expiring':
+      case "expiring":
         return {
           icon: AlertTriangle,
-          className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-          borderClass: 'border-amber-200 dark:border-amber-800',
+          className:
+            "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+          borderClass: "border-amber-200 dark:border-amber-800",
         };
-      case 'expired':
+      case "expired":
         return {
           icon: AlertTriangle,
-          className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-          borderClass: 'border-red-200 dark:border-red-800',
+          className:
+            "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+          borderClass: "border-red-200 dark:border-red-800",
         };
       default:
         return {
           icon: Clock,
-          className: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400',
-          borderClass: 'border-neutral-200 dark:border-neutral-700',
+          className:
+            "bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400",
+          borderClass: "border-neutral-200 dark:border-neutral-700",
         };
     }
   };
@@ -247,27 +277,27 @@ function LicenseCard({ license }: { license: CompanyLicense }) {
   const Icon = config.icon;
 
   return (
-    <div className={cn('rounded-lg border p-4', config.borderClass)}>
+    <div className={cn("rounded-lg border p-4", config.borderClass)}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-sm">{license.name}</h3>
           <p className="text-xs text-muted-foreground mt-1">
-            Expires:{' '}
-            {new Date(license.expiryDate).toLocaleDateString('en-US', {
-              month: 'long',
-              day: 'numeric',
-              year: 'numeric',
+            Expires:{" "}
+            {new Date(license.expiryDate).toLocaleDateString("en-US", {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
             })}
           </p>
           {license.daysRemaining !== undefined && (
             <p
               className={cn(
-                'text-xs font-medium mt-1',
+                "text-xs font-medium mt-1",
                 license.daysRemaining <= 30
-                  ? 'text-red-600 dark:text-red-400'
+                  ? "text-red-600 dark:text-red-400"
                   : license.daysRemaining <= 60
-                    ? 'text-amber-600 dark:text-amber-400'
-                    : 'text-emerald-600 dark:text-emerald-400'
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-emerald-600 dark:text-emerald-400",
               )}
             >
               {license.daysRemaining} days remaining
@@ -276,8 +306,8 @@ function LicenseCard({ license }: { license: CompanyLicense }) {
         </div>
         <div
           className={cn(
-            'px-2.5 py-1 rounded-full flex items-center gap-1 text-xs font-medium',
-            config.className
+            "px-2.5 py-1 rounded-full flex items-center gap-1 text-xs font-medium",
+            config.className,
           )}
         >
           <Icon className="w-3 h-3" />
@@ -291,24 +321,27 @@ function LicenseCard({ license }: { license: CompanyLicense }) {
 function ComplianceCard({ item }: { item: ComplianceItem }) {
   const getStatusConfig = (status: string) => {
     switch (status) {
-      case 'completed':
+      case "completed":
         return {
           icon: CheckCircle,
-          className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-          bgClass: 'bg-neutral-50 dark:bg-neutral-900',
+          className:
+            "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+          bgClass: "bg-neutral-50 dark:bg-neutral-900",
         };
-      case 'overdue':
+      case "overdue":
         return {
           icon: AlertTriangle,
-          className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-          bgClass: 'bg-red-50/50 dark:bg-red-950/10',
+          className:
+            "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+          bgClass: "bg-red-50/50 dark:bg-red-950/10",
         };
-      case 'upcoming':
+      case "upcoming":
       default:
         return {
           icon: Clock,
-          className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-          bgClass: 'bg-amber-50/50 dark:bg-amber-950/10',
+          className:
+            "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+          bgClass: "bg-amber-50/50 dark:bg-amber-950/10",
         };
     }
   };
@@ -316,32 +349,34 @@ function ComplianceCard({ item }: { item: ComplianceItem }) {
   const config = getStatusConfig(item.status);
   const Icon = config.icon;
   const dueDate = new Date(item.dueDate);
-  const isPast = dueDate < new Date() && item.status !== 'completed';
+  const isPast = dueDate < new Date() && item.status !== "completed";
 
   return (
-    <div className={cn('rounded-lg p-4 border', config.bgClass)}>
+    <div className={cn("rounded-lg p-4 border", config.bgClass)}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1">
           <h3 className="font-semibold text-sm">{item.name}</h3>
           <p
             className={cn(
-              'text-xs mt-1',
-              isPast ? 'text-red-600 dark:text-red-400 font-medium' : 'text-muted-foreground'
+              "text-xs mt-1",
+              isPast
+                ? "text-red-600 dark:text-red-400 font-medium"
+                : "text-muted-foreground",
             )}
           >
-            {isPast ? 'Was due: ' : 'Due: '}
-            {dueDate.toLocaleDateString('en-US', {
-              weekday: 'short',
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
+            {isPast ? "Was due: " : "Due: "}
+            {dueDate.toLocaleDateString("en-US", {
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+              year: "numeric",
             })}
           </p>
         </div>
         <div
           className={cn(
-            'px-2.5 py-1 rounded-full flex items-center gap-1 text-xs font-medium',
-            config.className
+            "px-2.5 py-1 rounded-full flex items-center gap-1 text-xs font-medium",
+            config.className,
           )}
         >
           <Icon className="w-3 h-3" />

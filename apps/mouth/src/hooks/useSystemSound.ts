@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useCallback, useRef } from 'react';
-import { logger } from '@/lib/logger';
+import { useCallback, useRef } from "react";
+import { logger } from "@/lib/logger";
 
-type SoundType = 'auth_start' | 'access_granted' | 'access_denied' | 'focus';
+type SoundType = "auth_start" | "access_granted" | "access_denied" | "focus";
 
 interface UseSystemSoundReturn {
   play: (soundType: SoundType) => void;
@@ -21,8 +21,11 @@ export function useSystemSound(): UseSystemSoundReturn {
     // Can be extended with actual audio playback later
 
     // Optional: Log for debugging (can be removed in production)
-    if (process.env.NODE_ENV === 'development') {
-      logger.debug(`[SystemSound] Playing: ${soundType}`, { component: 'AUTO', action: 'log' });
+    if (process.env.NODE_ENV === "development") {
+      logger.debug(`[SystemSound] Playing: ${soundType}`, {
+        component: "AUTO",
+        action: "log",
+      });
     }
 
     // Future implementation could:

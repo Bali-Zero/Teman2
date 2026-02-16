@@ -77,8 +77,8 @@ import {
   DecisionTree,
   ComparisonTable,
   InfoCard,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Director vs Employee KITAS: Key Differences in Indonesia 2026
 
@@ -94,27 +94,27 @@ If you're working in Indonesia, your KITAS type and requirements depend on wheth
       name: "Director KITAS",
       subtitle: "Running a PT PMA",
       values: {
-        "Sponsor": "Own company",
-        "RPTKA": "Required",
+        Sponsor: "Own company",
+        RPTKA: "Required",
         "DKP-TKA": "Required",
         "Position Flexibility": "More freedom",
-        "Liability": "Company liability",
-        "Qualification": "Flexible"
+        Liability: "Company liability",
+        Qualification: "Flexible",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "Employee KITAS",
       subtitle: "Working for a company",
       values: {
-        "Sponsor": "Employer",
-        "RPTKA": "Required",
+        Sponsor: "Employer",
+        RPTKA: "Required",
         "DKP-TKA": "Required",
         "Position Flexibility": "Fixed role",
-        "Liability": "Personal only",
-        "Qualification": "5+ years experience"
-      }
-    }
+        Liability: "Personal only",
+        Qualification: "5+ years experience",
+      },
+    },
   ]}
 />
 
@@ -131,53 +131,57 @@ If you're working in Indonesia, your KITAS type and requirements depend on wheth
       question: "Do you own shares in the Indonesian company?",
       options: [
         { label: "Yes, I'm a shareholder", next: "shareholder" },
-        { label: "No, I don't own shares", next: "no-shares" }
-      ]
+        { label: "No, I don't own shares", next: "no-shares" },
+      ],
     },
     {
       id: "shareholder",
       question: "Are you listed as Director in the company deed?",
       options: [
         { label: "Yes, I'm a Director", next: "director" },
-        { label: "No, just a shareholder", next: "investor" }
-      ]
+        { label: "No, just a shareholder", next: "investor" },
+      ],
     },
     {
       id: "no-shares",
       question: "What's your role in the company?",
       options: [
         { label: "Appointed as Director", next: "non-shareholder-director" },
-        { label: "Employee/Manager/Advisor", next: "employee" }
-      ]
+        { label: "Employee/Manager/Advisor", next: "employee" },
+      ],
     },
     {
       id: "director",
       result: {
         title: "Director KITAS (Shareholder-Director)",
-        description: "You need Director KITAS with RPTKA. You're both an owner and a worker. Your company sponsors your permit."
-      }
+        description:
+          "You need Director KITAS with RPTKA. You're both an owner and a worker. Your company sponsors your permit.",
+      },
     },
     {
       id: "investor",
       result: {
         title: "Investor KITAS (C313)",
-        description: "If you're only an investor not working, you can get Investor KITAS without RPTKA. If you want to actively work, you'll need RPTKA."
-      }
+        description:
+          "If you're only an investor not working, you can get Investor KITAS without RPTKA. If you want to actively work, you'll need RPTKA.",
+      },
     },
     {
       id: "non-shareholder-director",
       result: {
         title: "Director KITAS (Non-owner)",
-        description: "You're a professional director. Need full RPTKA + KITAS process. Company you direct is your sponsor."
-      }
+        description:
+          "You're a professional director. Need full RPTKA + KITAS process. Company you direct is your sponsor.",
+      },
     },
     {
       id: "employee",
       result: {
         title: "Employee KITAS",
-        description: "Standard work permit as an employee. Your employer handles RPTKA and sponsors your KITAS. You need relevant qualifications."
-      }
-    }
+        description:
+          "Standard work permit as an employee. Your employer handles RPTKA and sponsors your KITAS. You need relevant qualifications.",
+      },
+    },
   ]}
 />
 
@@ -188,6 +192,7 @@ If you're working in Indonesia, your KITAS type and requirements depend on wheth
 ### Who is a Director?
 
 In Indonesian companies:
+
 - **Direktur Utama** (President Director)
 - **Direktur** (Director)
 
@@ -195,24 +200,23 @@ Listed in company deed (Akta), appointed by shareholders.
 
 ### Director Requirements
 
-| Requirement | Director |
-|-------------|----------|
-| Education | Flexible (degree helps but not always required) |
-| Experience | Less strict (5-year rule often waived) |
-| Position restriction | Directors exempt from many restrictions |
-| RPTKA justification | Easier (running own company) |
+| Requirement          | Director                                        |
+| -------------------- | ----------------------------------------------- |
+| Education            | Flexible (degree helps but not always required) |
+| Experience           | Less strict (5-year rule often waived)          |
+| Position restriction | Directors exempt from many restrictions         |
+| RPTKA justification  | Easier (running own company)                    |
 
 <InfoCard variant="tip" title="Director Advantage">
-As a Director of your own PT PMA, you have more flexibility:
-- Position is inherently justifiable
-- Experience requirements less strict
-- You control the sponsor (your company)
-- Can define your own job scope
+  As a Director of your own PT PMA, you have more flexibility: - Position is
+  inherently justifiable - Experience requirements less strict - You control the
+  sponsor (your company) - Can define your own job scope
 </InfoCard>
 
 ### Director Responsibilities
 
 Beyond KITAS, directors have legal obligations:
+
 - Company legal liability
 - Tax compliance (company and personal)
 - Employment law compliance
@@ -231,41 +235,43 @@ Beyond KITAS, directors have legal obligations:
     {
       name: "Education",
       values: {
-        "Requirement": "Bachelor's degree or higher",
-        "Field": "Relevant to position",
-        "Verification": "May need legalization"
-      }
+        Requirement: "Bachelor's degree or higher",
+        Field: "Relevant to position",
+        Verification: "May need legalization",
+      },
     },
     {
       name: "Experience",
       values: {
-        "Requirement": "Minimum 5 years",
-        "Field": "In the specific role",
-        "Verification": "Reference letters"
+        Requirement: "Minimum 5 years",
+        Field: "In the specific role",
+        Verification: "Reference letters",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "Position",
       values: {
-        "Requirement": "Not on restricted list",
-        "Field": "Managerial/specialist",
-        "Verification": "RPTKA approval"
-      }
-    }
+        Requirement: "Not on restricted list",
+        Field: "Managerial/specialist",
+        Verification: "RPTKA approval",
+      },
+    },
   ]}
 />
 
 ### Position Restrictions for Employees
 
 Employees face stricter position controls:
+
 - Cannot be in HR/Personnel
 - Cannot be in QC (quality control)
 - Limited administrative roles
 - Must be managerial/specialist level
 
 <InfoCard variant="warning" title="Position Must Match">
-As an employee, your actual work must exactly match the approved RPTKA position. Directors have more flexibility in defining their role.
+  As an employee, your actual work must exactly match the approved RPTKA
+  position. Directors have more flexibility in defining their role.
 </InfoCard>
 
 ---
@@ -292,12 +298,12 @@ As an employee, your actual work must exactly match the approved RPTKA position.
 
 ## Cost Comparison
 
-| Cost Item | Director | Employee |
-|-----------|----------|----------|
-| DKP-TKA | Yes (company pays) | Yes (company usually pays) |
-| KITAS fees | Yes | Yes |
-| Agent fees | Often bundled with company setup | Employer typically pays |
-| Who bears cost | Your company | Employer |
+| Cost Item      | Director                         | Employee                   |
+| -------------- | -------------------------------- | -------------------------- |
+| DKP-TKA        | Yes (company pays)               | Yes (company usually pays) |
+| KITAS fees     | Yes                              | Yes                        |
+| Agent fees     | Often bundled with company setup | Employer typically pays    |
+| Who bears cost | Your company                     | Employer                   |
 
 **Net effect**: Similar total costs, but directors essentially pay from their own company, while employees have costs covered by employer.
 
@@ -306,19 +312,24 @@ As an employee, your actual work must exactly match the approved RPTKA position.
 ## Changing Between Types
 
 ### Employee to Director
+
 If you become a Director:
+
 - May need new RPTKA (different position)
 - Company deed must be updated
 - Transition can be done at extension
 
 ### Director to Employee
+
 If you leave your company for employment:
+
 - Old KITAS invalid
 - New employer must apply for new RPTKA
 - Full process restart
 
 <InfoCard variant="note" title="KITAS is Position-Specific">
-Every significant role change requires new RPTKA. You can't simply "convert" director KITAS to employee or vice versa.
+  Every significant role change requires new RPTKA. You can't simply "convert"
+  director KITAS to employee or vice versa.
 </InfoCard>
 
 ---
@@ -326,24 +337,28 @@ Every significant role change requires new RPTKA. You can't simply "convert" dir
 ## Pros and Cons
 
 ### Director Pros
+
 - More control over your permit
 - Flexible position definition
 - Easier qualification requirements
 - Can sponsor family directly
 
 ### Director Cons
+
 - Business responsibilities
 - Legal liability
 - Must maintain company
 - More expensive (company costs)
 
 ### Employee Pros
+
 - No business responsibility
 - Employer handles costs
 - Employer handles paperwork
 - Simpler arrangement
 
 ### Employee Cons
+
 - Dependent on employer
 - Stricter qualifications
 - Less control over timeline
@@ -360,7 +375,7 @@ Every significant role change requires new RPTKA. You can't simply "convert" dir
     "Can I be director without owning shares?",
     "What if I'm director and employee at same time?",
     "Can my spouse work on dependent visa?",
-    "Which is faster to obtain?"
+    "Which is faster to obtain?",
   ]}
 />
 

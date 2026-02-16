@@ -77,8 +77,8 @@ import {
   Checklist,
   InfoCard,
   Calculator,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Health Insurance for Foreigners in Indonesia 2026
 
@@ -96,45 +96,49 @@ Healthcare in Indonesia ranges from basic clinics to world-class hospitals. Havi
       options: [
         { label: "KITAS holder (working)", next: "kitas" },
         { label: "KITAS holder (other)", next: "kitas-other" },
-        { label: "Tourist / no KITAS", next: "tourist" }
-      ]
+        { label: "Tourist / no KITAS", next: "tourist" },
+      ],
     },
     {
       id: "kitas",
       question: "Does your employer provide insurance?",
       options: [
         { label: "Yes, employer insurance", next: "employer" },
-        { label: "No, I need my own", next: "own-insurance" }
-      ]
+        { label: "No, I need my own", next: "own-insurance" },
+      ],
     },
     {
       id: "kitas-other",
       result: {
         title: "BPJS + International Top-up",
-        description: "BPJS Kesehatan is mandatory for KITAS holders. Consider adding international insurance for better coverage and hospitals."
-      }
+        description:
+          "BPJS Kesehatan is mandatory for KITAS holders. Consider adding international insurance for better coverage and hospitals.",
+      },
     },
     {
       id: "tourist",
       result: {
         title: "Travel / International Insurance",
-        description: "Without KITAS, you need international travel insurance or global health insurance. BPJS is not available to tourists."
-      }
+        description:
+          "Without KITAS, you need international travel insurance or global health insurance. BPJS is not available to tourists.",
+      },
     },
     {
       id: "employer",
       result: {
         title: "Review Employer Coverage",
-        description: "Check if employer insurance is sufficient. Many add personal international insurance for better hospital access and coverage abroad."
-      }
+        description:
+          "Check if employer insurance is sufficient. Many add personal international insurance for better hospital access and coverage abroad.",
+      },
     },
     {
       id: "own-insurance",
       result: {
         title: "BPJS + International Insurance",
-        description: "You must have BPJS (mandatory). Add international insurance for premium hospitals and comprehensive coverage."
-      }
-    }
+        description:
+          "You must have BPJS (mandatory). Add international insurance for premium hospitals and comprehensive coverage.",
+      },
+    },
   ]}
 />
 
@@ -152,9 +156,9 @@ Healthcare in Indonesia ranges from basic clinics to world-class hospitals. Havi
       values: {
         "Monthly Cost": "IDR 150K-600K",
         "Hospital Access": "Public + partner",
-        "Coverage": "Basic comprehensive",
-        "Foreigners": "KITAS holders only"
-      }
+        Coverage: "Basic comprehensive",
+        Foreigners: "KITAS holders only",
+      },
     },
     {
       name: "Local Private Insurance",
@@ -162,9 +166,9 @@ Healthcare in Indonesia ranges from basic clinics to world-class hospitals. Havi
       values: {
         "Monthly Cost": "IDR 300K-2M",
         "Hospital Access": "Wide network",
-        "Coverage": "Good inpatient",
-        "Foreigners": "Usually accepted"
-      }
+        Coverage: "Good inpatient",
+        Foreigners: "Usually accepted",
+      },
     },
     {
       name: "International Insurance",
@@ -172,10 +176,10 @@ Healthcare in Indonesia ranges from basic clinics to world-class hospitals. Havi
       values: {
         "Monthly Cost": "USD 100-500",
         "Hospital Access": "Premium hospitals",
-        "Coverage": "Comprehensive global",
-        "Foreigners": "Designed for expats"
+        Coverage: "Comprehensive global",
+        Foreigners: "Designed for expats",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "Travel Insurance",
@@ -183,10 +187,10 @@ Healthcare in Indonesia ranges from basic clinics to world-class hospitals. Havi
       values: {
         "Monthly Cost": "USD 30-100",
         "Hospital Access": "Emergency focus",
-        "Coverage": "Emergency + evacuation",
-        "Foreigners": "Anyone"
-      }
-    }
+        Coverage: "Emergency + evacuation",
+        Foreigners: "Anyone",
+      },
+    },
   ]}
 />
 
@@ -202,17 +206,19 @@ Healthcare in Indonesia ranges from basic clinics to world-class hospitals. Havi
 - Foreigners with KITAS working 6+ months
 
 Your employer must register you or you register yourself.
+
 </InfoCard>
 
 ### BPJS Classes
 
-| Class | Monthly Premium | Room Type | Notes |
-|-------|-----------------|-----------|-------|
-| Class 1 | IDR 150,000 | VIP single | Best |
-| Class 2 | IDR 100,000 | Semi-private | Good |
-| Class 3 | IDR 42,000 | Ward | Basic |
+| Class   | Monthly Premium | Room Type    | Notes |
+| ------- | --------------- | ------------ | ----- |
+| Class 1 | IDR 150,000     | VIP single   | Best  |
+| Class 2 | IDR 100,000     | Semi-private | Good  |
+| Class 3 | IDR 42,000      | Ward         | Basic |
 
 ### BPJS Coverage
+
 - Outpatient care
 - Inpatient hospitalization
 - Surgery
@@ -221,6 +227,7 @@ Your employer must register you or you register yourself.
 - Specialist referrals
 
 ### BPJS Limitations
+
 - Long wait times common
 - Quality varies by hospital
 - Referral system required
@@ -241,21 +248,17 @@ Your employer must register you or you register yourself.
 
 ### Popular Providers
 
-| Provider | Starting From | Notes |
-|----------|--------------|-------|
-| Cigna Global | ~USD 200/month | Wide network |
-| Allianz | ~USD 150/month | Good reputation |
-| AXA | ~USD 150/month | Global reach |
-| Pacific Cross | ~USD 100/month | Asia focus |
+| Provider            | Starting From  | Notes            |
+| ------------------- | -------------- | ---------------- |
+| Cigna Global        | ~USD 200/month | Wide network     |
+| Allianz             | ~USD 150/month | Good reputation  |
+| AXA                 | ~USD 150/month | Global reach     |
+| Pacific Cross       | ~USD 100/month | Asia focus       |
 | April International | ~USD 120/month | Expat specialist |
 
 <InfoCard variant="tip" title="Get Multiple Quotes">
-Insurance costs vary significantly based on:
-- Age
-- Coverage level
-- Deductible
-- Geographic coverage
-- Pre-existing conditions
+  Insurance costs vary significantly based on: - Age - Coverage level -
+  Deductible - Geographic coverage - Pre-existing conditions
 </InfoCard>
 
 ---
@@ -263,11 +266,13 @@ Insurance costs vary significantly based on:
 ## Premium Hospitals in Indonesia
 
 ### Bali
+
 - **BIMC Hospital** (Kuta, Nusa Dua) - Expat favorite
 - **Siloam** (Kuta) - Modern facilities
 - **Kasih Ibu** - Good general hospital
 
 ### Jakarta
+
 - **Pondok Indah Hospital** - Top tier
 - **RS Medistra** - International standard
 - **Siloam Semanggi** - Large network
@@ -337,7 +342,8 @@ Insurance costs vary significantly based on:
       currency: "IDR",
       note: `Approximately USD ${Math.round(annual / 16000)}/year`
     };
-  }}
+
+}}
 />
 
 ---
@@ -354,62 +360,62 @@ Insurance costs vary significantly based on:
       label: "Inpatient hospitalization",
       description: "Room, board, surgery",
       required: true,
-      category: "core"
+      category: "core",
     },
     {
       id: "outpatient",
       label: "Outpatient treatment",
       description: "Doctor visits, tests",
       required: true,
-      category: "core"
+      category: "core",
     },
     {
       id: "emergency",
       label: "Emergency treatment",
       description: "24/7 emergency care",
       required: true,
-      category: "core"
+      category: "core",
     },
     {
       id: "evacuation",
       label: "Medical evacuation",
       description: "Transport to better facility",
       required: true,
-      category: "emergency"
+      category: "emergency",
     },
     {
       id: "repatriation",
       label: "Repatriation",
       description: "Return home if needed",
       required: true,
-      category: "emergency"
+      category: "emergency",
     },
     {
       id: "maternity",
       label: "Maternity coverage",
       description: "If planning family",
       required: false,
-      category: "optional"
+      category: "optional",
     },
     {
       id: "dental",
       label: "Dental care",
       description: "Often separate or limited",
       required: false,
-      category: "optional"
+      category: "optional",
     },
     {
       id: "vision",
       label: "Vision care",
       description: "Eye exams, glasses",
       required: false,
-      category: "optional"
-    }
+      category: "optional",
+    },
   ]}
   categories={[
     { id: "core", label: "Core", color: "blue" },
     { id: "emergency", label: "Emergency", color: "red" },
-    { id: "optional", label: "Optional", color: "green" }
+    { id: "optional", label: "Optional", color: "green" },
   ]}
   showProgress={true}
 />
@@ -426,6 +432,7 @@ Most international insurers will:
 - Premium may be higher
 
 **Never hide conditions** - claims can be denied if undisclosed.
+
 </InfoCard>
 
 ---
@@ -439,7 +446,7 @@ Most international insurers will:
     "Is BPJS enough for expats?",
     "What if I have pre-existing conditions?",
     "Which hospitals accept international insurance?",
-    "Do I need insurance for visa applications?"
+    "Do I need insurance for visa applications?",
   ]}
 />
 

@@ -1,13 +1,17 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { api, type ApiError } from '@/lib/api';
-import { logger } from '@/lib/logger';
-import { toError } from '@/lib/types/common';
-import { Message, AgentStep, Source } from '@/types';
-import { useConversationMonitoring } from '@/lib/monitoring';
+import { useState, useRef, useCallback, useEffect } from "react";
+import { api, type ApiError } from "@/lib/api";
+import { logger } from "@/lib/logger";
+import { toError } from "@/lib/types/common";
+import { Message, AgentStep, Source } from "@/types";
+import { useConversationMonitoring } from "@/lib/monitoring";
 
 export interface StreamingCallbacks {
   onChunk: (chunk: string) => void;
-  onComplete: (fullResponse: string, sources: Source[], metadata?: Message['metadata']) => void;
+  onComplete: (
+    fullResponse: string,
+    sources: Source[],
+    metadata?: Message["metadata"],
+  ) => void;
   onError: (error: Error) => void;
   onStep: (step: AgentStep) => void;
 }
@@ -25,13 +29,15 @@ export interface UseChatStreamingReturn {
     message: string,
     conversationHistory: Array<{ role: string; content: string }>,
     callbacks: StreamingCallbacks,
-    images?: Array<{ base64: string; name: string }>
+    images?: Array<{ base64: string; name: string }>,
   ) => Promise<void>;
   abortStream: () => void;
   monitoring: ReturnType<typeof useConversationMonitoring>;
 }
 
-export function useChatStreaming(options: UseChatStreamingOptions): UseChatStreamingReturn {
+export function useChatStreaming(
+  options: UseChatStreamingOptions,
+): UseChatStreamingReturn {
   const { sessionId, isMountedRef, isAbortedRef } = options;
   const [isStreaming, setIsStreaming] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -63,7 +69,7 @@ export function useChatStreaming(options: UseChatStreamingOptions): UseChatStrea
       message: string,
       conversationHistory: Array<{ role: string; content: string }>,
       callbacks: StreamingCallbacks,
-      images?: Array<{ base64: string; name: string }>
+      images?: Array<{ base64: string; name: string }>,
     ) => {
       const requestId = `req-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
       streamingRequestIdRef.current = requestId;
@@ -75,7 +81,7 @@ export function useChatStreaming(options: UseChatStreamingOptions): UseChatStrea
       try {
         await api.webhookChatApi.sendMessageStreaming(
           message,
-          sessionId || '',
+          sessionId || "",
           // onChunk
           (chunk: string) => {
             if (!isMountedRef.current || isAbortedRef.current) return;
@@ -87,23 +93,23 @@ export function useChatStreaming(options: UseChatStreamingOptions): UseChatStrea
             if (isMountedRef.current && !isAbortedRef.current) {
               monitoring.trackMessage(false);
             }
-            
+
             // Format sources correctly
-            const formattedSources = response.sources.map(s => ({
-              title: s.title || 'Source',
-              content: s.content || ''
+            const formattedSources = response.sources.map((s) => ({
+              title: s.title || "Source",
+              content: s.content || "",
             }));
 
             callbacks.onComplete(
-              response.answer, 
-              formattedSources as Source[], 
-              { 
-                conversation_id: response.conversation_id,
+              response.answer,
+              formattedSources as Source[],
+              {
+                conversation_id: response.conversation_id ?? undefined,
                 execution_time: response.execution_time,
-                persisted: response.persisted
-              }
+                persisted: response.persisted,
+              },
             );
-            
+
             if (isMountedRef.current && !isAbortedRef.current) {
               setIsStreaming(false);
             }
@@ -112,28 +118,29 @@ export function useChatStreaming(options: UseChatStreamingOptions): UseChatStrea
           (error: Error) => {
             if (!isMountedRef.current || isAbortedRef.current) return;
             logger.error(
-              'Failed to send message via webhook',
-              { component: 'ChatStreaming', action: 'sendMessage' },
-              toError(error)
+              "Failed to send message via webhook",
+              { component: "ChatStreaming", action: "sendMessage" },
+              toError(error),
             );
             if (isMountedRef.current && !isAbortedRef.current) {
               const err = error as ApiError;
               const errorCode =
-                err.code || (error.message.includes('429') ? 'QUOTA_EXCEEDED' : 'UNKNOWN');
+                err.code ||
+                (error.message.includes("429") ? "QUOTA_EXCEEDED" : "UNKNOWN");
               monitoring.trackError(errorCode);
             }
             callbacks.onError(error);
             if (isMountedRef.current && !isAbortedRef.current) {
               setIsStreaming(false);
             }
-          }
+          },
         );
       } catch (error) {
         if (!isMountedRef.current || isAbortedRef.current) return;
         logger.error(
-          'Unhandled error in sendMessageStreaming',
-          { component: 'ChatStreaming', action: 'streaming' },
-          toError(error)
+          "Unhandled error in sendMessageStreaming",
+          { component: "ChatStreaming", action: "streaming" },
+          toError(error),
         );
         if (isMountedRef.current && !isAbortedRef.current) {
           setIsStreaming(false);
@@ -145,7 +152,7 @@ export function useChatStreaming(options: UseChatStreamingOptions): UseChatStrea
         }
       }
     },
-    [sessionId, isMountedRef, isAbortedRef, monitoring]
+    [sessionId, isMountedRef, isAbortedRef, monitoring],
   );
 
   return {

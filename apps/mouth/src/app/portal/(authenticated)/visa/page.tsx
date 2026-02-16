@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   Loader2,
   Plane,
@@ -9,11 +9,15 @@ import {
   AlertTriangle,
   FileText,
   Clock,
-} from 'lucide-react';
-import { api } from '@/lib/api';
-import { useToast } from '@/components/ui/toast';
-import { cn } from '@/lib/utils';
-import type { VisaInfo, VisaHistoryItem, PortalDocument } from '@/lib/api/portal/portal.types';
+} from "lucide-react";
+import { api } from "@/lib/api";
+import { useToast } from "@/components/ui/toast";
+import { cn } from "@/lib/utils";
+import type {
+  VisaInfo,
+  VisaHistoryItem,
+  PortalDocument,
+} from "@/lib/api/portal/portal.types";
 
 export default function VisaPage() {
   const { error } = useToast();
@@ -30,7 +34,7 @@ export default function VisaPage() {
       const data = await api.portal.getVisaStatus();
       setVisaInfo(data);
     } catch (err) {
-      error('Failed to load visa information', 'Please try again later');
+      error("Failed to load visa information", "Please try again later");
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -51,8 +55,12 @@ export default function VisaPage() {
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Header */}
       <section>
-        <h1 className="text-2xl font-bold tracking-tight">Immigration Status</h1>
-        <p className="text-muted-foreground">Your visa and permit information</p>
+        <h1 className="text-2xl font-bold tracking-tight">
+          Immigration Status
+        </h1>
+        <p className="text-muted-foreground">
+          Your visa and permit information
+        </p>
       </section>
 
       {/* Current Visa */}
@@ -68,25 +76,34 @@ export default function VisaPage() {
 
           <div className="space-y-3">
             <InfoRow label="Visa Type" value={visaInfo.current.type} />
-            <InfoRow label="Permit Number" value={visaInfo.current.permitNumber} />
+            <InfoRow
+              label="Permit Number"
+              value={visaInfo.current.permitNumber}
+            />
             <InfoRow label="Sponsor" value={visaInfo.current.sponsor} />
 
             <div className="pt-3 border-t">
               <InfoRow
                 label="Issue Date"
-                value={new Date(visaInfo.current.issueDate).toLocaleDateString('en-US', {
-                  month: 'long',
-                  day: 'numeric',
-                  year: 'numeric',
-                })}
+                value={new Date(visaInfo.current.issueDate).toLocaleDateString(
+                  "en-US",
+                  {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  },
+                )}
               />
               <InfoRow
                 label="Expiry Date"
-                value={new Date(visaInfo.current.expiryDate).toLocaleDateString('en-US', {
-                  month: 'long',
-                  day: 'numeric',
-                  year: 'numeric',
-                })}
+                value={new Date(visaInfo.current.expiryDate).toLocaleDateString(
+                  "en-US",
+                  {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  },
+                )}
               />
             </div>
           </div>
@@ -95,22 +112,22 @@ export default function VisaPage() {
           {visaInfo.current.daysRemaining !== null && (
             <div
               className={cn(
-                'mt-4 p-4 rounded-lg flex items-center gap-3',
+                "mt-4 p-4 rounded-lg flex items-center gap-3",
                 visaInfo.current.daysRemaining <= 30
-                  ? 'bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800'
+                  ? "bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800"
                   : visaInfo.current.daysRemaining <= 60
-                    ? 'bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800'
-                    : 'bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800'
+                    ? "bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800"
+                    : "bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800",
               )}
             >
               <Clock
                 className={cn(
-                  'w-5 h-5',
+                  "w-5 h-5",
                   visaInfo.current.daysRemaining <= 30
-                    ? 'text-red-600 dark:text-red-400'
+                    ? "text-red-600 dark:text-red-400"
                     : visaInfo.current.daysRemaining <= 60
-                      ? 'text-amber-600 dark:text-amber-400'
-                      : 'text-emerald-600 dark:text-emerald-400'
+                      ? "text-amber-600 dark:text-amber-400"
+                      : "text-emerald-600 dark:text-emerald-400",
                 )}
               />
               <div className="flex-1">
@@ -119,10 +136,10 @@ export default function VisaPage() {
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {visaInfo.current.daysRemaining <= 30
-                    ? 'Please contact us to renew your visa'
+                    ? "Please contact us to renew your visa"
                     : visaInfo.current.daysRemaining <= 60
-                      ? 'Renewal recommended soon'
-                      : 'Your visa is valid'}
+                      ? "Renewal recommended soon"
+                      : "Your visa is valid"}
                 </p>
               </div>
             </div>
@@ -171,22 +188,24 @@ export default function VisaPage() {
 }
 
 // Sub-components
-function StatusBadge({ status }: { status: 'active' | 'pending' | 'expired' }) {
+function StatusBadge({ status }: { status: "active" | "pending" | "expired" }) {
   const config = {
     active: {
       icon: CheckCircle,
-      label: 'Active',
-      className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+      label: "Active",
+      className:
+        "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
     },
     pending: {
       icon: Clock,
-      label: 'Pending',
-      className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+      label: "Pending",
+      className:
+        "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
     },
     expired: {
       icon: AlertTriangle,
-      label: 'Expired',
-      className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+      label: "Expired",
+      className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
     },
   };
 
@@ -195,8 +214,8 @@ function StatusBadge({ status }: { status: 'active' | 'pending' | 'expired' }) {
   return (
     <div
       className={cn(
-        'px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-medium',
-        className
+        "px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-medium",
+        className,
       )}
     >
       <Icon className="w-3.5 h-3.5" />
@@ -217,14 +236,14 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 function DocumentCard({ document }: { document: PortalDocument }) {
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'verified':
-        return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
-      case 'pending':
-        return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
-      case 'expired':
-        return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+      case "verified":
+        return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400";
+      case "pending":
+        return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
+      case "expired":
+        return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
       default:
-        return 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400';
+        return "bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400";
     }
   };
 
@@ -239,13 +258,15 @@ function DocumentCard({ document }: { document: PortalDocument }) {
           <div className="flex items-center gap-2 mt-0.5">
             <span
               className={cn(
-                'text-xs px-2 py-0.5 rounded-full font-medium',
-                getStatusColor(document.status)
+                "text-xs px-2 py-0.5 rounded-full font-medium",
+                getStatusColor(document.status),
               )}
             >
               {document.status}
             </span>
-            <span className="text-xs text-muted-foreground">{document.size}</span>
+            <span className="text-xs text-muted-foreground">
+              {document.size}
+            </span>
           </div>
         </div>
       </div>
@@ -263,10 +284,10 @@ function HistoryCard({ item }: { item: VisaHistoryItem }) {
         </div>
         <span
           className={cn(
-            'text-xs px-2 py-1 rounded-full font-medium',
-            item.status === 'completed'
-              ? 'bg-neutral-200 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-300'
-              : 'bg-neutral-300 text-neutral-800 dark:bg-neutral-600 dark:text-neutral-200'
+            "text-xs px-2 py-1 rounded-full font-medium",
+            item.status === "completed"
+              ? "bg-neutral-200 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-300"
+              : "bg-neutral-300 text-neutral-800 dark:bg-neutral-600 dark:text-neutral-200",
           )}
         >
           {item.status}

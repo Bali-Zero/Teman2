@@ -104,7 +104,7 @@ export interface PredictionResult {
  * Trend analysis result
  */
 export interface TrendAnalysis {
-  direction: 'up' | 'down' | 'stable';
+  direction: "up" | "down" | "stable";
   magnitude: number;
   period: string;
   dataPoints: number[];
@@ -145,7 +145,7 @@ export interface WorkloadPrediction {
  * Type guard for HistoricalData
  */
 export function isHistoricalData(value: unknown): value is HistoricalData {
-  if (typeof value !== 'object' || value === null) {
+  if (typeof value !== "object" || value === null) {
     return false;
   }
 
@@ -165,15 +165,15 @@ export function isHistoricalData(value: unknown): value is HistoricalData {
  * Type guard for CaseData
  */
 export function isCaseData(value: unknown): value is CaseData {
-  if (typeof value !== 'object' || value === null) {
+  if (typeof value !== "object" || value === null) {
     return false;
   }
 
   const data = value as Record<string, unknown>;
   return (
-    (typeof data.id === 'string' || typeof data.id === 'number') &&
-    typeof data.status === 'string' &&
-    typeof data.created_at === 'string'
+    (typeof data.id === "string" || typeof data.id === "number") &&
+    typeof data.status === "string" &&
+    typeof data.created_at === "string"
   );
 }
 
@@ -181,10 +181,10 @@ export function isCaseData(value: unknown): value is CaseData {
  * Type guard for RevenueData
  */
 export function isRevenueData(value: unknown): value is RevenueData {
-  if (typeof value !== 'object' || value === null) {
+  if (typeof value !== "object" || value === null) {
     return false;
   }
 
   const data = value as Record<string, unknown>;
-  return typeof data.date === 'string' && typeof data.amount === 'number';
+  return typeof data.date === "string" && typeof data.amount === "number";
 }

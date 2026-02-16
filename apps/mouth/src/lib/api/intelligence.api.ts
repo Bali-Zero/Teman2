@@ -1,14 +1,14 @@
-import { api } from '@/lib/api';
-import { logger } from '@/lib/logger';
+import { api } from "@/lib/api";
+import { logger } from "@/lib/logger";
 
 export interface StagingItem {
   id: string;
-  type: 'visa' | 'news';
+  type: "visa" | "news";
   title: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: "pending" | "approved" | "rejected";
   detected_at: string;
   source: string;
-  detection_type: 'NEW' | 'UPDATED';
+  detection_type: "NEW" | "UPDATED";
   content?: string;
   is_critical?: boolean;
   cover_image?: string; // Optional for tests
@@ -38,11 +38,11 @@ export interface PublishResponse {
 }
 
 export interface SystemMetrics {
-  agent_status: 'active' | 'idle' | 'error';
+  agent_status: "active" | "idle" | "error";
   last_run: string | null;
   items_processed_today: number;
   avg_response_time_ms: number;
-  qdrant_health: 'healthy' | 'degraded' | 'down';
+  qdrant_health: "healthy" | "degraded" | "down";
   next_scheduled_run: string | null;
   uptime_percentage: number;
 }
@@ -77,7 +77,12 @@ export interface IntelligenceAnalytics {
   }>;
   type_breakdown: {
     visa: { processed: number; approved: number; rejected: number };
-    news: { processed: number; approved: number; rejected: number; published: number };
+    news: {
+      processed: number;
+      approved: number;
+      rejected: number;
+      published: number;
+    };
   };
   detection_type_breakdown: {
     NEW: number;
@@ -89,24 +94,30 @@ export const intelligenceApi = {
   /**
    * Get pending items from staging
    */
-  getPendingItems: async (type: 'all' | 'visa' | 'news' = 'all'): Promise<StagingResponse> => {
+  getPendingItems: async (
+    type: "all" | "visa" | "news" = "all",
+  ): Promise<StagingResponse> => {
     const endpoint = `/api/intel/staging/pending?type=${type}`;
     const startTime = performance.now();
 
-    logger.apiCall(endpoint, 'GET', { itemType: type === 'all' ? undefined : type });
+    logger.apiCall(endpoint, "GET", {
+      itemType: type === "all" ? undefined : type,
+    });
 
     try {
       const response = await api.request<StagingResponse>(endpoint);
       const responseTime = performance.now() - startTime;
 
       logger.apiSuccess(endpoint, responseTime, {
-        itemType: type === 'all' ? undefined : type,
+        itemType: type === "all" ? undefined : type,
         metadata: { count: response.count },
       });
 
       return response;
     } catch (error) {
-      logger.apiError(endpoint, error as Error, { itemType: type === 'all' ? undefined : type });
+      logger.apiError(endpoint, error as Error, {
+        itemType: type === "all" ? undefined : type,
+      });
       throw error;
     }
   },
@@ -114,11 +125,14 @@ export const intelligenceApi = {
   /**
    * Get preview of staging item (full content)
    */
-  getPreview: async (type: 'visa' | 'news', id: string): Promise<StagingItem> => {
+  getPreview: async (
+    type: "visa" | "news",
+    id: string,
+  ): Promise<StagingItem> => {
     const endpoint = `/api/intel/staging/preview/${type}/${id}`;
     const startTime = performance.now();
 
-    logger.apiCall(endpoint, 'GET', { itemType: type, itemId: id });
+    logger.apiCall(endpoint, "GET", { itemType: type, itemId: id });
 
     try {
       const response = await api.request<StagingItem>(endpoint);
@@ -140,28 +154,41 @@ export const intelligenceApi = {
   /**
    * Approve item and ingest to Qdrant
    */
-  approveItem: async (type: 'visa' | 'news', id: string): Promise<ApproveResponse> => {
+  approveItem: async (
+    type: "visa" | "news",
+    id: string,
+  ): Promise<ApproveResponse> => {
     const endpoint = `/api/intel/staging/approve/${type}/${id}`;
     const startTime = performance.now();
 
-    logger.apiCall(endpoint, 'POST', { itemType: type, itemId: id, action: 'approve' });
+    logger.apiCall(endpoint, "POST", {
+      itemType: type,
+      itemId: id,
+      action: "approve",
+    });
 
     try {
-      const response = await api.request<ApproveResponse>(endpoint, { method: 'POST' });
+      const response = await api.request<ApproveResponse>(endpoint, {
+        method: "POST",
+      });
       const responseTime = performance.now() - startTime;
 
       logger.apiSuccess(endpoint, responseTime, {
         itemType: type,
         itemId: id,
-        action: 'approve',
+        action: "approve",
         metadata: { success: response.success },
       });
 
-      logger.userAction('approve_item', type, id);
+      logger.userAction("approve_item", type, id);
 
       return response;
     } catch (error) {
-      logger.apiError(endpoint, error as Error, { itemType: type, itemId: id, action: 'approve' });
+      logger.apiError(endpoint, error as Error, {
+        itemType: type,
+        itemId: id,
+        action: "approve",
+      });
       throw error;
     }
   },
@@ -169,28 +196,41 @@ export const intelligenceApi = {
   /**
    * Reject item and archive
    */
-  rejectItem: async (type: 'visa' | 'news', id: string): Promise<ApproveResponse> => {
+  rejectItem: async (
+    type: "visa" | "news",
+    id: string,
+  ): Promise<ApproveResponse> => {
     const endpoint = `/api/intel/staging/reject/${type}/${id}`;
     const startTime = performance.now();
 
-    logger.apiCall(endpoint, 'POST', { itemType: type, itemId: id, action: 'reject' });
+    logger.apiCall(endpoint, "POST", {
+      itemType: type,
+      itemId: id,
+      action: "reject",
+    });
 
     try {
-      const response = await api.request<ApproveResponse>(endpoint, { method: 'POST' });
+      const response = await api.request<ApproveResponse>(endpoint, {
+        method: "POST",
+      });
       const responseTime = performance.now() - startTime;
 
       logger.apiSuccess(endpoint, responseTime, {
         itemType: type,
         itemId: id,
-        action: 'reject',
+        action: "reject",
         metadata: { success: response.success },
       });
 
-      logger.userAction('reject_item', type, id);
+      logger.userAction("reject_item", type, id);
 
       return response;
     } catch (error) {
-      logger.apiError(endpoint, error as Error, { itemType: type, itemId: id, action: 'reject' });
+      logger.apiError(endpoint, error as Error, {
+        itemType: type,
+        itemId: id,
+        action: "reject",
+      });
       throw error;
     }
   },
@@ -198,20 +238,29 @@ export const intelligenceApi = {
   /**
    * Publish item to knowledge base and register in anti-duplicate system
    */
-  publishItem: async (type: 'visa' | 'news', id: string): Promise<PublishResponse> => {
+  publishItem: async (
+    type: "visa" | "news",
+    id: string,
+  ): Promise<PublishResponse> => {
     const endpoint = `/api/intel/staging/publish/${type}/${id}`;
     const startTime = performance.now();
 
-    logger.apiCall(endpoint, 'POST', { itemType: type, itemId: id, action: 'publish' });
+    logger.apiCall(endpoint, "POST", {
+      itemType: type,
+      itemId: id,
+      action: "publish",
+    });
 
     try {
-      const response = await api.request<PublishResponse>(endpoint, { method: 'POST' });
+      const response = await api.request<PublishResponse>(endpoint, {
+        method: "POST",
+      });
       const responseTime = performance.now() - startTime;
 
       logger.apiSuccess(endpoint, responseTime, {
         itemType: type,
         itemId: id,
-        action: 'publish',
+        action: "publish",
         metadata: {
           success: response.success,
           published_url: response.published_url,
@@ -219,11 +268,15 @@ export const intelligenceApi = {
         },
       });
 
-      logger.userAction('publish_item', type, id);
+      logger.userAction("publish_item", type, id);
 
       return response;
     } catch (error) {
-      logger.apiError(endpoint, error as Error, { itemType: type, itemId: id, action: 'publish' });
+      logger.apiError(endpoint, error as Error, {
+        itemType: type,
+        itemId: id,
+        action: "publish",
+      });
       throw error;
     }
   },
@@ -235,14 +288,14 @@ export const intelligenceApi = {
     const endpoint = `/api/intel/metrics`;
     const startTime = performance.now();
 
-    logger.apiCall(endpoint, 'GET', { action: 'get_metrics' });
+    logger.apiCall(endpoint, "GET", { action: "get_metrics" });
 
     try {
       const response = await api.request<SystemMetrics>(endpoint);
       const responseTime = performance.now() - startTime;
 
       logger.apiSuccess(endpoint, responseTime, {
-        action: 'get_metrics',
+        action: "get_metrics",
         metadata: {
           agent_status: response.agent_status,
           qdrant_health: response.qdrant_health,
@@ -252,7 +305,7 @@ export const intelligenceApi = {
 
       return response;
     } catch (error) {
-      logger.apiError(endpoint, error as Error, { action: 'get_metrics' });
+      logger.apiError(endpoint, error as Error, { action: "get_metrics" });
       throw error;
     }
   },
@@ -264,14 +317,17 @@ export const intelligenceApi = {
     const endpoint = `/api/intel/analytics?days=${days}`;
     const startTime = performance.now();
 
-    logger.apiCall(endpoint, 'GET', { action: 'get_analytics', metadata: { days } });
+    logger.apiCall(endpoint, "GET", {
+      action: "get_analytics",
+      metadata: { days },
+    });
 
     try {
       const response = await api.request<IntelligenceAnalytics>(endpoint);
       const responseTime = performance.now() - startTime;
 
       logger.apiSuccess(endpoint, responseTime, {
-        action: 'get_analytics',
+        action: "get_analytics",
         metadata: {
           days,
           total_processed: response.summary.total_processed,
@@ -281,7 +337,10 @@ export const intelligenceApi = {
 
       return response;
     } catch (error) {
-      logger.apiError(endpoint, error as Error, { action: 'get_analytics', metadata: { days } });
+      logger.apiError(endpoint, error as Error, {
+        action: "get_analytics",
+        metadata: { days },
+      });
       throw error;
     }
   },
@@ -290,9 +349,9 @@ export const intelligenceApi = {
    * Edit staging item (title, content, category)
    */
   editItem: async (
-    type: 'visa' | 'news',
+    type: "visa" | "news",
     id: string,
-    updates: EditStagingItemRequest
+    updates: EditStagingItemRequest,
   ): Promise<{
     success: boolean;
     message: string;
@@ -302,7 +361,11 @@ export const intelligenceApi = {
     const endpoint = `/api/intel/staging/${type}/${id}`;
     const startTime = performance.now();
 
-    logger.apiCall(endpoint, 'PUT', { itemType: type, itemId: id, action: 'edit' });
+    logger.apiCall(endpoint, "PUT", {
+      itemType: type,
+      itemId: id,
+      action: "edit",
+    });
 
     try {
       const response = await api.request<{
@@ -311,7 +374,7 @@ export const intelligenceApi = {
         id: string;
         updated_fields: Record<string, unknown>;
       }>(endpoint, {
-        method: 'PUT',
+        method: "PUT",
         body: JSON.stringify(updates),
       });
       const responseTime = performance.now() - startTime;
@@ -319,15 +382,19 @@ export const intelligenceApi = {
       logger.apiSuccess(endpoint, responseTime, {
         itemType: type,
         itemId: id,
-        action: 'edit',
+        action: "edit",
         metadata: { success: response.success },
       });
 
-      logger.userAction('edit_item', type, id);
+      logger.userAction("edit_item", type, id);
 
       return response;
     } catch (error) {
-      logger.apiError(endpoint, error as Error, { itemType: type, itemId: id, action: 'edit' });
+      logger.apiError(endpoint, error as Error, {
+        itemType: type,
+        itemId: id,
+        action: "edit",
+      });
       throw error;
     }
   },
@@ -336,10 +403,10 @@ export const intelligenceApi = {
    * Upload cover image for staging item
    */
   uploadCoverImage: async (
-    type: 'visa' | 'news',
+    type: "visa" | "news",
     id: string,
     base64: string,
-    filename?: string
+    filename?: string,
   ): Promise<{
     success: boolean;
     message: string;
@@ -350,7 +417,11 @@ export const intelligenceApi = {
     const endpoint = `/api/intel/staging/${type}/${id}/cover`;
     const startTime = performance.now();
 
-    logger.apiCall(endpoint, 'POST', { itemType: type, itemId: id, action: 'upload_cover' });
+    logger.apiCall(endpoint, "POST", {
+      itemType: type,
+      itemId: id,
+      action: "upload_cover",
+    });
 
     try {
       const response = await api.request<{
@@ -360,7 +431,7 @@ export const intelligenceApi = {
         cover_image_path: string;
         cover_image_url: string;
       }>(endpoint, {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify({
           cover_image_base64: base64,
           cover_image_filename: filename,
@@ -371,18 +442,18 @@ export const intelligenceApi = {
       logger.apiSuccess(endpoint, responseTime, {
         itemType: type,
         itemId: id,
-        action: 'upload_cover',
+        action: "upload_cover",
         metadata: { success: response.success },
       });
 
-      logger.userAction('upload_cover_image', type, id);
+      logger.userAction("upload_cover_image", type, id);
 
       return response;
     } catch (error) {
       logger.apiError(endpoint, error as Error, {
         itemType: type,
         itemId: id,
-        action: 'upload_cover',
+        action: "upload_cover",
       });
       throw error;
     }

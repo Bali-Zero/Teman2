@@ -77,8 +77,8 @@ import {
   JourneyMap,
   InfoCard,
   Checklist,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # VAT (PPN) in Indonesia 2026: Complete Business Guide
 
@@ -94,6 +94,7 @@ L'IVA indonesiana è ufficialmente al **12%** dal 1 gennaio 2025. Tuttavia, graz
 - **Tutte le fatture (Faktur Pajak)** devono essere emesse tramite **Coretax/e-Faktur**
 
 **Nota Importante**: Questa struttura è stata implementata per minimizzare l'impatto sui consumatori mantenendo formalmente l'aliquota del 12% prevista dalla legge.
+
 </InfoCard>
 
 ## VAT Rates
@@ -106,39 +107,39 @@ L'IVA indonesiana è ufficialmente al **12%** dal 1 gennaio 2025. Tuttavia, graz
       name: "Standard Rate (Effective)",
       subtitle: "Maggior parte beni/servizi",
       values: {
-        "Rate": "11% effettivo",
-        "Nominale": "12% con DPP Nilai Lain",
-        "Applies To": "Transazioni generali"
+        Rate: "11% effettivo",
+        Nominale: "12% con DPP Nilai Lain",
+        "Applies To": "Transazioni generali",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "Luxury Goods Rate",
       subtitle: "Beni di lusso",
       values: {
-        "Rate": "12% pieno",
-        "Nominale": "Senza DPP Nilai Lain",
-        "Applies To": "Beni considerati lusso"
-      }
+        Rate: "12% pieno",
+        Nominale: "Senza DPP Nilai Lain",
+        "Applies To": "Beni considerati lusso",
+      },
     },
     {
       name: "Export Rate",
       subtitle: "Export of goods",
       values: {
-        "Rate": "0%",
-        "Nominale": "Zero-rated",
-        "Applies To": "Exported goods"
-      }
+        Rate: "0%",
+        Nominale: "Zero-rated",
+        "Applies To": "Exported goods",
+      },
     },
     {
       name: "Certain Services",
       subtitle: "Some services abroad",
       values: {
-        "Rate": "0%",
-        "Nominale": "Zero-rated",
-        "Applies To": "Exported services"
-      }
-    }
+        Rate: "0%",
+        Nominale: "Zero-rated",
+        "Applies To": "Exported services",
+      },
+    },
   ]}
 />
 
@@ -155,11 +156,12 @@ You must register as **PKP (Pengusaha Kena Pajak)** if:
 - Or you **voluntarily register**
 
 As PKP, you must:
+
 - Charge VAT on sales
 - Issue tax invoices (Faktur Pajak)
 - File monthly VAT returns
 - Can claim input VAT credits
-</InfoCard>
+  </InfoCard>
 
 ### Registration Process
 
@@ -180,8 +182,8 @@ As PKP, you must:
         "Articles of Association",
         "Directors' ID",
         "Office lease agreement",
-        "Sample transactions"
-      ]
+        "Sample transactions",
+      ],
     },
     {
       id: "apply",
@@ -192,8 +194,8 @@ As PKP, you must:
       tips: [
         "Can be done online via DJP",
         "Or visit tax office",
-        "Complete PKP application form"
-      ]
+        "Complete PKP application form",
+      ],
     },
     {
       id: "verify",
@@ -204,8 +206,8 @@ As PKP, you must:
       tips: [
         "Tax officer visits office",
         "Verifies address and business",
-        "Reviews documentation"
-      ]
+        "Reviews documentation",
+      ],
     },
     {
       id: "certificate",
@@ -216,9 +218,9 @@ As PKP, you must:
       tips: [
         "PKP certificate issued",
         "Can start issuing tax invoices",
-        "Monthly filing obligations begin"
-      ]
-    }
+        "Monthly filing obligations begin",
+      ],
+    },
   ]}
 />
 
@@ -276,7 +278,8 @@ As PKP, you must:
       currency: "IDR",
       note: "Rate: 11% (standard)"
     };
-  }}
+
+}}
 />
 
 ---
@@ -293,20 +296,20 @@ All VAT-registered businesses must use the **e-Faktur** electronic invoicing sys
 - Issue all invoices electronically
 - Upload to DJP system
 - Input VAT credits electronically
-</InfoCard>
+  </InfoCard>
 
 ### Faktur Pajak Contents
 
-| Required Field | Description |
-|----------------|-------------|
-| Seller NPWP | Your tax number |
-| Buyer NPWP | Customer tax number |
-| Invoice number | Sequential, system-generated |
-| Transaction date | Date of supply |
-| Description | Goods/services detail |
-| DPP | Tax base (price before VAT) |
-| PPN | VAT amount |
-| Digital signature | Electronic verification |
+| Required Field    | Description                  |
+| ----------------- | ---------------------------- |
+| Seller NPWP       | Your tax number              |
+| Buyer NPWP        | Customer tax number          |
+| Invoice number    | Sequential, system-generated |
+| Transaction date  | Date of supply               |
+| Description       | Goods/services detail        |
+| DPP               | Tax base (price before VAT)  |
+| PPN               | VAT amount                   |
+| Digital signature | Electronic verification      |
 
 ---
 
@@ -314,20 +317,20 @@ All VAT-registered businesses must use the **e-Faktur** electronic invoicing sys
 
 ### How VAT Credits Work
 
-| Transaction | VAT Type | Treatment |
-|-------------|----------|-----------|
-| Sales to customers | Output VAT | Collect and remit |
-| Purchases from suppliers | Input VAT | Claim as credit |
-| Net position | Difference | Pay if output > input |
-| Net credit | Difference | Carry forward or refund |
+| Transaction              | VAT Type   | Treatment               |
+| ------------------------ | ---------- | ----------------------- |
+| Sales to customers       | Output VAT | Collect and remit       |
+| Purchases from suppliers | Input VAT  | Claim as credit         |
+| Net position             | Difference | Pay if output > input   |
+| Net credit               | Difference | Carry forward or refund |
 
 ### Example Monthly Calculation
 
-| Description | Amount |
-|-------------|--------|
-| Output VAT (sales) | IDR 110M |
-| Input VAT (purchases) | IDR 55M |
-| Net VAT payable | IDR 55M |
+| Description           | Amount   |
+| --------------------- | -------- |
+| Output VAT (sales)    | IDR 110M |
+| Input VAT (purchases) | IDR 55M  |
+| Net VAT payable       | IDR 55M  |
 
 ---
 
@@ -341,44 +344,45 @@ All VAT-registered businesses must use the **e-Faktur** electronic invoicing sys
       name: "Standard Rated",
       subtitle: "Most transactions",
       values: {
-        "Rate": "11%",
+        Rate: "11%",
         "Input Credit": "Yes",
-        "Example": "Most goods/services"
-      }
+        Example: "Most goods/services",
+      },
     },
     {
       name: "Zero-Rated",
       subtitle: "Exports",
       values: {
-        "Rate": "0%",
+        Rate: "0%",
         "Input Credit": "Yes",
-        "Example": "Export of goods"
-      }
+        Example: "Export of goods",
+      },
     },
     {
       name: "Exempt",
       subtitle: "Specific items",
       values: {
-        "Rate": "N/A",
+        Rate: "N/A",
         "Input Credit": "No",
-        "Example": "Basic necessities"
-      }
+        Example: "Basic necessities",
+      },
     },
     {
       name: "Non-VATable",
       subtitle: "Outside VAT",
       values: {
-        "Rate": "N/A",
+        Rate: "N/A",
         "Input Credit": "No",
-        "Example": "Small businesses"
-      }
-    }
+        Example: "Small businesses",
+      },
+    },
   ]}
 />
 
 ### VAT Exempt Items
 
 Some goods and services are VAT exempt:
+
 - Basic necessities (certain food items)
 - Health services
 - Education services
@@ -402,43 +406,43 @@ Some goods and services are VAT exempt:
       label: "Output tax invoices",
       description: "All sales invoices issued",
       required: true,
-      category: "output"
+      category: "output",
     },
     {
       id: "invoices-in",
       label: "Input tax invoices",
       description: "Purchase invoices for credit",
       required: true,
-      category: "input"
+      category: "input",
     },
     {
       id: "efaktur",
       label: "E-Faktur upload",
       description: "All invoices in system",
       required: true,
-      category: "system"
+      category: "system",
     },
     {
       id: "reconcile",
       label: "Reconciliation",
       description: "Match to accounting records",
       required: true,
-      category: "review"
+      category: "review",
     },
     {
       id: "file",
       label: "File SPT Masa PPN",
       description: "Submit return online",
       required: true,
-      category: "filing"
+      category: "filing",
     },
     {
       id: "pay",
       label: "Pay VAT due",
       description: "If output exceeds input",
       required: true,
-      category: "payment"
-    }
+      category: "payment",
+    },
   ]}
   categories={[
     { id: "output", label: "Output", color: "blue" },
@@ -446,7 +450,7 @@ Some goods and services are VAT exempt:
     { id: "system", label: "System", color: "amber" },
     { id: "review", label: "Review", color: "purple" },
     { id: "filing", label: "Filing", color: "red" },
-    { id: "payment", label: "Payment", color: "cyan" }
+    { id: "payment", label: "Payment", color: "cyan" },
   ]}
   showProgress={true}
 />
@@ -463,13 +467,13 @@ Some goods and services are VAT exempt:
 
 ### VAT Problems to Avoid
 
-| Issue | Consequence |
-|-------|-------------|
-| Late filing | IDR 500K penalty |
-| Incorrect invoices | Credits disallowed |
-| Missing invoices | Unable to claim credits |
-| Wrong NPWP | Invoice rejected |
-| Late payment | Interest penalties |
+| Issue              | Consequence             |
+| ------------------ | ----------------------- |
+| Late filing        | IDR 500K penalty        |
+| Incorrect invoices | Credits disallowed      |
+| Missing invoices   | Unable to claim credits |
+| Wrong NPWP         | Invoice rejected        |
+| Late payment       | Interest penalties      |
 
 ### Input VAT Credit Rules
 
@@ -481,7 +485,7 @@ Not all input VAT is creditable. Credits are **denied** for:
 - Purchases without valid tax invoice
 - Purchases from non-PKP suppliers
 - Luxury goods (cars, etc.)
-</InfoCard>
+  </InfoCard>
 
 ---
 
@@ -511,7 +515,7 @@ Not all input VAT is creditable. Credits are **denied** for:
     "When do I need to register for VAT?",
     "How do I issue e-Faktur?",
     "Can I claim input VAT on rent?",
-    "What's the VAT filing deadline?"
+    "What's the VAT filing deadline?",
   ]}
 />
 

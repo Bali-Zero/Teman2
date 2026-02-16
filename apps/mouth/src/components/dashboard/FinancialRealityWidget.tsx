@@ -1,7 +1,13 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { TrendingUp, TrendingDown, DollarSign, CreditCard, AlertCircle } from 'lucide-react';
+import React from "react";
+import {
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  CreditCard,
+  AlertCircle,
+} from "lucide-react";
 
 interface FinancialRealityWidgetProps {
   revenue: {
@@ -12,24 +18,29 @@ interface FinancialRealityWidgetProps {
   growth: number;
 }
 
-export function FinancialRealityWidget({ revenue, growth }: Readonly<FinancialRealityWidgetProps>) {
+export function FinancialRealityWidget({
+  revenue,
+  growth,
+}: Readonly<FinancialRealityWidgetProps>) {
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
   };
 
   const formatPercentage = (value: number) => {
-    const sign = value >= 0 ? '+' : '';
+    const sign = value >= 0 ? "+" : "";
     return `${sign}${value.toFixed(1)}%`;
   };
 
   const isPositiveGrowth = growth >= 0;
   const paidPercentage =
-    revenue.total_revenue > 0 ? (revenue.paid_revenue / revenue.total_revenue) * 100 : 0;
+    revenue.total_revenue > 0
+      ? (revenue.paid_revenue / revenue.total_revenue) * 100
+      : 0;
   const progressWidthPercent = Math.min(paidPercentage, 100);
 
   return (
@@ -39,14 +50,16 @@ export function FinancialRealityWidget({ revenue, growth }: Readonly<FinancialRe
           Financial Reality
         </h3>
         <div
-          className={`flex items-center gap-1 ${isPositiveGrowth ? 'text-green-400' : 'text-red-400'}`}
+          className={`flex items-center gap-1 ${isPositiveGrowth ? "text-green-400" : "text-red-400"}`}
         >
           {isPositiveGrowth ? (
             <TrendingUp className="w-4 h-4" />
           ) : (
             <TrendingDown className="w-4 h-4" />
           )}
-          <span className="text-xs font-medium">{formatPercentage(growth)}</span>
+          <span className="text-xs font-medium">
+            {formatPercentage(growth)}
+          </span>
         </div>
       </div>
 
@@ -79,14 +92,18 @@ export function FinancialRealityWidget({ revenue, growth }: Readonly<FinancialRe
               data-width={`${progressWidthPercent}%`}
             />
           </div>
-          <p className="text-xs text-white/60 mt-1">{paidPercentage.toFixed(1)}% collected</p>
+          <p className="text-xs text-white/60 mt-1">
+            {paidPercentage.toFixed(1)}% collected
+          </p>
         </div>
 
         {revenue.outstanding_revenue > 0 && (
           <div className="flex items-start gap-2 p-3 rounded bg-yellow-500/10 border border-yellow-500/20">
             <AlertCircle className="w-4 h-4 text-yellow-500 mt-0.5 flex-shrink-0" />
             <div className="flex-1">
-              <p className="text-xs font-medium text-yellow-500/90 mb-1">Outstanding</p>
+              <p className="text-xs font-medium text-yellow-500/90 mb-1">
+                Outstanding
+              </p>
               <p className="text-sm font-semibold text-yellow-400">
                 {formatCurrency(revenue.outstanding_revenue)}
               </p>

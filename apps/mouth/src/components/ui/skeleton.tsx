@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { cn } from '@/lib/utils';
+import { cn } from "@/lib/utils";
 
 interface SkeletonProps {
   className?: string;
-  variant?: 'text' | 'circular' | 'rectangular' | 'rounded';
+  variant?: "text" | "circular" | "rectangular" | "rounded";
   width?: string | number;
   height?: string | number;
   lines?: number;
@@ -16,23 +16,23 @@ interface SkeletonProps {
  */
 export function Skeleton({
   className,
-  variant = 'rectangular',
+  variant = "rectangular",
   width,
   height,
   lines = 1,
 }: SkeletonProps) {
-  const baseStyles = 'skeleton';
+  const baseStyles = "skeleton";
 
   const variantStyles = {
-    text: 'h-4 rounded',
-    circular: 'rounded-full',
-    rectangular: 'rounded-none',
-    rounded: 'rounded-lg',
+    text: "h-4 rounded",
+    circular: "rounded-full",
+    rectangular: "rounded-none",
+    rounded: "rounded-lg",
   };
 
   const style: React.CSSProperties = {
-    width: typeof width === 'number' ? `${width}px` : width,
-    height: typeof height === 'number' ? `${height}px` : height,
+    width: typeof width === "number" ? `${width}px` : width,
+    height: typeof height === "number" ? `${height}px` : height,
   };
 
   if (lines > 1) {
@@ -44,7 +44,7 @@ export function Skeleton({
             className={cn(baseStyles, variantStyles[variant], className)}
             style={{
               ...style,
-              width: i === lines - 1 ? '75%' : style.width, // Last line shorter
+              width: i === lines - 1 ? "75%" : style.width, // Last line shorter
             }}
           />
         ))}
@@ -52,27 +52,46 @@ export function Skeleton({
     );
   }
 
-  return <div className={cn(baseStyles, variantStyles[variant], className)} style={style} />;
+  return (
+    <div
+      className={cn(baseStyles, variantStyles[variant], className)}
+      style={style}
+    />
+  );
 }
 
 /**
  * Skeleton for message bubbles in chat
  */
-export function MessageBubbleSkeleton({ isUser = false }: { isUser?: boolean }) {
+export function MessageBubbleSkeleton({
+  isUser = false,
+}: {
+  isUser?: boolean;
+}) {
   return (
-    <div className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'} mb-6`}>
-      <div className={`flex max-w-[75%] gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+    <div
+      className={`flex w-full ${isUser ? "justify-end" : "justify-start"} mb-6`}
+    >
+      <div
+        className={`flex max-w-[75%] gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}
+      >
         {/* Avatar skeleton */}
-        <Skeleton variant="circular" width={isUser ? 40 : 56} height={isUser ? 40 : 56} />
+        <Skeleton
+          variant="circular"
+          width={isUser ? 40 : 56}
+          height={isUser ? 40 : 56}
+        />
 
         {/* Content skeleton */}
-        <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} min-w-0 flex-1`}>
+        <div
+          className={`flex flex-col ${isUser ? "items-end" : "items-start"} min-w-0 flex-1`}
+        >
           <div
             className={cn(
-              'px-5 py-4 rounded-2xl w-full max-w-md',
+              "px-5 py-4 rounded-2xl w-full max-w-md",
               isUser
-                ? 'bg-[var(--background-secondary)] rounded-tr-sm'
-                : 'bg-[var(--background-elevated)] rounded-tl-sm border border-[var(--border)]/50'
+                ? "bg-[var(--background-secondary)] rounded-tr-sm"
+                : "bg-[var(--background-elevated)] rounded-tl-sm border border-[var(--border)]/50",
             )}
           >
             {/* Header badges (AI only) */}
@@ -84,7 +103,11 @@ export function MessageBubbleSkeleton({ isUser = false }: { isUser?: boolean }) 
             )}
 
             {/* Message lines */}
-            <Skeleton variant="text" lines={isUser ? 1 : 3} className="w-full" />
+            <Skeleton
+              variant="text"
+              lines={isUser ? 1 : 3}
+              className="w-full"
+            />
           </div>
 
           {/* Timestamp skeleton */}
@@ -184,7 +207,11 @@ export function TableRowSkeleton({ columns = 4 }: { columns?: number }) {
     <tr className="border-b border-[var(--border)]">
       {Array.from({ length: columns }).map((_, i) => (
         <td key={i} className="p-4">
-          <Skeleton variant="text" width={i === 0 ? '60%' : '80%'} height={16} />
+          <Skeleton
+            variant="text"
+            width={i === 0 ? "60%" : "80%"}
+            height={16}
+          />
         </td>
       ))}
     </tr>

@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { TypeAnimation } from 'react-type-animation';
-import { cn } from '@/lib/utils';
+import React from "react";
+import { TypeAnimation } from "react-type-animation";
+import { cn } from "@/lib/utils";
 
 interface TypewriterProps {
   /** Array of strings to type, or sequence with delays */
@@ -14,7 +14,7 @@ interface TypewriterProps {
   /** Custom cursor character */
   cursor?: boolean;
   /** Wrapper element type */
-  wrapper?: 'span' | 'div' | 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
+  wrapper?: "span" | "div" | "p" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
   /** CSS class name */
   className?: string;
   /** Custom styles */
@@ -40,7 +40,7 @@ export function Typewriter({
   speed = 50,
   repeat = Infinity,
   cursor = true,
-  wrapper = 'span',
+  wrapper = "span",
   className,
   style,
 }: TypewriterProps) {
@@ -53,7 +53,7 @@ export function Typewriter({
       wrapper={wrapper}
       className={cn(className)}
       style={{
-        display: 'inline-block',
+        display: "inline-block",
         ...style,
       }}
     />
@@ -71,7 +71,7 @@ interface TypewriterHeadingProps {
   /** Pause between words in ms */
   pauseTime?: number;
   /** Heading level */
-  as?: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
+  as?: "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
   /** CSS class name */
   className?: string;
   /** Class for the animated part */
@@ -79,10 +79,10 @@ interface TypewriterHeadingProps {
 }
 
 export function TypewriterHeading({
-  prefix = '',
+  prefix = "",
   words,
   pauseTime = 2000,
-  as: Component = 'h1',
+  as: Component = "h1",
   className,
   highlightClassName,
 }: TypewriterHeadingProps) {
@@ -92,7 +92,7 @@ export function TypewriterHeading({
   return (
     <Component className={cn(className)}>
       {prefix && <span>{prefix} </span>}
-      <span className={cn('text-gradient', highlightClassName)}>
+      <span className={cn("text-gradient", highlightClassName)}>
         <Typewriter sequence={sequence} />
       </span>
     </Component>
@@ -111,16 +111,22 @@ interface TypewriterCodeProps {
   className?: string;
 }
 
-export function TypewriterCode({ code, language = 'typescript', className }: TypewriterCodeProps) {
+export function TypewriterCode({
+  code,
+  language = "typescript",
+  className,
+}: TypewriterCodeProps) {
   return (
     <div
       className={cn(
-        'rounded-lg bg-[var(--background-secondary)] border border-[var(--border)] p-4 overflow-x-auto',
-        className
+        "rounded-lg bg-[var(--background-secondary)] border border-[var(--border)] p-4 overflow-x-auto",
+        className,
       )}
     >
       {language && (
-        <div className="text-xs text-[var(--foreground-muted)] mb-2 font-mono">{language}</div>
+        <div className="text-xs text-[var(--foreground-muted)] mb-2 font-mono">
+          {language}
+        </div>
       )}
       <pre className="font-mono text-sm text-[var(--foreground)]">
         <TypeAnimation
@@ -128,7 +134,7 @@ export function TypewriterCode({ code, language = 'typescript', className }: Typ
           speed={40}
           repeat={0}
           cursor={true}
-          style={{ display: 'block', whiteSpace: 'pre-wrap' }}
+          style={{ display: "block", whiteSpace: "pre-wrap" }}
         />
       </pre>
     </div>

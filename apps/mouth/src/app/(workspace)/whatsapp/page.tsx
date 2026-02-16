@@ -1,17 +1,22 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { api } from '@/lib/api';
-import { logger } from '@/lib/logger';
-import { WhatsAppList, WhatsAppViewer } from '@/components/whatsapp';
-import type { WhatsAppConversation, WhatsAppMessage } from '@/lib/api/whatsapp/whatsapp.types';
-import type { Client } from '@/lib/api/crm/crm.types';
+import React, { useState, useEffect, useCallback } from "react";
+import { Plus, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
+import { logger } from "@/lib/logger";
+import { WhatsAppList, WhatsAppViewer } from "@/components/whatsapp";
+import type {
+  WhatsAppConversation,
+  WhatsAppMessage,
+} from "@/lib/api/whatsapp/whatsapp.types";
+import type { Client } from "@/lib/api/crm/crm.types";
 
 export default function WhatsAppPage() {
   // Conversations state
-  const [conversations, setConversations] = useState<WhatsAppConversation[]>([]);
+  const [conversations, setConversations] = useState<WhatsAppConversation[]>(
+    [],
+  );
   const [selectedPhone, setSelectedPhone] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isLoadingConversations, setIsLoadingConversations] = useState(true);
@@ -22,7 +27,7 @@ export default function WhatsAppPage() {
   const [client, setClient] = useState<Client | null>(null);
 
   // Search state
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Load conversations
   const loadConversations = useCallback(async () => {
@@ -31,7 +36,11 @@ export default function WhatsAppPage() {
       const convs = await api.whatsapp.getConversations({ limit: 50 });
       setConversations(convs);
     } catch (error) {
-      logger.error('Failed to load WhatsApp conversations:', {}, error as Error);
+      logger.error(
+        "Failed to load WhatsApp conversations:",
+        {},
+        error as Error,
+      );
     } finally {
       setIsLoadingConversations(false);
     }
@@ -46,12 +55,12 @@ export default function WhatsAppPage() {
         setMessages(msgs);
         // ... (client load logic)
       } catch (error) {
-        logger.error('Failed to load WhatsApp messages:', {}, error as Error);
+        logger.error("Failed to load WhatsApp messages:", {}, error as Error);
       } finally {
         setIsLoadingMessages(false);
       }
     },
-    [conversations]
+    [conversations],
   );
 
   // Load conversations on mount
@@ -108,11 +117,11 @@ export default function WhatsAppPage() {
         // Reload conversations to update last message
         await loadConversations();
       } catch (error) {
-        logger.error('Failed to send message:', {}, error as Error);
+        logger.error("Failed to send message:", {}, error as Error);
         throw error;
       }
     },
-    [selectedPhone, loadMessages, loadConversations]
+    [selectedPhone, loadMessages, loadConversations],
   );
 
   // Handle search
@@ -127,7 +136,9 @@ export default function WhatsAppPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-[var(--border)]">
           <div>
-            <h1 className="text-xl font-bold text-[var(--foreground)]">WhatsApp Business</h1>
+            <h1 className="text-xl font-bold text-[var(--foreground)]">
+              WhatsApp Business
+            </h1>
             <p className="text-sm text-[var(--foreground-muted)]">
               {conversations.length} conversations
             </p>

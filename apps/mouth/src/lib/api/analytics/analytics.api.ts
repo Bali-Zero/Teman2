@@ -13,7 +13,7 @@ import type {
   QdrantStats,
   FeedbackStats,
   AlertStats,
-} from './analytics.types';
+} from "./analytics.types";
 
 export class AnalyticsApi {
   private baseUrl: string;
@@ -28,15 +28,17 @@ export class AnalyticsApi {
     const token = this.getToken();
     const response = await fetch(`${this.baseUrl}/api/analytics${endpoint}`, {
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
-      credentials: 'include',
+      credentials: "include",
     });
 
     if (!response.ok) {
       if (response.status === 403) {
-        throw new Error('Access denied: Analytics is restricted to the Founder');
+        throw new Error(
+          "Access denied: Analytics is restricted to the Founder",
+        );
       }
       throw new Error(`Analytics API error: ${response.status}`);
     }
@@ -45,38 +47,38 @@ export class AnalyticsApi {
   }
 
   async getAll(): Promise<AllAnalytics> {
-    return this.fetch<AllAnalytics>('/all');
+    return this.fetch<AllAnalytics>("/all");
   }
 
   async getOverview(): Promise<OverviewStats> {
-    return this.fetch<OverviewStats>('/overview');
+    return this.fetch<OverviewStats>("/overview");
   }
 
   async getRAG(): Promise<RAGStats> {
-    return this.fetch<RAGStats>('/rag');
+    return this.fetch<RAGStats>("/rag");
   }
 
   async getCRM(): Promise<CRMStats> {
-    return this.fetch<CRMStats>('/crm');
+    return this.fetch<CRMStats>("/crm");
   }
 
   async getTeam(): Promise<TeamStats> {
-    return this.fetch<TeamStats>('/team');
+    return this.fetch<TeamStats>("/team");
   }
 
   async getSystem(): Promise<SystemStats> {
-    return this.fetch<SystemStats>('/system');
+    return this.fetch<SystemStats>("/system");
   }
 
   async getQdrant(): Promise<QdrantStats> {
-    return this.fetch<QdrantStats>('/qdrant');
+    return this.fetch<QdrantStats>("/qdrant");
   }
 
   async getFeedback(): Promise<FeedbackStats> {
-    return this.fetch<FeedbackStats>('/feedback');
+    return this.fetch<FeedbackStats>("/feedback");
   }
 
   async getAlerts(): Promise<AlertStats> {
-    return this.fetch<AlertStats>('/alerts');
+    return this.fetch<AlertStats>("/alerts");
   }
 }

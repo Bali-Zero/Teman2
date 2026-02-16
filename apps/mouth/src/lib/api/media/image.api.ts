@@ -1,4 +1,4 @@
-import type { IApiClient } from '../types/api-client.types';
+import type { IApiClient } from "../types/api-client.types";
 
 /**
  * Image generation API response
@@ -17,16 +17,16 @@ export class ImageApi {
 
   async generateImage(prompt: string): Promise<{ image_url: string }> {
     const response = await this.client.request<ImageGenerationResponse>(
-      '/api/v1/image/generate',
+      "/api/v1/image/generate",
       {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify({ prompt }),
       },
-      60000 // 60s timeout for AI generation
+      60000, // 60s timeout for AI generation
     );
 
     if (!response.success || !response.images || response.images.length === 0) {
-      throw new Error(response.error || 'Failed to generate image');
+      throw new Error(response.error || "Failed to generate image");
     }
 
     return { image_url: response.images[0] };

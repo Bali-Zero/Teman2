@@ -9,12 +9,16 @@
  *
  * @param schemas - Array of schema objects to inject as JSON-LD
  */
-export function SchemaInjector({ schemas }: { readonly schemas: readonly any[] }) {
+export function SchemaInjector({
+  schemas,
+}: {
+  readonly schemas: readonly any[];
+}) {
   return (
     <>
       {schemas.map((schema, index) => {
         // Generate unique ID based on schema type
-        const schemaType = schema['@type'] || 'schema';
+        const schemaType = schema["@type"] || "schema";
         const uniqueId = `${schemaType.toLowerCase()}-${index}`;
 
         return (

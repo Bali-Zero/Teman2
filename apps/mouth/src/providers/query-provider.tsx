@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { useState, ReactNode } from 'react';
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { useState, ReactNode } from "react";
 
 interface QueryProviderProps {
   children: ReactNode;
@@ -43,7 +43,8 @@ export function QueryProvider({ children }: QueryProviderProps) {
 
             // Retry failed requests 3 times with exponential backoff
             retry: 3,
-            retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+            retryDelay: (attemptIndex) =>
+              Math.min(1000 * 2 ** attemptIndex, 30000),
 
             // Don't retry on 401/403 errors
             retryOnMount: true,
@@ -61,14 +62,18 @@ export function QueryProvider({ children }: QueryProviderProps) {
             },
           },
         },
-      })
+      }),
   );
 
   return (
     <QueryClientProvider client={queryClient}>
       {children}
-      {process.env.NODE_ENV === 'development' && (
-        <ReactQueryDevtools initialIsOpen={false} position="bottom" buttonPosition="bottom-left" />
+      {process.env.NODE_ENV === "development" && (
+        <ReactQueryDevtools
+          initialIsOpen={false}
+          position="bottom"
+          buttonPosition="bottom-left"
+        />
       )}
     </QueryClientProvider>
   );

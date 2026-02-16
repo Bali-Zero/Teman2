@@ -75,8 +75,8 @@ import {
   ComparisonTable,
   InfoCard,
   Checklist,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Double Taxation Treaties Indonesia 2026: Complete Guide
 
@@ -94,6 +94,7 @@ A **Double Taxation Agreement (DTA)** or tax treaty is an agreement between two 
 - Enable tax information exchange
 
 Indonesia has DTAs with 70+ countries.
+
 </InfoCard>
 
 ---
@@ -110,8 +111,8 @@ Indonesia has DTAs with 70+ countries.
       values: {
         "Withholding Rate": "20%",
         "Example on IDR 1B": "IDR 200M tax",
-        "Relief": "None automatic"
-      }
+        Relief: "None automatic",
+      },
     },
     {
       name: "With Treaty (Singapore)",
@@ -119,10 +120,10 @@ Indonesia has DTAs with 70+ countries.
       values: {
         "Withholding Rate": "10-15%",
         "Example on IDR 1B": "IDR 100-150M tax",
-        "Relief": "Reduced rate"
+        Relief: "Reduced rate",
       },
-      highlight: true
-    }
+      highlight: true,
+    },
   ]}
 />
 
@@ -132,42 +133,42 @@ Indonesia has DTAs with 70+ countries.
 
 ### Selected Countries - Dividends
 
-| Country | Rate | Notes |
-|---------|------|-------|
-| Singapore | 10/15% | 10% if 25%+ ownership |
-| Japan | 10/15% | 10% if 25%+ ownership |
-| USA | 10/15% | 10% if 10%+ ownership |
-| UK | 10/15% | 10% if 10%+ ownership |
-| Australia | 15% | Standard |
+| Country     | Rate   | Notes                 |
+| ----------- | ------ | --------------------- |
+| Singapore   | 10/15% | 10% if 25%+ ownership |
+| Japan       | 10/15% | 10% if 25%+ ownership |
+| USA         | 10/15% | 10% if 10%+ ownership |
+| UK          | 10/15% | 10% if 10%+ ownership |
+| Australia   | 15%    | Standard              |
 | Netherlands | 10/15% | 10% if 25%+ ownership |
-| Germany | 10/15% | 10% if 25%+ ownership |
-| No Treaty | 20% | Default rate |
+| Germany     | 10/15% | 10% if 25%+ ownership |
+| No Treaty   | 20%    | Default rate          |
 
 ### Selected Countries - Interest
 
-| Country | Rate | Notes |
-|---------|------|-------|
-| Singapore | 10% | Reduced from 20% |
-| Japan | 10% | Reduced from 20% |
-| USA | 10% | Reduced from 20% |
-| UK | 10% | Reduced from 20% |
-| Australia | 10% | Reduced from 20% |
-| Netherlands | 10% | Reduced from 20% |
-| Germany | 10% | Reduced from 20% |
-| No Treaty | 20% | Default rate |
+| Country     | Rate | Notes            |
+| ----------- | ---- | ---------------- |
+| Singapore   | 10%  | Reduced from 20% |
+| Japan       | 10%  | Reduced from 20% |
+| USA         | 10%  | Reduced from 20% |
+| UK          | 10%  | Reduced from 20% |
+| Australia   | 10%  | Reduced from 20% |
+| Netherlands | 10%  | Reduced from 20% |
+| Germany     | 10%  | Reduced from 20% |
+| No Treaty   | 20%  | Default rate     |
 
 ### Selected Countries - Royalties
 
-| Country | Rate | Notes |
-|---------|------|-------|
-| Singapore | 15% | Reduced from 20% |
-| Japan | 10% | Reduced from 20% |
-| USA | 10% | Reduced from 20% |
-| UK | 15% | Reduced from 20% |
-| Australia | 15% | Reduced from 20% |
-| Netherlands | 10% | Reduced from 20% |
-| Germany | 10/15% | Varies by type |
-| No Treaty | 20% | Default rate |
+| Country     | Rate   | Notes            |
+| ----------- | ------ | ---------------- |
+| Singapore   | 15%    | Reduced from 20% |
+| Japan       | 10%    | Reduced from 20% |
+| USA         | 10%    | Reduced from 20% |
+| UK          | 15%    | Reduced from 20% |
+| Australia   | 15%    | Reduced from 20% |
+| Netherlands | 10%    | Reduced from 20% |
+| Germany     | 10/15% | Varies by type   |
+| No Treaty   | 20%    | Default rate     |
 
 ---
 
@@ -177,12 +178,14 @@ Indonesia has DTAs with 70+ countries.
 To apply treaty rates, the foreign recipient must provide:
 
 **Form DGT-1** (Certificate of Domicile)
+
 - Completed by non-resident
 - Certified by their tax authority
 - Provided to Indonesian payer
 - Valid for 12 months
 
 Without DGT-1, standard 20% withholding applies!
+
 </InfoCard>
 
 ### Process for Treaty Benefits
@@ -197,49 +200,49 @@ Without DGT-1, standard 20% withholding applies!
       label: "Obtain Form DGT-1",
       description: "From Indonesian tax office or online",
       required: true,
-      category: "documentation"
+      category: "documentation",
     },
     {
       id: "complete",
       label: "Complete form",
       description: "Non-resident fills in details",
       required: true,
-      category: "documentation"
+      category: "documentation",
     },
     {
       id: "certify",
       label: "Certify by home tax authority",
       description: "Home country tax office stamps",
       required: true,
-      category: "certification"
+      category: "certification",
     },
     {
       id: "provide",
       label: "Provide to Indonesian payer",
       description: "Before payment made",
       required: true,
-      category: "process"
+      category: "process",
     },
     {
       id: "apply",
       label: "Payer applies treaty rate",
       description: "Withholds at reduced rate",
       required: true,
-      category: "process"
+      category: "process",
     },
     {
       id: "report",
       label: "Report in tax return",
       description: "Include in monthly PPh 26",
       required: true,
-      category: "compliance"
-    }
+      category: "compliance",
+    },
   ]}
   categories={[
     { id: "documentation", label: "Documentation", color: "blue" },
     { id: "certification", label: "Certification", color: "green" },
     { id: "process", label: "Process", color: "amber" },
-    { id: "compliance", label: "Compliance", color: "red" }
+    { id: "compliance", label: "Compliance", color: "red" },
   ]}
   showProgress={true}
 />
@@ -252,20 +255,18 @@ Without DGT-1, standard 20% withholding applies!
 
 Tax treaties define when a foreign company creates a **Permanent Establishment (PE)** in Indonesia:
 
-| Creates PE | Doesn't Create PE |
-|------------|-------------------|
-| Office/branch | Representative office (limited) |
-| Factory | Warehouse (storage only) |
-| Construction 6+ months | Short-term projects |
-| Dependent agent | Independent agent |
-| Service provision 3+ months | Short consulting visits |
+| Creates PE                  | Doesn't Create PE               |
+| --------------------------- | ------------------------------- |
+| Office/branch               | Representative office (limited) |
+| Factory                     | Warehouse (storage only)        |
+| Construction 6+ months      | Short-term projects             |
+| Dependent agent             | Independent agent               |
+| Service provision 3+ months | Short consulting visits         |
 
 <InfoCard variant="warning" title="PE Consequences">
-Creating a PE means:
-- Indonesia can tax business profits
-- Corporate tax filing required
-- Local compliance obligations
-- Potential registration requirements
+  Creating a PE means: - Indonesia can tax business profits - Corporate tax
+  filing required - Local compliance obligations - Potential registration
+  requirements
 </InfoCard>
 
 ---
@@ -274,16 +275,17 @@ Creating a PE means:
 
 For individuals working in Indonesia:
 
-| Scenario | Taxing Rights |
-|----------|---------------|
-| Work in Indonesia | Indonesia taxes |
-| Short visits (<183 days) | May be exempt if conditions met |
-| Employer outside Indonesia | Treaty rules apply |
-| Director of Indonesian company | Indonesia always taxes |
+| Scenario                       | Taxing Rights                   |
+| ------------------------------ | ------------------------------- |
+| Work in Indonesia              | Indonesia taxes                 |
+| Short visits (<183 days)       | May be exempt if conditions met |
+| Employer outside Indonesia     | Treaty rules apply              |
+| Director of Indonesian company | Indonesia always taxes          |
 
 ### Short-Stay Exemption
 
 Generally exempt from Indonesian tax if **all conditions met**:
+
 1. Present less than 183 days in 12-month period
 2. Paid by non-Indonesian employer
 3. Not borne by Indonesian PE
@@ -302,29 +304,29 @@ Generally exempt from Indonesian tax if **all conditions met**:
       name: "Credit Method",
       subtitle: "Most common",
       values: {
-        "How": "Foreign tax credited against home tax",
-        "Result": "Pay higher of two rates",
-        "Used By": "Indonesia (for residents)"
-      }
+        How: "Foreign tax credited against home tax",
+        Result: "Pay higher of two rates",
+        "Used By": "Indonesia (for residents)",
+      },
     },
     {
       name: "Exemption Method",
       subtitle: "Full exemption",
       values: {
-        "How": "Income exempt in one country",
-        "Result": "Taxed only once",
-        "Used By": "Some countries"
-      }
+        How: "Income exempt in one country",
+        Result: "Taxed only once",
+        "Used By": "Some countries",
+      },
     },
     {
       name: "Deduction Method",
       subtitle: "Less favorable",
       values: {
-        "How": "Foreign tax as expense",
-        "Result": "Partial relief",
-        "Used By": "Rarely"
-      }
-    }
+        How: "Foreign tax as expense",
+        Result: "Partial relief",
+        "Used By": "Rarely",
+      },
+    },
   ]}
 />
 
@@ -364,13 +366,13 @@ Indonesia has comprehensive tax treaties with:
 
 ## Common Issues
 
-| Issue | Impact |
-|-------|--------|
-| No DGT-1 provided | 20% rate applies |
-| Expired DGT-1 | 20% rate applies |
-| Incorrect form | May be rejected |
-| Treaty shopping | May be challenged |
-| Misapplied rates | Audit risk |
+| Issue             | Impact            |
+| ----------------- | ----------------- |
+| No DGT-1 provided | 20% rate applies  |
+| Expired DGT-1     | 20% rate applies  |
+| Incorrect form    | May be rejected   |
+| Treaty shopping   | May be challenged |
+| Misapplied rates  | Audit risk        |
 
 ---
 
@@ -383,7 +385,7 @@ Indonesia has comprehensive tax treaties with:
     "How do I get a DGT-1 form?",
     "What's the treaty rate with Singapore?",
     "Can I claim foreign tax credit?",
-    "Does Indonesia have treaty with my country?"
+    "Does Indonesia have treaty with my country?",
   ]}
 />
 

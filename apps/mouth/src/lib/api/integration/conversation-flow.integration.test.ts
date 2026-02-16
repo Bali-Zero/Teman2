@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ApiClient } from '../api-client';
-import { UserProfile } from '@/types';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { ApiClient } from "../api-client";
+import { UserProfile } from "@/types";
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -23,11 +23,11 @@ const localStorageMock = (() => {
   };
 })();
 
-Object.defineProperty(window, 'localStorage', { value: localStorageMock });
+Object.defineProperty(window, "localStorage", { value: localStorageMock });
 
-describe('Conversation Flow Integration Tests', () => {
+describe("Conversation Flow Integration Tests", () => {
   let api: ApiClient;
-  const baseUrl = 'https://api.test.com';
+  const baseUrl = "https://api.test.com";
 
   beforeEach(() => {
     localStorageMock.clear();
@@ -35,36 +35,36 @@ describe('Conversation Flow Integration Tests', () => {
     api = new ApiClient(baseUrl);
 
     const mockProfile: UserProfile = {
-      id: '123',
-      email: 'test@example.com',
-      name: 'Test User',
-      role: 'user',
+      id: "123",
+      email: "test@example.com",
+      name: "Test User",
+      role: "user",
     };
     api.setUserProfile(mockProfile);
-    api.setToken('test-token');
-    api.setCsrfToken('csrf-token');
+    api.setToken("test-token");
+    api.setCsrfToken("csrf-token");
   });
 
-  describe('Complete Conversation Lifecycle', () => {
-    it('should create, save, list, and delete conversation', async () => {
+  describe("Complete Conversation Lifecycle", () => {
+    it("should create, save, list, and delete conversation", async () => {
       // Step 1: Send initial message
       const chatResponse = {
-        answer: 'Hello! How can I help you?',
+        answer: "Hello! How can I help you?",
         sources: [],
         context_length: 1000,
         execution_time: 1.5,
-        route_used: 'fast',
+        route_used: "fast",
       };
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: async () => chatResponse,
       });
 
-      const messageResult = await api.sendMessage('Hello');
-      expect(messageResult.response).toBe('Hello! How can I help you?');
+      const messageResult = await api.sendMessage("Hello");
+      expect(messageResult.response).toBe("Hello! How can I help you?");
 
       // Step 2: Save conversation
       const saveResponse = {
@@ -76,16 +76,16 @@ describe('Conversation Flow Integration Tests', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: async () => saveResponse,
       });
 
       const saveResult = await api.saveConversation(
         [
-          { role: 'user', content: 'Hello' },
-          { role: 'assistant', content: 'Hello! How can I help you?' },
+          { role: "user", content: "Hello" },
+          { role: "assistant", content: "Hello! How can I help you?" },
         ],
-        'session-123'
+        "session-123",
       );
       expect(saveResult.conversation_id).toBe(1);
 
@@ -95,11 +95,11 @@ describe('Conversation Flow Integration Tests', () => {
         conversations: [
           {
             id: 1,
-            title: 'Test Conversation',
-            preview: 'Hello',
+            title: "Test Conversation",
+            preview: "Hello",
             message_count: 2,
-            created_at: '2024-01-01T00:00:00Z',
-            session_id: 'session-123',
+            created_at: "2024-01-01T00:00:00Z",
+            session_id: "session-123",
           },
         ],
         total: 1,
@@ -108,7 +108,7 @@ describe('Conversation Flow Integration Tests', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: async () => listResponse,
       });
 
@@ -120,18 +120,18 @@ describe('Conversation Flow Integration Tests', () => {
         success: true,
         id: 1,
         messages: [
-          { role: 'user', content: 'Hello' },
-          { role: 'assistant', content: 'Hello! How can I help you?' },
+          { role: "user", content: "Hello" },
+          { role: "assistant", content: "Hello! How can I help you?" },
         ],
         message_count: 2,
-        created_at: '2024-01-01T00:00:00Z',
-        session_id: 'session-123',
+        created_at: "2024-01-01T00:00:00Z",
+        session_id: "session-123",
       };
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: async () => getResponse,
       });
 
@@ -147,7 +147,7 @@ describe('Conversation Flow Integration Tests', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: async () => deleteResponse,
       });
 
@@ -155,8 +155,8 @@ describe('Conversation Flow Integration Tests', () => {
       expect(deleteResult.success).toBe(true);
     });
 
-    it('should handle multi-turn conversation with history', async () => {
-      const sessionId = 'session-123';
+    it("should handle multi-turn conversation with history", async () => {
+      const sessionId = "session-123";
       const conversationHistory: Array<{ role: string; content: string }> = [];
 
       // Turn 1: User asks question
@@ -165,11 +165,13 @@ describe('Conversation Flow Integration Tests', () => {
           .fn()
           .mockResolvedValueOnce({
             done: false,
-            value: new TextEncoder().encode('data: {"type":"token","content":"Answer 1"}\n'),
+            value: new TextEncoder().encode(
+              'data: {"type":"token","content":"Answer 1"}\n',
+            ),
           })
           .mockResolvedValueOnce({
             done: false,
-            value: new TextEncoder().encode('data: [DONE]\n'),
+            value: new TextEncoder().encode("data: [DONE]\n"),
           })
           .mockResolvedValueOnce({ done: true }),
         cancel: vi.fn(),
@@ -183,10 +185,16 @@ describe('Conversation Flow Integration Tests', () => {
       });
 
       const onDone1 = vi.fn();
-      await api.sendMessageStreaming('Question 1', sessionId, vi.fn(), onDone1, vi.fn());
+      await api.sendMessageStreaming(
+        "Question 1",
+        sessionId,
+        vi.fn(),
+        onDone1,
+        vi.fn(),
+      );
 
-      conversationHistory.push({ role: 'user', content: 'Question 1' });
-      conversationHistory.push({ role: 'assistant', content: 'Answer 1' });
+      conversationHistory.push({ role: "user", content: "Question 1" });
+      conversationHistory.push({ role: "assistant", content: "Answer 1" });
 
       // Turn 2: Follow-up question with history
       const mockReader2 = {
@@ -194,11 +202,13 @@ describe('Conversation Flow Integration Tests', () => {
           .fn()
           .mockResolvedValueOnce({
             done: false,
-            value: new TextEncoder().encode('data: {"type":"token","content":"Answer 2"}\n'),
+            value: new TextEncoder().encode(
+              'data: {"type":"token","content":"Answer 2"}\n',
+            ),
           })
           .mockResolvedValueOnce({
             done: false,
-            value: new TextEncoder().encode('data: [DONE]\n'),
+            value: new TextEncoder().encode("data: [DONE]\n"),
           })
           .mockResolvedValueOnce({ done: true }),
         cancel: vi.fn(),
@@ -213,14 +223,14 @@ describe('Conversation Flow Integration Tests', () => {
 
       const onDone2 = vi.fn();
       await api.sendMessageStreaming(
-        'Question 2',
+        "Question 2",
         sessionId,
         vi.fn(),
         onDone2,
         vi.fn(),
         undefined,
         120000,
-        conversationHistory
+        conversationHistory,
       );
 
       // Verify conversation history was included
@@ -231,20 +241,20 @@ describe('Conversation Flow Integration Tests', () => {
     });
   });
 
-  describe('Conversation Statistics', () => {
-    it('should get conversation stats', async () => {
+  describe("Conversation Statistics", () => {
+    it("should get conversation stats", async () => {
       const statsResponse = {
         success: true,
-        user_email: 'test@example.com',
+        user_email: "test@example.com",
         total_conversations: 10,
         total_messages: 50,
-        last_conversation: '2024-01-01T00:00:00Z',
+        last_conversation: "2024-01-01T00:00:00Z",
       };
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: async () => statsResponse,
       });
 
@@ -253,10 +263,10 @@ describe('Conversation Flow Integration Tests', () => {
       expect(stats.total_messages).toBe(50);
     });
 
-    it('should get user memory context', async () => {
+    it("should get user memory context", async () => {
       const memoryResponse = {
-        profile_facts: ['Fact 1', 'Fact 2'],
-        summary: 'User summary',
+        profile_facts: ["Fact 1", "Fact 2"],
+        summary: "User summary",
         counters: {
           total_conversations: 10,
           total_messages: 50,
@@ -266,13 +276,13 @@ describe('Conversation Flow Integration Tests', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: async () => memoryResponse,
       });
 
       const memory = await api.getUserMemoryContext();
       expect(memory.profile_facts).toHaveLength(2);
-      expect(memory.summary).toBe('User summary');
+      expect(memory.summary).toBe("User summary");
     });
   });
 });

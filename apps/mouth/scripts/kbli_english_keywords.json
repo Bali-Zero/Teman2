@@ -11,17 +11,11 @@
     "category": "Manufacturing"
   },
   "10111": {
-    "english": [
-      "production",
-      "manufacturing"
-    ],
+    "english": ["production", "manufacturing"],
     "category": "General"
   },
   "10112": {
-    "english": [
-      "production",
-      "manufacturing"
-    ],
+    "english": ["production", "manufacturing"],
     "category": "General"
   },
   "10113": {
@@ -51,42 +45,23 @@
     "category": "General"
   },
   "10120": {
-    "english": [
-      "production",
-      "manufacturing"
-    ],
+    "english": ["production", "manufacturing"],
     "category": "General"
   },
   "10211": {
-    "english": [
-      "processing",
-      "treatment"
-    ],
+    "english": ["processing", "treatment"],
     "category": "General"
   },
   "10212": {
-    "english": [
-      "processing",
-      "treatment",
-      "gas"
-    ],
+    "english": ["processing", "treatment", "gas"],
     "category": "General"
   },
   "10213": {
-    "english": [
-      "processing",
-      "treatment",
-      "cut",
-      "cutting",
-      "barber"
-    ],
+    "english": ["processing", "treatment", "cut", "cutting", "barber"],
     "category": "General"
   },
   "10214": {
-    "english": [
-      "processing",
-      "treatment"
-    ],
+    "english": ["processing", "treatment"],
     "category": "General"
   },
   "10215": {
@@ -103,10 +78,7 @@
     "category": "General"
   },
   "10216": {
-    "english": [
-      "processing",
-      "treatment"
-    ],
+    "english": ["processing", "treatment"],
     "category": "General"
   },
   "10217": {
@@ -124,65 +96,35 @@
     "category": "General"
   },
   "10218": {
-    "english": [
-      "processing",
-      "treatment"
-    ],
+    "english": ["processing", "treatment"],
     "category": "General"
   },
   "10219": {
-    "english": [
-      "processing",
-      "treatment"
-    ],
+    "english": ["processing", "treatment"],
     "category": "General"
   },
   "10291": {
-    "english": [
-      "processing",
-      "treatment",
-      "water"
-    ],
+    "english": ["processing", "treatment", "water"],
     "category": "General"
   },
   "10292": {
-    "english": [
-      "processing",
-      "treatment",
-      "gas",
-      "water"
-    ],
+    "english": ["processing", "treatment", "gas", "water"],
     "category": "General"
   },
   "10293": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "10294": {
-    "english": [
-      "processing",
-      "treatment",
-      "water"
-    ],
+    "english": ["processing", "treatment", "water"],
     "category": "General"
   },
   "10295": {
-    "english": [
-      "processing",
-      "treatment",
-      "water"
-    ],
+    "english": ["processing", "treatment", "water"],
     "category": "General"
   },
   "10296": {
-    "english": [
-      "processing",
-      "treatment",
-      "water"
-    ],
+    "english": ["processing", "treatment", "water"],
     "category": "General"
   },
   "10297": {
@@ -213,45 +155,23 @@
     "category": "General"
   },
   "10299": {
-    "english": [
-      "food",
-      "meal",
-      "cuisine"
-    ],
+    "english": ["food", "meal", "cuisine"],
     "category": "Food Service"
   },
   "10301": {
-    "english": [
-      "vegetable",
-      "vegetables",
-      "fruit",
-      "fruits",
-      "gas"
-    ],
+    "english": ["vegetable", "vegetables", "fruit", "fruits", "gas"],
     "category": "General"
   },
   "10302": {
-    "english": [
-      "vegetable",
-      "vegetables",
-      "fruit",
-      "fruits"
-    ],
+    "english": ["vegetable", "vegetables", "fruit", "fruits"],
     "category": "General"
   },
   "10303": {
-    "english": [
-      "food",
-      "meal",
-      "cuisine"
-    ],
+    "english": ["food", "meal", "cuisine"],
     "category": "Food Service"
   },
   "10304": {
-    "english": [
-      "production",
-      "manufacturing"
-    ],
+    "english": ["production", "manufacturing"],
     "category": "General"
   },
   "10305": {
@@ -270,59 +190,31 @@
     "category": "General"
   },
   "10306": {
-    "english": [
-      "beverage",
-      "drink",
-      "drinks"
-    ],
+    "english": ["beverage", "drink", "drinks"],
     "category": "General"
   },
   "10307": {
-    "english": [
-      "manufacturing",
-      "production",
-      "making"
-    ],
+    "english": ["manufacturing", "production", "making"],
     "category": "General"
   },
   "10308": {
-    "english": [
-      "manufacturing",
-      "production",
-      "making"
-    ],
+    "english": ["manufacturing", "production", "making"],
     "category": "General"
   },
   "10309": {
-    "english": [
-      "food",
-      "meal",
-      "cuisine"
-    ],
+    "english": ["food", "meal", "cuisine"],
     "category": "Food Service"
   },
   "10411": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10412": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10413": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10414": {
@@ -336,93 +228,47 @@
     "category": "General"
   },
   "10415": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10419": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing",
-      "production"
-    ],
+    "english": ["industry", "industrial", "manufacturing", "production"],
     "category": "General"
   },
   "10421": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10422": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing",
-      "production"
-    ],
+    "english": ["industry", "industrial", "manufacturing", "production"],
     "category": "General"
   },
   "10423": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10431": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10432": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10433": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10434": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10435": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10436": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10437": {
@@ -437,67 +283,35 @@
     "category": "General"
   },
   "10501": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10502": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10503": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10504": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10509": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10611": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10612": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10613": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10614": {
@@ -523,84 +337,43 @@
     "category": "Food Service"
   },
   "10616": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10621": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10622": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10623": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10629": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing",
-      "production"
-    ],
+    "english": ["industry", "industrial", "manufacturing", "production"],
     "category": "General"
   },
   "10631": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10632": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10633": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10634": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10635": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10636": {
@@ -627,45 +400,23 @@
     "category": "Food Service"
   },
   "10721": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10722": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10723": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing",
-      "factory",
-      "plant"
-    ],
+    "english": ["industry", "industrial", "manufacturing", "factory", "plant"],
     "category": "General"
   },
   "10729": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10731": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10732": {
@@ -680,19 +431,11 @@
     "category": "General"
   },
   "10733": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10739": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10740": {
@@ -723,10 +466,7 @@
     "category": "Food Service"
   },
   "10761": {
-    "english": [
-      "cafe",
-      "coffee shop"
-    ],
+    "english": ["cafe", "coffee shop"],
     "category": "General"
   },
   "10762": {
@@ -741,19 +481,11 @@
     "category": "General"
   },
   "10771": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10772": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10773": {
@@ -771,11 +503,7 @@
     "category": "Food Service"
   },
   "10779": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10791": {
@@ -793,11 +521,7 @@
     "category": "Food Service"
   },
   "10792": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10793": {
@@ -837,11 +561,7 @@
     "category": "Food Service"
   },
   "10796": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10797": {
@@ -881,11 +601,7 @@
     "category": "Food Service"
   },
   "10801": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "10802": {
@@ -952,19 +668,11 @@
     "category": "General"
   },
   "11051": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "11052": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "11053": {
@@ -992,130 +700,67 @@
     "category": "General"
   },
   "12001": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "12002": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "12003": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "12004": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "12005": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "12009": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "13111": {
-    "english": [
-      "textile",
-      "fabric"
-    ],
+    "english": ["textile", "fabric"],
     "category": "General"
   },
   "13112": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge"
-    ],
+    "english": ["bar", "pub", "lounge"],
     "category": "General"
   },
   "13113": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge"
-    ],
+    "english": ["bar", "pub", "lounge"],
     "category": "General"
   },
   "13121": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge"
-    ],
+    "english": ["bar", "pub", "lounge"],
     "category": "General"
   },
   "13122": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge"
-    ],
+    "english": ["bar", "pub", "lounge"],
     "category": "General"
   },
   "13132": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge"
-    ],
+    "english": ["bar", "pub", "lounge"],
     "category": "General"
   },
   "13133": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "13139": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "13911": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "13912": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "13913": {
@@ -1152,11 +797,7 @@
     "category": "General"
   },
   "13923": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "13924": {
@@ -1182,19 +823,11 @@
     "category": "General"
   },
   "13930": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "13941": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "13942": {
@@ -1220,11 +853,7 @@
     "category": "General"
   },
   "13992": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "13993": {
@@ -1239,35 +868,19 @@
     "category": "General"
   },
   "13994": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "13995": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "13996": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "13999": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "14111": {
@@ -1281,11 +894,7 @@
     "category": "General"
   },
   "14112": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "14120": {
@@ -1302,19 +911,11 @@
     "category": "General"
   },
   "14131": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "14132": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "14200": {
@@ -1344,30 +945,15 @@
     "category": "General"
   },
   "14302": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "15111": {
-    "english": [
-      "wholesale",
-      "bulk",
-      "large",
-      "animal",
-      "livestock",
-      "gas"
-    ],
+    "english": ["wholesale", "bulk", "large", "animal", "livestock", "gas"],
     "category": "General"
   },
   "15113": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge"
-    ],
+    "english": ["bar", "pub", "lounge"],
     "category": "General"
   },
   "15114": {
@@ -1382,11 +968,7 @@
     "category": "General"
   },
   "15121": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "15122": {
@@ -1412,11 +994,7 @@
     "category": "General"
   },
   "15201": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "15202": {
@@ -1430,11 +1008,7 @@
     "category": "General"
   },
   "15203": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "15209": {
@@ -1480,10 +1054,7 @@
     "category": "General"
   },
   "16104": {
-    "english": [
-      "processing",
-      "treatment"
-    ],
+    "english": ["processing", "treatment"],
     "category": "General"
   },
   "16105": {
@@ -1508,11 +1079,7 @@
     "category": "Construction"
   },
   "16212": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "16213": {
@@ -1610,19 +1177,11 @@
     "category": "General"
   },
   "16294": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "16295": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "16299": {
@@ -1637,37 +1196,19 @@
     "category": "General"
   },
   "17011": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "17012": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "17013": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing",
-      "bank",
-      "banking"
-    ],
+    "english": ["industry", "industrial", "manufacturing", "bank", "banking"],
     "category": "General"
   },
   "17014": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "17019": {
@@ -1725,31 +1266,15 @@
     "category": "General"
   },
   "18111": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "computer",
-      "computing",
-      "IT"
-    ],
+    "english": ["bar", "pub", "lounge", "computer", "computing", "IT"],
     "category": "Technology"
   },
   "18112": {
-    "english": [
-      "aircraft",
-      "airplane",
-      "aviation",
-      "paper",
-      "gas"
-    ],
+    "english": ["aircraft", "airplane", "aviation", "paper", "gas"],
     "category": "General"
   },
   "18113": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "18120": {
@@ -1782,10 +1307,7 @@
     "category": "Technology"
   },
   "18202": {
-    "english": [
-      "production",
-      "manufacturing"
-    ],
+    "english": ["production", "manufacturing"],
     "category": "General"
   },
   "19100": {
@@ -1803,35 +1325,19 @@
     "category": "General"
   },
   "19201": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "19202": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "19203": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "19204": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "19205": {
@@ -1846,11 +1352,7 @@
     "category": "General"
   },
   "19206": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "19209": {
@@ -1865,19 +1367,11 @@
     "category": "General"
   },
   "20111": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "20112": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "20113": {
@@ -1895,11 +1389,7 @@
     "category": "Food Service"
   },
   "20114": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "20115": {
@@ -1928,35 +1418,19 @@
     "category": "General"
   },
   "20119": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "20121": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "20122": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "20123": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "20124": {
@@ -1971,11 +1445,7 @@
     "category": "Agriculture"
   },
   "20125": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "20131": {
@@ -1990,11 +1460,7 @@
     "category": "General"
   },
   "20132": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "20211": {
@@ -2020,43 +1486,23 @@
     "category": "Agriculture"
   },
   "20213": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "20221": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "20222": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "20223": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "20229": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "20231": {
@@ -2071,27 +1517,15 @@
     "category": "General"
   },
   "20232": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "20233": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "20234": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "20235": {
@@ -2106,11 +1540,7 @@
     "category": "General"
   },
   "20291": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "20292": {
@@ -2125,11 +1555,7 @@
     "category": "Manufacturing"
   },
   "20293": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "20294": {
@@ -2144,36 +1570,19 @@
     "category": "General"
   },
   "20295": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "20296": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing",
-      "production"
-    ],
+    "english": ["industry", "industrial", "manufacturing", "production"],
     "category": "General"
   },
   "20297": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "20298": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "20299": {
@@ -2188,11 +1597,7 @@
     "category": "General"
   },
   "20301": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "20302": {
@@ -2268,11 +1673,7 @@
     "category": "Healthcare"
   },
   "21021": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "21022": {
@@ -2297,19 +1698,11 @@
     "category": "Food Service"
   },
   "21023": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "21024": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "22111": {
@@ -2360,11 +1753,7 @@
     "category": "General"
   },
   "22123": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "22129": {
@@ -2537,11 +1926,7 @@
     "category": "General"
   },
   "23112": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "23119": {
@@ -2592,11 +1977,7 @@
     "category": "Construction"
   },
   "23911": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "23919": {
@@ -2614,19 +1995,11 @@
     "category": "Construction"
   },
   "23921": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "23922": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "23929": {
@@ -2669,27 +2042,15 @@
     "category": "General"
   },
   "23933": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "23934": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "23935": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "23939": {
@@ -2704,19 +2065,11 @@
     "category": "Construction"
   },
   "23941": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "23942": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "23943": {
@@ -2840,11 +2193,7 @@
     "category": "Construction"
   },
   "23991": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "23992": {
@@ -2859,11 +2208,7 @@
     "category": "General"
   },
   "23993": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "23999": {
@@ -2889,27 +2234,15 @@
     "category": "General"
   },
   "24102": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge"
-    ],
+    "english": ["bar", "pub", "lounge"],
     "category": "General"
   },
   "24103": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "24201": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "24202": {
@@ -2924,11 +2257,7 @@
     "category": "General"
   },
   "24203": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge"
-    ],
+    "english": ["bar", "pub", "lounge"],
     "category": "General"
   },
   "24204": {
@@ -2945,38 +2274,19 @@
     "category": "General"
   },
   "24205": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "24206": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing",
-      "production"
-    ],
+    "english": ["industry", "industrial", "manufacturing", "production"],
     "category": "General"
   },
   "24310": {
-    "english": [
-      "manufacturing",
-      "production",
-      "making",
-      "metal",
-      "metallic"
-    ],
+    "english": ["manufacturing", "production", "making", "metal", "metallic"],
     "category": "General"
   },
   "24320": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "25111": {
@@ -3021,46 +2331,23 @@
     "category": "Construction"
   },
   "25120": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "25130": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "25200": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "25910": {
-    "english": [
-      "manufacturing",
-      "production",
-      "making",
-      "metal",
-      "metallic"
-    ],
+    "english": ["manufacturing", "production", "making", "metal", "metallic"],
     "category": "General"
   },
   "25920": {
-    "english": [
-      "processing",
-      "treatment",
-      "metal",
-      "metallic"
-    ],
+    "english": ["processing", "treatment", "metal", "metallic"],
     "category": "General"
   },
   "25931": {
@@ -3075,19 +2362,11 @@
     "category": "Agriculture"
   },
   "25932": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "25933": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "25934": {
@@ -3141,43 +2420,23 @@
     "category": "General"
   },
   "25991": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "25992": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "25993": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "25994": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "25995": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "25999": {
@@ -3192,19 +2451,11 @@
     "category": "General"
   },
   "26110": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "26120": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "26191": {
@@ -3219,11 +2470,7 @@
     "category": "General"
   },
   "26199": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "26210": {
@@ -3252,11 +2499,7 @@
     "category": "Technology"
   },
   "26310": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "26320": {
@@ -3296,11 +2539,7 @@
     "category": "General"
   },
   "26410": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "26420": {
@@ -3317,19 +2556,11 @@
     "category": "Technology"
   },
   "26490": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "26511": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "26512": {
@@ -3344,11 +2575,7 @@
     "category": "General"
   },
   "26513": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "26519": {
@@ -3363,11 +2590,7 @@
     "category": "General"
   },
   "26520": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "26601": {
@@ -3382,44 +2605,23 @@
     "category": "General"
   },
   "26602": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "26701": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "26702": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing",
-      "production"
-    ],
+    "english": ["industry", "industrial", "manufacturing", "production"],
     "category": "General"
   },
   "26703": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "26709": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "26800": {
@@ -3441,68 +2643,35 @@
     "category": "Technology"
   },
   "27111": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "27112": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "27113": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "27120": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "27201": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "27202": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "27203": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing",
-      "production"
-    ],
+    "english": ["industry", "industrial", "manufacturing", "production"],
     "category": "General"
   },
   "27310": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "27320": {
@@ -3517,27 +2686,15 @@
     "category": "Technology"
   },
   "27330": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "27401": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "27402": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "27403": {
@@ -3551,19 +2708,11 @@
     "category": "Transportation"
   },
   "27404": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "27409": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "27510": {
@@ -3612,53 +2761,27 @@
     "category": "Healthcare"
   },
   "28111": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "28112": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing",
-      "factory",
-      "plant"
-    ],
+    "english": ["industry", "industrial", "manufacturing", "factory", "plant"],
     "category": "General"
   },
   "28113": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "28120": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "28130": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "28140": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "28151": {
@@ -3687,29 +2810,15 @@
     "category": "Food Service"
   },
   "28160": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing",
-      "factory",
-      "plant"
-    ],
+    "english": ["industry", "industrial", "manufacturing", "factory", "plant"],
     "category": "General"
   },
   "28171": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "28172": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "28173": {
@@ -3735,19 +2844,11 @@
     "category": "General"
   },
   "28180": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "28191": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "28192": {
@@ -3762,11 +2863,7 @@
     "category": "General"
   },
   "28193": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "28199": {
@@ -3798,19 +2895,11 @@
     "category": "Agriculture"
   },
   "28220": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "28230": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "28240": {
@@ -3844,78 +2933,39 @@
     "category": "Food Service"
   },
   "28261": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "28262": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "28263": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "28291": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "28292": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing",
-      "factory",
-      "plant"
-    ],
+    "english": ["industry", "industrial", "manufacturing", "factory", "plant"],
     "category": "General"
   },
   "28299": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing",
-      "production"
-    ],
+    "english": ["industry", "industrial", "manufacturing", "production"],
     "category": "General"
   },
   "29100": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "29200": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "29300": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "30111": {
@@ -3944,11 +2994,7 @@
     "category": "Construction"
   },
   "30113": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "30120": {
@@ -4013,35 +3059,19 @@
     "category": "General"
   },
   "30400": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "30911": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "30912": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "30921": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "30922": {
@@ -4072,35 +3102,19 @@
     "category": "General"
   },
   "31011": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "31012": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "31021": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "31022": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "31029": {
@@ -4118,11 +3132,7 @@
     "category": "Food Service"
   },
   "32111": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "32112": {
@@ -4148,11 +3158,7 @@
     "category": "General"
   },
   "32114": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "32119": {
@@ -4180,19 +3186,11 @@
     "category": "General"
   },
   "32201": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "32202": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "32300": {
@@ -4210,11 +3208,7 @@
     "category": "General"
   },
   "32401": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "32402": {
@@ -4330,35 +3324,19 @@
     "category": "Construction"
   },
   "32905": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "32906": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "32907": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "32908": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "32909": {
@@ -4373,18 +3351,11 @@
     "category": "General"
   },
   "33111": {
-    "english": [
-      "factory",
-      "plant",
-      "manufacturing"
-    ],
+    "english": ["factory", "plant", "manufacturing"],
     "category": "General"
   },
   "33112": {
-    "english": [
-      "sports",
-      "athletic"
-    ],
+    "english": ["sports", "athletic"],
     "category": "General"
   },
   "33119": {
@@ -4434,17 +3405,11 @@
     "category": "Food Service"
   },
   "33131": {
-    "english": [
-      "production",
-      "manufacturing"
-    ],
+    "english": ["production", "manufacturing"],
     "category": "General"
   },
   "33132": {
-    "english": [
-      "repair",
-      "maintenance"
-    ],
+    "english": ["repair", "maintenance"],
     "category": "General"
   },
   "33133": {
@@ -4459,12 +3424,7 @@
     "category": "General"
   },
   "33141": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing",
-      "production"
-    ],
+    "english": ["industry", "industrial", "manufacturing", "production"],
     "category": "General"
   },
   "33142": {
@@ -4537,21 +3497,11 @@
     "category": "General"
   },
   "33159": {
-    "english": [
-      "transport",
-      "transportation",
-      "freight"
-    ],
+    "english": ["transport", "transportation", "freight"],
     "category": "General"
   },
   "33190": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "hospital",
-      "medical center"
-    ],
+    "english": ["bar", "pub", "lounge", "hospital", "medical center"],
     "category": "General"
   },
   "33201": {
@@ -4608,30 +3558,15 @@
     "category": "Energy"
   },
   "35112": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "production",
-      "manufacturing"
-    ],
+    "english": ["bar", "pub", "lounge", "production", "manufacturing"],
     "category": "General"
   },
   "35120": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "production",
-      "manufacturing"
-    ],
+    "english": ["bar", "pub", "lounge", "production", "manufacturing"],
     "category": "General"
   },
   "35131": {
-    "english": [
-      "production",
-      "manufacturing"
-    ],
+    "english": ["production", "manufacturing"],
     "category": "General"
   },
   "35132": {
@@ -4680,39 +3615,19 @@
     "category": "General"
   },
   "35151": {
-    "english": [
-      "electricity",
-      "electric",
-      "power",
-      "energy"
-    ],
+    "english": ["electricity", "electric", "power", "energy"],
     "category": "General"
   },
   "35152": {
-    "english": [
-      "electricity",
-      "electric",
-      "power"
-    ],
+    "english": ["electricity", "electric", "power"],
     "category": "General"
   },
   "35159": {
-    "english": [
-      "service",
-      "services",
-      "production",
-      "manufacturing"
-    ],
+    "english": ["service", "services", "production", "manufacturing"],
     "category": "General"
   },
   "35201": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "production",
-      "manufacturing"
-    ],
+    "english": ["bar", "pub", "lounge", "production", "manufacturing"],
     "category": "General"
   },
   "35202": {
@@ -4732,17 +3647,11 @@
     "category": "Retail"
   },
   "35301": {
-    "english": [
-      "production",
-      "manufacturing"
-    ],
+    "english": ["production", "manufacturing"],
     "category": "General"
   },
   "35302": {
-    "english": [
-      "production",
-      "manufacturing"
-    ],
+    "english": ["production", "manufacturing"],
     "category": "General"
   },
   "35401": {
@@ -4842,11 +3751,7 @@
     "category": "General"
   },
   "38110": {
-    "english": [
-      "building",
-      "construction",
-      "structure"
-    ],
+    "english": ["building", "construction", "structure"],
     "category": "Construction"
   },
   "38121": {
@@ -4861,11 +3766,7 @@
     "category": "Healthcare"
   },
   "38122": {
-    "english": [
-      "transport",
-      "transportation",
-      "freight"
-    ],
+    "english": ["transport", "transportation", "freight"],
     "category": "General"
   },
   "38210": {
@@ -4881,34 +3782,19 @@
     "category": "Environment"
   },
   "38211": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge"
-    ],
+    "english": ["bar", "pub", "lounge"],
     "category": "General"
   },
   "38212": {
-    "english": [
-      "production",
-      "manufacturing"
-    ],
+    "english": ["production", "manufacturing"],
     "category": "General"
   },
   "38219": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "38221": {
-    "english": [
-      "health",
-      "healthcare",
-      "medical"
-    ],
+    "english": ["health", "healthcare", "medical"],
     "category": "Healthcare"
   },
   "38222": {
@@ -4922,27 +3808,15 @@
     "category": "General"
   },
   "38301": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge"
-    ],
+    "english": ["bar", "pub", "lounge"],
     "category": "General"
   },
   "38302": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge"
-    ],
+    "english": ["bar", "pub", "lounge"],
     "category": "General"
   },
   "38309": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge"
-    ],
+    "english": ["bar", "pub", "lounge"],
     "category": "General"
   },
   "39001": {
@@ -4961,10 +3835,7 @@
     "category": "General"
   },
   "39002": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "39009": {
@@ -4992,21 +3863,11 @@
     "category": "Construction"
   },
   "41011": {
-    "english": [
-      "building",
-      "construction",
-      "structure",
-      "edifice"
-    ],
+    "english": ["building", "construction", "structure", "edifice"],
     "category": "Construction"
   },
   "41012": {
-    "english": [
-      "building",
-      "construction",
-      "structure",
-      "edifice"
-    ],
+    "english": ["building", "construction", "structure", "edifice"],
     "category": "Construction"
   },
   "41013": {
@@ -5099,12 +3960,7 @@
     "category": "Construction"
   },
   "41019": {
-    "english": [
-      "building",
-      "construction",
-      "structure",
-      "edifice"
-    ],
+    "english": ["building", "construction", "structure", "edifice"],
     "category": "Construction"
   },
   "41020": {
@@ -5124,51 +3980,27 @@
     "category": "Construction"
   },
   "42101": {
-    "english": [
-      "building",
-      "construction",
-      "structure"
-    ],
+    "english": ["building", "construction", "structure"],
     "category": "Construction"
   },
   "42102": {
-    "english": [
-      "building",
-      "construction",
-      "structure"
-    ],
+    "english": ["building", "construction", "structure"],
     "category": "Construction"
   },
   "42103": {
-    "english": [
-      "building",
-      "construction",
-      "structure"
-    ],
+    "english": ["building", "construction", "structure"],
     "category": "Construction"
   },
   "42104": {
-    "english": [
-      "building",
-      "construction",
-      "structure"
-    ],
+    "english": ["building", "construction", "structure"],
     "category": "Construction"
   },
   "42201": {
-    "english": [
-      "building",
-      "construction",
-      "structure"
-    ],
+    "english": ["building", "construction", "structure"],
     "category": "Construction"
   },
   "42202": {
-    "english": [
-      "building",
-      "construction",
-      "structure"
-    ],
+    "english": ["building", "construction", "structure"],
     "category": "Construction"
   },
   "42203": {
@@ -5185,11 +4017,7 @@
     "category": "Construction"
   },
   "42204": {
-    "english": [
-      "building",
-      "construction",
-      "structure"
-    ],
+    "english": ["building", "construction", "structure"],
     "category": "Construction"
   },
   "42205": {
@@ -5203,21 +4031,11 @@
     "category": "Construction"
   },
   "42206": {
-    "english": [
-      "building",
-      "construction",
-      "structure"
-    ],
+    "english": ["building", "construction", "structure"],
     "category": "Construction"
   },
   "42207": {
-    "english": [
-      "building",
-      "construction",
-      "structure",
-      "service",
-      "services"
-    ],
+    "english": ["building", "construction", "structure", "service", "services"],
     "category": "Construction"
   },
   "42209": {
@@ -5234,11 +4052,7 @@
     "category": "Construction"
   },
   "42911": {
-    "english": [
-      "building",
-      "construction",
-      "structure"
-    ],
+    "english": ["building", "construction", "structure"],
     "category": "Construction"
   },
   "42912": {
@@ -5264,27 +4078,15 @@
     "category": "Construction"
   },
   "42914": {
-    "english": [
-      "building",
-      "construction",
-      "structure"
-    ],
+    "english": ["building", "construction", "structure"],
     "category": "Construction"
   },
   "42915": {
-    "english": [
-      "building",
-      "construction",
-      "structure"
-    ],
+    "english": ["building", "construction", "structure"],
     "category": "Construction"
   },
   "42919": {
-    "english": [
-      "building",
-      "construction",
-      "structure"
-    ],
+    "english": ["building", "construction", "structure"],
     "category": "Construction"
   },
   "42991": {
@@ -5309,23 +4111,11 @@
     "category": "Construction"
   },
   "42993": {
-    "english": [
-      "building",
-      "construction",
-      "structure",
-      "service",
-      "services"
-    ],
+    "english": ["building", "construction", "structure", "service", "services"],
     "category": "Construction"
   },
   "42994": {
-    "english": [
-      "building",
-      "construction",
-      "structure",
-      "sports",
-      "athletic"
-    ],
+    "english": ["building", "construction", "structure", "sports", "athletic"],
     "category": "Construction"
   },
   "42995": {
@@ -5343,11 +4133,7 @@
     "category": "Construction"
   },
   "42996": {
-    "english": [
-      "building",
-      "construction",
-      "structure"
-    ],
+    "english": ["building", "construction", "structure"],
     "category": "Construction"
   },
   "42997": {
@@ -5372,45 +4158,23 @@
     "category": "Construction"
   },
   "42999": {
-    "english": [
-      "building",
-      "construction",
-      "structure",
-      "edifice"
-    ],
+    "english": ["building", "construction", "structure", "edifice"],
     "category": "Construction"
   },
   "43110": {
-    "english": [
-      "building",
-      "construction",
-      "structure",
-      "edifice"
-    ],
+    "english": ["building", "construction", "structure", "edifice"],
     "category": "Construction"
   },
   "43120": {
-    "english": [
-      "construction",
-      "building"
-    ],
+    "english": ["construction", "building"],
     "category": "Construction"
   },
   "43211": {
-    "english": [
-      "building",
-      "construction",
-      "structure"
-    ],
+    "english": ["building", "construction", "structure"],
     "category": "Construction"
   },
   "43212": {
-    "english": [
-      "building",
-      "construction",
-      "structure",
-      "edifice"
-    ],
+    "english": ["building", "construction", "structure", "edifice"],
     "category": "Construction"
   },
   "43213": {
@@ -5461,20 +4225,11 @@
     "category": "General"
   },
   "43216": {
-    "english": [
-      "building",
-      "construction",
-      "structure"
-    ],
+    "english": ["building", "construction", "structure"],
     "category": "Construction"
   },
   "43221": {
-    "english": [
-      "building",
-      "construction",
-      "structure",
-      "edifice"
-    ],
+    "english": ["building", "construction", "structure", "edifice"],
     "category": "Construction"
   },
   "43222": {
@@ -5505,109 +4260,51 @@
     "category": "Construction"
   },
   "43224": {
-    "english": [
-      "building",
-      "construction",
-      "structure"
-    ],
+    "english": ["building", "construction", "structure"],
     "category": "Construction"
   },
   "43291": {
-    "english": [
-      "building",
-      "construction",
-      "structure",
-      "edifice"
-    ],
+    "english": ["building", "construction", "structure", "edifice"],
     "category": "Construction"
   },
   "43299": {
-    "english": [
-      "building",
-      "construction",
-      "structure",
-      "edifice"
-    ],
+    "english": ["building", "construction", "structure", "edifice"],
     "category": "Construction"
   },
   "43301": {
-    "english": [
-      "building",
-      "construction",
-      "structure",
-      "edifice"
-    ],
+    "english": ["building", "construction", "structure", "edifice"],
     "category": "Construction"
   },
   "43302": {
-    "english": [
-      "building",
-      "construction",
-      "structure",
-      "edifice"
-    ],
+    "english": ["building", "construction", "structure", "edifice"],
     "category": "Construction"
   },
   "43303": {
-    "english": [
-      "building",
-      "construction",
-      "structure",
-      "edifice"
-    ],
+    "english": ["building", "construction", "structure", "edifice"],
     "category": "Construction"
   },
   "43309": {
-    "english": [
-      "building",
-      "construction",
-      "structure"
-    ],
+    "english": ["building", "construction", "structure"],
     "category": "Construction"
   },
   "43400": {
-    "english": [
-      "construction",
-      "building",
-      "service",
-      "services"
-    ],
+    "english": ["construction", "building", "service", "services"],
     "category": "Construction"
   },
   "43901": {
-    "english": [
-      "building",
-      "construction",
-      "structure",
-      "edifice"
-    ],
+    "english": ["building", "construction", "structure", "edifice"],
     "category": "Construction"
   },
   "43902": {
-    "english": [
-      "building",
-      "construction",
-      "structure",
-      "edifice"
-    ],
+    "english": ["building", "construction", "structure", "edifice"],
     "category": "Construction"
   },
   "43903": {
-    "english": [
-      "building",
-      "construction",
-      "structure",
-      "edifice"
-    ],
+    "english": ["building", "construction", "structure", "edifice"],
     "category": "Construction"
   },
   "43904": {
-    "english": [
-      "building",
-      "edifice",
-      "structure",
-      "construction"
-    ],
+    "english": ["building", "edifice", "structure", "construction"],
     "category": "Construction"
   },
   "43905": {
@@ -5704,35 +4401,19 @@
     "category": "Retail"
   },
   "46205": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46206": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46207": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46208": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46209": {
@@ -5753,43 +4434,23 @@
     "category": "Food Service"
   },
   "46311": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46312": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46313": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46314": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46315": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46319": {
@@ -5813,27 +4474,15 @@
     "category": "Food Service"
   },
   "46321": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46322": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46323": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46324": {
@@ -5848,27 +4497,15 @@
     "category": "Retail"
   },
   "46325": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46326": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46327": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46329": {
@@ -5889,49 +4526,23 @@
     "category": "Food Service"
   },
   "46331": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46332": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46333": {
-    "english": [
-      "beverage",
-      "drink",
-      "drinks",
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["beverage", "drink", "drinks", "trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46334": {
-    "english": [
-      "beverage",
-      "drink",
-      "drinks",
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["beverage", "drink", "drinks", "trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46335": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46339": {
@@ -5963,21 +4574,11 @@
     "category": "Retail"
   },
   "46412": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "sports",
-      "athletic"
-    ],
+    "english": ["trading", "commerce", "trade", "sports", "athletic"],
     "category": "Retail"
   },
   "46413": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46414": {
@@ -5995,14 +4596,7 @@
     "category": "Retail"
   },
   "46415": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "shop",
-      "store",
-      "outlet"
-    ],
+    "english": ["trading", "commerce", "trade", "shop", "store", "outlet"],
     "category": "Retail"
   },
   "46420": {
@@ -6020,14 +4614,7 @@
     "category": "Retail"
   },
   "46430": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["bar", "pub", "lounge", "trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46441": {
@@ -6057,65 +4644,27 @@
     "category": "Retail"
   },
   "46451": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["bar", "pub", "lounge", "trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46452": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["bar", "pub", "lounge", "trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46491": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["bar", "pub", "lounge", "trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46492": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "sports",
-      "athletic"
-    ],
+    "english": ["trading", "commerce", "trade", "sports", "athletic"],
     "category": "Retail"
   },
   "46493": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46494": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["bar", "pub", "lounge", "trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46495": {
@@ -6155,14 +4704,7 @@
     "category": "Retail"
   },
   "46511": {
-    "english": [
-      "computer",
-      "computing",
-      "IT",
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["computer", "computing", "IT", "trading", "commerce", "trade"],
     "category": "Technology"
   },
   "46512": {
@@ -6177,19 +4719,11 @@
     "category": "Retail"
   },
   "46521": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46522": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46523": {
@@ -6239,33 +4773,15 @@
     "category": "Technology"
   },
   "46592": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "transportation",
-      "transport"
-    ],
+    "english": ["trading", "commerce", "trade", "transportation", "transport"],
     "category": "Retail"
   },
   "46593": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "transportation",
-      "transport"
-    ],
+    "english": ["trading", "commerce", "trade", "transportation", "transport"],
     "category": "Retail"
   },
   "46594": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "transportation",
-      "transport"
-    ],
+    "english": ["trading", "commerce", "trade", "transportation", "transport"],
     "category": "Retail"
   },
   "46599": {
@@ -6281,55 +4797,23 @@
     "category": "Retail"
   },
   "46611": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["bar", "pub", "lounge", "trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46612": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["bar", "pub", "lounge", "trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46620": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["bar", "pub", "lounge", "trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46631": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["bar", "pub", "lounge", "trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46632": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46633": {
@@ -6344,22 +4828,11 @@
     "category": "Retail"
   },
   "46710": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["bar", "pub", "lounge", "trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46721": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46722": {
@@ -6376,13 +4849,7 @@
     "category": "Construction"
   },
   "46731": {
-    "english": [
-      "construction",
-      "building",
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["construction", "building", "trading", "commerce", "trade"],
     "category": "Construction"
   },
   "46732": {
@@ -6399,43 +4866,19 @@
     "category": "Construction"
   },
   "46733": {
-    "english": [
-      "construction",
-      "building",
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["construction", "building", "trading", "commerce", "trade"],
     "category": "Construction"
   },
   "46734": {
-    "english": [
-      "construction",
-      "building",
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["construction", "building", "trading", "commerce", "trade"],
     "category": "Construction"
   },
   "46735": {
-    "english": [
-      "construction",
-      "building",
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["construction", "building", "trading", "commerce", "trade"],
     "category": "Construction"
   },
   "46736": {
-    "english": [
-      "construction",
-      "building",
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["construction", "building", "trading", "commerce", "trade"],
     "category": "Construction"
   },
   "46737": {
@@ -6476,30 +4919,15 @@
     "category": "Construction"
   },
   "46741": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46742": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46743": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["bar", "pub", "lounge", "trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46751": {
@@ -6528,14 +4956,7 @@
     "category": "Retail"
   },
   "46753": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["bar", "pub", "lounge", "trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46791": {
@@ -6561,60 +4982,27 @@
     "category": "Retail"
   },
   "46793": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46794": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46795": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["bar", "pub", "lounge", "trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46796": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["bar", "pub", "lounge", "trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46799": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46901": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["bar", "pub", "lounge", "trading", "commerce", "trade"],
     "category": "Retail"
   },
   "46902": {
@@ -6709,47 +5097,19 @@
     "category": "Food Service"
   },
   "47211": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47212": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47213": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47214": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47215": {
@@ -6767,14 +5127,7 @@
     "category": "Retail"
   },
   "47216": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47219": {
@@ -6855,58 +5208,23 @@
     "category": "Food Service"
   },
   "47241": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47242": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47243": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47244": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47245": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47246": {
@@ -6970,14 +5288,7 @@
     "category": "Retail"
   },
   "47303": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47401": {
@@ -6996,14 +5307,7 @@
     "category": "Technology"
   },
   "47402": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47403": {
@@ -7021,14 +5325,7 @@
     "category": "Retail"
   },
   "47404": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47405": {
@@ -7063,25 +5360,11 @@
     "category": "Construction"
   },
   "47511": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47512": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47513": {
@@ -7133,14 +5416,7 @@
     "category": "Construction"
   },
   "47523": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47524": {
@@ -7198,25 +5474,11 @@
     "category": "Construction"
   },
   "47591": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47592": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47593": {
@@ -7234,14 +5496,7 @@
     "category": "Retail"
   },
   "47594": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47599": {
@@ -7333,14 +5588,7 @@
     "category": "Retail"
   },
   "47630": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47690": {
@@ -7388,14 +5636,7 @@
     "category": "Retail"
   },
   "47713": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47714": {
@@ -7466,14 +5707,7 @@
     "category": "Retail"
   },
   "47724": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47725": {
@@ -7504,25 +5738,11 @@
     "category": "Retail"
   },
   "47727": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47728": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47729": {
@@ -7558,36 +5778,15 @@
     "category": "Retail"
   },
   "47732": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47733": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47734": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47735": {
@@ -7605,25 +5804,11 @@
     "category": "Retail"
   },
   "47741": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47742": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47743": {
@@ -7699,25 +5884,11 @@
     "category": "Food Service"
   },
   "47751": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47752": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47753": {
@@ -7749,47 +5920,19 @@
     "category": "Food Service"
   },
   "47761": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47762": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47763": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47764": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47765": {
@@ -7807,58 +5950,23 @@
     "category": "Retail"
   },
   "47771": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47772": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47773": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47774": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47779": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47781": {
@@ -7955,14 +6063,7 @@
     "category": "Retail"
   },
   "47795": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47796": {
@@ -8008,14 +6109,7 @@
     "category": "Retail"
   },
   "47812": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47820": {
@@ -8047,14 +6141,7 @@
     "category": "Retail"
   },
   "47832": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["trading", "commerce", "trade", "retail", "shop", "store"],
     "category": "Retail"
   },
   "47833": {
@@ -8130,11 +6217,7 @@
     "category": "General"
   },
   "49119": {
-    "english": [
-      "transportation",
-      "transport",
-      "freight"
-    ],
+    "english": ["transportation", "transport", "freight"],
     "category": "Transportation"
   },
   "49120": {
@@ -8158,67 +6241,35 @@
     "category": "Transportation"
   },
   "49211": {
-    "english": [
-      "transport",
-      "transportation",
-      "freight"
-    ],
+    "english": ["transport", "transportation", "freight"],
     "category": "General"
   },
   "49212": {
-    "english": [
-      "transportation",
-      "transport",
-      "freight"
-    ],
+    "english": ["transportation", "transport", "freight"],
     "category": "Transportation"
   },
   "49213": {
-    "english": [
-      "transportation",
-      "transport",
-      "freight"
-    ],
+    "english": ["transportation", "transport", "freight"],
     "category": "Transportation"
   },
   "49214": {
-    "english": [
-      "transportation",
-      "transport",
-      "freight"
-    ],
+    "english": ["transportation", "transport", "freight"],
     "category": "Transportation"
   },
   "49219": {
-    "english": [
-      "transportation",
-      "transport",
-      "freight"
-    ],
+    "english": ["transportation", "transport", "freight"],
     "category": "Transportation"
   },
   "49221": {
-    "english": [
-      "transport",
-      "transportation",
-      "freight"
-    ],
+    "english": ["transport", "transportation", "freight"],
     "category": "General"
   },
   "49222": {
-    "english": [
-      "transport",
-      "transportation",
-      "freight"
-    ],
+    "english": ["transport", "transportation", "freight"],
     "category": "General"
   },
   "49223": {
-    "english": [
-      "transportation",
-      "transport",
-      "freight"
-    ],
+    "english": ["transportation", "transport", "freight"],
     "category": "Transportation"
   },
   "49229": {
@@ -8266,55 +6317,27 @@
     "category": "Transportation"
   },
   "49291": {
-    "english": [
-      "transportation",
-      "transport",
-      "freight"
-    ],
+    "english": ["transportation", "transport", "freight"],
     "category": "Transportation"
   },
   "49292": {
-    "english": [
-      "transportation",
-      "transport",
-      "freight",
-      "tourism",
-      "travel"
-    ],
+    "english": ["transportation", "transport", "freight", "tourism", "travel"],
     "category": "Transportation"
   },
   "49293": {
-    "english": [
-      "transport",
-      "transportation",
-      "freight"
-    ],
+    "english": ["transport", "transportation", "freight"],
     "category": "General"
   },
   "49294": {
-    "english": [
-      "school",
-      "academy",
-      "transportation",
-      "transport",
-      "freight"
-    ],
+    "english": ["school", "academy", "transportation", "transport", "freight"],
     "category": "Transportation"
   },
   "49295": {
-    "english": [
-      "transport",
-      "transportation",
-      "freight"
-    ],
+    "english": ["transport", "transportation", "freight"],
     "category": "General"
   },
   "49296": {
-    "english": [
-      "transport",
-      "transportation",
-      "freight"
-    ],
+    "english": ["transport", "transportation", "freight"],
     "category": "General"
   },
   "49297": {
@@ -8329,20 +6352,11 @@
     "category": "Transportation"
   },
   "49299": {
-    "english": [
-      "transportation",
-      "transport",
-      "freight",
-      "tourism",
-      "travel"
-    ],
+    "english": ["transportation", "transport", "freight", "tourism", "travel"],
     "category": "Transportation"
   },
   "49300": {
-    "english": [
-      "transportation",
-      "transport"
-    ],
+    "english": ["transportation", "transport"],
     "category": "Transportation"
   },
   "49311": {
@@ -8357,35 +6371,19 @@
     "category": "Transportation"
   },
   "50111": {
-    "english": [
-      "transportation",
-      "transport",
-      "freight"
-    ],
+    "english": ["transportation", "transport", "freight"],
     "category": "Transportation"
   },
   "50112": {
-    "english": [
-      "transportation",
-      "transport",
-      "freight"
-    ],
+    "english": ["transportation", "transport", "freight"],
     "category": "Transportation"
   },
   "50113": {
-    "english": [
-      "transport",
-      "transportation",
-      "freight"
-    ],
+    "english": ["transport", "transportation", "freight"],
     "category": "General"
   },
   "50114": {
-    "english": [
-      "transportation",
-      "transport",
-      "freight"
-    ],
+    "english": ["transportation", "transport", "freight"],
     "category": "Transportation"
   },
   "50115": {
@@ -8483,43 +6481,23 @@
     "category": "Transportation"
   },
   "50131": {
-    "english": [
-      "transport",
-      "transportation",
-      "freight"
-    ],
+    "english": ["transport", "transportation", "freight"],
     "category": "General"
   },
   "50132": {
-    "english": [
-      "transport",
-      "transportation",
-      "freight"
-    ],
+    "english": ["transport", "transportation", "freight"],
     "category": "General"
   },
   "50133": {
-    "english": [
-      "transport",
-      "transportation",
-      "freight"
-    ],
+    "english": ["transport", "transportation", "freight"],
     "category": "General"
   },
   "50134": {
-    "english": [
-      "transport",
-      "transportation",
-      "freight"
-    ],
+    "english": ["transport", "transportation", "freight"],
     "category": "General"
   },
   "50135": {
-    "english": [
-      "transport",
-      "transportation",
-      "freight"
-    ],
+    "english": ["transport", "transportation", "freight"],
     "category": "General"
   },
   "50139": {
@@ -8600,29 +6578,15 @@
     "category": "Transportation"
   },
   "50211": {
-    "english": [
-      "transportation",
-      "transport",
-      "freight"
-    ],
+    "english": ["transportation", "transport", "freight"],
     "category": "Transportation"
   },
   "50212": {
-    "english": [
-      "transport",
-      "transportation",
-      "freight",
-      "tourism",
-      "travel"
-    ],
+    "english": ["transport", "transportation", "freight", "tourism", "travel"],
     "category": "General"
   },
   "50213": {
-    "english": [
-      "transport",
-      "transportation",
-      "freight"
-    ],
+    "english": ["transport", "transportation", "freight"],
     "category": "General"
   },
   "50221": {
@@ -8659,11 +6623,7 @@
     "category": "Transportation"
   },
   "51101": {
-    "english": [
-      "transportation",
-      "transport",
-      "freight"
-    ],
+    "english": ["transportation", "transport", "freight"],
     "category": "Transportation"
   },
   "51102": {
@@ -8677,10 +6637,7 @@
     "category": "Transportation"
   },
   "51103": {
-    "english": [
-      "transportation",
-      "transport"
-    ],
+    "english": ["transportation", "transport"],
     "category": "Transportation"
   },
   "51201": {
@@ -8708,45 +6665,19 @@
     "category": "Transportation"
   },
   "51203": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "transportation",
-      "transport"
-    ],
+    "english": ["bar", "pub", "lounge", "transportation", "transport"],
     "category": "Transportation"
   },
   "52101": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["bar", "pub", "lounge", "trading", "commerce", "trade"],
     "category": "Retail"
   },
   "52102": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "service",
-      "services"
-    ],
+    "english": ["bar", "pub", "lounge", "service", "services"],
     "category": "General"
   },
   "52103": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["bar", "pub", "lounge", "trading", "commerce", "trade"],
     "category": "Retail"
   },
   "52104": {
@@ -8761,72 +6692,35 @@
     "category": "Retail"
   },
   "52105": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["bar", "pub", "lounge", "trading", "commerce", "trade"],
     "category": "Retail"
   },
   "52106": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["bar", "pub", "lounge", "trading", "commerce", "trade"],
     "category": "Retail"
   },
   "52107": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "52109": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge"
-    ],
+    "english": ["bar", "pub", "lounge"],
     "category": "General"
   },
   "52211": {
-    "english": [
-      "transport",
-      "transportation",
-      "freight"
-    ],
+    "english": ["transport", "transportation", "freight"],
     "category": "General"
   },
   "52212": {
-    "english": [
-      "train",
-      "railway"
-    ],
+    "english": ["train", "railway"],
     "category": "General"
   },
   "52213": {
-    "english": [
-      "building",
-      "construction",
-      "structure"
-    ],
+    "english": ["building", "construction", "structure"],
     "category": "Construction"
   },
   "52214": {
-    "english": [
-      "road",
-      "street",
-      "highway"
-    ],
+    "english": ["road", "street", "highway"],
     "category": "General"
   },
   "52215": {
@@ -8907,19 +6801,11 @@
     "category": "General"
   },
   "52225": {
-    "english": [
-      "service",
-      "services",
-      "insurance",
-      "assurance"
-    ],
+    "english": ["service", "services", "insurance", "assurance"],
     "category": "General"
   },
   "52226": {
-    "english": [
-      "construction",
-      "building"
-    ],
+    "english": ["construction", "building"],
     "category": "Construction"
   },
   "52227": {
@@ -8961,21 +6847,11 @@
     "category": "General"
   },
   "52232": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "service",
-      "services"
-    ],
+    "english": ["bar", "pub", "lounge", "service", "services"],
     "category": "General"
   },
   "52233": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge"
-    ],
+    "english": ["bar", "pub", "lounge"],
     "category": "General"
   },
   "52234": {
@@ -9008,13 +6884,7 @@
     "category": "Transportation"
   },
   "52240": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "transportation",
-      "transport"
-    ],
+    "english": ["bar", "pub", "lounge", "transportation", "transport"],
     "category": "Transportation"
   },
   "52291": {
@@ -9031,11 +6901,7 @@
     "category": "Transportation"
   },
   "52292": {
-    "english": [
-      "manufacturing",
-      "production",
-      "making"
-    ],
+    "english": ["manufacturing", "production", "making"],
     "category": "General"
   },
   "52299": {
@@ -9106,19 +6972,11 @@
     "category": "Transportation"
   },
   "52321": {
-    "english": [
-      "transportation",
-      "transport",
-      "service",
-      "services"
-    ],
+    "english": ["transportation", "transport", "service", "services"],
     "category": "Transportation"
   },
   "52322": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "52323": {
@@ -9132,12 +6990,7 @@
     "category": "Transportation"
   },
   "52329": {
-    "english": [
-      "transportation",
-      "transport",
-      "service",
-      "services"
-    ],
+    "english": ["transportation", "transport", "service", "services"],
     "category": "Transportation"
   },
   "53100": {
@@ -9181,10 +7034,7 @@
     "category": "Food Service"
   },
   "53309": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "55101": {
@@ -9279,60 +7129,31 @@
     "category": "Construction"
   },
   "55201": {
-    "english": [
-      "building",
-      "construction",
-      "structure"
-    ],
+    "english": ["building", "construction", "structure"],
     "category": "Construction"
   },
   "55202": {
-    "english": [
-      "tourism",
-      "travel"
-    ],
+    "english": ["tourism", "travel"],
     "category": "General"
   },
   "55203": {
-    "english": [
-      "house",
-      "housing",
-      "residential"
-    ],
+    "english": ["house", "housing", "residential"],
     "category": "General"
   },
   "55204": {
-    "english": [
-      "hotel",
-      "accommodation",
-      "lodging"
-    ],
+    "english": ["hotel", "accommodation", "lodging"],
     "category": "General"
   },
   "55209": {
-    "english": [
-      "hotel",
-      "accommodation",
-      "lodging",
-      "service",
-      "services"
-    ],
+    "english": ["hotel", "accommodation", "lodging", "service", "services"],
     "category": "General"
   },
   "55300": {
-    "english": [
-      "train",
-      "railway",
-      "recreation",
-      "leisure"
-    ],
+    "english": ["train", "railway", "recreation", "leisure"],
     "category": "General"
   },
   "55400": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "55901": {
@@ -9349,13 +7170,7 @@
     "category": "General"
   },
   "55909": {
-    "english": [
-      "house",
-      "housing",
-      "residential",
-      "train",
-      "railway"
-    ],
+    "english": ["house", "housing", "residential", "train", "railway"],
     "category": "General"
   },
   "56101": {
@@ -9421,13 +7236,7 @@
     "category": "Food & Beverage"
   },
   "56302": {
-    "english": [
-      "beverage",
-      "drink",
-      "drinks",
-      "service",
-      "services"
-    ],
+    "english": ["beverage", "drink", "drinks", "service", "services"],
     "category": "General"
   },
   "56303": {
@@ -9444,13 +7253,7 @@
     "category": "Construction"
   },
   "56304": {
-    "english": [
-      "beverage",
-      "drink",
-      "drinks",
-      "service",
-      "services"
-    ],
+    "english": ["beverage", "drink", "drinks", "service", "services"],
     "category": "General"
   },
   "56305": {
@@ -9504,20 +7307,11 @@
     "category": "Media"
   },
   "58120": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "production",
-      "manufacturing"
-    ],
+    "english": ["bar", "pub", "lounge", "production", "manufacturing"],
     "category": "General"
   },
   "58130": {
-    "english": [
-      "production",
-      "manufacturing"
-    ],
+    "english": ["production", "manufacturing"],
     "category": "General"
   },
   "58190": {
@@ -9545,31 +7339,15 @@
     "category": "Retail"
   },
   "58211": {
-    "english": [
-      "software",
-      "application",
-      "app"
-    ],
+    "english": ["software", "application", "app"],
     "category": "General"
   },
   "58219": {
-    "english": [
-      "software",
-      "application",
-      "app",
-      "service",
-      "services"
-    ],
+    "english": ["software", "application", "app", "service", "services"],
     "category": "General"
   },
   "58290": {
-    "english": [
-      "software",
-      "application",
-      "app",
-      "finance",
-      "financial"
-    ],
+    "english": ["software", "application", "app", "finance", "financial"],
     "category": "General"
   },
   "59111": {
@@ -9664,33 +7442,15 @@
     "category": "General"
   },
   "59201": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "service",
-      "services"
-    ],
+    "english": ["bar", "pub", "lounge", "service", "services"],
     "category": "General"
   },
   "59202": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "retail",
-      "shop",
-      "store"
-    ],
+    "english": ["bar", "pub", "lounge", "retail", "shop", "store"],
     "category": "Retail"
   },
   "60101": {
-    "english": [
-      "service",
-      "services",
-      "production",
-      "manufacturing"
-    ],
+    "english": ["service", "services", "production", "manufacturing"],
     "category": "General"
   },
   "60102": {
@@ -9706,38 +7466,19 @@
     "category": "General"
   },
   "60103": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "60111": {
-    "english": [
-      "manufacturing",
-      "production",
-      "making"
-    ],
+    "english": ["manufacturing", "production", "making"],
     "category": "General"
   },
   "60201": {
-    "english": [
-      "programming",
-      "coding",
-      "development",
-      "service",
-      "services"
-    ],
+    "english": ["programming", "coding", "development", "service", "services"],
     "category": "General"
   },
   "60202": {
-    "english": [
-      "programming",
-      "coding",
-      "development",
-      "service",
-      "services"
-    ],
+    "english": ["programming", "coding", "development", "service", "services"],
     "category": "General"
   },
   "60203": {
@@ -9753,19 +7494,11 @@
     "category": "General"
   },
   "60311": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge"
-    ],
+    "english": ["bar", "pub", "lounge"],
     "category": "General"
   },
   "60312": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge"
-    ],
+    "english": ["bar", "pub", "lounge"],
     "category": "General"
   },
   "60390": {
@@ -9875,44 +7608,23 @@
     "category": "General"
   },
   "61108": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "61201": {
-    "english": [
-      "internet",
-      "web",
-      "online",
-      "service",
-      "services"
-    ],
+    "english": ["internet", "web", "online", "service", "services"],
     "category": "General"
   },
   "61209": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "61901": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "61902": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "service",
-      "services"
-    ],
+    "english": ["bar", "pub", "lounge", "service", "services"],
     "category": "General"
   },
   "61903": {
@@ -9929,17 +7641,11 @@
     "category": "General"
   },
   "61904": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "61905": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "61909": {
@@ -10110,18 +7816,11 @@
     "category": "General"
   },
   "62202": {
-    "english": [
-      "consulting",
-      "consultant",
-      "advisory"
-    ],
+    "english": ["consulting", "consultant", "advisory"],
     "category": "General"
   },
   "62203": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "62204": {
@@ -10180,21 +7879,11 @@
     "category": "Technology"
   },
   "63101": {
-    "english": [
-      "data",
-      "database",
-      "information"
-    ],
+    "english": ["data", "database", "information"],
     "category": "General"
   },
   "63102": {
-    "english": [
-      "data",
-      "database",
-      "information",
-      "service",
-      "services"
-    ],
+    "english": ["data", "database", "information", "service", "services"],
     "category": "General"
   },
   "63111": {
@@ -10226,44 +7915,23 @@
     "category": "General"
   },
   "64110": {
-    "english": [
-      "bank",
-      "banking"
-    ],
+    "english": ["bank", "banking"],
     "category": "General"
   },
   "64121": {
-    "english": [
-      "service",
-      "services",
-      "bank",
-      "banking"
-    ],
+    "english": ["service", "services", "bank", "banking"],
     "category": "General"
   },
   "64122": {
-    "english": [
-      "service",
-      "services",
-      "bank",
-      "banking"
-    ],
+    "english": ["service", "services", "bank", "banking"],
     "category": "General"
   },
   "64123": {
-    "english": [
-      "bank",
-      "banking"
-    ],
+    "english": ["bank", "banking"],
     "category": "General"
   },
   "64124": {
-    "english": [
-      "service",
-      "services",
-      "bank",
-      "banking"
-    ],
+    "english": ["service", "services", "bank", "banking"],
     "category": "General"
   },
   "64191": {
@@ -10278,28 +7946,15 @@
     "category": "Finance"
   },
   "64192": {
-    "english": [
-      "credit",
-      "loan"
-    ],
+    "english": ["credit", "loan"],
     "category": "General"
   },
   "64193": {
-    "english": [
-      "service",
-      "services",
-      "bank",
-      "banking"
-    ],
+    "english": ["service", "services", "bank", "banking"],
     "category": "General"
   },
   "64194": {
-    "english": [
-      "service",
-      "services",
-      "bank",
-      "banking"
-    ],
+    "english": ["service", "services", "bank", "banking"],
     "category": "General"
   },
   "64199": {
@@ -10314,37 +7969,19 @@
     "category": "General"
   },
   "64210": {
-    "english": [
-      "service",
-      "services",
-      "finance",
-      "financial"
-    ],
+    "english": ["service", "services", "finance", "financial"],
     "category": "General"
   },
   "64220": {
-    "english": [
-      "market",
-      "marketplace",
-      "finance",
-      "financial"
-    ],
+    "english": ["market", "marketplace", "finance", "financial"],
     "category": "General"
   },
   "64310": {
-    "english": [
-      "market",
-      "marketplace"
-    ],
+    "english": ["market", "marketplace"],
     "category": "General"
   },
   "64320": {
-    "english": [
-      "market",
-      "marketplace",
-      "finance",
-      "financial"
-    ],
+    "english": ["market", "marketplace", "finance", "financial"],
     "category": "General"
   },
   "64330": {
@@ -10360,12 +7997,7 @@
     "category": "General"
   },
   "64910": {
-    "english": [
-      "capital",
-      "equity",
-      "financing",
-      "funding"
-    ],
+    "english": ["capital", "equity", "financing", "funding"],
     "category": "General"
   },
   "64920": {
@@ -10384,63 +8016,31 @@
     "category": "Retail"
   },
   "64930": {
-    "english": [
-      "financing",
-      "funding"
-    ],
+    "english": ["financing", "funding"],
     "category": "General"
   },
   "64940": {
-    "english": [
-      "service",
-      "services",
-      "finance",
-      "financial"
-    ],
+    "english": ["service", "services", "finance", "financial"],
     "category": "General"
   },
   "64951": {
-    "english": [
-      "infrastructure",
-      "financing",
-      "funding"
-    ],
+    "english": ["infrastructure", "financing", "funding"],
     "category": "General"
   },
   "64952": {
-    "english": [
-      "infrastructure",
-      "financing",
-      "funding"
-    ],
+    "english": ["infrastructure", "financing", "funding"],
     "category": "General"
   },
   "64953": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "service",
-      "services"
-    ],
+    "english": ["bar", "pub", "lounge", "service", "services"],
     "category": "General"
   },
   "64954": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "service",
-      "services"
-    ],
+    "english": ["bar", "pub", "lounge", "service", "services"],
     "category": "General"
   },
   "64955": {
-    "english": [
-      "house",
-      "housing",
-      "residential"
-    ],
+    "english": ["house", "housing", "residential"],
     "category": "General"
   },
   "64959": {
@@ -10457,30 +8057,15 @@
     "category": "General"
   },
   "64991": {
-    "english": [
-      "capital",
-      "equity",
-      "financing",
-      "funding"
-    ],
+    "english": ["capital", "equity", "financing", "funding"],
     "category": "General"
   },
   "64992": {
-    "english": [
-      "capital",
-      "equity",
-      "financing",
-      "funding"
-    ],
+    "english": ["capital", "equity", "financing", "funding"],
     "category": "General"
   },
   "64993": {
-    "english": [
-      "market",
-      "marketplace",
-      "finance",
-      "financial"
-    ],
+    "english": ["market", "marketplace", "finance", "financial"],
     "category": "General"
   },
   "64994": {
@@ -10496,33 +8081,15 @@
     "category": "Retail"
   },
   "64995": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "finance",
-      "financial"
-    ],
+    "english": ["trading", "commerce", "trade", "finance", "financial"],
     "category": "Retail"
   },
   "64996": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "bank",
-      "banking"
-    ],
+    "english": ["trading", "commerce", "trade", "bank", "banking"],
     "category": "Retail"
   },
   "64997": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "bank",
-      "banking"
-    ],
+    "english": ["trading", "commerce", "trade", "bank", "banking"],
     "category": "Retail"
   },
   "64999": {
@@ -10539,35 +8106,19 @@
     "category": "General"
   },
   "65111": {
-    "english": [
-      "service",
-      "services",
-      "insurance",
-      "assurance"
-    ],
+    "english": ["service", "services", "insurance", "assurance"],
     "category": "General"
   },
   "65112": {
-    "english": [
-      "insurance",
-      "assurance"
-    ],
+    "english": ["insurance", "assurance"],
     "category": "General"
   },
   "65121": {
-    "english": [
-      "service",
-      "services",
-      "insurance",
-      "assurance"
-    ],
+    "english": ["service", "services", "insurance", "assurance"],
     "category": "General"
   },
   "65122": {
-    "english": [
-      "insurance",
-      "assurance"
-    ],
+    "english": ["insurance", "assurance"],
     "category": "General"
   },
   "65123": {
@@ -10582,33 +8133,19 @@
     "category": "General"
   },
   "65131": {
-    "english": [
-      "finance",
-      "financial"
-    ],
+    "english": ["finance", "financial"],
     "category": "General"
   },
   "65132": {
-    "english": [
-      "finance",
-      "financial"
-    ],
+    "english": ["finance", "financial"],
     "category": "General"
   },
   "65201": {
-    "english": [
-      "service",
-      "services",
-      "insurance",
-      "assurance"
-    ],
+    "english": ["service", "services", "insurance", "assurance"],
     "category": "General"
   },
   "65202": {
-    "english": [
-      "insurance",
-      "assurance"
-    ],
+    "english": ["insurance", "assurance"],
     "category": "General"
   },
   "65303": {
@@ -10642,49 +8179,23 @@
     "category": "General"
   },
   "66111": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "66112": {
-    "english": [
-      "system",
-      "systems",
-      "electronic",
-      "electronics"
-    ],
+    "english": ["system", "systems", "electronic", "electronics"],
     "category": "General"
   },
   "66113": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "finance",
-      "financial"
-    ],
+    "english": ["trading", "commerce", "trade", "finance", "financial"],
     "category": "Retail"
   },
   "66114": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "market",
-      "marketplace"
-    ],
+    "english": ["trading", "commerce", "trade", "market", "marketplace"],
     "category": "Retail"
   },
   "66115": {
-    "english": [
-      "market",
-      "marketplace",
-      "finance",
-      "financial"
-    ],
+    "english": ["market", "marketplace", "finance", "financial"],
     "category": "General"
   },
   "66116": {
@@ -10709,12 +8220,7 @@
     "category": "Retail"
   },
   "66117": {
-    "english": [
-      "market",
-      "marketplace",
-      "finance",
-      "financial"
-    ],
+    "english": ["market", "marketplace", "finance", "financial"],
     "category": "General"
   },
   "66119": {
@@ -10741,52 +8247,27 @@
     "category": "Finance"
   },
   "66121": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "finance",
-      "financial"
-    ],
+    "english": ["trading", "commerce", "trade", "finance", "financial"],
     "category": "Retail"
   },
   "66122": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "66123": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "finance",
-      "financial"
-    ],
+    "english": ["trading", "commerce", "trade", "finance", "financial"],
     "category": "Retail"
   },
   "66124": {
-    "english": [
-      "market",
-      "marketplace"
-    ],
+    "english": ["market", "marketplace"],
     "category": "General"
   },
   "66125": {
-    "english": [
-      "paper"
-    ],
+    "english": ["paper"],
     "category": "General"
   },
   "66126": {
-    "english": [
-      "information technology",
-      "IT",
-      "tech"
-    ],
+    "english": ["information technology", "IT", "tech"],
     "category": "Technology"
   },
   "66127": {
@@ -10814,12 +8295,7 @@
     "category": "Retail"
   },
   "66131": {
-    "english": [
-      "market",
-      "marketplace",
-      "finance",
-      "financial"
-    ],
+    "english": ["market", "marketplace", "finance", "financial"],
     "category": "General"
   },
   "66132": {
@@ -10848,38 +8324,19 @@
     "category": "General"
   },
   "66141": {
-    "english": [
-      "data",
-      "database",
-      "information",
-      "service",
-      "services"
-    ],
+    "english": ["data", "database", "information", "service", "services"],
     "category": "General"
   },
   "66142": {
-    "english": [
-      "system",
-      "systems",
-      "infrastructure"
-    ],
+    "english": ["system", "systems", "infrastructure"],
     "category": "General"
   },
   "66143": {
-    "english": [
-      "data",
-      "database",
-      "information",
-      "service",
-      "services"
-    ],
+    "english": ["data", "database", "information", "service", "services"],
     "category": "General"
   },
   "66144": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "66149": {
@@ -10894,27 +8351,15 @@
     "category": "General"
   },
   "66151": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "66152": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "66153": {
-    "english": [
-      "market",
-      "marketplace",
-      "service",
-      "services"
-    ],
+    "english": ["market", "marketplace", "service", "services"],
     "category": "General"
   },
   "66159": {
@@ -10970,34 +8415,19 @@
     "category": "General"
   },
   "66194": {
-    "english": [
-      "market",
-      "marketplace"
-    ],
+    "english": ["market", "marketplace"],
     "category": "General"
   },
   "66195": {
-    "english": [
-      "capital",
-      "equity"
-    ],
+    "english": ["capital", "equity"],
     "category": "General"
   },
   "66197": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "market",
-      "marketplace"
-    ],
+    "english": ["trading", "commerce", "trade", "market", "marketplace"],
     "category": "Retail"
   },
   "66198": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "66199": {
@@ -11012,51 +8442,27 @@
     "category": "General"
   },
   "66211": {
-    "english": [
-      "insurance",
-      "assurance"
-    ],
+    "english": ["insurance", "assurance"],
     "category": "General"
   },
   "66212": {
-    "english": [
-      "service",
-      "services",
-      "insurance",
-      "assurance"
-    ],
+    "english": ["service", "services", "insurance", "assurance"],
     "category": "General"
   },
   "66221": {
-    "english": [
-      "insurance",
-      "assurance"
-    ],
+    "english": ["insurance", "assurance"],
     "category": "General"
   },
   "66222": {
-    "english": [
-      "service",
-      "services",
-      "insurance",
-      "assurance"
-    ],
+    "english": ["service", "services", "insurance", "assurance"],
     "category": "General"
   },
   "66223": {
-    "english": [
-      "service",
-      "services",
-      "insurance",
-      "assurance"
-    ],
+    "english": ["service", "services", "insurance", "assurance"],
     "category": "General"
   },
   "66225": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "66226": {
@@ -11111,29 +8517,15 @@
     "category": "General"
   },
   "66301": {
-    "english": [
-      "market",
-      "marketplace",
-      "finance",
-      "financial"
-    ],
+    "english": ["market", "marketplace", "finance", "financial"],
     "category": "General"
   },
   "66302": {
-    "english": [
-      "market",
-      "marketplace",
-      "finance",
-      "financial"
-    ],
+    "english": ["market", "marketplace", "finance", "financial"],
     "category": "General"
   },
   "66303": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "66309": {
@@ -11162,11 +8554,7 @@
     "category": "Real Estate"
   },
   "68111": {
-    "english": [
-      "building",
-      "construction",
-      "structure"
-    ],
+    "english": ["building", "construction", "structure"],
     "category": "Construction"
   },
   "68112": {
@@ -11193,39 +8581,19 @@
     "category": "Construction"
   },
   "68121": {
-    "english": [
-      "building",
-      "construction",
-      "structure",
-      "tourism",
-      "travel"
-    ],
+    "english": ["building", "construction", "structure", "tourism", "travel"],
     "category": "Construction"
   },
   "68122": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "68123": {
-    "english": [
-      "building",
-      "construction",
-      "structure",
-      "service",
-      "services"
-    ],
+    "english": ["building", "construction", "structure", "service", "services"],
     "category": "Construction"
   },
   "68124": {
-    "english": [
-      "road",
-      "street",
-      "highway"
-    ],
+    "english": ["road", "street", "highway"],
     "category": "General"
   },
   "68125": {
@@ -11242,19 +8610,11 @@
     "category": "Retail"
   },
   "68126": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge"
-    ],
+    "english": ["bar", "pub", "lounge"],
     "category": "General"
   },
   "68127": {
-    "english": [
-      "building",
-      "edifice",
-      "structure"
-    ],
+    "english": ["building", "edifice", "structure"],
     "category": "General"
   },
   "68129": {
@@ -11273,27 +8633,15 @@
     "category": "Construction"
   },
   "68210": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "68291": {
-    "english": [
-      "property",
-      "real estate",
-      "realty",
-      "service",
-      "services"
-    ],
+    "english": ["property", "real estate", "realty", "service", "services"],
     "category": "General"
   },
   "68292": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "68299": {
@@ -11308,20 +8656,11 @@
     "category": "General"
   },
   "69101": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "69102": {
-    "english": [
-      "consulting",
-      "consultant",
-      "advisory",
-      "service",
-      "services"
-    ],
+    "english": ["consulting", "consultant", "advisory", "service", "services"],
     "category": "General"
   },
   "69103": {
@@ -11336,11 +8675,7 @@
     "category": "General"
   },
   "69104": {
-    "english": [
-      "building",
-      "construction",
-      "structure"
-    ],
+    "english": ["building", "construction", "structure"],
     "category": "Construction"
   },
   "69201": {
@@ -11367,11 +8702,7 @@
     "category": "General"
   },
   "70100": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade"
-    ],
+    "english": ["trading", "commerce", "trade"],
     "category": "Retail"
   },
   "70201": {
@@ -11500,24 +8831,15 @@
     "category": "Healthcare"
   },
   "71203": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "71204": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "71209": {
-    "english": [
-      "security",
-      "safety"
-    ],
+    "english": ["security", "safety"],
     "category": "General"
   },
   "72101": {
@@ -11548,21 +8870,11 @@
     "category": "General"
   },
   "72103": {
-    "english": [
-      "health",
-      "healthcare",
-      "medical",
-      "doctor",
-      "physician"
-    ],
+    "english": ["health", "healthcare", "medical", "doctor", "physician"],
     "category": "Healthcare"
   },
   "72104": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "72105": {
@@ -11580,21 +8892,11 @@
     "category": "Healthcare"
   },
   "72106": {
-    "english": [
-      "system",
-      "systems",
-      "research",
-      "study"
-    ],
+    "english": ["system", "systems", "research", "study"],
     "category": "General"
   },
   "72109": {
-    "english": [
-      "system",
-      "systems",
-      "research",
-      "study"
-    ],
+    "english": ["system", "systems", "research", "study"],
     "category": "General"
   },
   "72201": {
@@ -11609,11 +8911,7 @@
     "category": "Retail"
   },
   "72202": {
-    "english": [
-      "art",
-      "arts",
-      "artistic"
-    ],
+    "english": ["art", "arts", "artistic"],
     "category": "General"
   },
   "73100": {
@@ -11656,12 +8954,7 @@
     "category": "General"
   },
   "73202": {
-    "english": [
-      "social",
-      "welfare",
-      "research",
-      "study"
-    ],
+    "english": ["social", "welfare", "research", "study"],
     "category": "General"
   },
   "73300": {
@@ -11781,11 +9074,7 @@
     "category": "General"
   },
   "74119": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "74191": {
@@ -11803,13 +9092,7 @@
     "category": "Construction"
   },
   "74192": {
-    "english": [
-      "computer",
-      "computing",
-      "IT",
-      "service",
-      "services"
-    ],
+    "english": ["computer", "computing", "IT", "service", "services"],
     "category": "Technology"
   },
   "74193": {
@@ -11826,10 +9109,7 @@
     "category": "Technology"
   },
   "74194": {
-    "english": [
-      "design",
-      "designer"
-    ],
+    "english": ["design", "designer"],
     "category": "General"
   },
   "74199": {
@@ -11844,30 +9124,15 @@
     "category": "General"
   },
   "74201": {
-    "english": [
-      "transport",
-      "transportation",
-      "freight"
-    ],
+    "english": ["transport", "transportation", "freight"],
     "category": "General"
   },
   "74209": {
-    "english": [
-      "school",
-      "academy",
-      "tourism",
-      "travel"
-    ],
+    "english": ["school", "academy", "tourism", "travel"],
     "category": "General"
   },
   "74300": {
-    "english": [
-      "software",
-      "application",
-      "app",
-      "training",
-      "course"
-    ],
+    "english": ["software", "application", "app", "training", "course"],
     "category": "General"
   },
   "74910": {
@@ -11881,26 +9146,15 @@
     "category": "General"
   },
   "74991": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "74999": {
-    "english": [
-      "professional"
-    ],
+    "english": ["professional"],
     "category": "General"
   },
   "75001": {
-    "english": [
-      "health",
-      "healthcare",
-      "medical",
-      "service",
-      "services"
-    ],
+    "english": ["health", "healthcare", "medical", "service", "services"],
     "category": "Healthcare"
   },
   "75002": {
@@ -11916,20 +9170,11 @@
     "category": "Healthcare"
   },
   "75009": {
-    "english": [
-      "health",
-      "healthcare",
-      "medical",
-      "bank",
-      "banking"
-    ],
+    "english": ["health", "healthcare", "medical", "bank", "banking"],
     "category": "Healthcare"
   },
   "77100": {
-    "english": [
-      "transportation",
-      "transport"
-    ],
+    "english": ["transportation", "transport"],
     "category": "Transportation"
   },
   "77110": {
@@ -11954,34 +9199,19 @@
     "category": "Rental"
   },
   "77291": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge"
-    ],
+    "english": ["bar", "pub", "lounge"],
     "category": "General"
   },
   "77292": {
-    "english": [
-      "music",
-      "musical"
-    ],
+    "english": ["music", "musical"],
     "category": "General"
   },
   "77293": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge"
-    ],
+    "english": ["bar", "pub", "lounge"],
     "category": "General"
   },
   "77294": {
-    "english": [
-      "plant",
-      "crop",
-      "vegetation"
-    ],
+    "english": ["plant", "crop", "vegetation"],
     "category": "General"
   },
   "77299": {
@@ -11997,29 +9227,15 @@
     "category": "General"
   },
   "77311": {
-    "english": [
-      "transportation",
-      "transport"
-    ],
+    "english": ["transportation", "transport"],
     "category": "Transportation"
   },
   "77312": {
-    "english": [
-      "transportation",
-      "transport",
-      "sports",
-      "athletic"
-    ],
+    "english": ["transportation", "transport", "sports", "athletic"],
     "category": "Transportation"
   },
   "77313": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "transportation",
-      "transport"
-    ],
+    "english": ["bar", "pub", "lounge", "transportation", "transport"],
     "category": "Transportation"
   },
   "77391": {
@@ -12034,35 +9250,19 @@
     "category": "General"
   },
   "77392": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "77393": {
-    "english": [
-      "construction",
-      "building"
-    ],
+    "english": ["construction", "building"],
     "category": "Construction"
   },
   "77394": {
-    "english": [
-      "machine",
-      "machinery",
-      "mechanical"
-    ],
+    "english": ["machine", "machinery", "mechanical"],
     "category": "General"
   },
   "77395": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "professional"
-    ],
+    "english": ["bar", "pub", "lounge", "professional"],
     "category": "General"
   },
   "77396": {
@@ -12087,46 +9287,23 @@
     "category": "Construction"
   },
   "77399": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge"
-    ],
+    "english": ["bar", "pub", "lounge"],
     "category": "General"
   },
   "77510": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "service",
-      "services"
-    ],
+    "english": ["bar", "pub", "lounge", "service", "services"],
     "category": "General"
   },
   "77520": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "service",
-      "services"
-    ],
+    "english": ["bar", "pub", "lounge", "service", "services"],
     "category": "General"
   },
   "78101": {
-    "english": [
-      "house",
-      "housing",
-      "residential"
-    ],
+    "english": ["house", "housing", "residential"],
     "category": "General"
   },
   "78102": {
-    "english": [
-      "information",
-      "data"
-    ],
+    "english": ["information", "data"],
     "category": "General"
   },
   "78103": {
@@ -12141,29 +9318,15 @@
     "category": "General"
   },
   "78104": {
-    "english": [
-      "fishery",
-      "fishing",
-      "aquaculture"
-    ],
+    "english": ["fishery", "fishing", "aquaculture"],
     "category": "General"
   },
   "78105": {
-    "english": [
-      "data",
-      "database",
-      "information"
-    ],
+    "english": ["data", "database", "information"],
     "category": "General"
   },
   "79110": {
-    "english": [
-      "retail",
-      "shop",
-      "store",
-      "sports",
-      "athletic"
-    ],
+    "english": ["retail", "shop", "store", "sports", "athletic"],
     "category": "Retail"
   },
   "79111": {
@@ -12180,12 +9343,7 @@
     "category": "Tourism"
   },
   "79121": {
-    "english": [
-      "entertainment",
-      "recreation",
-      "sports",
-      "athletic"
-    ],
+    "english": ["entertainment", "recreation", "sports", "athletic"],
     "category": "General"
   },
   "79122": {
@@ -12237,10 +9395,7 @@
     "category": "General"
   },
   "79903": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "79909": {
@@ -12272,18 +9427,11 @@
     "category": "General"
   },
   "80190": {
-    "english": [
-      "consulting",
-      "consultant",
-      "advisory"
-    ],
+    "english": ["consulting", "consultant", "advisory"],
     "category": "General"
   },
   "81100": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "81210": {
@@ -12343,12 +9491,7 @@
     "category": "Construction"
   },
   "82100": {
-    "english": [
-      "service",
-      "services",
-      "finance",
-      "financial"
-    ],
+    "english": ["service", "services", "finance", "financial"],
     "category": "General"
   },
   "82110": {
@@ -12385,17 +9528,11 @@
     "category": "Agriculture"
   },
   "82400": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "82911": {
-    "english": [
-      "shipping",
-      "delivery"
-    ],
+    "english": ["shipping", "delivery"],
     "category": "General"
   },
   "82912": {
@@ -12414,10 +9551,7 @@
     "category": "Food Service"
   },
   "82920": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "82921": {
@@ -12449,33 +9583,19 @@
     "category": "Food Service"
   },
   "82923": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "82924": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "82925": {
-    "english": [
-      "pharmacy",
-      "drugstore",
-      "service",
-      "services"
-    ],
+    "english": ["pharmacy", "drugstore", "service", "services"],
     "category": "General"
   },
   "82929": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "82990": {
@@ -12492,32 +9612,19 @@
     "category": "Food Service"
   },
   "84112": {
-    "english": [
-      "gas"
-    ],
+    "english": ["gas"],
     "category": "General"
   },
   "84113": {
-    "english": [
-      "finance",
-      "financial"
-    ],
+    "english": ["finance", "financial"],
     "category": "General"
   },
   "84114": {
-    "english": [
-      "building",
-      "construction",
-      "structure"
-    ],
+    "english": ["building", "construction", "structure"],
     "category": "Construction"
   },
   "84115": {
-    "english": [
-      "building",
-      "construction",
-      "structure"
-    ],
+    "english": ["building", "construction", "structure"],
     "category": "Construction"
   },
   "84119": {
@@ -12532,46 +9639,23 @@
     "category": "Healthcare"
   },
   "84121": {
-    "english": [
-      "education",
-      "educational",
-      "learning"
-    ],
+    "english": ["education", "educational", "learning"],
     "category": "Education"
   },
   "84122": {
-    "english": [
-      "health",
-      "healthcare",
-      "medical"
-    ],
+    "english": ["health", "healthcare", "medical"],
     "category": "Healthcare"
   },
   "84123": {
-    "english": [
-      "house",
-      "housing",
-      "residential",
-      "cleaning",
-      "sanitation"
-    ],
+    "english": ["house", "housing", "residential", "cleaning", "sanitation"],
     "category": "General"
   },
   "84124": {
-    "english": [
-      "social",
-      "welfare"
-    ],
+    "english": ["social", "welfare"],
     "category": "General"
   },
   "84126": {
-    "english": [
-      "art",
-      "arts",
-      "artistic",
-      "sports",
-      "athletic"
-    ],
+    "english": ["art", "arts", "artistic", "sports", "athletic"],
     "category": "General"
   },
   "84129": {
@@ -12586,10 +9670,7 @@
     "category": "Healthcare"
   },
   "84130": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "84141": {
@@ -12606,54 +9687,27 @@
     "category": "Agriculture"
   },
   "84142": {
-    "english": [
-      "electricity",
-      "electric",
-      "power",
-      "energy",
-      "gas",
-      "water"
-    ],
+    "english": ["electricity", "electric", "power", "energy", "gas", "water"],
     "category": "General"
   },
   "84143": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "84144": {
-    "english": [
-      "application",
-      "app",
-      "software"
-    ],
+    "english": ["application", "app", "software"],
     "category": "General"
   },
   "84145": {
-    "english": [
-      "construction",
-      "building"
-    ],
+    "english": ["construction", "building"],
     "category": "Construction"
   },
   "84146": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "tourism",
-      "travel"
-    ],
+    "english": ["trading", "commerce", "trade", "tourism", "travel"],
     "category": "Retail"
   },
   "84149": {
-    "english": [
-      "production",
-      "manufacturing"
-    ],
+    "english": ["production", "manufacturing"],
     "category": "General"
   },
   "84221": {
@@ -12669,13 +9723,7 @@
     "category": "General"
   },
   "84222": {
-    "english": [
-      "civil",
-      "civil engineering",
-      "wholesale",
-      "bulk",
-      "large"
-    ],
+    "english": ["civil", "civil engineering", "wholesale", "bulk", "large"],
     "category": "General"
   },
   "84223": {
@@ -12708,19 +9756,11 @@
     "category": "General"
   },
   "84232": {
-    "english": [
-      "civil",
-      "civil engineering",
-      "security",
-      "safety"
-    ],
+    "english": ["civil", "civil engineering", "security", "safety"],
     "category": "General"
   },
   "84233": {
-    "english": [
-      "legal",
-      "law"
-    ],
+    "english": ["legal", "law"],
     "category": "General"
   },
   "84234": {
@@ -12736,39 +9776,19 @@
     "category": "General"
   },
   "84300": {
-    "english": [
-      "health",
-      "healthcare",
-      "medical",
-      "insurance",
-      "assurance"
-    ],
+    "english": ["health", "healthcare", "medical", "insurance", "assurance"],
     "category": "Healthcare"
   },
   "85101": {
-    "english": [
-      "education",
-      "educational",
-      "learning"
-    ],
+    "english": ["education", "educational", "learning"],
     "category": "Education"
   },
   "85102": {
-    "english": [
-      "education",
-      "educational",
-      "learning"
-    ],
+    "english": ["education", "educational", "learning"],
     "category": "Education"
   },
   "85103": {
-    "english": [
-      "education",
-      "educational",
-      "learning",
-      "school",
-      "academy"
-    ],
+    "english": ["education", "educational", "learning", "school", "academy"],
     "category": "Education"
   },
   "85104": {
@@ -12784,31 +9804,15 @@
     "category": "Education"
   },
   "85201": {
-    "english": [
-      "education",
-      "educational",
-      "learning",
-      "school",
-      "academy"
-    ],
+    "english": ["education", "educational", "learning", "school", "academy"],
     "category": "Education"
   },
   "85202": {
-    "english": [
-      "education",
-      "educational",
-      "learning",
-      "school",
-      "academy"
-    ],
+    "english": ["education", "educational", "learning", "school", "academy"],
     "category": "Education"
   },
   "85203": {
-    "english": [
-      "education",
-      "educational",
-      "learning"
-    ],
+    "english": ["education", "educational", "learning"],
     "category": "Education"
   },
   "85204": {
@@ -12825,67 +9829,31 @@
     "category": "Education"
   },
   "85311": {
-    "english": [
-      "education",
-      "educational",
-      "learning",
-      "school",
-      "academy"
-    ],
+    "english": ["education", "educational", "learning", "school", "academy"],
     "category": "Education"
   },
   "85312": {
-    "english": [
-      "education",
-      "educational",
-      "learning",
-      "school",
-      "academy"
-    ],
+    "english": ["education", "educational", "learning", "school", "academy"],
     "category": "Education"
   },
   "85313": {
-    "english": [
-      "education",
-      "educational",
-      "learning"
-    ],
+    "english": ["education", "educational", "learning"],
     "category": "Education"
   },
   "85314": {
-    "english": [
-      "education",
-      "educational",
-      "learning"
-    ],
+    "english": ["education", "educational", "learning"],
     "category": "Education"
   },
   "85315": {
-    "english": [
-      "education",
-      "educational",
-      "learning",
-      "school",
-      "academy"
-    ],
+    "english": ["education", "educational", "learning", "school", "academy"],
     "category": "Education"
   },
   "85316": {
-    "english": [
-      "education",
-      "educational",
-      "learning",
-      "school",
-      "academy"
-    ],
+    "english": ["education", "educational", "learning", "school", "academy"],
     "category": "Education"
   },
   "85317": {
-    "english": [
-      "education",
-      "educational",
-      "learning"
-    ],
+    "english": ["education", "educational", "learning"],
     "category": "Education"
   },
   "85318": {
@@ -12962,21 +9930,11 @@
     "category": "Education"
   },
   "85324": {
-    "english": [
-      "education",
-      "educational",
-      "learning"
-    ],
+    "english": ["education", "educational", "learning"],
     "category": "Education"
   },
   "85330": {
-    "english": [
-      "education",
-      "educational",
-      "learning",
-      "training",
-      "course"
-    ],
+    "english": ["education", "educational", "learning", "training", "course"],
     "category": "Education"
   },
   "85401": {
@@ -13006,23 +9964,11 @@
     "category": "Education"
   },
   "85403": {
-    "english": [
-      "education",
-      "educational",
-      "learning",
-      "school",
-      "academy"
-    ],
+    "english": ["education", "educational", "learning", "school", "academy"],
     "category": "Education"
   },
   "85404": {
-    "english": [
-      "education",
-      "educational",
-      "learning",
-      "school",
-      "academy"
-    ],
+    "english": ["education", "educational", "learning", "school", "academy"],
     "category": "Education"
   },
   "85410": {
@@ -13081,34 +10027,19 @@
     "category": "Education"
   },
   "85530": {
-    "english": [
-      "school",
-      "academy"
-    ],
+    "english": ["school", "academy"],
     "category": "General"
   },
   "85541": {
-    "english": [
-      "education",
-      "educational",
-      "learning"
-    ],
+    "english": ["education", "educational", "learning"],
     "category": "Education"
   },
   "85542": {
-    "english": [
-      "education",
-      "educational",
-      "learning"
-    ],
+    "english": ["education", "educational", "learning"],
     "category": "Education"
   },
   "85549": {
-    "english": [
-      "education",
-      "educational",
-      "learning"
-    ],
+    "english": ["education", "educational", "learning"],
     "category": "Education"
   },
   "85550": {
@@ -13203,17 +10134,11 @@
     "category": "General"
   },
   "85575": {
-    "english": [
-      "training",
-      "course"
-    ],
+    "english": ["training", "course"],
     "category": "General"
   },
   "85576": {
-    "english": [
-      "training",
-      "course"
-    ],
+    "english": ["training", "course"],
     "category": "General"
   },
   "85577": {
@@ -13324,10 +10249,7 @@
     "category": "General"
   },
   "85586": {
-    "english": [
-      "training",
-      "course"
-    ],
+    "english": ["training", "course"],
     "category": "General"
   },
   "85587": {
@@ -13346,10 +10268,7 @@
     "category": "Agriculture"
   },
   "85589": {
-    "english": [
-      "training",
-      "course"
-    ],
+    "english": ["training", "course"],
     "category": "General"
   },
   "85591": {
@@ -13385,11 +10304,7 @@
     "category": "Technology"
   },
   "85593": {
-    "english": [
-      "education",
-      "educational",
-      "learning"
-    ],
+    "english": ["education", "educational", "learning"],
     "category": "Education"
   },
   "85594": {
@@ -13456,13 +10371,7 @@
     "category": "Education"
   },
   "85598": {
-    "english": [
-      "education",
-      "educational",
-      "learning",
-      "service",
-      "services"
-    ],
+    "english": ["education", "educational", "learning", "service", "services"],
     "category": "Education"
   },
   "85599": {
@@ -13479,50 +10388,23 @@
     "category": "Education"
   },
   "85610": {
-    "english": [
-      "training",
-      "course",
-      "service",
-      "services"
-    ],
+    "english": ["training", "course", "service", "services"],
     "category": "General"
   },
   "85691": {
-    "english": [
-      "education",
-      "educational",
-      "learning",
-      "training",
-      "course"
-    ],
+    "english": ["education", "educational", "learning", "training", "course"],
     "category": "Education"
   },
   "85692": {
-    "english": [
-      "education",
-      "educational",
-      "learning",
-      "training",
-      "course"
-    ],
+    "english": ["education", "educational", "learning", "training", "course"],
     "category": "Education"
   },
   "85693": {
-    "english": [
-      "professional",
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["professional", "industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "85694": {
-    "english": [
-      "service",
-      "services",
-      "sports",
-      "athletic"
-    ],
+    "english": ["service", "services", "sports", "athletic"],
     "category": "General"
   },
   "85699": {
@@ -13550,11 +10432,7 @@
     "category": "Healthcare"
   },
   "86102": {
-    "english": [
-      "health",
-      "healthcare",
-      "medical"
-    ],
+    "english": ["health", "healthcare", "medical"],
     "category": "Healthcare"
   },
   "86103": {
@@ -13568,23 +10446,11 @@
     "category": "Healthcare"
   },
   "86104": {
-    "english": [
-      "health",
-      "healthcare",
-      "medical",
-      "clinic",
-      "medical clinic"
-    ],
+    "english": ["health", "healthcare", "medical", "clinic", "medical clinic"],
     "category": "Healthcare"
   },
   "86105": {
-    "english": [
-      "health",
-      "healthcare",
-      "medical",
-      "clinic",
-      "medical clinic"
-    ],
+    "english": ["health", "healthcare", "medical", "clinic", "medical clinic"],
     "category": "Healthcare"
   },
   "86109": {
@@ -13612,13 +10478,7 @@
     "category": "Healthcare"
   },
   "86202": {
-    "english": [
-      "doctor",
-      "physician",
-      "medical",
-      "service",
-      "services"
-    ],
+    "english": ["doctor", "physician", "medical", "service", "services"],
     "category": "Healthcare"
   },
   "86203": {
@@ -13683,13 +10543,7 @@
     "category": "Healthcare"
   },
   "86992": {
-    "english": [
-      "health",
-      "healthcare",
-      "medical",
-      "clinic",
-      "medical clinic"
-    ],
+    "english": ["health", "healthcare", "medical", "clinic", "medical clinic"],
     "category": "Healthcare"
   },
   "86993": {
@@ -13705,11 +10559,7 @@
     "category": "Healthcare"
   },
   "86994": {
-    "english": [
-      "transport",
-      "transportation",
-      "freight"
-    ],
+    "english": ["transport", "transportation", "freight"],
     "category": "General"
   },
   "86995": {
@@ -13726,58 +10576,27 @@
     "category": "Food Service"
   },
   "87101": {
-    "english": [
-      "health",
-      "healthcare",
-      "medical",
-      "doctor",
-      "physician"
-    ],
+    "english": ["health", "healthcare", "medical", "doctor", "physician"],
     "category": "Healthcare"
   },
   "87102": {
-    "english": [
-      "health",
-      "healthcare",
-      "medical"
-    ],
+    "english": ["health", "healthcare", "medical"],
     "category": "Healthcare"
   },
   "87201": {
-    "english": [
-      "health",
-      "healthcare",
-      "medical",
-      "service",
-      "services"
-    ],
+    "english": ["health", "healthcare", "medical", "service", "services"],
     "category": "Healthcare"
   },
   "87202": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "87301": {
-    "english": [
-      "food",
-      "meal",
-      "cuisine",
-      "service",
-      "services"
-    ],
+    "english": ["food", "meal", "cuisine", "service", "services"],
     "category": "Food Service"
   },
   "87302": {
-    "english": [
-      "food",
-      "meal",
-      "cuisine",
-      "service",
-      "services"
-    ],
+    "english": ["food", "meal", "cuisine", "service", "services"],
     "category": "Food Service"
   },
   "87303": {
@@ -13792,10 +10611,7 @@
     "category": "General"
   },
   "87910": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "87991": {
@@ -13812,84 +10628,43 @@
     "category": "Healthcare"
   },
   "87992": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "87993": {
-    "english": [
-      "trading",
-      "commerce",
-      "trade",
-      "service",
-      "services"
-    ],
+    "english": ["trading", "commerce", "trade", "service", "services"],
     "category": "Retail"
   },
   "88101": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "88102": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "88901": {
-    "english": [
-      "service",
-      "services",
-      "finance",
-      "financial"
-    ],
+    "english": ["service", "services", "finance", "financial"],
     "category": "General"
   },
   "88902": {
-    "english": [
-      "service",
-      "services",
-      "finance",
-      "financial"
-    ],
+    "english": ["service", "services", "finance", "financial"],
     "category": "General"
   },
   "88903": {
-    "english": [
-      "distribution",
-      "social",
-      "welfare"
-    ],
+    "english": ["distribution", "social", "welfare"],
     "category": "General"
   },
   "88904": {
-    "english": [
-      "distribution",
-      "social",
-      "welfare"
-    ],
+    "english": ["distribution", "social", "welfare"],
     "category": "General"
   },
   "88905": {
-    "english": [
-      "distribution",
-      "social",
-      "welfare"
-    ],
+    "english": ["distribution", "social", "welfare"],
     "category": "General"
   },
   "88906": {
-    "english": [
-      "education",
-      "educational",
-      "learning"
-    ],
+    "english": ["education", "educational", "learning"],
     "category": "Education"
   },
   "88907": {
@@ -13919,36 +10694,19 @@
     "category": "Arts & Culture"
   },
   "90111": {
-    "english": [
-      "computer",
-      "computing",
-      "IT"
-    ],
+    "english": ["computer", "computing", "IT"],
     "category": "Technology"
   },
   "90112": {
-    "english": [
-      "music",
-      "musical"
-    ],
+    "english": ["music", "musical"],
     "category": "General"
   },
   "90113": {
-    "english": [
-      "art",
-      "arts",
-      "artistic"
-    ],
+    "english": ["art", "arts", "artistic"],
     "category": "General"
   },
   "90120": {
-    "english": [
-      "production",
-      "manufacturing",
-      "art",
-      "arts",
-      "artistic"
-    ],
+    "english": ["production", "manufacturing", "art", "arts", "artistic"],
     "category": "General"
   },
   "90130": {
@@ -13963,13 +10721,7 @@
     "category": "Construction"
   },
   "90200": {
-    "english": [
-      "art",
-      "arts",
-      "artistic",
-      "entertainment",
-      "recreation"
-    ],
+    "english": ["art", "arts", "artistic", "entertainment", "recreation"],
     "category": "General"
   },
   "90310": {
@@ -13997,13 +10749,7 @@
     "category": "Retail"
   },
   "90391": {
-    "english": [
-      "art",
-      "arts",
-      "artistic",
-      "entertainment",
-      "recreation"
-    ],
+    "english": ["art", "arts", "artistic", "entertainment", "recreation"],
     "category": "General"
   },
   "90399": {
@@ -14030,59 +10776,31 @@
     "category": "Arts & Culture"
   },
   "91111": {
-    "english": [
-      "education",
-      "educational",
-      "learning"
-    ],
+    "english": ["education", "educational", "learning"],
     "category": "Education"
   },
   "91112": {
-    "english": [
-      "education",
-      "educational",
-      "learning"
-    ],
+    "english": ["education", "educational", "learning"],
     "category": "Education"
   },
   "91121": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "91122": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "91211": {
-    "english": [
-      "art",
-      "arts",
-      "artistic",
-      "tourism",
-      "travel"
-    ],
+    "english": ["art", "arts", "artistic", "tourism", "travel"],
     "category": "General"
   },
   "91212": {
-    "english": [
-      "building",
-      "construction",
-      "structure"
-    ],
+    "english": ["building", "construction", "structure"],
     "category": "Construction"
   },
   "91221": {
-    "english": [
-      "building",
-      "construction",
-      "structure"
-    ],
+    "english": ["building", "construction", "structure"],
     "category": "Construction"
   },
   "91222": {
@@ -14108,38 +10826,19 @@
     "category": "General"
   },
   "91410": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "education",
-      "educational",
-      "learning"
-    ],
+    "english": ["bar", "pub", "lounge", "education", "educational", "learning"],
     "category": "Education"
   },
   "91421": {
-    "english": [
-      "data",
-      "database",
-      "information"
-    ],
+    "english": ["data", "database", "information"],
     "category": "General"
   },
   "91422": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge"
-    ],
+    "english": ["bar", "pub", "lounge"],
     "category": "General"
   },
   "91423": {
-    "english": [
-      "system",
-      "systems",
-      "water"
-    ],
+    "english": ["system", "systems", "water"],
     "category": "General"
   },
   "91424": {
@@ -14155,27 +10854,15 @@
     "category": "General"
   },
   "91426": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge"
-    ],
+    "english": ["bar", "pub", "lounge"],
     "category": "General"
   },
   "91429": {
-    "english": [
-      "video",
-      "maintenance"
-    ],
+    "english": ["video", "maintenance"],
     "category": "General"
   },
   "92000": {
-    "english": [
-      "entertainment",
-      "recreation",
-      "sports",
-      "athletic"
-    ],
+    "english": ["entertainment", "recreation", "sports", "athletic"],
     "category": "General"
   },
   "93110": {
@@ -14203,122 +10890,63 @@
     "category": "Education"
   },
   "93112": {
-    "english": [
-      "sports",
-      "athletic"
-    ],
+    "english": ["sports", "athletic"],
     "category": "General"
   },
   "93113": {
-    "english": [
-      "sports",
-      "athletic"
-    ],
+    "english": ["sports", "athletic"],
     "category": "General"
   },
   "93114": {
-    "english": [
-      "sports",
-      "athletic"
-    ],
+    "english": ["sports", "athletic"],
     "category": "General"
   },
   "93115": {
-    "english": [
-      "sports",
-      "athletic"
-    ],
+    "english": ["sports", "athletic"],
     "category": "General"
   },
   "93116": {
-    "english": [
-      "education",
-      "educational",
-      "learning",
-      "school",
-      "academy"
-    ],
+    "english": ["education", "educational", "learning", "school", "academy"],
     "category": "Education"
   },
   "93119": {
-    "english": [
-      "professional",
-      "sports",
-      "athletic"
-    ],
+    "english": ["professional", "sports", "athletic"],
     "category": "General"
   },
   "93121": {
-    "english": [
-      "professional",
-      "sports",
-      "athletic"
-    ],
+    "english": ["professional", "sports", "athletic"],
     "category": "General"
   },
   "93122": {
-    "english": [
-      "professional",
-      "sports",
-      "athletic"
-    ],
+    "english": ["professional", "sports", "athletic"],
     "category": "General"
   },
   "93123": {
-    "english": [
-      "professional",
-      "sports",
-      "athletic"
-    ],
+    "english": ["professional", "sports", "athletic"],
     "category": "General"
   },
   "93124": {
-    "english": [
-      "food",
-      "foodstuff",
-      "staple",
-      "professional"
-    ],
+    "english": ["food", "foodstuff", "staple", "professional"],
     "category": "General"
   },
   "93125": {
-    "english": [
-      "professional",
-      "sports",
-      "athletic"
-    ],
+    "english": ["professional", "sports", "athletic"],
     "category": "General"
   },
   "93126": {
-    "english": [
-      "professional",
-      "sports",
-      "athletic"
-    ],
+    "english": ["professional", "sports", "athletic"],
     "category": "General"
   },
   "93127": {
-    "english": [
-      "professional",
-      "sports",
-      "athletic"
-    ],
+    "english": ["professional", "sports", "athletic"],
     "category": "General"
   },
   "93128": {
-    "english": [
-      "professional",
-      "sports",
-      "athletic"
-    ],
+    "english": ["professional", "sports", "athletic"],
     "category": "General"
   },
   "93129": {
-    "english": [
-      "professional",
-      "sports",
-      "athletic"
-    ],
+    "english": ["professional", "sports", "athletic"],
     "category": "General"
   },
   "93191": {
@@ -14333,23 +10961,15 @@
     "category": "Recreation"
   },
   "93192": {
-    "english": [
-      "professional"
-    ],
+    "english": ["professional"],
     "category": "General"
   },
   "93194": {
-    "english": [
-      "sports",
-      "athletic"
-    ],
+    "english": ["sports", "athletic"],
     "category": "General"
   },
   "93195": {
-    "english": [
-      "sports",
-      "athletic"
-    ],
+    "english": ["sports", "athletic"],
     "category": "General"
   },
   "93196": {
@@ -14368,10 +10988,7 @@
     "category": "Food Service"
   },
   "93197": {
-    "english": [
-      "sports",
-      "athletic"
-    ],
+    "english": ["sports", "athletic"],
     "category": "General"
   },
   "93199": {
@@ -14386,10 +11003,7 @@
     "category": "General"
   },
   "93210": {
-    "english": [
-      "entertainment",
-      "recreation"
-    ],
+    "english": ["entertainment", "recreation"],
     "category": "General"
   },
   "93211": {
@@ -14404,10 +11018,7 @@
     "category": "Recreation"
   },
   "93291": {
-    "english": [
-      "music",
-      "musical"
-    ],
+    "english": ["music", "musical"],
     "category": "General"
   },
   "93292": {
@@ -14424,28 +11035,15 @@
     "category": "Food Service"
   },
   "93293": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "93294": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "tourism",
-      "travel"
-    ],
+    "english": ["bar", "pub", "lounge", "tourism", "travel"],
     "category": "General"
   },
   "93295": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge"
-    ],
+    "english": ["bar", "pub", "lounge"],
     "category": "General"
   },
   "93296": {
@@ -14502,18 +11100,11 @@
     "category": "Retail"
   },
   "94121": {
-    "english": [
-      "doctor",
-      "physician",
-      "medical",
-      "professional"
-    ],
+    "english": ["doctor", "physician", "medical", "professional"],
     "category": "Healthcare"
   },
   "94122": {
-    "english": [
-      "professional"
-    ],
+    "english": ["professional"],
     "category": "General"
   },
   "94910": {
@@ -14530,19 +11121,11 @@
     "category": "Education"
   },
   "94920": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge"
-    ],
+    "english": ["bar", "pub", "lounge"],
     "category": "General"
   },
   "94990": {
-    "english": [
-      "education",
-      "educational",
-      "learning"
-    ],
+    "english": ["education", "educational", "learning"],
     "category": "Education"
   },
   "95101": {
@@ -14559,66 +11142,31 @@
     "category": "Technology"
   },
   "95102": {
-    "english": [
-      "computer",
-      "computing",
-      "IT"
-    ],
+    "english": ["computer", "computing", "IT"],
     "category": "Technology"
   },
   "95210": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "95220": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "service",
-      "services"
-    ],
+    "english": ["bar", "pub", "lounge", "service", "services"],
     "category": "General"
   },
   "95230": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "service",
-      "services"
-    ],
+    "english": ["bar", "pub", "lounge", "service", "services"],
     "category": "General"
   },
   "95240": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "service",
-      "services"
-    ],
+    "english": ["bar", "pub", "lounge", "service", "services"],
     "category": "General"
   },
   "95291": {
-    "english": [
-      "clothing",
-      "garment",
-      "apparel"
-    ],
+    "english": ["clothing", "garment", "apparel"],
     "category": "General"
   },
   "95299": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge",
-      "service",
-      "services"
-    ],
+    "english": ["bar", "pub", "lounge", "service", "services"],
     "category": "General"
   },
   "95311": {
@@ -14763,28 +11311,15 @@
     "category": "General"
   },
   "96400": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "96900": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "97000": {
-    "english": [
-      "house",
-      "housing",
-      "residential",
-      "research",
-      "study",
-      "gas"
-    ],
+    "english": ["house", "housing", "residential", "research", "study", "gas"],
     "category": "General"
   },
   "98100": {
@@ -14805,12 +11340,7 @@
     "category": "Agriculture"
   },
   "98200": {
-    "english": [
-      "service",
-      "services",
-      "production",
-      "manufacturing"
-    ],
+    "english": ["service", "services", "production", "manufacturing"],
     "category": "General"
   },
   "99000": {
@@ -14862,43 +11392,23 @@
     "category": "Agriculture"
   },
   "01113": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01114": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01115": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01116": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01117": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01118": {
@@ -14913,107 +11423,55 @@
     "category": "Agriculture"
   },
   "01121": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01131": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01132": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01133": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01134": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01135": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01136": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01137": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01138": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01139": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01140": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01150": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01160": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01191": {
@@ -15047,11 +11505,7 @@
     "category": "Agriculture"
   },
   "01199": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01210": {
@@ -15065,67 +11519,35 @@
     "category": "Agriculture"
   },
   "01230": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01240": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01251": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01252": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01253": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01259": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01261": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01262": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01269": {
@@ -15140,19 +11562,11 @@
     "category": "Agriculture"
   },
   "01271": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01272": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01273": {
@@ -15178,144 +11592,75 @@
     "category": "Agriculture"
   },
   "01281": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01282": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01283": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01284": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01285": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01286": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01287": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01289": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01291": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01299": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01301": {
-    "english": [
-      "agriculture",
-      "farming",
-      "agricultural"
-    ],
+    "english": ["agriculture", "farming", "agricultural"],
     "category": "Agriculture"
   },
   "01309": {
-    "english": [
-      "production",
-      "manufacturing"
-    ],
+    "english": ["production", "manufacturing"],
     "category": "General"
   },
   "01412": {
-    "english": [
-      "production",
-      "manufacturing"
-    ],
+    "english": ["production", "manufacturing"],
     "category": "General"
   },
   "01414": {
-    "english": [
-      "production",
-      "manufacturing"
-    ],
+    "english": ["production", "manufacturing"],
     "category": "General"
   },
   "01420": {
-    "english": [
-      "production",
-      "manufacturing",
-      "sports",
-      "athletic"
-    ],
+    "english": ["production", "manufacturing", "sports", "athletic"],
     "category": "General"
   },
   "01430": {
-    "english": [
-      "service",
-      "services",
-      "production",
-      "manufacturing"
-    ],
+    "english": ["service", "services", "production", "manufacturing"],
     "category": "General"
   },
   "01445": {
-    "english": [
-      "production",
-      "manufacturing"
-    ],
+    "english": ["production", "manufacturing"],
     "category": "General"
   },
   "01450": {
-    "english": [
-      "production",
-      "manufacturing"
-    ],
+    "english": ["production", "manufacturing"],
     "category": "General"
   },
   "01469": {
@@ -15363,24 +11708,15 @@
     "category": "Agriculture"
   },
   "01613": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "01614": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "01615": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "01616": {
@@ -15404,24 +11740,15 @@
     "category": "Agriculture"
   },
   "01621": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "01622": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "01629": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "01630": {
@@ -15459,48 +11786,27 @@
     "category": "Food Service"
   },
   "02102": {
-    "english": [
-      "production",
-      "manufacturing"
-    ],
+    "english": ["production", "manufacturing"],
     "category": "General"
   },
   "02103": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing",
-      "production"
-    ],
+    "english": ["industry", "industrial", "manufacturing", "production"],
     "category": "General"
   },
   "02201": {
-    "english": [
-      "industry",
-      "industrial",
-      "manufacturing"
-    ],
+    "english": ["industry", "industrial", "manufacturing"],
     "category": "General"
   },
   "02202": {
-    "english": [
-      "production",
-      "manufacturing"
-    ],
+    "english": ["production", "manufacturing"],
     "category": "General"
   },
   "02401": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "02402": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "02409": {
@@ -15517,33 +11823,19 @@
     "category": "Construction"
   },
   "03211": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge"
-    ],
+    "english": ["bar", "pub", "lounge"],
     "category": "General"
   },
   "03222": {
-    "english": [
-      "bar",
-      "pub",
-      "lounge"
-    ],
+    "english": ["bar", "pub", "lounge"],
     "category": "General"
   },
   "03234": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "03300": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "05101": {
@@ -15595,25 +11887,15 @@
     "category": "General"
   },
   "06100": {
-    "english": [
-      "production",
-      "manufacturing"
-    ],
+    "english": ["production", "manufacturing"],
     "category": "General"
   },
   "07210": {
-    "english": [
-      "production",
-      "manufacturing"
-    ],
+    "english": ["production", "manufacturing"],
     "category": "General"
   },
   "08101": {
-    "english": [
-      "building",
-      "construction",
-      "structure"
-    ],
+    "english": ["building", "construction", "structure"],
     "category": "Construction"
   },
   "08920": {
@@ -15627,33 +11909,19 @@
     "category": "General"
   },
   "08930": {
-    "english": [
-      "production",
-      "manufacturing"
-    ],
+    "english": ["production", "manufacturing"],
     "category": "General"
   },
   "08999": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "09100": {
-    "english": [
-      "transportation",
-      "transport",
-      "service",
-      "services"
-    ],
+    "english": ["transportation", "transport", "service", "services"],
     "category": "Transportation"
   },
   "09900": {
-    "english": [
-      "service",
-      "services"
-    ],
+    "english": ["service", "services"],
     "category": "General"
   },
   "01192": {
@@ -15671,14 +11939,7 @@
     "category": "General"
   },
   "01302": {
-    "english": [
-      "plant",
-      "crop",
-      "vegetation",
-      "cut",
-      "cutting",
-      "barber"
-    ],
+    "english": ["plant", "crop", "vegetation", "cut", "cutting", "barber"],
     "category": "General"
   },
   "01411": {
@@ -15726,27 +11987,15 @@
     "category": "General"
   },
   "01443": {
-    "english": [
-      "livestock",
-      "cattle",
-      "animal husbandry"
-    ],
+    "english": ["livestock", "cattle", "animal husbandry"],
     "category": "General"
   },
   "01444": {
-    "english": [
-      "livestock",
-      "cattle",
-      "animal husbandry"
-    ],
+    "english": ["livestock", "cattle", "animal husbandry"],
     "category": "General"
   },
   "01464": {
-    "english": [
-      "cut",
-      "cutting",
-      "barber"
-    ],
+    "english": ["cut", "cutting", "barber"],
     "category": "General"
   },
   "01466": {
@@ -15783,18 +12032,11 @@
     "category": "General"
   },
   "01497": {
-    "english": [
-      "processing",
-      "treatment"
-    ],
+    "english": ["processing", "treatment"],
     "category": "General"
   },
   "01498": {
-    "english": [
-      "wholesale",
-      "bulk",
-      "large"
-    ],
+    "english": ["wholesale", "bulk", "large"],
     "category": "General"
   },
   "02101": {
@@ -15832,18 +12074,11 @@
     "category": "General"
   },
   "03110": {
-    "english": [
-      "sea",
-      "marine",
-      "maritime",
-      "water"
-    ],
+    "english": ["sea", "marine", "maritime", "water"],
     "category": "General"
   },
   "03120": {
-    "english": [
-      "water"
-    ],
+    "english": ["water"],
     "category": "General"
   },
   "03212": {
@@ -15880,22 +12115,11 @@
     "category": "General"
   },
   "03214": {
-    "english": [
-      "sea",
-      "marine",
-      "maritime",
-      "water"
-    ],
+    "english": ["sea", "marine", "maritime", "water"],
     "category": "General"
   },
   "03221": {
-    "english": [
-      "wholesale",
-      "bulk",
-      "large",
-      "water",
-      "maintenance"
-    ],
+    "english": ["wholesale", "bulk", "large", "water", "maintenance"],
     "category": "General"
   },
   "03223": {
@@ -15918,30 +12142,15 @@
     "category": "General"
   },
   "03224": {
-    "english": [
-      "motorcycle",
-      "motor",
-      "water"
-    ],
+    "english": ["motorcycle", "motor", "water"],
     "category": "General"
   },
   "03231": {
-    "english": [
-      "wholesale",
-      "bulk",
-      "large",
-      "water"
-    ],
+    "english": ["wholesale", "bulk", "large", "water"],
     "category": "General"
   },
   "03232": {
-    "english": [
-      "wholesale",
-      "bulk",
-      "large",
-      "water",
-      "maintenance"
-    ],
+    "english": ["wholesale", "bulk", "large", "water", "maintenance"],
     "category": "General"
   },
   "03233": {
@@ -15963,82 +12172,43 @@
     "category": "General"
   },
   "06201": {
-    "english": [
-      "manufacturing",
-      "production",
-      "making",
-      "gas"
-    ],
+    "english": ["manufacturing", "production", "making", "gas"],
     "category": "General"
   },
   "06202": {
-    "english": [
-      "metal",
-      "metallic",
-      "electricity",
-      "electric",
-      "power"
-    ],
+    "english": ["metal", "metallic", "electricity", "electric", "power"],
     "category": "General"
   },
   "07102": {
-    "english": [
-      "metal",
-      "metallic"
-    ],
+    "english": ["metal", "metallic"],
     "category": "General"
   },
   "07229": {
-    "english": [
-      "metal",
-      "metallic"
-    ],
+    "english": ["metal", "metallic"],
     "category": "General"
   },
   "08107": {
-    "english": [
-      "chemical",
-      "chemistry",
-      "water"
-    ],
+    "english": ["chemical", "chemistry", "water"],
     "category": "General"
   },
   "08109": {
-    "english": [
-      "sea",
-      "marine",
-      "maritime",
-      "chemical",
-      "chemistry",
-      "water"
-    ],
+    "english": ["sea", "marine", "maritime", "chemical", "chemistry", "water"],
     "category": "General"
   },
   "08911": {
-    "english": [
-      "processing",
-      "treatment"
-    ],
+    "english": ["processing", "treatment"],
     "category": "General"
   },
   "08914": {
-    "english": [
-      "water"
-    ],
+    "english": ["water"],
     "category": "General"
   },
   "08919": {
-    "english": [
-      "chemical",
-      "chemistry"
-    ],
+    "english": ["chemical", "chemistry"],
     "category": "General"
   },
   "08996": {
-    "english": [
-      "metal",
-      "metallic"
-    ],
+    "english": ["metal", "metallic"],
     "category": "General"
   }
 }

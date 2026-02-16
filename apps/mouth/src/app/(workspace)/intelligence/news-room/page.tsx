@@ -1,27 +1,27 @@
-'use client';
+"use client";
 
-import { useEffect, useState, useMemo } from 'react';
-import { intelligenceApi, StagingItem } from '@/lib/api/intelligence.api';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { useEffect, useState, useMemo } from "react";
+import { intelligenceApi, StagingItem } from "@/lib/api/intelligence.api";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { useToast } from '@/components/ui/toast';
-import { cn, renderMiniMarkdown } from '@/lib/utils';
-import { logger } from '@/lib/logger';
+} from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/toast";
+import { cn, renderMiniMarkdown } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 import {
   Loader2,
   ExternalLink,
@@ -39,25 +39,27 @@ import {
   Eye,
   Edit,
   Image as ImageIcon,
-} from 'lucide-react';
-import { ArticleEditor } from './components/ArticleEditor';
-import { CoverImageUploader } from './components/CoverImageUploader';
+} from "lucide-react";
+import { ArticleEditor } from "./components/ArticleEditor";
+import { CoverImageUploader } from "./components/CoverImageUploader";
 
-type FilterType = 'all' | 'NEW' | 'UPDATED' | 'critical';
-type SortType = 'date-desc' | 'date-asc' | 'title-asc' | 'title-desc';
+type FilterType = "all" | "NEW" | "UPDATED" | "critical";
+type SortType = "date-desc" | "date-asc" | "title-asc" | "title-desc";
 
 export default function NewsRoomPage() {
   const [items, setItems] = useState<StagingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [publishingIds, setPublishingIds] = useState<Set<string>>(new Set());
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
-  const [filterType, setFilterType] = useState<FilterType>('all');
-  const [sortType, setSortType] = useState<SortType>('date-desc');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState<FilterType>("all");
+  const [sortType, setSortType] = useState<SortType>("date-desc");
+  const [searchQuery, setSearchQuery] = useState("");
   const [previewItem, setPreviewItem] = useState<StagingItem | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [editingItem, setEditingItem] = useState<StagingItem | null>(null);
-  const [coverUploadItem, setCoverUploadItem] = useState<StagingItem | null>(null);
+  const [coverUploadItem, setCoverUploadItem] = useState<StagingItem | null>(
+    null,
+  );
   const toast = useToast();
 
   // Filtered and sorted items
@@ -71,27 +73,33 @@ export default function NewsRoomPage() {
         (item) =>
           item.title.toLowerCase().includes(query) ||
           item.id.toLowerCase().includes(query) ||
-          (item.source && item.source.toLowerCase().includes(query))
+          (item.source && item.source.toLowerCase().includes(query)),
       );
     }
 
     // Apply type filter
-    if (filterType === 'critical') {
+    if (filterType === "critical") {
       filtered = filtered.filter((item) => item.is_critical === true);
-    } else if (filterType !== 'all') {
+    } else if (filterType !== "all") {
       filtered = filtered.filter((item) => item.detection_type === filterType);
     }
 
     // Apply sorting
     const sorted = [...filtered].sort((a, b) => {
       switch (sortType) {
-        case 'date-desc':
-          return new Date(b.detected_at).getTime() - new Date(a.detected_at).getTime();
-        case 'date-asc':
-          return new Date(a.detected_at).getTime() - new Date(b.detected_at).getTime();
-        case 'title-asc':
+        case "date-desc":
+          return (
+            new Date(b.detected_at).getTime() -
+            new Date(a.detected_at).getTime()
+          );
+        case "date-asc":
+          return (
+            new Date(a.detected_at).getTime() -
+            new Date(b.detected_at).getTime()
+          );
+        case "title-asc":
           return a.title.localeCompare(b.title);
-        case 'title-desc':
+        case "title-desc":
           return b.title.localeCompare(a.title);
         default:
           return 0;
@@ -102,23 +110,26 @@ export default function NewsRoomPage() {
   }, [items, filterType, sortType, searchQuery]);
 
   useEffect(() => {
-    logger.componentMount('NewsRoomPage');
+    logger.componentMount("NewsRoomPage");
     loadNews();
 
     return () => {
-      logger.componentUnmount('NewsRoomPage');
+      logger.componentUnmount("NewsRoomPage");
     };
   }, []);
 
   const loadNews = async () => {
-    logger.info('Loading news items', { component: 'NewsRoomPage', action: 'load_news' });
+    logger.info("Loading news items", {
+      component: "NewsRoomPage",
+      action: "load_news",
+    });
     setLoading(true);
     try {
-      const res = await intelligenceApi.getPendingItems('news');
+      const res = await intelligenceApi.getPendingItems("news");
       setItems(res.items);
       logger.info(`Loaded ${res.count} news items`, {
-        component: 'NewsRoomPage',
-        action: 'load_news_success',
+        component: "NewsRoomPage",
+        action: "load_news_success",
         metadata: {
           count: res.count,
           criticalCount: res.items.filter((i) => i.is_critical).length,
@@ -126,14 +137,14 @@ export default function NewsRoomPage() {
       });
     } catch (error) {
       logger.error(
-        'Failed to load news items',
+        "Failed to load news items",
         {
-          component: 'NewsRoomPage',
-          action: 'load_news_error',
+          component: "NewsRoomPage",
+          action: "load_news_error",
         },
-        error as Error
+        error as Error,
       );
-      toast.error('Error', 'Failed to load news drafts');
+      toast.error("Error", "Failed to load news drafts");
     } finally {
       setLoading(false);
     }
@@ -161,13 +172,13 @@ export default function NewsRoomPage() {
 
   const handleBulkPublish = async () => {
     if (selectedItems.size === 0) {
-      toast.error('No items selected', 'Please select items to publish.');
+      toast.error("No items selected", "Please select items to publish.");
       return;
     }
 
-    logger.info('Starting bulk publish', {
-      component: 'NewsRoomPage',
-      action: 'bulk_publish_start',
+    logger.info("Starting bulk publish", {
+      component: "NewsRoomPage",
+      action: "bulk_publish_start",
       metadata: { count: selectedItems.size },
     });
 
@@ -186,13 +197,13 @@ export default function NewsRoomPage() {
       } catch (error) {
         results.failed++;
         logger.error(
-          'Bulk publish failed for item',
+          "Bulk publish failed for item",
           {
-            component: 'NewsRoomPage',
-            action: 'bulk_publish_error',
+            component: "NewsRoomPage",
+            action: "bulk_publish_error",
             itemId: id,
           },
-          error as Error
+          error as Error,
         );
       } finally {
         setPublishingIds((prev) => {
@@ -205,13 +216,13 @@ export default function NewsRoomPage() {
 
     setSelectedItems(new Set());
     toast.success(
-      'Bulk publish completed',
-      `${results.success} published, ${results.failed} failed.`
+      "Bulk publish completed",
+      `${results.success} published, ${results.failed} failed.`,
     );
 
-    logger.info('Bulk publish completed', {
-      component: 'NewsRoomPage',
-      action: 'bulk_publish_complete',
+    logger.info("Bulk publish completed", {
+      component: "NewsRoomPage",
+      action: "bulk_publish_complete",
       metadata: results,
     });
 
@@ -225,24 +236,24 @@ export default function NewsRoomPage() {
       setPreviewItem(fullItem);
     } catch (error) {
       logger.error(
-        'Failed to load preview',
+        "Failed to load preview",
         {
-          component: 'NewsRoomPage',
-          action: 'preview_error',
+          component: "NewsRoomPage",
+          action: "preview_error",
           itemId: item.id,
         },
-        error as Error
+        error as Error,
       );
-      toast.error('Error', 'Failed to load article preview');
+      toast.error("Error", "Failed to load article preview");
     } finally {
       setPreviewLoading(false);
     }
   };
 
   const handlePublish = async (item: StagingItem) => {
-    logger.info('Publishing item', {
-      component: 'NewsRoomPage',
-      action: 'publish_item',
+    logger.info("Publishing item", {
+      component: "NewsRoomPage",
+      action: "publish_item",
       itemId: item.id,
       metadata: { title: item.title },
     });
@@ -253,29 +264,32 @@ export default function NewsRoomPage() {
     try {
       const response = await intelligenceApi.publishItem(item.type, item.id);
 
-      logger.info('Item published successfully', {
-        component: 'NewsRoomPage',
-        action: 'publish_success',
+      logger.info("Item published successfully", {
+        component: "NewsRoomPage",
+        action: "publish_success",
         itemId: item.id,
         metadata: { published_url: response.published_url },
       });
 
-      toast.success('Published!', `"${response.title}" has been published to the knowledge base`);
+      toast.success(
+        "Published!",
+        `"${response.title}" has been published to the knowledge base`,
+      );
 
       // Reload news list to remove published item
       loadNews();
     } catch (error) {
       logger.error(
-        'Failed to publish item',
+        "Failed to publish item",
         {
-          component: 'NewsRoomPage',
-          action: 'publish_error',
+          component: "NewsRoomPage",
+          action: "publish_error",
           itemId: item.id,
         },
-        error as Error
+        error as Error,
       );
 
-      toast.error('Error', 'Failed to publish article');
+      toast.error("Error", "Failed to publish article");
     } finally {
       // Remove from publishing set
       setPublishingIds((prev) => {
@@ -302,7 +316,9 @@ export default function NewsRoomPage() {
       {/* Header */}
       <div className="flex justify-between items-end border-b border-[var(--border)] pb-6">
         <div className="space-y-1">
-          <h2 className="text-3xl font-bold tracking-tight text-[var(--foreground)]">News Room</h2>
+          <h2 className="text-3xl font-bold tracking-tight text-[var(--foreground)]">
+            News Room
+          </h2>
           <p className="text-[var(--foreground-muted)] text-lg">
             Curate and publish intelligence reports
             {selectedItems.size > 0 && (
@@ -312,7 +328,12 @@ export default function NewsRoomPage() {
             )}
           </p>
         </div>
-        <Button onClick={loadNews} variant="secondary" size="sm" className="gap-2">
+        <Button
+          onClick={loadNews}
+          variant="secondary"
+          size="sm"
+          className="gap-2"
+        >
           <RefreshCw className="h-4 w-4" /> Sync Sources
         </Button>
       </div>
@@ -332,7 +353,10 @@ export default function NewsRoomPage() {
 
         {/* Filters */}
         <div className="flex gap-2">
-          <Select value={filterType} onValueChange={(value) => setFilterType(value as FilterType)}>
+          <Select
+            value={filterType}
+            onValueChange={(value) => setFilterType(value as FilterType)}
+          >
             <SelectTrigger className="w-[140px]">
               <Filter className="w-4 h-4 mr-2" />
               <SelectValue />
@@ -345,7 +369,10 @@ export default function NewsRoomPage() {
             </SelectContent>
           </Select>
 
-          <Select value={sortType} onValueChange={(value) => setSortType(value as SortType)}>
+          <Select
+            value={sortType}
+            onValueChange={(value) => setSortType(value as SortType)}
+          >
             <SelectTrigger className="w-[160px]">
               <ArrowUpDown className="w-4 h-4 mr-2" />
               <SelectValue />
@@ -362,7 +389,12 @@ export default function NewsRoomPage() {
         {/* Bulk Actions */}
         {selectedItems.size > 0 && (
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={toggleSelectAll} className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleSelectAll}
+              className="gap-2"
+            >
               {selectedItems.size === filteredAndSortedItems.length ? (
                 <>
                   <CheckSquare className="w-4 h-4" />
@@ -394,11 +426,13 @@ export default function NewsRoomPage() {
           <div className="bg-[var(--accent)]/10 p-6 rounded-full mb-6">
             <Sparkles className="h-12 w-12 text-[var(--accent)]" />
           </div>
-          <h3 className="text-xl font-semibold mb-2 text-[var(--foreground)]">No Drafts Pending</h3>
+          <h3 className="text-xl font-semibold mb-2 text-[var(--foreground)]">
+            No Drafts Pending
+          </h3>
           <p className="text-[var(--foreground-muted)] max-w-md text-center">
             {items.length === 0
               ? "The intelligence scraper hasn't flagged any new items for review. Check back later or run a manual scrape."
-              : 'No items match your current filters. Try adjusting your search or filters.'}
+              : "No items match your current filters. Try adjusting your search or filters."}
           </p>
         </div>
       ) : (
@@ -407,10 +441,10 @@ export default function NewsRoomPage() {
             <Card
               key={item.id}
               className={cn(
-                'group flex flex-col h-full overflow-hidden hover:shadow-lg transition-all duration-300 border-t-4',
+                "group flex flex-col h-full overflow-hidden hover:shadow-lg transition-all duration-300 border-t-4",
                 selectedItems.has(item.id)
-                  ? 'border-t-[var(--accent)] ring-2 ring-[var(--accent)]/20'
-                  : 'border-t-transparent hover:border-t-[var(--accent)]'
+                  ? "border-t-[var(--accent)] ring-2 ring-[var(--accent)]/20"
+                  : "border-t-transparent hover:border-t-[var(--accent)]",
               )}
             >
               {/* Checkbox */}
@@ -437,10 +471,11 @@ export default function NewsRoomPage() {
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       // Show error placeholder if image fails to load
-                      e.currentTarget.style.display = 'none';
-                      const placeholder = e.currentTarget.nextElementSibling as HTMLElement;
+                      e.currentTarget.style.display = "none";
+                      const placeholder = e.currentTarget
+                        .nextElementSibling as HTMLElement;
                       if (placeholder) {
-                        placeholder.classList.remove('hidden');
+                        placeholder.classList.remove("hidden");
                         placeholder.innerHTML =
                           '<div class="flex items-center justify-center h-full"><span class="text-red-500 text-sm">Image failed to load</span></div>';
                       }
@@ -448,7 +483,9 @@ export default function NewsRoomPage() {
                   />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center bg-red-100">
-                    <span className="text-red-500 text-sm font-medium">⚠️ Image Missing</span>
+                    <span className="text-red-500 text-sm font-medium">
+                      ⚠️ Image Missing
+                    </span>
                   </div>
                 )}
                 <div className="hidden"></div>
@@ -463,11 +500,11 @@ export default function NewsRoomPage() {
                 <div className="absolute top-3 left-3">
                   <span
                     className={cn(
-                      'px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide',
-                      'bg-white/90 text-slate-900 shadow-sm backdrop-blur-sm'
+                      "px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide",
+                      "bg-white/90 text-slate-900 shadow-sm backdrop-blur-sm",
                     )}
                   >
-                    {item.source || 'Unknown Source'}
+                    {item.source || "Unknown Source"}
                   </span>
                 </div>
               </div>
@@ -476,9 +513,13 @@ export default function NewsRoomPage() {
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-xs text-[var(--foreground-muted)]">
                     <Calendar className="h-3 w-3" />
-                    <span>{new Date(item.detected_at).toLocaleDateString()}</span>
+                    <span>
+                      {new Date(item.detected_at).toLocaleDateString()}
+                    </span>
                     <span>•</span>
-                    <span className="text-[var(--accent)] font-medium">{item.detection_type}</span>
+                    <span className="text-[var(--accent)] font-medium">
+                      {item.detection_type}
+                    </span>
                   </div>
                   <h3 className="font-bold text-lg leading-snug group-hover:text-[var(--accent)] transition-colors line-clamp-3 text-[var(--foreground)]">
                     {item.title}
@@ -493,7 +534,8 @@ export default function NewsRoomPage() {
                   </div>
                 ) : (
                   <p className="text-sm text-[var(--foreground-muted)] line-clamp-3">
-                    Pending editorial review. Agent-detected immigration news awaiting approval.
+                    Pending editorial review. Agent-detected immigration news
+                    awaiting approval.
                   </p>
                 )}
               </CardContent>
@@ -555,8 +597,13 @@ export default function NewsRoomPage() {
                       </>
                     )}
                   </Button>
-                  {item.source && item.source.startsWith('http') && (
-                    <Button size="sm" variant="secondary" asChild title="View Original Source">
+                  {item.source && item.source.startsWith("http") && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      asChild
+                      title="View Original Source"
+                    >
                       <a href={item.source} target="_blank" rel="noreferrer">
                         <ExternalLink className="h-4 w-4" />
                       </a>
@@ -570,18 +617,27 @@ export default function NewsRoomPage() {
       )}
 
       {/* Preview Dialog */}
-      <Dialog open={!!previewItem} onOpenChange={(open) => !open && setPreviewItem(null)}>
+      <Dialog
+        open={!!previewItem}
+        onOpenChange={(open) => !open && setPreviewItem(null)}
+      >
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl">{previewItem?.title}</DialogTitle>
             <DialogDescription>
               {previewItem && (
                 <div className="flex items-center gap-4 text-sm text-[var(--foreground-muted)] mt-2">
-                  <span>{new Date(previewItem.detected_at).toLocaleDateString()}</span>
+                  <span>
+                    {new Date(previewItem.detected_at).toLocaleDateString()}
+                  </span>
                   <span>•</span>
-                  <span>{(previewItem as any).source_name || previewItem.source}</span>
+                  <span>
+                    {(previewItem as any).source_name || previewItem.source}
+                  </span>
                   <span>•</span>
-                  <span className="text-[var(--accent)]">{previewItem.detection_type}</span>
+                  <span className="text-[var(--accent)]">
+                    {previewItem.detection_type}
+                  </span>
                 </div>
               )}
             </DialogDescription>
@@ -599,7 +655,9 @@ export default function NewsRoomPage() {
             <div className="prose prose-sm max-w-none text-[var(--foreground)] mt-4">
               <div
                 className="whitespace-pre-wrap"
-                dangerouslySetInnerHTML={renderMiniMarkdown(previewItem.content)}
+                dangerouslySetInnerHTML={renderMiniMarkdown(
+                  previewItem.content,
+                )}
               />
             </div>
           )}
@@ -621,7 +679,7 @@ export default function NewsRoomPage() {
                 </>
               )}
             </Button>
-            {previewItem?.source && previewItem.source.startsWith('http') && (
+            {previewItem?.source && previewItem.source.startsWith("http") && (
               <Button variant="outline" asChild>
                 <a
                   href={previewItem.source}

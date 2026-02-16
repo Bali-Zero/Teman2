@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * VirtualList Component
@@ -6,8 +6,8 @@
  * Efficiently render large lists using virtualization
  */
 
-import { useRef, useCallback, ReactNode } from 'react';
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { useRef, useCallback, ReactNode } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 
 interface VirtualListProps<T> {
   items: T[];
@@ -23,7 +23,7 @@ export function VirtualList<T>({
   renderItem,
   itemHeight,
   overscan = 5,
-  className = '',
+  className = "",
   estimateSize,
 }: VirtualListProps<T>) {
   const parentRef = useRef<HTMLDivElement>(null);
@@ -36,22 +36,26 @@ export function VirtualList<T>({
   });
 
   return (
-    <div ref={parentRef} className={`overflow-auto ${className}`} style={{ height: '100%' }}>
+    <div
+      ref={parentRef}
+      className={`overflow-auto ${className}`}
+      style={{ height: "100%" }}
+    >
       <div
         style={{
           height: `${virtualizer.getTotalSize()}px`,
-          width: '100%',
-          position: 'relative',
+          width: "100%",
+          position: "relative",
         }}
       >
         {virtualizer.getVirtualItems().map((virtualItem) => (
           <div
             key={virtualItem.key}
             style={{
-              position: 'absolute',
+              position: "absolute",
               top: 0,
               left: 0,
-              width: '100%',
+              width: "100%",
               height: `${virtualItem.size}px`,
               transform: `translateY(${virtualItem.start}px)`,
             }}
@@ -72,11 +76,17 @@ export function FixedVirtualList<T>({
   renderItem,
   itemHeight,
   height,
-  className = '',
-}: Omit<VirtualListProps<T>, 'estimateSize' | 'overscan'> & { height: number }) {
+  className = "",
+}: Omit<VirtualListProps<T>, "estimateSize" | "overscan"> & {
+  height: number;
+}) {
   return (
     <div style={{ height }} className={className}>
-      <VirtualList items={items} renderItem={renderItem} itemHeight={itemHeight} />
+      <VirtualList
+        items={items}
+        renderItem={renderItem}
+        itemHeight={itemHeight}
+      />
     </div>
   );
 }

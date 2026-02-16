@@ -7,7 +7,14 @@
  * API request parameters
  */
 export interface ApiRequestParams {
-  [key: string]: string | number | boolean | null | undefined | string[] | number[];
+  [key: string]:
+    | string
+    | number
+    | boolean
+    | null
+    | undefined
+    | string[]
+    | number[];
 }
 
 /**
@@ -32,19 +39,19 @@ export interface LogMetadata {
  * Type guard for ApiRequestParams
  */
 export function isApiRequestParams(value: unknown): value is ApiRequestParams {
-  if (typeof value !== 'object' || value === null) {
+  if (typeof value !== "object" || value === null) {
     return false;
   }
 
   const params = value as Record<string, unknown>;
   return Object.values(params).every(
     (v) =>
-      typeof v === 'string' ||
-      typeof v === 'number' ||
-      typeof v === 'boolean' ||
+      typeof v === "string" ||
+      typeof v === "number" ||
+      typeof v === "boolean" ||
       v === null ||
       v === undefined ||
-      Array.isArray(v)
+      Array.isArray(v),
   );
 }
 
@@ -52,7 +59,7 @@ export function isApiRequestParams(value: unknown): value is ApiRequestParams {
  * Type guard for ErrorInfo
  */
 export function isErrorInfo(value: unknown): value is ErrorInfo {
-  if (typeof value !== 'object' || value === null) {
+  if (typeof value !== "object" || value === null) {
     return false;
   }
 

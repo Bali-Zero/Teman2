@@ -1,7 +1,7 @@
-import type { IApiClient } from '../types/api-client.types';
-import { AgentStep } from '@/types';
-import type { AgenticQueryResponse } from './chat.types';
-import { logger } from '@/lib/logger';
+import type { IApiClient } from "../types/api-client.types";
+import { AgentStep } from "@/types";
+import type { AgenticQueryResponse } from "./chat.types";
+import { logger } from "@/lib/logger";
 
 /**
  * NOTE: Image response cleaning is now handled by the backend.
@@ -30,20 +30,23 @@ export class ChatApi {
 
   async sendMessage(
     message: string,
-    userId?: string
+    userId?: string,
   ): Promise<{
     response: string;
     sources: Array<{ title?: string; content?: string }>;
   }> {
     const userProfile = this.client.getUserProfile();
-    const response = await this.client.request<AgenticQueryResponse>('/api/agentic-rag/query', {
-      method: 'POST',
-      body: JSON.stringify({
-        query: message,
-        user_id: userId || userProfile?.id || 'anonymous',
-        enable_vision: false,
-      }),
-    });
+    const response = await this.client.request<AgenticQueryResponse>(
+      "/api/agentic-rag/query",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          query: message,
+          user_id: userId || userProfile?.id || "anonymous",
+          enable_vision: false,
+        }),
+      },
+    );
 
     return {
       response: response.answer,
@@ -114,7 +117,7 @@ export class ChatApi {
         golden_answer_used?: boolean;
         followup_questions?: string[];
         generated_image?: string;
-      }
+      },
     ) => void,
     onError: (error: Error) => void,
     onStep?: (step: AgentStep) => void,
@@ -124,14 +127,14 @@ export class ChatApi {
     correlationId?: string,
     idleTimeoutMs: number = 300000, // 5min idle timeout for testing (reset on data)
     maxTotalTimeMs: number = 600000, // 10min max total time
-    images?: Array<{ base64: string; name: string }> // Vision images
+    images?: Array<{ base64: string; name: string }>, // Vision images
   ): Promise<void> {
     // CRITICAL FIX: Bypass Vercel proxy for SSE streaming (Vercel kills SSE streams)
     // Use direct Fly.io endpoint when NEXT_PUBLIC_SSE_DIRECT=true
-    const useDirectEndpoint = process.env.NEXT_PUBLIC_SSE_DIRECT === 'true';
-    const endpoint = useDirectEndpoint 
+    const useDirectEndpoint = process.env.NEXT_PUBLIC_SSE_DIRECT === "true";
+    const endpoint = useDirectEndpoint
       ? `${process.env.NEXT_PUBLIC_API_URL}/api/agentic-rag/stream`
-      : '/api/agentic-rag/stream';
+      : "/api/agentic-rag/stream";
 
     // Metrics tracking
     const startTime = Date.now();
@@ -188,7 +191,7 @@ export class ChatApi {
           if (idleTimeoutId) clearTimeout(idleTimeoutId);
           clearTimeout(maxTimeId);
         };
-        abortSignal.addEventListener('abort', abortListener);
+        abortSignal.addEventListener("abort", abortListener);
       }
     }
 
@@ -196,8 +199,8 @@ export class ChatApi {
 
     // If aborted before start, call onError with appropriate message
     if (wasAbortedBeforeStart) {
-      const error = new Error('Request cancelled') as Error & { code?: string };
-      error.code = 'ABORTED';
+      const error = new Error("Request cancelled") as Error & { code?: string };
+      error.code = "ABORTED";
       onError(error);
       return;
     }
@@ -215,7 +218,7 @@ export class ChatApi {
         images?: Array<{ base64: string; name: string }>;
       } = {
         query: message,
-        user_id: userProfile?.email || userProfile?.id || 'anonymous',
+        user_id: userProfile?.email || userProfile?.id || "anonymous",
         enable_vision: hasImages, // Enable vision when images are attached
         ...(hasImages && { images }), // Include images if present
       };
@@ -233,35 +236,37 @@ export class ChatApi {
 
       // Build headers with CSRF token for state-changing request
       const streamHeaders: Record<string, string> = {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       };
 
       // Add correlation ID for end-to-end tracing
       if (correlationId) {
-        streamHeaders['X-Correlation-ID'] = correlationId;
+        streamHeaders["X-Correlation-ID"] = correlationId;
       }
 
       // Add CSRF token for cookie-based auth
       const csrf = this.client.getCsrfToken();
       if (csrf) {
-        streamHeaders['X-CSRF-Token'] = csrf;
+        streamHeaders["X-CSRF-Token"] = csrf;
       }
 
       // Keep Authorization header for backward compatibility
       const token = this.client.getToken();
       if (token) {
-        streamHeaders['Authorization'] = `Bearer ${token}`;
+        streamHeaders["Authorization"] = `Bearer ${token}`;
       }
 
       // Build full URL: if endpoint is absolute (starts with http), use it directly
       // Otherwise, concatenate with baseUrl (proxy path)
       const baseUrl = this.client.getBaseUrl();
-      const fullUrl = endpoint.startsWith('http') ? endpoint : `${baseUrl}${endpoint}`;
+      const fullUrl = endpoint.startsWith("http")
+        ? endpoint
+        : `${baseUrl}${endpoint}`;
       const response = await fetch(fullUrl, {
-        method: 'POST',
+        method: "POST",
         headers: streamHeaders,
         body: JSON.stringify(requestBody),
-        credentials: 'include', // Send httpOnly cookies
+        credentials: "include", // Send httpOnly cookies
         signal: signalToUse,
       });
 
@@ -270,13 +275,13 @@ export class ChatApi {
       }
 
       if (!response.body) {
-        throw new Error('No response body');
+        throw new Error("No response body");
       }
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let sseBuffer = '';
-      let fullResponse = '';
+      let sseBuffer = "";
+      let fullResponse = "";
       let sources: Array<{ title?: string; content?: string }> = [];
       let finalMetadata: Record<string, unknown> | undefined = undefined;
       let generatedImageUrl: string | undefined = undefined; // Track generated images
@@ -295,7 +300,7 @@ export class ChatApi {
       };
 
       const isRecord = (value: unknown): value is Record<string, unknown> =>
-        typeof value === 'object' && value !== null;
+        typeof value === "object" && value !== null;
 
       try {
         while (true) {
@@ -303,7 +308,7 @@ export class ChatApi {
           if (signalToUse.aborted || requestAborted) {
             requestAborted = true; // Ensure flag is set
             await cancelReader();
-            throw new Error('Request aborted');
+            throw new Error("Request aborted");
           }
 
           const { done, value } = await reader.read();
@@ -313,7 +318,7 @@ export class ChatApi {
           if (signalToUse.aborted || requestAborted) {
             requestAborted = true; // Ensure flag is set
             await cancelReader();
-            throw new Error('Request aborted');
+            throw new Error("Request aborted");
           }
 
           // Reset idle timeout on data arrival
@@ -331,8 +336,8 @@ export class ChatApi {
           sseBuffer += decoder.decode(value, { stream: true });
 
           // SSE frames can be split across network chunks; buffer until we have full lines.
-          const lines = sseBuffer.split('\n');
-          sseBuffer = lines.pop() ?? '';
+          const lines = sseBuffer.split("\n");
+          sseBuffer = lines.pop() ?? "";
 
           let receivedDone = false;
 
@@ -341,15 +346,15 @@ export class ChatApi {
             if (signalToUse.aborted || requestAborted) {
               requestAborted = true; // Ensure flag is set
               await cancelReader();
-              throw new Error('Request aborted');
+              throw new Error("Request aborted");
             }
 
-            const line = rawLine.replace(/\r$/, '');
-            if (!line.startsWith('data:')) continue;
+            const line = rawLine.replace(/\r$/, "");
+            if (!line.startsWith("data:")) continue;
 
-            const jsonStr = line.slice('data:'.length).trimStart();
+            const jsonStr = line.slice("data:".length).trimStart();
             if (!jsonStr) continue;
-            if (jsonStr === '[DONE]') {
+            if (jsonStr === "[DONE]") {
               receivedDone = true;
               break;
             }
@@ -358,99 +363,110 @@ export class ChatApi {
             try {
               data = JSON.parse(jsonStr);
             } catch {
-              logger.warn('Failed to parse SSE message', {
-                component: 'ChatApi',
-                action: 'parseSSE',
+              logger.warn("Failed to parse SSE message", {
+                component: "ChatApi",
+                action: "parseSSE",
                 metadata: { line: line.substring(0, 100) }, // Truncate for safety
               });
               continue;
             }
 
-            if (!isRecord(data) || typeof data.type !== 'string') continue;
+            if (!isRecord(data) || typeof data.type !== "string") continue;
 
             // Track event types for metrics
             eventTypeCounts[data.type] = (eventTypeCounts[data.type] || 0) + 1;
 
             // Handle reasoning events
-            if (data.type === 'reasoning_step') {
+            if (data.type === "reasoning_step") {
               resetIdleTimeout();
               if (
                 onStep &&
                 isRecord(data.data) &&
-                typeof data.data.phase === 'string' &&
+                typeof data.data.phase === "string" &&
                 !signalToUse.aborted &&
                 !requestAborted
               ) {
                 onStep({
-                  type: 'reasoning_step',
+                  type: "reasoning_step",
                   data: {
                     phase: data.data.phase as string,
-                    status: (data.data.status as string) || 'in_progress',
-                    message: (data.data.message as string) || '',
+                    status: (data.data.status as string) || "in_progress",
+                    message: (data.data.message as string) || "",
                     description: data.data.description as string | undefined,
-                    details: data.data.details as Record<string, unknown> | undefined,
+                    details: data.data.details as
+                      | Record<string, unknown>
+                      | undefined,
                   },
                   timestamp: new Date(),
                 });
               }
-            } else if (data.type === 'phase') {
+            } else if (data.type === "phase") {
               // Reset idle timeout on phase update
               resetIdleTimeout();
               if (
                 onStep &&
                 isRecord(data.data) &&
-                typeof data.data.name === 'string' &&
+                typeof data.data.name === "string" &&
                 !signalToUse.aborted &&
                 !requestAborted
               ) {
                 onStep({
-                  type: 'phase',
+                  type: "phase",
                   data: {
                     name: data.data.name as string,
-                    status: (data.data.status as string) || 'started',
+                    status: (data.data.status as string) || "started",
                   },
                   timestamp: new Date(),
                 });
               }
-            } else if (data.type === 'keepalive') {
+            } else if (data.type === "keepalive") {
               // Reset idle timeout on keepalive - this keeps connection alive during long operations
               resetIdleTimeout();
               // Optionally notify about progress
-              if (onStep && isRecord(data.data) && !signalToUse.aborted && !requestAborted) {
-                const phase = (data.data.phase as string) || 'processing';
+              if (
+                onStep &&
+                isRecord(data.data) &&
+                !signalToUse.aborted &&
+                !requestAborted
+              ) {
+                const phase = (data.data.phase as string) || "processing";
                 const elapsed = (data.data.elapsed as number) || 0;
                 // Only show status for longer operations (after 20s)
                 if (elapsed >= 20) {
                   onStep({
-                    type: 'status',
+                    type: "status",
                     data: `⏳ Still ${phase}... (${elapsed}s)`,
                     timestamp: new Date(),
                   });
                 }
               }
-            } else if (data.type === 'thinking') {
+            } else if (data.type === "thinking") {
               // Emit thinking event with step info
               resetIdleTimeout();
               if (
                 onStep &&
-                typeof data.data === 'string' &&
+                typeof data.data === "string" &&
                 !signalToUse.aborted &&
                 !requestAborted
               ) {
-                onStep({ type: 'thinking', data: data.data, timestamp: new Date() });
+                onStep({
+                  type: "thinking",
+                  data: data.data,
+                  timestamp: new Date(),
+                });
               }
-            } else if (data.type === 'tool_call') {
+            } else if (data.type === "tool_call") {
               // Emit tool_call event with tool name and args
               resetIdleTimeout();
               if (
                 onStep &&
                 isRecord(data.data) &&
-                typeof data.data.tool === 'string' &&
+                typeof data.data.tool === "string" &&
                 !signalToUse.aborted &&
                 !requestAborted
               ) {
                 onStep({
-                  type: 'tool_call',
+                  type: "tool_call",
                   data: {
                     tool: data.data.tool,
                     args: isRecord(data.data.args) ? data.data.args : {},
@@ -458,22 +474,26 @@ export class ChatApi {
                   timestamp: new Date(),
                 });
               }
-            } else if (data.type === 'observation') {
+            } else if (data.type === "observation") {
               // Emit observation event (tool result)
               resetIdleTimeout();
               if (
                 onStep &&
-                typeof data.data === 'string' &&
+                typeof data.data === "string" &&
                 !signalToUse.aborted &&
                 !requestAborted
               ) {
-                onStep({ type: 'observation', data: data.data, timestamp: new Date() });
+                onStep({
+                  type: "observation",
+                  data: data.data,
+                  timestamp: new Date(),
+                });
               }
-            } else if (data.type === 'token') {
+            } else if (data.type === "token") {
               const text =
-                (typeof data.content === 'string' && data.content) ||
-                (typeof data.data === 'string' && data.data) ||
-                '';
+                (typeof data.content === "string" && data.content) ||
+                (typeof data.data === "string" && data.data) ||
+                "";
               fullResponse += text;
               chunkCount++;
               // Reset idle timeout on token (data arrival)
@@ -483,72 +503,84 @@ export class ChatApi {
               if (!signalToUse.aborted && !requestAborted) {
                 onChunk(fullResponse);
               }
-            } else if (data.type === 'status') {
+            } else if (data.type === "status") {
               // Reset idle timeout on status update (data arrival)
               resetIdleTimeout();
               if (
                 onStep &&
-                typeof data.data === 'string' &&
+                typeof data.data === "string" &&
                 !signalToUse.aborted &&
                 !requestAborted
               ) {
-                onStep({ type: 'status', data: data.data, timestamp: new Date() });
+                onStep({
+                  type: "status",
+                  data: data.data,
+                  timestamp: new Date(),
+                });
               }
-            } else if (data.type === 'tool_start') {
+            } else if (data.type === "tool_start") {
               // Reset idle timeout on tool_start (data arrival)
               resetIdleTimeout();
               if (
                 onStep &&
                 isRecord(data.data) &&
-                typeof data.data.name === 'string' &&
+                typeof data.data.name === "string" &&
                 isRecord(data.data.args) &&
                 !signalToUse.aborted &&
                 !requestAborted
               ) {
                 onStep({
-                  type: 'tool_start',
+                  type: "tool_start",
                   data: { name: data.data.name, args: data.data.args },
                   timestamp: new Date(),
                 });
               }
-            } else if (data.type === 'tool_end') {
+            } else if (data.type === "tool_end") {
               // Reset idle timeout on tool_end (data arrival)
               resetIdleTimeout();
               if (
                 onStep &&
                 isRecord(data.data) &&
-                typeof data.data.result === 'string' &&
+                typeof data.data.result === "string" &&
                 !signalToUse.aborted &&
                 !requestAborted
               ) {
                 onStep({
-                  type: 'tool_end',
+                  type: "tool_end",
                   data: { result: data.data.result },
                   timestamp: new Date(),
                 });
               }
-            } else if (data.type === 'sources') {
+            } else if (data.type === "sources") {
               // Reset idle timeout on sources (data arrival)
               resetIdleTimeout();
               sources = Array.isArray(data.data)
                 ? (data.data as Array<{ title?: string; content?: string }>)
                 : [];
-            } else if (data.type === 'metadata') {
+            } else if (data.type === "metadata") {
               finalMetadata = isRecord(data.data) ? data.data : undefined;
-            } else if (data.type === 'image') {
+            } else if (data.type === "image") {
               // Handle generated images from image generation tool
               resetIdleTimeout();
-              if (isRecord(data.data) && typeof data.data.url === 'string') {
+              if (isRecord(data.data) && typeof data.data.url === "string") {
                 generatedImageUrl = data.data.url;
               }
-            } else if (data.type === 'error') {
+            } else if (data.type === "error") {
               const errorData = data.data;
-              if (isRecord(errorData) && typeof errorData.message === 'string') {
-                const error = new Error(errorData.message) as Error & { code?: string };
-                if (typeof errorData.code === 'string') error.code = errorData.code;
+              if (
+                isRecord(errorData) &&
+                typeof errorData.message === "string"
+              ) {
+                const error = new Error(errorData.message) as Error & {
+                  code?: string;
+                };
+                if (typeof errorData.code === "string")
+                  error.code = errorData.code;
                 throw error;
               }
-              throw new Error(typeof errorData === 'string' ? errorData : 'Unknown error');
+              throw new Error(
+                typeof errorData === "string" ? errorData : "Unknown error",
+              );
             }
           }
 
@@ -562,26 +594,26 @@ export class ChatApi {
       // Flush any remaining buffered line (best-effort), but only if not aborted
       if (!signalToUse.aborted && !requestAborted) {
         const remaining = sseBuffer.trim();
-        if (remaining.startsWith('data:')) {
+        if (remaining.startsWith("data:")) {
           try {
-            const jsonStr = remaining.slice('data:'.length).trimStart();
-            if (jsonStr && jsonStr !== '[DONE]') {
+            const jsonStr = remaining.slice("data:".length).trimStart();
+            if (jsonStr && jsonStr !== "[DONE]") {
               const data: unknown = JSON.parse(jsonStr);
-              if (isRecord(data) && data.type === 'token') {
+              if (isRecord(data) && data.type === "token") {
                 const text =
-                  (typeof data.content === 'string' && data.content) ||
-                  (typeof data.data === 'string' && data.data) ||
-                  '';
+                  (typeof data.content === "string" && data.content) ||
+                  (typeof data.data === "string" && data.data) ||
+                  "";
                 fullResponse += text;
                 // Note: Image cleaning is handled by backend
                 if (!signalToUse.aborted && !requestAborted) {
                   onChunk(fullResponse);
                 }
-              } else if (isRecord(data) && data.type === 'sources') {
+              } else if (isRecord(data) && data.type === "sources") {
                 sources = Array.isArray(data.data)
                   ? (data.data as Array<{ title?: string; content?: string }>)
                   : [];
-              } else if (isRecord(data) && data.type === 'metadata') {
+              } else if (isRecord(data) && data.type === "metadata") {
                 finalMetadata = isRecord(data.data) ? data.data : undefined;
               }
             }
@@ -594,19 +626,27 @@ export class ChatApi {
         if (!signalToUse.aborted && !requestAborted) {
           // Calculate final metrics
           const totalDuration = Date.now() - startTime;
-          const timeToFirstChunk = firstChunkTime ? firstChunkTime - startTime : null;
+          const timeToFirstChunk = firstChunkTime
+            ? firstChunkTime - startTime
+            : null;
           const streamingDuration =
-            lastChunkTime && firstChunkTime ? lastChunkTime - firstChunkTime : null;
+            lastChunkTime && firstChunkTime
+              ? lastChunkTime - firstChunkTime
+              : null;
 
           // Log metrics
-          logger.info('Stream completed', {
-            component: 'ChatApi',
-            action: 'sendMessageStreaming',
+          logger.info("Stream completed", {
+            component: "ChatApi",
+            action: "sendMessageStreaming",
             metadata: {
               correlationId,
               totalDuration: `${totalDuration}ms`,
-              timeToFirstChunk: timeToFirstChunk ? `${timeToFirstChunk}ms` : null,
-              streamingDuration: streamingDuration ? `${streamingDuration}ms` : null,
+              timeToFirstChunk: timeToFirstChunk
+                ? `${timeToFirstChunk}ms`
+                : null,
+              streamingDuration: streamingDuration
+                ? `${streamingDuration}ms`
+                : null,
               chunkCount,
               totalBytesReceived,
               responseLength: fullResponse.length,
@@ -635,14 +675,15 @@ export class ChatApi {
 
       // Log error metrics
       logger.error(
-        'Stream error',
+        "Stream error",
         {
-          component: 'ChatApi',
-          action: 'sendMessageStreaming',
+          component: "ChatApi",
+          action: "sendMessageStreaming",
           metadata: {
             correlationId,
-            errorType: error instanceof Error ? error.name : 'Unknown',
-            errorMessage: error instanceof Error ? error.message : String(error),
+            errorType: error instanceof Error ? error.name : "Unknown",
+            errorMessage:
+              error instanceof Error ? error.message : String(error),
             duration: `${errorDuration}ms`,
             timedOut,
             userCancelled: isUserCancel || userCancelled,
@@ -651,55 +692,70 @@ export class ChatApi {
             eventTypes: eventTypeCounts,
           },
         },
-        error instanceof Error ? error : new Error(String(error))
+        error instanceof Error ? error : new Error(String(error)),
       );
 
       // Always call onError for timeouts and user cancellations
       // Only skip if component was unmounted (abortSignal.aborted but not timedOut/userCancelled)
       if (timedOut) {
-        const timeoutError = new Error('Request timeout') as Error & { code?: string };
-        timeoutError.code = 'TIMEOUT';
+        const timeoutError = new Error("Request timeout") as Error & {
+          code?: string;
+        };
+        timeoutError.code = "TIMEOUT";
         onError(timeoutError);
       } else if (isUserCancel || userCancelled) {
         // User cancellation - call onError with ABORTED code
-        const abortError = new Error('Request cancelled') as Error & { code?: string };
-        abortError.code = 'ABORTED';
+        const abortError = new Error("Request cancelled") as Error & {
+          code?: string;
+        };
+        abortError.code = "ABORTED";
         onError(abortError);
-      } else if (error instanceof Error && error.name === 'AbortError') {
+      } else if (error instanceof Error && error.name === "AbortError") {
         // Generic abort (could be timeout or user cancel)
         // Check abortSignal to determine if it was user-initiated
         if (timedOut) {
-          const timeoutError = new Error('Request timeout') as Error & { code?: string };
-          timeoutError.code = 'TIMEOUT';
+          const timeoutError = new Error("Request timeout") as Error & {
+            code?: string;
+          };
+          timeoutError.code = "TIMEOUT";
           onError(timeoutError);
         } else if (isAbortSignalActive || userCancelled) {
           // User cancellation via abort signal
-          const abortError = new Error('Request cancelled') as Error & { code?: string };
-          abortError.code = 'ABORTED';
+          const abortError = new Error("Request cancelled") as Error & {
+            code?: string;
+          };
+          abortError.code = "ABORTED";
           onError(abortError);
         } else {
           // Unmount scenario - don't call onError
         }
-      } else if (error instanceof Error && error.message === 'Request aborted') {
+      } else if (
+        error instanceof Error &&
+        error.message === "Request aborted"
+      ) {
         // Request was aborted - determine reason
         if (timedOut) {
-          const timeoutError = new Error('Request timeout') as Error & { code?: string };
-          timeoutError.code = 'TIMEOUT';
+          const timeoutError = new Error("Request timeout") as Error & {
+            code?: string;
+          };
+          timeoutError.code = "TIMEOUT";
           onError(timeoutError);
         } else if (userCancelled || isAbortSignalActive) {
-          const abortError = new Error('Request cancelled') as Error & { code?: string };
-          abortError.code = 'ABORTED';
+          const abortError = new Error("Request cancelled") as Error & {
+            code?: string;
+          };
+          abortError.code = "ABORTED";
           onError(abortError);
         }
         // If neither timedOut nor userCancelled, it might be unmount - skip onError
       } else {
         // Other errors - always call onError
-        onError(error instanceof Error ? error : new Error('Streaming failed'));
+        onError(error instanceof Error ? error : new Error("Streaming failed"));
       }
     } finally {
       // Clean up abort listener
       if (abortSignal && abortListener) {
-        abortSignal.removeEventListener('abort', abortListener);
+        abortSignal.removeEventListener("abort", abortListener);
       }
       // Clean up all timeouts
       if (idleTimeoutId) {

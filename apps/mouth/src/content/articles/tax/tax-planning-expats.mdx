@@ -72,8 +72,8 @@ import {
   ComparisonTable,
   Checklist,
   InfoCard,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Tax Planning for Expats Indonesia 2026: Strategies Guide
 
@@ -90,6 +90,7 @@ Good tax planning is legal and smart. Here's how expats can optimize their tax p
 Everything in this guide is about **legal** tax planning.
 
 Always work with qualified tax advisors for your specific situation.
+
 </InfoCard>
 
 ---
@@ -104,43 +105,43 @@ Always work with qualified tax advisors for your specific situation.
       name: "Residency Timing",
       subtitle: "183-day rule",
       values: {
-        "Opportunity": "Plan arrival/departure dates",
-        "Savings": "Can be significant",
-        "Complexity": "Low",
-        "Risk": "Low if documented"
+        Opportunity: "Plan arrival/departure dates",
+        Savings: "Can be significant",
+        Complexity: "Low",
+        Risk: "Low if documented",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "Treaty Benefits",
       subtitle: "Double tax treaties",
       values: {
-        "Opportunity": "Reduced withholding, credits",
-        "Savings": "5-15% on certain income",
-        "Complexity": "Medium",
-        "Risk": "Low"
-      }
+        Opportunity: "Reduced withholding, credits",
+        Savings: "5-15% on certain income",
+        Complexity: "Medium",
+        Risk: "Low",
+      },
     },
     {
       name: "Structure Selection",
       subtitle: "Employment vs self",
       values: {
-        "Opportunity": "Optimize how paid",
-        "Savings": "Varies",
-        "Complexity": "High",
-        "Risk": "Medium"
-      }
+        Opportunity: "Optimize how paid",
+        Savings: "Varies",
+        Complexity: "High",
+        Risk: "Medium",
+      },
     },
     {
       name: "Deductions",
       subtitle: "Maximize allowances",
       values: {
-        "Opportunity": "Use all entitlements",
-        "Savings": "Moderate",
-        "Complexity": "Low",
-        "Risk": "Low"
-      }
-    }
+        Opportunity: "Use all entitlements",
+        Savings: "Moderate",
+        Complexity: "Low",
+        Risk: "Low",
+      },
+    },
   ]}
 />
 
@@ -154,30 +155,32 @@ Always work with qualified tax advisors for your specific situation.
 **Tax residency triggers at 183 days:**
 
 If you're near the threshold:
+
 - Track days carefully
 - Consider timing of arrival/departure
 - Plan around tax year (calendar year)
 - Document your movements
 
 Example: Arriving July 1 vs January 1 has different tax implications.
+
 </InfoCard>
 
 ### Days Calculation
 
-| Counts as Day | Doesn't Count |
-|---------------|---------------|
-| Any part of a day | Days in transit (direct connection) |
-| Overnight stays | Days in international waters |
-| Weekend in Indonesia | Medical evacuation (some cases) |
+| Counts as Day        | Doesn't Count                       |
+| -------------------- | ----------------------------------- |
+| Any part of a day    | Days in transit (direct connection) |
+| Overnight stays      | Days in international waters        |
+| Weekend in Indonesia | Medical evacuation (some cases)     |
 
 ### Planning Scenarios
 
-| Situation | Strategy |
-|-----------|----------|
-| New arrival mid-year | May not hit 183 days year 1 |
-| Planning departure | Time to exit before threshold |
-| Border country travel | Track carefully |
-| Frequent trips | Monitor cumulative days |
+| Situation             | Strategy                      |
+| --------------------- | ----------------------------- |
+| New arrival mid-year  | May not hit 183 days year 1   |
+| Planning departure    | Time to exit before threshold |
+| Border country travel | Track carefully               |
+| Frequent trips        | Monitor cumulative days       |
 
 ---
 
@@ -185,13 +188,13 @@ Example: Arriving July 1 vs January 1 has different tax implications.
 
 ### Employment Package Optimization
 
-| Component | Tax Treatment |
-|-----------|---------------|
-| Base salary | Fully taxable |
-| Housing allowance | Taxable |
-| School fees paid | Usually taxable as benefit |
-| Home leave | Often taxable |
-| Pension contributions | Limited deductions |
+| Component             | Tax Treatment              |
+| --------------------- | -------------------------- |
+| Base salary           | Fully taxable              |
+| Housing allowance     | Taxable                    |
+| School fees paid      | Usually taxable as benefit |
+| Home leave            | Often taxable              |
+| Pension contributions | Limited deductions         |
 
 ### Splitting Strategies
 
@@ -204,6 +207,7 @@ Example: Arriving July 1 vs January 1 has different tax implications.
 - Compliant with both countries' rules
 
 Don't artificially split income - it must reflect reality.
+
 </InfoCard>
 
 ---
@@ -212,22 +216,22 @@ Don't artificially split income - it must reflect reality.
 
 ### Common Treaty Benefits
 
-| Benefit | How It Helps |
-|---------|--------------|
+| Benefit             | How It Helps                      |
+| ------------------- | --------------------------------- |
 | Reduced withholding | Lower rate on dividends, interest |
-| Foreign tax credits | Avoid double taxation |
-| PE threshold | When home country can tax |
-| Teaching/research | Special exemptions |
+| Foreign tax credits | Avoid double taxation             |
+| PE threshold        | When home country can tax         |
+| Teaching/research   | Special exemptions                |
 
 ### Claiming Treaty Benefits
 
-| Step | Action |
-|------|--------|
-| 1 | Confirm treaty exists with your country |
-| 2 | Determine article that applies |
-| 3 | Obtain DGT-1 form if required |
-| 4 | Submit to payer/tax office |
-| 5 | Keep documentation |
+| Step | Action                                  |
+| ---- | --------------------------------------- |
+| 1    | Confirm treaty exists with your country |
+| 2    | Determine article that applies          |
+| 3    | Obtain DGT-1 form if required           |
+| 4    | Submit to payer/tax office              |
+| 5    | Keep documentation                      |
 
 ---
 
@@ -243,49 +247,49 @@ Don't artificially split income - it must reflect reality.
       label: "PTKP (personal allowance)",
       description: "Standard deduction for individuals",
       required: true,
-      category: "personal"
+      category: "personal",
     },
     {
       id: "spouse",
       label: "Spouse allowance",
       description: "If spouse doesn't work",
       required: false,
-      category: "family"
+      category: "family",
     },
     {
       id: "dependents",
       label: "Dependent allowances",
       description: "Up to 3 dependents",
       required: false,
-      category: "family"
+      category: "family",
     },
     {
       id: "pension",
       label: "Pension contributions",
       description: "Employer pension scheme",
       required: false,
-      category: "employment"
+      category: "employment",
     },
     {
       id: "bpjs",
       label: "BPJS contributions",
       description: "Social security",
       required: false,
-      category: "employment"
+      category: "employment",
     },
     {
       id: "donation",
       label: "Approved donations",
       description: "Religious, disaster relief",
       required: false,
-      category: "charitable"
-    }
+      category: "charitable",
+    },
   ]}
   categories={[
     { id: "personal", label: "Personal", color: "blue" },
     { id: "family", label: "Family", color: "green" },
     { id: "employment", label: "Employment", color: "amber" },
-    { id: "charitable", label: "Charitable", color: "purple" }
+    { id: "charitable", label: "Charitable", color: "purple" },
   ]}
   showProgress={true}
 />
@@ -296,12 +300,12 @@ Don't artificially split income - it must reflect reality.
 
 ### Employee vs Director
 
-| As Employee | As Director/Investor |
-|-------------|---------------------|
-| Employer withholds tax | More control over timing |
-| Limited deductions | Company expense deductions |
-| Simpler compliance | More complex |
-| Higher rates on gross | Can optimize extraction |
+| As Employee            | As Director/Investor       |
+| ---------------------- | -------------------------- |
+| Employer withholds tax | More control over timing   |
+| Limited deductions     | Company expense deductions |
+| Simpler compliance     | More complex               |
+| Higher rates on gross  | Can optimize extraction    |
 
 ### PT PMA Considerations
 
@@ -315,6 +319,7 @@ Don't artificially split income - it must reflect reality.
 - Must maintain substance
 
 Work with advisor on optimal extraction strategy.
+
 </InfoCard>
 
 ---
@@ -323,13 +328,13 @@ Work with advisor on optimal extraction strategy.
 
 ### Coordination Required
 
-| Issue | Action |
-|-------|--------|
-| Home country filing | May still need to file |
-| Foreign tax credits | Claim Indonesian tax paid |
-| Treaty tie-breaker | Determine primary residence |
-| Exit tax | Some countries impose |
-| Pension implications | Check home country rules |
+| Issue                | Action                      |
+| -------------------- | --------------------------- |
+| Home country filing  | May still need to file      |
+| Foreign tax credits  | Claim Indonesian tax paid   |
+| Treaty tie-breaker   | Determine primary residence |
+| Exit tax             | Some countries impose       |
+| Pension implications | Check home country rules    |
 
 ### US Citizens (Special)
 
@@ -343,6 +348,7 @@ Work with advisor on optimal extraction strategy.
 - Complex compliance
 
 US citizens should always use US tax advisor.
+
 </InfoCard>
 
 ---
@@ -351,20 +357,20 @@ US citizens should always use US tax advisor.
 
 ### Dividend Planning
 
-| Strategy | Consideration |
-|----------|---------------|
-| Timing | When to take dividends |
-| Treaty rates | Check applicable rate |
-| Reinvestment | Versus distribution |
-| Corporate vs personal | Which level to invest |
+| Strategy              | Consideration          |
+| --------------------- | ---------------------- |
+| Timing                | When to take dividends |
+| Treaty rates          | Check applicable rate  |
+| Reinvestment          | Versus distribution    |
+| Corporate vs personal | Which level to invest  |
 
 ### Capital Gains
 
-| Asset Type | Indonesia Tax |
-|------------|---------------|
-| Listed shares | 0.1% final |
-| Property | 2.5% final on seller |
-| Other assets | Potentially taxable |
+| Asset Type    | Indonesia Tax        |
+| ------------- | -------------------- |
+| Listed shares | 0.1% final           |
+| Property      | 2.5% final on seller |
+| Other assets  | Potentially taxable  |
 
 ---
 
@@ -372,20 +378,20 @@ US citizens should always use US tax advisor.
 
 ### Indonesian Options
 
-| Vehicle | Tax Treatment |
-|---------|---------------|
-| BPJS | Mandatory, limited benefit |
-| Company pension | Deductible contributions |
-| Personal savings | No special treatment |
+| Vehicle          | Tax Treatment              |
+| ---------------- | -------------------------- |
+| BPJS             | Mandatory, limited benefit |
+| Company pension  | Deductible contributions   |
+| Personal savings | No special treatment       |
 
 ### Cross-Border Considerations
 
-| Issue | Planning Point |
-|-------|----------------|
+| Issue                | Planning Point              |
+| -------------------- | --------------------------- |
 | Home country pension | May be taxable in Indonesia |
-| Indonesian pension | Treaty treatment varies |
-| Retirement location | Where will you retire? |
-| Access to funds | When can you withdraw? |
+| Indonesian pension   | Treaty treatment varies     |
+| Retirement location  | Where will you retire?      |
+| Access to funds      | When can you withdraw?      |
 
 ---
 
@@ -393,22 +399,22 @@ US citizens should always use US tax advisor.
 
 ### Stay Compliant
 
-| Practice | Why |
-|----------|-----|
-| Document everything | Support your positions |
-| File on time | Avoid penalties |
-| Work with advisors | Get professional guidance |
-| Keep records | 5-10 years minimum |
-| Report all income | Don't hide anything |
+| Practice            | Why                       |
+| ------------------- | ------------------------- |
+| Document everything | Support your positions    |
+| File on time        | Avoid penalties           |
+| Work with advisors  | Get professional guidance |
+| Keep records        | 5-10 years minimum        |
+| Report all income   | Don't hide anything       |
 
 ### Red Flags to Avoid
 
-| Risk | Issue |
-|------|-------|
-| Undisclosed accounts | AEOI reporting catches |
-| Artificial structures | Substance over form |
-| Inconsistent positions | Between countries |
-| No documentation | Can't support claims |
+| Risk                   | Issue                  |
+| ---------------------- | ---------------------- |
+| Undisclosed accounts   | AEOI reporting catches |
+| Artificial structures  | Substance over form    |
+| Inconsistent positions | Between countries      |
+| No documentation       | Can't support claims   |
 
 ---
 
@@ -426,6 +432,7 @@ US citizens should always use US tax advisor.
 - Uncertain about compliance
 
 Good advice saves more than it costs.
+
 </InfoCard>
 
 ---
@@ -439,7 +446,7 @@ Good advice saves more than it costs.
     "How can I legally reduce my Indonesia tax?",
     "Should I take dividends or salary?",
     "Do I need to file in my home country?",
-    "What records should I keep?"
+    "What records should I keep?",
   ]}
 />
 

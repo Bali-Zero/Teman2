@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { AlertTriangle } from 'lucide-react';
+import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { AlertTriangle } from "lucide-react";
 
 export default function Error({
   error,
@@ -23,11 +23,13 @@ export default function Error({
       </div>
 
       <div className="text-center space-y-2 max-w-md px-4">
-        <h1 className="text-3xl font-bold tracking-tight">Something went wrong!</h1>
+        <h1 className="text-3xl font-bold tracking-tight">
+          Something went wrong!
+        </h1>
         <p className="text-[var(--foreground-secondary)]">
           We apologize for the inconvenience. An unexpected error has occurred.
         </p>
-        {process.env.NODE_ENV === 'development' && (
+        {process.env.NODE_ENV === "development" && (
           <div className="mt-4 p-4 bg-[var(--background-secondary)] rounded-lg text-left overflow-auto max-h-48 text-xs font-mono text-[var(--error)]">
             {error.message}
           </div>

@@ -1,2 +1,2 @@
-export { InstagramList } from './InstagramList';
-export { InstagramViewer } from './InstagramViewer';
+export { InstagramList } from "./InstagramList";
+export { InstagramViewer } from "./InstagramViewer";

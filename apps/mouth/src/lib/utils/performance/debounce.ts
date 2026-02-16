@@ -6,7 +6,7 @@
 
 export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
-  wait: number
+  wait: number,
 ): (...args: Parameters<T>) => void {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
@@ -26,7 +26,7 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
  */
 export function debounceLeading<T extends (...args: unknown[]) => unknown>(
   func: T,
-  wait: number
+  wait: number,
 ): (...args: Parameters<T>) => void {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
   let lastCallTime = 0;

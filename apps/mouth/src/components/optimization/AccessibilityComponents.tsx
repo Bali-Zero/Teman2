@@ -9,8 +9,8 @@
  * - Screen reader support
  */
 
-import React, { useEffect, useRef } from 'react';
-import { cn } from '@/lib/utils';
+import React, { useEffect, useRef } from "react";
+import { cn } from "@/lib/utils";
 
 interface SkipLinkProps {
   href: string;
@@ -58,9 +58,9 @@ interface AccessibleButtonProps extends React.ButtonHTMLAttributes<HTMLButtonEle
 export function AccessibleButton({
   children,
   isLoading,
-  loadingText = 'Loading...',
+  loadingText = "Loading...",
   disabled,
-  'aria-label': ariaLabel,
+  "aria-label": ariaLabel,
   ...props
 }: AccessibleButtonProps) {
   return (
@@ -92,13 +92,17 @@ interface LiveRegionProps {
  * ARIA Live Region
  * Announces dynamic content changes to screen readers
  */
-export function LiveRegion({ children, assertive = false, className }: LiveRegionProps) {
+export function LiveRegion({
+  children,
+  assertive = false,
+  className,
+}: LiveRegionProps) {
   return (
     <div
       role="status"
-      aria-live={assertive ? 'assertive' : 'polite'}
+      aria-live={assertive ? "assertive" : "polite"}
       aria-atomic="true"
-      className={cn('sr-only', className)}
+      className={cn("sr-only", className)}
     >
       {children}
     </div>
@@ -126,7 +130,7 @@ export function FocusTrap({ children, isActive, onEscape }: FocusTrapProps) {
 
     // Get all focusable elements
     const focusableElements = container.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
     );
     const firstElement = focusableElements[0];
     const lastElement = focusableElements[focusableElements.length - 1];
@@ -135,12 +139,12 @@ export function FocusTrap({ children, isActive, onEscape }: FocusTrapProps) {
     firstElement?.focus();
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && onEscape) {
+      if (e.key === "Escape" && onEscape) {
         onEscape();
         return;
       }
 
-      if (e.key !== 'Tab') return;
+      if (e.key !== "Tab") return;
 
       if (e.shiftKey && document.activeElement === firstElement) {
         e.preventDefault();
@@ -151,8 +155,8 @@ export function FocusTrap({ children, isActive, onEscape }: FocusTrapProps) {
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isActive, onEscape]);
 
   if (!isActive) return <>{children}</>;
@@ -167,8 +171,8 @@ export function FocusTrap({ children, isActive, onEscape }: FocusTrapProps) {
 interface AccessibleFormProps {
   children: React.ReactNode;
   onSubmit: (e: React.FormEvent) => void;
-  'aria-label'?: string;
-  'aria-labelledby'?: string;
+  "aria-label"?: string;
+  "aria-labelledby"?: string;
 }
 
 /**
@@ -178,11 +182,16 @@ interface AccessibleFormProps {
 export function AccessibleForm({
   children,
   onSubmit,
-  'aria-label': ariaLabel,
-  'aria-labelledby': ariaLabelledBy,
+  "aria-label": ariaLabel,
+  "aria-labelledby": ariaLabelledBy,
 }: AccessibleFormProps) {
   return (
-    <form onSubmit={onSubmit} aria-label={ariaLabel} aria-labelledby={ariaLabelledBy} noValidate>
+    <form
+      onSubmit={onSubmit}
+      aria-label={ariaLabel}
+      aria-labelledby={ariaLabelledBy}
+      noValidate
+    >
       {children}
     </form>
   );
@@ -201,7 +210,14 @@ interface FormFieldProps {
  * Accessible Form Field
  * Proper label association and error messaging
  */
-export function FormField({ id, label, children, error, hint, required }: FormFieldProps) {
+export function FormField({
+  id,
+  label,
+  children,
+  error,
+  hint,
+  required,
+}: FormFieldProps) {
   const errorId = `${id}-error`;
   const hintId = `${id}-hint`;
 
@@ -220,9 +236,10 @@ export function FormField({ id, label, children, error, hint, required }: FormFi
 
       {React.cloneElement(children as React.ReactElement<any>, {
         id,
-        'aria-describedby': `${hint ? hintId : ''} ${error ? errorId : ''}`.trim() || undefined,
-        'aria-invalid': error ? 'true' : undefined,
-        'aria-required': required,
+        "aria-describedby":
+          `${hint ? hintId : ""} ${error ? errorId : ""}`.trim() || undefined,
+        "aria-invalid": error ? "true" : undefined,
+        "aria-required": required,
       })}
 
       {error && (
@@ -240,11 +257,11 @@ export const a11yUtils = {
    * Announce message to screen readers
    */
   announce: (message: string, assertive = false) => {
-    const announcement = document.createElement('div');
-    announcement.setAttribute('role', 'status');
-    announcement.setAttribute('aria-live', assertive ? 'assertive' : 'polite');
-    announcement.setAttribute('aria-atomic', 'true');
-    announcement.className = 'sr-only';
+    const announcement = document.createElement("div");
+    announcement.setAttribute("role", "status");
+    announcement.setAttribute("aria-live", assertive ? "assertive" : "polite");
+    announcement.setAttribute("aria-atomic", "true");
+    announcement.className = "sr-only";
     announcement.textContent = message;
 
     document.body.appendChild(announcement);
@@ -256,7 +273,7 @@ export const a11yUtils = {
    */
   trapFocus: (element: HTMLElement) => {
     const focusableElements = element.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
     );
     return {
       first: focusableElements[0],
@@ -269,7 +286,7 @@ export const a11yUtils = {
    */
   isFocusable: (element: HTMLElement): boolean => {
     return element.matches(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
     );
   },
 };

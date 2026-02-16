@@ -4,11 +4,16 @@
  * Coverage: 100% - All dashboard actions tracked
  */
 
-import { logger } from '@/lib/logger';
+import { logger } from "@/lib/logger";
 
 export interface DashboardMetric {
   timestamp: Date;
-  metricType: 'page_view' | 'button_click' | 'api_call' | 'error' | 'performance';
+  metricType:
+    | "page_view"
+    | "button_click"
+    | "api_call"
+    | "error"
+    | "performance";
   component: string;
   action: string;
   value?: number;
@@ -35,15 +40,15 @@ class DashboardMetricsCollector {
   trackPageView(userId?: string): void {
     this.addMetric({
       timestamp: new Date(),
-      metricType: 'page_view',
-      component: 'DashboardPage',
-      action: 'page_loaded',
+      metricType: "page_view",
+      component: "DashboardPage",
+      action: "page_loaded",
       userId,
     });
 
-    logger.info('Dashboard page viewed', {
-      component: 'DashboardMetrics',
-      action: 'trackPageView',
+    logger.info("Dashboard page viewed", {
+      component: "DashboardMetrics",
+      action: "trackPageView",
       user: userId,
     });
   }
@@ -54,16 +59,16 @@ class DashboardMetricsCollector {
   trackButtonClick(buttonName: string, href?: string, userId?: string): void {
     this.addMetric({
       timestamp: new Date(),
-      metricType: 'button_click',
-      component: 'DashboardPage',
-      action: 'button_clicked',
+      metricType: "button_click",
+      component: "DashboardPage",
+      action: "button_clicked",
       metadata: { buttonName, href },
       userId,
     });
 
-    logger.info('Dashboard button clicked', {
-      component: 'DashboardMetrics',
-      action: 'trackButtonClick',
+    logger.info("Dashboard button clicked", {
+      component: "DashboardMetrics",
+      action: "trackButtonClick",
       user: userId,
       metadata: { buttonName, href },
     });
@@ -72,21 +77,26 @@ class DashboardMetricsCollector {
   /**
    * Track API call
    */
-  trackApiCall(endpoint: string, success: boolean, duration: number, userId?: string): void {
+  trackApiCall(
+    endpoint: string,
+    success: boolean,
+    duration: number,
+    userId?: string,
+  ): void {
     this.addMetric({
       timestamp: new Date(),
-      metricType: 'api_call',
-      component: 'DashboardPage',
-      action: success ? 'api_success' : 'api_failure',
+      metricType: "api_call",
+      component: "DashboardPage",
+      action: success ? "api_success" : "api_failure",
       value: duration,
       metadata: { endpoint, success },
       userId,
     });
 
     if (!success) {
-      logger.warn('Dashboard API call failed', {
-        component: 'DashboardMetrics',
-        action: 'trackApiCall',
+      logger.warn("Dashboard API call failed", {
+        component: "DashboardMetrics",
+        action: "trackApiCall",
         user: userId,
         metadata: { endpoint, duration },
       });
@@ -99,16 +109,16 @@ class DashboardMetricsCollector {
   trackError(errorType: string, errorMessage: string, userId?: string): void {
     this.addMetric({
       timestamp: new Date(),
-      metricType: 'error',
-      component: 'DashboardPage',
-      action: 'error_occurred',
+      metricType: "error",
+      component: "DashboardPage",
+      action: "error_occurred",
       metadata: { errorType, errorMessage },
       userId,
     });
 
-    logger.error('Dashboard error tracked', {
-      component: 'DashboardMetrics',
-      action: 'trackError',
+    logger.error("Dashboard error tracked", {
+      component: "DashboardMetrics",
+      action: "trackError",
       user: userId,
       metadata: { errorType, errorMessage },
     });
@@ -127,9 +137,9 @@ class DashboardMetricsCollector {
   endPerformanceMark(markName: string, userId?: string): number {
     const startTime = this.performanceMarks.get(markName);
     if (!startTime) {
-      logger.warn('Performance mark not found', {
-        component: 'DashboardMetrics',
-        action: 'endPerformanceMark',
+      logger.warn("Performance mark not found", {
+        component: "DashboardMetrics",
+        action: "endPerformanceMark",
         metadata: { markName },
       });
       return 0;
@@ -140,16 +150,16 @@ class DashboardMetricsCollector {
 
     this.addMetric({
       timestamp: new Date(),
-      metricType: 'performance',
-      component: 'DashboardPage',
+      metricType: "performance",
+      component: "DashboardPage",
       action: markName,
       value: duration,
       userId,
     });
 
-    logger.debug('Performance metric recorded', {
-      component: 'DashboardMetrics',
-      action: 'endPerformanceMark',
+    logger.debug("Performance metric recorded", {
+      component: "DashboardMetrics",
+      action: "endPerformanceMark",
       metadata: { markName, duration },
     });
 
@@ -160,19 +170,28 @@ class DashboardMetricsCollector {
    * Get performance summary
    */
   getPerformanceSummary(): PerformanceMetric {
-    const apiMetrics = this.metrics.filter((m) => m.metricType === 'api_call');
-    const performanceMetrics = this.metrics.filter((m) => m.metricType === 'performance');
+    const apiMetrics = this.metrics.filter((m) => m.metricType === "api_call");
+    const performanceMetrics = this.metrics.filter(
+      (m) => m.metricType === "performance",
+    );
 
-    const loadTimeMetric = performanceMetrics.find((m) => m.action === 'dashboard_load');
-    const renderTimeMetric = performanceMetrics.find((m) => m.action === 'dashboard_render');
+    const loadTimeMetric = performanceMetrics.find(
+      (m) => m.action === "dashboard_load",
+    );
+    const renderTimeMetric = performanceMetrics.find(
+      (m) => m.action === "dashboard_render",
+    );
 
-    const apiSuccessCount = apiMetrics.filter((m) => m.action === 'api_success').length;
+    const apiSuccessCount = apiMetrics.filter(
+      (m) => m.action === "api_success",
+    ).length;
     const apiTotalCount = apiMetrics.length;
 
     return {
       loadTime: loadTimeMetric?.value || 0,
       apiCallCount: apiTotalCount,
-      apiSuccessRate: apiTotalCount > 0 ? (apiSuccessCount / apiTotalCount) * 100 : 100,
+      apiSuccessRate:
+        apiTotalCount > 0 ? (apiSuccessCount / apiTotalCount) * 100 : 100,
       renderTime: renderTimeMetric?.value || 0,
       memoryUsage: this.getMemoryUsage(),
     };
@@ -182,7 +201,9 @@ class DashboardMetricsCollector {
    * Get button click statistics
    */
   getButtonClickStats(): Record<string, number> {
-    const buttonClicks = this.metrics.filter((m) => m.metricType === 'button_click');
+    const buttonClicks = this.metrics.filter(
+      (m) => m.metricType === "button_click",
+    );
     const stats: Record<string, number> = {};
 
     buttonClicks.forEach((metric) => {
@@ -199,7 +220,7 @@ class DashboardMetricsCollector {
    * Get error statistics
    */
   getErrorStats(): Record<string, number> {
-    const errors = this.metrics.filter((m) => m.metricType === 'error');
+    const errors = this.metrics.filter((m) => m.metricType === "error");
     const stats: Record<string, number> = {};
 
     errors.forEach((metric) => {
@@ -225,9 +246,9 @@ class DashboardMetricsCollector {
   clearMetrics(): void {
     this.metrics = [];
     this.performanceMarks.clear();
-    logger.debug('Dashboard metrics cleared', {
-      component: 'DashboardMetrics',
-      action: 'clearMetrics',
+    logger.debug("Dashboard metrics cleared", {
+      component: "DashboardMetrics",
+      action: "clearMetrics",
     });
   }
 
@@ -246,7 +267,7 @@ class DashboardMetricsCollector {
         exportedAt: new Date().toISOString(),
       },
       null,
-      2
+      2,
     );
   }
 
@@ -262,9 +283,12 @@ class DashboardMetricsCollector {
     }
 
     // Store in localStorage for persistence (production)
-    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
+    if (
+      typeof window !== "undefined" &&
+      process.env.NODE_ENV === "production"
+    ) {
       try {
-        const storedMetrics = localStorage.getItem('dashboard_metrics');
+        const storedMetrics = localStorage.getItem("dashboard_metrics");
         const metrics = storedMetrics ? JSON.parse(storedMetrics) : [];
         metrics.push(metric);
 
@@ -273,15 +297,15 @@ class DashboardMetricsCollector {
           metrics.shift();
         }
 
-        localStorage.setItem('dashboard_metrics', JSON.stringify(metrics));
+        localStorage.setItem("dashboard_metrics", JSON.stringify(metrics));
       } catch (error) {
         logger.error(
-          'Failed to store metrics in localStorage',
+          "Failed to store metrics in localStorage",
           {
-            component: 'DashboardMetrics',
-            action: 'addMetric',
+            component: "DashboardMetrics",
+            action: "addMetric",
           },
-          error instanceof Error ? error : new Error(String(error))
+          error instanceof Error ? error : new Error(String(error)),
         );
       }
     }
@@ -291,7 +315,7 @@ class DashboardMetricsCollector {
    * Private: Get memory usage
    */
   private getMemoryUsage(): number | undefined {
-    if (typeof window !== 'undefined' && 'memory' in performance) {
+    if (typeof window !== "undefined" && "memory" in performance) {
       const memory = (performance as any).memory;
       return memory?.usedJSHeapSize || undefined;
     }

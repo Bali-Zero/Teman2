@@ -3,7 +3,7 @@
  * Tracks long conversations and potential issues
  */
 
-import { logger } from './logger';
+import { logger } from "./logger";
 
 // Extend Window interface for global access
 declare global {
@@ -30,7 +30,11 @@ class ConversationMonitor {
   /**
    * Track a new message in a conversation
    */
-  trackMessage(sessionId: string, isError: boolean = false, errorType?: string): void {
+  trackMessage(
+    sessionId: string,
+    isError: boolean = false,
+    errorType?: string,
+  ): void {
     const existing = this.metrics.get(sessionId) || {
       turnCount: 0,
       sessionId,
@@ -46,14 +50,14 @@ class ConversationMonitor {
 
     if (isError) {
       existing.errors.push({
-        type: errorType || 'unknown',
+        type: errorType || "unknown",
         message: `Error at turn ${existing.turnCount}`,
         timestamp: new Date(),
       });
 
-      if (errorType === 'TIMEOUT') {
+      if (errorType === "TIMEOUT") {
         existing.timeouts++;
-      } else if (errorType === 'QUOTA_EXCEEDED' || errorType === '429') {
+      } else if (errorType === "QUOTA_EXCEEDED" || errorType === "429") {
         existing.rateLimitHits++;
       }
     }
@@ -84,7 +88,7 @@ class ConversationMonitor {
   private checkAlerts(metrics: ConversationMetrics): void {
     // Alert for very long conversations
     if (metrics.turnCount >= this.MAX_TURNS_FOR_ALERT) {
-      this.logAlert('LONG_CONVERSATION', {
+      this.logAlert("LONG_CONVERSATION", {
         sessionId: metrics.sessionId,
         turnCount: metrics.turnCount,
         duration: Date.now() - metrics.startTime.getTime(),
@@ -93,7 +97,7 @@ class ConversationMonitor {
 
     // Alert for multiple errors
     if (metrics.errors.length >= this.MAX_ERRORS_FOR_ALERT) {
-      this.logAlert('MULTIPLE_ERRORS', {
+      this.logAlert("MULTIPLE_ERRORS", {
         sessionId: metrics.sessionId,
         errorCount: metrics.errors.length,
         errors: metrics.errors,
@@ -102,7 +106,7 @@ class ConversationMonitor {
 
     // Alert for multiple timeouts
     if (metrics.timeouts >= 2) {
-      this.logAlert('MULTIPLE_TIMEOUTS', {
+      this.logAlert("MULTIPLE_TIMEOUTS", {
         sessionId: metrics.sessionId,
         timeoutCount: metrics.timeouts,
       });
@@ -110,7 +114,7 @@ class ConversationMonitor {
 
     // Alert for rate limit hits
     if (metrics.rateLimitHits >= 2) {
-      this.logAlert('RATE_LIMIT_ISSUES', {
+      this.logAlert("RATE_LIMIT_ISSUES", {
         sessionId: metrics.sessionId,
         rateLimitHits: metrics.rateLimitHits,
       });
@@ -122,26 +126,28 @@ class ConversationMonitor {
    */
   private logAlert(type: string, data: Record<string, unknown>): void {
     // Import dashboard dynamically to avoid circular dependency
-    if (typeof window !== 'undefined') {
-      import('./monitoring-dashboard').then(({ monitoringDashboard }) => {
+    if (typeof window !== "undefined") {
+      import("./monitoring-dashboard").then(({ monitoringDashboard }) => {
         monitoringDashboard.recordAlert(type, data);
       });
     }
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       // Always log in browser (both dev and production)
-      if (process.env.NODE_ENV === 'production') {
+      if (process.env.NODE_ENV === "production") {
         // In production, send to monitoring service
         logger.warn(`[MONITORING ALERT] ${type}: ${JSON.stringify(data)}`, {
-          component: 'Monitoring',
-          action: 'alert',
+          component: "Monitoring",
+          action: "alert",
         });
 
         // Make monitor available globally for debugging
         if (
-          !(window as unknown as { conversationMonitor?: ConversationMonitor }).conversationMonitor
+          !(window as unknown as { conversationMonitor?: ConversationMonitor })
+            .conversationMonitor
         ) {
-          (window as unknown as { conversationMonitor?: ConversationMonitor }).conversationMonitor =
-            this;
+          (
+            window as unknown as { conversationMonitor?: ConversationMonitor }
+          ).conversationMonitor = this;
         }
 
         // Could send to Sentry, DataDog, etc.
@@ -155,17 +161,19 @@ class ConversationMonitor {
       } else {
         // In development, just log
         logger.debug(`[DEV MONITORING] ${type}`, {
-          component: 'Monitoring',
-          action: 'alert',
+          component: "Monitoring",
+          action: "alert",
           metadata: { data: JSON.stringify(data) },
         });
 
         // Make monitor available globally for debugging
         if (
-          !(window as unknown as { conversationMonitor?: ConversationMonitor }).conversationMonitor
+          !(window as unknown as { conversationMonitor?: ConversationMonitor })
+            .conversationMonitor
         ) {
-          (window as unknown as { conversationMonitor?: ConversationMonitor }).conversationMonitor =
-            this;
+          (
+            window as unknown as { conversationMonitor?: ConversationMonitor }
+          ).conversationMonitor = this;
         }
       }
     }
@@ -206,7 +214,7 @@ export const conversationMonitor = new ConversationMonitor();
  * Hook to use conversation monitoring in React components
  */
 export function useConversationMonitoring(sessionId: string | null) {
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     return {
       trackMessage: () => {},
       trackError: () => {},

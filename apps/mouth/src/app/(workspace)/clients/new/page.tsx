@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
   User,
@@ -23,61 +23,91 @@ import {
   X,
   Camera,
   Upload,
-} from 'lucide-react';
-import Link from 'next/link';
-import { api } from '@/lib/api';
-import type { CreateClientParams } from '@/lib/api/crm/crm.types';
-import { logger } from '@/lib/logger';
+} from "lucide-react";
+import Link from "next/link";
+import { api } from "@/lib/api";
+import type { CreateClientParams } from "@/lib/api/crm/crm.types";
+import { logger } from "@/lib/logger";
 import {
   COMMON_NATIONALITIES,
   CLIENT_STATUSES,
   LEAD_SOURCES,
   SERVICE_INTERESTS,
-} from '@/lib/api/crm/crm.types';
-import { cropToSquare } from '@/lib/utils/imageResize';
+} from "@/lib/api/crm/crm.types";
+import { cropToSquare } from "@/lib/utils/imageResize";
 
 // Team members - ideally fetch from API
 const TEAM_MEMBERS = [
-  { value: 'adit@balizero.com', label: 'Adit', avatar: '/avatars/team/adit.png' },
-  { value: 'ari@balizero.com', label: 'Ari', avatar: '/avatars/team/ari.png' },
-  { value: 'krisna@balizero.com', label: 'Krisna', avatar: '/avatars/team/krisna.png' },
-  { value: 'dea@balizero.com', label: 'Dea', avatar: '/avatars/team/dea.png' },
-  { value: 'zero@balizero.com', label: 'Anton' },
-  { value: 'damar@balizero.com', label: 'Damar' },
-  { value: 'vino@balizero.com', label: 'Vino' },
-  { value: 'ruslana@balizero.com', label: 'Ruslana', avatar: '/avatars/team/ruslana.jpg' },
-  { value: 'anna@balizero.com', label: 'Anna', avatar: '/avatars/team/anna.jpeg' },
-  { value: 'marta@balizero.com', label: 'Marta', avatar: '/avatars/team/marta.jpeg' },
-  { value: 'olena@balizero.com', label: 'Olena', avatar: '/avatars/team/olena.jpeg' },
-  { value: 'veronika@balizero.com', label: 'Veronika' },
-  { value: 'dewaayu@balizero.com', label: 'Dewa Ayu' },
-  { value: 'faysha@balizero.com', label: 'Faysha' },
-  { value: 'kadek@balizero.com', label: 'Kadek' },
-  { value: 'angel@balizero.com', label: 'Angel' },
-  { value: 'surya@balizero.com', label: 'Surya' },
-  { value: 'sahira@balizero.com', label: 'Sahira', avatar: '/avatars/team/sahira.png' },
+  {
+    value: "adit@balizero.com",
+    label: "Adit",
+    avatar: "/avatars/team/adit.png",
+  },
+  { value: "ari@balizero.com", label: "Ari", avatar: "/avatars/team/ari.png" },
+  {
+    value: "krisna@balizero.com",
+    label: "Krisna",
+    avatar: "/avatars/team/krisna.png",
+  },
+  { value: "dea@balizero.com", label: "Dea", avatar: "/avatars/team/dea.png" },
+  { value: "zero@balizero.com", label: "Anton" },
+  { value: "damar@balizero.com", label: "Damar" },
+  { value: "vino@balizero.com", label: "Vino" },
+  {
+    value: "ruslana@balizero.com",
+    label: "Ruslana",
+    avatar: "/avatars/team/ruslana.jpg",
+  },
+  {
+    value: "anna@balizero.com",
+    label: "Anna",
+    avatar: "/avatars/team/anna.jpeg",
+  },
+  {
+    value: "marta@balizero.com",
+    label: "Marta",
+    avatar: "/avatars/team/marta.jpeg",
+  },
+  {
+    value: "olena@balizero.com",
+    label: "Olena",
+    avatar: "/avatars/team/olena.jpeg",
+  },
+  { value: "veronika@balizero.com", label: "Veronika" },
+  { value: "dewaayu@balizero.com", label: "Dewa Ayu" },
+  { value: "faysha@balizero.com", label: "Faysha" },
+  { value: "kadek@balizero.com", label: "Kadek" },
+  { value: "angel@balizero.com", label: "Angel" },
+  { value: "surya@balizero.com", label: "Surya" },
+  {
+    value: "sahira@balizero.com",
+    label: "Sahira",
+    avatar: "/avatars/team/sahira.png",
+  },
 ];
 
 export default function NewClientPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [activeSection, setActiveSection] = useState<'basic' | 'personal' | 'crm'>('basic');
+  const [activeSection, setActiveSection] = useState<
+    "basic" | "personal" | "crm"
+  >("basic");
   const [formData, setFormData] = useState<CreateClientParams>({
-    full_name: '',
-    email: '',
-    phone: '',
-    whatsapp: '',
-    company_name: '',
-    nationality: '',
-    passport_number: '',
-    passport_expiry: '',
-    date_of_birth: '',
-    notes: '',
-    status: 'lead',
-    client_type: 'individual',
-    assigned_to: '',
+    full_name: "",
+    email: "",
+    phone: "",
+    whatsapp: "",
+    company_name: "",
+    nationality: "",
+    passport_number: "",
+    passport_expiry: "",
+    date_of_birth: "",
+    notes: "",
+    status: "lead",
+    client_type: "individual",
+    assigned_to: "",
     tags: [],
-    address: '',
+    address: "",
     lead_source: undefined,
     service_interest: [],
   });
@@ -95,25 +125,27 @@ export default function NewClientPage() {
     try {
       const user = await api.getProfile();
       if (!user?.email) {
-        throw new Error('User email not available');
+        throw new Error("User email not available");
       }
       // Clean up empty arrays and undefined values
       const cleanData = {
         ...formData,
         tags: formData.tags?.length ? formData.tags : undefined,
-        service_interest: formData.service_interest?.length ? formData.service_interest : undefined,
+        service_interest: formData.service_interest?.length
+          ? formData.service_interest
+          : undefined,
       };
       await api.crm.createClient(cleanData, user.email);
-      router.push('/clients');
+      router.push("/clients");
     } catch (error) {
       logger.error(
-        'Failed to create client',
-        { component: 'NewClientPage', action: 'createClient' },
-        error instanceof Error ? error : new Error(String(error))
+        "Failed to create client",
+        { component: "NewClientPage", action: "createClient" },
+        error instanceof Error ? error : new Error(String(error)),
       );
 
       // Extract error message from various error formats
-      let errorMessage = 'Failed to create client';
+      let errorMessage = "Failed to create client";
 
       if (error instanceof Error) {
         errorMessage = error.message;
@@ -126,10 +158,13 @@ export default function NewClientPage() {
             // Not JSON, use message as-is
           }
         }
-      } else if (typeof error === 'object' && error !== null) {
+      } else if (typeof error === "object" && error !== null) {
         // Handle object errors (shouldn't happen but be defensive)
         const errObj = error as Record<string, unknown>;
-        errorMessage = (errObj.detail as string) || (errObj.message as string) || 'Unknown error';
+        errorMessage =
+          (errObj.detail as string) ||
+          (errObj.message as string) ||
+          "Unknown error";
       }
 
       alert(errorMessage);
@@ -139,7 +174,9 @@ export default function NewClientPage() {
   };
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -159,14 +196,14 @@ export default function NewClientPage() {
     if (!file) return;
 
     // Validate file type
-    if (!file.type.startsWith('image/')) {
-      alert('Please select an image file');
+    if (!file.type.startsWith("image/")) {
+      alert("Please select an image file");
       return;
     }
 
     // Validate file size (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
-      alert('Image size must be less than 2MB');
+      alert("Image size must be less than 2MB");
       return;
     }
 
@@ -174,17 +211,17 @@ export default function NewClientPage() {
       // Crop to square and resize to 400x400px
       const resizedImage = await cropToSquare(file, 400, 0.85);
       // setFormData((prev) => ({ ...prev, avatar_url: resizedImage })); // Disabled - type mismatch
-      logger.debug('Avatar processed', {
-        component: 'NewClientPage',
-        action: 'handleAvatarUpload',
+      logger.debug("Avatar processed", {
+        component: "NewClientPage",
+        action: "handleAvatarUpload",
       });
     } catch (error) {
       logger.error(
-        'Failed to process image',
-        { component: 'NewClientPage', action: 'handleAvatarUpload' },
-        error instanceof Error ? error : new Error(String(error))
+        "Failed to process image",
+        { component: "NewClientPage", action: "handleAvatarUpload" },
+        error instanceof Error ? error : new Error(String(error)),
       );
-      alert('Failed to process image. Please try again.');
+      alert("Failed to process image. Please try again.");
     }
   };
 
@@ -193,10 +230,11 @@ export default function NewClientPage() {
   };
 
   const inputClass =
-    'w-full pl-10 pr-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 transition-all';
+    "w-full pl-10 pr-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 transition-all";
   const selectClass =
-    'w-full pl-10 pr-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 appearance-none cursor-pointer transition-all';
-  const labelClass = 'text-sm font-medium text-[var(--foreground)] mb-1.5 block';
+    "w-full pl-10 pr-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 appearance-none cursor-pointer transition-all";
+  const labelClass =
+    "text-sm font-medium text-[var(--foreground)] mb-1.5 block";
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -208,17 +246,21 @@ export default function NewClientPage() {
           </Button>
         </Link>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-[var(--foreground)]">New Client</h1>
-          <p className="text-sm text-[var(--foreground-muted)]">Add a new client to the CRM</p>
+          <h1 className="text-2xl font-bold text-[var(--foreground)]">
+            New Client
+          </h1>
+          <p className="text-sm text-[var(--foreground-muted)]">
+            Add a new client to the CRM
+          </p>
         </div>
       </div>
 
       {/* Section Tabs */}
       <div className="flex gap-2 border-b border-[var(--border)] pb-2">
         {[
-          { key: 'basic', label: 'Basic Info', icon: User },
-          { key: 'personal', label: 'Personal Details', icon: CreditCard },
-          { key: 'crm', label: 'CRM Settings', icon: Briefcase },
+          { key: "basic", label: "Basic Info", icon: User },
+          { key: "personal", label: "Personal Details", icon: CreditCard },
+          { key: "crm", label: "CRM Settings", icon: Briefcase },
         ].map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -226,8 +268,8 @@ export default function NewClientPage() {
             onClick={() => setActiveSection(key as typeof activeSection)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               activeSection === key
-                ? 'bg-[var(--accent)] text-white'
-                : 'text-[var(--foreground-muted)] hover:bg-[var(--background-elevated)]'
+                ? "bg-[var(--accent)] text-white"
+                : "text-[var(--foreground-muted)] hover:bg-[var(--background-elevated)]"
             }`}
           >
             <Icon className="w-4 h-4" />
@@ -239,7 +281,7 @@ export default function NewClientPage() {
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Basic Info Section */}
-        {activeSection === 'basic' && (
+        {activeSection === "basic" && (
           <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-6 space-y-5">
             <h3 className="text-lg font-semibold text-[var(--foreground)] flex items-center gap-2">
               <User className="w-5 h-5 text-[var(--accent)]" />
@@ -357,7 +399,7 @@ export default function NewClientPage() {
               </div>
 
               {/* Company Name (conditional) */}
-              {formData.client_type === 'company' && (
+              {formData.client_type === "company" && (
                 <div className="md:col-span-2">
                   <label className={labelClass}>Company Name</label>
                   <div className="relative">
@@ -392,7 +434,11 @@ export default function NewClientPage() {
             </div>
 
             <div className="flex justify-end pt-4">
-              <Button type="button" onClick={() => setActiveSection('personal')} className="gap-2">
+              <Button
+                type="button"
+                onClick={() => setActiveSection("personal")}
+                className="gap-2"
+              >
                 Next: Personal Details
                 <ChevronDown className="w-4 h-4 rotate-[-90deg]" />
               </Button>
@@ -401,7 +447,7 @@ export default function NewClientPage() {
         )}
 
         {/* Personal Details Section */}
-        {activeSection === 'personal' && (
+        {activeSection === "personal" && (
           <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-6 space-y-5">
             <h3 className="text-lg font-semibold text-[var(--foreground)] flex items-center gap-2">
               <CreditCard className="w-5 h-5 text-[var(--accent)]" />
@@ -496,13 +542,17 @@ export default function NewClientPage() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setActiveSection('basic')}
+                onClick={() => setActiveSection("basic")}
                 className="gap-2"
               >
                 <ChevronDown className="w-4 h-4 rotate-90" />
                 Back
               </Button>
-              <Button type="button" onClick={() => setActiveSection('crm')} className="gap-2">
+              <Button
+                type="button"
+                onClick={() => setActiveSection("crm")}
+                className="gap-2"
+              >
                 Next: CRM Settings
                 <ChevronDown className="w-4 h-4 rotate-[-90deg]" />
               </Button>
@@ -511,7 +561,7 @@ export default function NewClientPage() {
         )}
 
         {/* CRM Settings Section */}
-        {activeSection === 'crm' && (
+        {activeSection === "crm" && (
           <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-6 space-y-5">
             <h3 className="text-lg font-semibold text-[var(--foreground)] flex items-center gap-2">
               <Briefcase className="w-5 h-5 text-[var(--accent)]" />
@@ -547,7 +597,7 @@ export default function NewClientPage() {
                   <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground-muted)]" />
                   <select
                     name="lead_source"
-                    value={formData.lead_source || ''}
+                    value={formData.lead_source || ""}
                     onChange={handleChange}
                     className={selectClass}
                   >
@@ -589,7 +639,9 @@ export default function NewClientPage() {
                 <label className={labelClass}>Service Interest</label>
                 <div className="flex flex-wrap gap-2 mt-1">
                   {SERVICE_INTERESTS.map((service) => {
-                    const isSelected = formData.service_interest?.includes(service.value);
+                    const isSelected = formData.service_interest?.includes(
+                      service.value,
+                    );
                     return (
                       <button
                         key={service.value}
@@ -597,8 +649,8 @@ export default function NewClientPage() {
                         onClick={() => toggleServiceInterest(service.value)}
                         className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 ${
                           isSelected
-                            ? 'bg-[var(--accent)] text-white'
-                            : 'bg-[var(--background-elevated)] text-[var(--foreground-muted)] hover:bg-[var(--background-elevated)]/80'
+                            ? "bg-[var(--accent)] text-white"
+                            : "bg-[var(--background-elevated)] text-[var(--foreground-muted)] hover:bg-[var(--background-elevated)]/80"
                         }`}
                       >
                         {isSelected ? (
@@ -618,7 +670,7 @@ export default function NewClientPage() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setActiveSection('personal')}
+                onClick={() => setActiveSection("personal")}
                 className="gap-2"
               >
                 <ChevronDown className="w-4 h-4 rotate-90" />
@@ -651,7 +703,9 @@ export default function NewClientPage() {
 
         {/* Quick Summary Card */}
         <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]/50 p-4">
-          <h4 className="text-sm font-medium text-[var(--foreground-muted)] mb-3">Summary</h4>
+          <h4 className="text-sm font-medium text-[var(--foreground-muted)] mb-3">
+            Summary
+          </h4>
           <div className="flex flex-wrap gap-3 text-sm">
             {formData.full_name && (
               <span className="px-2 py-1 rounded bg-[var(--background-elevated)] text-[var(--foreground)]">
@@ -661,16 +715,19 @@ export default function NewClientPage() {
             {formData.status && (
               <span
                 className={`px-2 py-1 rounded ${
-                  formData.status === 'lead'
-                    ? 'bg-blue-500/20 text-blue-400'
-                    : formData.status === 'active'
-                      ? 'bg-green-500/20 text-green-400'
-                      : formData.status === 'completed'
-                        ? 'bg-purple-500/20 text-purple-400'
-                        : 'bg-gray-500/20 text-gray-400'
+                  formData.status === "lead"
+                    ? "bg-blue-500/20 text-blue-400"
+                    : formData.status === "active"
+                      ? "bg-green-500/20 text-green-400"
+                      : formData.status === "completed"
+                        ? "bg-purple-500/20 text-purple-400"
+                        : "bg-gray-500/20 text-gray-400"
                 }`}
               >
-                {CLIENT_STATUSES.find((s) => s.value === formData.status)?.label}
+                {
+                  CLIENT_STATUSES.find((s) => s.value === formData.status)
+                    ?.label
+                }
               </span>
             )}
             {formData.nationality && (
@@ -680,14 +737,19 @@ export default function NewClientPage() {
             )}
             {formData.assigned_to && (
               <span className="px-2 py-1 rounded bg-[var(--accent)]/20 text-[var(--accent)]">
-                → {TEAM_MEMBERS.find((m) => m.value === formData.assigned_to)?.label}
+                →{" "}
+                {
+                  TEAM_MEMBERS.find((m) => m.value === formData.assigned_to)
+                    ?.label
+                }
               </span>
             )}
-            {formData.service_interest && formData.service_interest.length > 0 && (
-              <span className="px-2 py-1 rounded bg-purple-500/20 text-purple-400">
-                {formData.service_interest.length} service(s)
-              </span>
-            )}
+            {formData.service_interest &&
+              formData.service_interest.length > 0 && (
+                <span className="px-2 py-1 rounded bg-purple-500/20 text-purple-400">
+                  {formData.service_interest.length} service(s)
+                </span>
+              )}
           </div>
         </div>
       </form>

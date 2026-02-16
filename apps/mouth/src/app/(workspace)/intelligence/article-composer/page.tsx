@@ -1,17 +1,17 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from "react";
 import {
   articlesApi,
   ComposeRequest,
   EnrichedArticle,
   PublishRequest,
-} from '@/lib/api/articles.api';
-import { useToast } from '@/components/ui/toast';
-import { logger } from '@/lib/logger';
+} from "@/lib/api/articles.api";
+import { useToast } from "@/components/ui/toast";
+import { logger } from "@/lib/logger";
 // 👇 Importiamo i moduli appena creati
-import { AutoResizeTextarea } from '@/components/ui/auto-resize-textarea';
-import { renderMiniMarkdown, fileToBase64 } from '@/lib/utils';
+import { AutoResizeTextarea } from "@/components/ui/auto-resize-textarea";
+import { renderMiniMarkdown, fileToBase64 } from "@/lib/utils";
 import {
   Loader2,
   Menu,
@@ -26,33 +26,33 @@ import {
   Copy,
   Download,
   Send,
-} from 'lucide-react';
+} from "lucide-react";
 
 const CATEGORIES = [
-  { value: 'business', label: 'Business & Company' },
-  { value: 'immigration', label: 'Immigration & Visas' },
-  { value: 'tax', label: 'Tax & Legal' },
-  { value: 'property', label: 'Property & Real Estate' },
-  { value: 'lifestyle', label: 'Lifestyle' },
-  { value: 'tech', label: 'Technology' },
-  { value: 'legal', label: 'Legal Updates' },
+  { value: "business", label: "Business & Company" },
+  { value: "immigration", label: "Immigration & Visas" },
+  { value: "tax", label: "Tax & Legal" },
+  { value: "property", label: "Property & Real Estate" },
+  { value: "lifestyle", label: "Lifestyle" },
+  { value: "tech", label: "Technology" },
+  { value: "legal", label: "Legal Updates" },
 ];
 
 const POSITIONS = [
-  { value: 'normal', label: 'Normal Article' },
-  { value: 'secondary', label: 'Secondary Featured' },
-  { value: 'main_featured', label: 'Main Featured (Homepage Hero)' },
+  { value: "normal", label: "Normal Article" },
+  { value: "secondary", label: "Secondary Featured" },
+  { value: "main_featured", label: "Main Featured (Homepage Hero)" },
 ];
 
-const DRAFT_KEY = 'bz_composer_draft_v2';
+const DRAFT_KEY = "bz_composer_draft_v2";
 
 // Classi CSS riutilizzabili (Tailwind arbitrary values per matchare il design HTML)
 const cardClass =
-  'rounded-[14px] border border-[#27272a] bg-[#181818] shadow-[0_18px_40px_rgba(0,0,0,0.45)]';
+  "rounded-[14px] border border-[#27272a] bg-[#181818] shadow-[0_18px_40px_rgba(0,0,0,0.45)]";
 const inputClass =
-  'w-full rounded-[9px] border border-[#27272a] bg-[#262626] px-3 py-2.5 text-[13px] text-[#f5f5f5] placeholder-[#737373] outline-none transition-all focus:border-[#6366f1] focus:bg-[#1d1d25] focus:shadow-[0_0_0_1px_rgba(99,102,241,0.4)]';
+  "w-full rounded-[9px] border border-[#27272a] bg-[#262626] px-3 py-2.5 text-[13px] text-[#f5f5f5] placeholder-[#737373] outline-none transition-all focus:border-[#6366f1] focus:bg-[#1d1d25] focus:shadow-[0_0_0_1px_rgba(99,102,241,0.4)]";
 const textAreaClass =
-  'w-full rounded-[9px] border border-[#27272a] bg-[#262626] px-3 py-2.5 text-[13px] text-[#f5f5f5] placeholder-[#737373] outline-none transition-all focus:border-[#6366f1] focus:bg-[#1d1d25] focus:shadow-[0_0_0_1px_rgba(99,102,241,0.4)] resize-none';
+  "w-full rounded-[9px] border border-[#27272a] bg-[#262626] px-3 py-2.5 text-[13px] text-[#f5f5f5] placeholder-[#737373] outline-none transition-all focus:border-[#6366f1] focus:bg-[#1d1d25] focus:shadow-[0_0_0_1px_rgba(99,102,241,0.4)] resize-none";
 
 export default function ArticleComposerPage() {
   const toast = useToast();
@@ -63,11 +63,11 @@ export default function ArticleComposerPage() {
   const [publishConfigured, setPublishConfigured] = useState(false);
 
   // Form State
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [category, setCategory] = useState('business');
-  const [sourceUrl, setSourceUrl] = useState('');
-  const [author, setAuthor] = useState('Marketing Team');
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [category, setCategory] = useState("business");
+  const [sourceUrl, setSourceUrl] = useState("");
+  const [author, setAuthor] = useState("Marketing Team");
 
   // Media State
   const [coverImage, setCoverImage] = useState<File | null>(null);
@@ -83,17 +83,21 @@ export default function ArticleComposerPage() {
   // Data State
   const [result, setResult] = useState<EnrichedArticle | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [editedResult, setEditedResult] = useState<EnrichedArticle | null>(null);
+  const [editedResult, setEditedResult] = useState<EnrichedArticle | null>(
+    null,
+  );
 
   // Publish State
-  const [position, setPosition] = useState<'normal' | 'secondary' | 'main_featured'>('normal');
-  const [customSlug, setCustomSlug] = useState('');
+  const [position, setPosition] = useState<
+    "normal" | "secondary" | "main_featured"
+  >("normal");
+  const [customSlug, setCustomSlug] = useState("");
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
 
   // --- LIFECYCLE ---
 
   useEffect(() => {
-    logger.componentMount('ArticleComposerPage');
+    logger.componentMount("ArticleComposerPage");
 
     const init = async () => {
       setStatusLoading(true);
@@ -105,7 +109,11 @@ export default function ArticleComposerPage() {
         setConfigured(composeStatus.configured);
         setPublishConfigured(publishStatus.configured);
       } catch (err) {
-        logger.error('API Check failed', { component: 'ArticleComposerPage' }, err as Error);
+        logger.error(
+          "API Check failed",
+          { component: "ArticleComposerPage" },
+          err as Error,
+        );
       } finally {
         setStatusLoading(false);
       }
@@ -125,9 +133,9 @@ export default function ArticleComposerPage() {
       }
     } catch (e) {
       logger.warn(
-        'Failed to load draft from localStorage',
-        { component: 'ArticleComposerPage' },
-        e as Error
+        "Failed to load draft from localStorage",
+        { component: "ArticleComposerPage" },
+        e as Error,
       );
     }
   }, []);
@@ -139,7 +147,13 @@ export default function ArticleComposerPage() {
         try {
           localStorage.setItem(
             DRAFT_KEY,
-            JSON.stringify({ title, content, category, source: sourceUrl, author })
+            JSON.stringify({
+              title,
+              content,
+              category,
+              source: sourceUrl,
+              author,
+            }),
           );
         } catch (e) {
           /* Silent fail quota exceeded */
@@ -153,7 +167,7 @@ export default function ArticleComposerPage() {
 
   const handleCompose = async () => {
     if (!title.trim() || !content.trim()) {
-      toast.error('Missing Data', 'Inserisci titolo e contenuto.');
+      toast.error("Missing Data", "Inserisci titolo e contenuto.");
       return;
     }
 
@@ -162,8 +176,8 @@ export default function ArticleComposerPage() {
     setResult(null);
 
     try {
-      logger.info('Starting article composition', {
-        component: 'ArticleComposerPage',
+      logger.info("Starting article composition", {
+        component: "ArticleComposerPage",
         metadata: { category },
       });
       const req: ComposeRequest = {
@@ -179,16 +193,23 @@ export default function ArticleComposerPage() {
       if (res.success && res.article) {
         setResult(res.article);
         setApiCost(res.api_cost_cents);
-        toast.success('Article Enriched!', `Cost: $${(res.api_cost_cents / 100).toFixed(4)}`);
+        toast.success(
+          "Article Enriched!",
+          `Cost: $${(res.api_cost_cents / 100).toFixed(4)}`,
+        );
         localStorage.removeItem(DRAFT_KEY);
       } else {
-        throw new Error(res.error || 'Unknown error');
+        throw new Error(res.error || "Unknown error");
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
+      const msg = err instanceof Error ? err.message : "Unknown error";
       setError(msg);
-      logger.error('Composition failed', { component: 'ArticleComposerPage' }, err as Error);
-      toast.error('Enrichment Failed', msg);
+      logger.error(
+        "Composition failed",
+        { component: "ArticleComposerPage" },
+        err as Error,
+      );
+      toast.error("Enrichment Failed", msg);
     } finally {
       setLoading(false);
     }
@@ -200,8 +221,8 @@ export default function ArticleComposerPage() {
     const articleToPublish = isEditing && editedResult ? editedResult : result;
 
     try {
-      logger.info('Publishing article', {
-        component: 'ArticleComposerPage',
+      logger.info("Publishing article", {
+        component: "ArticleComposerPage",
         metadata: { position },
       });
       const req: PublishRequest = {
@@ -216,15 +237,19 @@ export default function ArticleComposerPage() {
 
       const res = await articlesApi.publish(req);
       if (res.success) {
-        setPublishedUrl(res.article_url || '#');
-        toast.success('Published!', 'Article is live.');
+        setPublishedUrl(res.article_url || "#");
+        toast.success("Published!", "Article is live.");
       } else {
         throw new Error(res.error);
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Publish failed';
-      logger.error('Publish failed', { component: 'ArticleComposerPage' }, err as Error);
-      toast.error('Publish Error', msg);
+      const msg = err instanceof Error ? err.message : "Publish failed";
+      logger.error(
+        "Publish failed",
+        { component: "ArticleComposerPage" },
+        err as Error,
+      );
+      toast.error("Publish Error", msg);
     } finally {
       setPublishing(false);
     }
@@ -234,8 +259,8 @@ export default function ArticleComposerPage() {
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      toast.error('Invalid File', 'Not an image.');
+    if (!file.type.startsWith("image/")) {
+      toast.error("Invalid File", "Not an image.");
       return;
     }
     setCoverImage(file);
@@ -248,7 +273,7 @@ export default function ArticleComposerPage() {
     e.stopPropagation();
     setCoverImage(null);
     setCoverPreview(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   // Helper: Editing
@@ -263,7 +288,7 @@ export default function ArticleComposerPage() {
     if (editedResult) {
       setResult(editedResult);
       setIsEditing(false);
-      toast.success('Saved', 'Changes updated locally.');
+      toast.success("Saved", "Changes updated locally.");
     }
   };
 
@@ -275,7 +300,7 @@ export default function ArticleComposerPage() {
   const updateEditedField = (path: string, value: any) => {
     if (!editedResult) return;
     const newResult = JSON.parse(JSON.stringify(editedResult));
-    const parts = path.split('.');
+    const parts = path.split(".");
     let current = newResult;
     for (let i = 0; i < parts.length - 1; i++) {
       current = current[parts[i]];
@@ -289,17 +314,19 @@ export default function ArticleComposerPage() {
     const data = isEditing ? editedResult : result;
     if (!data) return;
     navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-    toast.success('Copied', 'JSON copied to clipboard');
+    toast.success("Copied", "JSON copied to clipboard");
   };
 
   const handleExportJson = () => {
     const data = isEditing ? editedResult : result;
     if (!data) return;
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json",
+    });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = `article-${(data.headline || 'draft').slice(0, 30).replace(/\s+/g, '-')}.json`;
+    a.download = `article-${(data.headline || "draft").slice(0, 30).replace(/\s+/g, "-")}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -311,7 +338,9 @@ export default function ArticleComposerPage() {
       <div className="flex h-[80vh] items-center justify-center bg-[#111] text-[#f5f5f5]">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-[#6366f1]" />
-          <p className="animate-pulse text-[#737373]">Initializing Intelligence Center...</p>
+          <p className="animate-pulse text-[#737373]">
+            Initializing Intelligence Center...
+          </p>
         </div>
       </div>
     );
@@ -341,14 +370,18 @@ export default function ArticleComposerPage() {
           <div className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-[#27272a] text-[#a3a3a3] hover:bg-[#18181b] hover:text-white">
             <Menu size={16} />
           </div>
-          <span className="font-medium text-[#f5f5f5]">Intelligence Center</span>
+          <span className="font-medium text-[#f5f5f5]">
+            Intelligence Center
+          </span>
         </div>
         <div className="flex items-center gap-3">
           <div
-            className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium ${configured ? 'border-green-500/40 bg-green-500/10 text-green-500' : 'border-red-500/40 bg-red-500/10 text-red-500'}`}
+            className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium ${configured ? "border-green-500/40 bg-green-500/10 text-green-500" : "border-red-500/40 bg-red-500/10 text-red-500"}`}
           >
-            <div className={`h-2 w-2 rounded-full ${configured ? 'bg-green-500' : 'bg-red-500'}`} />
-            {configured ? 'API Ready' : 'API Missing'}
+            <div
+              className={`h-2 w-2 rounded-full ${configured ? "bg-green-500" : "bg-red-500"}`}
+            />
+            {configured ? "API Ready" : "API Missing"}
           </div>
           <div className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-[#27272a] bg-gradient-to-br from-[#a855f7] to-[#1d1b4f] text-xs text-white">
             BZ
@@ -384,7 +417,8 @@ export default function ArticleComposerPage() {
                 <span>Raw Content Input</span>
               </div>
               <p className="text-xs text-[#a3a3a3]">
-                Incolla la fonte (news, regulation) e lascia che il sistema la riscriva.
+                Incolla la fonte (news, regulation) e lascia che il sistema la
+                riscriva.
               </p>
             </div>
 
@@ -453,7 +487,9 @@ export default function ArticleComposerPage() {
 
               {/* Cover Image (Re-styled) */}
               <div className="flex flex-col gap-1">
-                <label className="text-xs text-[#a3a3a3]">Cover Image (optional)</label>
+                <label className="text-xs text-[#a3a3a3]">
+                  Cover Image (optional)
+                </label>
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -467,11 +503,17 @@ export default function ArticleComposerPage() {
                     className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-[10px] border border-dashed border-[#27272a] bg-[#18181b] p-4 text-center transition-colors hover:border-[#3f3f46] hover:bg-[#1f1f24]"
                   >
                     <ImageIcon className="text-[#a3a3a3] h-5 w-5" />
-                    <div className="text-[11px] text-[#737373]">Click per caricare (1200×630)</div>
+                    <div className="text-[11px] text-[#737373]">
+                      Click per caricare (1200×630)
+                    </div>
                   </div>
                 ) : (
                   <div className="relative overflow-hidden rounded-[10px] border border-[#27272a]">
-                    <img src={coverPreview} alt="Cover" className="h-[180px] w-full object-cover" />
+                    <img
+                      src={coverPreview}
+                      alt="Cover"
+                      className="h-[180px] w-full object-cover"
+                    />
                     <button
                       onClick={removeCoverImage}
                       className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/80 text-white hover:bg-red-900/80"
@@ -493,8 +535,14 @@ export default function ArticleComposerPage() {
                 disabled={loading || !configured}
                 className="group mt-2 flex w-full items-center justify-center gap-2 rounded-full border-none bg-gradient-to-br from-[#6366f1] to-[#4f46e5] px-4 py-2.5 text-[13px] font-medium text-white shadow-[0_16px_35px_rgba(79,70,229,0.5)] transition-all hover:-translate-y-px hover:shadow-[0_20px_40px_rgba(79,70,229,0.75)] disabled:opacity-60 disabled:shadow-none"
               >
-                {loading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                {loading ? 'Enriching with Claude...' : 'Compose Executive Brief'}
+                {loading ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Sparkles size={14} />
+                )}
+                {loading
+                  ? "Enriching with Claude..."
+                  : "Compose Executive Brief"}
               </button>
 
               {apiCost > 0 && (
@@ -527,7 +575,9 @@ export default function ArticleComposerPage() {
                   <div className="mb-4 rounded-full bg-[#27272a] p-4">
                     <FileText className="h-8 w-8 text-[#525252]" />
                   </div>
-                  <h3 className="text-[#a3a3a3] font-medium">Ready to Transform</h3>
+                  <h3 className="text-[#a3a3a3] font-medium">
+                    Ready to Transform
+                  </h3>
                   <p className="mt-1 max-w-xs text-[12px] text-[#525252]">
                     Fill in the raw content to generate the brief.
                   </p>
@@ -587,7 +637,9 @@ export default function ArticleComposerPage() {
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div className="flex flex-col gap-1">
-                          <label className="text-[11px] text-[#bbf7d0]">Position</label>
+                          <label className="text-[11px] text-[#bbf7d0]">
+                            Position
+                          </label>
                           <select
                             value={position}
                             onChange={(e) => setPosition(e.target.value as any)}
@@ -602,7 +654,9 @@ export default function ArticleComposerPage() {
                           </select>
                         </div>
                         <div className="flex flex-col gap-1">
-                          <label className="text-[11px] text-[#bbf7d0]">Slug</label>
+                          <label className="text-[11px] text-[#bbf7d0]">
+                            Slug
+                          </label>
                           <input
                             value={customSlug}
                             onChange={(e) => setCustomSlug(e.target.value)}
@@ -622,7 +676,7 @@ export default function ArticleComposerPage() {
                         ) : (
                           <Send size={12} />
                         )}
-                        {publishing ? 'Publishing...' : 'Publish Article'}
+                        {publishing ? "Publishing..." : "Publish Article"}
                       </button>
                       {publishedUrl && (
                         <div className="text-[11px]">
@@ -644,18 +698,23 @@ export default function ArticleComposerPage() {
                   {/* Headline */}
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-1.5 text-[13px] font-medium text-[#f5f5f5] mb-2">
-                      <div className="w-2 h-2 rounded-full bg-[#6366f1]" /> Headline & Summary
+                      <div className="w-2 h-2 rounded-full bg-[#6366f1]" />{" "}
+                      Headline & Summary
                     </div>
                     {isEditing ? (
                       <div className="flex flex-col gap-2">
                         <AutoResizeTextarea
                           value={activeArticle.headline}
-                          onChange={(e) => updateEditedField('headline', e.target.value)}
+                          onChange={(e) =>
+                            updateEditedField("headline", e.target.value)
+                          }
                           className={`${inputClass} text-[16px] font-bold min-h-[50px]`}
                         />
                         <AutoResizeTextarea
                           value={activeArticle.ai_summary}
-                          onChange={(e) => updateEditedField('ai_summary', e.target.value)}
+                          onChange={(e) =>
+                            updateEditedField("ai_summary", e.target.value)
+                          }
                           className={`${inputClass} min-h-[70px]`}
                         />
                       </div>
@@ -682,14 +741,20 @@ export default function ArticleComposerPage() {
                   {/* TL;DR */}
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-1.5 text-[13px] font-medium text-[#f5f5f5]">
-                      <div className="h-2 w-2 rounded-full bg-[#6366f1]" /> TL;DR
+                      <div className="h-2 w-2 rounded-full bg-[#6366f1]" />{" "}
+                      TL;DR
                     </div>
                     {isEditing ? (
                       <div className="grid gap-2 text-[12px]">
                         <div className="grid grid-cols-2 gap-2">
                           <select
                             value={activeArticle.tldr.should_worry}
-                            onChange={(e) => updateEditedField('tldr.should_worry', e.target.value)}
+                            onChange={(e) =>
+                              updateEditedField(
+                                "tldr.should_worry",
+                                e.target.value,
+                              )
+                            }
                             className={`${inputClass} custom-select appearance-none cursor-pointer`}
                           >
                             <option>Yes</option>
@@ -698,7 +763,12 @@ export default function ArticleComposerPage() {
                           </select>
                           <select
                             value={activeArticle.tldr.risk_level}
-                            onChange={(e) => updateEditedField('tldr.risk_level', e.target.value)}
+                            onChange={(e) =>
+                              updateEditedField(
+                                "tldr.risk_level",
+                                e.target.value,
+                              )
+                            }
                             className={`${inputClass} custom-select appearance-none cursor-pointer`}
                           >
                             <option>Low</option>
@@ -708,19 +778,25 @@ export default function ArticleComposerPage() {
                         </div>
                         <AutoResizeTextarea
                           value={activeArticle.tldr.what}
-                          onChange={(e) => updateEditedField('tldr.what', e.target.value)}
+                          onChange={(e) =>
+                            updateEditedField("tldr.what", e.target.value)
+                          }
                           className={`${inputClass} min-h-[60px]`}
                           placeholder="What"
                         />
                         <input
                           value={activeArticle.tldr.who}
-                          onChange={(e) => updateEditedField('tldr.who', e.target.value)}
+                          onChange={(e) =>
+                            updateEditedField("tldr.who", e.target.value)
+                          }
                           className={inputClass}
                           placeholder="Who"
                         />
                         <input
                           value={activeArticle.tldr.when}
-                          onChange={(e) => updateEditedField('tldr.when', e.target.value)}
+                          onChange={(e) =>
+                            updateEditedField("tldr.when", e.target.value)
+                          }
                           className={inputClass}
                           placeholder="When"
                         />
@@ -732,11 +808,11 @@ export default function ArticleComposerPage() {
                             <span className="text-[#a3a3a3]">Worry: </span>
                             <span
                               className={
-                                activeArticle.tldr.should_worry === 'Yes'
-                                  ? 'text-[#fecaca]'
-                                  : activeArticle.tldr.should_worry === 'No'
-                                    ? 'text-[#bbf7d0]'
-                                    : 'text-[#fed7aa]'
+                                activeArticle.tldr.should_worry === "Yes"
+                                  ? "text-[#fecaca]"
+                                  : activeArticle.tldr.should_worry === "No"
+                                    ? "text-[#bbf7d0]"
+                                    : "text-[#fed7aa]"
                               }
                             >
                               {activeArticle.tldr.should_worry}
@@ -746,11 +822,11 @@ export default function ArticleComposerPage() {
                             <span className="text-[#a3a3a3]">Risk: </span>
                             <span
                               className={
-                                activeArticle.tldr.risk_level === 'High'
-                                  ? 'text-[#fecaca]'
-                                  : activeArticle.tldr.risk_level === 'Low'
-                                    ? 'text-[#bbf7d0]'
-                                    : 'text-[#fed7aa]'
+                                activeArticle.tldr.risk_level === "High"
+                                  ? "text-[#fecaca]"
+                                  : activeArticle.tldr.risk_level === "Low"
+                                    ? "text-[#bbf7d0]"
+                                    : "text-[#fed7aa]"
                               }
                             >
                               {activeArticle.tldr.risk_level}
@@ -759,13 +835,16 @@ export default function ArticleComposerPage() {
                         </div>
                         <div className="space-y-1 text-[13px]">
                           <div>
-                            <strong className="text-white">What:</strong> {activeArticle.tldr.what}
+                            <strong className="text-white">What:</strong>{" "}
+                            {activeArticle.tldr.what}
                           </div>
                           <div>
-                            <strong className="text-white">Who:</strong> {activeArticle.tldr.who}
+                            <strong className="text-white">Who:</strong>{" "}
+                            {activeArticle.tldr.who}
                           </div>
                           <div>
-                            <strong className="text-white">When:</strong> {activeArticle.tldr.when}
+                            <strong className="text-white">When:</strong>{" "}
+                            {activeArticle.tldr.when}
                           </div>
                         </div>
                       </div>
@@ -775,18 +854,23 @@ export default function ArticleComposerPage() {
                   {/* Facts (Markdown Enabled) */}
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-1.5 text-[13px] font-medium text-[#f5f5f5]">
-                      <div className="h-2 w-2 rounded-full bg-[#6366f1]" /> The Facts
+                      <div className="h-2 w-2 rounded-full bg-[#6366f1]" /> The
+                      Facts
                     </div>
                     {isEditing ? (
                       <AutoResizeTextarea
                         value={activeArticle.facts}
-                        onChange={(e) => updateEditedField('facts', e.target.value)}
+                        onChange={(e) =>
+                          updateEditedField("facts", e.target.value)
+                        }
                         className={`${inputClass} min-h-[120px]`}
                       />
                     ) : (
                       <div
                         className="text-[13px] leading-relaxed whitespace-pre-line text-[#f5f5f5]"
-                        dangerouslySetInnerHTML={renderMiniMarkdown(activeArticle.facts)}
+                        dangerouslySetInnerHTML={renderMiniMarkdown(
+                          activeArticle.facts,
+                        )}
                       />
                     )}
                   </div>
@@ -794,65 +878,81 @@ export default function ArticleComposerPage() {
                   {/* Bali Zero Take */}
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-1.5 text-[13px] font-medium text-[#f5f5f5]">
-                      <div className="h-2 w-2 rounded-full bg-[#6366f1]" /> Bali Zero Take
+                      <div className="h-2 w-2 rounded-full bg-[#6366f1]" /> Bali
+                      Zero Take
                     </div>
                     <div className="flex flex-col gap-3 text-[13px]">
-                      {['hidden_insight', 'our_analysis', 'our_advice'].map((key) => {
-                        const val = (activeArticle.bali_zero_take as any)[key];
-                        return (
-                          <div key={key}>
-                            <strong className="block text-[#f5f5f5] mb-1 capitalize">
-                              {key.replace('_', ' ')}
-                            </strong>
-                            {isEditing ? (
-                              <AutoResizeTextarea
-                                value={val}
-                                onChange={(e) =>
-                                  updateEditedField(`bali_zero_take.${key}`, e.target.value)
-                                }
-                                className={`${inputClass} min-h-[60px]`}
-                              />
-                            ) : (
-                              <div className="text-[#a3a3a3]">{val}</div>
-                            )}
-                          </div>
-                        );
-                      })}
+                      {["hidden_insight", "our_analysis", "our_advice"].map(
+                        (key) => {
+                          const val = (activeArticle.bali_zero_take as any)[
+                            key
+                          ];
+                          return (
+                            <div key={key}>
+                              <strong className="block text-[#f5f5f5] mb-1 capitalize">
+                                {key.replace("_", " ")}
+                              </strong>
+                              {isEditing ? (
+                                <AutoResizeTextarea
+                                  value={val}
+                                  onChange={(e) =>
+                                    updateEditedField(
+                                      `bali_zero_take.${key}`,
+                                      e.target.value,
+                                    )
+                                  }
+                                  className={`${inputClass} min-h-[60px]`}
+                                />
+                              ) : (
+                                <div className="text-[#a3a3a3]">{val}</div>
+                              )}
+                            </div>
+                          );
+                        },
+                      )}
                     </div>
                   </div>
 
                   {/* Next Steps */}
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-1.5 text-[13px] font-medium text-[#f5f5f5]">
-                      <div className="h-2 w-2 rounded-full bg-[#6366f1]" /> Next Steps
+                      <div className="h-2 w-2 rounded-full bg-[#6366f1]" /> Next
+                      Steps
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[13px]">
-                      {['expat', 'investor'].map((type) => (
+                      {["expat", "investor"].map((type) => (
                         <div key={type}>
                           <div className="font-medium text-[#f5f5f5] mb-1 capitalize">
                             For {type}s
                           </div>
                           {isEditing ? (
                             <AutoResizeTextarea
-                              value={activeArticle.next_steps[type as 'expat' | 'investor'].join(
-                                '\n'
-                              )}
+                              value={activeArticle.next_steps[
+                                type as "expat" | "investor"
+                              ].join("\n")}
                               onChange={(e) =>
-                                updateEditedField(`next_steps.${type}`, e.target.value.split('\n'))
+                                updateEditedField(
+                                  `next_steps.${type}`,
+                                  e.target.value.split("\n"),
+                                )
                               }
                               className={`${inputClass} min-h-[100px]`}
                               placeholder="One per line..."
                             />
                           ) : (
                             <ul className="space-y-1">
-                              {activeArticle.next_steps[type as 'expat' | 'investor'].map(
-                                (s, i) => (
-                                  <li key={i} className="flex gap-2 items-start">
-                                    <span className="text-[#6366f1] mt-1.5 w-1.5 h-1.5 rounded-full bg-current shrink-0"></span>
-                                    <span dangerouslySetInnerHTML={renderMiniMarkdown(s)} />
-                                  </li>
-                                )
-                              )}
+                              {activeArticle.next_steps[
+                                type as "expat" | "investor"
+                              ].map((s, i) => (
+                                <li key={i} className="flex gap-2 items-start">
+                                  <span className="text-[#6366f1] mt-1.5 w-1.5 h-1.5 rounded-full bg-current shrink-0"></span>
+                                  <span
+                                    dangerouslySetInnerHTML={renderMiniMarkdown(
+                                      s,
+                                    )}
+                                  />
+                                </li>
+                              ))}
                             </ul>
                           )}
                         </div>
@@ -863,15 +963,16 @@ export default function ArticleComposerPage() {
                   {/* Tags */}
                   <div className="mt-2 pt-2 border-t border-[#27272a]">
                     <div className="flex items-center gap-1.5 text-[13px] font-medium text-[#f5f5f5] mb-2">
-                      <div className="h-2 w-2 rounded-full bg-[#6366f1]" /> AI Tags
+                      <div className="h-2 w-2 rounded-full bg-[#6366f1]" /> AI
+                      Tags
                     </div>
                     {isEditing ? (
                       <input
-                        value={activeArticle.ai_tags.join(', ')}
+                        value={activeArticle.ai_tags.join(", ")}
                         onChange={(e) =>
                           updateEditedField(
-                            'ai_tags',
-                            e.target.value.split(',').map((s) => s.trim())
+                            "ai_tags",
+                            e.target.value.split(",").map((s) => s.trim()),
                           )
                         }
                         className={inputClass}

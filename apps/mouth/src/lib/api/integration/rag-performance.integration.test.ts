@@ -3,16 +3,17 @@
  * Measures response times, throughput, and latency of RAG endpoints
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ApiClient } from '../api-client';
-import { UserProfile } from '@/types';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { ApiClient } from "../api-client";
+import { UserProfile } from "@/types";
 
-const RAG_BACKEND_URL = process.env.RAG_BACKEND_URL || 'https://nuzantara-rag.fly.dev';
+const RAG_BACKEND_URL =
+  process.env.RAG_BACKEND_URL || "https://nuzantara-rag.fly.dev";
 const PERFORMANCE_TIMEOUT = 30000;
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
-const jsonHeaders = { get: () => 'application/json' };
+const jsonHeaders = { get: () => "application/json" };
 
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
@@ -30,9 +31,9 @@ const localStorageMock = (() => {
   };
 })();
 
-Object.defineProperty(window, 'localStorage', { value: localStorageMock });
+Object.defineProperty(window, "localStorage", { value: localStorageMock });
 
-describe('RAG Performance Tests', () => {
+describe("RAG Performance Tests", () => {
   let api: ApiClient;
 
   beforeEach(() => {
@@ -41,17 +42,17 @@ describe('RAG Performance Tests', () => {
     api = new ApiClient(RAG_BACKEND_URL);
 
     const mockProfile: UserProfile = {
-      id: '123',
-      email: 'test@example.com',
-      name: 'Test User',
-      role: 'user',
+      id: "123",
+      email: "test@example.com",
+      name: "Test User",
+      role: "user",
     };
     api.setUserProfile(mockProfile);
-    api.setToken('test-token');
+    api.setToken("test-token");
   });
 
-  describe('Response Time Benchmarks', () => {
-    it('knowledge search should respond within 2 seconds', async () => {
+  describe("Response Time Benchmarks", () => {
+    it("knowledge search should respond within 2 seconds", async () => {
       mockFetch.mockResolvedValue({
         ok: true,
         status: 200,
@@ -64,13 +65,13 @@ describe('RAG Performance Tests', () => {
       });
 
       const startTime = performance.now();
-      await api.knowledge.searchDocs({ query: 'test', level: 1 });
+      await api.knowledge.searchDocs({ query: "test", level: 1 });
       const duration = performance.now() - startTime;
 
       expect(duration).toBeLessThan(2000);
     });
 
-    it('conversation history should load quickly', async () => {
+    it("conversation history should load quickly", async () => {
       mockFetch.mockResolvedValue({
         ok: true,
         status: 200,
@@ -90,8 +91,8 @@ describe('RAG Performance Tests', () => {
     });
   });
 
-  describe('Throughput Tests', () => {
-    it('should handle 100 requests per second', async () => {
+  describe("Throughput Tests", () => {
+    it("should handle 100 requests per second", async () => {
       mockFetch.mockResolvedValue({
         ok: true,
         status: 200,
@@ -105,7 +106,9 @@ describe('RAG Performance Tests', () => {
 
       const startTime = performance.now();
       for (let i = 0; i < requestsPerSecond; i++) {
-        requests.push(api.knowledge.searchDocs({ query: `query ${i}`, level: 1 }));
+        requests.push(
+          api.knowledge.searchDocs({ query: `query ${i}`, level: 1 }),
+        );
       }
       await Promise.all(requests);
       const elapsed = performance.now() - startTime;
@@ -115,8 +118,8 @@ describe('RAG Performance Tests', () => {
     });
   });
 
-  describe('Latency Distribution', () => {
-    it('should measure p50, p95, p99 latencies', async () => {
+  describe("Latency Distribution", () => {
+    it("should measure p50, p95, p99 latencies", async () => {
       const latencies: number[] = [];
       const numRequests = 100;
 

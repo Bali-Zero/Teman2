@@ -65,18 +65,18 @@ If you are a foreign business owner or expat operating a PT PMA in Indonesia, Co
 
 Before diving into specific error codes, here is a quick reference table of the most frequently reported CoreTax login problems and their root causes:
 
-| Error / Symptom | Root Cause | Difficulty to Fix |
-|---|---|---|
-| "Invalid credentials" | NPWP not migrated to 16-digit format | Easy |
-| ETAX-40001 | Connection failure to DJP server | Medium |
-| ETAX-20001 | Digital certificate expired or corrupted | Medium |
-| "NIK tidak ditemukan" | NIK-NPWP mismatch in Dukcapil database | Hard |
-| Blank page after login | Browser incompatibility or cache issue | Easy |
-| "Akun belum diaktivasi" | Account not activated after migration | Easy |
-| Timeout / 502 error | DJP server overload (peak filing periods) | Wait |
-| Certificate import failed | Wrong file format or browser restrictions | Medium |
-| Two-factor authentication failure | Phone number not updated in profile | Medium |
-| "Session expired" loop | Cookie/cache conflict | Easy |
+| Error / Symptom                   | Root Cause                                | Difficulty to Fix |
+| --------------------------------- | ----------------------------------------- | ----------------- |
+| "Invalid credentials"             | NPWP not migrated to 16-digit format      | Easy              |
+| ETAX-40001                        | Connection failure to DJP server          | Medium            |
+| ETAX-20001                        | Digital certificate expired or corrupted  | Medium            |
+| "NIK tidak ditemukan"             | NIK-NPWP mismatch in Dukcapil database    | Hard              |
+| Blank page after login            | Browser incompatibility or cache issue    | Easy              |
+| "Akun belum diaktivasi"           | Account not activated after migration     | Easy              |
+| Timeout / 502 error               | DJP server overload (peak filing periods) | Wait              |
+| Certificate import failed         | Wrong file format or browser restrictions | Medium            |
+| Two-factor authentication failure | Phone number not updated in profile       | Medium            |
+| "Session expired" loop            | Cookie/cache conflict                     | Easy              |
 
 ## Error 1: Invalid Credentials After Migration
 
@@ -216,12 +216,12 @@ Before diving into specific error codes, here is a quick reference table of the 
 
 **Why it happens:** CoreTax servers experience heavy load during peak filing periods, particularly:
 
-| Peak Period | Deadline | Expected Load |
-|---|---|---|
-| January 1-31 | December monthly tax payments | High |
-| March 1-31 | Individual SPT Tahunan deadline | Very High |
-| April 1-30 | Corporate SPT Tahunan deadline | Extreme |
-| 25th of every month | Monthly SPT Masa deadline | Moderate-High |
+| Peak Period         | Deadline                        | Expected Load |
+| ------------------- | ------------------------------- | ------------- |
+| January 1-31        | December monthly tax payments   | High          |
+| March 1-31          | Individual SPT Tahunan deadline | Very High     |
+| April 1-30          | Corporate SPT Tahunan deadline  | Extreme       |
+| 25th of every month | Monthly SPT Masa deadline       | Moderate-High |
 
 **Step-by-step fix:**
 
@@ -253,14 +253,14 @@ Before diving into specific error codes, here is a quick reference table of the 
 
 To minimize future login issues, follow this maintenance checklist:
 
-| Task | Frequency | Why |
-|---|---|---|
-| Verify digital certificate expiry date | Every 6 months | Avoid sudden access loss |
-| Update registered email and phone | When changed | Ensure you receive codes and notifications |
-| Clear browser cache for pajak.go.id | Monthly | Prevent stale data conflicts |
-| Back up digital certificate (.p12) | After each renewal | Avoid re-application delays |
-| Test CoreTax login | 1 week before filing deadline | Catch issues early |
-| Save EFIN number securely | Once | Required for password resets |
+| Task                                   | Frequency                     | Why                                        |
+| -------------------------------------- | ----------------------------- | ------------------------------------------ |
+| Verify digital certificate expiry date | Every 6 months                | Avoid sudden access loss                   |
+| Update registered email and phone      | When changed                  | Ensure you receive codes and notifications |
+| Clear browser cache for pajak.go.id    | Monthly                       | Prevent stale data conflicts               |
+| Back up digital certificate (.p12)     | After each renewal            | Avoid re-application delays                |
+| Test CoreTax login                     | 1 week before filing deadline | Catch issues early                         |
+| Save EFIN number securely              | Once                          | Required for password resets               |
 
 ## What is an EFIN and Why Does It Matter?
 
@@ -329,7 +329,7 @@ This is the single most common fix for login issues. Follow these exact steps:
    - Minimum 8 characters
    - At least 1 uppercase letter
    - At least 1 number
-   - At least 1 special character (!@#$%^&*)
+   - At least 1 special character (!@#$%^&\*)
 8. Log in with your new password
 9. If two-factor authentication is enabled, enter the code sent to your phone/email
 

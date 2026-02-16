@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, Loader2 } from 'lucide-react';
-import { Activity, ThinkingPhrase } from './types';
+import { motion, AnimatePresence } from "framer-motion";
+import { CheckCircle2, Loader2 } from "lucide-react";
+import { Activity, ThinkingPhrase } from "./types";
 
 interface ThinkingActivitiesProps {
   activities: Activity[];
@@ -42,10 +42,10 @@ export function ThinkingActivities({
                     flex items-center gap-2.5 text-xs p-2 rounded-lg
                     ${
                       activity.isCompleted
-                        ? 'bg-[var(--success)]/10 text-[var(--success)]'
+                        ? "bg-[var(--success)]/10 text-[var(--success)]"
                         : activity.isCurrent
-                          ? 'bg-[var(--accent)]/10 text-[var(--accent)]'
-                          : 'text-[var(--foreground-muted)]'
+                          ? "bg-[var(--accent)]/10 text-[var(--accent)]"
+                          : "text-[var(--foreground-muted)]"
                     }
                   `}
                 >
@@ -53,14 +53,18 @@ export function ThinkingActivities({
                     <motion.div
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      transition={{ type: 'spring' }}
+                      transition={{ type: "spring" }}
                     >
                       <CheckCircle2 className="w-4 h-4" />
                     </motion.div>
                   ) : activity.isCurrent ? (
                     <motion.div
                       animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                      transition={{
+                        duration: 1,
+                        repeat: Infinity,
+                        ease: "linear",
+                      }}
                     >
                       <Loader2 className="w-4 h-4" />
                     </motion.div>
@@ -78,7 +82,7 @@ export function ThinkingActivities({
                     </motion.span>
                   )}
                 </motion.div>
-              )
+              ),
           )}
         </motion.div>
       ) : (
@@ -100,7 +104,7 @@ export function ThinkingActivities({
             </motion.div>
             <span>
               {currentPhaseName
-                ? `${currentPhaseName === 'giant' ? 'Analyzing complex regulations...' : currentPhaseName === 'cell' ? 'Calibrating with local data...' : 'Finalizing answer...'}`
+                ? `${currentPhaseName === "giant" ? "Analyzing complex regulations..." : currentPhaseName === "cell" ? "Calibrating with local data..." : "Finalizing answer..."}`
                 : currentPhrase.text}
             </span>
           </motion.div>

@@ -27,7 +27,7 @@ export interface EmailFolder {
   folder_id: string;
   folder_name: string;
   folder_path: string;
-  folder_type: 'inbox' | 'sent' | 'drafts' | 'trash' | 'spam' | 'custom';
+  folder_type: "inbox" | "sent" | "drafts" | "trash" | "spam" | "custom";
   unread_count: number;
   total_count: number;
 }

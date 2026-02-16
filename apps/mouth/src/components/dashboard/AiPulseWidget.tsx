@@ -1,8 +1,15 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import { Activity, Zap, AlertCircle, Brain, Database, Terminal } from 'lucide-react';
-import { api } from '@/lib/api';
+import React, { useEffect, useState } from "react";
+import {
+  Activity,
+  Zap,
+  AlertCircle,
+  Brain,
+  Database,
+  Terminal,
+} from "lucide-react";
+import { api } from "@/lib/api";
 
 interface NeuralPulseData {
   status: string;
@@ -14,11 +21,14 @@ interface NeuralPulseData {
 }
 
 interface AiPulseWidgetProps {
-  systemAppStatus: 'healthy' | 'degraded';
-  oracleStatus: 'active' | 'inactive';
+  systemAppStatus: "healthy" | "degraded";
+  oracleStatus: "active" | "inactive";
 }
 
-export function AiPulseWidget({ systemAppStatus, oracleStatus }: AiPulseWidgetProps) {
+export function AiPulseWidget({
+  systemAppStatus,
+  oracleStatus,
+}: AiPulseWidgetProps) {
   const [pulseData, setPulseData] = useState<NeuralPulseData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -26,10 +36,12 @@ export function AiPulseWidget({ systemAppStatus, oracleStatus }: AiPulseWidgetPr
     const fetchPulse = async () => {
       try {
         // Fetch from the new backend endpoint
-        const data = await api.get<NeuralPulseData>('/api/dashboard/neural-pulse');
+        const data = await api.get<NeuralPulseData>(
+          "/api/dashboard/neural-pulse",
+        );
         setPulseData(data);
       } catch (error) {
-        console.error('Failed to fetch neural pulse:', error);
+        console.error("Failed to fetch neural pulse:", error);
       } finally {
         setIsLoading(false);
       }
@@ -41,11 +53,11 @@ export function AiPulseWidget({ systemAppStatus, oracleStatus }: AiPulseWidgetPr
     return () => clearInterval(interval);
   }, []);
 
-  const isHealthy = systemAppStatus === 'healthy';
+  const isHealthy = systemAppStatus === "healthy";
 
   // Format numbers for display (e.g. 53,757 -> 53.7k)
   const formatK = (num: number) => {
-    return num > 999 ? (num / 1000).toFixed(1) + 'k' : num;
+    return num > 999 ? (num / 1000).toFixed(1) + "k" : num;
   };
 
   return (
@@ -64,11 +76,11 @@ export function AiPulseWidget({ systemAppStatus, oracleStatus }: AiPulseWidgetPr
         <div className="flex items-center gap-2 px-2 py-1 rounded-full bg-black/30 border border-white/5">
           <div
             className={`w-2 h-2 rounded-full ${
-              isHealthy ? 'bg-green-500 animate-pulse' : 'bg-red-500'
+              isHealthy ? "bg-green-500 animate-pulse" : "bg-red-500"
             }`}
           />
           <span className="text-xs font-mono text-green-400">
-            {pulseData ? `${pulseData.latency_ms}ms` : '---'}
+            {pulseData ? `${pulseData.latency_ms}ms` : "---"}
           </span>
         </div>
       </div>
@@ -79,10 +91,12 @@ export function AiPulseWidget({ systemAppStatus, oracleStatus }: AiPulseWidgetPr
         <div className="p-3 rounded-lg bg-black/20 border border-white/5 hover:border-purple-500/30 transition-colors">
           <div className="flex items-center gap-2 mb-1">
             <Brain className="w-3.5 h-3.5 text-purple-400" />
-            <span className="text-xs text-white/60 font-medium">Memory Facts</span>
+            <span className="text-xs text-white/60 font-medium">
+              Memory Facts
+            </span>
           </div>
           <div className="text-2xl font-bold text-white tracking-tight">
-            {pulseData ? pulseData.memory_facts : '-'}
+            {pulseData ? pulseData.memory_facts : "-"}
           </div>
         </div>
 
@@ -90,10 +104,12 @@ export function AiPulseWidget({ systemAppStatus, oracleStatus }: AiPulseWidgetPr
         <div className="p-3 rounded-lg bg-black/20 border border-white/5 hover:border-cyan-500/30 transition-colors">
           <div className="flex items-center gap-2 mb-1">
             <Database className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="text-xs text-white/60 font-medium">Knowledge Docs</span>
+            <span className="text-xs text-white/60 font-medium">
+              Knowledge Docs
+            </span>
           </div>
           <div className="text-2xl font-bold text-white tracking-tight">
-            {pulseData ? formatK(pulseData.knowledge_docs) : '-'}
+            {pulseData ? formatK(pulseData.knowledge_docs) : "-"}
           </div>
         </div>
       </div>
@@ -102,10 +118,14 @@ export function AiPulseWidget({ systemAppStatus, oracleStatus }: AiPulseWidgetPr
       <div className="mt-auto">
         <div className="flex items-center gap-2 mb-2">
           <Terminal className="w-3 h-3 text-white/40" />
-          <span className="text-[10px] text-white/40 uppercase tracking-wide">System Activity</span>
+          <span className="text-[10px] text-white/40 uppercase tracking-wide">
+            System Activity
+          </span>
         </div>
         <div className="font-mono text-xs text-green-400/80 bg-black/40 p-2 rounded border border-white/5 truncate">
-          {pulseData ? `> ${pulseData.last_activity}` : '> Initializing neural link...'}
+          {pulseData
+            ? `> ${pulseData.last_activity}`
+            : "> Initializing neural link..."}
         </div>
       </div>
     </div>

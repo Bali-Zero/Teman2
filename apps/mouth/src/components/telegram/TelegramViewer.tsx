@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from "react";
 import {
   X,
   Send,
@@ -10,11 +10,11 @@ import {
   Check,
   CheckCheck,
   MessageCircle,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import type { TelegramMessage } from '@/lib/api/telegram/telegram.types';
-import type { Client } from '@/lib/api/crm/crm.types';
-import { logger } from '@/lib/logger';
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { TelegramMessage } from "@/lib/api/telegram/telegram.types";
+import type { Client } from "@/lib/api/crm/crm.types";
+import { logger } from "@/lib/logger";
 
 interface TelegramViewerProps {
   chatId: string | number | null;
@@ -33,14 +33,14 @@ export function TelegramViewer({
   onSendMessage,
   isLoading,
 }: TelegramViewerProps) {
-  const [messageText, setMessageText] = useState('');
+  const [messageText, setMessageText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const handleSend = async () => {
@@ -49,19 +49,19 @@ export function TelegramViewer({
     setIsSending(true);
     try {
       await onSendMessage(messageText.trim());
-      setMessageText('');
+      setMessageText("");
       if (inputRef.current) {
-        inputRef.current.style.height = 'auto';
+        inputRef.current.style.height = "auto";
       }
     } catch (error) {
-      logger.error('Failed to send message:', {}, error as Error);
+      logger.error("Failed to send message:", {}, error as Error);
     } finally {
       setIsSending(false);
     }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
@@ -69,18 +69,26 @@ export function TelegramViewer({
 
   const formatTime = (dateStr: string): string => {
     const date = new Date(dateStr);
-    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   const formatDate = (dateStr: string): string => {
     const date = new Date(dateStr);
     const now = new Date();
     const isToday = date.toDateString() === now.toDateString();
-    const isYesterday = date.toDateString() === new Date(now.getTime() - 86400000).toDateString();
+    const isYesterday =
+      date.toDateString() === new Date(now.getTime() - 86400000).toDateString();
 
-    if (isToday) return 'Today';
-    if (isYesterday) return 'Yesterday';
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    if (isToday) return "Today";
+    if (isYesterday) return "Yesterday";
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
   };
 
   // Group messages by date
@@ -93,7 +101,7 @@ export function TelegramViewer({
       groups[date].push(message);
       return groups;
     },
-    {} as Record<string, TelegramMessage[]>
+    {} as Record<string, TelegramMessage[]>,
   );
 
   if (!chatId) {
@@ -132,7 +140,9 @@ export function TelegramViewer({
               {client?.full_name || `Chat ${String(chatId).slice(-4)}`}
             </h2>
             {client?.email && (
-              <p className="text-xs text-[var(--foreground-muted)]">{client.email}</p>
+              <p className="text-xs text-[var(--foreground-muted)]">
+                {client.email}
+              </p>
             )}
           </div>
         </div>
@@ -147,14 +157,18 @@ export function TelegramViewer({
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <div className="w-8 h-8 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-              <p className="text-sm text-[var(--foreground-muted)]">Loading messages...</p>
+              <p className="text-sm text-[var(--foreground-muted)]">
+                Loading messages...
+              </p>
             </div>
           </div>
         ) : messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <MessageCircle className="w-12 h-12 mx-auto text-[var(--foreground-muted)] mb-4 opacity-50" />
-              <p className="text-sm text-[var(--foreground-muted)]">No messages yet</p>
+              <p className="text-sm text-[var(--foreground-muted)]">
+                No messages yet
+              </p>
             </div>
           </div>
         ) : (
@@ -169,19 +183,22 @@ export function TelegramViewer({
 
               {/* Messages for this date */}
               {dateMessages.map((message) => {
-                const isOutbound = message.direction === 'outbound';
+                const isOutbound = message.direction === "outbound";
 
                 return (
                   <div
                     key={message.id}
-                    className={cn('flex mb-2', isOutbound ? 'justify-end' : 'justify-start')}
+                    className={cn(
+                      "flex mb-2",
+                      isOutbound ? "justify-end" : "justify-start",
+                    )}
                   >
                     <div
                       className={cn(
-                        'max-w-[70%] rounded-lg px-4 py-2',
+                        "max-w-[70%] rounded-lg px-4 py-2",
                         isOutbound
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-[var(--background-elevated)] text-[var(--foreground)]'
+                          ? "bg-blue-500 text-white"
+                          : "bg-[var(--background-elevated)] text-[var(--foreground)]",
                       )}
                     >
                       <p className="text-sm whitespace-pre-wrap break-words">
@@ -190,17 +207,19 @@ export function TelegramViewer({
                       <div className="flex items-center justify-end gap-1 mt-1">
                         <span
                           className={cn(
-                            'text-xs',
-                            isOutbound ? 'text-blue-100' : 'text-[var(--foreground-muted)]'
+                            "text-xs",
+                            isOutbound
+                              ? "text-blue-100"
+                              : "text-[var(--foreground-muted)]",
                           )}
                         >
                           {formatTime(message.timestamp)}
                         </span>
                         {isOutbound && (
                           <span className="ml-1">
-                            {message.status === 'read' ? (
+                            {message.status === "read" ? (
                               <CheckCheck className="w-3 h-3 text-blue-100" />
-                            ) : message.status === 'delivered' ? (
+                            ) : message.status === "delivered" ? (
                               <CheckCheck className="w-3 h-3 text-blue-100 opacity-50" />
                             ) : (
                               <Check className="w-3 h-3 text-blue-100 opacity-50" />
@@ -226,18 +245,18 @@ export function TelegramViewer({
             value={messageText}
             onChange={(e) => {
               setMessageText(e.target.value);
-              e.target.style.height = 'auto';
+              e.target.style.height = "auto";
               e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
             }}
             onKeyPress={handleKeyPress}
             placeholder="Type a message..."
             rows={1}
             className={cn(
-              'flex-1 px-4 py-2 rounded-lg border border-[var(--border)]',
-              'bg-[var(--background)] text-[var(--foreground)]',
-              'placeholder:text-[var(--foreground-muted)]',
-              'focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50',
-              'resize-none max-h-[120px]'
+              "flex-1 px-4 py-2 rounded-lg border border-[var(--border)]",
+              "bg-[var(--background)] text-[var(--foreground)]",
+              "placeholder:text-[var(--foreground-muted)]",
+              "focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50",
+              "resize-none max-h-[120px]",
             )}
             disabled={isSending || !chatId}
           />
@@ -245,10 +264,10 @@ export function TelegramViewer({
             onClick={handleSend}
             disabled={!messageText.trim() || isSending || !chatId}
             className={cn(
-              'p-3 rounded-lg transition-colors flex-shrink-0',
+              "p-3 rounded-lg transition-colors flex-shrink-0",
               messageText.trim() && !isSending && chatId
-                ? 'bg-blue-500 text-white hover:bg-blue-600'
-                : 'bg-[var(--background-elevated)] text-[var(--foreground-muted)] cursor-not-allowed'
+                ? "bg-blue-500 text-white hover:bg-blue-600"
+                : "bg-[var(--background-elevated)] text-[var(--foreground-muted)] cursor-not-allowed",
             )}
           >
             {isSending ? (

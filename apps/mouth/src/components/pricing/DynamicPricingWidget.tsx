@@ -3,29 +3,32 @@
  * Calculates comprehensive pricing for business scenarios
  */
 
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Calculator, Loader2, TrendingUp, Clock } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import type { PricingResult, CostItem } from '@/lib/api/zantara-sdk/types';
-import { ZantaraSDK } from '@/lib/api/zantara-sdk';
+import { useState } from "react";
+import { Calculator, Loader2, TrendingUp, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import type { PricingResult, CostItem } from "@/lib/api/zantara-sdk/types";
+import { ZantaraSDK } from "@/lib/api/zantara-sdk";
 
 export interface DynamicPricingWidgetProps {
   sdk: ZantaraSDK;
   onCalculate?: (result: PricingResult) => void;
 }
 
-export function DynamicPricingWidget({ sdk, onCalculate }: DynamicPricingWidgetProps) {
-  const [scenario, setScenario] = useState('');
+export function DynamicPricingWidget({
+  sdk,
+  onCalculate,
+}: DynamicPricingWidgetProps) {
+  const [scenario, setScenario] = useState("");
   const [result, setResult] = useState<PricingResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleCalculate = async () => {
     if (!scenario.trim()) {
-      setError('Please enter a scenario');
+      setError("Please enter a scenario");
       return;
     }
 
@@ -38,30 +41,32 @@ export function DynamicPricingWidget({ sdk, onCalculate }: DynamicPricingWidgetP
       setResult(pricingResult);
       onCalculate?.(pricingResult);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to calculate pricing');
+      setError(
+        err instanceof Error ? err.message : "Failed to calculate pricing",
+      );
     } finally {
       setLoading(false);
     }
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
       minimumFractionDigits: 0,
     }).format(amount);
   };
 
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {
-      Legal: 'bg-blue-100 text-blue-800',
-      Licensing: 'bg-green-100 text-green-800',
-      Tax: 'bg-yellow-100 text-yellow-800',
-      Visa: 'bg-purple-100 text-purple-800',
-      Property: 'bg-orange-100 text-orange-800',
-      'Service Fees': 'bg-gray-100 text-gray-800',
+      Legal: "bg-blue-100 text-blue-800",
+      Licensing: "bg-green-100 text-green-800",
+      Tax: "bg-yellow-100 text-yellow-800",
+      Visa: "bg-purple-100 text-purple-800",
+      Property: "bg-orange-100 text-orange-800",
+      "Service Fees": "bg-gray-100 text-gray-800",
     };
-    return colors[category] || 'bg-gray-100 text-gray-800';
+    return colors[category] || "bg-gray-100 text-gray-800";
   };
 
   return (
@@ -79,7 +84,7 @@ export function DynamicPricingWidget({ sdk, onCalculate }: DynamicPricingWidgetP
             value={scenario}
             onChange={(e) => setScenario(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
+              if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 handleCalculate();
               }
@@ -88,14 +93,17 @@ export function DynamicPricingWidget({ sdk, onCalculate }: DynamicPricingWidgetP
             disabled={loading}
             className="flex-1"
           />
-          <Button onClick={handleCalculate} disabled={loading || !scenario.trim()}>
+          <Button
+            onClick={handleCalculate}
+            disabled={loading || !scenario.trim()}
+          >
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Calculating...
               </>
             ) : (
-              'Calculate'
+              "Calculate"
             )}
           </Button>
         </div>
@@ -136,7 +144,9 @@ export function DynamicPricingWidget({ sdk, onCalculate }: DynamicPricingWidgetP
                 <div className="text-2xl font-bold text-green-900">
                   {formatCurrency(result.total_recurring_cost)}
                 </div>
-                <p className="text-xs text-green-700 mt-1">Recurring expenses</p>
+                <p className="text-xs text-green-700 mt-1">
+                  Recurring expenses
+                </p>
               </div>
             )}
 
@@ -145,7 +155,9 @@ export function DynamicPricingWidget({ sdk, onCalculate }: DynamicPricingWidgetP
                 <Clock className="h-5 w-5" />
                 <span className="text-sm font-medium">Timeline</span>
               </div>
-              <div className="text-lg font-bold text-purple-900">{result.timeline_estimate}</div>
+              <div className="text-lg font-bold text-purple-900">
+                {result.timeline_estimate}
+              </div>
               <p className="text-xs text-purple-700 mt-1">Estimated duration</p>
             </div>
           </div>
@@ -154,7 +166,9 @@ export function DynamicPricingWidget({ sdk, onCalculate }: DynamicPricingWidgetP
           <div className="p-3 bg-muted rounded-lg">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Confidence Score</span>
-              <span className="text-sm font-semibold">{(result.confidence * 100).toFixed(0)}%</span>
+              <span className="text-sm font-semibold">
+                {(result.confidence * 100).toFixed(0)}%
+              </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
               <div
@@ -174,19 +188,25 @@ export function DynamicPricingWidget({ sdk, onCalculate }: DynamicPricingWidgetP
                   const percentage =
                     result.total_setup_cost > 0
                       ? ((amount / result.total_setup_cost) * 100).toFixed(1)
-                      : '0';
+                      : "0";
                   return (
                     <div
                       key={category}
                       className="flex items-center justify-between p-3 bg-muted rounded-lg"
                     >
                       <div className="flex items-center gap-2">
-                        <span className={`px-2 py-1 text-xs rounded ${getCategoryColor(category)}`}>
+                        <span
+                          className={`px-2 py-1 text-xs rounded ${getCategoryColor(category)}`}
+                        >
                           {category}
                         </span>
-                        <span className="text-xs text-muted-foreground">{percentage}%</span>
+                        <span className="text-xs text-muted-foreground">
+                          {percentage}%
+                        </span>
                       </div>
-                      <span className="font-semibold">{formatCurrency(amount)}</span>
+                      <span className="font-semibold">
+                        {formatCurrency(amount)}
+                      </span>
                     </div>
                   );
                 })}
@@ -198,7 +218,10 @@ export function DynamicPricingWidget({ sdk, onCalculate }: DynamicPricingWidgetP
             <h3 className="text-lg font-semibold">Detailed Cost Items</h3>
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {result.cost_items.map((item, index) => (
-                <div key={index} className="p-3 border rounded-lg hover:bg-muted transition-colors">
+                <div
+                  key={index}
+                  className="p-3 border rounded-lg hover:bg-muted transition-colors"
+                >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
@@ -221,9 +244,13 @@ export function DynamicPricingWidget({ sdk, onCalculate }: DynamicPricingWidgetP
                       )}
                     </div>
                     <div className="text-right">
-                      <div className="font-semibold">{formatCurrency(item.amount)}</div>
+                      <div className="font-semibold">
+                        {formatCurrency(item.amount)}
+                      </div>
                       {item.frequency && (
-                        <div className="text-xs text-muted-foreground">{item.frequency}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {item.frequency}
+                        </div>
                       )}
                     </div>
                   </div>

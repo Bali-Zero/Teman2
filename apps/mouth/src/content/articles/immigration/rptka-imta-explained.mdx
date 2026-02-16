@@ -78,8 +78,8 @@ import {
   ComparisonTable,
   InfoCard,
   GlossaryTerm,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # RPTKA & IMTA Explained: Indonesia's Work Authorization System 2026
 
@@ -95,23 +95,23 @@ When hiring a foreign worker in Indonesia, the employer must obtain authorizatio
       name: "RPTKA",
       subtitle: "Rencana Penggunaan Tenaga Kerja Asing",
       values: {
-        "What": "Foreign Worker Utilization Plan",
+        What: "Foreign Worker Utilization Plan",
         "Who Applies": "Employer",
-        "Purpose": "Justify hiring foreigner",
-        "System": "TKA Online"
+        Purpose: "Justify hiring foreigner",
+        System: "TKA Online",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "Notifikasi",
       subtitle: "Formerly IMTA",
       values: {
-        "What": "Work Permit Notification",
+        What: "Work Permit Notification",
         "Who Applies": "Employer",
-        "Purpose": "Actual work authorization",
-        "System": "TKA Online"
-      }
-    }
+        Purpose: "Actual work authorization",
+        System: "TKA Online",
+      },
+    },
   ]}
 />
 
@@ -125,6 +125,7 @@ When hiring a foreign worker in Indonesia, the employer must obtain authorizatio
 />
 
 RPTKA is the employer's plan that explains:
+
 - **Why** a foreign worker is needed
 - **What** position they will fill
 - **How long** they need the foreign worker
@@ -146,6 +147,7 @@ RPTKA approval is tied to specific:
 - Duration (maximum 5 years, usually 1-2)
 
 Changes require new RPTKA application.
+
 </InfoCard>
 
 ---
@@ -163,11 +165,7 @@ Changes require new RPTKA application.
       description: "Company registers on system",
       duration: "1-2 days",
       status: "required",
-      tips: [
-        "Use company email",
-        "Have NIB ready",
-        "Director must sign up"
-      ]
+      tips: ["Use company email", "Have NIB ready", "Director must sign up"],
     },
     {
       id: "upload",
@@ -179,8 +177,8 @@ Changes require new RPTKA application.
         "NIB (Business ID)",
         "Company deed",
         "Tax registration (NPWP)",
-        "Domicile letter"
-      ]
+        "Domicile letter",
+      ],
     },
     {
       id: "rptka-form",
@@ -192,8 +190,8 @@ Changes require new RPTKA application.
         "Specify exact job title",
         "List qualifications needed",
         "Explain why foreigner required",
-        "Name Indonesian companion"
-      ]
+        "Name Indonesian companion",
+      ],
     },
     {
       id: "fee",
@@ -204,8 +202,8 @@ Changes require new RPTKA application.
       tips: [
         "USD 100 x number of months",
         "Pay via bank transfer",
-        "Non-refundable"
-      ]
+        "Non-refundable",
+      ],
     },
     {
       id: "review",
@@ -216,8 +214,8 @@ Changes require new RPTKA application.
       tips: [
         "May request clarification",
         "Check TKA Online for status",
-        "Can be rejected if position restricted"
-      ]
+        "Can be rejected if position restricted",
+      ],
     },
     {
       id: "approval",
@@ -228,9 +226,9 @@ Changes require new RPTKA application.
       tips: [
         "Download from TKA Online",
         "Valid for stated duration",
-        "Proceed to Notifikasi"
-      ]
-    }
+        "Proceed to Notifikasi",
+      ],
+    },
   ]}
 />
 
@@ -242,15 +240,16 @@ After RPTKA approval, the employer applies for **Notifikasi** - the actual work 
 
 ### Key Differences from Old IMTA
 
-| Aspect | Old IMTA | New Notifikasi |
-|--------|----------|----------------|
-| Format | Physical card | Electronic notification |
-| Issuance | Separate process | Auto-generated from RPTKA |
-| Extension | Manual renewal | Through TKA Online |
-| Validity | Matched KITAS | Matched RPTKA |
+| Aspect    | Old IMTA         | New Notifikasi            |
+| --------- | ---------------- | ------------------------- |
+| Format    | Physical card    | Electronic notification   |
+| Issuance  | Separate process | Auto-generated from RPTKA |
+| Extension | Manual renewal   | Through TKA Online        |
+| Validity  | Matched KITAS    | Matched RPTKA             |
 
 <InfoCard variant="note" title="Notifikasi is Automatic">
-Once RPTKA is approved and you submit the foreign worker's details, Notifikasi is generated automatically through TKA Online. No separate application needed.
+  Once RPTKA is approved and you submit the foreign worker's details, Notifikasi
+  is generated automatically through TKA Online. No separate application needed.
 </InfoCard>
 
 ---
@@ -260,20 +259,21 @@ Once RPTKA is approved and you submit the foreign worker's details, Notifikasi i
 Every employer hiring foreign workers must pay the **Dana Kompensasi Penggunaan TKA**:
 
 ### Fee Structure
+
 - **Rate**: USD 100 per month
 - **Calculation**: Monthly rate × duration of work permit
 - **Example**: 12-month permit = USD 1,200
 
 ### Payment Rules
+
 - Paid upfront when applying for RPTKA
 - Non-refundable (even if worker leaves early)
 - Must be renewed with each extension
 - Government revenue for skills training
 
 <InfoCard variant="tip" title="Budget Accordingly">
-For a 2-year KITAS:
-- DKP-TKA: USD 2,400 (24 months × $100)
-- This is separate from KITAS and visa fees
+  For a 2-year KITAS: - DKP-TKA: USD 2,400 (24 months × $100) - This is separate
+  from KITAS and visa fees
 </InfoCard>
 
 ---
@@ -283,6 +283,7 @@ For a 2-year KITAS:
 The **Daftar Jabatan yang Dilarang untuk TKA** lists positions closed to foreigners:
 
 ### Prohibited Positions Include:
+
 - Human Resources/Personnel Manager
 - Quality Assurance positions
 - Health & Safety Officer
@@ -291,15 +292,15 @@ The **Daftar Jabatan yang Dilarang untuk TKA** lists positions closed to foreign
 - Many supervisor positions
 
 ### How to Check
+
 1. Consult Ministry of Manpower list
 2. Use exact job title in RPTKA
 3. Be prepared to justify if borderline
 
 <InfoCard variant="warning" title="Position Matching">
-Your actual work must match the RPTKA position. Working in a different role than approved is a violation and can result in:
-- Work permit cancellation
-- Fines for employer
-- Deportation for worker
+  Your actual work must match the RPTKA position. Working in a different role
+  than approved is a violation and can result in: - Work permit cancellation -
+  Fines for employer - Deportation for worker
 </InfoCard>
 
 ---
@@ -325,7 +326,7 @@ To extend RPTKA/Notifikasi:
     "Can one RPTKA cover multiple foreign workers?",
     "What if RPTKA is rejected?",
     "How long does RPTKA approval take?",
-    "Can I change positions after RPTKA approval?"
+    "Can I change positions after RPTKA approval?",
   ]}
 />
 

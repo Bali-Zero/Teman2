@@ -3,8 +3,8 @@
  * Tracks type safety improvements and `any` usage across the codebase
  */
 
-import { logger } from '@/lib/logger';
-import type { Metadata } from '@/lib/types/common';
+import { logger } from "@/lib/logger";
+import type { Metadata } from "@/lib/types/common";
 
 export interface TypeSafetyMetrics {
   totalAnyCount: number;
@@ -34,9 +34,9 @@ class TypeSafetyMetricsTracker {
     const reduction = before - after;
     const percentage = before > 0 ? (reduction / before) * 100 : 0;
 
-    logger.info('Type safety improvement tracked', {
-      component: 'TypeSafetyMetrics',
-      action: 'track_improvement',
+    logger.info("Type safety improvement tracked", {
+      component: "TypeSafetyMetrics",
+      action: "track_improvement",
       metadata: {
         file,
         before,
@@ -54,9 +54,9 @@ class TypeSafetyMetricsTracker {
    */
   trackTypeGuard(name: string, file: string): void {
     this.metrics.typeGuardsCount++;
-    logger.debug('Type guard created', {
-      component: 'TypeSafetyMetrics',
-      action: 'type_guard_created',
+    logger.debug("Type guard created", {
+      component: "TypeSafetyMetrics",
+      action: "type_guard_created",
       metadata: { name, file },
     });
   }
@@ -67,9 +67,9 @@ class TypeSafetyMetricsTracker {
   trackFileTyped(file: string, anyRemoved: number): void {
     this.metrics.typedFilesCount++;
     this.metrics.totalAnyCount -= anyRemoved;
-    logger.info('File typing completed', {
-      component: 'TypeSafetyMetrics',
-      action: 'file_typed',
+    logger.info("File typing completed", {
+      component: "TypeSafetyMetrics",
+      action: "file_typed",
       metadata: { file, anyRemoved },
     });
     this.updateMetrics();
@@ -89,7 +89,10 @@ class TypeSafetyMetricsTracker {
     // Calculate progress based on files typed and any removed
     // This is a simplified calculation - adjust based on your migration plan
     const targetFiles = 10; // Adjust based on your migration plan
-    const progress = Math.min(100, (this.metrics.typedFilesCount / targetFiles) * 100);
+    const progress = Math.min(
+      100,
+      (this.metrics.typedFilesCount / targetFiles) * 100,
+    );
     this.metrics.migrationProgress = progress;
     this.metrics.lastUpdated = new Date().toISOString();
   }
@@ -98,9 +101,9 @@ class TypeSafetyMetricsTracker {
    * Log metrics summary
    */
   logSummary(): void {
-    logger.info('Type safety metrics summary', {
-      component: 'TypeSafetyMetrics',
-      action: 'summary',
+    logger.info("Type safety metrics summary", {
+      component: "TypeSafetyMetrics",
+      action: "summary",
       metadata: this.metrics as unknown as Metadata,
     });
   }

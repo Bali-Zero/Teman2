@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 /**
  * KBLI API Proxy Route
@@ -10,13 +11,13 @@ import { NextRequest, NextResponse } from 'next/server';
  * Backend: https://nuzantara-rag.fly.dev/api/v1/kbli-notebook/inspect/[code]
  */
 
-const BACKEND_URL = 'https://nuzantara-rag.fly.dev';
+const BACKEND_URL = "https://nuzantara-rag.fly.dev";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { code: string } }
+  { params }: { params: Promise<{ code: string }> },
 ) {
-  const { code } = params;
+  const { code } = await params;
 
   try {
     // Fetch from backend with timeout
@@ -28,9 +29,9 @@ export async function GET(
       {
         signal: controller.signal,
         headers: {
-          'Accept': 'application/json',
+          Accept: "application/json",
         },
-      }
+      },
     );
 
     clearTimeout(timeoutId);
@@ -38,7 +39,7 @@ export async function GET(
     if (!response.ok) {
       return NextResponse.json(
         { error: `Backend returned ${response.status}` },
-        { status: response.status }
+        { status: response.status },
       );
     }
 
@@ -47,22 +48,23 @@ export async function GET(
     // Return with cache headers
     return NextResponse.json(data, {
       headers: {
-        'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=43200',
+        "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=43200",
       },
     });
   } catch (error: any) {
-    console.error(`[KBLI API] Failed to fetch code ${code}:`, error);
+    logger.error(
+      `[KBLI API] Failed to fetch code ${code}:`,
+      {},
+      error instanceof Error ? error : new Error(String(error)),
+    );
 
-    if (error.name === 'AbortError') {
-      return NextResponse.json(
-        { error: 'Backend timeout' },
-        { status: 504 }
-      );
+    if (error.name === "AbortError") {
+      return NextResponse.json({ error: "Backend timeout" }, { status: 504 });
     }
 
     return NextResponse.json(
-      { error: 'Failed to fetch KBLI data' },
-      { status: 500 }
+      { error: "Failed to fetch KBLI data" },
+      { status: 500 },
     );
   }
 }

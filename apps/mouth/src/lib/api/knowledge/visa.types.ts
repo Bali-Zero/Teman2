@@ -55,8 +55,13 @@ export interface VisaTypeListResponse {
   categories: string[];
 }
 
-export type VisaCategory = 'KITAS' | 'KITAP' | 'Tourist' | 'Business' | 'Other';
+export type VisaCategory = "KITAS" | "KITAP" | "Tourist" | "Business" | "Other";
 
-export type VisaDifficulty = 'very_low' | 'low' | 'medium' | 'high' | 'very_high';
+export type VisaDifficulty =
+  | "very_low"
+  | "low"
+  | "medium"
+  | "high"
+  | "very_high";
 
-export type VisaPopularity = 'low' | 'medium' | 'high' | 'very_high';
+export type VisaPopularity = "low" | "medium" | "high" | "very_high";

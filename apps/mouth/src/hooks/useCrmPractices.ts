@@ -4,10 +4,10 @@
  * Hook ottimizzato per gestione pratiche CRM
  */
 
-import { useCallback, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import type { Practice, CreatePracticeParams } from '@/lib/api/crm/crm.types';
+import { useCallback, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import type { Practice, CreatePracticeParams } from "@/lib/api/crm/crm.types";
 
 interface UseCrmPracticesOptions {
   clientId?: number;
@@ -24,31 +24,31 @@ interface PracticesResponse {
 }
 
 const PRACTICE_STATUSES = [
-  { value: 'inquiry', label: 'Inquiry', color: 'blue' },
-  { value: 'quotation_sent', label: 'Quotation Sent', color: 'yellow' },
-  { value: 'payment_pending', label: 'Payment Pending', color: 'orange' },
-  { value: 'in_progress', label: 'In Progress', color: 'indigo' },
-  { value: 'completed', label: 'Completed', color: 'green' },
-  { value: 'cancelled', label: 'Cancelled', color: 'red' },
-  { value: 'on_hold', label: 'On Hold', color: 'gray' },
+  { value: "inquiry", label: "Inquiry", color: "blue" },
+  { value: "quotation_sent", label: "Quotation Sent", color: "yellow" },
+  { value: "payment_pending", label: "Payment Pending", color: "orange" },
+  { value: "in_progress", label: "In Progress", color: "indigo" },
+  { value: "completed", label: "Completed", color: "green" },
+  { value: "cancelled", label: "Cancelled", color: "red" },
+  { value: "on_hold", label: "On Hold", color: "gray" },
 ] as const;
 
 const PRACTICE_PRIORITIES = [
-  { value: 'low', label: 'Low', color: 'gray' },
-  { value: 'normal', label: 'Normal', color: 'blue' },
-  { value: 'high', label: 'High', color: 'orange' },
-  { value: 'urgent', label: 'Urgent', color: 'red' },
+  { value: "low", label: "Low", color: "gray" },
+  { value: "normal", label: "Normal", color: "blue" },
+  { value: "high", label: "High", color: "orange" },
+  { value: "urgent", label: "Urgent", color: "red" },
 ] as const;
 
 // Debug helper
 const debug = (...args: any[]) => {
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[CRM]', ...args);
+  if (process.env.NODE_ENV === "development") {
+    console.log("[CRM]", ...args);
   }
 };
 
 const logError = (...args: any[]) => {
-  console.error('[CRM]', ...args);
+  console.error("[CRM]", ...args);
 };
 
 /**
@@ -58,7 +58,11 @@ export function useCrmPractices(options: UseCrmPracticesOptions = {}) {
   const { clientId, status, assigned_to, limit = 50, enabled = true } = options;
   const [offset, setOffset] = useState(0);
 
-  const queryKey = ['crm', 'practices', { clientId, status, assigned_to, offset }];
+  const queryKey = [
+    "crm",
+    "practices",
+    { clientId, status, assigned_to, offset },
+  ];
 
   const {
     data,
@@ -123,9 +127,9 @@ export function useCrmPractice(practiceId: number | null) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ['crm', 'practices', practiceId],
+    queryKey: ["crm", "practices", practiceId],
     queryFn: async (): Promise<Practice> => {
-      if (!practiceId) throw new Error('Practice ID required');
+      if (!practiceId) throw new Error("Practice ID required");
       return api.crm.getPractice(practiceId);
     },
     enabled: !!practiceId,
@@ -133,7 +137,9 @@ export function useCrmPractice(practiceId: number | null) {
   });
 
   const invalidate = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['crm', 'practices', practiceId] });
+    queryClient.invalidateQueries({
+      queryKey: ["crm", "practices", practiceId],
+    });
   }, [queryClient, practiceId]);
 
   return {
@@ -149,22 +155,32 @@ export function useCreatePractice() {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: async ({ data, createdBy }: { data: CreatePracticeParams; createdBy: string }) => {
+    mutationFn: async ({
+      data,
+      createdBy,
+    }: {
+      data: CreatePracticeParams;
+      createdBy: string;
+    }) => {
       return api.crm.createPractice(data, createdBy);
     },
     onSuccess: (newPractice, variables) => {
       // Invalidate practices list
-      queryClient.invalidateQueries({ queryKey: ['crm', 'practices'] });
+      queryClient.invalidateQueries({ queryKey: ["crm", "practices"] });
       // Invalidate client practices if client_id provided
       if (variables.data.client_id) {
         queryClient.invalidateQueries({
-          queryKey: ['crm', 'practices', { clientId: variables.data.client_id }],
+          queryKey: [
+            "crm",
+            "practices",
+            { clientId: variables.data.client_id },
+          ],
         });
       }
-      debug('Practice created:', newPractice.id);
+      debug("Practice created:", newPractice.id);
     },
     onError: (err) => {
-      logError('Failed to create practice:', err);
+      logError("Failed to create practice:", err);
     },
   });
 
@@ -189,13 +205,16 @@ export function useUpdatePractice(practiceId: number) {
     },
     onSuccess: (updatedPractice) => {
       // Update cache
-      queryClient.setQueryData(['crm', 'practices', practiceId], updatedPractice);
+      queryClient.setQueryData(
+        ["crm", "practices", practiceId],
+        updatedPractice,
+      );
       // Invalidate lists
-      queryClient.invalidateQueries({ queryKey: ['crm', 'practices'] });
-      debug('Practice updated:', practiceId);
+      queryClient.invalidateQueries({ queryKey: ["crm", "practices"] });
+      debug("Practice updated:", practiceId);
     },
     onError: (err) => {
-      logError('Failed to update practice:', err);
+      logError("Failed to update practice:", err);
     },
   });
 
@@ -209,18 +228,27 @@ export function useUpdatePracticeStatus(practiceId: number) {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: async ({ status, updatedBy }: { status: string; updatedBy: string }) => {
+    mutationFn: async ({
+      status,
+      updatedBy,
+    }: {
+      status: string;
+      updatedBy: string;
+    }) => {
       return api.crm.updatePractice(practiceId, { status }, updatedBy);
     },
     onSuccess: (updatedPractice) => {
       // Update cache
-      queryClient.setQueryData(['crm', 'practices', practiceId], updatedPractice);
+      queryClient.setQueryData(
+        ["crm", "practices", practiceId],
+        updatedPractice,
+      );
       // Invalidate lists
-      queryClient.invalidateQueries({ queryKey: ['crm', 'practices'] });
-      debug('Practice status updated:', practiceId);
+      queryClient.invalidateQueries({ queryKey: ["crm", "practices"] });
+      debug("Practice status updated:", practiceId);
     },
     onError: (err) => {
-      logError('Failed to update practice status:', err);
+      logError("Failed to update practice status:", err);
     },
   });
 
@@ -232,7 +260,7 @@ export function useUpdatePracticeStatus(practiceId: number) {
  */
 export function useUpcomingRenewals(days: number = 90) {
   return useQuery({
-    queryKey: ['crm', 'practices', 'renewals', days],
+    queryKey: ["crm", "practices", "renewals", days],
     queryFn: async () => {
       return api.crm.getUpcomingRenewals(days);
     },
@@ -251,11 +279,11 @@ export function useDeletePractice(practiceId: number) {
       return api.crm.deletePractice(practiceId, deletedBy);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['crm', 'practices'] });
-      debug('Practice deleted:', practiceId);
+      queryClient.invalidateQueries({ queryKey: ["crm", "practices"] });
+      debug("Practice deleted:", practiceId);
     },
     onError: (err) => {
-      logError('Failed to delete practice:', err);
+      logError("Failed to delete practice:", err);
     },
   });
 

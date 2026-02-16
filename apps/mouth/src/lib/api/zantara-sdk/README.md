@@ -7,7 +7,7 @@ Complete TypeScript SDK and React components for integrating Zantara capabilitie
 The SDK is already included in the `mouth` app. For external use, import from:
 
 ```typescript
-import { ZantaraSDK, createZantaraSDK } from '@/lib/api/zantara-sdk';
+import { ZantaraSDK, createZantaraSDK } from "@/lib/api/zantara-sdk";
 ```
 
 ## Quick Start
@@ -15,11 +15,11 @@ import { ZantaraSDK, createZantaraSDK } from '@/lib/api/zantara-sdk';
 ### Initialize SDK
 
 ```typescript
-import { createZantaraSDK } from '@/lib/api/zantara-sdk';
+import { createZantaraSDK } from "@/lib/api/zantara-sdk";
 
 const sdk = createZantaraSDK({
-  baseUrl: 'https://api.zantara.com',
-  apiKey: 'your-api-key', // Optional
+  baseUrl: "https://api.zantara.com",
+  apiKey: "your-api-key", // Optional
   timeout: 30000, // Optional, default 30s
 });
 ```

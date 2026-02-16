@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
   BookOpen,
@@ -25,49 +25,80 @@ import {
   Columns,
   Trash2,
   Check,
-} from 'lucide-react';
-import { kbliApi, KBLIDetail, KBLISearchResult } from '@/lib/api/kbli.api';
-import { toast } from 'sonner';
-import { useSessionStorage } from '@/lib/hooks/optimized/useLocalStorage';
-import KBLIInspector, { getPmaBadge, getRiskBadge, getRiskLevel } from './components/KBLIInspector';
-import ThinkingIndicator from './components/ThinkingIndicator';
-import MatchScoreRing from './components/MatchScoreRing';
-import RiskGauge from './components/RiskGauge';
-import ComparisonModal from './components/ComparisonModal';
-import { useTypewriter } from './hooks/useTypewriter';
+} from "lucide-react";
+import { kbliApi, KBLIDetail, KBLISearchResult } from "@/lib/api/kbli.api";
+import { toast } from "sonner";
+import { useSessionStorage } from "@/lib/hooks/optimized/useLocalStorage";
+import KBLIInspector, {
+  getPmaBadge,
+  getRiskBadge,
+  getRiskLevel,
+} from "./components/KBLIInspector";
+import ThinkingIndicator from "./components/ThinkingIndicator";
+import MatchScoreRing from "./components/MatchScoreRing";
+import RiskGauge from "./components/RiskGauge";
+import ComparisonModal from "./components/ComparisonModal";
+import { useTypewriter } from "./hooks/useTypewriter";
 
 // =============================================================================
 // CONSTANTS & HELPERS
 // =============================================================================
 
 const MOCK_SOURCES = [
-  { id: 'pp28', title: 'PP 28/2025 Lampiran I', type: 'Official Regulation', date: 'Jan 2025' },
-  { id: 'bps25', title: 'Peraturan BPS 7/2025', type: 'Statistical Standard', date: 'Feb 2025' },
+  {
+    id: "pp28",
+    title: "PP 28/2025 Lampiran I",
+    type: "Official Regulation",
+    date: "Jan 2025",
+  },
+  {
+    id: "bps25",
+    title: "Peraturan BPS 7/2025",
+    type: "Statistical Standard",
+    date: "Feb 2025",
+  },
 ];
 
 const ROTATING_PLACEHOLDERS = [
-  'What do I need to open a restaurant in Bali?',
-  'Can a foreigner own a consulting company?',
-  'What KBLI code do I need for e-commerce?',
-  'What licenses are required for a hotel?',
+  "What do I need to open a restaurant in Bali?",
+  "Can a foreigner own a consulting company?",
+  "What KBLI code do I need for e-commerce?",
+  "What licenses are required for a hotel?",
 ];
 
 const STARTER_CHIPS = [
-  { label: 'Restaurant / Cafe', query: 'I want to open a restaurant in Bali', icon: Utensils },
-  { label: 'Hotel / Villa', query: 'I want to open a hotel or villa rental', icon: Building2 },
-  { label: 'E-commerce', query: 'I want to start an e-commerce business', icon: ShoppingCart },
-  { label: 'Consulting', query: 'I want to open a consulting company', icon: Briefcase },
+  {
+    label: "Restaurant / Cafe",
+    query: "I want to open a restaurant in Bali",
+    icon: Utensils,
+  },
+  {
+    label: "Hotel / Villa",
+    query: "I want to open a hotel or villa rental",
+    icon: Building2,
+  },
+  {
+    label: "E-commerce",
+    query: "I want to start an e-commerce business",
+    icon: ShoppingCart,
+  },
+  {
+    label: "Consulting",
+    query: "I want to open a consulting company",
+    icon: Briefcase,
+  },
 ];
 
 const GLOSSARY: Record<string, string> = {
   KBLI: "Indonesia's business classification system — like ATECO codes in Italy or NAICS in the US",
-  PMA: 'Foreign investment company (Penanaman Modal Asing) — required for foreign-owned businesses',
-  PT: 'Limited liability company (Perseroan Terbatas) — the standard Indonesian company type',
+  PMA: "Foreign investment company (Penanaman Modal Asing) — required for foreign-owned businesses",
+  PT: "Limited liability company (Perseroan Terbatas) — the standard Indonesian company type",
   OSS: "Online Single Submission — Indonesia's online licensing portal",
-  NIB: 'Business Identification Number — your first permit, obtained via OSS',
-  TERBUKA: 'Open — fully available for foreign investment',
-  TERBATAS: 'Restricted — foreign investment allowed with conditions or ownership limits',
-  TERTUTUP: 'Closed — not available for foreign investment',
+  NIB: "Business Identification Number — your first permit, obtained via OSS",
+  TERBUKA: "Open — fully available for foreign investment",
+  TERBATAS:
+    "Restricted — foreign investment allowed with conditions or ownership limits",
+  TERTUTUP: "Closed — not available for foreign investment",
 };
 
 function getPmaBadgeInline(status: string): {
@@ -76,36 +107,42 @@ function getPmaBadgeInline(status: string): {
   bg: string;
   border: string;
 } {
-  const s = (status || '').toUpperCase();
-  if (s === 'TERBUKA')
+  const s = (status || "").toUpperCase();
+  if (s === "TERBUKA")
     return {
-      label: 'Open to Foreigners',
-      color: '#34d399',
-      bg: 'rgba(34,197,94,0.12)',
-      border: 'rgba(34,197,94,0.25)',
+      label: "Open to Foreigners",
+      color: "#34d399",
+      bg: "rgba(34,197,94,0.12)",
+      border: "rgba(34,197,94,0.25)",
     };
-  if (s === 'TERBATAS')
+  if (s === "TERBATAS")
     return {
-      label: 'Restricted',
-      color: '#fbbf24',
-      bg: 'rgba(251,191,36,0.12)',
-      border: 'rgba(251,191,36,0.25)',
+      label: "Restricted",
+      color: "#fbbf24",
+      bg: "rgba(251,191,36,0.12)",
+      border: "rgba(251,191,36,0.25)",
     };
-  if (s === 'TERTUTUP')
+  if (s === "TERTUTUP")
     return {
-      label: 'Closed to Foreigners',
-      color: '#f87171',
-      bg: 'rgba(239,68,68,0.12)',
-      border: 'rgba(239,68,68,0.25)',
+      label: "Closed to Foreigners",
+      color: "#f87171",
+      bg: "rgba(239,68,68,0.12)",
+      border: "rgba(239,68,68,0.25)",
     };
-  return { label: '', color: '', bg: '', border: '' };
+  return { label: "", color: "", bg: "", border: "" };
 }
 
 // =============================================================================
 // TOOLTIP COMPONENT (Accessible — 3B)
 // =============================================================================
 
-const InfoTooltip = ({ term, explanation }: { term: string; explanation: string }) => {
+const InfoTooltip = ({
+  term,
+  explanation,
+}: {
+  term: string;
+  explanation: string;
+}) => {
   const [visible, setVisible] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
   const [above, setAbove] = useState(true);
@@ -143,7 +180,7 @@ const InfoTooltip = ({ term, explanation }: { term: string; explanation: string 
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
             className={`absolute left-1/2 -translate-x-1/2 px-3 py-2 bg-[#1A1D24] border border-white/10 rounded text-xs text-[#CCC] w-52 z-50 text-center shadow-xl pointer-events-none ${
-              above ? 'bottom-full mb-2' : 'top-full mt-2'
+              above ? "bottom-full mb-2" : "top-full mt-2"
             }`}
           >
             {explanation}
@@ -159,10 +196,10 @@ function renderWithTooltips(text: string): React.ReactNode {
 
   // All occurrences — no "first only" limit (3B)
   for (const [term, explanation] of Object.entries(GLOSSARY)) {
-    const regex = new RegExp(`\\b${term}\\b`, 'gi');
+    const regex = new RegExp(`\\b${term}\\b`, "gi");
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i];
-      if (typeof part !== 'string') continue;
+      if (typeof part !== "string") continue;
       const match = regex.exec(part);
       if (match) {
         const before = part.slice(0, match.index);
@@ -175,7 +212,7 @@ function renderWithTooltips(text: string): React.ReactNode {
             key={`tt-${term}-${i}-${match.index}`}
             term={matched}
             explanation={explanation}
-          />
+          />,
         );
         if (after) replacement.push(after);
         parts.splice(i, 1, ...replacement);
@@ -212,23 +249,29 @@ const SourceCard = ({
   </div>
 );
 
-const ChatMessage = ({ role, content }: { role: 'user' | 'ai'; content: React.ReactNode }) => (
+const ChatMessage = ({
+  role,
+  content,
+}: {
+  role: "user" | "ai";
+  content: React.ReactNode;
+}) => (
   <motion.div
     initial={{ opacity: 0, y: 15 }}
     animate={{ opacity: 1, y: 0 }}
-    className={`flex gap-4 md:gap-6 ${role === 'ai' ? 'items-start' : 'items-center flex-row-reverse'}`}
+    className={`flex gap-4 md:gap-6 ${role === "ai" ? "items-start" : "items-center flex-row-reverse"}`}
   >
     <div
-      className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${role === 'ai' ? 'bg-[#0F1115] border-[#D4B483]/20 text-[#D4B483]' : 'bg-[#1A1D24] border-white/10 text-slate-400'}`}
+      className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${role === "ai" ? "bg-[#0F1115] border-[#D4B483]/20 text-[#D4B483]" : "bg-[#1A1D24] border-white/10 text-slate-400"}`}
     >
-      {role === 'ai' ? (
+      {role === "ai" ? (
         <Sparkles size={14} />
       ) : (
         <div className="w-1.5 h-1.5 rounded-full bg-slate-500" />
       )}
     </div>
     <div
-      className={`max-w-[90%] md:max-w-[85%] ${role === 'ai' ? 'text-base md:text-lg font-light leading-relaxed' : 'text-sm md:text-base font-medium text-white/90'}`}
+      className={`max-w-[90%] md:max-w-[85%] ${role === "ai" ? "text-base md:text-lg font-light leading-relaxed" : "text-sm md:text-base font-medium text-white/90"}`}
     >
       {content}
     </div>
@@ -239,7 +282,11 @@ const ChatMessage = ({ role, content }: { role: 'user' | 'ai'; content: React.Re
 // WELCOME COMPONENT
 // =============================================================================
 
-const WelcomeOnboarding = ({ onChipClick }: { onChipClick: (query: string) => void }) => (
+const WelcomeOnboarding = ({
+  onChipClick,
+}: {
+  onChipClick: (query: string) => void;
+}) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
@@ -250,8 +297,8 @@ const WelcomeOnboarding = ({ onChipClick }: { onChipClick: (query: string) => vo
       What business do you want to start in Indonesia?
     </h1>
     <p className="text-sm md:text-base text-[#888] mb-8 md:mb-10">
-      Describe your idea in any language and we&apos;ll find the right codes, licenses and
-      requirements.
+      Describe your idea in any language and we&apos;ll find the right codes,
+      licenses and requirements.
     </p>
 
     <div className="grid grid-cols-2 gap-3 mb-10 md:mb-12">
@@ -280,9 +327,15 @@ const WelcomeOnboarding = ({ onChipClick }: { onChipClick: (query: string) => vo
       </h3>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
         {[
-          { step: '1', text: 'Describe your business idea in any language' },
-          { step: '2', text: 'We find the right Indonesian business codes (KBLI)' },
-          { step: '3', text: 'We show you requirements, restrictions & next steps' },
+          { step: "1", text: "Describe your business idea in any language" },
+          {
+            step: "2",
+            text: "We find the right Indonesian business codes (KBLI)",
+          },
+          {
+            step: "3",
+            text: "We show you requirements, restrictions & next steps",
+          },
         ].map((item) => (
           <div key={item.step} className="flex items-start gap-3">
             <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[#D4B483]/10 border border-[#D4B483]/20 text-[#D4B483] text-xs flex items-center justify-center font-mono">
@@ -301,7 +354,7 @@ const WelcomeOnboarding = ({ onChipClick }: { onChipClick: (query: string) => vo
 // =============================================================================
 
 type MessageData = {
-  role: 'user' | 'ai';
+  role: "user" | "ai";
   content: string;
   detected_kbli?: string[];
   results?: KBLISearchResult[];
@@ -327,7 +380,7 @@ const AIMessageContent = ({
 }) => {
   const { displayText, isTyping, skip } = useTypewriter(
     msg.content,
-    isLatest ? 15 : 0 // Only typewrite the latest message
+    isLatest ? 15 : 0, // Only typewrite the latest message
   );
 
   // Show full content if not latest (already typed)
@@ -340,7 +393,10 @@ const AIMessageContent = ({
   return (
     <div className="space-y-6 text-[#BBB]">
       {/* Text with typewriter + cursor */}
-      <div className="whitespace-pre-line" onClick={isTyping ? skip : undefined}>
+      <div
+        className="whitespace-pre-line"
+        onClick={isTyping ? skip : undefined}
+      >
         {isTyping ? (
           <>
             {textToRender}
@@ -364,78 +420,90 @@ const AIMessageContent = ({
       {/* Result cards — stagger in after typing */}
       <AnimatePresence>
         {showExtras && msg.results && msg.results.length > 0 && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3 mt-4">
-            {sortByRisk(msg.results).map((result: KBLISearchResult, rIdx: number) => {
-              const pmaBadgeInline = getPmaBadgeInline(result.pma_status);
-              const isSelected = compareSelection.includes(result.code);
-              return (
-                <motion.div
-                  key={result.code}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: rIdx * 0.08 }}
-                >
-                  <button
-                    onClick={() => {
-                      if (compareMode) {
-                        onToggleCompare(result.code);
-                      } else {
-                        handleInspect(result.code);
-                      }
-                    }}
-                    className={`group w-full text-left p-4 min-h-[44px] rounded-lg bg-[#0F1115]/60 border transition-all duration-200 ${
-                      isSelected
-                        ? 'border-[#D4B483] bg-[#D4B483]/5'
-                        : 'border-white/5 hover:border-[#D4B483]/40 hover:bg-[#151921]'
-                    }`}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="space-y-3 mt-4"
+          >
+            {sortByRisk(msg.results).map(
+              (result: KBLISearchResult, rIdx: number) => {
+                const pmaBadgeInline = getPmaBadgeInline(result.pma_status);
+                const isSelected = compareSelection.includes(result.code);
+                return (
+                  <motion.div
+                    key={result.code}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: rIdx * 0.08 }}
                   >
-                    <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-                      <div className="flex items-center gap-2">
-                        {compareMode && (
-                          <div
-                            className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-                              isSelected ? 'bg-[#D4B483] border-[#D4B483]' : 'border-white/20'
-                            }`}
-                          >
-                            {isSelected && <Check size={10} className="text-[#050507]" />}
-                          </div>
-                        )}
-                        <span className="font-mono text-sm tracking-wider text-[#D4B483] bg-[#D4B483]/10 px-2.5 py-0.5 rounded border border-[#D4B483]/20">
-                          {result.code}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {pmaBadgeInline.label && (
-                          <span
-                            className="text-[10px] px-2 py-0.5 rounded-full border"
-                            style={{
-                              color: pmaBadgeInline.color,
-                              backgroundColor: pmaBadgeInline.bg,
-                              borderColor: pmaBadgeInline.border,
-                            }}
-                          >
-                            {pmaBadgeInline.label}
+                    <button
+                      onClick={() => {
+                        if (compareMode) {
+                          onToggleCompare(result.code);
+                        } else {
+                          handleInspect(result.code);
+                        }
+                      }}
+                      className={`group w-full text-left p-4 min-h-[44px] rounded-lg bg-[#0F1115]/60 border transition-all duration-200 ${
+                        isSelected
+                          ? "border-[#D4B483] bg-[#D4B483]/5"
+                          : "border-white/5 hover:border-[#D4B483]/40 hover:bg-[#151921]"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
+                          {compareMode && (
+                            <div
+                              className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                                isSelected
+                                  ? "bg-[#D4B483] border-[#D4B483]"
+                                  : "border-white/20"
+                              }`}
+                            >
+                              {isSelected && (
+                                <Check size={10} className="text-[#050507]" />
+                              )}
+                            </div>
+                          )}
+                          <span className="font-mono text-sm tracking-wider text-[#D4B483] bg-[#D4B483]/10 px-2.5 py-0.5 rounded border border-[#D4B483]/20">
+                            {result.code}
                           </span>
-                        )}
-                        <MatchScoreRing score={Math.round(result.score * 100)} />
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {pmaBadgeInline.label && (
+                            <span
+                              className="text-[10px] px-2 py-0.5 rounded-full border"
+                              style={{
+                                color: pmaBadgeInline.color,
+                                backgroundColor: pmaBadgeInline.bg,
+                                borderColor: pmaBadgeInline.border,
+                              }}
+                            >
+                              {pmaBadgeInline.label}
+                            </span>
+                          )}
+                          <MatchScoreRing
+                            score={Math.round(result.score * 100)}
+                          />
+                        </div>
                       </div>
-                    </div>
-                    <h4 className="text-sm font-serif text-[#E1E1E3] group-hover:text-white transition-colors mb-1">
-                      {result.title}
-                    </h4>
-                    <p className="text-xs text-[#777] leading-relaxed line-clamp-2">
-                      {result.description}
-                    </p>
-                    {!compareMode && (
-                      <div className="flex items-center gap-1 mt-2 text-[10px] text-[#555] group-hover:text-[#D4B483] transition-colors">
-                        <span>View details</span>
-                        <ChevronRight size={10} />
-                      </div>
-                    )}
-                  </button>
-                </motion.div>
-              );
-            })}
+                      <h4 className="text-sm font-serif text-[#E1E1E3] group-hover:text-white transition-colors mb-1">
+                        {result.title}
+                      </h4>
+                      <p className="text-xs text-[#777] leading-relaxed line-clamp-2">
+                        {result.description}
+                      </p>
+                      {!compareMode && (
+                        <div className="flex items-center gap-1 mt-2 text-[10px] text-[#555] group-hover:text-[#D4B483] transition-colors">
+                          <span>View details</span>
+                          <ChevronRight size={10} />
+                        </div>
+                      )}
+                    </button>
+                  </motion.div>
+                );
+              },
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -457,8 +525,13 @@ const AIMessageContent = ({
                   onClick={() => handleInspect(code)}
                   className="group flex items-center gap-2 px-3 py-2 min-h-[44px] rounded bg-[#151921] border border-white/10 hover:border-[#D4B483] transition-all"
                 >
-                  <span className="font-mono text-[#D4B483] text-xs">KBLI {code}</span>
-                  <ChevronRight size={12} className="text-[#555] group-hover:text-[#D4B483]" />
+                  <span className="font-mono text-[#D4B483] text-xs">
+                    KBLI {code}
+                  </span>
+                  <ChevronRight
+                    size={12}
+                    className="text-[#555] group-hover:text-[#D4B483]"
+                  />
                 </button>
               ))}
             </motion.div>
@@ -467,25 +540,30 @@ const AIMessageContent = ({
 
       {/* Suggested follow-up queries */}
       <AnimatePresence>
-        {showExtras && msg.suggested_queries && msg.suggested_queries.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-white/5"
-          >
-            {msg.suggested_queries.map((sq: string, sqIdx: number) => (
-              <button
-                key={sqIdx}
-                onClick={() => handleSendMessage(sq)}
-                className="group flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-full text-xs text-[#D4B483] bg-[#D4B483]/5 border border-[#D4B483]/20 hover:bg-[#D4B483]/10 hover:border-[#D4B483]/40 transition-all"
-              >
-                <ArrowRight size={10} className="opacity-60 group-hover:opacity-100" />
-                <span>{sq}</span>
-              </button>
-            ))}
-          </motion.div>
-        )}
+        {showExtras &&
+          msg.suggested_queries &&
+          msg.suggested_queries.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-white/5"
+            >
+              {msg.suggested_queries.map((sq: string, sqIdx: number) => (
+                <button
+                  key={sqIdx}
+                  onClick={() => handleSendMessage(sq)}
+                  className="group flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-full text-xs text-[#D4B483] bg-[#D4B483]/5 border border-[#D4B483]/20 hover:bg-[#D4B483]/10 hover:border-[#D4B483]/40 transition-all"
+                >
+                  <ArrowRight
+                    size={10}
+                    className="opacity-60 group-hover:opacity-100"
+                  />
+                  <span>{sq}</span>
+                </button>
+              ))}
+            </motion.div>
+          )}
       </AnimatePresence>
     </div>
   );
@@ -510,7 +588,9 @@ const InspectorChoreographed = ({
     return (
       <div className="h-full flex flex-col items-center justify-center text-[#D4B483]">
         <Loader2 size={32} className="animate-spin mb-4" />
-        <p className="text-xs uppercase tracking-widest opacity-50">Loading details...</p>
+        <p className="text-xs uppercase tracking-widest opacity-50">
+          Loading details...
+        </p>
       </div>
     );
   }
@@ -523,7 +603,8 @@ const InspectorChoreographed = ({
           Click on any result to see full details
         </p>
         <p className="text-xs text-[#444]">
-          Licenses, restrictions, risk level and related business codes will appear here
+          Licenses, restrictions, risk level and related business codes will
+          appear here
         </p>
       </div>
     );
@@ -534,27 +615,35 @@ const InspectorChoreographed = ({
 
   // Copy/Export (2C)
   const handleCopy = () => {
-    const licList = data.licenses.map((l) => l.type).join(', ') || 'None';
+    const licList = data.licenses.map((l) => l.type).join(", ") || "None";
     const text = `KBLI ${data.code} — ${data.title} | PMA: ${pmaBadge.label} | Risk: ${getRiskBadge(data.risk_profile).label} | Licenses: ${licList} | Sector: ${data.sector}`;
     navigator.clipboard.writeText(text).then(() => {
-      toast.success('Copied to clipboard');
+      toast.success("Copied to clipboard");
     });
   };
 
   const handleShare = () => {
     const url = `${window.location.origin}${window.location.pathname}?inspect=${data.code}`;
     navigator.clipboard.writeText(url).then(() => {
-      toast.success('Link copied');
+      toast.success("Link copied");
     });
   };
 
   // Sort licenses by risk (3C) — highest risk first
-  const riskOrder: Record<string, number> = { tinggi: 3, menengah: 2, rendah: 1 };
+  const riskOrder: Record<string, number> = {
+    tinggi: 3,
+    menengah: 2,
+    rendah: 1,
+  };
   const sortedLicenses = [...data.licenses].sort((a, b) => {
     const aRisk =
-      Object.entries(riskOrder).find(([k]) => a.risk_level.toLowerCase().includes(k))?.[1] || 0;
+      Object.entries(riskOrder).find(([k]) =>
+        a.risk_level.toLowerCase().includes(k),
+      )?.[1] || 0;
     const bRisk =
-      Object.entries(riskOrder).find(([k]) => b.risk_level.toLowerCase().includes(k))?.[1] || 0;
+      Object.entries(riskOrder).find(([k]) =>
+        b.risk_level.toLowerCase().includes(k),
+      )?.[1] || 0;
     return bRisk - aRisk;
   });
 
@@ -597,11 +686,14 @@ const InspectorChoreographed = ({
       >
         {/* Header with copy/share buttons (2C) */}
         <div className="flex items-center justify-between mb-4">
-          <motion.div variants={item} className="flex items-center gap-2 flex-wrap">
+          <motion.div
+            variants={item}
+            className="flex items-center gap-2 flex-wrap"
+          >
             <motion.span
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+              transition={{ type: "spring", stiffness: 200, damping: 15 }}
               className="px-3 py-1 rounded text-xs font-mono tracking-wider bg-[#D4B483]/10 text-[#D4B483] border border-[#D4B483]/20"
             >
               KBLI {data.code}
@@ -692,13 +784,13 @@ const InspectorChoreographed = ({
                     <div
                       className={`group flex-1 p-4 bg-[#0A0C10] rounded hover:border-[#D4B483]/20 transition-all ${
                         idx === 0
-                          ? 'border-l-[3px] border border-[#D4B483]/30 border-l-[#D4B483]'
-                          : 'border-l-2 border border-white/5 border-l-white/10'
+                          ? "border-l-[3px] border border-[#D4B483]/30 border-l-[#D4B483]"
+                          : "border-l-2 border border-white/5 border-l-white/10"
                       }`}
                     >
                       <div className="flex justify-between items-start mb-2">
                         <span
-                          className={`font-medium text-[#E1E1E3] group-hover:text-white transition-colors ${idx === 0 ? 'text-sm' : 'text-xs'}`}
+                          className={`font-medium text-[#E1E1E3] group-hover:text-white transition-colors ${idx === 0 ? "text-sm" : "text-xs"}`}
                         >
                           {lic.type}
                         </span>
@@ -708,10 +800,14 @@ const InspectorChoreographed = ({
                       </div>
                       <div className="flex flex-col gap-1 text-xs text-[#666]">
                         <span>
-                          Business Size: <span className="text-[#999]">{lic.scale.join(', ')}</span>
+                          Business Size:{" "}
+                          <span className="text-[#999]">
+                            {lic.scale.join(", ")}
+                          </span>
                         </span>
                         <span>
-                          Risk Level: <span className="text-[#999]">{lic.risk_level}</span>
+                          Risk Level:{" "}
+                          <span className="text-[#999]">{lic.risk_level}</span>
                         </span>
                       </div>
                       {lic.requirements.length > 0 && (
@@ -721,7 +817,10 @@ const InspectorChoreographed = ({
                           </p>
                           <ul className="space-y-1">
                             {lic.requirements.slice(0, 3).map((req, ridx) => (
-                              <li key={ridx} className="text-[11px] text-[#888] leading-tight">
+                              <li
+                                key={ridx}
+                                className="text-[11px] text-[#888] leading-tight"
+                              >
                                 &bull; {req}
                               </li>
                             ))}
@@ -770,16 +869,15 @@ const InspectorChoreographed = ({
 // =============================================================================
 
 export default function KBLIExplorerPage() {
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<KBLISearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [activeKBLI, setActiveKBLI] = useState<KBLIDetail | null>(null);
   const [isInspecting, setIsInspecting] = useState(false);
   // Session persistence (3A) — messages survive refresh
-  const [messages, setMessages, clearMessages] = useSessionStorage<MessageData[]>(
-    'kbli-messages',
-    []
-  );
+  const [messages, setMessages, clearMessages] = useSessionStorage<
+    MessageData[]
+  >("kbli-messages", []);
   const [isChatting, setIsChatting] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(false);
@@ -795,9 +893,9 @@ export default function KBLIExplorerPage() {
 
   // Deep-link: ?inspect={code} (2C)
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
-    const inspectCode = params.get('inspect');
+    const inspectCode = params.get("inspect");
     if (inspectCode) {
       handleInspect(inspectCode);
     }
@@ -818,7 +916,7 @@ export default function KBLIExplorerPage() {
 
   // Scroll to bottom of chat
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const handleInspect = useCallback(async (code: string) => {
@@ -840,9 +938,9 @@ export default function KBLIExplorerPage() {
       const text = messageText || query;
       if (!text || isChatting) return;
 
-      setQuery('');
+      setQuery("");
       setSearchResults([]);
-      setMessages((prev) => [...prev, { role: 'user', content: text }]);
+      setMessages((prev) => [...prev, { role: "user", content: text }]);
       setIsChatting(true);
 
       try {
@@ -850,7 +948,7 @@ export default function KBLIExplorerPage() {
         setMessages((prev) => [
           ...prev,
           {
-            role: 'ai',
+            role: "ai",
             content: response.answer,
             detected_kbli: response.detected_kbli,
             results: response.results,
@@ -864,19 +962,19 @@ export default function KBLIExplorerPage() {
           handleInspect(response.detected_kbli[0]);
         }
       } catch {
-        toast.error('Failed to process request');
+        toast.error("Failed to process request");
       } finally {
         setIsChatting(false);
       }
     },
-    [query, isChatting, handleInspect, setMessages]
+    [query, isChatting, handleInspect, setMessages],
   );
 
   const handleChipClick = useCallback(
     (chipQuery: string) => {
       handleSendMessage(chipQuery);
     },
-    [handleSendMessage]
+    [handleSendMessage],
   );
 
   const handleClearConversation = useCallback(() => {
@@ -888,7 +986,7 @@ export default function KBLIExplorerPage() {
 
   const toggleCompareCode = useCallback((code: string) => {
     setCompareSelection((prev) =>
-      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
+      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code],
     );
   }, []);
 
@@ -917,9 +1015,9 @@ export default function KBLIExplorerPage() {
           bg-[#080A0E] border-r border-white/5 flex flex-col
           shadow-[5px_0_30px_rgba(0,0,0,0.3)]
           transition-transform duration-300
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
           hidden md:flex
-          ${sidebarOpen ? '!flex' : ''}
+          ${sidebarOpen ? "!flex" : ""}
         `}
       >
         <div className="p-6 md:p-8 pb-4 flex items-center justify-between">
@@ -932,7 +1030,9 @@ export default function KBLIExplorerPage() {
               />
             </div>
             <div className="flex flex-col">
-              <span className="font-serif text-lg tracking-wide text-[#E1E1E3]">Zantara</span>
+              <span className="font-serif text-lg tracking-wide text-[#E1E1E3]">
+                Zantara
+              </span>
               <span className="text-[9px] uppercase tracking-[0.3em] text-[#444] -mt-1">
                 Business Code Guide
               </span>
@@ -991,8 +1091,12 @@ export default function KBLIExplorerPage() {
               AZ
             </div>
             <div>
-              <div className="text-xs font-medium text-[#E1E1E3]">Business Assistant</div>
-              <div className="text-[10px] text-[#555] uppercase tracking-wider">Ready to help</div>
+              <div className="text-xs font-medium text-[#E1E1E3]">
+                Business Assistant
+              </div>
+              <div className="text-[10px] text-[#555] uppercase tracking-wider">
+                Ready to help
+              </div>
             </div>
           </div>
         </div>
@@ -1044,10 +1148,10 @@ export default function KBLIExplorerPage() {
                     }}
                     className={`p-2 rounded-md transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center ${
                       compareMode
-                        ? 'bg-[#D4B483]/15 text-[#D4B483]'
-                        : 'hover:bg-[#1A1D24] text-[#555] hover:text-[#888]'
+                        ? "bg-[#D4B483]/15 text-[#D4B483]"
+                        : "hover:bg-[#1A1D24] text-[#555] hover:text-[#888]"
                     }`}
-                    title={compareMode ? 'Exit compare mode' : 'Compare codes'}
+                    title={compareMode ? "Exit compare mode" : "Compare codes"}
                   >
                     <Columns size={16} />
                   </button>
@@ -1069,7 +1173,11 @@ export default function KBLIExplorerPage() {
                   className="p-2 rounded-md hover:bg-[#1A1D24] text-[#D4B483] transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
                   disabled={isChatting}
                 >
-                  {isChatting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                  {isChatting ? (
+                    <Loader2 size={18} className="animate-spin" />
+                  ) : (
+                    <Send size={18} />
+                  )}
                 </button>
               </div>
             </form>
@@ -1096,8 +1204,12 @@ export default function KBLIExplorerPage() {
                         }}
                         className="w-full flex items-center gap-4 px-4 py-3 min-h-[44px] hover:bg-[#1A1D24] border-b border-white/5 last:border-0 text-left transition-colors"
                       >
-                        <span className="font-mono text-[#D4B483] text-xs w-12">{res.code}</span>
-                        <span className="text-sm text-[#E1E1E3] truncate flex-1">{res.title}</span>
+                        <span className="font-mono text-[#D4B483] text-xs w-12">
+                          {res.code}
+                        </span>
+                        <span className="text-sm text-[#E1E1E3] truncate flex-1">
+                          {res.title}
+                        </span>
                         <ChevronRight size={12} className="text-[#333]" />
                       </button>
                     ))}
@@ -1113,7 +1225,10 @@ export default function KBLIExplorerPage() {
           <div className="max-w-3xl mx-auto space-y-8 md:space-y-12 py-4">
             <AnimatePresence mode="wait">
               {isWelcome ? (
-                <WelcomeOnboarding key="welcome" onChipClick={handleChipClick} />
+                <WelcomeOnboarding
+                  key="welcome"
+                  onChipClick={handleChipClick}
+                />
               ) : (
                 <motion.div
                   key="chat"
@@ -1126,7 +1241,7 @@ export default function KBLIExplorerPage() {
                       <ChatMessage
                         role={msg.role}
                         content={
-                          msg.role === 'user' ? (
+                          msg.role === "user" ? (
                             <p className="text-lg md:text-xl font-serif text-[#F0F0F0] leading-normal">
                               {msg.content}
                             </p>
@@ -1135,7 +1250,9 @@ export default function KBLIExplorerPage() {
                               msg={msg}
                               isLatest={idx === messages.length - 1}
                               handleInspect={handleInspect}
-                              handleSendMessage={(text) => handleSendMessage(text)}
+                              handleSendMessage={(text) =>
+                                handleSendMessage(text)
+                              }
                               compareMode={compareMode}
                               compareSelection={compareSelection}
                               onToggleCompare={toggleCompareCode}
@@ -1166,8 +1283,10 @@ export default function KBLIExplorerPage() {
             >
               <div className="max-w-3xl mx-auto flex items-center justify-between">
                 <span className="text-sm text-[#CCC]">
-                  <span className="text-[#D4B483] font-mono">{compareSelection.length}</span> codes
-                  selected
+                  <span className="text-[#D4B483] font-mono">
+                    {compareSelection.length}
+                  </span>{" "}
+                  codes selected
                 </span>
                 <button
                   onClick={() => setCompareOpen(true)}
@@ -1202,10 +1321,10 @@ export default function KBLIExplorerPage() {
               onClick={() => setInspectorOpen(false)}
             />
             <motion.div
-              initial={{ y: '100%' }}
+              initial={{ y: "100%" }}
               animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
               className="xl:hidden fixed bottom-0 left-0 right-0 h-[70vh] bg-[#0A0C10] border-t border-white/10 rounded-t-2xl z-50 overflow-hidden"
             >
               <InspectorChoreographed
@@ -1220,7 +1339,11 @@ export default function KBLIExplorerPage() {
       </AnimatePresence>
 
       {/* Comparison Modal (Phase 4) */}
-      <ComparisonModal codes={compareSelection} open={compareOpen} onOpenChange={setCompareOpen} />
+      <ComparisonModal
+        codes={compareSelection}
+        open={compareOpen}
+        onOpenChange={setCompareOpen}
+      />
     </div>
   );
 }

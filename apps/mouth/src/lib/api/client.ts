@@ -1,7 +1,7 @@
-import { UserProfile } from '@/types';
-import type { IApiClient, ApiRequestOptions } from './types/api-client.types';
-import { safeStorage } from '@/lib/utils/storage';
-import { logger } from '@/lib/logger';
+import { UserProfile } from "@/types";
+import type { IApiClient, ApiRequestOptions } from "./types/api-client.types";
+import { safeStorage } from "@/lib/utils/storage";
+import { logger } from "@/lib/logger";
 
 /** FastAPI validation error structure */
 interface FastAPIValidationError {
@@ -28,9 +28,9 @@ export class ApiClientBase implements IApiClient {
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
-    if (typeof window !== 'undefined') {
-      this.token = safeStorage.getItem('auth_token');
-      const storedProfile = safeStorage.getItem('user_profile');
+    if (typeof window !== "undefined") {
+      this.token = safeStorage.getItem("auth_token");
+      const storedProfile = safeStorage.getItem("user_profile");
       if (storedProfile) {
         try {
           this.userProfile = JSON.parse(storedProfile);
@@ -46,15 +46,15 @@ export class ApiClientBase implements IApiClient {
 
   setToken(token: string) {
     this.token = token;
-    if (typeof window !== 'undefined') {
-      const success = safeStorage.setItem('auth_token', token);
+    if (typeof window !== "undefined") {
+      const success = safeStorage.setItem("auth_token", token);
       if (!success) {
         logger.warn(
-          'localStorage blocked - using memory fallback. Auth via httpOnly cookies will work.',
+          "localStorage blocked - using memory fallback. Auth via httpOnly cookies will work.",
           {
-            component: 'ApiClient',
-            action: 'set_token_fallback',
-          }
+            component: "ApiClient",
+            action: "set_token_fallback",
+          },
         );
       }
     }
@@ -62,13 +62,19 @@ export class ApiClientBase implements IApiClient {
 
   setUserProfile(profile: UserProfile) {
     this.userProfile = profile;
-    if (typeof window !== 'undefined') {
-      const success = safeStorage.setItem('user_profile', JSON.stringify(profile));
+    if (typeof window !== "undefined") {
+      const success = safeStorage.setItem(
+        "user_profile",
+        JSON.stringify(profile),
+      );
       if (!success) {
-        logger.warn('localStorage blocked - user profile in memory only (session-scoped).', {
-          component: 'ApiClient',
-          action: 'set_profile_fallback',
-        });
+        logger.warn(
+          "localStorage blocked - user profile in memory only (session-scoped).",
+          {
+            component: "ApiClient",
+            action: "set_profile_fallback",
+          },
+        );
       }
     }
   }
@@ -77,17 +83,17 @@ export class ApiClientBase implements IApiClient {
     this.token = null;
     this.csrfToken = null;
     this.userProfile = null;
-    if (typeof window !== 'undefined') {
-      safeStorage.removeItem('auth_token');
-      safeStorage.removeItem('user_profile');
+    if (typeof window !== "undefined") {
+      safeStorage.removeItem("auth_token");
+      safeStorage.removeItem("user_profile");
     }
   }
 
   getToken(): string | null {
     // Always read from storage to ensure we have the latest token
     // This is critical for cases where login happens after ApiClient instantiation
-    if (typeof window !== 'undefined') {
-      const storedToken = safeStorage.getItem('auth_token');
+    if (typeof window !== "undefined") {
+      const storedToken = safeStorage.getItem("auth_token");
       if (storedToken !== this.token) {
         this.token = storedToken;
       }
@@ -100,7 +106,7 @@ export class ApiClientBase implements IApiClient {
    * Cookie is set by backend as non-httpOnly for double-submit pattern
    */
   protected getCsrfFromCookie(): string | null {
-    if (typeof document === 'undefined') return null;
+    if (typeof document === "undefined") return null;
     const match = document.cookie.match(/nz_csrf_token=([^;]+)/);
     return match ? match[1] : null;
   }
@@ -108,27 +114,27 @@ export class ApiClientBase implements IApiClient {
   getUserProfile(): UserProfile | null {
     // Always read from storage to ensure we have the latest profile
     // This is critical for cases where login happens after ApiClient instantiation
-    if (typeof window !== 'undefined') {
-      const storedProfile = safeStorage.getItem('user_profile');
+    if (typeof window !== "undefined") {
+      const storedProfile = safeStorage.getItem("user_profile");
       if (storedProfile) {
         try {
           const parsed = JSON.parse(storedProfile);
           if (JSON.stringify(parsed) !== JSON.stringify(this.userProfile)) {
-            logger.debug('User profile synced from localStorage', {
-              component: 'ApiClient',
-              action: 'profile_sync',
+            logger.debug("User profile synced from localStorage", {
+              component: "ApiClient",
+              action: "profile_sync",
               metadata: {
-                previousEmail: this.userProfile?.email || 'none',
-                newEmail: parsed?.email || 'none',
+                previousEmail: this.userProfile?.email || "none",
+                newEmail: parsed?.email || "none",
               },
             });
             this.userProfile = parsed;
           }
         } catch (e) {
           // Keep existing profile if parsing fails
-          logger.warn('Failed to parse user profile from localStorage', {
-            component: 'ApiClient',
-            action: 'profile_parse_error',
+          logger.warn("Failed to parse user profile from localStorage", {
+            component: "ApiClient",
+            action: "profile_parse_error",
           });
         }
       }
@@ -144,7 +150,12 @@ export class ApiClientBase implements IApiClient {
 
   isAdmin(): boolean {
     const role = this.userProfile?.role?.toLowerCase();
-    return role === 'admin' || role === 'founder' || role === 'owner' || role === 'board';
+    return (
+      role === "admin" ||
+      role === "founder" ||
+      role === "owner" ||
+      role === "board"
+    );
   }
 
   /**
@@ -152,14 +163,19 @@ export class ApiClientBase implements IApiClient {
    */
   isBoard(): boolean {
     const role = this.userProfile?.role?.toLowerCase();
-    return role === 'board' || role === 'admin' || role === 'founder' || role === 'owner';
+    return (
+      role === "board" ||
+      role === "admin" ||
+      role === "founder" ||
+      role === "owner"
+    );
   }
 
   getAdminHeaders(): Record<string, string> {
     if (!this.userProfile || !this.isAdmin()) {
-      throw new Error('Admin access required');
+      throw new Error("Admin access required");
     }
-    return { 'X-User-Email': this.userProfile.email };
+    return { "X-User-Email": this.userProfile.email };
   }
 
   /**
@@ -169,23 +185,23 @@ export class ApiClientBase implements IApiClient {
   async request<T>(
     endpoint: string,
     options: ApiRequestOptions = {},
-    timeoutMs: number = 30000
+    timeoutMs: number = 30000,
   ): Promise<T> {
     // Don't set Content-Type for FormData - browser will set it with boundary
     const isFormData = options.body instanceof FormData;
     const headers: Record<string, string> = isFormData
       ? { ...((options.headers as Record<string, string>) || {}) }
       : {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           ...((options.headers as Record<string, string>) || {}),
         };
 
     // Add CSRF header for state-changing requests (POST, PUT, DELETE, PATCH)
-    const method = (options.method || 'GET').toUpperCase();
-    if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+    const method = (options.method || "GET").toUpperCase();
+    if (["POST", "PUT", "DELETE", "PATCH"].includes(method)) {
       const csrf = this.csrfToken || this.getCsrfFromCookie();
       if (csrf) {
-        headers['X-CSRF-Token'] = csrf;
+        headers["X-CSRF-Token"] = csrf;
       }
     }
 
@@ -193,22 +209,22 @@ export class ApiClientBase implements IApiClient {
     // Use getToken() to ensure we always have the latest token from localStorage
     const currentToken = this.getToken();
     if (currentToken) {
-      headers['Authorization'] = `Bearer ${currentToken}`;
+      headers["Authorization"] = `Bearer ${currentToken}`;
     }
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-    logger.debug('HTTP request starting', {
-      component: 'ApiClient',
-      action: 'request',
+    logger.debug("HTTP request starting", {
+      component: "ApiClient",
+      action: "request",
       metadata: {
         method,
         endpoint,
         fullUrl: `${this.baseUrl}${endpoint}`,
         hasToken: !!currentToken,
         hasCsrf: !!(this.csrfToken || this.getCsrfFromCookie()),
-        credentials: 'include',
+        credentials: "include",
       },
     });
 
@@ -216,13 +232,13 @@ export class ApiClientBase implements IApiClient {
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
         ...options,
         headers,
-        credentials: 'include', // CRITICAL: Send httpOnly cookies
+        credentials: "include", // CRITICAL: Send httpOnly cookies
         signal: controller.signal,
       });
 
-      logger.debug('HTTP response received', {
-        component: 'ApiClient',
-        action: 'response',
+      logger.debug("HTTP response received", {
+        component: "ApiClient",
+        action: "response",
         metadata: {
           method,
           endpoint,
@@ -230,8 +246,8 @@ export class ApiClientBase implements IApiClient {
           ok: response.ok,
           statusText: response.statusText,
           headers: {
-            contentType: response.headers.get('content-type'),
-            setCookie: response.headers.get('set-cookie'),
+            contentType: response.headers.get("content-type"),
+            setCookie: response.headers.get("set-cookie"),
           },
         },
       });
@@ -242,57 +258,64 @@ export class ApiClientBase implements IApiClient {
         this.clearToken();
 
         // Only redirect if we're in the browser (not SSR)
-        if (typeof window !== 'undefined') {
+        if (typeof window !== "undefined") {
           // Avoid redirect loops by checking current path
           const currentPath = window.location.pathname;
-          if (currentPath !== '/login' && !currentPath.startsWith('/api/')) {
-            logger.warn('Token expired or invalid, redirecting to login', {
-              component: 'ApiClient',
-              action: 'auth_redirect',
+          if (currentPath !== "/login" && !currentPath.startsWith("/api/")) {
+            logger.warn("Token expired or invalid, redirecting to login", {
+              component: "ApiClient",
+              action: "auth_redirect",
               metadata: { currentPath },
             });
             // Use replace to avoid adding to history
-            window.location.replace('/login?expired=true&reason=token_expired');
+            window.location.replace("/login?expired=true&reason=token_expired");
           }
         }
 
-        const error = await response.json().catch(() => ({ detail: 'Authentication required' }));
-        throw new Error(error.detail || 'Session expired. Please login again.');
+        const error = await response
+          .json()
+          .catch(() => ({ detail: "Authentication required" }));
+        throw new Error(error.detail || "Session expired. Please login again.");
       }
 
       // Allow 204 as success even if ok is false (defensive)
       if (!response.ok && response.status !== 204) {
-        const error = await response.json().catch(() => ({ detail: 'Request failed' }));
+        const error = await response
+          .json()
+          .catch(() => ({ detail: "Request failed" }));
 
         // Handle FastAPI 422 validation errors (detail is array of validation errors)
         if (response.status === 422 && Array.isArray(error.detail)) {
           const validationErrors = (error.detail as FastAPIValidationError[])
             .map((err) => {
-              const field = err.loc ? err.loc.join('.') : 'unknown';
+              const field = err.loc ? err.loc.join(".") : "unknown";
               return `${field}: ${err.msg}`;
             })
-            .join(', ');
+            .join(", ");
           throw new Error(`Validation error: ${validationErrors}`);
         }
 
         // Handle 405 Method Not Allowed - convert to INVALID_METHOD for consistency
         if (response.status === 405) {
-          throw new Error('INVALID_METHOD');
+          throw new Error("INVALID_METHOD");
         }
 
         throw new Error(error.detail || `HTTP ${response.status}`);
       }
 
       // Handle empty responses (204 No Content, etc.)
-      const contentType = response.headers.get('content-type');
-      if (response.status === 204 || !contentType?.includes('application/json')) {
+      const contentType = response.headers.get("content-type");
+      if (
+        response.status === 204 ||
+        !contentType?.includes("application/json")
+      ) {
         return {} as T;
       }
 
       return response.json();
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('Request timeout');
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error("Request timeout");
       }
       throw error;
     } finally {
@@ -324,14 +347,18 @@ export class ApiClientBase implements IApiClient {
   /**
    * Convenience method for POST requests
    */
-  async post<T>(endpoint: string, body?: unknown, timeoutMs?: number): Promise<T> {
+  async post<T>(
+    endpoint: string,
+    body?: unknown,
+    timeoutMs?: number,
+  ): Promise<T> {
     return this.request<T>(
       endpoint,
       {
-        method: 'POST',
+        method: "POST",
         body: body ? JSON.stringify(body) : undefined,
       },
-      timeoutMs
+      timeoutMs,
     );
   }
 }

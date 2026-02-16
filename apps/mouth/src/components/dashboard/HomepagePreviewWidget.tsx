@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
-import { ExternalLink, Globe, ArrowRight } from 'lucide-react';
+import React from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { ExternalLink, Globe, ArrowRight } from "lucide-react";
 
 /**
  * HomepagePreviewWidget - Mostra un'anteprima della homepage balizero.com
@@ -42,10 +42,10 @@ export function HomepagePreviewWidget() {
             className="object-cover object-top transition-transform duration-500 group-hover:scale-105"
             sizes="(max-width: 768px) 100vw, 600px"
           />
-          
+
           {/* Overlay gradient */}
           <div className="absolute inset-0 bg-gradient-to-t from-[#051C2C]/90 via-transparent to-transparent" />
-          
+
           {/* Live Badge */}
           <div className="absolute top-3 left-3 flex items-center gap-2 px-2.5 py-1 rounded-full bg-green-500/20 border border-green-500/30">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
@@ -69,8 +69,8 @@ export function HomepagePreviewWidget() {
         {/* Footer Info */}
         <div className="absolute bottom-0 left-0 right-0 px-4 py-3">
           <p className="text-sm text-white/80 line-clamp-2">
-            Esperti di visto, immigrazione e costituzione societaria a Bali. 
-            PT PMA, KITAS, Golden Visa, conformità fiscale.
+            Esperti di visto, immigrazione e costituzione societaria a Bali. PT
+            PMA, KITAS, Golden Visa, conformità fiscale.
           </p>
         </div>
       </div>
@@ -78,7 +78,9 @@ export function HomepagePreviewWidget() {
       {/* Stats Row */}
       <div className="grid grid-cols-3 gap-px border-t border-[var(--border)] bg-[var(--border)]">
         <div className="px-4 py-3 bg-[var(--background-elevated)] text-center">
-          <p className="text-lg font-semibold text-[var(--foreground)]">1000+</p>
+          <p className="text-lg font-semibold text-[var(--foreground)]">
+            1000+
+          </p>
           <p className="text-xs text-[var(--foreground-muted)]">Clienti</p>
         </div>
         <div className="px-4 py-3 bg-[var(--background-elevated)] text-center">

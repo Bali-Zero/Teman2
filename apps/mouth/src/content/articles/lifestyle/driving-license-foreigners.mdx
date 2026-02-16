@@ -74,8 +74,8 @@ import {
   JourneyMap,
   Checklist,
   InfoCard,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Driving License for Foreigners in Indonesia 2026
 
@@ -92,8 +92,8 @@ Driving in Indonesia requires proper licensing. Here's what foreigners need to k
       question: "How long are you staying in Indonesia?",
       options: [
         { label: "Under 1 year (tourist/short stay)", next: "short" },
-        { label: "1+ year (KITAS holder)", next: "long" }
-      ]
+        { label: "1+ year (KITAS holder)", next: "long" },
+      ],
     },
     {
       id: "short",
@@ -101,37 +101,41 @@ Driving in Indonesia requires proper licensing. Here's what foreigners need to k
       options: [
         { label: "Car only", next: "idp-car" },
         { label: "Scooter/motorcycle", next: "idp-scooter" },
-        { label: "Both", next: "idp-both" }
-      ]
+        { label: "Both", next: "idp-both" },
+      ],
     },
     {
       id: "long",
       result: {
         title: "Get Indonesian SIM",
-        description: "As a KITAS holder, you can and should get an Indonesian SIM (Surat Izin Mengemudi). This is the proper legal option for long-term residents."
-      }
+        description:
+          "As a KITAS holder, you can and should get an Indonesian SIM (Surat Izin Mengemudi). This is the proper legal option for long-term residents.",
+      },
     },
     {
       id: "idp-car",
       result: {
         title: "International Driving Permit",
-        description: "Use your IDP from your home country. Valid for car driving but verify it covers Indonesia. Consider getting local SIM for longer stays."
-      }
+        description:
+          "Use your IDP from your home country. Valid for car driving but verify it covers Indonesia. Consider getting local SIM for longer stays.",
+      },
     },
     {
       id: "idp-scooter",
       result: {
         title: "IDP with Motorcycle Class + Local SIM",
-        description: "Your IDP must specifically include motorcycle class. Many don't! Consider getting Indonesian SIM C even for short stays."
-      }
+        description:
+          "Your IDP must specifically include motorcycle class. Many don't! Consider getting Indonesian SIM C even for short stays.",
+      },
     },
     {
       id: "idp-both",
       result: {
         title: "IDP + Consider Local SIM",
-        description: "Ensure IDP covers both car and motorcycle. For stays over 3 months, getting local SIM is recommended."
-      }
-    }
+        description:
+          "Ensure IDP covers both car and motorcycle. For stays over 3 months, getting local SIM is recommended.",
+      },
+    },
   ]}
 />
 
@@ -147,43 +151,43 @@ Driving in Indonesia requires proper licensing. Here's what foreigners need to k
       name: "SIM A",
       subtitle: "Car license",
       values: {
-        "Vehicle": "Cars, SUVs",
-        "Requirements": "KITAS + 17+",
-        "Validity": "5 years (max)",
-        "Cost": "~IDR 250K"
-      }
+        Vehicle: "Cars, SUVs",
+        Requirements: "KITAS + 17+",
+        Validity: "5 years (max)",
+        Cost: "~IDR 250K",
+      },
     },
     {
       name: "SIM C",
       subtitle: "Motorcycle license",
       values: {
-        "Vehicle": "Scooters, motorcycles",
-        "Requirements": "KITAS + 17+",
-        "Validity": "5 years (max)",
-        "Cost": "~IDR 150K"
+        Vehicle: "Scooters, motorcycles",
+        Requirements: "KITAS + 17+",
+        Validity: "5 years (max)",
+        Cost: "~IDR 150K",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "SIM B1",
       subtitle: "Truck/bus",
       values: {
-        "Vehicle": "Large vehicles",
-        "Requirements": "KITAS + experience",
-        "Validity": "5 years",
-        "Cost": "~IDR 250K"
-      }
+        Vehicle: "Large vehicles",
+        Requirements: "KITAS + experience",
+        Validity: "5 years",
+        Cost: "~IDR 250K",
+      },
     },
     {
       name: "IDP",
       subtitle: "International permit",
       values: {
-        "Vehicle": "Per home license",
-        "Requirements": "Valid home license",
-        "Validity": "1 year",
-        "Cost": "Varies by country"
-      }
-    }
+        Vehicle: "Per home license",
+        Requirements: "Valid home license",
+        Validity: "1 year",
+        Cost: "Varies by country",
+      },
+    },
   ]}
 />
 
@@ -209,8 +213,8 @@ Driving in Indonesia requires proper licensing. Here's what foreigners need to k
         "KITAS (original + copy)",
         "Home country license (if any)",
         "Medical certificate",
-        "Passport photos (4x6, red background)"
-      ]
+        "Passport photos (4x6, red background)",
+      ],
     },
     {
       id: "medical",
@@ -222,8 +226,8 @@ Driving in Indonesia requires proper licensing. Here's what foreigners need to k
         "Basic health check",
         "Color blindness test",
         "Height/weight",
-        "Cost: ~IDR 150-300K"
-      ]
+        "Cost: ~IDR 150-300K",
+      ],
     },
     {
       id: "samsat",
@@ -231,11 +235,7 @@ Driving in Indonesia requires proper licensing. Here's what foreigners need to k
       description: "License office",
       duration: "1-2 hours",
       status: "required",
-      tips: [
-        "Go early",
-        "Take queue number",
-        "Submit documents"
-      ]
+      tips: ["Go early", "Take queue number", "Submit documents"],
     },
     {
       id: "test",
@@ -246,8 +246,8 @@ Driving in Indonesia requires proper licensing. Here's what foreigners need to k
       tips: [
         "Written test on computer",
         "Practical test on course",
-        "May need to return if failed"
-      ]
+        "May need to return if failed",
+      ],
     },
     {
       id: "issue",
@@ -255,12 +255,8 @@ Driving in Indonesia requires proper licensing. Here's what foreigners need to k
       description: "License issued",
       duration: "Same day",
       status: "final",
-      tips: [
-        "Photo and biometrics",
-        "Pay final fee",
-        "SIM issued on spot"
-      ]
-    }
+      tips: ["Photo and biometrics", "Pay final fee", "SIM issued on spot"],
+    },
   ]}
 />
 
@@ -278,48 +274,48 @@ Driving in Indonesia requires proper licensing. Here's what foreigners need to k
       label: "Passport (original + copy)",
       description: "Photo page",
       required: true,
-      category: "identity"
+      category: "identity",
     },
     {
       id: "kitas",
       label: "KITAS (original + copy)",
       description: "Valid stay permit",
       required: true,
-      category: "identity"
+      category: "identity",
     },
     {
       id: "home-license",
       label: "Home country license",
       description: "If you have one",
       required: false,
-      category: "identity"
+      category: "identity",
     },
     {
       id: "medical",
       label: "Medical certificate",
       description: "From approved clinic",
       required: true,
-      category: "medical"
+      category: "medical",
     },
     {
       id: "photos",
       label: "Passport photos",
       description: "4x6cm, red background",
       required: true,
-      category: "identity"
+      category: "identity",
     },
     {
       id: "cash",
       label: "Cash for fees",
       description: "~IDR 500K total",
       required: true,
-      category: "payment"
-    }
+      category: "payment",
+    },
   ]}
   categories={[
     { id: "identity", label: "Identity", color: "blue" },
     { id: "medical", label: "Medical", color: "green" },
-    { id: "payment", label: "Payment", color: "amber" }
+    { id: "payment", label: "Payment", color: "amber" },
   ]}
   showProgress={true}
 />
@@ -339,14 +335,15 @@ The written test is:
 - Covers traffic rules, signs, safety
 
 Study the basics - it's not difficult!
+
 </InfoCard>
 
 ### Practical Test
 
-| Test | Vehicle | What's Tested |
-|------|---------|---------------|
-| SIM A | Your car or provided | Figure 8, parking, road |
-| SIM C | Provided scooter | Figure 8, slalom, balance |
+| Test  | Vehicle              | What's Tested             |
+| ----- | -------------------- | ------------------------- |
+| SIM A | Your car or provided | Figure 8, parking, road   |
+| SIM C | Provided scooter     | Figure 8, slalom, balance |
 
 ---
 
@@ -358,22 +355,23 @@ Study the basics - it's not difficult!
 An IDP is a **translation** of your home country license, not a separate license.
 
 You must:
+
 - Have valid home country license
 - Carry both IDP AND original license
 - Obey local laws
-</InfoCard>
+  </InfoCard>
 
 ### Getting an IDP
 
 Get your IDP **before** coming to Indonesia:
 
-| Country | Where to Get |
-|---------|--------------|
-| USA | AAA offices |
-| UK | Post Office |
-| Australia | AAA, RACV |
-| Canada | CAA offices |
-| EU | Local authority |
+| Country   | Where to Get    |
+| --------- | --------------- |
+| USA       | AAA offices     |
+| UK        | Post Office     |
+| Australia | AAA, RACV       |
+| Canada    | CAA offices     |
+| EU        | Local authority |
 
 Cost: Usually $15-50
 
@@ -399,6 +397,7 @@ Cost: Usually $15-50
 - Accidents can be complicated
 
 **Recommendation:** Get proper licensing for peace of mind.
+
 </InfoCard>
 
 ### If Stopped by Police
@@ -417,12 +416,12 @@ Most rental shops don't check licenses. However:
 
 ### Risks
 
-| Risk | Consequence |
-|------|-------------|
-| Police stop | Fine IDR 250-500K |
-| Accident | Insurance may not cover |
-| Serious accident | Potential legal issues |
-| Injury to others | Liability unclear |
+| Risk             | Consequence             |
+| ---------------- | ----------------------- |
+| Police stop      | Fine IDR 250-500K       |
+| Accident         | Insurance may not cover |
+| Serious accident | Potential legal issues  |
+| Injury to others | Liability unclear       |
 
 ### Insurance Note
 
@@ -432,19 +431,20 @@ Most travel insurance policies require:
 - Following local laws
 
 Without proper license, claims may be **denied**.
+
 </InfoCard>
 
 ---
 
 ## Costs Summary
 
-| Item | Cost |
-|------|------|
+| Item                | Cost         |
+| ------------------- | ------------ |
 | Medical certificate | IDR 150-300K |
-| SIM A (car) | IDR 250K |
-| SIM C (motorcycle) | IDR 150K |
-| Extension | IDR 100-200K |
-| Test retake | IDR 50-100K |
+| SIM A (car)         | IDR 250K     |
+| SIM C (motorcycle)  | IDR 150K     |
+| Extension           | IDR 100-200K |
+| Test retake         | IDR 50-100K  |
 
 ---
 
@@ -469,7 +469,7 @@ Without proper license, claims may be **denied**.
     "Can I drive with only my foreign license?",
     "How hard is the motorcycle test?",
     "Do I need a license to rent a scooter?",
-    "Can I convert my foreign license?"
+    "Can I convert my foreign license?",
   ]}
 />
 

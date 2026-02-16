@@ -1,22 +1,26 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { X, Loader2, ExternalLink, Copy, Check, Search } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { api, KnowledgeSearchResult } from '@/lib/api';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { X, Loader2, ExternalLink, Copy, Check, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { api, KnowledgeSearchResult } from "@/lib/api";
 
 function formatCitation(result: KnowledgeSearchResult): string {
-  const title = result.metadata.book_title || 'Untitled';
-  const author = result.metadata.book_author || 'Unknown';
-  const tier = result.metadata.tier || 'C';
+  const title = result.metadata.book_title || "Untitled";
+  const author = result.metadata.book_author || "Unknown";
+  const tier = result.metadata.tier || "C";
   const page =
-    typeof result.metadata.page_number === 'number' ? `p.${result.metadata.page_number}` : 'p.?';
+    typeof result.metadata.page_number === "number"
+      ? `p.${result.metadata.page_number}`
+      : "p.?";
   const scorePct = Number.isFinite(result.similarity_score)
     ? `${Math.round(result.similarity_score * 100)}%`
-    : '?';
+    : "?";
 
-  const file = result.metadata.file_path ? `\nFile: ${result.metadata.file_path}` : '';
+  const file = result.metadata.file_path
+    ? `\nFile: ${result.metadata.file_path}`
+    : "";
 
   return `Source: ${title} — ${author} (${tier}, ${page}, ${scorePct})${file}\nExcerpt: ${result.text}`;
 }
@@ -26,14 +30,14 @@ function buildSourcesBlock(results: KnowledgeSearchResult[]): string {
   results.forEach((r, idx) => {
     lines.push(`\n[${idx + 1}]\n${formatCitation(r)}\n`);
   });
-  return lines.join('\n');
+  return lines.join("\n");
 }
 
 export function SearchDocsModal({
   open,
   onClose,
   onInsert,
-  initialQuery = '',
+  initialQuery = "",
 }: {
   open: boolean;
   onClose: () => void;
@@ -81,16 +85,16 @@ export function SearchDocsModal({
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === "Escape") onClose();
     };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
   }, [open, onClose]);
 
   useEffect(() => {
     if (!open) return;
     const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prevOverflow;
     };
@@ -120,7 +124,7 @@ export function SearchDocsModal({
         .sort((a, b) => a - b)
         .map((i) => results[i])
         .filter(Boolean),
-    [results, selectedIds]
+    [results, selectedIds],
   );
 
   const runSearch = useCallback(async () => {
@@ -128,8 +132,10 @@ export function SearchDocsModal({
     if (!q) return;
 
     if (!api.isAuthenticated()) {
-      setError('Authentication required');
-      setStatusMessage('Authentication required. Please login to search the archive.');
+      setError("Authentication required");
+      setStatusMessage(
+        "Authentication required. Please login to search the archive.",
+      );
       return;
     }
 
@@ -141,21 +147,25 @@ export function SearchDocsModal({
       setResults(resp.results || []);
       setTotalFound(resp.total_found || 0);
       setExecutionTimeMs(
-        typeof resp.execution_time_ms === 'number' ? resp.execution_time_ms : null
+        typeof resp.execution_time_ms === "number"
+          ? resp.execution_time_ms
+          : null,
       );
       setExpandedIds(new Set());
       setSelectedIds(new Set());
       if (!resp.results?.length) {
-        setStatusMessage('No results found for this query.');
+        setStatusMessage("No results found for this query.");
       }
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Search failed';
+      const message = e instanceof Error ? e.message : "Search failed";
       setError(message);
       setResults([]);
       setTotalFound(0);
       setExecutionTimeMs(null);
       if (/401|Authentication required/i.test(message)) {
-        setStatusMessage('Authentication required. Please login to search the archive.');
+        setStatusMessage(
+          "Authentication required. Please login to search the archive.",
+        );
       }
     } finally {
       setIsLoading(false);
@@ -191,7 +201,10 @@ export function SearchDocsModal({
 
   return (
     <div className="fixed inset-0 z-[100]">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
+        onClick={onClose}
+      />
 
       <div
         role="dialog"
@@ -202,11 +215,18 @@ export function SearchDocsModal({
         <div className="px-4 py-3 border-b border-white/10 flex items-center gap-3">
           <div className="flex items-center gap-2 min-w-0">
             <Search className="w-4 h-4 text-white/70" />
-            <h2 className="text-sm font-semibold text-white truncate">Search docs</h2>
+            <h2 className="text-sm font-semibold text-white truncate">
+              Search docs
+            </h2>
           </div>
 
           <div className="ml-auto flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              aria-label="Close"
+            >
               <X className="w-4 h-4" />
             </Button>
           </div>
@@ -221,13 +241,15 @@ export function SearchDocsModal({
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search the knowledge base…"
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') runSearch();
+                  if (e.key === "Enter") runSearch();
                 }}
               />
             </div>
 
             <div className="flex gap-2 items-center">
-              <label className="text-xs text-white/60 hidden sm:block">Level</label>
+              <label className="text-xs text-white/60 hidden sm:block">
+                Level
+              </label>
               <select
                 value={level}
                 onChange={(e) => setLevel(Number(e.target.value))}
@@ -240,7 +262,9 @@ export function SearchDocsModal({
                 <option value={3}>3</option>
               </select>
 
-              <label className="text-xs text-white/60 hidden sm:block">Limit</label>
+              <label className="text-xs text-white/60 hidden sm:block">
+                Limit
+              </label>
               <select
                 value={limit}
                 onChange={(e) => setLimit(Number(e.target.value))}
@@ -260,7 +284,7 @@ export function SearchDocsModal({
                     Searching…
                   </span>
                 ) : (
-                  'Search'
+                  "Search"
                 )}
               </Button>
             </div>
@@ -284,13 +308,13 @@ export function SearchDocsModal({
               <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-200">
                 <div className="flex items-start gap-2">
                   <span>{error}</span>
-                  {statusMessage?.toLowerCase().includes('authentication') && (
+                  {statusMessage?.toLowerCase().includes("authentication") && (
                     <Button
                       variant="ghost"
                       size="sm"
                       className="ml-auto text-red-200 hover:text-white"
                       onClick={() => {
-                        window.location.href = '/login';
+                        window.location.href = "/login";
                       }}
                     >
                       Login
@@ -310,7 +334,8 @@ export function SearchDocsModal({
 
           {!error && !isLoading && results.length === 0 && (
             <div className="p-6 text-center text-sm text-white/60">
-              {statusMessage || 'Search across the archive and pull verified excerpts into chat.'}
+              {statusMessage ||
+                "Search across the archive and pull verified excerpts into chat."}
             </div>
           )}
 
@@ -323,8 +348,8 @@ export function SearchDocsModal({
                 const copyKey = `citation:${idx}`;
                 const topics = r.metadata.topics ?? [];
                 const fileUrl =
-                  r.metadata.file_path?.startsWith('http://') ||
-                  r.metadata.file_path?.startsWith('https://')
+                  r.metadata.file_path?.startsWith("http://") ||
+                  r.metadata.file_path?.startsWith("https://")
                     ? r.metadata.file_path
                     : null;
 
@@ -346,17 +371,19 @@ export function SearchDocsModal({
                         <div className="flex items-start gap-2">
                           <div className="min-w-0 flex-1">
                             <div className="text-sm text-white font-medium truncate">
-                              {r.metadata.book_title || 'Untitled'}
+                              {r.metadata.book_title || "Untitled"}
                             </div>
                             <div className="text-xs text-white/60 truncate">
-                              {r.metadata.book_author || 'Unknown'}
-                              {typeof r.metadata.page_number === 'number'
+                              {r.metadata.book_author || "Unknown"}
+                              {typeof r.metadata.page_number === "number"
                                 ? ` • p.${r.metadata.page_number}`
-                                : ''}
+                                : ""}
                               {Number.isFinite(r.similarity_score)
                                 ? ` • ${Math.round(r.similarity_score * 100)}%`
-                                : ''}
-                              {r.metadata.tier ? ` • Tier ${r.metadata.tier}` : ''}
+                                : ""}
+                              {r.metadata.tier
+                                ? ` • Tier ${r.metadata.tier}`
+                                : ""}
                             </div>
                           </div>
 
@@ -390,10 +417,17 @@ export function SearchDocsModal({
                               size="icon"
                               className="h-8 w-8"
                               onClick={() => {
-                                if (fileUrl) window.open(fileUrl, '_blank', 'noopener,noreferrer');
+                                if (fileUrl)
+                                  window.open(
+                                    fileUrl,
+                                    "_blank",
+                                    "noopener,noreferrer",
+                                  );
                                 else toggleExpanded(idx);
                               }}
-                              aria-label={fileUrl ? 'Open source' : 'Toggle details'}
+                              aria-label={
+                                fileUrl ? "Open source" : "Toggle details"
+                              }
                             >
                               {fileUrl ? (
                                 <ExternalLink className="w-4 h-4" />
@@ -407,7 +441,7 @@ export function SearchDocsModal({
                         <div className="mt-2 text-sm text-white/80">
                           {isExpanded
                             ? r.text
-                            : `${r.text.slice(0, 220)}${r.text.length > 220 ? '…' : ''}`}
+                            : `${r.text.slice(0, 220)}${r.text.length > 220 ? "…" : ""}`}
                         </div>
 
                         {topics.length > 0 && (
@@ -426,7 +460,9 @@ export function SearchDocsModal({
                         {!fileUrl && r.metadata.file_path && (
                           <button
                             type="button"
-                            onClick={() => handleCopy(`file:${idx}`, r.metadata.file_path)}
+                            onClick={() =>
+                              handleCopy(`file:${idx}`, r.metadata.file_path)
+                            }
                             className="mt-2 inline-flex items-center gap-1 text-xs text-white/50 hover:text-white/70"
                           >
                             <ExternalLink className="w-3 h-3" />
@@ -442,7 +478,7 @@ export function SearchDocsModal({
                         onClick={() => toggleExpanded(idx)}
                         className="text-xs text-white/50 hover:text-white/70"
                       >
-                        {isExpanded ? 'Hide details' : 'Show details'}
+                        {isExpanded ? "Hide details" : "Show details"}
                       </button>
                     </div>
                   </div>

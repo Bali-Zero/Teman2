@@ -1,4 +1,4 @@
-import { ApiClientBase } from './client';
+import { ApiClientBase } from "./client";
 
 export interface KBLILicense {
   type: string;
@@ -36,7 +36,7 @@ export class KBLIApi extends ApiClientBase {
 
   async search(query: string): Promise<KBLISearchResult[]> {
     return this.request<KBLISearchResult[]>(
-      `/api/v1/kbli-notebook/search?query=${encodeURIComponent(query)}`
+      `/api/v1/kbli-notebook/search?query=${encodeURIComponent(query)}`,
     );
   }
 
@@ -46,7 +46,7 @@ export class KBLIApi extends ApiClientBase {
 
   async chat(
     query: string,
-    sessionId?: string
+    sessionId?: string,
   ): Promise<{
     answer: string;
     detected_kbli: string[];
@@ -60,7 +60,7 @@ export class KBLIApi extends ApiClientBase {
       results: KBLISearchResult[];
       sources: any[];
       suggested_queries: string[];
-    }>('/api/v1/kbli-notebook/chat', {
+    }>("/api/v1/kbli-notebook/chat", {
       query,
       session_id: sessionId,
     });
@@ -68,5 +68,5 @@ export class KBLIApi extends ApiClientBase {
 }
 
 // Export a singleton instance if we are in the browser
-const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 export const kbliApi = new KBLIApi(baseUrl);

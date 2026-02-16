@@ -1,14 +1,15 @@
-'use client';
+"use client";
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Client } from '@/lib/api/crm/crm.types';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Client } from "@/lib/api/crm/crm.types";
 
 // Query keys for cache management
 export const clientKeys = {
-  all: ['clients'] as const,
-  lists: () => [...clientKeys.all, 'list'] as const,
-  list: (filters: Record<string, unknown>) => [...clientKeys.lists(), filters] as const,
-  details: () => [...clientKeys.all, 'detail'] as const,
+  all: ["clients"] as const,
+  lists: () => [...clientKeys.all, "list"] as const,
+  list: (filters: Record<string, unknown>) =>
+    [...clientKeys.lists(), filters] as const,
+  details: () => [...clientKeys.all, "detail"] as const,
   detail: (id: number) => [...clientKeys.details(), id] as const,
 };
 
@@ -21,17 +22,24 @@ interface ApiResponse<T> {
 // Mock API for type safety - replace with actual api import
 const mockApi = {
   crm: {
-    getClients: async (filters?: Record<string, unknown>): Promise<ApiResponse<Client[]>> => {
+    getClients: async (
+      filters?: Record<string, unknown>,
+    ): Promise<ApiResponse<Client[]>> => {
       // Replace with actual API call
       return { data: [] };
     },
     getClient: async (id: number): Promise<ApiResponse<Client>> => {
       return { data: undefined };
     },
-    createClient: async (data: Partial<Client>): Promise<ApiResponse<Client>> => {
+    createClient: async (
+      data: Partial<Client>,
+    ): Promise<ApiResponse<Client>> => {
       return { data: undefined };
     },
-    updateClient: async (id: number, data: Partial<Client>): Promise<ApiResponse<Client>> => {
+    updateClient: async (
+      id: number,
+      data: Partial<Client>,
+    ): Promise<ApiResponse<Client>> => {
       return { data: undefined };
     },
     deleteClient: async (id: number): Promise<ApiResponse<void>> => {
@@ -42,7 +50,9 @@ const mockApi = {
 
 // Use actual API if available, fallback to mock
 const api =
-  (typeof window !== 'undefined' && (window as unknown as { api?: typeof mockApi }).api) || mockApi;
+  (typeof window !== "undefined" &&
+    (window as unknown as { api?: typeof mockApi }).api) ||
+  mockApi;
 
 /**
  * Hook for fetching clients with caching
@@ -53,7 +63,10 @@ const api =
  * const { data: clients, isLoading, error } = useClientsQuery();
  * ```
  */
-export function useClientsQuery(filters?: { status?: string; search?: string }) {
+export function useClientsQuery(filters?: {
+  status?: string;
+  search?: string;
+}) {
   return useQuery({
     queryKey: clientKeys.list(filters || {}),
     queryFn: async () => {
@@ -90,7 +103,8 @@ export function useCreateClientMutation() {
   return useMutation({
     mutationFn: async (clientData: Partial<Client>) => {
       const response = await api.crm.createClient(clientData);
-      if (!response.data) throw new Error(response.error || 'Failed to create client');
+      if (!response.data)
+        throw new Error(response.error || "Failed to create client");
       return response.data;
     },
     onSuccess: () => {
@@ -109,12 +123,15 @@ export function useUpdateClientMutation() {
   return useMutation({
     mutationFn: async ({ id, data }: { id: number; data: Partial<Client> }) => {
       const response = await api.crm.updateClient(id, data);
-      if (!response.data) throw new Error(response.error || 'Failed to update client');
+      if (!response.data)
+        throw new Error(response.error || "Failed to update client");
       return response.data;
     },
     onSuccess: (_, variables) => {
       // Invalidate specific client and lists
-      queryClient.invalidateQueries({ queryKey: clientKeys.detail(variables.id) });
+      queryClient.invalidateQueries({
+        queryKey: clientKeys.detail(variables.id),
+      });
       queryClient.invalidateQueries({ queryKey: clientKeys.lists() });
     },
   });

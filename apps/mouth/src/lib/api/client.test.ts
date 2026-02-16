@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ApiClientBase } from './client';
-import { UserProfile } from '@/types';
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { ApiClientBase } from "./client";
+import { UserProfile } from "@/types";
 
 // Mock localStorage
 const localStorageMock = (() => {
@@ -19,111 +19,114 @@ const localStorageMock = (() => {
   };
 })();
 
-Object.defineProperty(window, 'localStorage', { value: localStorageMock });
+Object.defineProperty(window, "localStorage", { value: localStorageMock });
 
 // Mock document.cookie
-Object.defineProperty(document, 'cookie', {
+Object.defineProperty(document, "cookie", {
   writable: true,
-  value: '',
+  value: "",
 });
 
-describe('ApiClientBase', () => {
+describe("ApiClientBase", () => {
   let client: ApiClientBase;
-  const baseUrl = 'https://api.test.com';
+  const baseUrl = "https://api.test.com";
 
   beforeEach(() => {
     localStorageMock.clear();
     vi.clearAllMocks();
     client = new ApiClientBase(baseUrl);
-    document.cookie = '';
+    document.cookie = "";
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  describe('Constructor', () => {
-    it('should initialize with baseUrl', () => {
+  describe("Constructor", () => {
+    it("should initialize with baseUrl", () => {
       expect(client.getBaseUrl()).toBe(baseUrl);
     });
 
-    it('should load token from localStorage if available', () => {
-      localStorageMock.setItem('auth_token', 'test-token');
+    it("should load token from localStorage if available", () => {
+      localStorageMock.setItem("auth_token", "test-token");
       const newClient = new ApiClientBase(baseUrl);
-      expect(newClient.getToken()).toBe('test-token');
+      expect(newClient.getToken()).toBe("test-token");
     });
 
-    it('should load user profile from localStorage if available', () => {
+    it("should load user profile from localStorage if available", () => {
       const profile: UserProfile = {
-        id: '123',
-        email: 'test@example.com',
-        name: 'Test User',
-        role: 'user',
+        id: "123",
+        email: "test@example.com",
+        name: "Test User",
+        role: "user",
       };
-      localStorageMock.setItem('user_profile', JSON.stringify(profile));
+      localStorageMock.setItem("user_profile", JSON.stringify(profile));
       const newClient = new ApiClientBase(baseUrl);
       expect(newClient.getUserProfile()).toEqual(profile);
     });
 
-    it('should handle invalid JSON in localStorage gracefully', () => {
-      localStorageMock.setItem('user_profile', 'invalid-json');
+    it("should handle invalid JSON in localStorage gracefully", () => {
+      localStorageMock.setItem("user_profile", "invalid-json");
       const newClient = new ApiClientBase(baseUrl);
       expect(newClient.getUserProfile()).toBeNull();
     });
   });
 
-  describe('Token Management', () => {
-    it('should set and get token', () => {
-      client.setToken('test-token');
-      expect(client.getToken()).toBe('test-token');
-      expect(localStorageMock.setItem).toHaveBeenCalledWith('auth_token', 'test-token');
+  describe("Token Management", () => {
+    it("should set and get token", () => {
+      client.setToken("test-token");
+      expect(client.getToken()).toBe("test-token");
+      expect(localStorageMock.setItem).toHaveBeenCalledWith(
+        "auth_token",
+        "test-token",
+      );
     });
 
-    it('should clear token', () => {
-      client.setToken('test-token');
+    it("should clear token", () => {
+      client.setToken("test-token");
       client.clearToken();
       expect(client.getToken()).toBeNull();
-      expect(localStorageMock.removeItem).toHaveBeenCalledWith('auth_token');
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith("auth_token");
     });
 
-    it('should check authentication status', () => {
+    it("should check authentication status", () => {
       expect(client.isAuthenticated()).toBe(false);
-      client.setToken('test-token');
+      client.setToken("test-token");
       expect(client.isAuthenticated()).toBe(true);
-      client.setToken('');
+      client.setToken("");
       expect(client.isAuthenticated()).toBe(false);
     });
   });
 
-  describe('User Profile Management', () => {
-    it('should set and get user profile', () => {
+  describe("User Profile Management", () => {
+    it("should set and get user profile", () => {
       const profile: UserProfile = {
-        id: '123',
-        email: 'test@example.com',
-        name: 'Test User',
-        role: 'user',
+        id: "123",
+        email: "test@example.com",
+        name: "Test User",
+        role: "user",
       };
       client.setUserProfile(profile);
       expect(client.getUserProfile()).toEqual(profile);
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        'user_profile',
-        JSON.stringify(profile)
+        "user_profile",
+        JSON.stringify(profile),
       );
     });
 
-    it('should clear user profile on clearToken', () => {
+    it("should clear user profile on clearToken", () => {
       const profile: UserProfile = {
-        id: '123',
-        email: 'test@example.com',
-        name: 'Test User',
-        role: 'user',
+        id: "123",
+        email: "test@example.com",
+        name: "Test User",
+        role: "user",
       };
       client.setUserProfile(profile);
       client.clearToken();
       expect(client.getUserProfile()).toBeNull();
     });
 
-    it('should sync profile from localStorage when external change occurs (FIX TEST)', () => {
+    it("should sync profile from localStorage when external change occurs (FIX TEST)", () => {
       // This tests the fix for getUserProfile() not re-reading from localStorage
       // Scenario: Login happens AFTER ApiClient instantiation
 
@@ -133,52 +136,52 @@ describe('ApiClientBase', () => {
 
       // 2. Profile saved externally (e.g., by login flow)
       const newProfile: UserProfile = {
-        id: '456',
-        email: 'newuser@example.com',
-        name: 'New User',
-        role: 'admin',
+        id: "456",
+        email: "newuser@example.com",
+        name: "New User",
+        role: "admin",
       };
-      localStorageMock.setItem('user_profile', JSON.stringify(newProfile));
+      localStorageMock.setItem("user_profile", JSON.stringify(newProfile));
 
       // 3. getUserProfile should re-read from localStorage and get the new profile
       const retrievedProfile = freshClient.getUserProfile();
       expect(retrievedProfile).toEqual(newProfile);
     });
 
-    it('should handle corrupted profile in localStorage gracefully during sync', () => {
+    it("should handle corrupted profile in localStorage gracefully during sync", () => {
       const profile: UserProfile = {
-        id: '123',
-        email: 'test@example.com',
-        name: 'Test User',
-        role: 'user',
+        id: "123",
+        email: "test@example.com",
+        name: "Test User",
+        role: "user",
       };
       client.setUserProfile(profile);
 
       // Corrupt localStorage externally
-      localStorageMock.setItem('user_profile', 'not-valid-json');
+      localStorageMock.setItem("user_profile", "not-valid-json");
 
       // Should keep existing profile on parse error
       expect(client.getUserProfile()).toEqual(profile);
     });
 
-    it('should detect and update when localStorage profile differs from memory', () => {
+    it("should detect and update when localStorage profile differs from memory", () => {
       // Set initial profile
       const initialProfile: UserProfile = {
-        id: '1',
-        email: 'first@example.com',
-        name: 'First',
-        role: 'user',
+        id: "1",
+        email: "first@example.com",
+        name: "First",
+        role: "user",
       };
       client.setUserProfile(initialProfile);
 
       // Modify localStorage directly (simulating another tab or login)
       const updatedProfile: UserProfile = {
-        id: '2',
-        email: 'second@example.com',
-        name: 'Second',
-        role: 'admin',
+        id: "2",
+        email: "second@example.com",
+        name: "Second",
+        role: "admin",
       };
-      localStorageMock.setItem('user_profile', JSON.stringify(updatedProfile));
+      localStorageMock.setItem("user_profile", JSON.stringify(updatedProfile));
 
       // getUserProfile should pick up the new profile
       const result = client.getUserProfile();
@@ -186,135 +189,137 @@ describe('ApiClientBase', () => {
     });
   });
 
-  describe('CSRF Token Management', () => {
-    it('should set CSRF token', () => {
-      client.setCsrfToken('csrf-token');
-      expect(client.getCsrfToken()).toBe('csrf-token');
+  describe("CSRF Token Management", () => {
+    it("should set CSRF token", () => {
+      client.setCsrfToken("csrf-token");
+      expect(client.getCsrfToken()).toBe("csrf-token");
     });
 
-    it('should read CSRF token from cookie as fallback', () => {
-      document.cookie = 'nz_csrf_token=csrf-from-cookie';
-      expect(client.getCsrfToken()).toBe('csrf-from-cookie');
+    it("should read CSRF token from cookie as fallback", () => {
+      document.cookie = "nz_csrf_token=csrf-from-cookie";
+      expect(client.getCsrfToken()).toBe("csrf-from-cookie");
     });
 
-    it('should return null if no CSRF token in memory or cookie', () => {
-      document.cookie = '';
+    it("should return null if no CSRF token in memory or cookie", () => {
+      document.cookie = "";
       expect(client.getCsrfToken()).toBeNull();
     });
   });
 
-  describe('Admin Check', () => {
-    it('should return false for non-admin user', () => {
+  describe("Admin Check", () => {
+    it("should return false for non-admin user", () => {
       const profile: UserProfile = {
-        id: '123',
-        email: 'test@example.com',
-        name: 'Test User',
-        role: 'user',
+        id: "123",
+        email: "test@example.com",
+        name: "Test User",
+        role: "user",
       };
       client.setUserProfile(profile);
       expect(client.isAdmin()).toBe(false);
     });
 
-    it('should return true for admin user', () => {
+    it("should return true for admin user", () => {
       const profile: UserProfile = {
-        id: '123',
-        email: 'admin@example.com',
-        name: 'Admin User',
-        role: 'admin',
+        id: "123",
+        email: "admin@example.com",
+        name: "Admin User",
+        role: "admin",
       };
       client.setUserProfile(profile);
       expect(client.isAdmin()).toBe(true);
     });
 
-    it('should return false if no user profile', () => {
+    it("should return false if no user profile", () => {
       expect(client.isAdmin()).toBe(false);
     });
   });
 
-  describe('Request Method', () => {
+  describe("Request Method", () => {
     beforeEach(() => {
       global.fetch = vi.fn();
     });
 
-    it('should make GET request successfully', async () => {
-      const mockResponse = { data: 'test' };
+    it("should make GET request successfully", async () => {
+      const mockResponse = { data: "test" };
       (global.fetch as any).mockResolvedValueOnce({
         ok: true,
         status: 200,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: async () => mockResponse,
       });
 
-      const result = await (client as any).request('/test');
+      const result = await (client as any).request("/test");
       expect(result).toEqual(mockResponse);
       expect(global.fetch).toHaveBeenCalledTimes(1);
       const callArgs = (global.fetch as any).mock.calls[0];
       expect(callArgs[0]).toBe(`${baseUrl}/test`);
       if (callArgs[1]) {
-        expect(callArgs[1].method || 'GET').toBe('GET');
-        expect(callArgs[1].credentials).toBe('include');
+        expect(callArgs[1].method || "GET").toBe("GET");
+        expect(callArgs[1].credentials).toBe("include");
       }
     });
 
-    it('should add Authorization header when token exists', async () => {
-      client.setToken('test-token');
+    it("should add Authorization header when token exists", async () => {
+      client.setToken("test-token");
       (global.fetch as any).mockResolvedValueOnce({
         ok: true,
         status: 200,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: async () => ({}),
       });
 
-      await (client as any).request('/test');
+      await (client as any).request("/test");
       expect(global.fetch).toHaveBeenCalled();
       const callArgs = (global.fetch as any).mock.calls[0];
       expect(callArgs[1].headers).toMatchObject({
-        Authorization: 'Bearer test-token',
+        Authorization: "Bearer test-token",
       });
     });
 
-    it('should add CSRF token for POST requests', async () => {
-      client.setCsrfToken('csrf-token');
+    it("should add CSRF token for POST requests", async () => {
+      client.setCsrfToken("csrf-token");
       (global.fetch as any).mockResolvedValueOnce({
         ok: true,
         status: 200,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: async () => ({}),
       });
 
-      await (client as any).request('/test', { method: 'POST' });
+      await (client as any).request("/test", { method: "POST" });
       expect(global.fetch).toHaveBeenCalled();
       const callArgs = (global.fetch as any).mock.calls[0];
       expect(callArgs[1].headers).toMatchObject({
-        'X-CSRF-Token': 'csrf-token',
+        "X-CSRF-Token": "csrf-token",
       });
     });
 
-    it('should handle HTTP errors', async () => {
+    it("should handle HTTP errors", async () => {
       (global.fetch as any).mockResolvedValueOnce({
         ok: false,
         status: 404,
-        statusText: 'Not Found',
+        statusText: "Not Found",
         headers: {
           get: vi.fn((name: string) => {
-            if (name === 'content-type') return 'application/json';
+            if (name === "content-type") return "application/json";
             return null;
           }),
         },
-        json: async () => ({ detail: 'Not found' }),
+        json: async () => ({ detail: "Not found" }),
       });
 
-      await expect((client as any).request('/test')).rejects.toThrow('Not found');
+      await expect((client as any).request("/test")).rejects.toThrow(
+        "Not found",
+      );
     });
 
-    it('should handle empty responses (204)', async () => {
+    it("should handle empty responses (204)", async () => {
       (global.fetch as any).mockResolvedValueOnce({
         ok: true,
         status: 204,
         headers: new Headers(),
       });
 
-      const result = await (client as any).request('/test');
+      const result = await (client as any).request("/test");
       expect(result).toEqual({});
     });
   });

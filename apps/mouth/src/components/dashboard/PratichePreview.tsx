@@ -1,15 +1,15 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Link from 'next/link';
-import { ChevronRight, Clock } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import React from "react";
+import Link from "next/link";
+import { ChevronRight, Clock } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export interface PraticaPreview {
   id: number;
   title: string;
   client: string;
-  status: 'inquiry' | 'quotation' | 'in_progress' | 'documents' | 'completed';
+  status: "inquiry" | "quotation" | "in_progress" | "documents" | "completed";
   daysRemaining?: number;
   completedAt?: string;
 }
@@ -21,34 +21,34 @@ interface PratichePreviewProps {
 
 const statusConfig = {
   inquiry: {
-    label: 'Inquiry',
-    color: 'text-[var(--foreground-muted)]',
-    bg: 'bg-[var(--foreground-muted)]/10',
-    dot: 'bg-[var(--foreground-muted)]',
+    label: "Inquiry",
+    color: "text-[var(--foreground-muted)]",
+    bg: "bg-[var(--foreground-muted)]/10",
+    dot: "bg-[var(--foreground-muted)]",
   },
   quotation: {
-    label: 'Quotation',
-    color: 'text-[var(--warning)]',
-    bg: 'bg-[var(--warning)]/10',
-    dot: 'bg-[var(--warning)]',
+    label: "Quotation",
+    color: "text-[var(--warning)]",
+    bg: "bg-[var(--warning)]/10",
+    dot: "bg-[var(--warning)]",
   },
   in_progress: {
-    label: 'In Progress',
-    color: 'text-[var(--accent)]',
-    bg: 'bg-[var(--accent)]/10',
-    dot: 'bg-[var(--accent)]',
+    label: "In Progress",
+    color: "text-[var(--accent)]",
+    bg: "bg-[var(--accent)]/10",
+    dot: "bg-[var(--accent)]",
   },
   documents: {
-    label: 'Documents',
-    color: 'text-[var(--warning)]',
-    bg: 'bg-[var(--warning)]/10',
-    dot: 'bg-[var(--warning)]',
+    label: "Documents",
+    color: "text-[var(--warning)]",
+    bg: "bg-[var(--warning)]/10",
+    dot: "bg-[var(--warning)]",
   },
   completed: {
-    label: 'Completed',
-    color: 'text-[var(--success)]',
-    bg: 'bg-[var(--success)]/10',
-    dot: 'bg-[var(--success)]',
+    label: "Completed",
+    color: "text-[var(--success)]",
+    bg: "bg-[var(--success)]/10",
+    dot: "bg-[var(--success)]",
   },
 };
 
@@ -75,7 +75,9 @@ export function PratichePreview({ pratiche, isLoading }: PratichePreviewProps) {
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-5">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-semibold text-[var(--foreground)]">My Process</h2>
+        <h2 className="text-base font-semibold text-[var(--foreground)]">
+          My Process
+        </h2>
         <Link
           href="/process"
           className="text-sm text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors flex items-center gap-1"
@@ -88,7 +90,9 @@ export function PratichePreview({ pratiche, isLoading }: PratichePreviewProps) {
       <div className="space-y-2">
         {pratiche.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-sm text-[var(--foreground-muted)]">No process assigned</p>
+            <p className="text-sm text-[var(--foreground-muted)]">
+              No process assigned
+            </p>
           </div>
         ) : (
           pratiche.map((pratica) => {
@@ -111,30 +115,33 @@ export function PratichePreview({ pratiche, isLoading }: PratichePreviewProps) {
                   <div className="flex flex-col items-end gap-1">
                     <span
                       className={cn(
-                        'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium',
+                        "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium",
                         config.bg,
-                        config.color
+                        config.color,
                       )}
                     >
-                      <span className={cn('w-1.5 h-1.5 rounded-full', config.dot)} />
+                      <span
+                        className={cn("w-1.5 h-1.5 rounded-full", config.dot)}
+                      />
                       {config.label}
                     </span>
-                    {pratica.status !== 'completed' && pratica.daysRemaining !== undefined && (
-                      <span
-                        className={cn(
-                          'text-xs flex items-center gap-1',
-                          pratica.daysRemaining <= 3
-                            ? 'text-[var(--error)]'
-                            : pratica.daysRemaining <= 7
-                              ? 'text-[var(--warning)]'
-                              : 'text-[var(--foreground-muted)]'
-                        )}
-                      >
-                        <Clock className="w-3 h-3" />
-                        {pratica.daysRemaining} days
-                      </span>
-                    )}
-                    {pratica.status === 'completed' && pratica.completedAt && (
+                    {pratica.status !== "completed" &&
+                      pratica.daysRemaining !== undefined && (
+                        <span
+                          className={cn(
+                            "text-xs flex items-center gap-1",
+                            pratica.daysRemaining <= 3
+                              ? "text-[var(--error)]"
+                              : pratica.daysRemaining <= 7
+                                ? "text-[var(--warning)]"
+                                : "text-[var(--foreground-muted)]",
+                          )}
+                        >
+                          <Clock className="w-3 h-3" />
+                          {pratica.daysRemaining} days
+                        </span>
+                      )}
+                    {pratica.status === "completed" && pratica.completedAt && (
                       <span className="text-xs text-[var(--foreground-muted)]">
                         {pratica.completedAt}
                       </span>

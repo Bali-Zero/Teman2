@@ -1,16 +1,18 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import { Loader2, Bell, Mail, MessageCircle, Globe, Save } from 'lucide-react';
-import { api } from '@/lib/api';
-import { useToast } from '@/components/ui/toast';
-import { cn } from '@/lib/utils';
-import type { PortalPreferences } from '@/lib/api/portal/portal.types';
-import { Button } from '@/components/ui/button';
+import React, { useEffect, useState } from "react";
+import { Loader2, Bell, Mail, MessageCircle, Globe, Save } from "lucide-react";
+import { api } from "@/lib/api";
+import { useToast } from "@/components/ui/toast";
+import { cn } from "@/lib/utils";
+import type { PortalPreferences } from "@/lib/api/portal/portal.types";
+import { Button } from "@/components/ui/button";
 
 export default function SettingsPage() {
   const { success, error } = useToast();
-  const [preferences, setPreferences] = useState<PortalPreferences | null>(null);
+  const [preferences, setPreferences] = useState<PortalPreferences | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -25,7 +27,7 @@ export default function SettingsPage() {
       const data = await api.portal.getPreferences();
       setPreferences(data);
     } catch (err) {
-      error('Failed to load settings', 'Please try again later');
+      error("Failed to load settings", "Please try again later");
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -39,7 +41,7 @@ export default function SettingsPage() {
       if (!prev) return prev;
       return {
         ...prev,
-        [key]: typeof prev[key] === 'boolean' ? !prev[key] : prev[key],
+        [key]: typeof prev[key] === "boolean" ? !prev[key] : prev[key],
       };
     });
     setHasChanges(true);
@@ -56,9 +58,9 @@ export default function SettingsPage() {
       });
       setPreferences(updated);
       setHasChanges(false);
-      success('Settings saved', 'Your preferences have been updated');
+      success("Settings saved", "Your preferences have been updated");
     } catch (err) {
-      error('Failed to save settings', 'Please try again');
+      error("Failed to save settings", "Please try again");
       console.error(err);
     } finally {
       setIsSaving(false);
@@ -80,7 +82,9 @@ export default function SettingsPage() {
       {/* Header */}
       <section>
         <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground">Manage your notification preferences</p>
+        <p className="text-muted-foreground">
+          Manage your notification preferences
+        </p>
       </section>
 
       {/* Notifications Section */}
@@ -96,7 +100,7 @@ export default function SettingsPage() {
             label="Email Notifications"
             description="Receive updates and alerts via email"
             checked={preferences.emailNotifications}
-            onChange={() => handleToggle('emailNotifications')}
+            onChange={() => handleToggle("emailNotifications")}
           />
 
           <ToggleSetting
@@ -104,7 +108,7 @@ export default function SettingsPage() {
             label="WhatsApp Notifications"
             description="Get instant updates on WhatsApp"
             checked={preferences.whatsappNotifications}
-            onChange={() => handleToggle('whatsappNotifications')}
+            onChange={() => handleToggle("whatsappNotifications")}
           />
         </div>
       </section>
@@ -117,7 +121,10 @@ export default function SettingsPage() {
         </div>
 
         <div className="space-y-3">
-          <ReadOnlyField label="Language" value={preferences.language.toUpperCase()} />
+          <ReadOnlyField
+            label="Language"
+            value={preferences.language.toUpperCase()}
+          />
           <ReadOnlyField label="Timezone" value={preferences.timezone} />
         </div>
 
@@ -184,15 +191,15 @@ function ToggleSetting({
         aria-checked={checked}
         onClick={onChange}
         className={cn(
-          'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
-          checked ? 'bg-emerald-500' : 'bg-neutral-200 dark:bg-neutral-700'
+          "relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+          checked ? "bg-emerald-500" : "bg-neutral-200 dark:bg-neutral-700",
         )}
       >
         <span
           aria-hidden="true"
           className={cn(
-            'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out',
-            checked ? 'translate-x-5' : 'translate-x-0'
+            "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out",
+            checked ? "translate-x-5" : "translate-x-0",
           )}
         />
       </button>

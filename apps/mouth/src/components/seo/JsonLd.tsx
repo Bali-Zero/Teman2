@@ -6,38 +6,38 @@
  * to ensure JSON-LD is present in the static HTML for Googlebot and validators.
  */
 
-const baseUrl = process.env.NEXT_PUBLIC_PUBLIC_URL || 'https://balizero.com';
+const baseUrl = process.env.NEXT_PUBLIC_PUBLIC_URL || "https://balizero.com";
 
 // Organization schema - for brand presence
 export function OrganizationJsonLd() {
   const schema = {
-    '@context': 'https://schema.org',
-    '@type': 'Organization',
-    name: 'Bali Zero',
-    alternateName: 'Bali Zero Team',
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "Bali Zero",
+    alternateName: "Bali Zero Team",
     url: baseUrl,
     logo: `${baseUrl}/static/balizero-logo-clean.png`,
     sameAs: [
-      'https://instagram.com/balizero0',
-      'https://linkedin.com/company/balizero',
-      'https://wa.me/6281234567890',
+      "https://instagram.com/balizero0",
+      "https://linkedin.com/company/balizero",
+      "https://wa.me/6281234567890",
     ],
     contactPoint: {
-      '@type': 'ContactPoint',
-      telephone: '+62-812-3456-7890',
-      contactType: 'customer service',
-      availableLanguage: ['English', 'Indonesian'],
+      "@type": "ContactPoint",
+      telephone: "+62-812-3456-7890",
+      contactType: "customer service",
+      availableLanguage: ["English", "Indonesian"],
     },
     address: {
-      '@type': 'PostalAddress',
-      streetAddress: 'Kerobokan',
-      addressLocality: 'Bali',
-      addressRegion: 'Bali',
-      postalCode: '80361',
-      addressCountry: 'ID',
+      "@type": "PostalAddress",
+      streetAddress: "Kerobokan",
+      addressLocality: "Bali",
+      addressRegion: "Bali",
+      postalCode: "80361",
+      addressCountry: "ID",
     },
     description:
-      'Expert visa, immigration, company setup, and business consulting services in Bali, Indonesia.',
+      "Expert visa, immigration, company setup, and business consulting services in Bali, Indonesia.",
   };
 
   return (
@@ -52,40 +52,40 @@ export function OrganizationJsonLd() {
 // Local Business schema - for local SEO
 export function LocalBusinessJsonLd() {
   const schema = {
-    '@context': 'https://schema.org',
-    '@type': 'ProfessionalService',
-    name: 'Bali Zero',
+    "@context": "https://schema.org",
+    "@type": "ProfessionalService",
+    name: "Bali Zero",
     image: `${baseUrl}/static/balizero-logo-clean.png`,
     url: baseUrl,
-    telephone: '+62-812-3456-7890',
-    email: 'hello@balizero.com',
+    telephone: "+62-812-3456-7890",
+    email: "hello@balizero.com",
     address: {
-      '@type': 'PostalAddress',
-      streetAddress: 'Bali',
-      addressLocality: 'Denpasar',
-      addressRegion: 'Bali',
-      postalCode: '80361',
-      addressCountry: 'ID',
+      "@type": "PostalAddress",
+      streetAddress: "Bali",
+      addressLocality: "Denpasar",
+      addressRegion: "Bali",
+      postalCode: "80361",
+      addressCountry: "ID",
     },
     geo: {
-      '@type': 'GeoCoordinates',
+      "@type": "GeoCoordinates",
       latitude: -8.4095,
       longitude: 115.1889,
     },
     openingHoursSpecification: {
-      '@type': 'OpeningHoursSpecification',
-      dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-      opens: '09:00',
-      closes: '18:00',
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+      opens: "09:00",
+      closes: "18:00",
     },
-    priceRange: '$$',
+    priceRange: "$$",
     areaServed: {
-      '@type': 'Country',
-      name: 'Indonesia',
+      "@type": "Country",
+      name: "Indonesia",
     },
     serviceArea: {
-      '@type': 'Place',
-      name: 'Bali, Indonesia',
+      "@type": "Place",
+      name: "Bali, Indonesia",
     },
   };
 
@@ -128,18 +128,18 @@ export function ArticleJsonLd({
   readingTime,
 }: Readonly<ArticleJsonLdProps>) {
   const articleUrl = `${baseUrl}/${category}/${slug}`;
-  const imageUrl = image?.startsWith('http')
+  const imageUrl = image?.startsWith("http")
     ? image
-    : `${baseUrl}${image || '/static/og-image.jpg'}`;
+    : `${baseUrl}${image || "/static/og-image.jpg"}`;
 
   const schema = {
-    '@context': 'https://schema.org',
-    '@type': 'Article',
+    "@context": "https://schema.org",
+    "@type": "Article",
     headline: title,
     description: description,
     url: articleUrl,
     image: {
-      '@type': 'ImageObject',
+      "@type": "ImageObject",
       url: imageUrl,
       width: 1200,
       height: 630,
@@ -147,28 +147,29 @@ export function ArticleJsonLd({
     datePublished: publishedAt,
     dateModified: updatedAt || publishedAt,
     author: {
-      '@type': author?.role === 'AI Immigration Advisor' ? 'Organization' : 'Person',
-      name: author?.name || 'Bali Zero Editorial',
+      "@type":
+        author?.role === "AI Immigration Advisor" ? "Organization" : "Person",
+      name: author?.name || "Bali Zero Editorial",
       url: baseUrl,
     },
     publisher: {
-      '@type': 'Organization',
-      name: 'Bali Zero',
+      "@type": "Organization",
+      name: "Bali Zero",
       logo: {
-        '@type': 'ImageObject',
+        "@type": "ImageObject",
         url: `${baseUrl}/static/balizero-logo-clean.png`,
         width: 200,
         height: 200,
       },
     },
     mainEntityOfPage: {
-      '@type': 'WebPage',
-      '@id': articleUrl,
+      "@type": "WebPage",
+      "@id": articleUrl,
     },
-    keywords: tags?.join(', '),
+    keywords: tags?.join(", "),
     wordCount: readingTime ? readingTime * 200 : undefined, // Approximate
     articleSection: category,
-    inLanguage: 'en-US',
+    inLanguage: "en-US",
   };
 
   return (
@@ -192,13 +193,13 @@ interface FAQJsonLdProps {
 
 export function FAQJsonLd({ items }: Readonly<FAQJsonLdProps>) {
   const schema = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
     mainEntity: items.map((item) => ({
-      '@type': 'Question',
+      "@type": "Question",
       name: item.question,
       acceptedAnswer: {
-        '@type': 'Answer',
+        "@type": "Answer",
         text: item.answer,
       },
     })),
@@ -227,28 +228,28 @@ export function ServiceJsonLd({
   description,
   url,
   price,
-  provider = 'Bali Zero',
+  provider = "Bali Zero",
 }: Readonly<ServiceJsonLdProps>) {
   const schema = {
-    '@context': 'https://schema.org',
-    '@type': 'Service',
+    "@context": "https://schema.org",
+    "@type": "Service",
     name: name,
     description: description,
-    url: url.startsWith('http') ? url : `${baseUrl}${url}`,
+    url: url.startsWith("http") ? url : `${baseUrl}${url}`,
     provider: {
-      '@type': 'Organization',
+      "@type": "Organization",
       name: provider,
       url: baseUrl,
     },
     areaServed: {
-      '@type': 'Country',
-      name: 'Indonesia',
+      "@type": "Country",
+      name: "Indonesia",
     },
     offers: price
       ? {
-          '@type': 'Offer',
+          "@type": "Offer",
           price: price,
-          priceCurrency: 'IDR',
+          priceCurrency: "IDR",
         }
       : undefined,
   };
@@ -274,13 +275,13 @@ interface BreadcrumbJsonLdProps {
 
 export function BreadcrumbJsonLd({ items }: Readonly<BreadcrumbJsonLdProps>) {
   const schema = {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
     itemListElement: items.map((item, index) => ({
-      '@type': 'ListItem',
+      "@type": "ListItem",
       position: index + 1,
       name: item.name,
-      item: item.url.startsWith('http') ? item.url : `${baseUrl}${item.url}`,
+      item: item.url.startsWith("http") ? item.url : `${baseUrl}${item.url}`,
     })),
   };
 
@@ -296,18 +297,18 @@ export function BreadcrumbJsonLd({ items }: Readonly<BreadcrumbJsonLdProps>) {
 // WebSite schema with SearchAction - for sitelinks search
 export function WebsiteJsonLd() {
   const schema = {
-    '@context': 'https://schema.org',
-    '@type': 'WebSite',
-    name: 'Bali Zero',
-    alternateName: 'Bali Zero - Visa & Business Experts',
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "Bali Zero",
+    alternateName: "Bali Zero - Visa & Business Experts",
     url: baseUrl,
     potentialAction: {
-      '@type': 'SearchAction',
+      "@type": "SearchAction",
       target: {
-        '@type': 'EntryPoint',
+        "@type": "EntryPoint",
         urlTemplate: `${baseUrl}/?q={search_term_string}`,
       },
-      'query-input': 'required name=search_term_string',
+      "query-input": "required name=search_term_string",
     },
   };
 
@@ -323,23 +324,23 @@ export function WebsiteJsonLd() {
 // Google Reviews AggregateRating — for rich snippets with stars
 export function AggregateRatingJsonLd() {
   const schema = {
-    '@context': 'https://schema.org',
-    '@type': 'ProfessionalService',
-    name: 'Bali Zero',
+    "@context": "https://schema.org",
+    "@type": "ProfessionalService",
+    name: "Bali Zero",
     url: baseUrl,
     aggregateRating: {
-      '@type': 'AggregateRating',
-      ratingValue: '5.0',
-      bestRating: '5',
-      worstRating: '1',
-      ratingCount: '700',
-      reviewCount: '700',
+      "@type": "AggregateRating",
+      ratingValue: "5.0",
+      bestRating: "5",
+      worstRating: "1",
+      ratingCount: "700",
+      reviewCount: "700",
     },
-    priceRange: '$$',
+    priceRange: "$$",
     address: {
-      '@type': 'PostalAddress',
-      addressLocality: 'Bali',
-      addressCountry: 'ID',
+      "@type": "PostalAddress",
+      addressLocality: "Bali",
+      addressCountry: "ID",
     },
   };
 

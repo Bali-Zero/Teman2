@@ -77,8 +77,8 @@ import {
   Calculator,
   Checklist,
   InfoCard,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Buying a Villa in Bali 2026: Foreigner's Guide
 
@@ -90,11 +90,13 @@ Owning a villa in Bali is a dream for many. Here's everything you need to know t
 **Foreigners cannot own freehold land in Indonesia.**
 
 But there are legal ways to secure property:
+
 - **Leasehold** (long-term lease)
 - **Hak Pakai** (right to use - for personal residence)
 - **PT PMA** (company ownership)
 
 Each has pros and cons - choose based on your situation.
+
 </InfoCard>
 
 ---
@@ -111,45 +113,49 @@ Each has pros and cons - choose based on your situation.
       options: [
         { label: "Personal residence", next: "personal" },
         { label: "Investment/rental", next: "investment" },
-        { label: "Part-time use", next: "parttime" }
-      ]
+        { label: "Part-time use", next: "parttime" },
+      ],
     },
     {
       id: "personal",
       question: "Do you have KITAS/KITAP?",
       options: [
         { label: "Yes, long-term visa", next: "hakpakai" },
-        { label: "No, tourist visa", next: "leasehold-personal" }
-      ]
+        { label: "No, tourist visa", next: "leasehold-personal" },
+      ],
     },
     {
       id: "investment",
       result: {
         title: "PT PMA Structure",
-        description: "Set up a foreign investment company to hold HGB title. Can rent out commercially. Most secure structure for investment properties."
-      }
+        description:
+          "Set up a foreign investment company to hold HGB title. Can rent out commercially. Most secure structure for investment properties.",
+      },
     },
     {
       id: "parttime",
       result: {
         title: "Leasehold",
-        description: "Long-term lease (25-30 years) is simplest for part-time use. No KITAS required. Can include renewal options."
-      }
+        description:
+          "Long-term lease (25-30 years) is simplest for part-time use. No KITAS required. Can include renewal options.",
+      },
     },
     {
       id: "hakpakai",
       result: {
         title: "Hak Pakai (Right to Use)",
-        description: "You can hold Hak Pakai directly with valid KITAS/KITAP. Must be for personal residence. Minimum value applies (IDR 5B in Bali)."
-      }
+        description:
+          "You can hold Hak Pakai directly with valid KITAS/KITAP. Must be for personal residence. Minimum value applies (IDR 5B in Bali).",
+      },
     },
     {
       id: "leasehold-personal",
       result: {
         title: "Leasehold",
-        description: "Long-term lease of land + villa. Simpler structure, no KITAS needed. Typical terms 25-30 years with extensions."
-      }
-    }
+        description:
+          "Long-term lease of land + villa. Simpler structure, no KITAS needed. Typical terms 25-30 years with extensions.",
+      },
+    },
   ]}
 />
 
@@ -165,36 +171,36 @@ Each has pros and cons - choose based on your situation.
       name: "Leasehold",
       subtitle: "Long-term lease",
       values: {
-        "Security": "Good (with proper contract)",
-        "Duration": "25-30 years + extensions",
+        Security: "Good (with proper contract)",
+        Duration: "25-30 years + extensions",
         "Rental allowed": "Depends on agreement",
         "Setup cost": "Lower",
-        "Best for": "Part-time, flexibility"
-      }
+        "Best for": "Part-time, flexibility",
+      },
     },
     {
       name: "Hak Pakai",
       subtitle: "Right to use",
       values: {
-        "Security": "Very good (title)",
-        "Duration": "30+20+20 years",
+        Security: "Very good (title)",
+        Duration: "30+20+20 years",
         "Rental allowed": "Personal use only",
         "Setup cost": "Medium",
-        "Best for": "Personal residence"
-      }
+        "Best for": "Personal residence",
+      },
     },
     {
       name: "PT PMA + HGB",
       subtitle: "Company ownership",
       values: {
-        "Security": "Excellent (title)",
-        "Duration": "30+20+20 years",
+        Security: "Excellent (title)",
+        Duration: "30+20+20 years",
         "Rental allowed": "Yes (commercial)",
         "Setup cost": "Higher",
-        "Best for": "Investment, rental"
+        "Best for": "Investment, rental",
       },
-      highlight: true
-    }
+      highlight: true,
+    },
   ]}
 />
 
@@ -204,14 +210,14 @@ Each has pros and cons - choose based on your situation.
 
 ### Best Villa Locations
 
-| Area | Vibe | Price Range |
-|------|------|-------------|
-| Canggu | Trendy, surf, nomads | IDR 3-20B |
-| Seminyak | Upscale, beach clubs | IDR 5-30B |
-| Ubud | Cultural, rice fields | IDR 2-15B |
-| Uluwatu | Cliffs, surf, luxury | IDR 5-30B |
-| Sanur | Relaxed, family | IDR 2-10B |
-| Nusa Dua | Resort, golf | IDR 5-25B |
+| Area     | Vibe                  | Price Range |
+| -------- | --------------------- | ----------- |
+| Canggu   | Trendy, surf, nomads  | IDR 3-20B   |
+| Seminyak | Upscale, beach clubs  | IDR 5-30B   |
+| Ubud     | Cultural, rice fields | IDR 2-15B   |
+| Uluwatu  | Cliffs, surf, luxury  | IDR 5-30B   |
+| Sanur    | Relaxed, family       | IDR 2-10B   |
+| Nusa Dua | Resort, golf          | IDR 5-25B   |
 
 <InfoCard variant="tip" title="Location Matters">
 **Consider:**
@@ -223,6 +229,7 @@ Each has pros and cons - choose based on your situation.
 - Traffic (Canggu/Seminyak can be bad)
 
 Visit in low season to see realistic conditions.
+
 </InfoCard>
 
 ---
@@ -291,7 +298,8 @@ Visit in low season to see realistic conditions.
       currency: "IDR",
       note: `~USD ${Math.round(total / 16000).toLocaleString()} total`
     };
-  }}
+
+}}
 />
 
 ---
@@ -308,70 +316,70 @@ Visit in low season to see realistic conditions.
       label: "Land certificate verification",
       description: "Check at BPN (land office)",
       required: true,
-      category: "title"
+      category: "title",
     },
     {
       id: "owner",
       label: "Verify seller is owner",
       description: "Match certificate to seller",
       required: true,
-      category: "title"
+      category: "title",
     },
     {
       id: "encumbrance",
       label: "Check for mortgages/liens",
       description: "Clean title required",
       required: true,
-      category: "title"
+      category: "title",
     },
     {
       id: "zoning",
       label: "Verify zoning",
       description: "Permitted use",
       required: true,
-      category: "permits"
+      category: "permits",
     },
     {
       id: "imb",
       label: "Building permit (IMB/PBG)",
       description: "Building legally constructed",
       required: true,
-      category: "permits"
+      category: "permits",
     },
     {
       id: "pbb",
       label: "Tax paid (PBB)",
       description: "No arrears",
       required: true,
-      category: "tax"
+      category: "tax",
     },
     {
       id: "survey",
       label: "Physical survey",
       description: "Boundaries match certificate",
       required: true,
-      category: "physical"
+      category: "physical",
     },
     {
       id: "access",
       label: "Legal access",
       description: "Road access rights",
       required: true,
-      category: "physical"
+      category: "physical",
     },
     {
       id: "condition",
       label: "Building inspection",
       description: "Structural condition",
       required: true,
-      category: "physical"
-    }
+      category: "physical",
+    },
   ]}
   categories={[
     { id: "title", label: "Title", color: "blue" },
     { id: "permits", label: "Permits", color: "green" },
     { id: "tax", label: "Tax", color: "amber" },
-    { id: "physical", label: "Physical", color: "purple" }
+    { id: "physical", label: "Physical", color: "purple" },
   ]}
   showProgress={true}
 />
@@ -382,16 +390,16 @@ Visit in low season to see realistic conditions.
 
 ### Step by Step
 
-| Step | Action | Duration |
-|------|--------|----------|
-| 1 | Find property | Weeks-months |
-| 2 | Negotiate price/terms | 1-2 weeks |
-| 3 | Due diligence | 2-4 weeks |
-| 4 | Structure setup (if PT PMA) | 4-8 weeks |
-| 5 | Draft contracts | 1-2 weeks |
-| 6 | Sign and pay deposit | 1 day |
-| 7 | Complete transfer | 2-4 weeks |
-| 8 | Handover | 1 day |
+| Step | Action                      | Duration     |
+| ---- | --------------------------- | ------------ |
+| 1    | Find property               | Weeks-months |
+| 2    | Negotiate price/terms       | 1-2 weeks    |
+| 3    | Due diligence               | 2-4 weeks    |
+| 4    | Structure setup (if PT PMA) | 4-8 weeks    |
+| 5    | Draft contracts             | 1-2 weeks    |
+| 6    | Sign and pay deposit        | 1 day        |
+| 7    | Complete transfer           | 2-4 weeks    |
+| 8    | Handover                    | 1 day        |
 
 ---
 
@@ -408,7 +416,7 @@ Visit in low season to see realistic conditions.
 6. **Ignoring zoning** - May not be able to rent
 7. **Verbal agreements** - Get everything in writing
 8. **Not budgeting extras** - 10-15% on top of price
-</InfoCard>
+   </InfoCard>
 
 ---
 
@@ -416,14 +424,14 @@ Visit in low season to see realistic conditions.
 
 ### After Purchase
 
-| Cost | Annual Amount |
-|------|---------------|
-| PBB (property tax) | 0.1-0.3% of NJOP |
-| Maintenance | 1-3% of value |
-| Staff (gardener, etc.) | IDR 30-60M |
-| Utilities | IDR 3-10M/month |
-| Insurance | IDR 5-15M |
-| PT PMA costs (if applicable) | IDR 20-50M |
+| Cost                         | Annual Amount    |
+| ---------------------------- | ---------------- |
+| PBB (property tax)           | 0.1-0.3% of NJOP |
+| Maintenance                  | 1-3% of value    |
+| Staff (gardener, etc.)       | IDR 30-60M       |
+| Utilities                    | IDR 3-10M/month  |
+| Insurance                    | IDR 5-15M        |
+| PT PMA costs (if applicable) | IDR 20-50M       |
 
 ---
 
@@ -431,13 +439,13 @@ Visit in low season to see realistic conditions.
 
 ### Exit Considerations
 
-| Factor | Note |
-|--------|------|
-| Market conditions | Bali market fluctuates |
-| Structure | PT PMA - can sell shares |
-| Taxes | 2.5% seller tax |
-| Finding buyers | Often foreigners |
-| Currency | IDR fluctuation |
+| Factor            | Note                     |
+| ----------------- | ------------------------ |
+| Market conditions | Bali market fluctuates   |
+| Structure         | PT PMA - can sell shares |
+| Taxes             | 2.5% seller tax          |
+| Finding buyers    | Often foreigners         |
+| Currency          | IDR fluctuation          |
 
 ---
 
@@ -450,7 +458,7 @@ Visit in low season to see realistic conditions.
     "Is leasehold safe for foreigners?",
     "Can I rent out my villa?",
     "What's the minimum price in Canggu?",
-    "Do I need a lawyer?"
+    "Do I need a lawyer?",
   ]}
 />
 

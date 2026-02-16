@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 
 export default function KBLIIntroOverlay() {
   const [isVisible, setIsVisible] = useState(true);
@@ -19,8 +19,8 @@ export default function KBLIIntroOverlay() {
   if (!isVisible) return null;
 
   return (
-    <div 
-      className={`fixed inset-0 z-[9999] flex items-center justify-center bg-[#051C2C] transition-opacity duration-1000 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}
+    <div
+      className={`fixed inset-0 z-[9999] flex items-center justify-center bg-[#051C2C] transition-opacity duration-1000 ${fadeOut ? "opacity-0" : "opacity-100"}`}
     >
       <video
         src="/videos/kbli-logo-puzzle.mp4"
@@ -38,7 +38,7 @@ export default function KBLIIntroOverlay() {
           Loading KBLI Navigator...
         </p>
       </div>
-      <button 
+      <button
         onClick={() => {
           setFadeOut(true);
           setTimeout(() => setIsVisible(false), 300);

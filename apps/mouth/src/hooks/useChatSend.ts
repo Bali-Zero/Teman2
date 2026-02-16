@@ -7,37 +7,37 @@
  * @returns Send message handler and streaming state
  */
 
-import { useCallback, useState, useEffect, useRef } from 'react';
-import { useChatStreaming } from './useChatStreaming';
-import { saveConversation } from '@/app/chat/actions';
-import { api } from '@/lib/api';
-import { logger } from '@/lib/logger';
-import { chatMetrics } from '@/lib/metrics';
-import type { Source } from '@/types';
-import type { ChatMessage, ChatImage } from '@/app/chat/actions';
-import type { AgentStep } from '@/types';
+import { useCallback, useState, useEffect, useRef } from "react";
+import { useChatStreaming } from "./useChatStreaming";
+import { saveConversation } from "@/app/chat/actions";
+import { api } from "@/lib/api";
+import { logger } from "@/lib/logger";
+import { chatMetrics } from "@/lib/metrics";
+import type { Source } from "@/types";
+import type { ChatMessage, ChatImage } from "@/app/chat/actions";
+import type { AgentStep } from "@/types";
 
 // Error message configurations for user-friendly feedback
 const ERROR_MESSAGES: Record<string, { title: string; description: string }> = {
   TIMEOUT: {
-    title: 'Response Timeout',
-    description: 'The AI took too long to respond. Please try again.',
+    title: "Response Timeout",
+    description: "The AI took too long to respond. Please try again.",
   },
   NETWORK: {
-    title: 'Connection Lost',
-    description: 'Please check your internet connection.',
+    title: "Connection Lost",
+    description: "Please check your internet connection.",
   },
   RATE_LIMIT: {
-    title: 'Too Many Requests',
-    description: 'Please wait a moment before sending another message.',
+    title: "Too Many Requests",
+    description: "Please wait a moment before sending another message.",
   },
   SERVER_ERROR: {
-    title: 'Server Error',
-    description: 'Something went wrong. Our team has been notified.',
+    title: "Server Error",
+    description: "Something went wrong. Our team has been notified.",
   },
   ABORTED: {
-    title: 'Message Stopped',
-    description: 'You stopped the message generation.',
+    title: "Message Stopped",
+    description: "You stopped the message generation.",
   },
 };
 
@@ -47,9 +47,13 @@ export interface UseChatSendOptions {
   conversationHistory: Array<{ role: string; content: string }>;
   isMountedRef: React.MutableRefObject<boolean>;
   isAbortedRef: React.MutableRefObject<boolean>;
-  onToast: (message: string, type: 'success' | 'error') => void;
+  onToast: (message: string, type: "success" | "error") => void;
   onChunk: (chunk: string) => void;
-  onComplete: (fullResponse: string, sources: Source[], metadata?: ChatMessage['metadata']) => void;
+  onComplete: (
+    fullResponse: string,
+    sources: Source[],
+    metadata?: ChatMessage["metadata"],
+  ) => void;
   onError: (error: Error) => void;
   onStep: (step: AgentStep) => void;
 }
@@ -74,14 +78,15 @@ export function useChatSend({
   onError,
   onStep,
 }: UseChatSendOptions): UseChatSendReturn {
-  const { isStreaming, setIsStreaming, sendStreamingMessage } = useChatStreaming({
-    sessionId,
-    isMountedRef,
-    isAbortedRef,
-  });
+  const { isStreaming, setIsStreaming, sendStreamingMessage } =
+    useChatStreaming({
+      sessionId,
+      isMountedRef,
+      isAbortedRef,
+    });
 
   const [streamingSteps, setStreamingSteps] = useState<Array<AgentStep>>([]);
-  const [currentStatus, setCurrentStatus] = useState('');
+  const [currentStatus, setCurrentStatus] = useState("");
 
   // Toast deduplication - max 1 toast per 5s per error type
   const lastToastTime = useRef<Record<string, number>>({});
@@ -93,17 +98,17 @@ export function useChatSend({
   const showErrorToast = useCallback(
     (error: Error) => {
       // Classify error type based on error message
-      let errorType = 'SERVER_ERROR';
-      const errorMsg = error.message?.toLowerCase() || '';
+      let errorType = "SERVER_ERROR";
+      const errorMsg = error.message?.toLowerCase() || "";
 
-      if (errorMsg.includes('timeout')) {
-        errorType = 'TIMEOUT';
-      } else if (errorMsg.includes('aborted') || errorMsg.includes('abort')) {
-        errorType = 'ABORTED';
-      } else if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
-        errorType = 'NETWORK';
-      } else if (errorMsg.includes('rate limit') || errorMsg.includes('429')) {
-        errorType = 'RATE_LIMIT';
+      if (errorMsg.includes("timeout")) {
+        errorType = "TIMEOUT";
+      } else if (errorMsg.includes("aborted") || errorMsg.includes("abort")) {
+        errorType = "ABORTED";
+      } else if (errorMsg.includes("network") || errorMsg.includes("fetch")) {
+        errorType = "NETWORK";
+      } else if (errorMsg.includes("rate limit") || errorMsg.includes("429")) {
+        errorType = "RATE_LIMIT";
       }
 
       // Check deduplication - max 1 toast per 5s per error type
@@ -111,8 +116,8 @@ export function useChatSend({
       const lastShown = lastToastTime.current[errorType] || 0;
 
       if (now - lastShown < 5000) {
-        logger.info('Toast deduplication: skipping duplicate error toast', {
-          component: 'useChatSend',
+        logger.info("Toast deduplication: skipping duplicate error toast", {
+          component: "useChatSend",
           metadata: { errorType, timeSinceLastToast: now - lastShown },
         });
         return;
@@ -120,17 +125,17 @@ export function useChatSend({
 
       // Show toast with user-friendly message
       const config = ERROR_MESSAGES[errorType] || ERROR_MESSAGES.SERVER_ERROR;
-      onToast(config.description, 'error');
+      onToast(config.description, "error");
 
       // Update last toast time
       lastToastTime.current[errorType] = now;
 
-      logger.info('Error toast shown', {
-        component: 'useChatSend',
+      logger.info("Error toast shown", {
+        component: "useChatSend",
         metadata: { errorType, title: config.title },
       });
     },
-    [onToast]
+    [onToast],
   );
 
   const sendMessage = useCallback(
@@ -144,9 +149,9 @@ export function useChatSend({
       // Capture images before clearing
       const imagesToSend = [...attachedImages];
 
-      logger.info('Message send started', {
-        component: 'useChatSend',
-        action: 'sendMessage',
+      logger.info("Message send started", {
+        component: "useChatSend",
+        action: "sendMessage",
         metadata: {
           sessionId,
           textLength: trimmedInput.length,
@@ -160,26 +165,27 @@ export function useChatSend({
       chatMetrics.streamingStarted(sessionId);
 
       setStreamingSteps([]);
-      setCurrentStatus('');
+      setCurrentStatus("");
       setIsStreaming(true);
 
       try {
         await sendStreamingMessage(
-          trimmedInput || '[Image attached]',
+          trimmedInput || "[Image attached]",
           conversationHistory,
           {
             onChunk,
             onComplete,
             onError: (error: Error) => {
-              const streamingDuration = (Date.now() - streamingStartTime) / 1000;
-              chatMetrics.streamingError(sessionId, error.name || 'Unknown');
-              setCurrentStatus('');
+              const streamingDuration =
+                (Date.now() - streamingStartTime) / 1000;
+              chatMetrics.streamingError(sessionId, error.name || "Unknown");
+              setCurrentStatus("");
               showErrorToast(error);
               onError(error);
             },
             onStep: (step) => {
               setStreamingSteps((prev) => [...prev, step]);
-              if (step.type === 'status' && typeof step.data === 'string') {
+              if (step.type === "status" && typeof step.data === "string") {
                 setCurrentStatus(step.data);
               }
               onStep(step);
@@ -187,32 +193,36 @@ export function useChatSend({
           },
           imagesToSend.length > 0
             ? imagesToSend.map((img) => ({
-                base64: img.base64.replace(/^data:image\/[^;]+;base64,/, ''),
+                base64: img.base64.replace(/^data:image\/[^;]+;base64,/, ""),
                 name: img.name,
               }))
-            : undefined
+            : undefined,
         );
       } catch (error) {
         logger.error(
-          'Message send failed',
+          "Message send failed",
           {
-            component: 'useChatSend',
-            action: 'sendMessage',
+            component: "useChatSend",
+            action: "sendMessage",
             metadata: {
               sessionId,
               hasImages: imagesToSend.length > 0,
               messageLength: trimmedInput.length,
             },
           },
-          error instanceof Error ? error : new Error(String(error))
+          error instanceof Error ? error : new Error(String(error)),
         );
 
         const streamingDuration = (Date.now() - streamingStartTime) / 1000;
-        chatMetrics.streamingError(sessionId, error instanceof Error ? error.name : 'Unknown');
+        chatMetrics.streamingError(
+          sessionId,
+          error instanceof Error ? error.name : "Unknown",
+        );
 
-        setCurrentStatus('');
+        setCurrentStatus("");
         setStreamingSteps([]);
-        const errorObj = error instanceof Error ? error : new Error(String(error));
+        const errorObj =
+          error instanceof Error ? error : new Error(String(error));
         showErrorToast(errorObj);
         onError(errorObj);
       } finally {
@@ -232,7 +242,7 @@ export function useChatSend({
       onError,
       onStep,
       showErrorToast,
-    ]
+    ],
   );
 
   // Cleanup streaming steps to prevent memory leak

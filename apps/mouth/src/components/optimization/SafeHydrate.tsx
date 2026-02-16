@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * SafeHydrate Component
@@ -6,7 +6,7 @@
  * Prevents hydration mismatch errors
  */
 
-import { useEffect, useState, ReactNode } from 'react';
+import { useEffect, useState, ReactNode } from "react";
 
 interface SafeHydrateProps {
   children: ReactNode;

@@ -6,9 +6,9 @@
  * Usage: npm run type-safety:check
  */
 
-import { execSync } from 'child_process';
-import { readFileSync, readdirSync } from 'fs';
-import { join } from 'path';
+import { execSync } from "child_process";
+import { readFileSync, readdirSync } from "fs";
+import { join } from "path";
 
 interface AnyUsage {
   file: string;
@@ -21,8 +21,8 @@ interface AnyUsage {
  * Scan file for `any` usage
  */
 function scanFile(filePath: string): AnyUsage[] {
-  const content = readFileSync(filePath, 'utf-8');
-  const lines = content.split('\n');
+  const content = readFileSync(filePath, "utf-8");
+  const lines = content.split("\n");
   const usages: AnyUsage[] = [];
 
   lines.forEach((line, index) => {
@@ -32,9 +32,9 @@ function scanFile(filePath: string): AnyUsage[] {
 
     if (matches) {
       const isTest =
-        filePath.includes('.test.') ||
-        filePath.includes('.spec.') ||
-        filePath.includes('__tests__');
+        filePath.includes(".test.") ||
+        filePath.includes(".spec.") ||
+        filePath.includes("__tests__");
       usages.push({
         file: filePath,
         line: index + 1,
@@ -50,7 +50,10 @@ function scanFile(filePath: string): AnyUsage[] {
 /**
  * Recursively scan directory
  */
-function scanDirectory(dir: string, extensions: string[] = ['.ts', '.tsx']): AnyUsage[] {
+function scanDirectory(
+  dir: string,
+  extensions: string[] = [".ts", ".tsx"],
+): AnyUsage[] {
   const usages: AnyUsage[] = [];
 
   try {
@@ -60,13 +63,16 @@ function scanDirectory(dir: string, extensions: string[] = ['.ts', '.tsx']): Any
       const fullPath = join(dir, entry.name);
 
       // Skip node_modules, .next, etc.
-      if (entry.name.startsWith('.') || entry.name === 'node_modules') {
+      if (entry.name.startsWith(".") || entry.name === "node_modules") {
         continue;
       }
 
       if (entry.isDirectory()) {
         usages.push(...scanDirectory(fullPath, extensions));
-      } else if (entry.isFile() && extensions.some((ext) => entry.name.endsWith(ext))) {
+      } else if (
+        entry.isFile() &&
+        extensions.some((ext) => entry.name.endsWith(ext))
+      ) {
         usages.push(...scanFile(fullPath));
       }
     }
@@ -93,7 +99,7 @@ function generateReport(usages: AnyUsage[]): void {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 10);
 
-  console.log('\n📊 TYPE SAFETY REPORT\n');
+  console.log("\n📊 TYPE SAFETY REPORT\n");
   console.log(`Total 'any' usage: ${usages.length}`);
   console.log(`  Production: ${productionUsages.length}`);
   console.log(`  Tests: ${testUsages.length}`);
@@ -102,15 +108,17 @@ function generateReport(usages: AnyUsage[]): void {
     console.log(`  ${index + 1}. ${file}: ${count}`);
   });
 
-  console.log(`\n✅ Type Safety Score: ${Math.max(0, 100 - productionUsages.length * 2)}%`);
+  console.log(
+    `\n✅ Type Safety Score: ${Math.max(0, 100 - productionUsages.length * 2)}%`,
+  );
 }
 
 /**
  * Main
  */
 function main() {
-  const srcDir = join(process.cwd(), 'src');
-  console.log('🔍 Scanning for `any` usage...');
+  const srcDir = join(process.cwd(), "src");
+  console.log("🔍 Scanning for `any` usage...");
 
   const usages = scanDirectory(srcDir);
   generateReport(usages);
@@ -118,7 +126,9 @@ function main() {
   // Exit with error if too many `any` in production
   const productionCount = usages.filter((u) => !u.isTest).length;
   if (productionCount > 20) {
-    console.log(`\n⚠️  Warning: ${productionCount} 'any' types found in production code`);
+    console.log(
+      `\n⚠️  Warning: ${productionCount} 'any' types found in production code`,
+    );
     process.exit(1);
   }
 }

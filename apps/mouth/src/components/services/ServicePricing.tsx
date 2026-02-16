@@ -1,13 +1,16 @@
-'use client';
+"use client";
 
-import * as React from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
-import { Check, X, Info, Phone } from 'lucide-react';
-import type { ServicePackage } from '@/data/services_data';
+import * as React from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { Check, X, Info, Phone } from "lucide-react";
+import type { ServicePackage } from "@/data/services_data";
 
 // ServiceData without icon (React component cannot be serialized)
-type ServiceDataWithoutIcon = Omit<import('@/data/services_data').ServiceData, 'icon'>;
+type ServiceDataWithoutIcon = Omit<
+  import("@/data/services_data").ServiceData,
+  "icon"
+>;
 
 interface ServicePricingProps {
   service: ServiceDataWithoutIcon;
@@ -15,43 +18,48 @@ interface ServicePricingProps {
 }
 
 // Get visa package color based on type (KITAS/KITAP = orange, Visit = blue)
-function getVisaPackageColor(name: string): { bg: string; border: string; badge: string } {
+function getVisaPackageColor(name: string): {
+  bg: string;
+  border: string;
+  badge: string;
+} {
   const lowerName = name.toLowerCase();
   // KITAS, KITAP, Working, Freelance, Investor KITAS, Spouse, Dependent, Retirement KITAS = Orange
   if (
-    lowerName.includes('kitas') ||
-    lowerName.includes('kitap') ||
-    lowerName.includes('working') ||
-    lowerName.includes('freelance') ||
-    lowerName.includes('spouse') ||
-    lowerName.includes('dependent') ||
-    lowerName.includes('retirement') ||
-    lowerName.includes('investor kitas')
+    lowerName.includes("kitas") ||
+    lowerName.includes("kitap") ||
+    lowerName.includes("working") ||
+    lowerName.includes("freelance") ||
+    lowerName.includes("spouse") ||
+    lowerName.includes("dependent") ||
+    lowerName.includes("retirement") ||
+    lowerName.includes("investor kitas")
   ) {
     return {
-      bg: 'bg-orange-500/20',
-      border: 'border-orange-500/40 hover:border-orange-400',
-      badge: 'bg-orange-500',
+      bg: "bg-orange-500/20",
+      border: "border-orange-500/40 hover:border-orange-400",
+      badge: "bg-orange-500",
     };
   }
   // Visit visas (C, D series) = Blue
   return {
-    bg: 'bg-sky-500/20',
-    border: 'border-sky-500/40 hover:border-sky-400',
-    badge: 'bg-sky-500',
+    bg: "bg-sky-500/20",
+    border: "border-sky-500/40 hover:border-sky-400",
+    badge: "bg-sky-500",
   };
 }
 
 export default function ServicePricing({ service, slug }: ServicePricingProps) {
-  const [selectedPackage, setSelectedPackage] = React.useState<ServicePackage | null>(null);
+  const [selectedPackage, setSelectedPackage] =
+    React.useState<ServicePackage | null>(null);
 
   // Close modal on escape key
   React.useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setSelectedPackage(null);
+      if (e.key === "Escape") setSelectedPackage(null);
     };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
   }, []);
 
   return (
@@ -64,38 +72,49 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {service.packages.map((pkg) => {
               // Use visa colors for visa service
-              const visaColors = slug === 'visa' ? getVisaPackageColor(pkg.name) : null;
+              const visaColors =
+                slug === "visa" ? getVisaPackageColor(pkg.name) : null;
 
               return (
                 <div
                   key={pkg.name}
                   className={`rounded-xl border p-6 cursor-pointer transition-all hover:scale-[1.02] ${
-                    slug === 'visa' && visaColors
+                    slug === "visa" && visaColors
                       ? `${visaColors.bg} ${visaColors.border}`
                       : pkg.popular
-                        ? 'border-[#2251ff] bg-[#2251ff]/10 hover:border-[#2251ff]'
-                        : 'border-white/10 bg-[#0a2540] hover:border-white/30'
+                        ? "border-[#2251ff] bg-[#2251ff]/10 hover:border-[#2251ff]"
+                        : "border-white/10 bg-[#0a2540] hover:border-white/30"
                   }`}
                   onClick={() => setSelectedPackage(pkg)}
                 >
                   {pkg.popular && (
                     <span
                       className={`inline-block px-3 py-1 rounded-full text-white text-xs font-medium mb-4 ${
-                        slug === 'visa' && visaColors ? visaColors.badge : 'bg-[#2251ff]'
+                        slug === "visa" && visaColors
+                          ? visaColors.badge
+                          : "bg-[#2251ff]"
                       }`}
                     >
                       Most Popular
                     </span>
                   )}
-                  <h3 className="text-white font-medium text-lg mb-2">{pkg.name}</h3>
-                  <p className="text-white/50 text-sm mb-4">{pkg.description}</p>
+                  <h3 className="text-white font-medium text-lg mb-2">
+                    {pkg.name}
+                  </h3>
+                  <p className="text-white/50 text-sm mb-4">
+                    {pkg.description}
+                  </p>
 
                   <div className="mb-6">
-                    {pkg.price === 'Contact' ? (
-                      <span className="text-2xl font-bold text-[#2251ff]">Contact for quote</span>
+                    {pkg.price === "Contact" ? (
+                      <span className="text-2xl font-bold text-[#2251ff]">
+                        Contact for quote
+                      </span>
                     ) : (
                       <>
-                        <span className="text-3xl font-bold text-white">{pkg.price}</span>
+                        <span className="text-3xl font-bold text-white">
+                          {pkg.price}
+                        </span>
                         <span className="text-white/40 text-sm ml-2">IDR</span>
                       </>
                     )}
@@ -103,7 +122,10 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
 
                   <ul className="space-y-3 mb-6">
                     {pkg.features.map((feature, i) => (
-                      <li key={i} className="flex items-start gap-2 text-white/70 text-sm">
+                      <li
+                        key={i}
+                        className="flex items-start gap-2 text-white/70 text-sm"
+                      >
                         <Check className="w-4 h-4 text-[#22c55e] mt-0.5 flex-shrink-0" />
                         {feature}
                       </li>
@@ -112,11 +134,11 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
 
                   <button
                     className={`flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg font-medium transition-colors ${
-                      slug === 'visa' && visaColors
+                      slug === "visa" && visaColors
                         ? `${visaColors.badge} text-white hover:opacity-90`
                         : pkg.popular
-                          ? 'bg-[#2251ff] text-white hover:bg-[#1a41cc]'
-                          : 'border border-white/20 text-white hover:bg-white/10'
+                          ? "bg-[#2251ff] text-white hover:bg-[#1a41cc]"
+                          : "border border-white/20 text-white hover:bg-white/10"
                     }`}
                   >
                     <Info className="w-4 h-4" />
@@ -159,18 +181,28 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
                   Most Popular
                 </span>
               )}
-              <h2 className="font-serif text-2xl text-white mb-2">{selectedPackage.name}</h2>
-              <p className="text-white/60 mb-6">{selectedPackage.description}</p>
+              <h2 className="font-serif text-2xl text-white mb-2">
+                {selectedPackage.name}
+              </h2>
+              <p className="text-white/60 mb-6">
+                {selectedPackage.description}
+              </p>
 
               {/* Price */}
               <div className="bg-[#051C2C] rounded-xl p-4 mb-6">
-                {selectedPackage.price === 'Contact' ? (
-                  <span className="text-2xl font-bold text-[#2251ff]">Contact for quote</span>
+                {selectedPackage.price === "Contact" ? (
+                  <span className="text-2xl font-bold text-[#2251ff]">
+                    Contact for quote
+                  </span>
                 ) : (
                   <div>
-                    <span className="text-3xl font-bold text-white">{selectedPackage.price}</span>
+                    <span className="text-3xl font-bold text-white">
+                      {selectedPackage.price}
+                    </span>
                     <span className="text-white/40 text-sm ml-2">IDR</span>
-                    <p className="text-[#22c55e] text-sm mt-1">All-inclusive pricing</p>
+                    <p className="text-[#22c55e] text-sm mt-1">
+                      All-inclusive pricing
+                    </p>
                   </div>
                 )}
               </div>
@@ -213,7 +245,12 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
                 href="/chat"
                 className="flex items-center justify-center gap-2 w-full px-6 py-3 rounded-xl border border-white/20 text-white font-medium hover:bg-white/10 transition-colors"
               >
-                <Image src="/assets/logo/zantara-lotus.png" alt="" width={60} height={60} />
+                <Image
+                  src="/assets/logo/zantara-lotus.png"
+                  alt=""
+                  width={60}
+                  height={60}
+                />
                 Ask Zantara AI
               </Link>
             </div>

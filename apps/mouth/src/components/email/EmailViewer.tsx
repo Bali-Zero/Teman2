@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import DOMPurify from 'dompurify';
-import { logger } from '@/lib/logger';
-import { toError } from '@/lib/types/common';
+import React, { useState, useEffect } from "react";
+import DOMPurify from "dompurify";
+import { logger } from "@/lib/logger";
+import { toError } from "@/lib/types/common";
 import {
   X,
   Reply,
@@ -20,11 +20,11 @@ import {
   UserPlus,
   ExternalLink,
   Building2,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { api } from '@/lib/api';
-import type { EmailDetail, EmailAttachment } from '@/lib/api/email/email.types';
-import type { Client } from '@/lib/api/crm/crm.types';
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
+import type { EmailDetail, EmailAttachment } from "@/lib/api/email/email.types";
+import type { Client } from "@/lib/api/crm/crm.types";
 
 interface EmailViewerProps {
   email: EmailDetail | null;
@@ -72,9 +72,9 @@ export function EmailViewer({
         setSenderClient(client);
       } catch (error) {
         logger.error(
-          'Failed to lookup client',
-          { component: 'EmailViewer', action: 'lookupClient' },
-          toError(error)
+          "Failed to lookup client",
+          { component: "EmailViewer", action: "lookupClient" },
+          toError(error),
         );
         setSenderClient(null);
       } finally {
@@ -109,7 +109,9 @@ export function EmailViewer({
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[var(--background-elevated)] flex items-center justify-center">
             <Paperclip className="w-8 h-8 text-[var(--foreground-muted)]" />
           </div>
-          <p className="text-sm text-[var(--foreground-muted)]">Select an email to view</p>
+          <p className="text-sm text-[var(--foreground-muted)]">
+            Select an email to view
+          </p>
         </div>
       </div>
     );
@@ -127,7 +129,7 @@ export function EmailViewer({
             <X className="w-5 h-5" />
           </button>
           <h2 className="text-lg font-semibold text-[var(--foreground)] truncate max-w-md">
-            {email.subject || '(No subject)'}
+            {email.subject || "(No subject)"}
           </h2>
         </div>
 
@@ -158,14 +160,16 @@ export function EmailViewer({
           <button
             onClick={onToggleFlag}
             className={cn(
-              'p-2 rounded-lg transition-colors',
+              "p-2 rounded-lg transition-colors",
               email.is_flagged
-                ? 'text-[var(--warning)]'
-                : 'text-[var(--foreground-muted)] hover:text-[var(--warning)]'
+                ? "text-[var(--warning)]"
+                : "text-[var(--foreground-muted)] hover:text-[var(--warning)]",
             )}
-            title={email.is_flagged ? 'Remove star' : 'Star'}
+            title={email.is_flagged ? "Remove star" : "Star"}
           >
-            <Star className={cn('w-5 h-5', email.is_flagged && 'fill-current')} />
+            <Star
+              className={cn("w-5 h-5", email.is_flagged && "fill-current")}
+            />
           </button>
           <button
             onClick={onDelete}
@@ -201,13 +205,18 @@ export function EmailViewer({
 
               <div className="flex items-center gap-2 text-sm text-[var(--foreground-muted)] mt-0.5">
                 <span>to {formatEmailList(email.to)}</span>
-                {email.cc && email.cc.length > 0 && <span>, cc: {formatEmailList(email.cc)}</span>}
+                {email.cc && email.cc.length > 0 && (
+                  <span>, cc: {formatEmailList(email.cc)}</span>
+                )}
                 <button
                   onClick={() => setShowFullHeaders(!showFullHeaders)}
                   className="p-0.5 hover:bg-[var(--background-elevated)] rounded"
                 >
                   <ChevronDown
-                    className={cn('w-4 h-4 transition-transform', showFullHeaders && 'rotate-180')}
+                    className={cn(
+                      "w-4 h-4 transition-transform",
+                      showFullHeaders && "rotate-180",
+                    )}
                   />
                 </button>
               </div>
@@ -218,15 +227,18 @@ export function EmailViewer({
                     <strong>From:</strong> {formatEmailAddress(email.from)}
                   </div>
                   <div>
-                    <strong>To:</strong> {email.to.map((t) => formatEmailAddress(t)).join(', ')}
+                    <strong>To:</strong>{" "}
+                    {email.to.map((t) => formatEmailAddress(t)).join(", ")}
                   </div>
                   {email.cc && email.cc.length > 0 && (
                     <div>
-                      <strong>Cc:</strong> {email.cc.map((c) => formatEmailAddress(c)).join(', ')}
+                      <strong>Cc:</strong>{" "}
+                      {email.cc.map((c) => formatEmailAddress(c)).join(", ")}
                     </div>
                   )}
                   <div>
-                    <strong>Date:</strong> {new Date(email.date).toLocaleString()}
+                    <strong>Date:</strong>{" "}
+                    {new Date(email.date).toLocaleString()}
                   </div>
                 </div>
               )}
@@ -253,7 +265,7 @@ export function EmailViewer({
                 href={`/clients/${senderClient.id}`}
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--success)]/10 text-[var(--success)] hover:bg-[var(--success)]/20 transition-colors text-sm font-medium"
               >
-                {senderClient.client_type === 'company' ? (
+                {senderClient.client_type === "company" ? (
                   <Building2 className="w-4 h-4" />
                 ) : (
                   <User className="w-4 h-4" />
@@ -263,7 +275,9 @@ export function EmailViewer({
               </a>
             ) : (
               <button
-                onClick={() => onAddToCRM?.(email.from.address, email.from.name || '')}
+                onClick={() =>
+                  onAddToCRM?.(email.from.address, email.from.name || "")
+                }
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)]/20 transition-colors text-sm font-medium"
               >
                 <UserPlus className="w-4 h-4" />
@@ -279,7 +293,8 @@ export function EmailViewer({
             <div className="flex items-center gap-2 mb-2">
               <Paperclip className="w-4 h-4 text-[var(--foreground-muted)]" />
               <span className="text-sm font-medium text-[var(--foreground)]">
-                {email.attachments.length} Attachment{email.attachments.length > 1 ? 's' : ''}
+                {email.attachments.length} Attachment
+                {email.attachments.length > 1 ? "s" : ""}
               </span>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -287,12 +302,15 @@ export function EmailViewer({
                 <button
                   key={attachment.attachment_id}
                   onClick={() =>
-                    onDownloadAttachment(attachment.attachment_id, attachment.filename)
+                    onDownloadAttachment(
+                      attachment.attachment_id,
+                      attachment.filename,
+                    )
                   }
                   className={cn(
-                    'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors',
-                    'bg-[var(--background-elevated)] hover:bg-[var(--background-secondary)]',
-                    'border border-[var(--border)]'
+                    "flex items-center gap-2 px-3 py-2 rounded-lg transition-colors",
+                    "bg-[var(--background-elevated)] hover:bg-[var(--background-secondary)]",
+                    "border border-[var(--border)]",
                   )}
                 >
                   <FileIcon mimeType={attachment.mime_type} />
@@ -316,7 +334,9 @@ export function EmailViewer({
           {email.html_content ? (
             <div
               className="prose prose-sm prose-invert max-w-none"
-              dangerouslySetInnerHTML={{ __html: sanitizeHtml(email.html_content) }}
+              dangerouslySetInnerHTML={{
+                __html: sanitizeHtml(email.html_content),
+              }}
             />
           ) : (
             <pre className="text-sm text-[var(--foreground)] whitespace-pre-wrap font-sans">
@@ -331,9 +351,9 @@ export function EmailViewer({
         <button
           onClick={onReply}
           className={cn(
-            'w-full py-2.5 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2',
-            'border border-[var(--border)] hover:border-[var(--accent)]',
-            'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
+            "w-full py-2.5 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2",
+            "border border-[var(--border)] hover:border-[var(--accent)]",
+            "text-[var(--foreground-muted)] hover:text-[var(--foreground)]",
           )}
         >
           <Reply className="w-4 h-4" />
@@ -345,21 +365,21 @@ export function EmailViewer({
 }
 
 function FileIcon({ mimeType }: { mimeType: string }) {
-  const isPdf = mimeType.includes('pdf');
-  const isImage = mimeType.startsWith('image/');
-  const isDoc = mimeType.includes('document') || mimeType.includes('word');
+  const isPdf = mimeType.includes("pdf");
+  const isImage = mimeType.startsWith("image/");
+  const isDoc = mimeType.includes("document") || mimeType.includes("word");
 
   return (
     <div
       className={cn(
-        'w-8 h-8 rounded flex items-center justify-center text-xs font-bold',
-        isPdf && 'bg-red-500/10 text-red-500',
-        isImage && 'bg-blue-500/10 text-blue-500',
-        isDoc && 'bg-blue-600/10 text-blue-600',
-        !isPdf && !isImage && !isDoc && 'bg-gray-500/10 text-gray-500'
+        "w-8 h-8 rounded flex items-center justify-center text-xs font-bold",
+        isPdf && "bg-red-500/10 text-red-500",
+        isImage && "bg-blue-500/10 text-blue-500",
+        isDoc && "bg-blue-600/10 text-blue-600",
+        !isPdf && !isImage && !isDoc && "bg-gray-500/10 text-gray-500",
       )}
     >
-      {isPdf ? 'PDF' : isImage ? 'IMG' : isDoc ? 'DOC' : 'FILE'}
+      {isPdf ? "PDF" : isImage ? "IMG" : isDoc ? "DOC" : "FILE"}
     </div>
   );
 }
@@ -372,15 +392,15 @@ function formatDate(dateStr: string): string {
       ? new Date(timestamp) // Timestamp in milliseconds
       : new Date(dateStr); // ISO string
 
-  if (isNaN(date.getTime())) return '';
+  if (isNaN(date.getTime())) return "";
 
-  return date.toLocaleString('it-IT', {
-    weekday: 'short',
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+  return date.toLocaleString("it-IT", {
+    weekday: "short",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
@@ -395,10 +415,10 @@ function formatFileSize(bytes: number): string {
  * Used to fix Zoho API returning encoded strings in email addresses
  */
 function decodeHtmlEntities(text: string | undefined): string {
-  if (!text) return '';
+  if (!text) return "";
   // Use DOM parser to safely decode HTML entities
-  const doc = new DOMParser().parseFromString(text, 'text/html');
-  return doc.documentElement.textContent || '';
+  const doc = new DOMParser().parseFromString(text, "text/html");
+  return doc.documentElement.textContent || "";
 }
 
 /**
@@ -415,8 +435,10 @@ function formatEmailAddress(addr: { address: string; name?: string }): string {
 /**
  * Format a list of email addresses for display
  */
-function formatEmailList(addrs: Array<{ address: string; name?: string }>): string {
-  return addrs.map((a) => decodeHtmlEntities(a.name) || a.address).join(', ');
+function formatEmailList(
+  addrs: Array<{ address: string; name?: string }>,
+): string {
+  return addrs.map((a) => decodeHtmlEntities(a.name) || a.address).join(", ");
 }
 
 function sanitizeHtml(html: string): string {
@@ -424,53 +446,61 @@ function sanitizeHtml(html: string): string {
   // Removes XSS vectors: scripts, event handlers, javascript: URLs, data: URLs, etc.
   return DOMPurify.sanitize(html, {
     ALLOWED_TAGS: [
-      'a',
-      'b',
-      'i',
-      'u',
-      'strong',
-      'em',
-      'p',
-      'br',
-      'div',
-      'span',
-      'ul',
-      'ol',
-      'li',
-      'h1',
-      'h2',
-      'h3',
-      'h4',
-      'h5',
-      'h6',
-      'table',
-      'thead',
-      'tbody',
-      'tr',
-      'td',
-      'th',
-      'img',
-      'blockquote',
-      'pre',
-      'code',
-      'hr',
+      "a",
+      "b",
+      "i",
+      "u",
+      "strong",
+      "em",
+      "p",
+      "br",
+      "div",
+      "span",
+      "ul",
+      "ol",
+      "li",
+      "h1",
+      "h2",
+      "h3",
+      "h4",
+      "h5",
+      "h6",
+      "table",
+      "thead",
+      "tbody",
+      "tr",
+      "td",
+      "th",
+      "img",
+      "blockquote",
+      "pre",
+      "code",
+      "hr",
     ],
     ALLOWED_ATTR: [
-      'href',
-      'src',
-      'alt',
-      'title',
-      'class',
-      'style',
-      'width',
-      'height',
-      'align',
-      'valign',
-      'colspan',
-      'rowspan',
+      "href",
+      "src",
+      "alt",
+      "title",
+      "class",
+      "style",
+      "width",
+      "height",
+      "align",
+      "valign",
+      "colspan",
+      "rowspan",
     ],
     ALLOW_DATA_ATTR: false,
-    FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input', 'button'],
-    FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover'],
+    FORBID_TAGS: [
+      "script",
+      "iframe",
+      "object",
+      "embed",
+      "form",
+      "input",
+      "button",
+    ],
+    FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover"],
   });
 }

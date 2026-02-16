@@ -384,7 +384,7 @@ export function useChatPage() {
       const tempId = `temp-${Date.now()}`;
       const userMessage: Message = {
         id: tempId,
-        role: 'user',
+        role: "user",
         content,
         timestamp: new Date().toISOString(),
       };
@@ -408,8 +408,8 @@ export function useChatPage() {
           // Add placeholder for assistant
           const assistantMessage: Message = {
             id: response.messageId,
-            role: 'assistant',
-            content: '',
+            role: "assistant",
+            content: "",
             isStreaming: true,
           };
           setMessages((prev) => [...prev, assistantMessage]);
@@ -418,14 +418,18 @@ export function useChatPage() {
           for await (const chunk of response.stream) {
             setMessages((prev) =>
               prev.map((m) =>
-                m.id === response.messageId ? { ...m, content: m.content + chunk } : m
-              )
+                m.id === response.messageId
+                  ? { ...m, content: m.content + chunk }
+                  : m,
+              ),
             );
           }
 
           // Mark as complete
           setMessages((prev) =>
-            prev.map((m) => (m.id === response.messageId ? { ...m, isStreaming: false } : m))
+            prev.map((m) =>
+              m.id === response.messageId ? { ...m, isStreaming: false } : m,
+            ),
           );
 
           setIsStreaming(false);
@@ -437,12 +441,14 @@ export function useChatPage() {
         }
       } catch (error) {
         // Mark message as failed
-        setMessages((prev) => prev.map((m) => (m.id === tempId ? { ...m, error: true } : m)));
+        setMessages((prev) =>
+          prev.map((m) => (m.id === tempId ? { ...m, error: true } : m)),
+        );
       } finally {
         setIsLoading(false);
       }
     },
-    [conversationId, sendMessage, playTTS]
+    [conversationId, sendMessage, playTTS],
   );
 
   // New conversation
@@ -460,7 +466,7 @@ export function useChatPage() {
         handleNewConversation();
       }
     },
-    [conversationId, refreshConversations, handleNewConversation]
+    [conversationId, refreshConversations, handleNewConversation],
   );
 
   return {
@@ -493,14 +499,14 @@ export function useChatStreaming() {
 
   const startStream = useCallback(async function* (
     conversationId: string,
-    content: string
+    content: string,
   ): AsyncGenerator<string> {
     // Create abort controller
     abortControllerRef.current = new AbortController();
 
-    const response = await fetch('/api/chat/stream', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const response = await fetch("/api/chat/stream", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ conversationId, content }),
       signal: abortControllerRef.current.signal,
     });
@@ -514,9 +520,9 @@ export function useChatStreaming() {
 
       const chunk = decoder.decode(value);
       // Parse SSE format
-      const lines = chunk.split('\n');
+      const lines = chunk.split("\n");
       for (const line of lines) {
-        if (line.startsWith('data: ')) {
+        if (line.startsWith("data: ")) {
           const data = JSON.parse(line.slice(6));
           yield data.content;
         }
@@ -567,7 +573,7 @@ export function useChatTTS() {
         setIsSpeaking(false);
       }
     },
-    [queue]
+    [queue],
   );
 
   const stopTTS = useCallback(() => {
@@ -584,7 +590,7 @@ export function useChatTTS() {
         playTTS(text);
       }
     },
-    [isSpeaking, playTTS]
+    [isSpeaking, playTTS],
   );
 
   return { playTTS, stopTTS, queueTTS, isSpeaking };
@@ -603,12 +609,12 @@ export function useChatTTS() {
 export const chatApi = {
   // Send message
   async send(data: SendMessageRequest): Promise<SendMessageResponse> {
-    return api.post('/api/chat/send', data);
+    return api.post("/api/chat/send", data);
   },
 
   // Stream message
   stream(data: SendMessageRequest): EventSource {
-    return api.stream('/api/chat/stream', data);
+    return api.stream("/api/chat/stream", data);
   },
 
   // Get conversation
@@ -618,7 +624,7 @@ export const chatApi = {
 
   // List conversations
   async listConversations(): Promise<Conversation[]> {
-    return api.get('/api/conversations');
+    return api.get("/api/conversations");
   },
 
   // Delete conversation
@@ -628,14 +634,14 @@ export const chatApi = {
 
   // Generate TTS
   async generateTTS(text: string): Promise<TTSResponse> {
-    return api.post('/api/tts/generate', { text });
+    return api.post("/api/tts/generate", { text });
   },
 
   // Transcribe audio
   async transcribe(audio: Blob): Promise<TranscribeResponse> {
     const formData = new FormData();
-    formData.append('audio', audio);
-    return api.post('/api/transcribe', formData);
+    formData.append("audio", audio);
+    return api.post("/api/transcribe", formData);
   },
 };
 ```
@@ -647,7 +653,7 @@ export const chatApi = {
 ```typescript
 interface Message {
   id: string;
-  role: 'user' | 'assistant' | 'system';
+  role: "user" | "assistant" | "system";
   content: string;
   timestamp: string;
 

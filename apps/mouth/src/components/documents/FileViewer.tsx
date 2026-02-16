@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import {
   X,
   Download,
@@ -14,10 +14,10 @@ import {
   Video,
   Music,
   File,
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import type { FileItem } from '@/lib/api/drive/drive.types';
-import { api } from '@/lib/api';
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import type { FileItem } from "@/lib/api/drive/drive.types";
+import { api } from "@/lib/api";
 
 interface FileViewerProps {
   file: FileItem | null;
@@ -27,53 +27,64 @@ interface FileViewerProps {
 }
 
 // Map MIME types to viewer types
-type ViewerType = 'image' | 'video' | 'audio' | 'pdf' | 'google-doc' | 'unsupported';
+type ViewerType =
+  | "image"
+  | "video"
+  | "audio"
+  | "pdf"
+  | "google-doc"
+  | "unsupported";
 
 function getViewerType(mimeType?: string): ViewerType {
-  if (!mimeType) return 'unsupported';
+  if (!mimeType) return "unsupported";
 
-  if (mimeType.startsWith('image/')) return 'image';
-  if (mimeType.startsWith('video/')) return 'video';
-  if (mimeType.startsWith('audio/')) return 'audio';
-  if (mimeType === 'application/pdf') return 'pdf';
+  if (mimeType.startsWith("image/")) return "image";
+  if (mimeType.startsWith("video/")) return "video";
+  if (mimeType.startsWith("audio/")) return "audio";
+  if (mimeType === "application/pdf") return "pdf";
 
   // Google Docs types
   if (
-    mimeType === 'application/vnd.google-apps.document' ||
-    mimeType === 'application/vnd.google-apps.spreadsheet' ||
-    mimeType === 'application/vnd.google-apps.presentation' ||
-    mimeType === 'application/vnd.google-apps.drawing'
+    mimeType === "application/vnd.google-apps.document" ||
+    mimeType === "application/vnd.google-apps.spreadsheet" ||
+    mimeType === "application/vnd.google-apps.presentation" ||
+    mimeType === "application/vnd.google-apps.drawing"
   ) {
-    return 'google-doc';
+    return "google-doc";
   }
 
-  return 'unsupported';
+  return "unsupported";
 }
 
 function getFileTypeIcon(viewerType: ViewerType) {
   switch (viewerType) {
-    case 'image':
+    case "image":
       return ImageIcon;
-    case 'video':
+    case "video":
       return Video;
-    case 'audio':
+    case "audio":
       return Music;
-    case 'pdf':
-    case 'google-doc':
+    case "pdf":
+    case "google-doc":
       return FileText;
     default:
       return File;
   }
 }
 
-export function FileViewer({ file, isOpen, onClose, onDownload }: FileViewerProps) {
+export function FileViewer({
+  file,
+  isOpen,
+  onClose,
+  onDownload,
+}: FileViewerProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [zoom, setZoom] = useState(100);
   const [rotation, setRotation] = useState(0);
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
 
-  const viewerType = file ? getViewerType(file.mime_type) : 'unsupported';
+  const viewerType = file ? getViewerType(file.mime_type) : "unsupported";
   const FileIcon = getFileTypeIcon(viewerType);
 
   useEffect(() => {
@@ -87,29 +98,29 @@ export function FileViewer({ file, isOpen, onClose, onDownload }: FileViewerProp
     }
 
     // For images, keep loading state - will be cleared by onLoad/onError handlers
-    if (viewerType === 'image') {
+    if (viewerType === "image") {
       const url = api.drive.getDownloadUrl(file.id);
       setMediaUrl(url);
       // Don't set loading=false here - let the img onLoad event handle it
-    } else if (viewerType === 'video' || viewerType === 'audio') {
+    } else if (viewerType === "video" || viewerType === "audio") {
       const url = api.drive.getDownloadUrl(file.id);
       setMediaUrl(url);
       // Keep loading for video/audio - onLoadedData will clear it
-    } else if (viewerType === 'pdf') {
+    } else if (viewerType === "pdf") {
       const url = api.drive.getDownloadUrl(file.id);
       setMediaUrl(url);
       // Keep loading for PDF - iframe onLoad will clear it
-    } else if (viewerType === 'google-doc') {
+    } else if (viewerType === "google-doc") {
       // For Google Docs, use the embedded viewer URL
       if (file.web_view_link) {
         // Convert edit link to preview/embed link
         const embedUrl = file.web_view_link
-          .replace('/edit', '/preview')
-          .replace('/view', '/preview');
+          .replace("/edit", "/preview")
+          .replace("/view", "/preview");
         setMediaUrl(embedUrl);
         // Keep loading for iframe - onLoad will clear it
       } else {
-        setError('Anteprima non disponibile');
+        setError("Anteprima non disponibile");
         setLoading(false);
       }
     } else {
@@ -121,13 +132,13 @@ export function FileViewer({ file, isOpen, onClose, onDownload }: FileViewerProp
   // Close on escape
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === "Escape" && isOpen) {
         onClose();
       }
     };
 
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen, onClose]);
 
   if (!isOpen || !file) return null;
@@ -157,12 +168,14 @@ export function FileViewer({ file, isOpen, onClose, onDownload }: FileViewerProp
         >
           <div className="flex items-center gap-3">
             <FileIcon className="h-5 w-5 text-gray-300" />
-            <h2 className="max-w-md truncate text-lg font-medium text-white">{file.name}</h2>
+            <h2 className="max-w-md truncate text-lg font-medium text-white">
+              {file.name}
+            </h2>
           </div>
 
           <div className="flex items-center gap-2">
             {/* Zoom controls for images */}
-            {viewerType === 'image' && (
+            {viewerType === "image" && (
               <>
                 <button
                   onClick={handleZoomOut}
@@ -191,7 +204,7 @@ export function FileViewer({ file, isOpen, onClose, onDownload }: FileViewerProp
             )}
 
             {/* Download button */}
-            {onDownload && viewerType !== 'google-doc' && (
+            {onDownload && viewerType !== "google-doc" && (
               <button
                 onClick={() => onDownload(file)}
                 className="flex items-center gap-2 rounded-lg bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/20"
@@ -204,7 +217,7 @@ export function FileViewer({ file, isOpen, onClose, onDownload }: FileViewerProp
             {/* Open in new tab */}
             {file.web_view_link && (
               <button
-                onClick={() => window.open(file.web_view_link, '_blank')}
+                onClick={() => window.open(file.web_view_link, "_blank")}
                 className="flex items-center gap-2 rounded-lg bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/20"
                 title="Apri in nuova scheda"
               >
@@ -244,7 +257,7 @@ export function FileViewer({ file, isOpen, onClose, onDownload }: FileViewerProp
               <p className="text-lg text-gray-300">{error}</p>
               {file.web_view_link && (
                 <button
-                  onClick={() => window.open(file.web_view_link, '_blank')}
+                  onClick={() => window.open(file.web_view_link, "_blank")}
                   className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700"
                 >
                   <ExternalLink className="h-4 w-4" />
@@ -255,12 +268,12 @@ export function FileViewer({ file, isOpen, onClose, onDownload }: FileViewerProp
           ) : (
             <>
               {/* Image viewer */}
-              {viewerType === 'image' && mediaUrl && (
+              {viewerType === "image" && mediaUrl && (
                 <div
                   className="flex items-center justify-center"
                   style={{
                     transform: `scale(${zoom / 100}) rotate(${rotation}deg)`,
-                    transition: 'transform 0.2s ease-out',
+                    transition: "transform 0.2s ease-out",
                   }}
                 >
                   <img
@@ -285,21 +298,21 @@ export function FileViewer({ file, isOpen, onClose, onDownload }: FileViewerProp
               )}
 
               {/* Video viewer */}
-              {viewerType === 'video' && mediaUrl && (
+              {viewerType === "video" && mediaUrl && (
                 <video
                   src={mediaUrl}
                   controls
                   autoPlay
                   className="max-h-[80vh] max-w-full rounded-lg shadow-2xl"
                   onLoadedData={() => setLoading(false)}
-                  onError={() => setError('Impossibile caricare il video')}
+                  onError={() => setError("Impossibile caricare il video")}
                 >
                   Il tuo browser non supporta il tag video.
                 </video>
               )}
 
               {/* Audio viewer */}
-              {viewerType === 'audio' && mediaUrl && (
+              {viewerType === "audio" && mediaUrl && (
                 <div className="flex flex-col items-center gap-6">
                   <div className="flex h-32 w-32 items-center justify-center rounded-full bg-emerald-500/10">
                     <Music className="h-16 w-16 text-emerald-400" />
@@ -317,7 +330,7 @@ export function FileViewer({ file, isOpen, onClose, onDownload }: FileViewerProp
               )}
 
               {/* PDF viewer */}
-              {viewerType === 'pdf' && mediaUrl && (
+              {viewerType === "pdf" && mediaUrl && (
                 <iframe
                   src={`${mediaUrl}#view=FitH`}
                   className="h-[85vh] w-full max-w-5xl rounded-lg bg-white shadow-2xl"
@@ -327,7 +340,7 @@ export function FileViewer({ file, isOpen, onClose, onDownload }: FileViewerProp
               )}
 
               {/* Google Docs viewer */}
-              {viewerType === 'google-doc' && mediaUrl && (
+              {viewerType === "google-doc" && mediaUrl && (
                 <iframe
                   src={mediaUrl}
                   className="h-[85vh] w-full max-w-5xl rounded-lg bg-white shadow-2xl"

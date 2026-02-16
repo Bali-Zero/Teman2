@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import * as Dialog from '@radix-ui/react-dialog';
-import { X, Loader2 } from 'lucide-react';
-import { kbliApi, KBLIDetail } from '@/lib/api/kbli.api';
-import { getPmaBadge, getRiskBadge } from './KBLIInspector';
+import React, { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import * as Dialog from "@radix-ui/react-dialog";
+import { X, Loader2 } from "lucide-react";
+import { kbliApi, KBLIDetail } from "@/lib/api/kbli.api";
+import { getPmaBadge, getRiskBadge } from "./KBLIInspector";
 
 interface ComparisonModalProps {
   codes: string[];
@@ -13,9 +13,20 @@ interface ComparisonModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const COLUMNS = ['Code', 'Title', 'PMA Status', 'Risk Level', 'Licenses', 'Sector'] as const;
+const COLUMNS = [
+  "Code",
+  "Title",
+  "PMA Status",
+  "Risk Level",
+  "Licenses",
+  "Sector",
+] as const;
 
-export default function ComparisonModal({ codes, open, onOpenChange }: ComparisonModalProps) {
+export default function ComparisonModal({
+  codes,
+  open,
+  onOpenChange,
+}: ComparisonModalProps) {
   const [details, setDetails] = useState<(KBLIDetail | null)[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -27,21 +38,28 @@ export default function ComparisonModal({ codes, open, onOpenChange }: Compariso
       .finally(() => setLoading(false));
   }, [open, codes]);
 
-  function getCellValue(detail: KBLIDetail, col: (typeof COLUMNS)[number]): React.ReactNode {
+  function getCellValue(
+    detail: KBLIDetail,
+    col: (typeof COLUMNS)[number],
+  ): React.ReactNode {
     switch (col) {
-      case 'Code':
-        return <span className="font-mono text-[#D4B483] text-xs">{detail.code}</span>;
-      case 'Title':
+      case "Code":
+        return (
+          <span className="font-mono text-[#D4B483] text-xs">
+            {detail.code}
+          </span>
+        );
+      case "Title":
         return <span className="text-sm text-[#E1E1E3]">{detail.title}</span>;
-      case 'PMA Status': {
+      case "PMA Status": {
         const badge = getPmaBadge(detail.pma_status);
         return <span className={badge.className}>{badge.label}</span>;
       }
-      case 'Risk Level': {
+      case "Risk Level": {
         const badge = getRiskBadge(detail.risk_profile);
         return <span className={badge.className}>{badge.label}</span>;
       }
-      case 'Licenses':
+      case "Licenses":
         return (
           <div className="space-y-1">
             {detail.licenses.length === 0 ? (
@@ -55,7 +73,7 @@ export default function ComparisonModal({ codes, open, onOpenChange }: Compariso
             )}
           </div>
         );
-      case 'Sector':
+      case "Sector":
         return <span className="text-xs text-[#999]">{detail.sector}</span>;
     }
   }
@@ -121,7 +139,10 @@ export default function ComparisonModal({ codes, open, onOpenChange }: Compariso
                   </thead>
                   <tbody>
                     {COLUMNS.map((col) => (
-                      <tr key={col} className="border-b border-white/5 last:border-0">
+                      <tr
+                        key={col}
+                        className="border-b border-white/5 last:border-0"
+                      >
                         <td className="py-3 px-3 text-xs text-[#666] font-medium align-top whitespace-nowrap">
                           {col}
                         </td>

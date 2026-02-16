@@ -1,12 +1,26 @@
-'use client';
+"use client";
 
-import { useState, useEffect, createContext, useContext, useCallback, useId } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, CheckCircle, AlertCircle, AlertTriangle, Info, RefreshCw } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import {
+  useState,
+  useEffect,
+  createContext,
+  useContext,
+  useCallback,
+  useId,
+} from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  X,
+  CheckCircle,
+  AlertCircle,
+  AlertTriangle,
+  Info,
+  RefreshCw,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // Toast Types
-export type ToastVariant = 'success' | 'error' | 'warning' | 'info';
+export type ToastVariant = "success" | "error" | "warning" | "info";
 
 export interface Toast {
   id: string;
@@ -23,7 +37,7 @@ export interface Toast {
 
 interface ToastContextType {
   toasts: Toast[];
-  addToast: (toast: Omit<Toast, 'id'>) => string;
+  addToast: (toast: Omit<Toast, "id">) => string;
   removeToast: (id: string) => void;
   clearToasts: () => void;
 }
@@ -36,12 +50,12 @@ const ToastContext = createContext<ToastContextType | null>(null);
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const addToast = useCallback((toast: Omit<Toast, 'id'>) => {
+  const addToast = useCallback((toast: Omit<Toast, "id">) => {
     const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const newToast: Toast = {
       ...toast,
       id,
-      duration: toast.duration ?? (toast.variant === 'error' ? 8000 : 5000),
+      duration: toast.duration ?? (toast.variant === "error" ? 8000 : 5000),
       dismissible: toast.dismissible ?? true,
     };
 
@@ -66,7 +80,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <ToastContext.Provider value={{ toasts, addToast, removeToast, clearToasts }}>
+    <ToastContext.Provider
+      value={{ toasts, addToast, removeToast, clearToasts }}
+    >
       {children}
       <ToastContainer />
     </ToastContext.Provider>
@@ -79,7 +95,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 export function useToast() {
   const context = useContext(ToastContext);
   if (!context) {
-    throw new Error('useToast must be used within a ToastProvider');
+    throw new Error("useToast must be used within a ToastProvider");
   }
 
   const { addToast, removeToast, clearToasts } = context;
@@ -90,13 +106,13 @@ export function useToast() {
     clear: clearToasts,
     // Convenience methods
     success: (title: string, description?: string) =>
-      addToast({ title, description, variant: 'success' }),
-    error: (title: string, description?: string, action?: Toast['action']) =>
-      addToast({ title, description, variant: 'error', action }),
+      addToast({ title, description, variant: "success" }),
+    error: (title: string, description?: string, action?: Toast["action"]) =>
+      addToast({ title, description, variant: "error", action }),
     warning: (title: string, description?: string) =>
-      addToast({ title, description, variant: 'warning' }),
+      addToast({ title, description, variant: "warning" }),
     info: (title: string, description?: string) =>
-      addToast({ title, description, variant: 'info' }),
+      addToast({ title, description, variant: "info" }),
   };
 }
 
@@ -118,7 +134,11 @@ function ToastContainer() {
     >
       <AnimatePresence mode="popLayout">
         {toasts.map((toast) => (
-          <ToastItem key={toast.id} toast={toast} onDismiss={() => removeToast(toast.id)} />
+          <ToastItem
+            key={toast.id}
+            toast={toast}
+            onDismiss={() => removeToast(toast.id)}
+          />
         ))}
       </AnimatePresence>
     </div>
@@ -128,33 +148,39 @@ function ToastContainer() {
 /**
  * Individual Toast Item
  */
-function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {
+function ToastItem({
+  toast,
+  onDismiss,
+}: {
+  toast: Toast;
+  onDismiss: () => void;
+}) {
   const id = useId();
 
   const variantConfig = {
     success: {
       icon: CheckCircle,
-      iconClass: 'text-[var(--success)]',
-      borderClass: 'border-l-[var(--success)]',
-      bgClass: 'bg-[var(--success-muted)]',
+      iconClass: "text-[var(--success)]",
+      borderClass: "border-l-[var(--success)]",
+      bgClass: "bg-[var(--success-muted)]",
     },
     error: {
       icon: AlertCircle,
-      iconClass: 'text-[var(--error)]',
-      borderClass: 'border-l-[var(--error)]',
-      bgClass: 'bg-[var(--error-muted)]',
+      iconClass: "text-[var(--error)]",
+      borderClass: "border-l-[var(--error)]",
+      bgClass: "bg-[var(--error-muted)]",
     },
     warning: {
       icon: AlertTriangle,
-      iconClass: 'text-[var(--warning)]',
-      borderClass: 'border-l-[var(--warning)]',
-      bgClass: 'bg-[var(--warning-muted)]',
+      iconClass: "text-[var(--warning)]",
+      borderClass: "border-l-[var(--warning)]",
+      bgClass: "bg-[var(--warning-muted)]",
     },
     info: {
       icon: Info,
-      iconClass: 'text-[var(--info)]',
-      borderClass: 'border-l-[var(--info)]',
-      bgClass: 'bg-[var(--info-muted)]',
+      iconClass: "text-[var(--info)]",
+      borderClass: "border-l-[var(--info)]",
+      bgClass: "bg-[var(--info-muted)]",
     },
   };
 
@@ -167,30 +193,36 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
       initial={{ opacity: 0, x: 50, scale: 0.9 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{ opacity: 0, x: 50, scale: 0.9 }}
-      transition={{ duration: 0.2, ease: 'easeOut' }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
       className={cn(
-        'pointer-events-auto flex items-start gap-3 p-4 pr-10',
-        'min-w-[300px] max-w-[420px]',
-        'rounded-lg border border-[var(--border)] border-l-4',
-        'bg-[var(--background-elevated)] shadow-lg',
-        config.borderClass
+        "pointer-events-auto flex items-start gap-3 p-4 pr-10",
+        "min-w-[300px] max-w-[420px]",
+        "rounded-lg border border-[var(--border)] border-l-4",
+        "bg-[var(--background-elevated)] shadow-lg",
+        config.borderClass,
       )}
       role="alert"
       aria-labelledby={`${id}-title`}
       aria-describedby={toast.description ? `${id}-desc` : undefined}
     >
       {/* Icon */}
-      <div className={cn('flex-shrink-0 mt-0.5', config.iconClass)}>
+      <div className={cn("flex-shrink-0 mt-0.5", config.iconClass)}>
         <Icon size={20} aria-hidden="true" />
       </div>
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <p id={`${id}-title`} className="text-sm font-medium text-[var(--foreground)]">
+        <p
+          id={`${id}-title`}
+          className="text-sm font-medium text-[var(--foreground)]"
+        >
           {toast.title}
         </p>
         {toast.description && (
-          <p id={`${id}-desc`} className="mt-1 text-xs text-[var(--foreground-muted)] line-clamp-2">
+          <p
+            id={`${id}-desc`}
+            className="mt-1 text-xs text-[var(--foreground-muted)] line-clamp-2"
+          >
             {toast.description}
           </p>
         )}
@@ -198,9 +230,9 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
           <button
             onClick={toast.action.onClick}
             className={cn(
-              'mt-2 inline-flex items-center gap-1.5 text-xs font-medium',
-              'text-[var(--accent)] hover:text-[var(--accent-hover)]',
-              'transition-colors focus-ring rounded'
+              "mt-2 inline-flex items-center gap-1.5 text-xs font-medium",
+              "text-[var(--accent)] hover:text-[var(--accent-hover)]",
+              "transition-colors focus-ring rounded",
             )}
           >
             <RefreshCw size={12} />
@@ -214,10 +246,10 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
         <button
           onClick={onDismiss}
           className={cn(
-            'absolute top-3 right-3 p-1 rounded',
-            'text-[var(--foreground-muted)] hover:text-[var(--foreground)]',
-            'hover:bg-[var(--background-hover)] transition-colors',
-            'focus-ring'
+            "absolute top-3 right-3 p-1 rounded",
+            "text-[var(--foreground-muted)] hover:text-[var(--foreground)]",
+            "hover:bg-[var(--background-hover)] transition-colors",
+            "focus-ring",
           )}
           aria-label="Dismiss notification"
         >

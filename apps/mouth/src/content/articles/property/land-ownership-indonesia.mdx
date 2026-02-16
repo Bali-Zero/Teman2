@@ -79,8 +79,8 @@ import {
   InfoCard,
   DecisionTree,
   GlossaryTerm,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Land Ownership in Indonesia 2026: Rules for Foreigners
 
@@ -92,6 +92,7 @@ Indonesian land law is based on the 1960 Basic Agrarian Law (UUPA) which establi
 **UUPA Article 21**: Hak Milik (freehold ownership) can only be held by Indonesian citizens. This is a constitutional principle, not just a regulation.
 
 However, foreigners can access land through other legal rights.
+
 </InfoCard>
 
 ---
@@ -106,47 +107,47 @@ However, foreigners can access land through other legal rights.
       name: "Hak Milik",
       subtitle: "Freehold",
       values: {
-        "Meaning": "Ownership right",
-        "Duration": "Perpetual",
-        "Foreigners": "Not allowed",
-        "Inheritable": "Yes",
-        "Strongest Right": "Yes"
-      }
+        Meaning: "Ownership right",
+        Duration: "Perpetual",
+        Foreigners: "Not allowed",
+        Inheritable: "Yes",
+        "Strongest Right": "Yes",
+      },
     },
     {
       name: "HGB",
       subtitle: "Building Rights",
       values: {
-        "Meaning": "Right to build on land",
-        "Duration": "30+20+30 years",
-        "Foreigners": "Via PT PMA",
-        "Inheritable": "Via company",
-        "Strongest Right": "Second strongest"
+        Meaning: "Right to build on land",
+        Duration: "30+20+30 years",
+        Foreigners: "Via PT PMA",
+        Inheritable: "Via company",
+        "Strongest Right": "Second strongest",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "Hak Pakai",
       subtitle: "Right to Use",
       values: {
-        "Meaning": "Right to use land",
-        "Duration": "25+20+25 years or 30+20+30",
-        "Foreigners": "Yes (with KITAS)",
-        "Inheritable": "Limited",
-        "Strongest Right": "Third level"
-      }
+        Meaning: "Right to use land",
+        Duration: "25+20+25 years or 30+20+30",
+        Foreigners: "Yes (with KITAS)",
+        Inheritable: "Limited",
+        "Strongest Right": "Third level",
+      },
     },
     {
       name: "Hak Sewa",
       subtitle: "Lease Right",
       values: {
-        "Meaning": "Contractual lease",
-        "Duration": "Per agreement",
-        "Foreigners": "Yes",
-        "Inheritable": "Per contract",
-        "Strongest Right": "Weakest"
-      }
-    }
+        Meaning: "Contractual lease",
+        Duration: "Per agreement",
+        Foreigners: "Yes",
+        Inheritable: "Per contract",
+        "Strongest Right": "Weakest",
+      },
+    },
   ]}
 />
 
@@ -160,12 +161,14 @@ However, foreigners can access land through other legal rights.
 />
 
 ### Characteristics
+
 - **Perpetual**: No expiry date
 - **Full disposal**: Can sell, gift, mortgage
 - **Inheritable**: Passes to heirs
 - **Exclusive**: Only one Hak Milik per plot
 
 ### Who Can Hold Hak Milik?
+
 - Indonesian citizens (individuals)
 - Certain Indonesian legal entities:
   - Religious bodies (for worship)
@@ -173,6 +176,7 @@ However, foreigners can access land through other legal rights.
   - Government (specific purposes)
 
 ### NOT Eligible
+
 - Foreigners (any nationality)
 - Foreign companies
 - PT PMA (foreign investment company)
@@ -189,21 +193,24 @@ However, foreigners can access land through other legal rights.
 />
 
 ### For Foreigners via PT PMA
+
 Your PT PMA company can hold HGB, which allows:
+
 - Building and owning structures
 - Using land for business
 - Extending the right
 - Transferring (selling the company)
 
 ### Duration
+
 - **Initial**: 30 years
 - **First extension**: 20 years
 - **Renewal**: 30 years
 - **Total potential**: 80 years
 
 <InfoCard variant="note" title="HGB on State vs Private Land">
-- **HGB on state land**: More stable, extensions usually granted
-- **HGB on Hak Milik**: Subject to landowner agreement
+  - **HGB on state land**: More stable, extensions usually granted - **HGB on
+  Hak Milik**: Subject to landowner agreement
 </InfoCard>
 
 ---
@@ -213,16 +220,19 @@ Your PT PMA company can hold HGB, which allows:
 The main option for foreign individuals:
 
 ### For Foreigners
+
 - Must have valid KITAS or KITAP
 - Limited to residential use
 - Must be single dwelling
 - Minimum value requirements (in some areas)
 
 ### Duration
+
 - 25 years initial, extendable to 70 years total (for residential)
 - 30 years initial, extendable to 80 years total (depending on regulation)
 
 ### Limitations
+
 - Cannot be used for business (need PT PMA)
 - Tied to residence status
 - Must transfer if you leave Indonesia
@@ -235,6 +245,7 @@ The main option for foreign individuals:
 ### The Land Certificate (Sertifikat)
 
 Key information:
+
 - **Holder name**: Current legal owner
 - **Rights type**: Hak Milik, HGB, etc.
 - **Expiry date**: For time-limited rights
@@ -244,15 +255,13 @@ Key information:
 ### Verification at BPN
 
 <InfoCard variant="tip" title="Always Verify at BPN">
-Before any transaction:
-1. Visit local BPN (Land Office)
-2. Request certificate verification
-3. Check for disputes or claims
-4. Confirm current ownership
-5. Review any encumbrances
+  Before any transaction: 1. Visit local BPN (Land Office) 2. Request
+  certificate verification 3. Check for disputes or claims 4. Confirm current
+  ownership 5. Review any encumbrances
 </InfoCard>
 
 ### Common Title Problems
+
 - Overlapping claims
 - Expired HGB not renewed
 - Unregistered transfers
@@ -273,45 +282,49 @@ Before any transaction:
       options: [
         { label: "KITAS/KITAP holder", next: "kitas" },
         { label: "No Indonesian residence", next: "no-kitas" },
-        { label: "Through PT PMA company", next: "pma" }
-      ]
+        { label: "Through PT PMA company", next: "pma" },
+      ],
     },
     {
       id: "kitas",
       question: "What's the intended use?",
       options: [
         { label: "Residential (home)", next: "hak-pakai" },
-        { label: "Business/investment", next: "need-pma" }
-      ]
+        { label: "Business/investment", next: "need-pma" },
+      ],
     },
     {
       id: "no-kitas",
       result: {
         title: "Leasehold Only",
-        description: "Without KITAS, you cannot hold Hak Pakai. Your option is leasehold (Hak Sewa) - a contractual right to use someone's land."
-      }
+        description:
+          "Without KITAS, you cannot hold Hak Pakai. Your option is leasehold (Hak Sewa) - a contractual right to use someone's land.",
+      },
     },
     {
       id: "pma",
       result: {
         title: "HGB Through Company",
-        description: "Your PT PMA can hold HGB (Building Rights) for up to 80 years. Good for commercial property, multiple units, or investment purposes."
-      }
+        description:
+          "Your PT PMA can hold HGB (Building Rights) for up to 80 years. Good for commercial property, multiple units, or investment purposes.",
+      },
     },
     {
       id: "hak-pakai",
       result: {
         title: "Hak Pakai",
-        description: "With KITAS/KITAP, you can hold Hak Pakai for residential property. This is a registered land right, up to 70-80 years total."
-      }
+        description:
+          "With KITAS/KITAP, you can hold Hak Pakai for residential property. This is a registered land right, up to 70-80 years total.",
+      },
     },
     {
       id: "need-pma",
       result: {
         title: "PT PMA Required",
-        description: "For business use, you need a PT PMA to hold HGB. Personal Hak Pakai is only for residential purposes."
-      }
-    }
+        description:
+          "For business use, you need a PT PMA to hold HGB. Personal Hak Pakai is only for residential purposes.",
+      },
+    },
   ]}
 />
 
@@ -320,14 +333,13 @@ Before any transaction:
 ## Agricultural Land Rules
 
 <InfoCard variant="warning" title="Agricultural Land Restrictions">
-Agricultural land has additional restrictions:
-- Often only for Indonesian farmers
-- Some areas closed to non-locals
-- Conversion to non-agricultural use requires permits
-- Environmental restrictions may apply
+  Agricultural land has additional restrictions: - Often only for Indonesian
+  farmers - Some areas closed to non-locals - Conversion to non-agricultural use
+  requires permits - Environmental restrictions may apply
 </InfoCard>
 
 ### Can Foreigners Access Agricultural Land?
+
 - Generally **no** for direct ownership
 - PT PMA may access for plantation operations (large scale)
 - Leasehold possible in some cases
@@ -338,12 +350,14 @@ Agricultural land has additional restrictions:
 ## Coastal and Forest Land
 
 ### Coastal Areas
+
 - Much land is state land
 - Special permits for access
 - Environmental restrictions
 - Traditional use rights may exist
 
 ### Forest Land
+
 - Cannot be privately owned
 - Concessions possible for PT PMA
 - Strict environmental rules
@@ -354,11 +368,11 @@ Agricultural land has additional restrictions:
 ## Common Illegal Practices
 
 <InfoCard variant="error" title="Avoid These">
-1. **Nominee ownership**: Using Indonesian name for Hak Milik - ILLEGAL
-2. **Fake marriage**: Marrying for property rights - fraud
-3. **Shell companies**: PT Local with hidden foreign control - illegal
-4. **Undisclosed loans**: "Lending" money secured by property
-5. **Side agreements**: Secret contracts contradicting official documents
+  1. **Nominee ownership**: Using Indonesian name for Hak Milik - ILLEGAL 2.
+  **Fake marriage**: Marrying for property rights - fraud 3. **Shell
+  companies**: PT Local with hidden foreign control - illegal 4. **Undisclosed
+  loans**: "Lending" money secured by property 5. **Side agreements**: Secret
+  contracts contradicting official documents
 </InfoCard>
 
 ---
@@ -372,7 +386,7 @@ Agricultural land has additional restrictions:
     "What if I marry an Indonesian?",
     "Can I inherit land from Indonesian family?",
     "Is there any way to own land outright?",
-    "What happens to my rights if laws change?"
+    "What happens to my rights if laws change?",
   ]}
 />
 

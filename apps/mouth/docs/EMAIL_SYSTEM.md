@@ -242,7 +242,7 @@ const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
 const [selectedEmail, setSelectedEmail] = useState<EmailDetail | null>(null);
 const [isLoading, setIsLoading] = useState(true);
 const [zohoStatus, setZohoStatus] = useState<ZohoStatus | null>(null);
-const [searchQuery, setSearchQuery] = useState('');
+const [searchQuery, setSearchQuery] = useState("");
 ```
 
 **Handler Critici:**
@@ -266,12 +266,12 @@ const handleDelete = async (emailIds: string[]) => {
       setSelectedIds(new Set());
       alert(`✅ ${emailIds.length} email eliminate con successo`);
     } else {
-      throw new Error('Delete operation failed');
+      throw new Error("Delete operation failed");
     }
   } catch (error) {
-    console.error('Failed to delete emails:', error);
+    console.error("Failed to delete emails:", error);
     alert(
-      `❌ Errore: Impossibile eliminare le email. Riprova.\n\nDettagli: ${error instanceof Error ? error.message : 'Unknown error'}`
+      `❌ Errore: Impossibile eliminare le email. Riprova.\n\nDettagli: ${error instanceof Error ? error.message : "Unknown error"}`,
     );
   }
 };
@@ -303,7 +303,7 @@ useEffect(() => {
       const client = await api.crm.getClientByEmail(email.from.address);
       setSenderClient(client);
     } catch (error) {
-      console.error('Failed to lookup client:', error);
+      console.error("Failed to lookup client:", error);
       setSenderClient(null);
     } finally {
       setIsLoadingClient(false);
@@ -358,54 +358,62 @@ useEffect(() => {
 function sanitizeHtml(html: string): string {
   return DOMPurify.sanitize(html, {
     ALLOWED_TAGS: [
-      'a',
-      'b',
-      'i',
-      'u',
-      'strong',
-      'em',
-      'p',
-      'br',
-      'div',
-      'span',
-      'ul',
-      'ol',
-      'li',
-      'h1',
-      'h2',
-      'h3',
-      'h4',
-      'h5',
-      'h6',
-      'table',
-      'thead',
-      'tbody',
-      'tr',
-      'td',
-      'th',
-      'img',
-      'blockquote',
-      'pre',
-      'code',
-      'hr',
+      "a",
+      "b",
+      "i",
+      "u",
+      "strong",
+      "em",
+      "p",
+      "br",
+      "div",
+      "span",
+      "ul",
+      "ol",
+      "li",
+      "h1",
+      "h2",
+      "h3",
+      "h4",
+      "h5",
+      "h6",
+      "table",
+      "thead",
+      "tbody",
+      "tr",
+      "td",
+      "th",
+      "img",
+      "blockquote",
+      "pre",
+      "code",
+      "hr",
     ],
     ALLOWED_ATTR: [
-      'href',
-      'src',
-      'alt',
-      'title',
-      'class',
-      'style',
-      'width',
-      'height',
-      'align',
-      'valign',
-      'colspan',
-      'rowspan',
+      "href",
+      "src",
+      "alt",
+      "title",
+      "class",
+      "style",
+      "width",
+      "height",
+      "align",
+      "valign",
+      "colspan",
+      "rowspan",
     ],
     ALLOW_DATA_ATTR: false,
-    FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input', 'button'],
-    FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover'],
+    FORBID_TAGS: [
+      "script",
+      "iframe",
+      "object",
+      "embed",
+      "form",
+      "input",
+      "button",
+    ],
+    FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover"],
   });
 }
 ```
@@ -545,10 +553,10 @@ class ZohoMailService:
 export const crmApi = {
   async getClientByEmail(email: string): Promise<Client> {
     const response = await apiClient.get<Client[]>(
-      `/api/crm/clients?email=${encodeURIComponent(email)}`
+      `/api/crm/clients?email=${encodeURIComponent(email)}`,
     );
     if (!response.data || response.data.length === 0) {
-      throw new Error('Client not found');
+      throw new Error("Client not found");
     }
     return response.data[0];
   },
@@ -622,7 +630,7 @@ const handleDelete = async (emailIds: string[]) => {
     }
     setSelectedIds(new Set());
   } catch (error) {
-    console.error('Failed to delete emails:', error);
+    console.error("Failed to delete emails:", error);
     // ⚠️ NESSUN feedback visibile all'utente
   }
 };
@@ -649,13 +657,13 @@ const handleDelete = async (emailIds: string[]) => {
       // ✅ Feedback successo
       alert(`✅ ${emailIds.length} email eliminate con successo`);
     } else {
-      throw new Error('Delete operation failed');
+      throw new Error("Delete operation failed");
     }
   } catch (error) {
-    console.error('Failed to delete emails:', error);
+    console.error("Failed to delete emails:", error);
     // ✅ Feedback errore dettagliato
     alert(
-      `❌ Errore: Impossibile eliminare le email. Riprova.\n\nDettagli: ${error instanceof Error ? error.message : 'Unknown error'}`
+      `❌ Errore: Impossibile eliminare le email. Riprova.\n\nDettagli: ${error instanceof Error ? error.message : "Unknown error"}`,
     );
   }
 };
@@ -684,8 +692,8 @@ const handleDelete = async (emailIds: string[]) => {
 
 ```typescript
 // ❌ BEFORE
-if (contentType.includes('multipart/form-data')) {
-  headers.delete('content-type'); // Deleted for FormData
+if (contentType.includes("multipart/form-data")) {
+  headers.delete("content-type"); // Deleted for FormData
   body = (await req.formData()) as unknown as BodyInit;
 } else {
   const buf = await req.arrayBuffer();
@@ -698,15 +706,15 @@ if (contentType.includes('multipart/form-data')) {
 
 ```typescript
 // ✅ AFTER
-if (contentType.includes('multipart/form-data')) {
-  headers.delete('content-type');
+if (contentType.includes("multipart/form-data")) {
+  headers.delete("content-type");
   body = (await req.formData()) as unknown as BodyInit;
 } else {
   const buf = await req.arrayBuffer();
   body = buf.byteLength ? buf : undefined;
   // ✅ Preserva Content-Type per JSON e altri body types
-  if (contentType && !headers.has('content-type')) {
-    headers.set('content-type', contentType);
+  if (contentType && !headers.has("content-type")) {
+    headers.set("content-type", contentType);
   }
 }
 ```
@@ -875,9 +883,9 @@ fly apps restart nuzantara-rag
 
    ```javascript
    // Should see:
-   '✅ 1 email eliminate con successo';
+   "✅ 1 email eliminate con successo";
    // OR
-   '❌ Errore: Impossibile eliminare le email...';
+   "❌ Errore: Impossibile eliminare le email...";
    ```
 
 2. **Check Network Tab**
@@ -962,7 +970,7 @@ fly apps restart nuzantara-rag
 
    ```javascript
    // Console log
-   console.log('Client ID:', senderClient.id); // Should be number, not undefined
+   console.log("Client ID:", senderClient.id); // Should be number, not undefined
    ```
 
 3. **Verify Route Exists**

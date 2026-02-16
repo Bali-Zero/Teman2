@@ -4,7 +4,7 @@
  * Efficient intersection observer for lazy loading
  */
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from "react";
 
 interface UseIntersectionObserverOptions {
   threshold?: number | number[];
@@ -17,9 +17,14 @@ interface UseIntersectionObserverOptions {
  * Track element visibility
  */
 export function useIntersectionObserver(
-  options: UseIntersectionObserverOptions = {}
+  options: UseIntersectionObserverOptions = {},
 ): [(node: Element | null) => void, boolean, IntersectionObserverEntry | null] {
-  const { threshold = 0, root = null, rootMargin = '0px', triggerOnce = false } = options;
+  const {
+    threshold = 0,
+    root = null,
+    rootMargin = "0px",
+    triggerOnce = false,
+  } = options;
   const [isIntersecting, setIsIntersecting] = useState(false);
   const [entry, setEntry] = useState<IntersectionObserverEntry | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -46,13 +51,13 @@ export function useIntersectionObserver(
               hasTriggeredRef.current = true;
             }
           },
-          { threshold, root, rootMargin }
+          { threshold, root, rootMargin },
         );
 
         observerRef.current.observe(node);
       }
     },
-    [threshold, root, rootMargin, triggerOnce]
+    [threshold, root, rootMargin, triggerOnce],
   );
 
   useEffect(() => {
@@ -70,9 +75,12 @@ export function useIntersectionObserver(
  * Simple visibility hook
  */
 export function useIsVisible(
-  options: Omit<UseIntersectionObserverOptions, 'triggerOnce'> = {}
+  options: Omit<UseIntersectionObserverOptions, "triggerOnce"> = {},
 ): [(node: Element | null) => void, boolean] {
-  const [ref, isVisible] = useIntersectionObserver({ ...options, triggerOnce: false });
+  const [ref, isVisible] = useIntersectionObserver({
+    ...options,
+    triggerOnce: false,
+  });
   return [ref, isVisible];
 }
 
@@ -80,8 +88,11 @@ export function useIsVisible(
  * Entered viewport once
  */
 export function useHasEnteredViewport(
-  options: Omit<UseIntersectionObserverOptions, 'triggerOnce'> = {}
+  options: Omit<UseIntersectionObserverOptions, "triggerOnce"> = {},
 ): [(node: Element | null) => void, boolean] {
-  const [ref, hasEntered] = useIntersectionObserver({ ...options, triggerOnce: true });
+  const [ref, hasEntered] = useIntersectionObserver({
+    ...options,
+    triggerOnce: true,
+  });
   return [ref, hasEntered];
 }

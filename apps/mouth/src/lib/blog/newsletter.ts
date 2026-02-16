@@ -10,11 +10,12 @@ import type {
   NewsletterSubscriber,
   NewsletterSubscribeRequest,
   CATEGORY_METADATA,
-} from './types';
-import { logger } from '../logger';
-import { toError } from '../types/common';
+} from "./types";
+import { logger } from "../logger";
+import { toError } from "../types/common";
 
-const ZANTARA_API = process.env.NEXT_PUBLIC_ZANTARA_API_URL || process.env.ZANTARA_API_URL;
+const ZANTARA_API =
+  process.env.NEXT_PUBLIC_ZANTARA_API_URL || process.env.ZANTARA_API_URL;
 const ZANTARA_API_KEY = process.env.ZANTARA_API_KEY;
 const ZOHO_API_URL = process.env.ZOHO_MAIL_API_URL;
 const ZOHO_ACCESS_TOKEN = process.env.ZOHO_ACCESS_TOKEN;
@@ -34,19 +35,22 @@ export class NewsletterService {
   }> {
     try {
       // 1. Create subscriber in database
-      const response = await fetch(`${ZANTARA_API}/api/blog/newsletter/subscribe`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `${ZANTARA_API}/api/blog/newsletter/subscribe`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(request),
         },
-        body: JSON.stringify(request),
-      });
+      );
 
       if (!response.ok) {
         const error = await response.json();
         return {
           success: false,
-          message: error.message || 'Subscription failed',
+          message: error.message || "Subscription failed",
         };
       }
 
@@ -61,17 +65,17 @@ export class NewsletterService {
       return {
         success: true,
         subscriberId: subscriber.id,
-        message: 'Please check your email to confirm your subscription.',
+        message: "Please check your email to confirm your subscription.",
       };
     } catch (error) {
       logger.error(
-        'Newsletter subscription failed',
-        { component: 'NewsletterService', action: 'subscribe' },
-        toError(error)
+        "Newsletter subscription failed",
+        { component: "NewsletterService", action: "subscribe" },
+        toError(error),
       );
       return {
         success: false,
-        message: 'An error occurred. Please try again.',
+        message: "An error occurred. Please try again.",
       };
     }
   }
@@ -79,22 +83,28 @@ export class NewsletterService {
   /**
    * Confirm subscription (after email click)
    */
-  static async confirmSubscription(subscriberId: string, token: string): Promise<boolean> {
+  static async confirmSubscription(
+    subscriberId: string,
+    token: string,
+  ): Promise<boolean> {
     try {
-      const response = await fetch(`${ZANTARA_API}/api/blog/newsletter/confirm`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `${ZANTARA_API}/api/blog/newsletter/confirm`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ subscriberId, token }),
         },
-        body: JSON.stringify({ subscriberId, token }),
-      });
+      );
 
       return response.ok;
     } catch (error) {
       logger.error(
-        'Newsletter confirmation failed',
-        { component: 'NewsletterService', action: 'confirmSubscription' },
-        toError(error)
+        "Newsletter confirmation failed",
+        { component: "NewsletterService", action: "confirmSubscription" },
+        toError(error),
       );
       return false;
     }
@@ -105,20 +115,23 @@ export class NewsletterService {
    */
   static async unsubscribe(subscriberId: string): Promise<boolean> {
     try {
-      const response = await fetch(`${ZANTARA_API}/api/blog/newsletter/unsubscribe`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `${ZANTARA_API}/api/blog/newsletter/unsubscribe`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ subscriberId }),
         },
-        body: JSON.stringify({ subscriberId }),
-      });
+      );
 
       return response.ok;
     } catch (error) {
       logger.error(
-        'Newsletter unsubscribe failed',
-        { component: 'NewsletterService', action: 'unsubscribe' },
-        toError(error)
+        "Newsletter unsubscribe failed",
+        { component: "NewsletterService", action: "unsubscribe" },
+        toError(error),
       );
       return false;
     }
@@ -129,23 +142,28 @@ export class NewsletterService {
    */
   static async updatePreferences(
     subscriberId: string,
-    preferences: Partial<Pick<NewsletterSubscriber, 'categories' | 'frequency' | 'language'>>
+    preferences: Partial<
+      Pick<NewsletterSubscriber, "categories" | "frequency" | "language">
+    >,
   ): Promise<boolean> {
     try {
-      const response = await fetch(`${ZANTARA_API}/api/blog/newsletter/preferences`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `${ZANTARA_API}/api/blog/newsletter/preferences`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ subscriberId, ...preferences }),
         },
-        body: JSON.stringify({ subscriberId, ...preferences }),
-      });
+      );
 
       return response.ok;
     } catch (error) {
       logger.error(
-        'Newsletter preference update failed',
-        { component: 'NewsletterService', action: 'updatePreferences' },
-        toError(error)
+        "Newsletter preference update failed",
+        { component: "NewsletterService", action: "updatePreferences" },
+        toError(error),
       );
       return false;
     }
@@ -159,12 +177,15 @@ export class NewsletterService {
     failed: number;
   }> {
     // Fetch article
-    const articleResponse = await fetch(`${ZANTARA_API}/api/blog/articles/${articleId}`, {
-      headers: { Authorization: `Bearer ${ZANTARA_API_KEY}` },
-    });
+    const articleResponse = await fetch(
+      `${ZANTARA_API}/api/blog/articles/${articleId}`,
+      {
+        headers: { Authorization: `Bearer ${ZANTARA_API_KEY}` },
+      },
+    );
 
     if (!articleResponse.ok) {
-      throw new Error('Article not found');
+      throw new Error("Article not found");
     }
 
     const article: Article = await articleResponse.json();
@@ -174,11 +195,11 @@ export class NewsletterService {
       `${ZANTARA_API}/api/blog/newsletter/subscribers?category=${article.category}&confirmed=true`,
       {
         headers: { Authorization: `Bearer ${ZANTARA_API_KEY}` },
-      }
+      },
     );
 
     if (!subscribersResponse.ok) {
-      throw new Error('Failed to fetch subscribers');
+      throw new Error("Failed to fetch subscribers");
     }
 
     const { subscribers }: { subscribers: NewsletterSubscriber[] } =
@@ -203,12 +224,12 @@ export class NewsletterService {
             to: subscriber.email,
             subject: `New Insight: ${article.title}`,
             html: this.personalizeEmail(emailHtml, subscriber),
-          })
-        )
+          }),
+        ),
       );
 
       results.forEach((result) => {
-        if (result.status === 'fulfilled') sent++;
+        if (result.status === "fulfilled") sent++;
         else failed++;
       });
 
@@ -218,10 +239,10 @@ export class NewsletterService {
 
     // Log send
     await fetch(`${ZANTARA_API}/api/blog/newsletter/log`, {
-      method: 'POST',
+      method: "POST",
       headers: {
         Authorization: `Bearer ${ZANTARA_API_KEY}`,
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         articleId,
@@ -248,14 +269,15 @@ export class NewsletterService {
       `${ZANTARA_API}/api/blog/articles?status=published&publishedAfter=${weekAgo.toISOString()}&sort=viewCount&limit=10`,
       {
         headers: { Authorization: `Bearer ${ZANTARA_API_KEY}` },
-      }
+      },
     );
 
     if (!articlesResponse.ok) {
-      throw new Error('Failed to fetch articles');
+      throw new Error("Failed to fetch articles");
     }
 
-    const { articles }: { articles: ArticleListItem[] } = await articlesResponse.json();
+    const { articles }: { articles: ArticleListItem[] } =
+      await articlesResponse.json();
 
     if (articles.length === 0) {
       return { sent: 0, articlesIncluded: 0 };
@@ -266,11 +288,11 @@ export class NewsletterService {
       `${ZANTARA_API}/api/blog/newsletter/subscribers?frequency=weekly&confirmed=true`,
       {
         headers: { Authorization: `Bearer ${ZANTARA_API_KEY}` },
-      }
+      },
     );
 
     if (!subscribersResponse.ok) {
-      throw new Error('Failed to fetch subscribers');
+      throw new Error("Failed to fetch subscribers");
     }
 
     const { subscribers }: { subscribers: NewsletterSubscriber[] } =
@@ -280,10 +302,15 @@ export class NewsletterService {
 
     for (const subscriber of subscribers) {
       // Filter articles by subscriber interests
-      const relevantArticles = articles.filter((a) => subscriber.categories.includes(a.category));
+      const relevantArticles = articles.filter((a) =>
+        subscriber.categories.includes(a.category),
+      );
 
       if (relevantArticles.length > 0) {
-        const emailHtml = this.generateDigestEmail(relevantArticles, subscriber);
+        const emailHtml = this.generateDigestEmail(
+          relevantArticles,
+          subscriber,
+        );
 
         try {
           await this.sendViaZoho({
@@ -296,11 +323,11 @@ export class NewsletterService {
           logger.error(
             `Failed to send digest to ${subscriber.email}`,
             {
-              component: 'NewsletterService',
-              action: 'sendWeeklyDigest',
+              component: "NewsletterService",
+              action: "sendWeeklyDigest",
               metadata: { subscriberEmail: subscriber.email },
             },
-            toError(error)
+            toError(error),
           );
         }
       }
@@ -314,9 +341,12 @@ export class NewsletterService {
    */
   static async notifyRelevantClients(articleId: string): Promise<number> {
     // Fetch article
-    const articleResponse = await fetch(`${ZANTARA_API}/api/blog/articles/${articleId}`, {
-      headers: { Authorization: `Bearer ${ZANTARA_API_KEY}` },
-    });
+    const articleResponse = await fetch(
+      `${ZANTARA_API}/api/blog/articles/${articleId}`,
+      {
+        headers: { Authorization: `Bearer ${ZANTARA_API_KEY}` },
+      },
+    );
 
     if (!articleResponse.ok) {
       return 0;
@@ -329,17 +359,20 @@ export class NewsletterService {
     }
 
     // Find matching clients
-    const clientsResponse = await fetch(`${ZANTARA_API}/api/crm/clients/match`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${ZANTARA_API_KEY}`,
-        'Content-Type': 'application/json',
+    const clientsResponse = await fetch(
+      `${ZANTARA_API}/api/crm/clients/match`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${ZANTARA_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          category: article.category,
+          tags: article.tags,
+        }),
       },
-      body: JSON.stringify({
-        category: article.category,
-        tags: article.tags,
-      }),
-    });
+    );
 
     if (!clientsResponse.ok) {
       return 0;
@@ -355,16 +388,16 @@ export class NewsletterService {
 
       try {
         await fetch(`${ZANTARA_API}/api/whatsapp/send`, {
-          method: 'POST',
+          method: "POST",
           headers: {
             Authorization: `Bearer ${ZANTARA_API_KEY}`,
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             to: client.whatsapp,
-            template: 'new_article_notification',
+            template: "new_article_notification",
             params: {
-              clientName: client.name || 'there',
+              clientName: client.name || "there",
               articleTitle: article.title,
               articleUrl: `https://balizero.com/insights/${article.category}/${article.slug}`,
               category: article.category,
@@ -376,11 +409,11 @@ export class NewsletterService {
         logger.error(
           `Failed to notify client ${client.id}`,
           {
-            component: 'NewsletterService',
-            action: 'notifyRelevantClients',
+            component: "NewsletterService",
+            action: "notifyRelevantClients",
             metadata: { clientId: client.id },
           },
-          toError(error)
+          toError(error),
         );
       }
     }
@@ -392,11 +425,13 @@ export class NewsletterService {
   // Private Helper Methods
   // ============================================================================
 
-  private static async syncToZoho(subscriber: NewsletterSubscriber): Promise<void> {
+  private static async syncToZoho(
+    subscriber: NewsletterSubscriber,
+  ): Promise<void> {
     if (!ZOHO_API_URL || !ZOHO_ACCESS_TOKEN) {
-      logger.warn('Zoho integration not configured', {
-        component: 'NewsletterService',
-        action: 'syncToZoho',
+      logger.warn("Zoho integration not configured", {
+        component: "NewsletterService",
+        action: "syncToZoho",
       });
       return;
     }
@@ -404,37 +439,39 @@ export class NewsletterService {
     try {
       // Create/update contact in Zoho CRM
       await fetch(`${ZOHO_API_URL}/crm/v2/Contacts`, {
-        method: 'POST',
+        method: "POST",
         headers: {
           Authorization: `Zoho-oauthtoken ${ZOHO_ACCESS_TOKEN}`,
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           data: [
             {
               Email: subscriber.email,
-              First_Name: subscriber.name?.split(' ')[0] || '',
-              Last_Name: subscriber.name?.split(' ').slice(1).join(' ') || '',
+              First_Name: subscriber.name?.split(" ")[0] || "",
+              Last_Name: subscriber.name?.split(" ").slice(1).join(" ") || "",
               Newsletter_Subscriber: true,
-              Newsletter_Categories: subscriber.categories.join(';'),
+              Newsletter_Categories: subscriber.categories.join(";"),
               Newsletter_Frequency: subscriber.frequency,
               Preferred_Language: subscriber.language,
-              Lead_Source: 'Blog Newsletter',
+              Lead_Source: "Blog Newsletter",
             },
           ],
-          trigger: ['workflow'],
+          trigger: ["workflow"],
         }),
       });
     } catch (error) {
       logger.error(
-        'Zoho sync failed',
-        { component: 'NewsletterService', action: 'syncToZoho' },
-        toError(error)
+        "Zoho sync failed",
+        { component: "NewsletterService", action: "syncToZoho" },
+        toError(error),
       );
     }
   }
 
-  private static async sendConfirmationEmail(subscriber: NewsletterSubscriber): Promise<void> {
+  private static async sendConfirmationEmail(
+    subscriber: NewsletterSubscriber,
+  ): Promise<void> {
     const confirmUrl = `https://balizero.com/newsletter/confirm?id=${subscriber.id}`;
 
     const html = `
@@ -487,7 +524,7 @@ export class NewsletterService {
 
     await this.sendViaZoho({
       to: subscriber.email,
-      subject: 'Confirm your Bali Zero Insights subscription',
+      subject: "Confirm your Bali Zero Insights subscription",
       html,
     });
   }
@@ -499,18 +536,18 @@ export class NewsletterService {
   }): Promise<void> {
     // Use Zantara's email service which wraps Zoho
     await fetch(`${ZANTARA_API}/api/email/send`, {
-      method: 'POST',
+      method: "POST",
       headers: {
         Authorization: `Bearer ${ZANTARA_API_KEY}`,
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        fromAddress: 'insights@balizero.com',
-        fromName: 'Bali Zero Insights',
+        fromAddress: "insights@balizero.com",
+        fromName: "Bali Zero Insights",
         toAddress: options.to,
         subject: options.subject,
         content: options.html,
-        contentType: 'html',
+        contentType: "html",
       }),
     });
   }
@@ -575,7 +612,7 @@ export class NewsletterService {
 
           <img src="${article.coverImage}" alt="${article.coverImageAlt}" class="cover" />
 
-          <span class="category">${article.category.replace('-', ' & ')}</span>
+          <span class="category">${article.category.replace("-", " & ")}</span>
 
           <h1>${article.title}</h1>
 
@@ -607,7 +644,7 @@ export class NewsletterService {
 
   private static generateDigestEmail(
     articles: ArticleListItem[],
-    subscriber: NewsletterSubscriber
+    subscriber: NewsletterSubscriber,
   ): string {
     const articleCards = articles
       .map(
@@ -619,9 +656,9 @@ export class NewsletterService {
           <p style="color: #888; font-size: 13px; line-height: 1.5; margin: 0 0 12px 0;">${article.excerpt}</p>
           <a href="https://balizero.com/insights/${article.category}/${article.slug}" style="color: #a78bfa; text-decoration: none; font-size: 13px; font-weight: 500;">Read more &rarr;</a>
         </div>
-      `
+      `,
       )
-      .join('');
+      .join("");
 
     return `
       <!DOCTYPE html>
@@ -662,13 +699,16 @@ export class NewsletterService {
     `;
   }
 
-  private static personalizeEmail(html: string, subscriber: NewsletterSubscriber): string {
+  private static personalizeEmail(
+    html: string,
+    subscriber: NewsletterSubscriber,
+  ): string {
     return html
-      .replace(/\{\{subscriber_name\}\}/g, subscriber.name || 'Reader')
+      .replace(/\{\{subscriber_name\}\}/g, subscriber.name || "Reader")
       .replace(/\{\{subscriber_id\}\}/g, subscriber.id)
       .replace(
         /\{\{unsubscribe_url\}\}/g,
-        `https://balizero.com/newsletter/unsubscribe?id=${subscriber.id}`
+        `https://balizero.com/newsletter/unsubscribe?id=${subscriber.id}`,
       );
   }
 
@@ -689,7 +729,9 @@ export class NewsletterService {
 // Export utility functions
 // ============================================================================
 
-export async function subscribeToNewsletter(request: NewsletterSubscribeRequest) {
+export async function subscribeToNewsletter(
+  request: NewsletterSubscribeRequest,
+) {
   return NewsletterService.subscribe(request);
 }
 

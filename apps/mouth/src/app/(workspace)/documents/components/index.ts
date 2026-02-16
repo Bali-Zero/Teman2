@@ -5,26 +5,29 @@
  */
 
 // Core Components
-export { DriveBreadcrumb } from './DriveBreadcrumb';
-export { DriveInfoPanel } from './DriveInfoPanel';
-export { DriveSidebar } from './DriveSidebar';
-export { DepartmentHome } from './DepartmentHome';
+export { DriveBreadcrumb } from "./DriveBreadcrumb";
+export { DriveInfoPanel } from "./DriveInfoPanel";
+export { DriveSidebar } from "./DriveSidebar";
+export { DepartmentHome } from "./DepartmentHome";
 
 // Toolbar
-export { DriveToolbar } from './DriveToolbar';
-export { DriveToolbarOptimized } from './DriveToolbarOptimized';
+export { DriveToolbar } from "./DriveToolbar";
+export { DriveToolbarOptimized } from "./DriveToolbarOptimized";
 
 // File Views
-export { FileGrid } from './FileGrid';
-export { FileGridVirtualized } from './FileGridVirtualized';
-export { FileList } from './FileList';
+export { FileGrid } from "./FileGrid";
+export { FileGridVirtualized } from "./FileGridVirtualized";
+export { FileList } from "./FileList";
 
 // Skeletons
-export { FileGridSkeleton } from './FileGridSkeleton';
-export { FileListSkeleton } from './FileListSkeleton';
+export { FileGridSkeleton } from "./FileGridSkeleton";
+export { FileListSkeleton } from "./FileListSkeleton";
 
 // Error Handling
-export { DocumentsErrorBoundary, DocumentsInlineError } from './DocumentsErrorBoundary';
+export {
+  DocumentsErrorBoundary,
+  DocumentsInlineError,
+} from "./DocumentsErrorBoundary";
 
 // Utilities
-export { getFileIcon, getDepartmentInfo, DEPARTMENT_COLORS } from './file-icon';
+export { getFileIcon, getDepartmentInfo, DEPARTMENT_COLORS } from "./file-icon";

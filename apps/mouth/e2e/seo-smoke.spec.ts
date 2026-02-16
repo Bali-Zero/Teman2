@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
 /**
  * SEO Smoke Test - SSR & Schema Validation
@@ -20,52 +20,54 @@ import { test, expect } from '@playwright/test';
  */
 
 const CONFIG = {
-  baseUrl: process.env.E2E_BASE_URL || 'http://localhost:3000',
+  baseUrl: process.env.E2E_BASE_URL || "http://localhost:3000",
 };
 
-test.describe('SEO Smoke Tests - SSR & Schema Validation', () => {
-  test('Service page loads with SSR content', async ({ page }) => {
+test.describe("SEO Smoke Tests - SSR & Schema Validation", () => {
+  test("Service page loads with SSR content", async ({ page }) => {
     // Navigate to a service page (using visa as example, but any service works)
     await page.goto(`${CONFIG.baseUrl}/services/visa`);
 
     // Wait for page to load
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState("networkidle");
 
     // Verify page title
     await expect(page).toHaveTitle(/Visa.*Bali.*2026/i);
 
     // Verify main heading is present
-    await expect(page.locator('h1')).toContainText(/Visa|Immigration/i);
+    await expect(page.locator("h1")).toContainText(/Visa|Immigration/i);
   });
 
-  test('Pricing content is present in SSR HTML (SEO Verified)', async ({ page }) => {
+  test("Pricing content is present in SSR HTML (SEO Verified)", async ({
+    page,
+  }) => {
     await page.goto(`${CONFIG.baseUrl}/services/visa`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState("networkidle");
 
     // Get the initial HTML content (before any client-side hydration)
     const htmlContent = await page.content();
 
     // Verify pricing information is in the HTML source
     // This ensures Googlebot can see it without JavaScript
-    expect(htmlContent).toContain('Pricing');
+    expect(htmlContent).toContain("Pricing");
 
     // Check for at least one price value in the HTML
     // Look for common price patterns (IDR format with dots)
     const hasPriceInHTML =
-      htmlContent.includes('2.300.000') || // C1 Tourism Visit
-      htmlContent.includes('3.600.000') || // C2 Business Visit
-      htmlContent.includes('17.000.000') || // E28A Investor KITAS
-      htmlContent.includes('13.000.000'); // E33G Digital Nomad
+      htmlContent.includes("2.300.000") || // C1 Tourism Visit
+      htmlContent.includes("3.600.000") || // C2 Business Visit
+      htmlContent.includes("17.000.000") || // E28A Investor KITAS
+      htmlContent.includes("13.000.000"); // E33G Digital Nomad
 
     expect(hasPriceInHTML).toBeTruthy();
 
     // Verify service description is in HTML
-    expect(htmlContent).toContain('Complete visa solutions');
+    expect(htmlContent).toContain("Complete visa solutions");
   });
 
-  test('JSON-LD schema tags are present', async ({ page }) => {
+  test("JSON-LD schema tags are present", async ({ page }) => {
     await page.goto(`${CONFIG.baseUrl}/services/visa`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState("networkidle");
 
     const htmlContent = await page.content();
 
@@ -90,30 +92,30 @@ test.describe('SEO Smoke Tests - SSR & Schema Validation', () => {
     expect(htmlContent).toContain('"@type":"Answer"');
   });
 
-  test('Semantic HTML structure with microdata', async ({ page }) => {
+  test("Semantic HTML structure with microdata", async ({ page }) => {
     await page.goto(`${CONFIG.baseUrl}/services/visa`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState("networkidle");
 
     const htmlContent = await page.content();
 
     // Verify semantic <dl> element exists (AI Summary Block)
-    expect(htmlContent).toContain('<dl');
-    expect(htmlContent).toContain('itemScope');
-    expect(htmlContent).toContain('itemProp');
-    expect(htmlContent).toContain('itemType');
+    expect(htmlContent).toContain("<dl");
+    expect(htmlContent).toContain("itemScope");
+    expect(htmlContent).toContain("itemProp");
+    expect(htmlContent).toContain("itemType");
 
     // Verify key semantic properties
-    expect(htmlContent).toContain('serviceType');
-    expect(htmlContent).toContain('hoursAvailable');
-    expect(htmlContent).toContain('areaServed');
+    expect(htmlContent).toContain("serviceType");
+    expect(htmlContent).toContain("hoursAvailable");
+    expect(htmlContent).toContain("areaServed");
   });
 
-  test('Multiple service pages have correct SSR', async ({ page }) => {
-    const services = ['visa', 'company', 'tax', 'property'];
+  test("Multiple service pages have correct SSR", async ({ page }) => {
+    const services = ["visa", "company", "tax", "property"];
 
     for (const serviceSlug of services) {
       await page.goto(`${CONFIG.baseUrl}/services/${serviceSlug}`);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState("networkidle");
 
       const htmlContent = await page.content();
 
@@ -123,35 +125,39 @@ test.describe('SEO Smoke Tests - SSR & Schema Validation', () => {
 
       // 2. Service name in title
       const service =
-        serviceSlug === 'visa'
-          ? 'Visa'
-          : serviceSlug === 'company'
-            ? 'Company'
-            : serviceSlug === 'tax'
-              ? 'Tax'
-              : 'Property';
+        serviceSlug === "visa"
+          ? "Visa"
+          : serviceSlug === "company"
+            ? "Company"
+            : serviceSlug === "tax"
+              ? "Tax"
+              : "Property";
 
       // 3. Pricing section
-      expect(htmlContent).toContain('Pricing');
+      expect(htmlContent).toContain("Pricing");
 
       // 4. FAQ section
-      expect(htmlContent).toContain('Frequently Asked Questions');
+      expect(htmlContent).toContain("Frequently Asked Questions");
     }
   });
 
-  test('Service page metadata is correct', async ({ page }) => {
+  test("Service page metadata is correct", async ({ page }) => {
     await page.goto(`${CONFIG.baseUrl}/services/visa`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState("networkidle");
 
     // Verify meta description
-    const metaDescription = await page.locator('meta[name="description"]').getAttribute('content');
+    const metaDescription = await page
+      .locator('meta[name="description"]')
+      .getAttribute("content");
     expect(metaDescription).toBeTruthy();
     expect(metaDescription?.length).toBeGreaterThan(50);
 
     // Verify Open Graph tags (if present)
-    const ogTitle = await page.locator('meta[property="og:title"]').getAttribute('content');
+    const ogTitle = await page
+      .locator('meta[property="og:title"]')
+      .getAttribute("content");
     if (ogTitle) {
-      expect(ogTitle).toContain('Visa');
+      expect(ogTitle).toContain("Visa");
     }
   });
 });

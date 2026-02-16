@@ -1,7 +1,13 @@
-import { Activity, CheckCircle, AlertTriangle, XCircle, Clock } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
-import { ServiceStatus } from '@/lib/api/admin/admin.types';
+import {
+  Activity,
+  CheckCircle,
+  AlertTriangle,
+  XCircle,
+  Clock,
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import { ServiceStatus } from "@/lib/api/admin/admin.types";
 
 interface ServiceHealthCardProps {
   name: string;
@@ -22,24 +28,24 @@ export function ServiceHealthCard({
 }: ServiceHealthCardProps) {
   const getStatusColor = (s: ServiceStatus) => {
     switch (s) {
-      case 'ok':
-        return 'text-green-500 bg-green-500/10 border-green-500/20';
-      case 'warning':
-        return 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20';
-      case 'error':
-        return 'text-red-500 bg-red-500/10 border-red-500/20';
+      case "ok":
+        return "text-green-500 bg-green-500/10 border-green-500/20";
+      case "warning":
+        return "text-yellow-500 bg-yellow-500/10 border-yellow-500/20";
+      case "error":
+        return "text-red-500 bg-red-500/10 border-red-500/20";
       default:
-        return 'text-gray-500 bg-gray-500/10 border-gray-500/20';
+        return "text-gray-500 bg-gray-500/10 border-gray-500/20";
     }
   };
 
   const getStatusIcon = (s: ServiceStatus) => {
     switch (s) {
-      case 'ok':
+      case "ok":
         return CheckCircle;
-      case 'warning':
+      case "warning":
         return AlertTriangle;
-      case 'error':
+      case "error":
         return XCircle;
       default:
         return Activity;
@@ -50,7 +56,7 @@ export function ServiceHealthCard({
   const colorClass = getStatusColor(status);
 
   return (
-    <Card className={cn('border transition-all duration-200', colorClass)}>
+    <Card className={cn("border transition-all duration-200", colorClass)}>
       <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
         <CardTitle className="text-sm font-medium capitalize flex items-center gap-2">
           <Icon className="w-4 h-4" />
@@ -59,8 +65,13 @@ export function ServiceHealthCard({
         <StatusIcon className="w-4 h-4" />
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold uppercase tracking-wider text-xs mb-2">{status}</div>
-        <p className="text-xs text-muted-foreground mb-4 font-mono truncate" title={message}>
+        <div className="text-2xl font-bold uppercase tracking-wider text-xs mb-2">
+          {status}
+        </div>
+        <p
+          className="text-xs text-muted-foreground mb-4 font-mono truncate"
+          title={message}
+        >
           {message}
         </p>
 
@@ -71,7 +82,10 @@ export function ServiceHealthCard({
                 <Clock className="w-3 h-3" /> Latency
               </span>
               <span
-                className={cn('font-mono', latency > 1000 ? 'text-yellow-500' : 'text-green-500')}
+                className={cn(
+                  "font-mono",
+                  latency > 1000 ? "text-yellow-500" : "text-green-500",
+                )}
               >
                 {latency.toFixed(1)}ms
               </span>
@@ -80,9 +94,16 @@ export function ServiceHealthCard({
 
           {metadata &&
             Object.entries(metadata).map(([key, value]) => (
-              <div key={key} className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</span>
-                <span className="font-mono text-foreground/80">{String(value)}</span>
+              <div
+                key={key}
+                className="flex items-center justify-between text-xs"
+              >
+                <span className="text-muted-foreground capitalize">
+                  {key.replace(/_/g, " ")}
+                </span>
+                <span className="font-mono text-foreground/80">
+                  {String(value)}
+                </span>
               </div>
             ))}
         </div>

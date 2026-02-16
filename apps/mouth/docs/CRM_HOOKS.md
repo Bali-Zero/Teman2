@@ -12,8 +12,8 @@ Gestione lista clienti con caching e infinite scroll.
 
 ```typescript
 const { clients, total, isLoading, loadMore, hasMore } = useCrmClients({
-  status: 'active',
-  search: 'john',
+  status: "active",
+  search: "john",
   limit: 50,
 });
 ```
@@ -42,7 +42,7 @@ Lista pratiche con filtri.
 ```typescript
 const { practices } = useCrmPractices({
   clientId: 123,
-  status: 'in_progress',
+  status: "in_progress",
 });
 ```
 
@@ -77,7 +77,7 @@ const { notifications, unreadCount, markAsRead } = useCrmNotifications();
 Alert per documenti in scadenza.
 
 ```typescript
-const { data: alerts } = useExpiryAlerts({ alertColor: 'red' });
+const { data: alerts } = useExpiryAlerts({ alertColor: "red" });
 const { data: renewals } = useUpcomingRenewals(90);
 ```
 

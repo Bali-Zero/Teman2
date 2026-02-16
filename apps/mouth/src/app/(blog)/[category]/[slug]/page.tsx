@@ -79,8 +79,12 @@ export async function generateMetadata({
     if (article) {
       return generateArticleMetadata(article);
     }
-  } catch (error) {
-    logger.error("Error generating metadata:", error);
+  } catch (err) {
+    logger.error(
+      "Error generating metadata:",
+      {},
+      err instanceof Error ? err : new Error(String(err)),
+    );
   }
 
   // Fallback metadata

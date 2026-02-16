@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { logger } from '@/lib/logger';
+import { logger } from "@/lib/logger";
 /**
  * Web Vitals Monitoring
  * Tracks Core Web Vitals (LCP, CLS, INP, TTFB) and sends to analytics
@@ -11,9 +11,9 @@ import { logger } from '@/lib/logger';
 
 // Define Metric type locally
 interface Metric {
-  name: 'CLS' | 'INP' | 'LCP' | 'TTFB' | 'FCP' | 'FID';
+  name: "CLS" | "INP" | "LCP" | "TTFB" | "FCP" | "FID";
   value: number;
-  rating: 'good' | 'needs-improvement' | 'poor';
+  rating: "good" | "needs-improvement" | "poor";
   delta: number;
   id: string;
   navigationType: string;
@@ -31,10 +31,10 @@ interface WebVitalsOptions {
 export function initWebVitals(_options: WebVitalsOptions = {}) {
   // Disabled - web-vitals package has resolution issues on Vercel
   // Will be re-enabled when fixed
-  if (process.env.NODE_ENV === 'development') {
-    logger.debug('[Web Vitals] Monitoring temporarily disabled', {
-      component: 'AUTO',
-      action: 'log',
+  if (process.env.NODE_ENV === "development") {
+    logger.debug("[Web Vitals] Monitoring temporarily disabled", {
+      component: "AUTO",
+      action: "log",
     });
   }
 }
@@ -52,7 +52,7 @@ export const INP_THRESHOLDS = {
  * Format metric value for display
  */
 export function formatMetricValue(value: number, name: string): string {
-  if (name === 'CLS') {
+  if (name === "CLS") {
     return value.toFixed(3);
   }
   return `${Math.round(value)}ms`;
@@ -61,15 +61,17 @@ export function formatMetricValue(value: number, name: string): string {
 /**
  * Get metric rating color
  */
-export function getMetricRatingColor(rating: 'good' | 'needs-improvement' | 'poor'): string {
+export function getMetricRatingColor(
+  rating: "good" | "needs-improvement" | "poor",
+): string {
   switch (rating) {
-    case 'good':
-      return 'text-green-500';
-    case 'needs-improvement':
-      return 'text-yellow-500';
-    case 'poor':
-      return 'text-red-500';
+    case "good":
+      return "text-green-500";
+    case "needs-improvement":
+      return "text-yellow-500";
+    case "poor":
+      return "text-red-500";
     default:
-      return 'text-gray-500';
+      return "text-gray-500";
   }
 }

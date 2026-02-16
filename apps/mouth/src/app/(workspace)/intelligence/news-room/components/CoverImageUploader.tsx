@@ -1,19 +1,19 @@
-'use client';
+"use client";
 
-import { useState, useRef } from 'react';
-import { intelligenceApi, StagingItem } from '@/lib/api/intelligence.api';
-import { Button } from '@/components/ui/button';
+import { useState, useRef } from "react";
+import { intelligenceApi, StagingItem } from "@/lib/api/intelligence.api";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { useToast } from '@/components/ui/toast';
-import { Loader2, Upload, Image as ImageIcon, X } from 'lucide-react';
-import { logger } from '@/lib/logger';
-import { fileToBase64 } from '@/lib/utils';
+} from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/toast";
+import { Loader2, Upload, Image as ImageIcon, X } from "lucide-react";
+import { logger } from "@/lib/logger";
+import { fileToBase64 } from "@/lib/utils";
 
 interface CoverImageUploaderProps {
   item: StagingItem;
@@ -35,14 +35,14 @@ export function CoverImageUploader({
   const toast = useToast();
 
   const handleFileSelect = (selectedFile: File) => {
-    if (!selectedFile.type.startsWith('image/')) {
-      toast.error('Invalid file', 'Please select an image file');
+    if (!selectedFile.type.startsWith("image/")) {
+      toast.error("Invalid file", "Please select an image file");
       return;
     }
 
     // Check file size (max 5MB)
     if (selectedFile.size > 5 * 1024 * 1024) {
-      toast.error('File too large', 'Please select an image smaller than 5MB');
+      toast.error("File too large", "Please select an image smaller than 5MB");
       return;
     }
 
@@ -66,7 +66,7 @@ export function CoverImageUploader({
 
   const handleUpload = async () => {
     if (!file || !preview) {
-      toast.error('No file', 'Please select an image first');
+      toast.error("No file", "Please select an image first");
       return;
     }
 
@@ -76,22 +76,27 @@ export function CoverImageUploader({
       const base64 = await fileToBase64(file);
       const filename = file.name;
 
-      await intelligenceApi.uploadCoverImage(item.type, item.id, base64, filename);
-      toast.success('Uploaded!', 'Cover image uploaded successfully');
+      await intelligenceApi.uploadCoverImage(
+        item.type,
+        item.id,
+        base64,
+        filename,
+      );
+      toast.success("Uploaded!", "Cover image uploaded successfully");
       onUploaded();
       onOpenChange(false);
       setFile(null);
       setPreview(null);
     } catch (error) {
-      toast.error('Error', 'Failed to upload cover image');
+      toast.error("Error", "Failed to upload cover image");
       logger.error(
-        'Failed to upload cover image',
+        "Failed to upload cover image",
         {
-          component: 'CoverImageUploader',
-          action: 'upload_cover_image',
+          component: "CoverImageUploader",
+          action: "upload_cover_image",
           itemId: item.id,
         },
-        error as Error
+        error as Error,
       );
     } finally {
       setUploading(false);
@@ -114,7 +119,9 @@ export function CoverImageUploader({
             <ImageIcon className="h-5 w-5" />
             Upload Cover Image
           </DialogTitle>
-          <DialogDescription>Upload a cover image for this article</DialogDescription>
+          <DialogDescription>
+            Upload a cover image for this article
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 mt-4">
@@ -174,7 +181,11 @@ export function CoverImageUploader({
           <Button variant="outline" onClick={handleClose} disabled={uploading}>
             Cancel
           </Button>
-          <Button onClick={handleUpload} disabled={!file || uploading} className="gap-2">
+          <Button
+            onClick={handleUpload}
+            disabled={!file || uploading}
+            className="gap-2"
+          >
             {uploading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />

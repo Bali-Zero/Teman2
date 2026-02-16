@@ -9,6 +9,6 @@ export {
   withCRMErrorBoundary,
   CRMErrorFallback,
   CRMSkeleton,
-} from './CRMErrorBoundary';
+} from "./CRMErrorBoundary";
 
-export { QuickSearch, QuickSearchTrigger } from './QuickSearch';
+export { QuickSearch, QuickSearchTrigger } from "./QuickSearch";

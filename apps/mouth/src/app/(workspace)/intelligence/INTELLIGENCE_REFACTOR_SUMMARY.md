@@ -22,7 +22,7 @@ Complete refactoring and enhancement of the Intelligence Center section to impro
 
 ```typescript
 // System Pulse used direct fetch
-const response = await fetch('/api/intel/metrics');
+const response = await fetch("/api/intel/metrics");
 ```
 
 **After:**
@@ -89,9 +89,9 @@ const metrics = await intelligenceApi.getMetrics();
 **Example:**
 
 ```typescript
-logger.info('System metrics loaded successfully', {
-  component: 'SystemPulsePage',
-  action: 'load_metrics_success',
+logger.info("System metrics loaded successfully", {
+  component: "SystemPulsePage",
+  action: "load_metrics_success",
   metadata: {
     agent_status: metricsData.agent_status,
     qdrant_health: metricsData.qdrant_health,
@@ -112,13 +112,13 @@ logger.info('System metrics loaded successfully', {
 **Before:**
 
 ```typescript
-toast.error('Rejection failed');
+toast.error("Rejection failed");
 ```
 
 **After:**
 
 ```typescript
-toast.error('Rejection failed', 'Could not archive item. Check backend logs.');
+toast.error("Rejection failed", "Could not archive item. Check backend logs.");
 ```
 
 ### 6. ✅ Code Consistency

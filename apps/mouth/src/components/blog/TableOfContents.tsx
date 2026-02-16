@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import * as React from 'react';
-import { motion } from 'framer-motion';
-import { List } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import type { TableOfContentsProps } from '@/lib/blog/types';
+import * as React from "react";
+import { motion } from "framer-motion";
+import { List } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { TableOfContentsProps } from "@/lib/blog/types";
 
 interface TocItem {
   id: string;
@@ -24,8 +24,8 @@ function extractHeadings(content: string): TocItem[] {
     // Generate ID from heading text
     const id = text
       .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-');
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-");
 
     headings.push({ id, text, level });
   }
@@ -34,7 +34,7 @@ function extractHeadings(content: string): TocItem[] {
 }
 
 export function TableOfContents({ content, className }: TableOfContentsProps) {
-  const [activeId, setActiveId] = React.useState<string>('');
+  const [activeId, setActiveId] = React.useState<string>("");
   const [isExpanded, setIsExpanded] = React.useState(true);
   const headings = React.useMemo(() => extractHeadings(content), [content]);
 
@@ -49,9 +49,9 @@ export function TableOfContents({ content, className }: TableOfContentsProps) {
         });
       },
       {
-        rootMargin: '-80px 0px -80% 0px',
+        rootMargin: "-80px 0px -80% 0px",
         threshold: 0,
-      }
+      },
     );
 
     // Observe all heading elements
@@ -77,7 +77,7 @@ export function TableOfContents({ content, className }: TableOfContentsProps) {
 
       window.scrollTo({
         top: offsetPosition,
-        behavior: 'smooth',
+        behavior: "smooth",
       });
     }
   };
@@ -87,7 +87,7 @@ export function TableOfContents({ content, className }: TableOfContentsProps) {
   }
 
   return (
-    <nav className={cn('relative', className)}>
+    <nav className={cn("relative", className)}>
       {/* Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
@@ -100,7 +100,10 @@ export function TableOfContents({ content, className }: TableOfContentsProps) {
       {/* TOC list */}
       <motion.div
         initial={false}
-        animate={{ height: isExpanded ? 'auto' : 0, opacity: isExpanded ? 1 : 0 }}
+        animate={{
+          height: isExpanded ? "auto" : 0,
+          opacity: isExpanded ? 1 : 0,
+        }}
         className="overflow-hidden"
       >
         <ul className="space-y-1 border-l border-white/10">
@@ -118,10 +121,10 @@ export function TableOfContents({ content, className }: TableOfContentsProps) {
                 <button
                   onClick={() => scrollToHeading(heading.id)}
                   className={cn(
-                    'block w-full text-left py-1.5 pl-4 text-sm transition-all duration-200 border-l-2 -ml-[2px]',
+                    "block w-full text-left py-1.5 pl-4 text-sm transition-all duration-200 border-l-2 -ml-[2px]",
                     isActive
-                      ? 'text-violet-400 border-violet-400 bg-violet-400/5'
-                      : 'text-white/50 border-transparent hover:text-white hover:border-white/30'
+                      ? "text-violet-400 border-violet-400 bg-violet-400/5"
+                      : "text-white/50 border-transparent hover:text-white hover:border-white/30",
                   )}
                   style={{ paddingLeft: `${16 + indent}px` }}
                 >
@@ -156,7 +159,7 @@ export function FloatingToc({ content }: { content: string }) {
 
       window.scrollTo({
         top: offsetPosition,
-        behavior: 'smooth',
+        behavior: "smooth",
       });
       setIsOpen(false);
     }
@@ -168,10 +171,10 @@ export function FloatingToc({ content }: { content: string }) {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          'fixed bottom-4 right-4 z-40 p-3 rounded-full shadow-lg',
-          'bg-violet-600 text-white',
-          'hover:bg-violet-500 transition-colors',
-          'md:hidden'
+          "fixed bottom-4 right-4 z-40 p-3 rounded-full shadow-lg",
+          "bg-violet-600 text-white",
+          "hover:bg-violet-500 transition-colors",
+          "md:hidden",
         )}
       >
         <List className="w-5 h-5" />
@@ -193,15 +196,20 @@ export function FloatingToc({ content }: { content: string }) {
 
           {/* Drawer content */}
           <motion.div
-            initial={{ y: '100%' }}
+            initial={{ y: "100%" }}
             animate={{ y: 0 }}
-            exit={{ y: '100%' }}
+            exit={{ y: "100%" }}
             className="absolute bottom-0 left-0 right-0 max-h-[60vh] bg-zinc-900 border-t border-white/10 rounded-t-2xl overflow-hidden"
           >
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-white/10">
-              <span className="text-sm font-medium text-white">Table of Contents</span>
-              <button onClick={() => setIsOpen(false)} className="text-white/60 hover:text-white">
+              <span className="text-sm font-medium text-white">
+                Table of Contents
+              </span>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="text-white/60 hover:text-white"
+              >
                 Close
               </button>
             </div>
@@ -238,19 +246,25 @@ export function ReadingProgress({ className }: { className?: string }) {
   React.useEffect(() => {
     const updateProgress = () => {
       const scrollTop = window.scrollY;
-      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const docHeight =
+        document.documentElement.scrollHeight - window.innerHeight;
       const newProgress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
       setProgress(Math.min(100, Math.max(0, newProgress)));
     };
 
-    window.addEventListener('scroll', updateProgress, { passive: true });
+    window.addEventListener("scroll", updateProgress, { passive: true });
     updateProgress();
 
-    return () => window.removeEventListener('scroll', updateProgress);
+    return () => window.removeEventListener("scroll", updateProgress);
   }, []);
 
   return (
-    <div className={cn('fixed top-0 left-0 right-0 z-50 h-1 bg-white/5', className)}>
+    <div
+      className={cn(
+        "fixed top-0 left-0 right-0 z-50 h-1 bg-white/5",
+        className,
+      )}
+    >
       <motion.div
         className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500"
         style={{ width: `${progress}%` }}

@@ -19,10 +19,10 @@ export interface WhatsAppMessage {
   interaction_id: number;
   phone: string;
   message_text: string;
-  direction: 'inbound' | 'outbound';
+  direction: "inbound" | "outbound";
   timestamp: string;
   message_id?: string; // WhatsApp message ID from Meta API
-  status?: 'sent' | 'delivered' | 'read' | 'failed';
+  status?: "sent" | "delivered" | "read" | "failed";
   reply_to_message_id?: string;
 }
 
@@ -30,7 +30,7 @@ export interface WhatsAppInteraction extends WhatsAppMessage {
   client_id?: number;
   client_name?: string;
   team_member: string;
-  sentiment?: 'positive' | 'neutral' | 'negative' | 'urgent';
+  sentiment?: "positive" | "neutral" | "negative" | "urgent";
   summary?: string;
   full_content?: string;
 }

@@ -3,9 +3,9 @@
  * Sends events to the analytics service for monitoring usage patterns
  */
 
-import type { AnalyticsProperties } from './types/common';
-import { logger } from './logger';
-import { toError } from './types/common';
+import type { AnalyticsProperties } from "./types/common";
+import { logger } from "./logger";
+import { toError } from "./types/common";
 
 export interface AnalyticsEvent {
   event_name: string;
@@ -21,7 +21,7 @@ let sessionId: string | null = null;
  * Initialize analytics session
  */
 export function initializeAnalytics(): void {
-  if (typeof window !== 'undefined' && !sessionId) {
+  if (typeof window !== "undefined" && !sessionId) {
     sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
 }
@@ -32,9 +32,9 @@ export function initializeAnalytics(): void {
 export function trackEvent(
   eventName: string,
   properties?: AnalyticsProperties,
-  userId?: string
+  userId?: string,
 ): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
 
   initializeAnalytics();
 
@@ -47,10 +47,10 @@ export function trackEvent(
   };
 
   // Log to logger in development
-  if (process.env.NODE_ENV === 'development') {
-    logger.debug('Analytics event', {
-      component: 'Analytics',
-      action: 'trackEvent',
+  if (process.env.NODE_ENV === "development") {
+    logger.debug("Analytics event", {
+      component: "Analytics",
+      action: "trackEvent",
       metadata: { eventName, userId },
     });
   }
@@ -64,8 +64,8 @@ export function trackEvent(
 /**
  * Track view mode changes
  */
-export function trackViewModeChange(newMode: 'kanban' | 'list'): void {
-  trackEvent('view_mode_changed', {
+export function trackViewModeChange(newMode: "kanban" | "list"): void {
+  trackEvent("view_mode_changed", {
     view_mode: newMode,
     timestamp: Date.now(),
   });
@@ -75,10 +75,10 @@ export function trackViewModeChange(newMode: 'kanban' | 'list'): void {
  * Track filter application
  */
 export function trackFilterApplied(
-  filterType: 'status' | 'type' | 'assigned_to',
-  filterValue: string
+  filterType: "status" | "type" | "assigned_to",
+  filterValue: string,
 ): void {
-  trackEvent('filter_applied', {
+  trackEvent("filter_applied", {
     filter_type: filterType,
     filter_value: filterValue,
     timestamp: Date.now(),
@@ -89,7 +89,7 @@ export function trackFilterApplied(
  * Track filter removal
  */
 export function trackFilterRemoved(filterType: string): void {
-  trackEvent('filter_removed', {
+  trackEvent("filter_removed", {
     filter_type: filterType,
     timestamp: Date.now(),
   });
@@ -98,8 +98,11 @@ export function trackFilterRemoved(filterType: string): void {
 /**
  * Track sort operation
  */
-export function trackSortApplied(sortField: string, sortOrder: 'asc' | 'desc'): void {
-  trackEvent('sort_applied', {
+export function trackSortApplied(
+  sortField: string,
+  sortOrder: "asc" | "desc",
+): void {
+  trackEvent("sort_applied", {
     sort_field: sortField,
     sort_order: sortOrder,
     timestamp: Date.now(),
@@ -110,7 +113,7 @@ export function trackSortApplied(sortField: string, sortOrder: 'asc' | 'desc'): 
  * Track search operation
  */
 export function trackSearch(query: string, resultsCount: number): void {
-  trackEvent('search_performed', {
+  trackEvent("search_performed", {
     query_length: query.length,
     results_count: resultsCount,
     timestamp: Date.now(),
@@ -120,8 +123,12 @@ export function trackSearch(query: string, resultsCount: number): void {
 /**
  * Track case status change
  */
-export function trackCaseStatusChanged(caseId: number, oldStatus: string, newStatus: string): void {
-  trackEvent('case_status_changed', {
+export function trackCaseStatusChanged(
+  caseId: number,
+  oldStatus: string,
+  newStatus: string,
+): void {
+  trackEvent("case_status_changed", {
     case_id: caseId,
     old_status: oldStatus,
     new_status: newStatus,
@@ -132,8 +139,11 @@ export function trackCaseStatusChanged(caseId: number, oldStatus: string, newSta
 /**
  * Track pagination
  */
-export function trackPaginationChange(pageNumber: number, itemsPerPage: number): void {
-  trackEvent('pagination_changed', {
+export function trackPaginationChange(
+  pageNumber: number,
+  itemsPerPage: number,
+): void {
+  trackEvent("pagination_changed", {
     page_number: pageNumber,
     items_per_page: itemsPerPage,
     timestamp: Date.now(),
@@ -149,9 +159,9 @@ async function sendAnalyticsEvent(event: AnalyticsEvent): Promise<void> {
     if (!endpoint) return;
 
     await fetch(endpoint, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(event),
       keepalive: true, // Ensures request completes even if page unloads
@@ -159,9 +169,9 @@ async function sendAnalyticsEvent(event: AnalyticsEvent): Promise<void> {
   } catch (error) {
     // Silently fail - don't interrupt user experience for analytics
     logger.warn(
-      'Failed to send analytics event',
-      { component: 'Analytics', action: 'sendAnalyticsEvent' },
-      toError(error)
+      "Failed to send analytics event",
+      { component: "Analytics", action: "sendAnalyticsEvent" },
+      toError(error),
     );
   }
 }

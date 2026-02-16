@@ -3,11 +3,21 @@
  * Manages WebSocket connections for real-time updates
  */
 
-'use client';
+"use client";
 
-import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
-import { debug, warn, error } from '@/lib/utils/console';
-import type { WebSocketMessage, WebSocketChannel } from '@/lib/api/zantara-sdk/types';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
+import { debug, warn, error } from "@/lib/utils/console";
+import type {
+  WebSocketMessage,
+  WebSocketChannel,
+} from "@/lib/api/zantara-sdk/types";
 
 export interface WebSocketContextValue {
   isConnected: boolean;
@@ -16,7 +26,7 @@ export interface WebSocketContextValue {
   sendMessage: (message: WebSocketMessage) => void;
   subscribe: (
     channel: WebSocketChannel,
-    callback: (message: WebSocketMessage) => void
+    callback: (message: WebSocketMessage) => void,
   ) => () => void;
 }
 
@@ -37,9 +47,9 @@ export function WebSocketProvider({
 }: WebSocketProviderProps) {
   const [isConnected, setIsConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
-  const subscribersRef = useRef<Map<WebSocketChannel, Set<(message: WebSocketMessage) => void>>>(
-    new Map()
-  );
+  const subscribersRef = useRef<
+    Map<WebSocketChannel, Set<(message: WebSocketMessage) => void>>
+  >(new Map());
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const maxReconnectAttempts = 5;
@@ -52,7 +62,7 @@ export function WebSocketProvider({
 
     try {
       // Build WebSocket URL with token
-      const wsUrl = url.replace(/^http/, 'ws');
+      const wsUrl = url.replace(/^http/, "ws");
       const ws = new WebSocket(wsUrl, token ? [`bearer.${token}`] : undefined);
 
       ws.onopen = () => {
@@ -63,7 +73,7 @@ export function WebSocketProvider({
         // Send ping to keep connection alive
         const pingInterval = setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'ping' }));
+            ws.send(JSON.stringify({ type: "ping" }));
           } else {
             clearInterval(pingInterval);
           }
@@ -75,30 +85,30 @@ export function WebSocketProvider({
           const message: WebSocketMessage = JSON.parse(event.data);
 
           // Handle pong
-          if (message.type === 'pong') {
+          if (message.type === "pong") {
             return;
           }
 
           // Route message to subscribers based on type
           const channelMap: Record<string, WebSocketChannel> = {
-            notification: 'USER_NOTIFICATIONS',
-            'ai-result': 'AI_RESULTS',
-            'chat-message': 'CHAT_MESSAGES',
-            'system-event': 'SYSTEM_EVENTS',
+            notification: "USER_NOTIFICATIONS",
+            "ai-result": "AI_RESULTS",
+            "chat-message": "CHAT_MESSAGES",
+            "system-event": "SYSTEM_EVENTS",
           };
 
-          const channel = channelMap[message.type] || 'SYSTEM_EVENTS';
+          const channel = channelMap[message.type] || "SYSTEM_EVENTS";
           const subscribers = subscribersRef.current.get(channel);
           if (subscribers) {
             subscribers.forEach((callback) => callback(message));
           }
         } catch (err) {
-          error('Failed to parse WebSocket message:', err);
+          error("Failed to parse WebSocket message:", err);
         }
       };
 
       ws.onerror = (wsError) => {
-        error('WebSocket error:', wsError);
+        error("WebSocket error:", wsError);
       };
 
       ws.onclose = () => {
@@ -114,13 +124,13 @@ export function WebSocketProvider({
             connect();
           }, reconnectDelay);
         } else {
-          error('Max reconnection attempts reached');
+          error("Max reconnection attempts reached");
         }
       };
 
       wsRef.current = ws;
     } catch (err) {
-      error('Failed to create WebSocket connection:', err);
+      error("Failed to create WebSocket connection:", err);
       setIsConnected(false);
     }
   }, [url, token]);
@@ -141,12 +151,15 @@ export function WebSocketProvider({
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(message));
     } else {
-      warn('WebSocket is not connected');
+      warn("WebSocket is not connected");
     }
   }, []);
 
   const subscribe = useCallback(
-    (channel: WebSocketChannel, callback: (message: WebSocketMessage) => void) => {
+    (
+      channel: WebSocketChannel,
+      callback: (message: WebSocketMessage) => void,
+    ) => {
       if (!subscribersRef.current.has(channel)) {
         subscribersRef.current.set(channel, new Set());
       }
@@ -163,7 +176,7 @@ export function WebSocketProvider({
         }
       };
     },
-    []
+    [],
   );
 
   // Auto-connect on mount
@@ -185,13 +198,17 @@ export function WebSocketProvider({
     subscribe,
   };
 
-  return <WebSocketContext.Provider value={value}>{children}</WebSocketContext.Provider>;
+  return (
+    <WebSocketContext.Provider value={value}>
+      {children}
+    </WebSocketContext.Provider>
+  );
 }
 
 export function useWebSocket() {
   const context = useContext(WebSocketContext);
   if (!context) {
-    throw new Error('useWebSocket must be used within WebSocketProvider');
+    throw new Error("useWebSocket must be used within WebSocketProvider");
   }
   return context;
 }

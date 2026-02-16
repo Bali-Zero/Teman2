@@ -78,8 +78,8 @@ import {
   Calculator,
   Checklist,
   InfoCard,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Accommodation in Indonesia 2026: Expat Housing Guide
 
@@ -97,8 +97,8 @@ Finding the right place to live is crucial for your Indonesia experience. Here's
       options: [
         { label: "1-3 months", next: "short" },
         { label: "3-12 months", next: "medium" },
-        { label: "1+ years", next: "long" }
-      ]
+        { label: "1+ years", next: "long" },
+      ],
     },
     {
       id: "short",
@@ -106,8 +106,8 @@ Finding the right place to live is crucial for your Indonesia experience. Here's
       options: [
         { label: "Budget (< $500/month)", next: "short-budget" },
         { label: "Mid-range ($500-1500)", next: "short-mid" },
-        { label: "Comfort ($1500+)", next: "short-comfort" }
-      ]
+        { label: "Comfort ($1500+)", next: "short-comfort" },
+      ],
     },
     {
       id: "medium",
@@ -115,58 +115,65 @@ Finding the right place to live is crucial for your Indonesia experience. Here's
       options: [
         { label: "Value for money", next: "medium-value" },
         { label: "Location & community", next: "medium-location" },
-        { label: "Space & privacy", next: "medium-space" }
-      ]
+        { label: "Space & privacy", next: "medium-space" },
+      ],
     },
     {
       id: "long",
       result: {
         title: "Long-term Rental or Purchase",
-        description: "Consider yearly villa/apartment rental for best rates. May also explore property investment through Indonesian structure."
-      }
+        description:
+          "Consider yearly villa/apartment rental for best rates. May also explore property investment through Indonesian structure.",
+      },
     },
     {
       id: "short-budget",
       result: {
         title: "Guesthouse or Kos",
-        description: "Monthly guesthouses or 'kos-kosan' (boarding rooms) offer affordable short-term options. Basic but functional."
-      }
+        description:
+          "Monthly guesthouses or 'kos-kosan' (boarding rooms) offer affordable short-term options. Basic but functional.",
+      },
     },
     {
       id: "short-mid",
       result: {
         title: "Serviced Apartment or Monthly Villa",
-        description: "Monthly rentals available on Airbnb, booking sites, or local agents. Good balance of comfort and flexibility."
-      }
+        description:
+          "Monthly rentals available on Airbnb, booking sites, or local agents. Good balance of comfort and flexibility.",
+      },
     },
     {
       id: "short-comfort",
       result: {
         title: "Villa or Premium Apartment",
-        description: "Short-term villa rentals or serviced apartments with premium amenities. Higher prices but maximum comfort."
-      }
+        description:
+          "Short-term villa rentals or serviced apartments with premium amenities. Higher prices but maximum comfort.",
+      },
     },
     {
       id: "medium-value",
       result: {
         title: "6-Month Villa/Apartment Lease",
-        description: "Negotiate 6-month lease for better rates than monthly. Often 20-30% discount over short-term rates."
-      }
+        description:
+          "Negotiate 6-month lease for better rates than monthly. Often 20-30% discount over short-term rates.",
+      },
     },
     {
       id: "medium-location",
       result: {
         title: "Co-living or Apartment Complex",
-        description: "Co-living spaces offer community. Apartment complexes provide security and amenities in central locations."
-      }
+        description:
+          "Co-living spaces offer community. Apartment complexes provide security and amenities in central locations.",
+      },
     },
     {
       id: "medium-space",
       result: {
         title: "Private Villa or House",
-        description: "Rent entire villa or house for privacy and space. Best rates with 6-12 month commitment."
-      }
-    }
+        description:
+          "Rent entire villa or house for privacy and space. Best rates with 6-12 month commitment.",
+      },
+    },
   ]}
 />
 
@@ -185,9 +192,9 @@ Finding the right place to live is crucial for your Indonesia experience. Here's
         "Studio/Room": "IDR 5-10M",
         "1BR Villa": "IDR 10-20M",
         "2BR Villa": "IDR 15-35M",
-        "Luxury Villa": "IDR 40M+"
+        "Luxury Villa": "IDR 40M+",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "Ubud, Bali",
@@ -196,8 +203,8 @@ Finding the right place to live is crucial for your Indonesia experience. Here's
         "Studio/Room": "IDR 4-8M",
         "1BR Villa": "IDR 8-15M",
         "2BR Villa": "IDR 12-25M",
-        "Luxury Villa": "IDR 30M+"
-      }
+        "Luxury Villa": "IDR 30M+",
+      },
     },
     {
       name: "Seminyak, Bali",
@@ -206,8 +213,8 @@ Finding the right place to live is crucial for your Indonesia experience. Here's
         "Studio/Room": "IDR 7-15M",
         "1BR Villa": "IDR 15-25M",
         "2BR Villa": "IDR 20-45M",
-        "Luxury Villa": "IDR 50M+"
-      }
+        "Luxury Villa": "IDR 50M+",
+      },
     },
     {
       name: "Jakarta (Central)",
@@ -216,9 +223,9 @@ Finding the right place to live is crucial for your Indonesia experience. Here's
         "Studio/Room": "IDR 5-10M",
         "1BR Apartment": "IDR 10-20M",
         "2BR Apartment": "IDR 15-35M",
-        "Luxury": "IDR 40M+"
-      }
-    }
+        Luxury: "IDR 40M+",
+      },
+    },
   ]}
 />
 
@@ -306,7 +313,8 @@ Finding the right place to live is crucial for your Indonesia experience. Here's
       currency: "IDR",
       note: `~USD ${Math.round(total / 16000)}/month`
     };
-  }}
+
+}}
 />
 
 ---
@@ -323,50 +331,50 @@ Finding the right place to live is crucial for your Indonesia experience. Here's
       label: "Search and view properties",
       description: "Online + in person",
       required: true,
-      category: "search"
+      category: "search",
     },
     {
       id: "negotiate",
       label: "Negotiate terms and price",
       description: "Especially for longer terms",
       required: true,
-      category: "negotiate"
+      category: "negotiate",
     },
     {
       id: "inspect",
       label: "Thorough inspection",
       description: "Check everything works",
       required: true,
-      category: "inspect"
+      category: "inspect",
     },
     {
       id: "contract",
       label: "Review rental agreement",
       description: "Get in writing",
       required: true,
-      category: "legal"
+      category: "legal",
     },
     {
       id: "deposit",
       label: "Pay deposit",
       description: "Usually 1-2 months",
       required: true,
-      category: "payment"
+      category: "payment",
     },
     {
       id: "inventory",
       label: "Document condition/inventory",
       description: "Photos, list of items",
       required: true,
-      category: "protect"
+      category: "protect",
     },
     {
       id: "utilities",
       label: "Set up utilities",
       description: "Electricity, water, internet",
       required: true,
-      category: "setup"
-    }
+      category: "setup",
+    },
   ]}
   categories={[
     { id: "search", label: "Search", color: "blue" },
@@ -375,7 +383,7 @@ Finding the right place to live is crucial for your Indonesia experience. Here's
     { id: "legal", label: "Legal", color: "red" },
     { id: "payment", label: "Payment", color: "purple" },
     { id: "protect", label: "Protection", color: "cyan" },
-    { id: "setup", label: "Setup", color: "pink" }
+    { id: "setup", label: "Setup", color: "pink" },
   ]}
   showProgress={true}
 />
@@ -386,13 +394,13 @@ Finding the right place to live is crucial for your Indonesia experience. Here's
 
 ### Online Platforms
 
-| Platform | Best For | Notes |
-|----------|----------|-------|
-| Facebook Groups | Local rentals | Very active in Bali |
-| Airbnb | Short-term, vetted | Monthly discounts |
-| Rumah.com | Indonesian listings | Local market |
-| OLX | Budget options | Negotiable |
-| Real estate agents | Premium/long-term | Professional service |
+| Platform           | Best For            | Notes                |
+| ------------------ | ------------------- | -------------------- |
+| Facebook Groups    | Local rentals       | Very active in Bali  |
+| Airbnb             | Short-term, vetted  | Monthly discounts    |
+| Rumah.com          | Indonesian listings | Local market         |
+| OLX                | Budget options      | Negotiable           |
+| Real estate agents | Premium/long-term   | Professional service |
 
 ### Facebook Groups (Bali)
 
@@ -406,17 +414,10 @@ Finding the right place to live is crucial for your Indonesia experience. Here's
 ## What to Check
 
 <InfoCard variant="warning" title="Before Signing">
-**Always verify:**
-- Water pressure and heating
-- Internet speed test
-- Air conditioning works
-- Kitchen appliances
-- Security (locks, safe area)
-- Noise levels
-- Parking (if needed)
-- Generator/backup power
-- Pest situation
-- Landlord responsiveness
+  **Always verify:** - Water pressure and heating - Internet speed test - Air
+  conditioning works - Kitchen appliances - Security (locks, safe area) - Noise
+  levels - Parking (if needed) - Generator/backup power - Pest situation -
+  Landlord responsiveness
 </InfoCard>
 
 ---
@@ -425,15 +426,15 @@ Finding the right place to live is crucial for your Indonesia experience. Here's
 
 ### Key Terms to Include
 
-| Term | What to Check |
-|------|---------------|
-| Duration | Start/end dates clear |
-| Rent amount | Total and payment schedule |
-| Deposit | Amount and return conditions |
-| Utilities | Who pays what |
-| Maintenance | Responsibility for repairs |
-| Termination | Notice period, penalties |
-| Inventory | List of included items |
+| Term        | What to Check                |
+| ----------- | ---------------------------- |
+| Duration    | Start/end dates clear        |
+| Rent amount | Total and payment schedule   |
+| Deposit     | Amount and return conditions |
+| Utilities   | Who pays what                |
+| Maintenance | Responsibility for repairs   |
+| Termination | Notice period, penalties     |
+| Inventory   | List of included items       |
 
 <InfoCard variant="tip" title="Get It in Writing">
 Even informal rentals should have:
@@ -443,6 +444,7 @@ Even informal rentals should have:
 - Contact details for landlord
 
 Indonesian contracts are enforceable - get one!
+
 </InfoCard>
 
 ---
@@ -452,6 +454,7 @@ Indonesian contracts are enforceable - get one!
 ### Bali/Tourist Areas
 
 Most rentals are **fully furnished**:
+
 - Bed, mattress, linens
 - Living room furniture
 - Kitchen equipped
@@ -462,6 +465,7 @@ Most rentals are **fully furnished**:
 ### Jakarta/Cities
 
 Mix of options:
+
 - Serviced apartments: fully furnished
 - Regular apartments: basic furnishing
 - Houses: may be unfurnished
@@ -470,20 +474,17 @@ Mix of options:
 
 ## Long-Term Savings
 
-| Term | Typical Discount |
-|------|------------------|
-| Monthly | Full price |
-| 3 months | 5-10% off |
-| 6 months | 15-25% off |
-| 12 months | 25-40% off |
+| Term      | Typical Discount |
+| --------- | ---------------- |
+| Monthly   | Full price       |
+| 3 months  | 5-10% off        |
+| 6 months  | 15-25% off       |
+| 12 months | 25-40% off       |
 
 <InfoCard variant="tip" title="Negotiate!">
-Tips for better rates:
-- Ask directly (don't accept first price)
-- Offer longer term
-- Pay upfront if possible
-- Low season = better deals
-- Direct with owner = no agent fee
+  Tips for better rates: - Ask directly (don't accept first price) - Offer
+  longer term - Pay upfront if possible - Low season = better deals - Direct
+  with owner = no agent fee
 </InfoCard>
 
 ---
@@ -497,7 +498,7 @@ Tips for better rates:
     "What's the best area for digital nomads?",
     "Can I rent without KITAS?",
     "How much deposit is normal?",
-    "What if I have problems with landlord?"
+    "What if I have problems with landlord?",
   ]}
 />
 

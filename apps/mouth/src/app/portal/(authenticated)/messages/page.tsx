@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Messages Page
@@ -7,4 +7,4 @@
  * The sidebar links to /portal/messages but the original implementation
  * was at /portal/chat. This ensures both URLs work.
  */
-export { default } from '../chat/page';
+export { default } from "../chat/page";

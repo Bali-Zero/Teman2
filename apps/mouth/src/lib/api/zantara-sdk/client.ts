@@ -28,7 +28,7 @@ import type {
   ImageGenerationRequest,
   ImageGenerationResponse,
   TranscribeRequest,
-} from './types';
+} from "./types";
 
 export interface ZantaraSDKConfig {
   baseUrl: string;
@@ -42,20 +42,23 @@ export class ZantaraSDK {
   private timeout: number;
 
   constructor(config: ZantaraSDKConfig) {
-    this.baseUrl = config.baseUrl.replace(/\/$/, '');
+    this.baseUrl = config.baseUrl.replace(/\/$/, "");
     this.apiKey = config.apiKey;
     this.timeout = config.timeout || 30000;
   }
 
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  private async request<T>(
+    endpoint: string,
+    options: RequestInit = {},
+  ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...((options.headers as Record<string, string>) || {}),
     };
 
     if (this.apiKey) {
-      headers['Authorization'] = `Bearer ${this.apiKey}`;
+      headers["Authorization"] = `Bearer ${this.apiKey}`;
     }
 
     const controller = new AbortController();
@@ -81,10 +84,10 @@ export class ZantaraSDK {
       return await response.json();
     } catch (error) {
       clearTimeout(timeoutId);
-      if (error instanceof Error && error.name === 'AbortError') {
+      if (error instanceof Error && error.name === "AbortError") {
         throw {
-          message: 'Request timeout',
-          code: 'TIMEOUT',
+          message: "Request timeout",
+          code: "TIMEOUT",
         } as ApiError;
       }
       throw error;
@@ -95,9 +98,11 @@ export class ZantaraSDK {
   // Agentic RAG
   // ============================================================================
 
-  async queryAgenticRAG(request: AgenticRAGQueryRequest): Promise<AgenticRAGQueryResponse> {
-    return this.request<AgenticRAGQueryResponse>('/api/agentic-rag/query', {
-      method: 'POST',
+  async queryAgenticRAG(
+    request: AgenticRAGQueryRequest,
+  ): Promise<AgenticRAGQueryResponse> {
+    return this.request<AgenticRAGQueryResponse>("/api/agentic-rag/query", {
+      method: "POST",
       body: JSON.stringify(request),
     });
   }
@@ -110,46 +115,60 @@ export class ZantaraSDK {
     return this.request<UserMemory>(`/api/memory/facts?user_id=${userId}`);
   }
 
-  async addUserFact(userId: string, fact: string): Promise<{ success: boolean }> {
-    return this.request<{ success: boolean }>('/api/memory/facts', {
-      method: 'POST',
+  async addUserFact(
+    userId: string,
+    fact: string,
+  ): Promise<{ success: boolean }> {
+    return this.request<{ success: boolean }>("/api/memory/facts", {
+      method: "POST",
       body: JSON.stringify({ user_id: userId, fact }),
     });
   }
 
-  async getCollectiveMemory(category?: string, limit = 10): Promise<CollectiveMemory[]> {
+  async getCollectiveMemory(
+    category?: string,
+    limit = 10,
+  ): Promise<CollectiveMemory[]> {
     const params = new URLSearchParams();
-    if (category) params.set('category', category);
-    params.set('limit', limit.toString());
-    return this.request<CollectiveMemory[]>(`/api/collective-memory?${params.toString()}`);
+    if (category) params.set("category", category);
+    params.set("limit", limit.toString());
+    return this.request<CollectiveMemory[]>(
+      `/api/collective-memory?${params.toString()}`,
+    );
   }
 
-  async getEpisodicTimeline(request: EpisodicTimelineRequest): Promise<EpisodicEvent[]> {
+  async getEpisodicTimeline(
+    request: EpisodicTimelineRequest,
+  ): Promise<EpisodicEvent[]> {
     const params = new URLSearchParams();
-    params.set('user_id', request.user_id);
-    if (request.start_date) params.set('start_date', request.start_date);
-    if (request.end_date) params.set('end_date', request.end_date);
-    if (request.event_type) params.set('event_type', request.event_type);
-    if (request.emotion) params.set('emotion', request.emotion);
-    if (request.limit) params.set('limit', request.limit.toString());
-    if (request.offset) params.set('offset', request.offset.toString());
+    params.set("user_id", request.user_id);
+    if (request.start_date) params.set("start_date", request.start_date);
+    if (request.end_date) params.set("end_date", request.end_date);
+    if (request.event_type) params.set("event_type", request.event_type);
+    if (request.emotion) params.set("emotion", request.emotion);
+    if (request.limit) params.set("limit", request.limit.toString());
+    if (request.offset) params.set("offset", request.offset.toString());
 
-    return this.request<EpisodicEvent[]>(`/api/episodic-memory/timeline?${params.toString()}`);
+    return this.request<EpisodicEvent[]>(
+      `/api/episodic-memory/timeline?${params.toString()}`,
+    );
   }
 
   // ============================================================================
   // Audio
   // ============================================================================
 
-  async transcribeAudio(request: TranscribeRequest): Promise<TranscribeResponse> {
+  async transcribeAudio(
+    request: TranscribeRequest,
+  ): Promise<TranscribeResponse> {
     const formData = new FormData();
-    formData.append('file', request.file);
+    formData.append("file", request.file);
     if (request.language) {
-      formData.append('language', request.language);
+      formData.append("language", request.language);
     }
 
     const response = await fetch(`${this.baseUrl}/audio/transcribe`, {
-      method: 'POST',
+      method: "POST",
       body: formData,
       headers: this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {},
     });
@@ -166,9 +185,9 @@ export class ZantaraSDK {
 
   async generateSpeech(request: SpeechRequest): Promise<Blob> {
     const response = await fetch(`${this.baseUrl}/audio/speech`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),
       },
       body: JSON.stringify(request),
@@ -189,8 +208,8 @@ export class ZantaraSDK {
   // ============================================================================
 
   async createJourney(request: CreateJourneyRequest): Promise<ClientJourney> {
-    return this.request<ClientJourney>('/api/journeys', {
-      method: 'POST',
+    return this.request<ClientJourney>("/api/journeys", {
+      method: "POST",
       body: JSON.stringify(request),
     });
   }
@@ -206,14 +225,14 @@ export class ZantaraSDK {
   async completeStep(
     journeyId: string,
     stepId: string,
-    notes?: string
+    notes?: string,
   ): Promise<{ success: boolean }> {
     return this.request<{ success: boolean }>(
       `/api/journeys/${journeyId}/steps/${stepId}/complete`,
       {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify({ notes }),
-      }
+      },
     );
   }
 
@@ -222,36 +241,50 @@ export class ZantaraSDK {
   // ============================================================================
 
   async getComplianceDeadlines(
-    request: ComplianceDeadlinesRequest = {}
+    request: ComplianceDeadlinesRequest = {},
   ): Promise<ComplianceItem[]> {
     const params = new URLSearchParams();
-    if (request.client_id) params.set('client_id', request.client_id);
-    if (request.days_ahead) params.set('days_ahead', request.days_ahead.toString());
+    if (request.client_id) params.set("client_id", request.client_id);
+    if (request.days_ahead)
+      params.set("days_ahead", request.days_ahead.toString());
 
-    return this.request<ComplianceItem[]>(`/api/compliance/deadlines?${params.toString()}`);
+    return this.request<ComplianceItem[]>(
+      `/api/compliance/deadlines?${params.toString()}`,
+    );
   }
 
-  async getComplianceAlerts(clientId?: string, status?: string): Promise<ComplianceAlert[]> {
+  async getComplianceAlerts(
+    clientId?: string,
+    status?: string,
+  ): Promise<ComplianceAlert[]> {
     const params = new URLSearchParams();
-    if (clientId) params.set('client_id', clientId);
-    if (status) params.set('status', status);
+    if (clientId) params.set("client_id", clientId);
+    if (status) params.set("status", status);
 
-    return this.request<ComplianceAlert[]>(`/api/compliance/alerts?${params.toString()}`);
+    return this.request<ComplianceAlert[]>(
+      `/api/compliance/alerts?${params.toString()}`,
+    );
   }
 
   async acknowledgeAlert(alertId: string): Promise<{ success: boolean }> {
-    return this.request<{ success: boolean }>(`/api/compliance/alerts/${alertId}/acknowledge`, {
-      method: 'POST',
-    });
+    return this.request<{ success: boolean }>(
+      `/api/compliance/alerts/${alertId}/acknowledge`,
+      {
+        method: "POST",
+      },
+    );
   }
 
   // ============================================================================
   // Dynamic Pricing
   // ============================================================================
 
-  async calculatePricing(scenario: string, userLevel = 3): Promise<PricingResult> {
-    return this.request<PricingResult>('/api/pricing/calculate', {
-      method: 'POST',
+  async calculatePricing(
+    scenario: string,
+    userLevel = 3,
+  ): Promise<PricingResult> {
+    return this.request<PricingResult>("/api/pricing/calculate", {
+      method: "POST",
       body: JSON.stringify({ scenario, user_level: userLevel }),
     });
   }
@@ -261,12 +294,14 @@ export class ZantaraSDK {
   // ============================================================================
 
   async getBurnoutSignals(userEmail?: string): Promise<BurnoutSignal[]> {
-    const params = userEmail ? `?user_email=${userEmail}` : '';
-    return this.request<BurnoutSignal[]>(`/api/team-analytics/burnout${params}`);
+    const params = userEmail ? `?user_email=${userEmail}` : "";
+    return this.request<BurnoutSignal[]>(
+      `/api/team-analytics/burnout${params}`,
+    );
   }
 
   async getTeamInsights(): Promise<TeamInsights> {
-    return this.request<TeamInsights>('/api/team-analytics/insights');
+    return this.request<TeamInsights>("/api/team-analytics/insights");
   }
 
   // ============================================================================
@@ -274,30 +309,35 @@ export class ZantaraSDK {
   // ============================================================================
 
   async addGraphEntity(entity: GraphEntity): Promise<{ id: string }> {
-    return this.request<{ id: string }>('/api/graph/entities', {
-      method: 'POST',
+    return this.request<{ id: string }>("/api/graph/entities", {
+      method: "POST",
       body: JSON.stringify(entity),
     });
   }
 
   async addGraphRelation(relation: GraphRelation): Promise<{ id: number }> {
-    return this.request<{ id: number }>('/api/graph/relations', {
-      method: 'POST',
+    return this.request<{ id: number }>("/api/graph/relations", {
+      method: "POST",
       body: JSON.stringify(relation),
     });
   }
 
   async getGraphNeighbors(
     entityId: string,
-    relationType?: string
-  ): Promise<Array<{ target_id: string; target_name: string; relationship_type: string }>> {
-    const params = relationType ? `?relation_type=${relationType}` : '';
+    relationType?: string,
+  ): Promise<
+    Array<{ target_id: string; target_name: string; relationship_type: string }>
+  > {
+    const params = relationType ? `?relation_type=${relationType}` : "";
     return this.request(`/api/graph/entities/${entityId}/neighbors${params}`);
   }
 
-  async traverseGraph(startId: string, maxDepth = 2): Promise<GraphTraversalResult> {
+  async traverseGraph(
+    startId: string,
+    maxDepth = 2,
+  ): Promise<GraphTraversalResult> {
     return this.request<GraphTraversalResult>(
-      `/api/graph/traverse?start_id=${startId}&max_depth=${maxDepth}`
+      `/api/graph/traverse?start_id=${startId}&max_depth=${maxDepth}`,
     );
   }
 
@@ -305,9 +345,11 @@ export class ZantaraSDK {
   // Image Generation
   // ============================================================================
 
-  async generateImage(request: ImageGenerationRequest): Promise<ImageGenerationResponse> {
-    return this.request<ImageGenerationResponse>('/api/image/generate', {
-      method: 'POST',
+  async generateImage(
+    request: ImageGenerationRequest,
+  ): Promise<ImageGenerationResponse> {
+    return this.request<ImageGenerationResponse>("/api/image/generate", {
+      method: "POST",
       body: JSON.stringify(request),
     });
   }

@@ -9,7 +9,10 @@ interface ZohoConnectBannerProps {
   isConnecting: boolean;
 }
 
-export function ZohoConnectBanner({ onConnect, isConnecting }: ZohoConnectBannerProps) {
+export function ZohoConnectBanner({
+  onConnect,
+  isConnecting,
+}: ZohoConnectBannerProps) {
   return (
     <div className="flex items-center justify-center p-8">
       <button
@@ -17,7 +20,7 @@ export function ZohoConnectBanner({ onConnect, isConnecting }: ZohoConnectBanner
         disabled={isConnecting}
         className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
       >
-        {isConnecting ? 'Connecting...' : 'Connect to Zoho Mail'}
+        {isConnecting ? "Connecting..." : "Connect to Zoho Mail"}
       </button>
     </div>
   );

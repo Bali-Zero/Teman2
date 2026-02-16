@@ -3,10 +3,18 @@
  * Tests the fix for WebSocket auth token handling
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach, MockInstance } from 'vitest';
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+  MockInstance,
+} from "vitest";
 
 // Mock the logger before importing the module
-vi.mock('./logger', () => ({
+vi.mock("./logger", () => ({
   logger: {
     info: vi.fn(),
     warn: vi.fn(),
@@ -68,13 +76,19 @@ const localStorageMock = createLocalStorageMock();
 // Mock sessionStorage
 const sessionStorageMock = createLocalStorageMock();
 
-Object.defineProperty(global, 'localStorage', { value: localStorageMock, writable: true });
-Object.defineProperty(global, 'sessionStorage', { value: sessionStorageMock, writable: true });
+Object.defineProperty(global, "localStorage", {
+  value: localStorageMock,
+  writable: true,
+});
+Object.defineProperty(global, "sessionStorage", {
+  value: sessionStorageMock,
+  writable: true,
+});
 
 // Mock window
-Object.defineProperty(global, 'window', {
+Object.defineProperty(global, "window", {
   value: {
-    location: { pathname: '/dashboard' },
+    location: { pathname: "/dashboard" },
     addEventListener: vi.fn(),
     localStorage: localStorageMock,
     sessionStorage: sessionStorageMock,
@@ -83,7 +97,7 @@ Object.defineProperty(global, 'window', {
 });
 
 // Mock document
-Object.defineProperty(global, 'document', {
+Object.defineProperty(global, "document", {
   value: {
     addEventListener: vi.fn(),
     hidden: false,
@@ -91,7 +105,7 @@ Object.defineProperty(global, 'document', {
   writable: true,
 });
 
-describe('RealtimeService WebSocket Auth', () => {
+describe("RealtimeService WebSocket Auth", () => {
   let webSocketInstances: MockWebSocket[];
   let originalWebSocket: typeof WebSocket;
 
@@ -119,99 +133,99 @@ describe('RealtimeService WebSocket Auth', () => {
     vi.resetModules();
   });
 
-  describe('Token-based authentication', () => {
-    it('should not connect when no auth token available', async () => {
+  describe("Token-based authentication", () => {
+    it("should not connect when no auth token available", async () => {
       // Import fresh instance
-      const { realtimeService } = await import('./realtime');
+      const { realtimeService } = await import("./realtime");
 
       // Ensure no token
       localStorageMock.clear();
       sessionStorageMock.clear();
 
       // Attempt to connect
-      await realtimeService.connect('user-123', 'Test User');
+      await realtimeService.connect("user-123", "Test User");
 
       // Should NOT create WebSocket without token
       expect(webSocketInstances).toHaveLength(0);
     });
 
-    it('should connect with JWT token from localStorage', async () => {
+    it("should connect with JWT token from localStorage", async () => {
       // Set a valid JWT token (3 parts separated by dots, > 50 chars)
       const validJwt =
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
-      localStorageMock.setItem('auth_token', validJwt);
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
+      localStorageMock.setItem("auth_token", validJwt);
 
-      const { realtimeService } = await import('./realtime');
+      const { realtimeService } = await import("./realtime");
 
-      await realtimeService.connect('user-123', 'Test User');
+      await realtimeService.connect("user-123", "Test User");
 
       // Should create WebSocket with token in subprotocol
       expect(webSocketInstances).toHaveLength(1);
       expect(webSocketInstances[0].protocols).toContain(`bearer.${validJwt}`);
     });
 
-    it('should try sessionStorage as fallback when localStorage empty', async () => {
+    it("should try sessionStorage as fallback when localStorage empty", async () => {
       const validJwt =
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
 
       // Only in sessionStorage
       localStorageMock.clear();
-      sessionStorageMock.setItem('auth_token', validJwt);
+      sessionStorageMock.setItem("auth_token", validJwt);
 
-      const { realtimeService } = await import('./realtime');
+      const { realtimeService } = await import("./realtime");
 
-      await realtimeService.connect('user-123', 'Test User');
+      await realtimeService.connect("user-123", "Test User");
 
       expect(webSocketInstances).toHaveLength(1);
       expect(webSocketInstances[0].protocols).toContain(`bearer.${validJwt}`);
     });
 
-    it('should reject invalid token format (not 3 parts)', async () => {
+    it("should reject invalid token format (not 3 parts)", async () => {
       // Invalid: only 2 parts
-      localStorageMock.setItem('auth_token', 'invalid.token');
+      localStorageMock.setItem("auth_token", "invalid.token");
 
-      const { realtimeService } = await import('./realtime');
+      const { realtimeService } = await import("./realtime");
 
-      await realtimeService.connect('user-123', 'Test User');
+      await realtimeService.connect("user-123", "Test User");
 
       // Should NOT create WebSocket with invalid token
       expect(webSocketInstances).toHaveLength(0);
     });
 
-    it('should reject token too short (< 50 chars)', async () => {
+    it("should reject token too short (< 50 chars)", async () => {
       // Valid format but too short
-      localStorageMock.setItem('auth_token', 'a.b.c');
+      localStorageMock.setItem("auth_token", "a.b.c");
 
-      const { realtimeService } = await import('./realtime');
+      const { realtimeService } = await import("./realtime");
 
-      await realtimeService.connect('user-123', 'Test User');
+      await realtimeService.connect("user-123", "Test User");
 
       // Should NOT create WebSocket with short token
       expect(webSocketInstances).toHaveLength(0);
     });
 
-    it('should use correct WebSocket URL', async () => {
+    it("should use correct WebSocket URL", async () => {
       const validJwt =
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
-      localStorageMock.setItem('auth_token', validJwt);
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
+      localStorageMock.setItem("auth_token", validJwt);
 
-      const { realtimeService } = await import('./realtime');
+      const { realtimeService } = await import("./realtime");
 
-      await realtimeService.connect('user-123', 'Test User');
+      await realtimeService.connect("user-123", "Test User");
 
       // Should use default or env WebSocket URL
-      expect(webSocketInstances[0].url).toContain('wss://');
+      expect(webSocketInstances[0].url).toContain("wss://");
     });
   });
 
-  describe('Reconnection behavior', () => {
-    it('should not attempt reconnect when no token available', async () => {
+  describe("Reconnection behavior", () => {
+    it("should not attempt reconnect when no token available", async () => {
       localStorageMock.clear();
 
-      const { realtimeService } = await import('./realtime');
+      const { realtimeService } = await import("./realtime");
 
       // Try to connect - should fail silently
-      await realtimeService.connect('user-123', 'Test User');
+      await realtimeService.connect("user-123", "Test User");
 
       expect(webSocketInstances).toHaveLength(0);
 
@@ -219,101 +233,107 @@ describe('RealtimeService WebSocket Auth', () => {
       // (internal state prevents infinite loops)
     });
 
-    it('should not create duplicate connections', async () => {
+    it("should not create duplicate connections", async () => {
       const validJwt =
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
-      localStorageMock.setItem('auth_token', validJwt);
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
+      localStorageMock.setItem("auth_token", validJwt);
 
-      const { realtimeService } = await import('./realtime');
+      const { realtimeService } = await import("./realtime");
 
       // First connection
-      await realtimeService.connect('user-123', 'Test User');
+      await realtimeService.connect("user-123", "Test User");
 
       // Simulate connection open
       webSocketInstances[0].readyState = MockWebSocket.OPEN;
       if (webSocketInstances[0].onopen) {
-        webSocketInstances[0].onopen(new Event('open'));
+        webSocketInstances[0].onopen(new Event("open"));
       }
 
       // Try to connect again (should be ignored)
-      await realtimeService.connect('user-123', 'Test User');
+      await realtimeService.connect("user-123", "Test User");
 
       // Should still only have 1 WebSocket instance
       expect(webSocketInstances).toHaveLength(1);
     });
   });
 
-  describe('Connection status', () => {
-    it('should report not connected when WebSocket is null', async () => {
-      const { realtimeService } = await import('./realtime');
+  describe("Connection status", () => {
+    it("should report not connected when WebSocket is null", async () => {
+      const { realtimeService } = await import("./realtime");
 
       expect(realtimeService.isConnected()).toBe(false);
     });
 
-    it('should report connected when WebSocket is OPEN', async () => {
+    it("should report connected when WebSocket is OPEN", async () => {
       const validJwt =
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
-      localStorageMock.setItem('auth_token', validJwt);
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
+      localStorageMock.setItem("auth_token", validJwt);
 
-      const { realtimeService } = await import('./realtime');
+      const { realtimeService } = await import("./realtime");
 
-      await realtimeService.connect('user-123', 'Test User');
+      await realtimeService.connect("user-123", "Test User");
 
       // Simulate connection open
       webSocketInstances[0].readyState = MockWebSocket.OPEN;
       if (webSocketInstances[0].onopen) {
-        webSocketInstances[0].onopen(new Event('open'));
+        webSocketInstances[0].onopen(new Event("open"));
       }
 
       expect(realtimeService.isConnected()).toBe(true);
     });
   });
 
-  describe('Subscription management', () => {
-    it('should allow subscribing to message types', async () => {
-      const { realtimeService } = await import('./realtime');
+  describe("Subscription management", () => {
+    it("should allow subscribing to message types", async () => {
+      const { realtimeService } = await import("./realtime");
 
       const callback = vi.fn();
-      const unsubscribe = realtimeService.subscribe('dashboard_update', callback);
+      const unsubscribe = realtimeService.subscribe(
+        "dashboard_update",
+        callback,
+      );
 
-      expect(typeof unsubscribe).toBe('function');
+      expect(typeof unsubscribe).toBe("function");
     });
 
-    it('should call subscriber when message received', async () => {
+    it("should call subscriber when message received", async () => {
       const validJwt =
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
-      localStorageMock.setItem('auth_token', validJwt);
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
+      localStorageMock.setItem("auth_token", validJwt);
 
-      const { realtimeService } = await import('./realtime');
+      const { realtimeService } = await import("./realtime");
 
       const callback = vi.fn();
-      realtimeService.subscribe('dashboard_update', callback);
+      realtimeService.subscribe("dashboard_update", callback);
 
-      await realtimeService.connect('user-123', 'Test User');
+      await realtimeService.connect("user-123", "Test User");
 
       // Simulate receiving a message
       if (webSocketInstances[0].onmessage) {
         webSocketInstances[0].onmessage(
-          new MessageEvent('message', {
+          new MessageEvent("message", {
             data: JSON.stringify({
-              type: 'dashboard_update',
-              data: { action: 'create' },
+              type: "dashboard_update",
+              data: { action: "create" },
               timestamp: new Date().toISOString(),
-              userId: 'user-456',
-              userName: 'Other User',
+              userId: "user-456",
+              userName: "Other User",
             }),
-          })
+          }),
         );
       }
 
-      expect(callback).toHaveBeenCalledWith({ action: 'create' });
+      expect(callback).toHaveBeenCalledWith({ action: "create" });
     });
 
-    it('should unsubscribe correctly', async () => {
-      const { realtimeService } = await import('./realtime');
+    it("should unsubscribe correctly", async () => {
+      const { realtimeService } = await import("./realtime");
 
       const callback = vi.fn();
-      const unsubscribe = realtimeService.subscribe('dashboard_update', callback);
+      const unsubscribe = realtimeService.subscribe(
+        "dashboard_update",
+        callback,
+      );
 
       unsubscribe();
 
@@ -322,15 +342,15 @@ describe('RealtimeService WebSocket Auth', () => {
     });
   });
 
-  describe('Disconnect behavior', () => {
-    it('should close WebSocket on disconnect', async () => {
+  describe("Disconnect behavior", () => {
+    it("should close WebSocket on disconnect", async () => {
       const validJwt =
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
-      localStorageMock.setItem('auth_token', validJwt);
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
+      localStorageMock.setItem("auth_token", validJwt);
 
-      const { realtimeService } = await import('./realtime');
+      const { realtimeService } = await import("./realtime");
 
-      await realtimeService.connect('user-123', 'Test User');
+      await realtimeService.connect("user-123", "Test User");
       webSocketInstances[0].readyState = MockWebSocket.OPEN;
 
       realtimeService.disconnect();

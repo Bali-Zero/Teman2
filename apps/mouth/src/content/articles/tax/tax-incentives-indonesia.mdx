@@ -75,8 +75,8 @@ import {
   ComparisonTable,
   Checklist,
   InfoCard,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Tax Incentives Indonesia 2026: Business Benefits Guide
 
@@ -92,43 +92,43 @@ Indonesia offers various tax incentives to attract investment. Here's what's ava
       name: "Tax Holiday",
       subtitle: "Full CIT exemption",
       values: {
-        "Benefit": "100% CIT exemption",
-        "Duration": "5-20 years",
-        "For": "Pioneer industries, large investment",
-        "Minimum": "IDR 100B-500B+"
+        Benefit: "100% CIT exemption",
+        Duration: "5-20 years",
+        For: "Pioneer industries, large investment",
+        Minimum: "IDR 100B-500B+",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "Tax Allowance",
       subtitle: "Investment deduction",
       values: {
-        "Benefit": "30% additional deduction",
-        "Duration": "6 years",
-        "For": "Various sectors",
-        "Minimum": "Sector dependent"
-      }
+        Benefit: "30% additional deduction",
+        Duration: "6 years",
+        For: "Various sectors",
+        Minimum: "Sector dependent",
+      },
     },
     {
       name: "Super Deduction",
       subtitle: "R&D and training",
       values: {
-        "Benefit": "200-300% deduction",
-        "Duration": "Per activity",
-        "For": "R&D, vocational training",
-        "Minimum": "No minimum"
-      }
+        Benefit: "200-300% deduction",
+        Duration: "Per activity",
+        For: "R&D, vocational training",
+        Minimum: "No minimum",
+      },
     },
     {
       name: "SME Tax Rate",
       subtitle: "Reduced rate",
       values: {
-        "Benefit": "0.5% of turnover",
-        "Duration": "While eligible",
-        "For": "Under IDR 4.8B revenue",
-        "Minimum": "N/A"
-      }
-    }
+        Benefit: "0.5% of turnover",
+        Duration: "While eligible",
+        For: "Under IDR 4.8B revenue",
+        Minimum: "N/A",
+      },
+    },
   ]}
 />
 
@@ -147,27 +147,28 @@ Indonesia offers various tax incentives to attract investment. Here's what's ava
 - For pioneer industries
 
 This is the most generous incentive available.
+
 </InfoCard>
 
 ### Eligibility
 
-| Requirement | Criteria |
-|-------------|----------|
-| Pioneer industry | Specific list of sectors |
+| Requirement        | Criteria                        |
+| ------------------ | ------------------------------- |
+| Pioneer industry   | Specific list of sectors        |
 | Minimum investment | IDR 100 billion+ (some sectors) |
-| New investment | Not expansion of existing |
-| Legal entity | PT PMA or PT |
-| Plans | Business plan approved |
+| New investment     | Not expansion of existing       |
+| Legal entity       | PT PMA or PT                    |
+| Plans              | Business plan approved          |
 
 ### Duration Based on Investment
 
 | Investment (IDR) | Holiday Period |
-|------------------|----------------|
-| 100B - 500B | 5 years |
-| 500B - 1T | 7 years |
-| 1T - 5T | 10 years |
-| 5T - 15T | 15 years |
-| Over 15T | 20 years |
+| ---------------- | -------------- |
+| 100B - 500B      | 5 years        |
+| 500B - 1T        | 7 years        |
+| 1T - 5T          | 10 years       |
+| 5T - 15T         | 15 years       |
+| Over 15T         | 20 years       |
 
 ### Pioneer Industries Include
 
@@ -195,17 +196,18 @@ This is the most generous incentive available.
 - Reduced withholding on dividends
 
 More accessible than Tax Holiday for smaller investments.
+
 </InfoCard>
 
 ### Eligible Sectors
 
-| Category | Examples |
-|----------|----------|
-| Manufacturing | Various industries |
-| Agriculture | Plantations, farming |
-| Tourism | Hotels, attractions |
-| Infrastructure | Power, transport |
-| Special economic zones | Location-based |
+| Category               | Examples             |
+| ---------------------- | -------------------- |
+| Manufacturing          | Various industries   |
+| Agriculture            | Plantations, farming |
+| Tourism                | Hotels, attractions  |
+| Infrastructure         | Power, transport     |
+| Special economic zones | Location-based       |
 
 ### Requirements
 
@@ -219,41 +221,41 @@ More accessible than Tax Holiday for smaller investments.
       label: "Eligible business sector",
       description: "On approved list",
       required: true,
-      category: "eligibility"
+      category: "eligibility",
     },
     {
       id: "investment",
       label: "New investment",
       description: "Not existing business",
       required: true,
-      category: "eligibility"
+      category: "eligibility",
     },
     {
       id: "employment",
       label: "Employment creation",
       description: "Hire Indonesian workers",
       required: true,
-      category: "requirements"
+      category: "requirements",
     },
     {
       id: "location",
       label: "Priority location",
       description: "Some locations get priority",
       required: false,
-      category: "requirements"
+      category: "requirements",
     },
     {
       id: "application",
       label: "Apply through OSS",
       description: "Proper application process",
       required: true,
-      category: "process"
-    }
+      category: "process",
+    },
   ]}
   categories={[
     { id: "eligibility", label: "Eligibility", color: "blue" },
     { id: "requirements", label: "Requirements", color: "green" },
-    { id: "process", label: "Process", color: "amber" }
+    { id: "process", label: "Process", color: "amber" },
   ]}
   showProgress={true}
 />
@@ -264,20 +266,20 @@ More accessible than Tax Holiday for smaller investments.
 
 ### R&D Super Deduction
 
-| Feature | Details |
-|---------|---------|
-| Benefit | 300% deduction |
-| For | Research & Development activities |
-| Scope | In Indonesia, for Indonesian benefit |
-| Application | Must be approved |
+| Feature     | Details                              |
+| ----------- | ------------------------------------ |
+| Benefit     | 300% deduction                       |
+| For         | Research & Development activities    |
+| Scope       | In Indonesia, for Indonesian benefit |
+| Application | Must be approved                     |
 
 ### Vocational Training
 
-| Feature | Details |
-|---------|---------|
-| Benefit | 200% deduction |
-| For | Training Indonesian workers |
-| Scope | Approved training programs |
+| Feature     | Details                      |
+| ----------- | ---------------------------- |
+| Benefit     | 200% deduction               |
+| For         | Training Indonesian workers  |
+| Scope       | Approved training programs   |
 | Partnership | With vocational institutions |
 
 ---
@@ -296,17 +298,18 @@ More accessible than Tax Holiday for smaller investments.
 - Cluster benefits
 
 Consider KEK locations for manufacturing and export.
+
 </InfoCard>
 
 ### Major KEKs
 
-| Zone | Location | Focus |
-|------|----------|-------|
-| Sei Mangkei | North Sumatra | Palm oil, manufacturing |
-| Tanjung Lesung | Banten | Tourism |
-| Mandalika | Lombok | Tourism |
-| Galang Batang | Bintan | Manufacturing |
-| Kendal | Central Java | Manufacturing |
+| Zone           | Location      | Focus                   |
+| -------------- | ------------- | ----------------------- |
+| Sei Mangkei    | North Sumatra | Palm oil, manufacturing |
+| Tanjung Lesung | Banten        | Tourism                 |
+| Mandalika      | Lombok        | Tourism                 |
+| Galang Batang  | Bintan        | Manufacturing           |
+| Kendal         | Central Java  | Manufacturing           |
 
 ---
 
@@ -314,21 +317,21 @@ Consider KEK locations for manufacturing and export.
 
 ### KITE Facility
 
-| Feature | Benefit |
-|---------|---------|
-| What | Import duty exemption |
-| For | Export-oriented manufacturers |
-| Condition | Must export 75%+ |
-| Items | Raw materials, components |
+| Feature   | Benefit                       |
+| --------- | ----------------------------- |
+| What      | Import duty exemption         |
+| For       | Export-oriented manufacturers |
+| Condition | Must export 75%+              |
+| Items     | Raw materials, components     |
 
 ### Bonded Zone
 
-| Feature | Benefit |
-|---------|---------|
-| What | Duty suspension |
-| For | Manufacturing operations |
-| Condition | Located in bonded area |
-| Items | Import for re-export |
+| Feature   | Benefit                  |
+| --------- | ------------------------ |
+| What      | Duty suspension          |
+| For       | Manufacturing operations |
+| Condition | Located in bonded area   |
+| Items     | Import for re-export     |
 
 ---
 
@@ -345,6 +348,7 @@ Consider KEK locations for manufacturing and export.
 - Can continue until outgrow threshold
 
 Significant benefit for starting businesses.
+
 </InfoCard>
 
 ---
@@ -353,25 +357,25 @@ Significant benefit for starting businesses.
 
 ### How to Apply
 
-| Incentive | Application Channel |
-|-----------|---------------------|
-| Tax Holiday | OSS / Investment Ministry |
-| Tax Allowance | OSS / Tax Office |
-| Super Deduction | Tax Office |
-| KEK benefits | KEK Administrator |
-| KITE | Customs |
+| Incentive       | Application Channel       |
+| --------------- | ------------------------- |
+| Tax Holiday     | OSS / Investment Ministry |
+| Tax Allowance   | OSS / Tax Office          |
+| Super Deduction | Tax Office                |
+| KEK benefits    | KEK Administrator         |
+| KITE            | Customs                   |
 
 ### General Process
 
-| Step | Action |
-|------|--------|
-| 1 | Determine eligibility |
-| 2 | Prepare documentation |
-| 3 | Submit application |
-| 4 | Review by authorities |
-| 5 | Decision issued |
-| 6 | Implementation |
-| 7 | Ongoing compliance |
+| Step | Action                |
+| ---- | --------------------- |
+| 1    | Determine eligibility |
+| 2    | Prepare documentation |
+| 3    | Submit application    |
+| 4    | Review by authorities |
+| 5    | Decision issued       |
+| 6    | Implementation        |
+| 7    | Ongoing compliance    |
 
 ---
 
@@ -379,13 +383,13 @@ Significant benefit for starting businesses.
 
 ### Maintaining Benefits
 
-| Requirement | Frequency |
-|-------------|-----------|
-| Report to BKPM | Quarterly/Annual |
-| Tax returns | Monthly/Annual |
-| Realize investment | Per timeline |
-| Employment targets | As committed |
-| Production targets | As committed |
+| Requirement        | Frequency        |
+| ------------------ | ---------------- |
+| Report to BKPM     | Quarterly/Annual |
+| Tax returns        | Monthly/Annual   |
+| Realize investment | Per timeline     |
+| Employment targets | As committed     |
+| Production targets | As committed     |
 
 <InfoCard variant="warning" title="Loss of Benefits">
 **Incentives can be revoked if:**
@@ -397,6 +401,7 @@ Significant benefit for starting businesses.
 - Tax compliance issues
 
 Maintain compliance carefully!
+
 </InfoCard>
 
 ---
@@ -405,21 +410,21 @@ Maintain compliance carefully!
 
 ### Considerations
 
-| Pros | Cons |
-|------|------|
+| Pros                    | Cons                   |
+| ----------------------- | ---------------------- |
 | Significant tax savings | Application complexity |
-| Long-term benefits | Compliance burden |
-| Cash flow improvement | Commitments required |
-| Competitive advantage | May limit flexibility |
+| Long-term benefits      | Compliance burden      |
+| Cash flow improvement   | Commitments required   |
+| Competitive advantage   | May limit flexibility  |
 
 ### Who Should Apply?
 
-| Good Candidates | May Not Be Worth It |
-|-----------------|---------------------|
-| Large investments | Small operations |
-| Pioneer industries | Service businesses |
-| Manufacturing | Quick-turnaround projects |
-| Long-term operations | Uncertain business plans |
+| Good Candidates      | May Not Be Worth It       |
+| -------------------- | ------------------------- |
+| Large investments    | Small operations          |
+| Pioneer industries   | Service businesses        |
+| Manufacturing        | Quick-turnaround projects |
+| Long-term operations | Uncertain business plans  |
 
 ---
 
@@ -432,7 +437,7 @@ Maintain compliance carefully!
     "Does my business qualify for tax holiday?",
     "How long does application take?",
     "Can I lose the incentive?",
-    "Is tax allowance better than tax holiday?"
+    "Is tax allowance better than tax holiday?",
   ]}
 />
 

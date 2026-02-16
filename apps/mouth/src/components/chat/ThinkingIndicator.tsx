@@ -15,5 +15,5 @@
  * - thinking/ThinkingIndicator.tsx - Main component
  */
 
-export { ThinkingIndicator } from './thinking';
-export type { ThinkingIndicatorProps, GenericStep, Activity } from './thinking';
+export { ThinkingIndicator } from "./thinking";
+export type { ThinkingIndicatorProps, GenericStep, Activity } from "./thinking";

@@ -3,13 +3,13 @@
  * Covers all branches and mappers
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { monitoringDashboard, monitoringHelpers } from './monitoring-dashboard';
-import { conversationMonitor } from './monitoring';
-import { logger } from './logger';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { monitoringDashboard, monitoringHelpers } from "./monitoring-dashboard";
+import { conversationMonitor } from "./monitoring";
+import { logger } from "./logger";
 
 // Mock logger
-vi.mock('./logger', () => ({
+vi.mock("./logger", () => ({
   logger: {
     debug: vi.fn(),
     info: vi.fn(),
@@ -19,7 +19,7 @@ vi.mock('./logger', () => ({
 }));
 
 // Mock conversationMonitor
-vi.mock('./monitoring', () => ({
+vi.mock("./monitoring", () => ({
   conversationMonitor: {
     getSummary: vi.fn(),
     getActiveSessions: vi.fn(),
@@ -28,15 +28,15 @@ vi.mock('./monitoring', () => ({
   },
 }));
 
-describe('MonitoringDashboard', () => {
+describe("MonitoringDashboard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Clear localStorage
     localStorage.clear();
   });
 
-  describe('showSummary', () => {
-    it('should display summary with active sessions', () => {
+  describe("showSummary", () => {
+    it("should display summary with active sessions", () => {
       const mockSummary = {
         activeSessions: 2,
         totalTurns: 10,
@@ -47,7 +47,7 @@ describe('MonitoringDashboard', () => {
 
       const mockSessions = [
         {
-          sessionId: 'session-123',
+          sessionId: "session-123",
           turnCount: 5,
           startTime: new Date(Date.now() - 60000),
           lastMessageTime: new Date(),
@@ -58,14 +58,16 @@ describe('MonitoringDashboard', () => {
       ];
 
       vi.mocked(conversationMonitor.getSummary).mockReturnValue(mockSummary);
-      vi.mocked(conversationMonitor.getActiveSessions).mockReturnValue(mockSessions);
+      vi.mocked(conversationMonitor.getActiveSessions).mockReturnValue(
+        mockSessions,
+      );
 
       monitoringDashboard.showSummary();
 
       expect(logger.debug).toHaveBeenCalled();
     });
 
-    it('should display summary without active sessions', () => {
+    it("should display summary without active sessions", () => {
       const mockSummary = {
         activeSessions: 0,
         totalTurns: 0,
@@ -82,7 +84,7 @@ describe('MonitoringDashboard', () => {
       expect(logger.debug).toHaveBeenCalled();
     });
 
-    it('should display alert history when present', () => {
+    it("should display alert history when present", () => {
       const mockSummary = {
         activeSessions: 0,
         totalTurns: 0,
@@ -95,7 +97,7 @@ describe('MonitoringDashboard', () => {
       vi.mocked(conversationMonitor.getActiveSessions).mockReturnValue([]);
 
       // Add alert history
-      monitoringDashboard.recordAlert('TEST_ALERT', { test: 'data' });
+      monitoringDashboard.recordAlert("TEST_ALERT", { test: "data" });
 
       monitoringDashboard.showSummary();
 
@@ -104,22 +106,22 @@ describe('MonitoringDashboard', () => {
     });
   });
 
-  describe('showAlerts', () => {
-    it('should show no alerts when none exist', () => {
+  describe("showAlerts", () => {
+    it("should show no alerts when none exist", () => {
       vi.mocked(conversationMonitor.getActiveSessions).mockReturnValue([]);
 
       monitoringDashboard.showAlerts();
 
       expect(logger.debug).toHaveBeenCalledWith(
-        expect.stringContaining('No active alerts'),
-        expect.any(Object)
+        expect.stringContaining("No active alerts"),
+        expect.any(Object),
       );
     });
 
-    it('should detect LONG_CONVERSATION alert', () => {
+    it("should detect LONG_CONVERSATION alert", () => {
       const mockSessions = [
         {
-          sessionId: 'session-123',
+          sessionId: "session-123",
           turnCount: 15,
           startTime: new Date(),
           lastMessageTime: new Date(),
@@ -129,41 +131,45 @@ describe('MonitoringDashboard', () => {
         },
       ];
 
-      vi.mocked(conversationMonitor.getActiveSessions).mockReturnValue(mockSessions);
+      vi.mocked(conversationMonitor.getActiveSessions).mockReturnValue(
+        mockSessions,
+      );
 
       monitoringDashboard.showAlerts();
 
       expect(logger.warn).toHaveBeenCalled();
     });
 
-    it('should detect MULTIPLE_ERRORS alert', () => {
+    it("should detect MULTIPLE_ERRORS alert", () => {
       const mockSessions = [
         {
-          sessionId: 'session-123',
+          sessionId: "session-123",
           turnCount: 5,
           startTime: new Date(),
           lastMessageTime: new Date(),
           errors: [
-            { type: 'error1', message: 'msg1', timestamp: new Date() },
-            { type: 'error2', message: 'msg2', timestamp: new Date() },
-            { type: 'error3', message: 'msg3', timestamp: new Date() },
+            { type: "error1", message: "msg1", timestamp: new Date() },
+            { type: "error2", message: "msg2", timestamp: new Date() },
+            { type: "error3", message: "msg3", timestamp: new Date() },
           ],
           timeouts: 0,
           rateLimitHits: 0,
         },
       ];
 
-      vi.mocked(conversationMonitor.getActiveSessions).mockReturnValue(mockSessions);
+      vi.mocked(conversationMonitor.getActiveSessions).mockReturnValue(
+        mockSessions,
+      );
 
       monitoringDashboard.showAlerts();
 
       expect(logger.warn).toHaveBeenCalled();
     });
 
-    it('should detect MULTIPLE_TIMEOUTS alert', () => {
+    it("should detect MULTIPLE_TIMEOUTS alert", () => {
       const mockSessions = [
         {
-          sessionId: 'session-123',
+          sessionId: "session-123",
           turnCount: 5,
           startTime: new Date(),
           lastMessageTime: new Date(),
@@ -173,17 +179,19 @@ describe('MonitoringDashboard', () => {
         },
       ];
 
-      vi.mocked(conversationMonitor.getActiveSessions).mockReturnValue(mockSessions);
+      vi.mocked(conversationMonitor.getActiveSessions).mockReturnValue(
+        mockSessions,
+      );
 
       monitoringDashboard.showAlerts();
 
       expect(logger.warn).toHaveBeenCalled();
     });
 
-    it('should detect RATE_LIMIT_ISSUES alert', () => {
+    it("should detect RATE_LIMIT_ISSUES alert", () => {
       const mockSessions = [
         {
-          sessionId: 'session-123',
+          sessionId: "session-123",
           turnCount: 5,
           startTime: new Date(),
           lastMessageTime: new Date(),
@@ -193,7 +201,9 @@ describe('MonitoringDashboard', () => {
         },
       ];
 
-      vi.mocked(conversationMonitor.getActiveSessions).mockReturnValue(mockSessions);
+      vi.mocked(conversationMonitor.getActiveSessions).mockReturnValue(
+        mockSessions,
+      );
 
       monitoringDashboard.showAlerts();
 
@@ -201,10 +211,10 @@ describe('MonitoringDashboard', () => {
     });
   });
 
-  describe('showSessionDetails', () => {
-    it('should display session details when session exists', () => {
+  describe("showSessionDetails", () => {
+    it("should display session details when session exists", () => {
       const mockMetrics = {
-        sessionId: 'session-123',
+        sessionId: "session-123",
         turnCount: 5,
         startTime: new Date(Date.now() - 60000),
         lastMessageTime: new Date(),
@@ -215,40 +225,40 @@ describe('MonitoringDashboard', () => {
 
       vi.mocked(conversationMonitor.getMetrics).mockReturnValue(mockMetrics);
 
-      monitoringDashboard.showSessionDetails('session-123');
+      monitoringDashboard.showSessionDetails("session-123");
 
       expect(logger.debug).toHaveBeenCalled();
     });
 
-    it('should warn when session does not exist', () => {
+    it("should warn when session does not exist", () => {
       vi.mocked(conversationMonitor.getMetrics).mockReturnValue(undefined);
 
-      monitoringDashboard.showSessionDetails('nonexistent');
+      monitoringDashboard.showSessionDetails("nonexistent");
 
       expect(logger.warn).toHaveBeenCalled();
     });
 
-    it('should display error history when present', () => {
+    it("should display error history when present", () => {
       const mockMetrics = {
-        sessionId: 'session-123',
+        sessionId: "session-123",
         turnCount: 5,
         startTime: new Date(),
         lastMessageTime: new Date(),
-        errors: [{ type: 'error1', message: 'msg1', timestamp: new Date() }],
+        errors: [{ type: "error1", message: "msg1", timestamp: new Date() }],
         timeouts: 0,
         rateLimitHits: 0,
       };
 
       vi.mocked(conversationMonitor.getMetrics).mockReturnValue(mockMetrics);
 
-      monitoringDashboard.showSessionDetails('session-123');
+      monitoringDashboard.showSessionDetails("session-123");
 
       expect(logger.error).toHaveBeenCalled();
     });
   });
 
-  describe('exportMetrics', () => {
-    it('should export metrics as JSON string', () => {
+  describe("exportMetrics", () => {
+    it("should export metrics as JSON string", () => {
       const mockSummary = {
         activeSessions: 1,
         totalTurns: 5,
@@ -259,7 +269,7 @@ describe('MonitoringDashboard', () => {
 
       const mockSessions = [
         {
-          sessionId: 'session-123',
+          sessionId: "session-123",
           turnCount: 5,
           startTime: new Date(),
           lastMessageTime: new Date(),
@@ -270,22 +280,24 @@ describe('MonitoringDashboard', () => {
       ];
 
       vi.mocked(conversationMonitor.getSummary).mockReturnValue(mockSummary);
-      vi.mocked(conversationMonitor.getActiveSessions).mockReturnValue(mockSessions);
+      vi.mocked(conversationMonitor.getActiveSessions).mockReturnValue(
+        mockSessions,
+      );
 
       const result = monitoringDashboard.exportMetrics();
       const parsed = JSON.parse(result);
 
-      expect(parsed).toHaveProperty('timestamp');
-      expect(parsed).toHaveProperty('summary');
-      expect(parsed).toHaveProperty('sessions');
-      expect(parsed).toHaveProperty('alerts');
+      expect(parsed).toHaveProperty("timestamp");
+      expect(parsed).toHaveProperty("summary");
+      expect(parsed).toHaveProperty("sessions");
+      expect(parsed).toHaveProperty("alerts");
     });
   });
 
-  describe('clearOldSessions', () => {
-    it('should clear sessions older than default (60 minutes)', () => {
+  describe("clearOldSessions", () => {
+    it("should clear sessions older than default (60 minutes)", () => {
       const oldSession = {
-        sessionId: 'old-session',
+        sessionId: "old-session",
         turnCount: 5,
         startTime: new Date(Date.now() - 70 * 60 * 1000),
         lastMessageTime: new Date(Date.now() - 70 * 60 * 1000),
@@ -295,7 +307,7 @@ describe('MonitoringDashboard', () => {
       };
 
       const newSession = {
-        sessionId: 'new-session',
+        sessionId: "new-session",
         turnCount: 5,
         startTime: new Date(),
         lastMessageTime: new Date(),
@@ -304,16 +316,21 @@ describe('MonitoringDashboard', () => {
         rateLimitHits: 0,
       };
 
-      vi.mocked(conversationMonitor.getActiveSessions).mockReturnValue([oldSession, newSession]);
+      vi.mocked(conversationMonitor.getActiveSessions).mockReturnValue([
+        oldSession,
+        newSession,
+      ]);
 
       monitoringDashboard.clearOldSessions();
 
-      expect(conversationMonitor.clearSession).toHaveBeenCalledWith('old-session');
+      expect(conversationMonitor.clearSession).toHaveBeenCalledWith(
+        "old-session",
+      );
     });
 
-    it('should clear sessions older than custom maxAgeMinutes', () => {
+    it("should clear sessions older than custom maxAgeMinutes", () => {
       const oldSession = {
-        sessionId: 'old-session',
+        sessionId: "old-session",
         turnCount: 5,
         startTime: new Date(Date.now() - 35 * 60 * 1000),
         lastMessageTime: new Date(Date.now() - 35 * 60 * 1000),
@@ -322,16 +339,20 @@ describe('MonitoringDashboard', () => {
         rateLimitHits: 0,
       };
 
-      vi.mocked(conversationMonitor.getActiveSessions).mockReturnValue([oldSession]);
+      vi.mocked(conversationMonitor.getActiveSessions).mockReturnValue([
+        oldSession,
+      ]);
 
       monitoringDashboard.clearOldSessions(30);
 
-      expect(conversationMonitor.clearSession).toHaveBeenCalledWith('old-session');
+      expect(conversationMonitor.clearSession).toHaveBeenCalledWith(
+        "old-session",
+      );
     });
   });
 
-  describe('recordAlert', () => {
-    it('should record alert and keep only MAX_ALERT_HISTORY', () => {
+  describe("recordAlert", () => {
+    it("should record alert and keep only MAX_ALERT_HISTORY", () => {
       // Add more than MAX_ALERT_HISTORY alerts
       for (let i = 0; i < 150; i++) {
         monitoringDashboard.recordAlert(`ALERT_${i}`, { index: i });
@@ -344,19 +365,19 @@ describe('MonitoringDashboard', () => {
     });
   });
 
-  describe('monitoringHelpers', () => {
-    it('should provide summary helper', () => {
+  describe("monitoringHelpers", () => {
+    it("should provide summary helper", () => {
       monitoringHelpers.summary();
       expect(logger.debug).toHaveBeenCalled();
     });
 
-    it('should provide alerts helper', () => {
+    it("should provide alerts helper", () => {
       vi.mocked(conversationMonitor.getActiveSessions).mockReturnValue([]);
       monitoringHelpers.alerts();
       expect(logger.debug).toHaveBeenCalled();
     });
 
-    it('should provide export helper', () => {
+    it("should provide export helper", () => {
       vi.mocked(conversationMonitor.getSummary).mockReturnValue({
         activeSessions: 0,
         totalTurns: 0,
@@ -373,7 +394,7 @@ describe('MonitoringDashboard', () => {
       });
       vi.mocked(conversationMonitor.getActiveSessions).mockReturnValue([]);
 
-      Object.defineProperty(navigator, 'clipboard', {
+      Object.defineProperty(navigator, "clipboard", {
         value: { writeText: vi.fn().mockResolvedValue(undefined) },
         writable: true,
       });
@@ -383,11 +404,11 @@ describe('MonitoringDashboard', () => {
       expect(result).toBeUndefined();
     });
 
-    it('should provide clear helper', () => {
+    it("should provide clear helper", () => {
       // Mock active sessions so clearSession gets called
       vi.mocked(conversationMonitor.getActiveSessions).mockReturnValue([
         {
-          sessionId: 'session-123',
+          sessionId: "session-123",
           turnCount: 5,
           startTime: new Date(Date.now() - 120 * 60 * 1000), // 120 minutes ago
           lastMessageTime: new Date(Date.now() - 120 * 60 * 1000),
@@ -400,8 +421,10 @@ describe('MonitoringDashboard', () => {
       expect(conversationMonitor.clearSession).toHaveBeenCalled();
     });
 
-    it('should provide help helper', () => {
-      const consoleSpy = vi.spyOn(console, 'group').mockImplementation(() => {});
+    it("should provide help helper", () => {
+      const consoleSpy = vi
+        .spyOn(console, "group")
+        .mockImplementation(() => {});
       monitoringHelpers.help();
       expect(consoleSpy).toHaveBeenCalled();
     });

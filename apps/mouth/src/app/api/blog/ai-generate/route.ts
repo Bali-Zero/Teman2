@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
-import type { ArticleCategory } from '@/lib/blog/types';
-import { logger } from '@/lib/logger';
-import { toError } from '@/lib/types/common';
+import { NextRequest, NextResponse } from "next/server";
+import type { ArticleCategory } from "@/lib/blog/types";
+import { logger } from "@/lib/logger";
+import { toError } from "@/lib/types/common";
 
-const ZANTARA_API = process.env.ZANTARA_API_URL || 'http://localhost:8080';
+const ZANTARA_API = process.env.ZANTARA_API_URL || "http://localhost:8080";
 
 interface AIGenerateRequest {
   topic: string;
   category: ArticleCategory;
-  style?: 'informative' | 'analytical' | 'guide' | 'news' | 'opinion';
-  targetLength?: 'short' | 'medium' | 'long';
+  style?: "informative" | "analytical" | "guide" | "news" | "opinion";
+  targetLength?: "short" | "medium" | "long";
   keywords?: string[];
   targetAudience?: string;
 }
@@ -22,51 +22,64 @@ interface AIGenerateRequest {
 export async function POST(request: NextRequest) {
   try {
     // Auth Guard: Strictly require NUZANTARA_API_KEY for this admin endpoint
-    const authHeader = request.headers.get('Authorization');
+    const authHeader = request.headers.get("Authorization");
     const apiKey = process.env.NUZANTARA_API_KEY;
 
     if (!apiKey) {
       logger.error(
-        'CRITICAL: NUZANTARA_API_KEY is not set in environment variables',
-        { component: 'AUTO', action: 'error' },
-        toError('CRITICAL: NUZANTARA_API_KEY is not set in environment variables')
+        "CRITICAL: NUZANTARA_API_KEY is not set in environment variables",
+        { component: "AUTO", action: "error" },
+        toError(
+          "CRITICAL: NUZANTARA_API_KEY is not set in environment variables",
+        ),
       );
-      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+      return NextResponse.json(
+        { error: "Server configuration error" },
+        { status: 500 },
+      );
     }
 
-    if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.split(' ')[1] !== apiKey) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (
+      !authHeader ||
+      !authHeader.startsWith("Bearer ") ||
+      authHeader.split(" ")[1] !== apiKey
+    ) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body: AIGenerateRequest = await request.json();
 
     // Validate required fields
     if (!body.topic || !body.category) {
-      return NextResponse.json({ error: 'Topic and category are required' }, { status: 400 });
+      return NextResponse.json(
+        { error: "Topic and category are required" },
+        { status: 400 },
+      );
     }
 
     // Call Zantara AI backend
     const response = await fetch(`${ZANTARA_API}/api/blog/ai/generate`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         // 'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({
         topic: body.topic,
         category: body.category,
-        style: body.style || 'informative',
-        targetLength: body.targetLength || 'medium',
+        style: body.style || "informative",
+        targetLength: body.targetLength || "medium",
         keywords: body.keywords || [],
-        targetAudience: body.targetAudience || 'expats and investors in Indonesia',
+        targetAudience:
+          body.targetAudience || "expats and investors in Indonesia",
       }),
     });
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
       return NextResponse.json(
-        { error: error.message || 'AI generation failed' },
-        { status: response.status }
+        { error: error.message || "AI generation failed" },
+        { status: response.status },
       );
     }
 
@@ -74,17 +87,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(data);
   } catch (error) {
     logger.error(
-      'AI generation error',
-      { component: 'BlogAI', action: 'generate' },
-      toError(error)
+      "AI generation error",
+      { component: "BlogAI", action: "generate" },
+      toError(error),
     );
 
     // Return mock generated content for demo
     return NextResponse.json({
       success: true,
       article: {
-        title: 'AI Generated Article (Demo)',
-        excerpt: 'This is a demo article generated when the backend is unavailable.',
+        title: "AI Generated Article (Demo)",
+        excerpt:
+          "This is a demo article generated when the backend is unavailable.",
         content: `
 # Demo Article
 
@@ -98,8 +112,8 @@ This content was generated in demo mode since the backend is unavailable.
 
 *This is placeholder content for demonstration purposes.*
         `,
-        suggestedSlug: 'demo-article-' + Date.now(),
-        suggestedTags: ['demo', 'ai-generated'],
+        suggestedSlug: "demo-article-" + Date.now(),
+        suggestedTags: ["demo", "ai-generated"],
         readingTime: 5,
       },
       tokens: {
@@ -119,7 +133,7 @@ export async function GET(request: NextRequest) {
   try {
     const response = await fetch(`${ZANTARA_API}/api/blog/ai/triggers`, {
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
     });
 
@@ -131,9 +145,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(data);
   } catch (error) {
     logger.error(
-      'Failed to fetch AI triggers',
-      { component: 'BlogAI', action: 'fetchTriggers' },
-      toError(error)
+      "Failed to fetch AI triggers",
+      { component: "BlogAI", action: "fetchTriggers" },
+      toError(error),
     );
     return NextResponse.json({ triggers: [] });
   }

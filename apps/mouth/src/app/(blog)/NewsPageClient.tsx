@@ -1050,7 +1050,8 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     id: "10",
     slug: "golden-visa-2026-updates",
     title: "Golden Visa 2026: One Year Later – What We've Learned",
-    excerpt: "After 12 months of Indonesia's Golden Visa program, we analyze approval rates.",
+    excerpt:
+      "After 12 months of Indonesia's Golden Visa program, we analyze approval rates.",
     coverImage: "/static/blog/golden-visa.jpg",
     category: "immigration",
     author: {

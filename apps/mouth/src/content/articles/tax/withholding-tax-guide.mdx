@@ -73,8 +73,8 @@ import {
   Calculator,
   InfoCard,
   Checklist,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Withholding Tax Indonesia 2026: Complete PPh Guide
 
@@ -90,43 +90,43 @@ Indonesia uses an extensive withholding tax system. As a business, you're often 
       name: "PPh 21",
       subtitle: "Employment income",
       values: {
-        "On": "Salaries, wages, fees",
-        "Rate": "Progressive 5-35%",
-        "Remit": "Monthly",
-        "Deadline": "10th of following month"
+        On: "Salaries, wages, fees",
+        Rate: "Progressive 5-35%",
+        Remit: "Monthly",
+        Deadline: "10th of following month",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "PPh 23",
       subtitle: "Services & royalties",
       values: {
-        "On": "Services, dividends, interest",
-        "Rate": "2-15%",
-        "Remit": "Monthly",
-        "Deadline": "10th of following month"
-      }
+        On: "Services, dividends, interest",
+        Rate: "2-15%",
+        Remit: "Monthly",
+        Deadline: "10th of following month",
+      },
     },
     {
       name: "PPh 26",
       subtitle: "Foreign payments",
       values: {
-        "On": "Payments to non-residents",
-        "Rate": "20% (or treaty rate)",
-        "Remit": "Monthly",
-        "Deadline": "10th of following month"
-      }
+        On: "Payments to non-residents",
+        Rate: "20% (or treaty rate)",
+        Remit: "Monthly",
+        Deadline: "10th of following month",
+      },
     },
     {
       name: "PPh 4(2)",
       subtitle: "Final taxes",
       values: {
-        "On": "Rent, construction, etc.",
-        "Rate": "Various (final)",
-        "Remit": "Monthly",
-        "Deadline": "10th of following month"
-      }
-    }
+        On: "Rent, construction, etc.",
+        Rate: "Various (final)",
+        Remit: "Monthly",
+        Deadline: "10th of following month",
+      },
+    },
   ]}
 />
 
@@ -146,17 +146,18 @@ Indonesia uses an extensive withholding tax system. As a business, you're often 
 - Consultant fees (individuals)
 
 The employer withholds and remits to the tax office.
+
 </InfoCard>
 
 ### PPh 21 Rates (Progressive)
 
 | Taxable Income (IDR/year) | Rate |
-|---------------------------|------|
-| 0 - 60 million | 5% |
-| 60M - 250 million | 15% |
-| 250M - 500 million | 25% |
-| 500M - 5 billion | 30% |
-| Over 5 billion | 35% |
+| ------------------------- | ---- |
+| 0 - 60 million            | 5%   |
+| 60M - 250 million         | 15%  |
+| 250M - 500 million        | 25%  |
+| 500M - 5 billion          | 30%  |
+| Over 5 billion            | 35%  |
 
 ### PPh 21 Calculator
 
@@ -249,7 +250,8 @@ The employer withholds and remits to the tax office.
       currency: "IDR",
       note: "Approximate calculation"
     };
-  }}
+
+}}
 />
 
 ---
@@ -258,15 +260,15 @@ The employer withholds and remits to the tax office.
 
 ### PPh 23 Rates
 
-| Payment Type | Rate |
-|--------------|------|
-| Dividends | 15% |
-| Interest | 15% |
-| Royalties | 15% |
-| Technical services | 2% |
-| Management services | 2% |
-| Consultant services | 2% |
-| Other services | 2% |
+| Payment Type        | Rate |
+| ------------------- | ---- |
+| Dividends           | 15%  |
+| Interest            | 15%  |
+| Royalties           | 15%  |
+| Technical services  | 2%   |
+| Management services | 2%   |
+| Consultant services | 2%   |
+| Other services      | 2%   |
 
 ### When to Withhold PPh 23
 
@@ -280,47 +282,47 @@ The employer withholds and remits to the tax office.
       label: "Technical/consulting services",
       description: "To Indonesian companies/individuals",
       required: false,
-      category: "services"
+      category: "services",
     },
     {
       id: "dividends",
       label: "Dividend payments",
       description: "To Indonesian shareholders",
       required: false,
-      category: "passive"
+      category: "passive",
     },
     {
       id: "interest",
       label: "Interest payments",
       description: "Non-bank interest",
       required: false,
-      category: "passive"
+      category: "passive",
     },
     {
       id: "royalties",
       label: "Royalty payments",
       description: "IP licensing fees",
       required: false,
-      category: "passive"
+      category: "passive",
     },
     {
       id: "management",
       label: "Management fees",
       description: "Intercompany services",
       required: false,
-      category: "services"
+      category: "services",
     },
     {
       id: "event",
       label: "Event organizer services",
       description: "Events, catering",
       required: false,
-      category: "services"
-    }
+      category: "services",
+    },
   ]}
   categories={[
     { id: "services", label: "Services (2%)", color: "blue" },
-    { id: "passive", label: "Passive Income (15%)", color: "amber" }
+    { id: "passive", label: "Passive Income (15%)", color: "amber" },
   ]}
   showProgress={false}
 />
@@ -338,22 +340,23 @@ The employer withholds and remits to the tax office.
 - May be reduced by **tax treaty**
 - Applies to: services, dividends, interest, royalties
 - Withheld by Indonesian payer
-</InfoCard>
+  </InfoCard>
 
 ### Common Treaty Rates
 
-| Country | Services | Dividends | Interest | Royalties |
-|---------|----------|-----------|----------|-----------|
-| Singapore | 15% | 10/15% | 10% | 15% |
-| USA | 15% | 10/15% | 10% | 10% |
-| UK | 15% | 10/15% | 10% | 15% |
-| Australia | 15% | 15% | 10% | 15% |
-| Japan | 15% | 10/15% | 10% | 10% |
-| No treaty | 20% | 20% | 20% | 20% |
+| Country   | Services | Dividends | Interest | Royalties |
+| --------- | -------- | --------- | -------- | --------- |
+| Singapore | 15%      | 10/15%    | 10%      | 15%       |
+| USA       | 15%      | 10/15%    | 10%      | 10%       |
+| UK        | 15%      | 10/15%    | 10%      | 15%       |
+| Australia | 15%      | 15%       | 10%      | 15%       |
+| Japan     | 15%      | 10/15%    | 10%      | 10%       |
+| No treaty | 20%      | 20%       | 20%      | 20%       |
 
 ### Certificate of Domicile (SKD)
 
 To apply treaty rates, the foreign recipient must provide:
+
 - **Form DGT-1** (Certificate of Domicile)
 - Completed by recipient
 - Certified by tax authority
@@ -365,22 +368,22 @@ To apply treaty rates, the foreign recipient must provide:
 
 ### Final Tax Rates
 
-| Transaction | Rate | Notes |
-|-------------|------|-------|
-| Land/building rent | 10% | Final |
-| Construction services | 2-4% | Based on certification |
-| Land/building sale | 2.5% | Final |
-| Dividends to individuals | 10% | Final |
-| Bank interest | 20% | Final |
-| Lottery prizes | 25% | Final |
+| Transaction              | Rate | Notes                  |
+| ------------------------ | ---- | ---------------------- |
+| Land/building rent       | 10%  | Final                  |
+| Construction services    | 2-4% | Based on certification |
+| Land/building sale       | 2.5% | Final                  |
+| Dividends to individuals | 10%  | Final                  |
+| Bank interest            | 20%  | Final                  |
+| Lottery prizes           | 25%  | Final                  |
 
 ### Construction Services Detail
 
-| Contractor Type | Rate |
-|-----------------|------|
-| Large certification | 2% |
-| Medium certification | 3% |
-| Small/no certification | 4% |
+| Contractor Type        | Rate |
+| ---------------------- | ---- |
+| Large certification    | 2%   |
+| Medium certification   | 3%   |
+| Small/no certification | 4%   |
 
 ---
 
@@ -395,35 +398,35 @@ To apply treaty rates, the foreign recipient must provide:
     {
       name: "PPh 21",
       values: {
-        "Payment": "10th of following month",
-        "Reporting": "20th of following month",
-        "Form": "SPT Masa PPh 21"
-      }
+        Payment: "10th of following month",
+        Reporting: "20th of following month",
+        Form: "SPT Masa PPh 21",
+      },
     },
     {
       name: "PPh 23",
       values: {
-        "Payment": "10th of following month",
-        "Reporting": "20th of following month",
-        "Form": "SPT Masa PPh 23/26"
-      }
+        Payment: "10th of following month",
+        Reporting: "20th of following month",
+        Form: "SPT Masa PPh 23/26",
+      },
     },
     {
       name: "PPh 26",
       values: {
-        "Payment": "10th of following month",
-        "Reporting": "20th of following month",
-        "Form": "SPT Masa PPh 23/26"
-      }
+        Payment: "10th of following month",
+        Reporting: "20th of following month",
+        Form: "SPT Masa PPh 23/26",
+      },
     },
     {
       name: "PPh 4(2)",
       values: {
-        "Payment": "10th of following month",
-        "Reporting": "20th of following month",
-        "Form": "SPT Masa PPh 4(2)"
-      }
-    }
+        Payment: "10th of following month",
+        Reporting: "20th of following month",
+        Form: "SPT Masa PPh 4(2)",
+      },
+    },
   ]}
 />
 
@@ -435,14 +438,15 @@ To apply treaty rates, the foreign recipient must provide:
 
 When you withhold tax, you must provide a **Bukti Potong** (withholding certificate):
 
-| Tax Type | Certificate |
-|----------|-------------|
-| PPh 21 | Bukti Potong 1721-A1/A2 |
-| PPh 23 | Bukti Potong PPh 23 |
-| PPh 26 | Bukti Potong PPh 26 |
-| PPh 4(2) | Bukti Potong PPh 4(2) |
+| Tax Type | Certificate             |
+| -------- | ----------------------- |
+| PPh 21   | Bukti Potong 1721-A1/A2 |
+| PPh 23   | Bukti Potong PPh 23     |
+| PPh 26   | Bukti Potong PPh 26     |
+| PPh 4(2) | Bukti Potong PPh 4(2)   |
 
 Recipients use these to:
+
 - Claim tax credits
 - File their own tax returns
 - Support expense deductions
@@ -451,23 +455,23 @@ Recipients use these to:
 
 ## Common Mistakes
 
-| Mistake | Impact |
-|---------|--------|
-| Missing withholding | Late payment penalties + interest |
-| Wrong rate applied | Under/overpayment |
-| Not providing certificates | Problems for recipients |
+| Mistake                    | Impact                             |
+| -------------------------- | ---------------------------------- |
+| Missing withholding        | Late payment penalties + interest  |
+| Wrong rate applied         | Under/overpayment                  |
+| Not providing certificates | Problems for recipients            |
 | Missing treaty formalities | 20% rate applies instead of treaty |
-| Incorrect NPWP | Certificate issues |
+| Incorrect NPWP             | Certificate issues                 |
 
 ---
 
 ## Penalties
 
-| Violation | Penalty |
-|-----------|---------|
-| Late payment | 2% per month |
-| Late filing | IDR 100K-1M per return |
-| Not withholding | Tax + 100% penalty |
+| Violation                | Penalty                |
+| ------------------------ | ---------------------- |
+| Late payment             | 2% per month           |
+| Late filing              | IDR 100K-1M per return |
+| Not withholding          | Tax + 100% penalty     |
 | Late issuing certificate | Administrative penalty |
 
 ---
@@ -481,7 +485,7 @@ Recipients use these to:
     "When do I need to withhold PPh 23?",
     "How do I apply tax treaty rates?",
     "What's the deadline for PPh 21?",
-    "Is rent subject to withholding?"
+    "Is rent subject to withholding?",
   ]}
 />
 

@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { MDXRemote, MDXRemoteSerializeResult } from 'next-mdx-remote';
-import Image from 'next/image';
-import Link from 'next/link';
+import { MDXRemote, MDXRemoteSerializeResult } from "next-mdx-remote";
+import Image from "next/image";
+import Link from "next/link";
 
 // Import all interactive components
 import {
@@ -16,7 +16,7 @@ import {
   Checklist,
   InfoCard,
   GlossaryTerm,
-} from '@/components/blog/interactive';
+} from "@/components/blog/interactive";
 
 // Custom components for MDX
 const mdxComponents = {
@@ -58,8 +58,8 @@ const mdxComponents = {
     <p className="text-white/80 leading-relaxed mb-5 text-xl" {...props} />
   ),
   a: (props: React.AnchorHTMLAttributes<HTMLAnchorElement>) => {
-    const href = props.href || '';
-    const isExternal = href.startsWith('http');
+    const href = props.href || "";
+    const isExternal = href.startsWith("http");
 
     if (isExternal) {
       return (
@@ -82,7 +82,10 @@ const mdxComponents = {
     );
   },
   ul: (props: React.HTMLAttributes<HTMLUListElement>) => (
-    <ul className="list-disc list-outside ml-6 mb-5 space-y-3 text-white/80 text-xl" {...props} />
+    <ul
+      className="list-disc list-outside ml-6 mb-5 space-y-3 text-white/80 text-xl"
+      {...props}
+    />
   ),
   ol: (props: React.HTMLAttributes<HTMLOListElement>) => (
     <ol
@@ -153,9 +156,16 @@ const mdxComponents = {
   img: (props: React.ImgHTMLAttributes<HTMLImageElement>) => {
     return (
       <span className="block my-6">
-        <img className="rounded-xl w-full" loading="lazy" alt={props.alt || ''} {...props} />
+        <img
+          className="rounded-xl w-full"
+          loading="lazy"
+          alt={props.alt || ""}
+          {...props}
+        />
         {props.alt && (
-          <span className="block text-center text-sm text-white/50 mt-2">{props.alt}</span>
+          <span className="block text-center text-sm text-white/50 mt-2">
+            {props.alt}
+          </span>
         )}
       </span>
     );
@@ -174,7 +184,10 @@ interface MDXContentProps {
 
 export function MDXContent({ source }: MDXContentProps) {
   return (
-    <div className="mdx-content" style={{ fontSize: '1.3rem', lineHeight: '1.8' }}>
+    <div
+      className="mdx-content"
+      style={{ fontSize: "1.3rem", lineHeight: "1.8" }}
+    >
       <MDXRemote {...source} components={mdxComponents} />
     </div>
   );

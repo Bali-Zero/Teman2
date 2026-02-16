@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { motion } from 'framer-motion';
+import { motion } from "framer-motion";
 
 interface ThinkingProgressProps {
   actualStep: number;
@@ -8,7 +8,11 @@ interface ThinkingProgressProps {
   elapsedTime?: number;
 }
 
-export function ThinkingProgress({ actualStep, maxSteps, elapsedTime = 0 }: ThinkingProgressProps) {
+export function ThinkingProgress({
+  actualStep,
+  maxSteps,
+  elapsedTime = 0,
+}: ThinkingProgressProps) {
   const progressPercent = Math.min((actualStep / maxSteps) * 100, 100);
 
   return (
@@ -55,22 +59,22 @@ export function ThinkingProgress({ actualStep, maxSteps, elapsedTime = 0 }: Thin
           {Array.from({ length: maxSteps }).map((_, i) => (
             <div
               key={i}
-              className={`flex-1 ${i > 0 ? 'border-l border-[var(--border)]/30' : ''}`}
+              className={`flex-1 ${i > 0 ? "border-l border-[var(--border)]/30" : ""}`}
             />
           ))}
         </div>
         {/* Filled progress */}
         <motion.div
           className="absolute inset-y-0 left-0 bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500"
-          initial={{ width: '0%' }}
+          initial={{ width: "0%" }}
           animate={{ width: `${progressPercent}%` }}
-          transition={{ duration: 0.5, ease: 'easeOut' }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
         />
         {/* Shimmer effect */}
         <motion.div
           className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-          animate={{ x: ['-100%', '100%'] }}
-          transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+          animate={{ x: ["-100%", "100%"] }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
         />
       </div>
     </>

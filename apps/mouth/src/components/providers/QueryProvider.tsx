@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import React from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
 // Create a client for React Query with enterprise configuration
 function createQueryClient() {
@@ -15,7 +15,8 @@ function createQueryClient() {
         retry: (failureCount, error: unknown) => {
           // Retry on network errors but not on 4xx errors
           const err = error as { status?: number };
-          if (err?.status && err.status >= 400 && err.status < 500) return false;
+          if (err?.status && err.status >= 400 && err.status < 500)
+            return false;
           return failureCount < 3;
         },
         retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
@@ -34,7 +35,7 @@ function createQueryClient() {
 let browserQueryClient: QueryClient | undefined = undefined;
 
 function getQueryClient() {
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     // Server: always make a new query client
     return createQueryClient();
   } else {
@@ -54,7 +55,11 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       {children}
       {/* Enhanced DevTools with enterprise features */}
-      <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" position="bottom" />
+      <ReactQueryDevtools
+        initialIsOpen={false}
+        buttonPosition="bottom-left"
+        position="bottom"
+      />
     </QueryClientProvider>
   );
 }

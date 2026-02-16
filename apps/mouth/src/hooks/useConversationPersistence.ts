@@ -3,11 +3,11 @@
  * Manages session_id generation and persistence across page refreshes
  */
 
-import { useEffect, useState } from 'react';
-import { logger } from '@/lib/logger';
+import { useEffect, useState } from "react";
+import { logger } from "@/lib/logger";
 
-const SESSION_STORAGE_KEY = 'zantara_session_id';
-const SESSION_EXPIRY_KEY = 'zantara_session_expiry';
+const SESSION_STORAGE_KEY = "zantara_session_id";
+const SESSION_EXPIRY_KEY = "zantara_session_expiry";
 const SESSION_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 /**
@@ -29,22 +29,22 @@ function isSessionExpired(expiryTime: string | null): boolean {
 
 /**
  * Hook for managing conversation session persistence
- * 
+ *
  * Features:
  * - Generates session_id once per session
  * - Persists session_id in sessionStorage
  * - Auto-expires after 24 hours
  * - Provides manual reset function
- * 
+ *
  * @returns Session ID and reset function
  */
 export function useConversationPersistence() {
-  const [sessionId, setSessionId] = useState<string>('');
+  const [sessionId, setSessionId] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Client-side only
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
 
     try {
       const storedSessionId = sessionStorage.getItem(SESSION_STORAGE_KEY);
@@ -53,9 +53,9 @@ export function useConversationPersistence() {
       // Check if we have a valid session
       if (storedSessionId && !isSessionExpired(storedExpiry)) {
         setSessionId(storedSessionId);
-        logger.info('Restored session', {
-          component: 'useConversationPersistence',
-          action: 'restore',
+        logger.info("Restored session", {
+          component: "useConversationPersistence",
+          action: "restore",
           metadata: { session_id: storedSessionId },
         });
       } else {
@@ -67,9 +67,9 @@ export function useConversationPersistence() {
         sessionStorage.setItem(SESSION_EXPIRY_KEY, newExpiry);
 
         setSessionId(newSessionId);
-        logger.info('Created new session', {
-          component: 'useConversationPersistence',
-          action: 'create',
+        logger.info("Created new session", {
+          component: "useConversationPersistence",
+          action: "create",
           metadata: { session_id: newSessionId },
         });
       }
@@ -77,9 +77,9 @@ export function useConversationPersistence() {
       // Fallback if sessionStorage is unavailable
       const fallbackSessionId = generateSessionId();
       setSessionId(fallbackSessionId);
-      logger.warn('SessionStorage unavailable, using fallback', {
-        component: 'useConversationPersistence',
-        action: 'fallback',
+      logger.warn("SessionStorage unavailable, using fallback", {
+        component: "useConversationPersistence",
+        action: "fallback",
         metadata: { session_id: fallbackSessionId },
       });
     } finally {
@@ -102,15 +102,16 @@ export function useConversationPersistence() {
     }
 
     setSessionId(newSessionId);
-    logger.info('Reset session', {
-      component: 'useConversationPersistence',
-      action: 'reset',
+    logger.info("Reset session", {
+      component: "useConversationPersistence",
+      action: "reset",
       metadata: { session_id: newSessionId },
     });
   };
 
   return {
     sessionId,
+    setSessionId, // Export the setter
     isLoading,
     resetSession,
   };

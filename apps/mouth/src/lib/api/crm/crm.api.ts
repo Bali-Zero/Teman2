@@ -1,4 +1,4 @@
-import type { IApiClient } from '../types/api-client.types';
+import type { IApiClient } from "../types/api-client.types";
 import type {
   Practice,
   Interaction,
@@ -22,7 +22,7 @@ import type {
   ClientCompanyLink,
   CompanyDocument,
   TaxRecord,
-} from './crm.types';
+} from "./crm.types";
 
 /**
  * Revenue growth statistics response
@@ -80,16 +80,17 @@ export class CrmApi {
       assigned_to?: string;
       limit?: number;
       offset?: number;
-    } = {}
+    } = {},
   ): Promise<Practice[]> {
     const queryParams = new URLSearchParams();
-    if (params.status) queryParams.append('status', params.status);
-    if (params.assigned_to) queryParams.append('assigned_to', params.assigned_to);
-    if (params.limit) queryParams.append('limit', params.limit.toString());
-    if (params.offset) queryParams.append('offset', params.offset.toString());
+    if (params.status) queryParams.append("status", params.status);
+    if (params.assigned_to)
+      queryParams.append("assigned_to", params.assigned_to);
+    if (params.limit) queryParams.append("limit", params.limit.toString());
+    if (params.offset) queryParams.append("offset", params.offset.toString());
 
     const queryString = queryParams.toString();
-    const url = `/api/crm/practices${queryString ? `?${queryString}` : ''}`;
+    const url = `/api/crm/practices${queryString ? `?${queryString}` : ""}`;
 
     return this.client.request<Practice[]>(url);
   }
@@ -112,15 +113,16 @@ export class CrmApi {
       interaction_type?: string;
       limit?: number;
       offset?: number;
-    } = {}
+    } = {},
   ): Promise<Interaction[]> {
     const queryParams = new URLSearchParams();
-    if (params.interaction_type) queryParams.append('interaction_type', params.interaction_type);
-    if (params.limit) queryParams.append('limit', params.limit.toString());
-    if (params.offset) queryParams.append('offset', params.offset.toString());
+    if (params.interaction_type)
+      queryParams.append("interaction_type", params.interaction_type);
+    if (params.limit) queryParams.append("limit", params.limit.toString());
+    if (params.offset) queryParams.append("offset", params.offset.toString());
 
     const queryString = queryParams.toString();
-    const url = `/api/crm/interactions${queryString ? `?${queryString}` : ''}`;
+    const url = `/api/crm/interactions${queryString ? `?${queryString}` : ""}`;
 
     return this.client.request<Interaction[]>(url);
   }
@@ -129,37 +131,48 @@ export class CrmApi {
    * Get practice statistics
    */
   async getPracticeStats(): Promise<PracticeStats> {
-    return this.client.request<PracticeStats>('/api/crm/practices/stats/overview');
+    return this.client.request<PracticeStats>(
+      "/api/crm/practices/stats/overview",
+    );
   }
 
   /**
    * Get interaction statistics
    */
   async getInteractionStats(): Promise<InteractionStats> {
-    return this.client.request<InteractionStats>('/api/crm/interactions/stats/overview');
+    return this.client.request<InteractionStats>(
+      "/api/crm/interactions/stats/overview",
+    );
   }
 
   /**
    * Get upcoming renewals/critical deadlines
    */
   async getUpcomingRenewals(days: number = 90): Promise<RenewalAlert[]> {
-    return this.client.request<RenewalAlert[]>(`/api/crm/practices/renewals/upcoming?days=${days}`);
+    return this.client.request<RenewalAlert[]>(
+      `/api/crm/practices/renewals/upcoming?days=${days}`,
+    );
   }
 
   /**
    * Get revenue growth statistics (monthly comparison)
    */
   async getRevenueGrowth(): Promise<RevenueGrowthResponse> {
-    return this.client.request<RevenueGrowthResponse>('/api/crm/practices/stats/revenue-growth');
+    return this.client.request<RevenueGrowthResponse>(
+      "/api/crm/practices/stats/revenue-growth",
+    );
   }
 
   /**
    * Mark an interaction as read
    */
-  async markInteractionRead(interactionId: number, readBy: string): Promise<MarkReadResponse> {
+  async markInteractionRead(
+    interactionId: number,
+    readBy: string,
+  ): Promise<MarkReadResponse> {
     return this.client.request<MarkReadResponse>(
       `/api/crm/interactions/${interactionId}/mark-read?read_by=${encodeURIComponent(readBy)}`,
-      { method: 'PATCH' }
+      { method: "PATCH" },
     );
   }
 
@@ -168,25 +181,30 @@ export class CrmApi {
    */
   async markInteractionsReadBatch(
     interactionIds: number[],
-    readBy: string
+    readBy: string,
   ): Promise<BatchMarkReadResponse> {
     const queryParams = new URLSearchParams();
-    interactionIds.forEach((id) => queryParams.append('interaction_ids', id.toString()));
-    queryParams.append('read_by', readBy);
+    interactionIds.forEach((id) =>
+      queryParams.append("interaction_ids", id.toString()),
+    );
+    queryParams.append("read_by", readBy);
 
     return this.client.request<BatchMarkReadResponse>(
       `/api/crm/interactions/mark-read-batch?${queryParams.toString()}`,
-      { method: 'PATCH' }
+      { method: "PATCH" },
     );
   }
 
   /**
    * Delete an interaction
    */
-  async deleteInteraction(interactionId: number, deletedBy: string): Promise<{ success: boolean }> {
+  async deleteInteraction(
+    interactionId: number,
+    deletedBy: string,
+  ): Promise<{ success: boolean }> {
     return this.client.request<{ success: boolean }>(
       `/api/crm/interactions/${interactionId}?deleted_by=${encodeURIComponent(deletedBy)}`,
-      { method: 'DELETE' }
+      { method: "DELETE" },
     );
   }
 
@@ -198,15 +216,15 @@ export class CrmApi {
       search?: string;
       limit?: number;
       offset?: number;
-    } = {}
+    } = {},
   ): Promise<Client[]> {
     const queryParams = new URLSearchParams();
-    if (params.search) queryParams.append('search', params.search);
-    if (params.limit) queryParams.append('limit', params.limit.toString());
-    if (params.offset) queryParams.append('offset', params.offset.toString());
+    if (params.search) queryParams.append("search", params.search);
+    if (params.limit) queryParams.append("limit", params.limit.toString());
+    if (params.offset) queryParams.append("offset", params.offset.toString());
 
     const queryString = queryParams.toString();
-    const url = `/api/crm/clients${queryString ? `?${queryString}` : ''}`;
+    const url = `/api/crm/clients${queryString ? `?${queryString}` : ""}`;
 
     return this.client.request<Client[]>(url);
   }
@@ -214,35 +232,41 @@ export class CrmApi {
   /**
    * Create a new client
    */
-  async createClient(data: CreateClientParams, createdBy: string): Promise<Client> {
+  async createClient(
+    data: CreateClientParams,
+    createdBy: string,
+  ): Promise<Client> {
     const queryParams = new URLSearchParams();
-    queryParams.append('created_by', createdBy);
+    queryParams.append("created_by", createdBy);
 
     return this.client.request<Client>(
       `/api/crm/clients?${queryParams.toString()}`,
       {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify(data),
       },
-      60000 // 60 second timeout for creation
+      60000, // 60 second timeout for creation
     );
   }
 
   /**
    * Create a new practice/case
    */
-  async createPractice(data: CreatePracticeParams, createdBy: string): Promise<Practice> {
+  async createPractice(
+    data: CreatePracticeParams,
+    createdBy: string,
+  ): Promise<Practice> {
     const queryParams = new URLSearchParams();
-    queryParams.append('created_by', createdBy);
+    queryParams.append("created_by", createdBy);
 
     // Note: trailing slash required to avoid 307 redirect which converts POST to GET
     return this.client.request<Practice>(
       `/api/crm/practices/?${queryParams.toString()}`,
       {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify(data),
       },
-      60000 // 60 second timeout for creation
+      60000, // 60 second timeout for creation
     );
   }
 
@@ -250,7 +274,9 @@ export class CrmApi {
    * Get AUTO CRM extraction statistics
    */
   async getAutoCRMStats(days: number = 7): Promise<AutoCRMStats> {
-    return this.client.request<AutoCRMStats>(`/api/crm/auto/stats?days=${days}`);
+    return this.client.request<AutoCRMStats>(
+      `/api/crm/auto/stats?days=${days}`,
+    );
   }
 
   /**
@@ -267,19 +293,19 @@ export class CrmApi {
       assigned_to: string;
       notes: string;
     }>,
-    updatedBy: string
+    updatedBy: string,
   ): Promise<Practice> {
     const queryParams = new URLSearchParams();
-    queryParams.append('updated_by', updatedBy);
+    queryParams.append("updated_by", updatedBy);
 
     // Note: trailing slash required to avoid 307 redirect which converts PATCH to GET
     return this.client.request<Practice>(
       `/api/crm/practices/${practiceId}/?${queryParams.toString()}`,
       {
-        method: 'PATCH',
+        method: "PATCH",
         body: JSON.stringify(updates),
       },
-      60000 // 60 second timeout
+      60000, // 60 second timeout
     );
   }
 
@@ -296,11 +322,11 @@ export class CrmApi {
   async getClientByEmail(email: string): Promise<Client | null> {
     try {
       return await this.client.request<Client>(
-        `/api/crm/clients/by-email/${encodeURIComponent(email)}`
+        `/api/crm/clients/by-email/${encodeURIComponent(email)}`,
       );
     } catch (error) {
       // 404 means client not found - return null instead of throwing
-      if (error instanceof Error && error.message.includes('404')) {
+      if (error instanceof Error && error.message.includes("404")) {
         return null;
       }
       throw error;
@@ -311,16 +337,21 @@ export class CrmApi {
    * Get full client summary with cases, interactions, renewals
    */
   async getClientSummary(clientId: number): Promise<ClientSummary> {
-    return this.client.request<ClientSummary>(`/api/crm/clients/${clientId}/summary`);
+    return this.client.request<ClientSummary>(
+      `/api/crm/clients/${clientId}/summary`,
+    );
   }
 
   /**
    * Get client interaction timeline
    */
-  async getClientTimeline(clientId: number, limit: number = 50): Promise<Interaction[]> {
+  async getClientTimeline(
+    clientId: number,
+    limit: number = 50,
+  ): Promise<Interaction[]> {
     // Backend returns {client_id, total_interactions, timeline: Interaction[]}
     const response = await this.client.request<{ timeline: Interaction[] }>(
-      `/api/crm/interactions/client/${clientId}/timeline?limit=${limit}`
+      `/api/crm/interactions/client/${clientId}/timeline?limit=${limit}`,
     );
     return response.timeline || [];
   }
@@ -329,7 +360,9 @@ export class CrmApi {
    * Get practices for a specific client
    */
   async getClientPractices(clientId: number): Promise<Practice[]> {
-    return this.client.request<Practice[]>(`/api/crm/practices/?client_id=${clientId}`);
+    return this.client.request<Practice[]>(
+      `/api/crm/practices/?client_id=${clientId}`,
+    );
   }
 
   // ============================================
@@ -340,7 +373,9 @@ export class CrmApi {
    * Get enhanced client profile with family, documents, alerts
    */
   async getClientProfile(clientId: number): Promise<ClientProfile> {
-    return this.client.request<ClientProfile>(`/api/crm/clients/${clientId}/profile`);
+    return this.client.request<ClientProfile>(
+      `/api/crm/clients/${clientId}/profile`,
+    );
   }
 
   /**
@@ -354,12 +389,15 @@ export class CrmApi {
       date_of_birth: string;
       passport_expiry: string;
       company_name: string;
-    }>
+    }>,
   ): Promise<{ success: boolean }> {
-    return this.client.request<{ success: boolean }>(`/api/crm/clients/${clientId}/profile`, {
-      method: 'PATCH',
-      body: JSON.stringify(updates),
-    });
+    return this.client.request<{ success: boolean }>(
+      `/api/crm/clients/${clientId}/profile`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(updates),
+      },
+    );
   }
 
   // ============================================
@@ -370,7 +408,9 @@ export class CrmApi {
    * Get family members for a client
    */
   async getFamilyMembers(clientId: number): Promise<FamilyMember[]> {
-    return this.client.request<FamilyMember[]>(`/api/crm/clients/${clientId}/family`);
+    return this.client.request<FamilyMember[]>(
+      `/api/crm/clients/${clientId}/family`,
+    );
   }
 
   /**
@@ -378,14 +418,14 @@ export class CrmApi {
    */
   async createFamilyMember(
     clientId: number,
-    data: FamilyMemberCreate
+    data: FamilyMemberCreate,
   ): Promise<{ id: number; success: boolean }> {
     return this.client.request<{ id: number; success: boolean }>(
       `/api/crm/clients/${clientId}/family`,
       {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify(data),
-      }
+      },
     );
   }
 
@@ -395,24 +435,27 @@ export class CrmApi {
   async updateFamilyMember(
     clientId: number,
     memberId: number,
-    updates: Partial<FamilyMemberCreate>
+    updates: Partial<FamilyMemberCreate>,
   ): Promise<{ success: boolean }> {
     return this.client.request<{ success: boolean }>(
       `/api/crm/clients/${clientId}/family/${memberId}`,
       {
-        method: 'PATCH',
+        method: "PATCH",
         body: JSON.stringify(updates),
-      }
+      },
     );
   }
 
   /**
    * Delete a family member
    */
-  async deleteFamilyMember(clientId: number, memberId: number): Promise<{ success: boolean }> {
+  async deleteFamilyMember(
+    clientId: number,
+    memberId: number,
+  ): Promise<{ success: boolean }> {
     return this.client.request<{ success: boolean }>(
       `/api/crm/clients/${clientId}/family/${memberId}`,
-      { method: 'DELETE' }
+      { method: "DELETE" },
     );
   }
 
@@ -426,14 +469,14 @@ export class CrmApi {
   async getClientDocuments(
     clientId: number,
     category?: string,
-    includeArchived?: boolean
+    includeArchived?: boolean,
   ): Promise<ClientDocument[]> {
     const params = new URLSearchParams();
-    if (category) params.append('category', category);
-    if (includeArchived) params.append('include_archived', 'true');
+    if (category) params.append("category", category);
+    if (includeArchived) params.append("include_archived", "true");
     const query = params.toString();
     return this.client.request<ClientDocument[]>(
-      `/api/crm/clients/${clientId}/documents${query ? `?${query}` : ''}`
+      `/api/crm/clients/${clientId}/documents${query ? `?${query}` : ""}`,
     );
   }
 
@@ -442,14 +485,14 @@ export class CrmApi {
    */
   async createDocument(
     clientId: number,
-    data: DocumentCreate
+    data: DocumentCreate,
   ): Promise<{ id: number; success: boolean }> {
     return this.client.request<{ id: number; success: boolean }>(
       `/api/crm/clients/${clientId}/documents`,
       {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify(data),
-      }
+      },
     );
   }
 
@@ -459,14 +502,14 @@ export class CrmApi {
   async updateDocument(
     clientId: number,
     docId: number,
-    updates: Partial<DocumentCreate & { status: string; is_archived: boolean }>
+    updates: Partial<DocumentCreate & { status: string; is_archived: boolean }>,
   ): Promise<{ success: boolean }> {
     return this.client.request<{ success: boolean }>(
       `/api/crm/clients/${clientId}/documents/${docId}`,
       {
-        method: 'PATCH',
+        method: "PATCH",
         body: JSON.stringify(updates),
-      }
+      },
     );
   }
 
@@ -476,11 +519,11 @@ export class CrmApi {
   async deleteDocument(
     clientId: number,
     docId: number,
-    permanent?: boolean
+    permanent?: boolean,
   ): Promise<{ success: boolean; action: string }> {
     return this.client.request<{ success: boolean; action: string }>(
-      `/api/crm/clients/${clientId}/documents/${docId}${permanent ? '?permanent=true' : ''}`,
-      { method: 'DELETE' }
+      `/api/crm/clients/${clientId}/documents/${docId}${permanent ? "?permanent=true" : ""}`,
+      { method: "DELETE" },
     );
   }
 
@@ -488,7 +531,9 @@ export class CrmApi {
    * Get document categories for dropdowns
    */
   async getDocumentCategories(): Promise<DocumentCategory[]> {
-    return this.client.request<DocumentCategory[]>('/api/crm/document-categories');
+    return this.client.request<DocumentCategory[]>(
+      "/api/crm/document-categories",
+    );
   }
 
   // ============================================
@@ -499,23 +544,29 @@ export class CrmApi {
    * Get all expiry alerts (for team dashboard)
    */
   async getExpiryAlerts(params?: {
-    alertColor?: 'expired' | 'red' | 'yellow';
+    alertColor?: "expired" | "red" | "yellow";
     assignedTo?: string;
     limit?: number;
   }): Promise<ExpiryAlert[]> {
     const queryParams = new URLSearchParams();
-    if (params?.alertColor) queryParams.append('alert_color', params.alertColor);
-    if (params?.assignedTo) queryParams.append('assigned_to', params.assignedTo);
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.alertColor)
+      queryParams.append("alert_color", params.alertColor);
+    if (params?.assignedTo)
+      queryParams.append("assigned_to", params.assignedTo);
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
     const query = queryParams.toString();
-    return this.client.request<ExpiryAlert[]>(`/api/crm/expiry-alerts${query ? `?${query}` : ''}`);
+    return this.client.request<ExpiryAlert[]>(
+      `/api/crm/expiry-alerts${query ? `?${query}` : ""}`,
+    );
   }
 
   /**
    * Get expiry alerts summary for dashboard
    */
   async getExpiryAlertsSummary(): Promise<ExpiryAlertsSummary> {
-    return this.client.request<ExpiryAlertsSummary>('/api/crm/expiry-alerts/summary');
+    return this.client.request<ExpiryAlertsSummary>(
+      "/api/crm/expiry-alerts/summary",
+    );
   }
 
   // ============================================
@@ -528,11 +579,11 @@ export class CrmApi {
    */
   async deleteClient(
     clientId: number,
-    deletedBy: string
+    deletedBy: string,
   ): Promise<{ success: boolean; message: string }> {
     return this.client.request<{ success: boolean; message: string }>(
       `/api/crm/clients/${clientId}?deleted_by=${encodeURIComponent(deletedBy)}`,
-      { method: 'DELETE' }
+      { method: "DELETE" },
     );
   }
 
@@ -560,14 +611,14 @@ export class CrmApi {
       date_of_birth: string;
       company_name: string;
     }>,
-    updatedBy: string
+    updatedBy: string,
   ): Promise<Client> {
     return this.client.request<Client>(
       `/api/crm/clients/${clientId}?updated_by=${encodeURIComponent(updatedBy)}`,
       {
-        method: 'PATCH',
+        method: "PATCH",
         body: JSON.stringify(updates),
-      }
+      },
     );
   }
 
@@ -577,11 +628,11 @@ export class CrmApi {
    */
   async deletePractice(
     practiceId: number,
-    deletedBy: string
+    deletedBy: string,
   ): Promise<{ success: boolean; message: string }> {
     return this.client.request<{ success: boolean; message: string }>(
       `/api/crm/practices/${practiceId}?deleted_by=${encodeURIComponent(deletedBy)}`,
-      { method: 'DELETE' }
+      { method: "DELETE" },
     );
   }
 
@@ -590,19 +641,25 @@ export class CrmApi {
    */
   async createInteraction(data: {
     client_id: number;
-    interaction_type: 'note' | 'chat' | 'email' | 'whatsapp' | 'call' | 'meeting';
+    interaction_type:
+      | "note"
+      | "chat"
+      | "email"
+      | "whatsapp"
+      | "call"
+      | "meeting";
     summary: string;
     subject?: string;
     team_member: string;
-    direction?: 'inbound' | 'outbound';
+    direction?: "inbound" | "outbound";
     practice_id?: number;
   }): Promise<Interaction> {
-    return this.client.request<Interaction>('/api/crm/interactions/', {
-      method: 'POST',
+    return this.client.request<Interaction>("/api/crm/interactions/", {
+      method: "POST",
       body: JSON.stringify({
         ...data,
-        direction: data.direction || 'outbound',
-        channel: 'in_person',
+        direction: data.direction || "outbound",
+        channel: "in_person",
       }),
     });
   }
@@ -622,7 +679,9 @@ export class CrmApi {
     folders: Record<string, { id: string; url: string }>;
     created_count: number;
   }> {
-    return this.client.request(`/api/clients/${clientId}/create-drive-folder`, { method: 'POST' });
+    return this.client.request(`/api/clients/${clientId}/create-drive-folder`, {
+      method: "POST",
+    });
   }
 
   /**
@@ -647,7 +706,7 @@ export class CrmApi {
     note: string;
   }> {
     return this.client.request(`/api/clients/${clientId}/drive-folder`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   }
 
@@ -666,7 +725,9 @@ export class CrmApi {
     total_files: number;
     total_size_bytes: number;
   }> {
-    return this.client.request(`/api/clients/${clientId}/drive-folder/structure`);
+    return this.client.request(
+      `/api/clients/${clientId}/drive-folder/structure`,
+    );
   }
 
   /**
@@ -679,7 +740,7 @@ export class CrmApi {
       limit?: number;
       offset?: number;
       search?: string;
-    }
+    },
   ): Promise<{
     folder_name: string;
     folder_id: string;
@@ -700,13 +761,13 @@ export class CrmApi {
     has_more: boolean;
   }> {
     const params = new URLSearchParams();
-    if (options?.limit) params.append('limit', options.limit.toString());
-    if (options?.offset) params.append('offset', options.offset.toString());
-    if (options?.search) params.append('search', options.search);
+    if (options?.limit) params.append("limit", options.limit.toString());
+    if (options?.offset) params.append("offset", options.offset.toString());
+    if (options?.search) params.append("search", options.search);
 
     const query = params.toString();
     return this.client.request(
-      `/api/clients/${clientId}/drive-folder/${folderName}/files${query ? `?${query}` : ''}`
+      `/api/clients/${clientId}/drive-folder/${folderName}/files${query ? `?${query}` : ""}`,
     );
   }
 
@@ -716,7 +777,7 @@ export class CrmApi {
   async uploadFileToFolder(
     clientId: number,
     folderName: string,
-    file: File
+    file: File,
   ): Promise<{
     success: boolean;
     folder_name: string;
@@ -727,15 +788,18 @@ export class CrmApi {
     download_url: string;
   }> {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
 
     // Client now handles FormData correctly (no Content-Type header)
-    return this.client.request(`/api/clients/${clientId}/drive-folder/${folderName}/upload`, {
-      method: 'POST',
-      body: formData,
-      // Headers will be set by client (CSRF token, etc.)
-      // Content-Type will NOT be set for FormData
-    });
+    return this.client.request(
+      `/api/clients/${clientId}/drive-folder/${folderName}/upload`,
+      {
+        method: "POST",
+        body: formData,
+        // Headers will be set by client (CSRF token, etc.)
+        // Content-Type will NOT be set for FormData
+      },
+    );
   }
 
   /**
@@ -766,7 +830,42 @@ export class CrmApi {
    * Get all companies for a client
    */
   async getClientCompanies(clientId: number): Promise<ClientCompanyLink[]> {
-    return this.client.request<ClientCompanyLink[]>(`/api/crm/companies/by-client/${clientId}`);
+    return this.client.request<ClientCompanyLink[]>(
+      `/api/crm/companies/by-client/${clientId}`,
+    );
+  }
+
+  /**
+   * Create a new company
+   */
+  async createCompany(data: {
+    company_name: string;
+    company_type?: string;
+    kbli_code?: string;
+    nib?: string;
+    npwp_company?: string;
+    registered_address?: string;
+    city?: string;
+    province?: string;
+    company_email?: string;
+    company_phone?: string;
+  }): Promise<{
+    id: number;
+    uuid: string;
+    company_name: string;
+    status: string;
+    message: string;
+  }> {
+    return this.client.request<{
+      id: number;
+      uuid: string;
+      company_name: string;
+      status: string;
+      message: string;
+    }>("/api/crm/companies", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
   }
 
   /**
@@ -781,40 +880,47 @@ export class CrmApi {
       ownership_percentage?: number;
       shares_count?: number;
       start_date?: string;
-    }
+    },
   ): Promise<{ link_id: number; message: string }> {
     return this.client.request<{ link_id: number; message: string }>(
       `/api/crm/companies/${companyId}/clients/${clientId}/link`,
       {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify(data),
-      }
+      },
     );
   }
 
   /**
    * Unlink a client from a company
    */
-  async unlinkClientFromCompany(clientId: number, companyId: number): Promise<{ message: string }> {
+  async unlinkClientFromCompany(
+    clientId: number,
+    companyId: number,
+  ): Promise<{ message: string }> {
     return this.client.request<{ message: string }>(
       `/api/crm/companies/${companyId}/clients/${clientId}/link`,
-      { method: 'DELETE' }
+      { method: "DELETE" },
     );
   }
 
   /**
    * Get company details
    */
-  async getCompany(companyId: number): Promise<Company & {
-    associates: ClientCompanyLink[];
-    documents: CompanyDocument[];
-    tax_record?: TaxRecord;
-  }> {
-    return this.client.request<Company & {
+  async getCompany(companyId: number): Promise<
+    Company & {
       associates: ClientCompanyLink[];
       documents: CompanyDocument[];
       tax_record?: TaxRecord;
-    }>(`/api/crm/companies/${companyId}`);
+    }
+  > {
+    return this.client.request<
+      Company & {
+        associates: ClientCompanyLink[];
+        documents: CompanyDocument[];
+        tax_record?: TaxRecord;
+      }
+    >(`/api/crm/companies/${companyId}`);
   }
 
   /**
@@ -822,13 +928,13 @@ export class CrmApi {
    */
   async getCompanyDocuments(
     companyId: number,
-    docType?: string
+    docType?: string,
   ): Promise<CompanyDocument[]> {
     const params = new URLSearchParams();
-    if (docType) params.append('doc_type', docType);
+    if (docType) params.append("doc_type", docType);
     const query = params.toString();
     return this.client.request<CompanyDocument[]>(
-      `/api/crm/companies/${companyId}/documents${query ? `?${query}` : ''}`
+      `/api/crm/companies/${companyId}/documents${query ? `?${query}` : ""}`,
     );
   }
 
@@ -836,6 +942,8 @@ export class CrmApi {
    * Get company tax record
    */
   async getCompanyTax(companyId: number): Promise<TaxRecord> {
-    return this.client.request<TaxRecord>(`/api/crm/companies/${companyId}/tax`);
+    return this.client.request<TaxRecord>(
+      `/api/crm/companies/${companyId}/tax`,
+    );
   }
 }

@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 /* ============================================
    NUZANTARA DESIGN SYSTEM v2.0
@@ -47,8 +47,8 @@
   --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.3);
 
   /* === TYPOGRAPHY === */
-  --font-geist-sans: 'Geist', system-ui, -apple-system, sans-serif;
-  --font-geist-mono: 'Geist Mono', ui-monospace, monospace;
+  --font-geist-sans: "Geist", system-ui, -apple-system, sans-serif;
+  --font-geist-mono: "Geist Mono", ui-monospace, monospace;
 
   /* === SPACING (based on 4px grid) === */
   --space-1: 0.25rem; /* 4px */
@@ -84,7 +84,7 @@
 }
 
 /* === LIGHT THEME (future-ready) === */
-[data-theme='light'] {
+[data-theme="light"] {
   --background: #ffffff;
   --background-secondary: #f9fafb;
   --background-elevated: #f3f4f6;
@@ -176,10 +176,15 @@ body {
 }
 
 .skeleton::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.05),
+    transparent
+  );
   animation: skeleton-shimmer 2s infinite;
 }
 
@@ -270,15 +275,16 @@ body {
 
 /* === TAILWIND THEME EXTENSION === */
 @theme {
-  --font-geist-sans: 'Geist', system-ui, -apple-system, sans-serif;
-  --font-geist-mono: 'Geist Mono', ui-monospace, monospace;
+  --font-geist-sans: "Geist", system-ui, -apple-system, sans-serif;
+  --font-geist-mono: "Geist Mono", ui-monospace, monospace;
 }
 
 /* === COMPONENT-SPECIFIC OVERRIDES === */
 
 /* Glass effect for panels */
 .glass-panel {
-  background: radial-gradient(circle at top left, rgba(79, 70, 229, 0.12), transparent),
+  background:
+    radial-gradient(circle at top left, rgba(79, 70, 229, 0.12), transparent),
     rgba(6, 7, 20, 0.8);
   backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -286,7 +292,8 @@ body {
 
 /* Glow effect for primary buttons */
 .glow-button {
-  background: radial-gradient(circle at 0 0, rgba(129, 140, 248, 0.7), transparent),
+  background:
+    radial-gradient(circle at 0 0, rgba(129, 140, 248, 0.7), transparent),
     linear-gradient(135deg, #6366f1, #8b5cf6);
   box-shadow: 0 10px 25px rgba(88, 80, 236, 0.4);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -304,7 +311,8 @@ body {
 
 /* Active sidebar item gradient */
 .sidebar-item-active {
-  background: radial-gradient(circle at 0 0, rgba(129, 140, 248, 0.25), transparent),
+  background:
+    radial-gradient(circle at 0 0, rgba(129, 140, 248, 0.25), transparent),
     rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(129, 140, 248, 0.3);
 }
@@ -710,21 +718,21 @@ kbd {
 /* Touch targets - minimum 44px for comfortable tapping */
 @media (max-width: 768px) {
   button,
-  a[role='button'],
-  [role='button'],
-  input[type='button'],
-  input[type='submit'] {
+  a[role="button"],
+  [role="button"],
+  input[type="button"],
+  input[type="submit"] {
     min-height: 44px;
     min-width: 44px;
   }
 
   /* Prevent iOS zoom on input focus */
-  input[type='text'],
-  input[type='email'],
-  input[type='password'],
-  input[type='search'],
-  input[type='tel'],
-  input[type='url'],
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
   textarea,
   select {
     font-size: 16px !important;
@@ -798,7 +806,7 @@ kbd {
 @media (max-width: 480px) {
   /* Even larger touch targets for very small screens */
   button,
-  a[role='button'] {
+  a[role="button"] {
     min-height: 48px;
   }
 
@@ -1075,7 +1083,7 @@ kbd {
   @apply flex items-start gap-2;
 }
 
-.prose input[type='checkbox'] {
+.prose input[type="checkbox"] {
   @apply mt-1;
   cursor: default;
 }

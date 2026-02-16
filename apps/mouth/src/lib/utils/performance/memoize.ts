@@ -9,7 +9,7 @@
  */
 export function memoize<T extends (...args: unknown[]) => unknown>(
   func: T,
-  keyGenerator?: (...args: Parameters<T>) => string
+  keyGenerator?: (...args: Parameters<T>) => string,
 ): T {
   const cache = new Map<string, ReturnType<T>>();
 
@@ -32,7 +32,7 @@ export function memoize<T extends (...args: unknown[]) => unknown>(
 export function memoizeWithTTL<T extends (...args: unknown[]) => unknown>(
   func: T,
   ttlMs: number,
-  keyGenerator?: (...args: Parameters<T>) => string
+  keyGenerator?: (...args: Parameters<T>) => string,
 ): T {
   const cache = new Map<string, { value: ReturnType<T>; expires: number }>();
 
@@ -57,7 +57,7 @@ export function memoizeWithTTL<T extends (...args: unknown[]) => unknown>(
  */
 export function createMemoize<T extends (...args: unknown[]) => unknown>(
   func: T,
-  keyGenerator?: (...args: Parameters<T>) => string
+  keyGenerator?: (...args: Parameters<T>) => string,
 ): T & { clearCache: () => void } {
   const cache = new Map<string, ReturnType<T>>();
 

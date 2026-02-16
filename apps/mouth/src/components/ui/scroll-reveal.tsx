@@ -1,18 +1,18 @@
-'use client';
+"use client";
 
-import React, { useEffect, useRef, useState } from 'react';
-import { cn } from '@/lib/utils';
+import React, { useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 
 type AnimationType =
-  | 'fade'
-  | 'slide-up'
-  | 'slide-down'
-  | 'slide-left'
-  | 'slide-right'
-  | 'zoom-in'
-  | 'zoom-out'
-  | 'flip-up'
-  | 'flip-down';
+  | "fade"
+  | "slide-up"
+  | "slide-down"
+  | "slide-left"
+  | "slide-right"
+  | "zoom-in"
+  | "zoom-out"
+  | "flip-up"
+  | "flip-down";
 
 interface ScrollRevealProps {
   children: React.ReactNode;
@@ -34,7 +34,7 @@ interface ScrollRevealProps {
  */
 export function ScrollReveal({
   children,
-  animation = 'fade',
+  animation = "fade",
   delay = 0,
   duration = 500,
   threshold = 0.1,
@@ -58,8 +58,8 @@ export function ScrollReveal({
       },
       {
         threshold,
-        rootMargin: '0px 0px -50px 0px',
-      }
+        rootMargin: "0px 0px -50px 0px",
+      },
     );
 
     if (ref.current) {
@@ -76,24 +76,32 @@ export function ScrollReveal({
 
     if (!isVisible) {
       switch (animation) {
-        case 'fade':
+        case "fade":
           return { ...baseStyle, opacity: 0 };
-        case 'slide-up':
-          return { ...baseStyle, opacity: 0, transform: 'translateY(30px)' };
-        case 'slide-down':
-          return { ...baseStyle, opacity: 0, transform: 'translateY(-30px)' };
-        case 'slide-left':
-          return { ...baseStyle, opacity: 0, transform: 'translateX(30px)' };
-        case 'slide-right':
-          return { ...baseStyle, opacity: 0, transform: 'translateX(-30px)' };
-        case 'zoom-in':
-          return { ...baseStyle, opacity: 0, transform: 'scale(0.9)' };
-        case 'zoom-out':
-          return { ...baseStyle, opacity: 0, transform: 'scale(1.1)' };
-        case 'flip-up':
-          return { ...baseStyle, opacity: 0, transform: 'perspective(1000px) rotateX(10deg)' };
-        case 'flip-down':
-          return { ...baseStyle, opacity: 0, transform: 'perspective(1000px) rotateX(-10deg)' };
+        case "slide-up":
+          return { ...baseStyle, opacity: 0, transform: "translateY(30px)" };
+        case "slide-down":
+          return { ...baseStyle, opacity: 0, transform: "translateY(-30px)" };
+        case "slide-left":
+          return { ...baseStyle, opacity: 0, transform: "translateX(30px)" };
+        case "slide-right":
+          return { ...baseStyle, opacity: 0, transform: "translateX(-30px)" };
+        case "zoom-in":
+          return { ...baseStyle, opacity: 0, transform: "scale(0.9)" };
+        case "zoom-out":
+          return { ...baseStyle, opacity: 0, transform: "scale(1.1)" };
+        case "flip-up":
+          return {
+            ...baseStyle,
+            opacity: 0,
+            transform: "perspective(1000px) rotateX(10deg)",
+          };
+        case "flip-down":
+          return {
+            ...baseStyle,
+            opacity: 0,
+            transform: "perspective(1000px) rotateX(-10deg)",
+          };
         default:
           return { ...baseStyle, opacity: 0 };
       }
@@ -102,7 +110,7 @@ export function ScrollReveal({
     return {
       ...baseStyle,
       opacity: 1,
-      transform: 'translateY(0) translateX(0) scale(1) rotateX(0)',
+      transform: "translateY(0) translateX(0) scale(1) rotateX(0)",
     };
   };
 
@@ -127,7 +135,7 @@ interface StaggeredRevealProps {
 
 export function StaggeredReveal({
   children,
-  animation = 'slide-up',
+  animation = "slide-up",
   staggerDelay = 100,
   duration = 500,
   className,

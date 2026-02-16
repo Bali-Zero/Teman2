@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback } from "react";
 
 /**
  * Hook to track component mount status.
@@ -31,13 +31,16 @@ export function useIsMounted() {
   /**
    * Safely execute a callback only if component is mounted
    */
-  const safeCallback = useCallback(<T extends (...args: unknown[]) => unknown>(fn: T) => {
-    return ((...args: Parameters<T>) => {
-      if (isMountedRef.current) {
-        return fn(...args);
-      }
-    }) as T;
-  }, []);
+  const safeCallback = useCallback(
+    <T extends (...args: unknown[]) => unknown>(fn: T) => {
+      return ((...args: Parameters<T>) => {
+        if (isMountedRef.current) {
+          return fn(...args);
+        }
+      }) as T;
+    },
+    [],
+  );
 
   return {
     isMounted,

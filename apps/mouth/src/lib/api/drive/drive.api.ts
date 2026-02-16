@@ -1,6 +1,6 @@
-import type { IApiClient } from '../types/api-client.types';
-import { logger } from '@/lib/logger';
-import { toError } from '@/lib/types/common';
+import type { IApiClient } from "../types/api-client.types";
+import { logger } from "@/lib/logger";
+import { toError } from "@/lib/types/common";
 import type {
   ConnectionStatus,
   FileItem,
@@ -16,7 +16,7 @@ import type {
   PermissionItem,
   AddPermissionRequest,
   UpdatePermissionRequest,
-} from './drive.types';
+} from "./drive.types";
 
 /**
  * Google Drive API Client
@@ -36,10 +36,10 @@ export class DriveApi {
       status: string;
       connected_as?: string; // OAuth email or service account email
       files_accessible: boolean;
-    }>('/api/drive/status');
+    }>("/api/drive/status");
 
     return {
-      connected: response.status === 'connected',
+      connected: response.status === "connected",
       configured: true,
       root_folder_id: null,
     };
@@ -49,7 +49,9 @@ export class DriveApi {
    * Get OAuth authorization URL (legacy - not needed with Team Drive)
    */
   async getAuthUrl(): Promise<AuthUrlResponse> {
-    return this.client.request<AuthUrlResponse>('/integrations/google-drive/auth/url');
+    return this.client.request<AuthUrlResponse>(
+      "/integrations/google-drive/auth/url",
+    );
   }
 
   /**
@@ -69,15 +71,16 @@ export class DriveApi {
       folder_id?: string;
       page_token?: string;
       page_size?: number;
-    } = {}
+    } = {},
   ): Promise<FileListResponse> {
     const queryParams = new URLSearchParams();
-    if (params.folder_id) queryParams.append('folder_id', params.folder_id);
-    if (params.page_token) queryParams.append('page_token', params.page_token);
-    if (params.page_size) queryParams.append('page_size', params.page_size.toString());
+    if (params.folder_id) queryParams.append("folder_id", params.folder_id);
+    if (params.page_token) queryParams.append("page_token", params.page_token);
+    if (params.page_size)
+      queryParams.append("page_size", params.page_size.toString());
 
     const queryString = queryParams.toString();
-    const url = `/api/drive/files${queryString ? `?${queryString}` : ''}`;
+    const url = `/api/drive/files${queryString ? `?${queryString}` : ""}`;
 
     const response = await this.client.request<{
       files: Array<{
@@ -102,7 +105,7 @@ export class DriveApi {
       modified_time: f.modifiedTime,
       web_view_link: f.webViewLink,
       thumbnail_link: f.thumbnailLink,
-      is_folder: f.type === 'folder',
+      is_folder: f.type === "folder",
     }));
 
     // Get breadcrumb if in a folder
@@ -110,7 +113,7 @@ export class DriveApi {
     if (params.folder_id) {
       try {
         breadcrumb = await this.client.request<{ id: string; name: string }[]>(
-          `/api/drive/folders/${params.folder_id}/path`
+          `/api/drive/folders/${params.folder_id}/path`,
         );
       } catch {
         // Ignore breadcrumb errors
@@ -147,7 +150,7 @@ export class DriveApi {
       modified_time: response.modifiedTime,
       web_view_link: response.webViewLink,
       thumbnail_link: response.thumbnailLink,
-      is_folder: response.type === 'folder',
+      is_folder: response.type === "folder",
     };
   }
 
@@ -156,8 +159,8 @@ export class DriveApi {
    */
   async searchFiles(query: string, pageSize = 20): Promise<FileItem[]> {
     const queryParams = new URLSearchParams();
-    queryParams.append('q', query);
-    queryParams.append('page_size', pageSize.toString());
+    queryParams.append("q", query);
+    queryParams.append("page_size", pageSize.toString());
 
     const response = await this.client.request<{
       query: string;
@@ -180,7 +183,7 @@ export class DriveApi {
       size: f.size,
       modified_time: f.modifiedTime,
       web_view_link: f.webViewLink,
-      is_folder: f.type === 'folder',
+      is_folder: f.type === "folder",
     }));
   }
 
@@ -191,7 +194,7 @@ export class DriveApi {
     // With Team Drive, users can navigate to their folder manually
     return {
       found: false,
-      message: 'Navigate to your folder in the file browser',
+      message: "Navigate to your folder in the file browser",
     };
   }
 
@@ -210,17 +213,17 @@ export class DriveApi {
   async downloadFile(fileId: string, fileName?: string): Promise<void> {
     try {
       const response = await fetch(`/api/drive/files/${fileId}/download`, {
-        method: 'GET',
-        credentials: 'include',
+        method: "GET",
+        credentials: "include",
         headers: (() => {
           // Add CSRF token if present (client-side only)
           const headers: Record<string, string> = {};
-          if (typeof document !== 'undefined') {
+          if (typeof document !== "undefined") {
             const csrfCookie = document.cookie
-              .split('; ')
-              .find((row) => row.startsWith('nz_csrf_token='));
+              .split("; ")
+              .find((row) => row.startsWith("nz_csrf_token="));
             if (csrfCookie) {
-              headers['X-CSRF-Token'] = csrfCookie.split('=')[1];
+              headers["X-CSRF-Token"] = csrfCookie.split("=")[1];
             }
           }
           return headers;
@@ -228,14 +231,18 @@ export class DriveApi {
       });
 
       if (!response.ok) {
-        throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+        throw new Error(
+          `Download failed: ${response.status} ${response.statusText}`,
+        );
       }
 
       // Get filename from Content-Disposition header or use provided name
-      let downloadName = fileName || 'download';
-      const contentDisposition = response.headers.get('Content-Disposition');
+      let downloadName = fileName || "download";
+      const contentDisposition = response.headers.get("Content-Disposition");
       if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="?([^";\n]+)"?/);
+        const filenameMatch = contentDisposition.match(
+          /filename="?([^";\n]+)"?/,
+        );
         if (filenameMatch) {
           downloadName = filenameMatch[1];
         }
@@ -244,7 +251,7 @@ export class DriveApi {
       // Create blob and trigger download
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = downloadName;
       document.body.appendChild(a);
@@ -255,9 +262,9 @@ export class DriveApi {
       document.body.removeChild(a);
     } catch (error) {
       logger.error(
-        '[DriveApi] Download error',
-        { component: 'DriveApi', action: 'download' },
-        toError(error)
+        "[DriveApi] Download error",
+        { component: "DriveApi", action: "download" },
+        toError(error),
       );
       throw error;
     }
@@ -267,24 +274,27 @@ export class DriveApi {
 
   /**
    * Upload a file to Google Drive
-   * 
+   *
    * @param signal - Optional AbortSignal to cancel the upload
    */
   async uploadFile(
     file: File,
     parentId: string,
     onProgress?: (progress: UploadProgress) => void,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<OperationResponse> {
     const formData = new FormData();
-    formData.append('file', file);
-    formData.append('parent_id', parentId);
+    formData.append("file", file);
+    formData.append("parent_id", parentId);
 
     // Calculate timeout based on file size (5 minutes base + 1 minute per 100MB)
     const fileSizeMB = file.size / (1024 * 1024);
     const baseTimeoutMs = 5 * 60 * 1000; // 5 minutes
     const additionalTimeoutMs = Math.ceil(fileSizeMB / 100) * 60 * 1000; // +1 min per 100MB
-    const timeoutMs = Math.min(baseTimeoutMs + additionalTimeoutMs, 30 * 60 * 1000); // Max 30 min
+    const timeoutMs = Math.min(
+      baseTimeoutMs + additionalTimeoutMs,
+      30 * 60 * 1000,
+    ); // Max 30 min
 
     // Use XMLHttpRequest for progress tracking
     return new Promise((resolve, reject) => {
@@ -297,23 +307,23 @@ export class DriveApi {
       if (signal) {
         const abortHandler = () => {
           xhr.abort();
-          reject(new Error('Upload cancelled by user'));
+          reject(new Error("Upload cancelled by user"));
         };
-        
+
         if (signal.aborted) {
           abortHandler();
           return;
         }
-        
-        signal.addEventListener('abort', abortHandler);
-        
+
+        signal.addEventListener("abort", abortHandler);
+
         // Cleanup listener on completion
-        xhr.addEventListener('loadend', () => {
-          signal.removeEventListener('abort', abortHandler);
+        xhr.addEventListener("loadend", () => {
+          signal.removeEventListener("abort", abortHandler);
         });
       }
 
-      xhr.upload.addEventListener('progress', (event) => {
+      xhr.upload.addEventListener("progress", (event) => {
         if (event.lengthComputable && onProgress) {
           onProgress({
             loaded: event.loaded,
@@ -323,13 +333,15 @@ export class DriveApi {
         }
       });
 
-      xhr.addEventListener('load', () => {
+      xhr.addEventListener("load", () => {
         if (xhr.status >= 200 && xhr.status < 300) {
           try {
             const response = JSON.parse(xhr.responseText);
             resolve({
               success: true,
-              file: response.file ? this.transformFileResponse(response.file) : undefined,
+              file: response.file
+                ? this.transformFileResponse(response.file)
+                : undefined,
               message: response.message,
             });
           } catch {
@@ -338,55 +350,57 @@ export class DriveApi {
         } else {
           try {
             const error = JSON.parse(xhr.responseText);
-            reject(new Error(error.detail || 'Upload failed'));
+            reject(new Error(error.detail || "Upload failed"));
           } catch {
             reject(new Error(`Upload failed with status ${xhr.status}`));
           }
         }
       });
 
-      xhr.addEventListener('error', () => {
+      xhr.addEventListener("error", () => {
         reject(
-          new Error('Network error during upload. Please check your connection and try again.')
+          new Error(
+            "Network error during upload. Please check your connection and try again.",
+          ),
         );
       });
 
-      xhr.addEventListener('abort', () => {
-        reject(new Error('Upload cancelled'));
+      xhr.addEventListener("abort", () => {
+        reject(new Error("Upload cancelled"));
       });
 
-      xhr.addEventListener('timeout', () => {
+      xhr.addEventListener("timeout", () => {
         const timeoutMinutes = Math.ceil(timeoutMs / 60000);
         reject(
           new Error(
             `Upload timeout after ${timeoutMinutes} minutes. File size: ${fileSizeMB.toFixed(1)}MB. ` +
-              `Large files may require resumable upload support. Please try with a smaller file or contact support.`
-          )
+              `Large files may require resumable upload support. Please try with a smaller file or contact support.`,
+          ),
         );
       });
 
       // Get base URL from client
       const baseUrl = this.client.getBaseUrl();
-      xhr.open('POST', `${baseUrl}/api/drive/files/upload`);
+      xhr.open("POST", `${baseUrl}/api/drive/files/upload`);
 
       // Set Authorization header
       const token = this.client.getToken();
       if (token) {
-        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        xhr.setRequestHeader("Authorization", `Bearer ${token}`);
       }
 
       // Copy auth headers if available
-      if (typeof document !== 'undefined') {
+      if (typeof document !== "undefined") {
         // Browser: cookies will be sent automatically with credentials
         xhr.withCredentials = true;
 
         // CRITICAL: Add CSRF token for cookie-based auth (required by backend middleware)
         const csrfCookie = document.cookie
-          .split('; ')
-          .find((row) => row.startsWith('nz_csrf_token='));
+          .split("; ")
+          .find((row) => row.startsWith("nz_csrf_token="));
         if (csrfCookie) {
-          const csrfToken = csrfCookie.split('=')[1];
-          xhr.setRequestHeader('X-CSRF-Token', csrfToken);
+          const csrfToken = csrfCookie.split("=")[1];
+          xhr.setRequestHeader("X-CSRF-Token", csrfToken);
         }
       }
 
@@ -408,14 +422,16 @@ export class DriveApi {
         webViewLink?: string;
       };
       message?: string;
-    }>('/api/drive/folders', {
-      method: 'POST',
+    }>("/api/drive/folders", {
+      method: "POST",
       body: JSON.stringify(request),
     });
 
     return {
       success: response.success,
-      file: response.file ? this.transformFileResponse(response.file) : undefined,
+      file: response.file
+        ? this.transformFileResponse(response.file)
+        : undefined,
       message: response.message,
     };
   }
@@ -434,14 +450,16 @@ export class DriveApi {
         webViewLink?: string;
       };
       message?: string;
-    }>('/api/drive/files/create', {
-      method: 'POST',
+    }>("/api/drive/files/create", {
+      method: "POST",
       body: JSON.stringify(request),
     });
 
     return {
       success: response.success,
-      file: response.file ? this.transformFileResponse(response.file) : undefined,
+      file: response.file
+        ? this.transformFileResponse(response.file)
+        : undefined,
       message: response.message,
     };
   }
@@ -449,7 +467,10 @@ export class DriveApi {
   /**
    * Rename a file or folder
    */
-  async renameFile(fileId: string, newName: string): Promise<OperationResponse> {
+  async renameFile(
+    fileId: string,
+    newName: string,
+  ): Promise<OperationResponse> {
     const response = await this.client.request<{
       success: boolean;
       file?: {
@@ -461,13 +482,15 @@ export class DriveApi {
       };
       message?: string;
     }>(`/api/drive/files/${fileId}/rename`, {
-      method: 'PATCH',
+      method: "PATCH",
       body: JSON.stringify({ new_name: newName }),
     });
 
     return {
       success: response.success,
-      file: response.file ? this.transformFileResponse(response.file) : undefined,
+      file: response.file
+        ? this.transformFileResponse(response.file)
+        : undefined,
       message: response.message,
     };
   }
@@ -480,7 +503,7 @@ export class DriveApi {
       success: boolean;
       message?: string;
     }>(`/api/drive/files/${fileId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
 
     return {
@@ -495,7 +518,7 @@ export class DriveApi {
   async moveFile(
     fileId: string,
     newParentId: string,
-    oldParentId?: string
+    oldParentId?: string,
   ): Promise<OperationResponse> {
     const response = await this.client.request<{
       success: boolean;
@@ -508,7 +531,7 @@ export class DriveApi {
       };
       message?: string;
     }>(`/api/drive/files/${fileId}/move`, {
-      method: 'PATCH',
+      method: "PATCH",
       body: JSON.stringify({
         new_parent_id: newParentId,
         old_parent_id: oldParentId,
@@ -517,7 +540,9 @@ export class DriveApi {
 
     return {
       success: response.success,
-      file: response.file ? this.transformFileResponse(response.file) : undefined,
+      file: response.file
+        ? this.transformFileResponse(response.file)
+        : undefined,
       message: response.message,
     };
   }
@@ -528,7 +553,7 @@ export class DriveApi {
   async copyFile(
     fileId: string,
     newName?: string,
-    parentFolderId?: string
+    parentFolderId?: string,
   ): Promise<OperationResponse> {
     const response = await this.client.request<{
       success: boolean;
@@ -541,7 +566,7 @@ export class DriveApi {
       };
       message?: string;
     }>(`/api/drive/files/${fileId}/copy`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify({
         new_name: newName,
         parent_folder_id: parentFolderId,
@@ -550,7 +575,9 @@ export class DriveApi {
 
     return {
       success: response.success,
-      file: response.file ? this.transformFileResponse(response.file) : undefined,
+      file: response.file
+        ? this.transformFileResponse(response.file)
+        : undefined,
       message: response.message,
     };
   }
@@ -560,7 +587,9 @@ export class DriveApi {
   /**
    * Delete multiple files
    */
-  async deleteFiles(fileIds: string[]): Promise<{ success: boolean; failed: string[] }> {
+  async deleteFiles(
+    fileIds: string[],
+  ): Promise<{ success: boolean; failed: string[] }> {
     const failed: string[] = [];
 
     await Promise.all(
@@ -570,7 +599,7 @@ export class DriveApi {
         } catch {
           failed.push(id);
         }
-      })
+      }),
     );
 
     return {
@@ -584,7 +613,7 @@ export class DriveApi {
    */
   async moveFiles(
     fileIds: string[],
-    newParentId: string
+    newParentId: string,
   ): Promise<{ success: boolean; failed: string[] }> {
     const failed: string[] = [];
 
@@ -595,7 +624,7 @@ export class DriveApi {
         } catch {
           failed.push(id);
         }
-      })
+      }),
     );
 
     return {
@@ -622,12 +651,14 @@ export class DriveApi {
     return {
       id: file.id,
       name: file.name,
-      mime_type: file.mimeType || '',
+      mime_type: file.mimeType || "",
       size: file.size,
       modified_time: file.modifiedTime,
       web_view_link: file.webViewLink,
       thumbnail_link: file.thumbnailLink,
-      is_folder: file.type === 'folder' || file.mimeType === 'application/vnd.google-apps.folder',
+      is_folder:
+        file.type === "folder" ||
+        file.mimeType === "application/vnd.google-apps.folder",
     };
   }
 
@@ -636,9 +667,9 @@ export class DriveApi {
    */
   static getDocTypeLabel(docType: DocType): string {
     const labels: Record<DocType, string> = {
-      document: 'Google Docs',
-      spreadsheet: 'Google Sheets',
-      presentation: 'Google Slides',
+      document: "Google Docs",
+      spreadsheet: "Google Sheets",
+      presentation: "Google Slides",
     };
     return labels[docType];
   }
@@ -648,9 +679,9 @@ export class DriveApi {
    */
   static getDocTypeIcon(docType: DocType): string {
     const icons: Record<DocType, string> = {
-      document: '📄',
-      spreadsheet: '📊',
-      presentation: '📽️',
+      document: "📄",
+      spreadsheet: "📊",
+      presentation: "📽️",
     };
     return icons[docType];
   }
@@ -661,17 +692,25 @@ export class DriveApi {
    * List permissions for a file/folder
    */
   async listPermissions(fileId: string): Promise<PermissionItem[]> {
-    return this.client.request<PermissionItem[]>(`/api/drive/files/${fileId}/permissions`);
+    return this.client.request<PermissionItem[]>(
+      `/api/drive/files/${fileId}/permissions`,
+    );
   }
 
   /**
    * Add permission for a user
    */
-  async addPermission(fileId: string, request: AddPermissionRequest): Promise<PermissionItem> {
-    return this.client.request<PermissionItem>(`/api/drive/files/${fileId}/permissions`, {
-      method: 'POST',
-      body: JSON.stringify(request),
-    });
+  async addPermission(
+    fileId: string,
+    request: AddPermissionRequest,
+  ): Promise<PermissionItem> {
+    return this.client.request<PermissionItem>(
+      `/api/drive/files/${fileId}/permissions`,
+      {
+        method: "POST",
+        body: JSON.stringify(request),
+      },
+    );
   }
 
   /**
@@ -680,26 +719,29 @@ export class DriveApi {
   async updatePermission(
     fileId: string,
     permissionId: string,
-    request: UpdatePermissionRequest
+    request: UpdatePermissionRequest,
   ): Promise<PermissionItem> {
     return this.client.request<PermissionItem>(
       `/api/drive/files/${fileId}/permissions/${permissionId}`,
       {
-        method: 'PATCH',
+        method: "PATCH",
         body: JSON.stringify(request),
-      }
+      },
     );
   }
 
   /**
    * Remove permission
    */
-  async removePermission(fileId: string, permissionId: string): Promise<{ success: boolean }> {
+  async removePermission(
+    fileId: string,
+    permissionId: string,
+  ): Promise<{ success: boolean }> {
     return this.client.request<{ success: boolean }>(
       `/api/drive/files/${fileId}/permissions/${permissionId}`,
       {
-        method: 'DELETE',
-      }
+        method: "DELETE",
+      },
     );
   }
 }

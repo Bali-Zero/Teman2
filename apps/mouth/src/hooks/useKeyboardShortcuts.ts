@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef } from "react";
 
 export interface KeyboardShortcut {
   key: string;
@@ -54,7 +54,9 @@ export function useKeyboardShortcuts({
       // Skip if user is typing in an input/textarea (unless it's a global shortcut)
       const target = event.target as HTMLElement;
       const isInput =
-        target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable;
 
       for (const shortcut of shortcutsRef.current) {
         // Skip disabled shortcuts
@@ -80,7 +82,7 @@ export function useKeyboardShortcuts({
         // For shortcuts with modifiers, always execute even in inputs
         // For shortcuts without modifiers, skip if in input (unless Escape)
         if (!ctrlOrMeta && !shortcut.shiftKey && !shortcut.altKey) {
-          if (isInput && shortcut.key.toLowerCase() !== 'escape') continue;
+          if (isInput && shortcut.key.toLowerCase() !== "escape") continue;
         }
 
         // Execute the action
@@ -93,14 +95,14 @@ export function useKeyboardShortcuts({
         return;
       }
     },
-    [enabled, preventDefault]
+    [enabled, preventDefault],
   );
 
   useEffect(() => {
     if (!enabled) return;
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [enabled, handleKeyDown]);
 
   return {
@@ -114,43 +116,45 @@ export function useKeyboardShortcuts({
  */
 export function formatShortcut(shortcut: KeyboardShortcut): string {
   const parts: string[] = [];
-  const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+  const isMac =
+    typeof navigator !== "undefined" &&
+    /Mac|iPod|iPhone|iPad/.test(navigator.platform);
 
   if (shortcut.ctrlKey || shortcut.metaKey) {
-    parts.push(isMac ? '⌘' : 'Ctrl');
+    parts.push(isMac ? "⌘" : "Ctrl");
   }
   if (shortcut.shiftKey) {
-    parts.push(isMac ? '⇧' : 'Shift');
+    parts.push(isMac ? "⇧" : "Shift");
   }
   if (shortcut.altKey) {
-    parts.push(isMac ? '⌥' : 'Alt');
+    parts.push(isMac ? "⌥" : "Alt");
   }
 
   // Format the key nicely
   let key = shortcut.key;
-  if (key === 'Enter') key = '↵';
-  else if (key === 'Escape') key = 'Esc';
-  else if (key === 'ArrowUp') key = '↑';
-  else if (key === 'ArrowDown') key = '↓';
-  else if (key === 'ArrowLeft') key = '←';
-  else if (key === 'ArrowRight') key = '→';
-  else if (key === ' ') key = 'Space';
+  if (key === "Enter") key = "↵";
+  else if (key === "Escape") key = "Esc";
+  else if (key === "ArrowUp") key = "↑";
+  else if (key === "ArrowDown") key = "↓";
+  else if (key === "ArrowLeft") key = "←";
+  else if (key === "ArrowRight") key = "→";
+  else if (key === " ") key = "Space";
   else key = key.toUpperCase();
 
   parts.push(key);
 
-  return isMac ? parts.join('') : parts.join('+');
+  return isMac ? parts.join("") : parts.join("+");
 }
 
 /**
  * Common shortcuts that can be reused across the app
  */
 export const COMMON_SHORTCUTS = {
-  SEARCH: { key: 'k', metaKey: true, description: 'Open search' },
-  SEND: { key: 'Enter', metaKey: true, description: 'Send message' },
-  CLOSE: { key: 'Escape', description: 'Close/Cancel' },
-  NEW_CHAT: { key: 'n', metaKey: true, description: 'New conversation' },
-  HELP: { key: '?', shiftKey: true, description: 'Show keyboard shortcuts' },
+  SEARCH: { key: "k", metaKey: true, description: "Open search" },
+  SEND: { key: "Enter", metaKey: true, description: "Send message" },
+  CLOSE: { key: "Escape", description: "Close/Cancel" },
+  NEW_CHAT: { key: "n", metaKey: true, description: "New conversation" },
+  HELP: { key: "?", shiftKey: true, description: "Show keyboard shortcuts" },
 } as const;
 
 export default useKeyboardShortcuts;

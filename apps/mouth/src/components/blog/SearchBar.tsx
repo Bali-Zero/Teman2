@@ -1,23 +1,34 @@
-'use client';
+"use client";
 
-import * as React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, SlidersHorizontal, Calendar, Clock, TrendingUp } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { CategoryNav } from './CategoryNav';
-import type { SearchBarProps, ArticleCategory } from '@/lib/blog/types';
+import * as React from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Search,
+  X,
+  SlidersHorizontal,
+  Calendar,
+  Clock,
+  TrendingUp,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { CategoryNav } from "./CategoryNav";
+import type { SearchBarProps, ArticleCategory } from "@/lib/blog/types";
 
 export function SearchBar({
-  placeholder = 'Search articles...',
-  defaultValue = '',
+  placeholder = "Search articles...",
+  defaultValue = "",
   onSearch,
   showFilters = false,
   className,
 }: SearchBarProps) {
   const [query, setQuery] = React.useState(defaultValue);
   const [isFiltersOpen, setIsFiltersOpen] = React.useState(false);
-  const [selectedCategory, setSelectedCategory] = React.useState<ArticleCategory | undefined>();
-  const [sortBy, setSortBy] = React.useState<'relevance' | 'date' | 'views'>('relevance');
+  const [selectedCategory, setSelectedCategory] = React.useState<
+    ArticleCategory | undefined
+  >();
+  const [sortBy, setSortBy] = React.useState<"relevance" | "date" | "views">(
+    "relevance",
+  );
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   // Debounced search
@@ -32,18 +43,18 @@ export function SearchBar({
   // Keyboard shortcut to focus search
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         inputRef.current?.focus();
       }
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         inputRef.current?.blur();
         setIsFiltersOpen(false);
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -52,13 +63,13 @@ export function SearchBar({
   };
 
   const clearSearch = () => {
-    setQuery('');
-    onSearch?.('');
+    setQuery("");
+    onSearch?.("");
     inputRef.current?.focus();
   };
 
   return (
-    <div className={cn('relative', className)}>
+    <div className={cn("relative", className)}>
       {/* Search form */}
       <form onSubmit={handleSubmit} className="relative">
         <div className="relative flex items-center">
@@ -73,11 +84,11 @@ export function SearchBar({
             onChange={(e) => setQuery(e.target.value)}
             placeholder={placeholder}
             className={cn(
-              'w-full h-12 pl-12 pr-24 rounded-xl',
-              'bg-white/5 border border-white/10',
-              'text-white placeholder-white/40',
-              'focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50',
-              'transition-all duration-200'
+              "w-full h-12 pl-12 pr-24 rounded-xl",
+              "bg-white/5 border border-white/10",
+              "text-white placeholder-white/40",
+              "focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50",
+              "transition-all duration-200",
             )}
           />
 
@@ -100,10 +111,10 @@ export function SearchBar({
                 type="button"
                 onClick={() => setIsFiltersOpen(!isFiltersOpen)}
                 className={cn(
-                  'p-2 rounded-lg transition-colors',
+                  "p-2 rounded-lg transition-colors",
                   isFiltersOpen
-                    ? 'bg-violet-500/20 text-violet-400'
-                    : 'text-white/40 hover:text-white hover:bg-white/10'
+                    ? "bg-violet-500/20 text-violet-400"
+                    : "text-white/40 hover:text-white hover:bg-white/10",
                 )}
               >
                 <SlidersHorizontal className="w-4 h-4" />
@@ -124,7 +135,7 @@ export function SearchBar({
         {showFilters && isFiltersOpen && (
           <motion.div
             initial={{ opacity: 0, y: -10, height: 0 }}
-            animate={{ opacity: 1, y: 0, height: 'auto' }}
+            animate={{ opacity: 1, y: 0, height: "auto" }}
             exit={{ opacity: 0, y: -10, height: 0 }}
             transition={{ duration: 0.2 }}
             className="mt-4 p-4 rounded-xl bg-white/5 border border-white/10 overflow-hidden"
@@ -147,20 +158,20 @@ export function SearchBar({
               </label>
               <div className="flex gap-2">
                 <SortButton
-                  active={sortBy === 'relevance'}
-                  onClick={() => setSortBy('relevance')}
+                  active={sortBy === "relevance"}
+                  onClick={() => setSortBy("relevance")}
                   icon={Search}
                   label="Relevance"
                 />
                 <SortButton
-                  active={sortBy === 'date'}
-                  onClick={() => setSortBy('date')}
+                  active={sortBy === "date"}
+                  onClick={() => setSortBy("date")}
                   icon={Calendar}
                   label="Latest"
                 />
                 <SortButton
-                  active={sortBy === 'views'}
-                  onClick={() => setSortBy('views')}
+                  active={sortBy === "views"}
+                  onClick={() => setSortBy("views")}
                   icon={TrendingUp}
                   label="Popular"
                 />
@@ -190,10 +201,10 @@ function SortButton({
       type="button"
       onClick={onClick}
       className={cn(
-        'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+        "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
         active
-          ? 'bg-violet-500/20 text-violet-400'
-          : 'text-white/50 hover:text-white hover:bg-white/10'
+          ? "bg-violet-500/20 text-violet-400"
+          : "text-white/50 hover:text-white hover:bg-white/10",
       )}
     >
       <Icon className="w-4 h-4" />
@@ -214,11 +225,11 @@ export function SearchTrigger({
     <button
       onClick={onClick}
       className={cn(
-        'flex items-center gap-2 px-3 py-2 rounded-lg',
-        'bg-white/5 border border-white/10',
-        'text-white/50 hover:text-white hover:bg-white/10',
-        'transition-colors',
-        className
+        "flex items-center gap-2 px-3 py-2 rounded-lg",
+        "bg-white/5 border border-white/10",
+        "text-white/50 hover:text-white hover:bg-white/10",
+        "transition-colors",
+        className,
       )}
     >
       <Search className="w-4 h-4" />
@@ -244,8 +255,14 @@ interface SearchResult {
 }
 
 // Full search modal
-export function SearchModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const [query, setQuery] = React.useState('');
+export function SearchModal({
+  isOpen,
+  onClose,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+}) {
+  const [query, setQuery] = React.useState("");
   const [results, setResults] = React.useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [selectedIndex, setSelectedIndex] = React.useState(0);
@@ -256,7 +273,7 @@ export function SearchModal({ isOpen, onClose }: { isOpen: boolean; onClose: () 
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 100);
     } else {
-      setQuery('');
+      setQuery("");
       setResults([]);
       setSelectedIndex(0);
     }
@@ -272,12 +289,14 @@ export function SearchModal({ isOpen, onClose }: { isOpen: boolean; onClose: () 
     const timer = setTimeout(async () => {
       setIsLoading(true);
       try {
-        const res = await fetch(`/api/blog/articles?q=${encodeURIComponent(query)}&limit=10`);
+        const res = await fetch(
+          `/api/blog/articles?q=${encodeURIComponent(query)}&limit=10`,
+        );
         const data = await res.json();
         setResults(data.articles || []);
         setSelectedIndex(0);
       } catch (err) {
-        console.error('Search failed:', err);
+        console.error("Search failed:", err);
         setResults([]);
       } finally {
         setIsLoading(false);
@@ -290,15 +309,15 @@ export function SearchModal({ isOpen, onClose }: { isOpen: boolean; onClose: () 
   // Keyboard navigation
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         onClose();
-      } else if (e.key === 'ArrowDown') {
+      } else if (e.key === "ArrowDown") {
         e.preventDefault();
         setSelectedIndex((i) => Math.min(i + 1, results.length - 1));
-      } else if (e.key === 'ArrowUp') {
+      } else if (e.key === "ArrowUp") {
         e.preventDefault();
         setSelectedIndex((i) => Math.max(i - 1, 0));
-      } else if (e.key === 'Enter' && results[selectedIndex]) {
+      } else if (e.key === "Enter" && results[selectedIndex]) {
         e.preventDefault();
         const article = results[selectedIndex];
         window.location.href = `/${article.category}/${article.slug}`;
@@ -307,8 +326,8 @@ export function SearchModal({ isOpen, onClose }: { isOpen: boolean; onClose: () 
     };
 
     if (isOpen) {
-      document.addEventListener('keydown', handleKeyDown);
-      return () => document.removeEventListener('keydown', handleKeyDown);
+      document.addEventListener("keydown", handleKeyDown);
+      return () => document.removeEventListener("keydown", handleKeyDown);
     }
   }, [isOpen, onClose, results, selectedIndex]);
 
@@ -357,11 +376,26 @@ export function SearchModal({ isOpen, onClose }: { isOpen: boolean; onClose: () 
           {/* Quick filters */}
           <div className="p-4 border-b border-white/10">
             <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-              <QuickFilter label="Immigration" onClick={() => handleCategoryClick('immigration')} />
-              <QuickFilter label="Business" onClick={() => handleCategoryClick('business')} />
-              <QuickFilter label="Tax" onClick={() => handleCategoryClick('tax')} />
-              <QuickFilter label="Property" onClick={() => handleCategoryClick('property')} />
-              <QuickFilter label="Lifestyle" onClick={() => handleCategoryClick('lifestyle')} />
+              <QuickFilter
+                label="Immigration"
+                onClick={() => handleCategoryClick("immigration")}
+              />
+              <QuickFilter
+                label="Business"
+                onClick={() => handleCategoryClick("business")}
+              />
+              <QuickFilter
+                label="Tax"
+                onClick={() => handleCategoryClick("tax")}
+              />
+              <QuickFilter
+                label="Property"
+                onClick={() => handleCategoryClick("property")}
+              />
+              <QuickFilter
+                label="Lifestyle"
+                onClick={() => handleCategoryClick("lifestyle")}
+              />
             </div>
           </div>
 
@@ -380,8 +414,8 @@ export function SearchModal({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                     href={`/${article.category}/${article.slug}`}
                     onClick={onClose}
                     className={cn(
-                      'flex items-start gap-4 px-4 py-3 hover:bg-white/5 transition-colors',
-                      index === selectedIndex && 'bg-white/10'
+                      "flex items-start gap-4 px-4 py-3 hover:bg-white/5 transition-colors",
+                      index === selectedIndex && "bg-white/10",
                     )}
                   >
                     {/* Thumbnail */}
@@ -396,7 +430,9 @@ export function SearchModal({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                     </div>
                     {/* Content */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-white font-medium truncate">{article.title}</p>
+                      <p className="text-white font-medium truncate">
+                        {article.title}
+                      </p>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-xs px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 capitalize">
                           {article.category}
@@ -429,8 +465,12 @@ export function SearchModal({ isOpen, onClose }: { isOpen: boolean; onClose: () 
               </div>
             ) : query ? (
               <div className="p-8 text-center">
-                <p className="text-white/40">No results found for &ldquo;{query}&rdquo;</p>
-                <p className="text-white/30 text-sm mt-1">Try different keywords</p>
+                <p className="text-white/40">
+                  No results found for &ldquo;{query}&rdquo;
+                </p>
+                <p className="text-white/30 text-sm mt-1">
+                  Try different keywords
+                </p>
               </div>
             ) : (
               <div className="p-6 text-center">
@@ -438,13 +478,19 @@ export function SearchModal({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                 <div className="flex flex-wrap justify-center gap-2">
                   <RecentSearch
                     label="KITAS application"
-                    onClick={() => handleRecentClick('KITAS')}
+                    onClick={() => handleRecentClick("KITAS")}
                   />
-                  <RecentSearch label="PT PMA setup" onClick={() => handleRecentClick('PT PMA')} />
-                  <RecentSearch label="Tax obligations" onClick={() => handleRecentClick('tax')} />
+                  <RecentSearch
+                    label="PT PMA setup"
+                    onClick={() => handleRecentClick("PT PMA")}
+                  />
+                  <RecentSearch
+                    label="Tax obligations"
+                    onClick={() => handleRecentClick("tax")}
+                  />
                   <RecentSearch
                     label="Golden Visa"
-                    onClick={() => handleRecentClick('golden visa')}
+                    onClick={() => handleRecentClick("golden visa")}
                   />
                 </div>
               </div>
@@ -455,17 +501,25 @@ export function SearchModal({ isOpen, onClose }: { isOpen: boolean; onClose: () 
           <div className="px-4 py-3 border-t border-white/10 flex items-center justify-between text-xs text-white/30">
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1">
-                <kbd className="px-1.5 py-0.5 rounded bg-white/10 font-mono">↑</kbd>
-                <kbd className="px-1.5 py-0.5 rounded bg-white/10 font-mono">↓</kbd>
+                <kbd className="px-1.5 py-0.5 rounded bg-white/10 font-mono">
+                  ↑
+                </kbd>
+                <kbd className="px-1.5 py-0.5 rounded bg-white/10 font-mono">
+                  ↓
+                </kbd>
                 to navigate
               </span>
               <span className="flex items-center gap-1">
-                <kbd className="px-1.5 py-0.5 rounded bg-white/10 font-mono">↵</kbd>
+                <kbd className="px-1.5 py-0.5 rounded bg-white/10 font-mono">
+                  ↵
+                </kbd>
                 to select
               </span>
             </div>
             <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 rounded bg-white/10 font-mono">esc</kbd>
+              <kbd className="px-1.5 py-0.5 rounded bg-white/10 font-mono">
+                esc
+              </kbd>
               to close
             </span>
           </div>
@@ -476,7 +530,13 @@ export function SearchModal({ isOpen, onClose }: { isOpen: boolean; onClose: () 
 }
 
 // Quick filter chip
-function QuickFilter({ label, onClick }: { label: string; onClick?: () => void }) {
+function QuickFilter({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick?: () => void;
+}) {
   return (
     <button
       onClick={onClick}
@@ -488,7 +548,13 @@ function QuickFilter({ label, onClick }: { label: string; onClick?: () => void }
 }
 
 // Recent search item
-function RecentSearch({ label, onClick }: { label: string; onClick?: () => void }) {
+function RecentSearch({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick?: () => void;
+}) {
   return (
     <button
       onClick={onClick}

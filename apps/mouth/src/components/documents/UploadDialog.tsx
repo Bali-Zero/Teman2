@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useState, useRef, useCallback } from 'react';
-import { X, Upload, File, AlertCircle, CheckCircle } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useRef, useCallback } from "react";
+import { X, Upload, File, AlertCircle, CheckCircle } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface UploadDialogProps {
   isOpen: boolean;
@@ -11,15 +11,23 @@ interface UploadDialogProps {
   uploading?: boolean;
 }
 
-export function UploadDialog({ isOpen, onClose, onUpload, uploading = false }: UploadDialogProps) {
+export function UploadDialog({
+  isOpen,
+  onClose,
+  onUpload,
+  uploading = false,
+}: UploadDialogProps) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    setSelectedFiles((prev) => [...prev, ...files]);
-  }, []);
+  const handleFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(e.target.files || []);
+      setSelectedFiles((prev) => [...prev, ...files]);
+    },
+    [],
+  );
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -55,11 +63,11 @@ export function UploadDialog({ isOpen, onClose, onUpload, uploading = false }: U
   };
 
   const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 B';
+    if (bytes === 0) return "0 B";
     const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const sizes = ["B", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
   if (!isOpen) return null;
@@ -88,7 +96,9 @@ export function UploadDialog({ isOpen, onClose, onUpload, uploading = false }: U
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/50">
               <Upload className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Carica file</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              Carica file
+            </h2>
           </div>
           <button
             onClick={handleClose}
@@ -108,8 +118,8 @@ export function UploadDialog({ isOpen, onClose, onUpload, uploading = false }: U
             relative mb-4 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 transition-all
             ${
               isDragOver
-                ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
-                : 'border-gray-300 bg-gray-50 hover:border-emerald-400 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-900/50 dark:hover:border-emerald-500 dark:hover:bg-gray-900'
+                ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
+                : "border-gray-300 bg-gray-50 hover:border-emerald-400 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-900/50 dark:hover:border-emerald-500 dark:hover:bg-gray-900"
             }
           `}
         >
@@ -124,18 +134,18 @@ export function UploadDialog({ isOpen, onClose, onUpload, uploading = false }: U
           <div
             className={`
             mb-3 flex h-16 w-16 items-center justify-center rounded-full transition-colors
-            ${isDragOver ? 'bg-emerald-100 dark:bg-emerald-900/50' : 'bg-gray-200 dark:bg-gray-700'}
+            ${isDragOver ? "bg-emerald-100 dark:bg-emerald-900/50" : "bg-gray-200 dark:bg-gray-700"}
           `}
           >
             <Upload
-              className={`h-8 w-8 ${isDragOver ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400'}`}
+              className={`h-8 w-8 ${isDragOver ? "text-emerald-600 dark:text-emerald-400" : "text-gray-400"}`}
             />
           </div>
 
           <p className="text-center text-sm font-medium text-gray-700 dark:text-gray-200">
             {isDragOver
-              ? 'Rilascia i file qui'
-              : 'Trascina i file qui oppure clicca per selezionare'}
+              ? "Rilascia i file qui"
+              : "Trascina i file qui oppure clicca per selezionare"}
           </p>
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
             Supportati tutti i tipi di file
@@ -147,7 +157,7 @@ export function UploadDialog({ isOpen, onClose, onUpload, uploading = false }: U
           {selectedFiles.length > 0 && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
+              animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
               className="mb-4 max-h-48 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700"
             >
@@ -208,7 +218,8 @@ export function UploadDialog({ isOpen, onClose, onUpload, uploading = false }: U
             ) : (
               <>
                 <Upload className="h-4 w-4" />
-                Carica {selectedFiles.length > 0 ? `(${selectedFiles.length})` : ''}
+                Carica{" "}
+                {selectedFiles.length > 0 ? `(${selectedFiles.length})` : ""}
               </>
             )}
           </button>

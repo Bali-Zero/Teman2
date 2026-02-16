@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { conversationMonitor } from './monitoring';
+import { describe, it, expect, beforeEach } from "vitest";
+import { conversationMonitor } from "./monitoring";
 
-describe('conversationMonitor', () => {
+describe("conversationMonitor", () => {
   beforeEach(() => {
     // Clear all sessions before each test
     const activeSessions = conversationMonitor.getActiveSessions();
@@ -10,8 +10,8 @@ describe('conversationMonitor', () => {
     });
   });
 
-  it('should track a new message', () => {
-    const sessionId = 'test-session-1';
+  it("should track a new message", () => {
+    const sessionId = "test-session-1";
     conversationMonitor.trackMessage(sessionId, false);
 
     const metrics = conversationMonitor.getMetrics(sessionId);
@@ -19,8 +19,8 @@ describe('conversationMonitor', () => {
     expect(metrics?.turnCount).toBe(1);
   });
 
-  it('should track multiple messages', () => {
-    const sessionId = 'test-session-2';
+  it("should track multiple messages", () => {
+    const sessionId = "test-session-2";
     conversationMonitor.trackMessage(sessionId, false);
     conversationMonitor.trackMessage(sessionId, false);
     conversationMonitor.trackMessage(sessionId, false);
@@ -29,35 +29,35 @@ describe('conversationMonitor', () => {
     expect(metrics?.turnCount).toBe(3);
   });
 
-  it('should track errors', () => {
-    const sessionId = 'test-session-3';
-    conversationMonitor.trackMessage(sessionId, true, 'TEST_ERROR');
+  it("should track errors", () => {
+    const sessionId = "test-session-3";
+    conversationMonitor.trackMessage(sessionId, true, "TEST_ERROR");
 
     const metrics = conversationMonitor.getMetrics(sessionId);
     expect(metrics?.errors.length).toBe(1);
-    expect(metrics?.errors[0].type).toBe('TEST_ERROR');
+    expect(metrics?.errors[0].type).toBe("TEST_ERROR");
   });
 
-  it('should track timeouts', () => {
-    const sessionId = 'test-session-4';
-    conversationMonitor.trackMessage(sessionId, true, 'TIMEOUT');
-    conversationMonitor.trackMessage(sessionId, true, 'TIMEOUT');
+  it("should track timeouts", () => {
+    const sessionId = "test-session-4";
+    conversationMonitor.trackMessage(sessionId, true, "TIMEOUT");
+    conversationMonitor.trackMessage(sessionId, true, "TIMEOUT");
 
     const metrics = conversationMonitor.getMetrics(sessionId);
     expect(metrics?.timeouts).toBe(2);
   });
 
-  it('should track rate limit hits', () => {
-    const sessionId = 'test-session-5';
-    conversationMonitor.trackMessage(sessionId, true, 'QUOTA_EXCEEDED');
-    conversationMonitor.trackMessage(sessionId, true, '429');
+  it("should track rate limit hits", () => {
+    const sessionId = "test-session-5";
+    conversationMonitor.trackMessage(sessionId, true, "QUOTA_EXCEEDED");
+    conversationMonitor.trackMessage(sessionId, true, "429");
 
     const metrics = conversationMonitor.getMetrics(sessionId);
     expect(metrics?.rateLimitHits).toBe(2);
   });
 
-  it('should clear session', () => {
-    const sessionId = 'test-session-6';
+  it("should clear session", () => {
+    const sessionId = "test-session-6";
     conversationMonitor.trackMessage(sessionId, false);
 
     let metrics = conversationMonitor.getMetrics(sessionId);
@@ -68,13 +68,13 @@ describe('conversationMonitor', () => {
     expect(metrics).toBeUndefined();
   });
 
-  it('should get summary', () => {
-    const sessionId1 = 'test-session-7';
-    const sessionId2 = 'test-session-8';
+  it("should get summary", () => {
+    const sessionId1 = "test-session-7";
+    const sessionId2 = "test-session-8";
 
     conversationMonitor.trackMessage(sessionId1, false);
     conversationMonitor.trackMessage(sessionId1, false);
-    conversationMonitor.trackMessage(sessionId2, true, 'TEST_ERROR');
+    conversationMonitor.trackMessage(sessionId2, true, "TEST_ERROR");
 
     const summary = conversationMonitor.getSummary();
     expect(summary).toBeDefined();
@@ -82,8 +82,8 @@ describe('conversationMonitor', () => {
     expect(summary.totalTurns).toBeGreaterThanOrEqual(3);
   });
 
-  it('should get active sessions', () => {
-    const sessionId = 'test-session-9';
+  it("should get active sessions", () => {
+    const sessionId = "test-session-9";
     conversationMonitor.trackMessage(sessionId, false);
 
     const activeSessions = conversationMonitor.getActiveSessions();
@@ -91,8 +91,8 @@ describe('conversationMonitor', () => {
     expect(activeSessions.some((s) => s.sessionId === sessionId)).toBe(true);
   });
 
-  it('should update lastMessageTime on each message', async () => {
-    const sessionId = 'test-session-10';
+  it("should update lastMessageTime on each message", async () => {
+    const sessionId = "test-session-10";
 
     conversationMonitor.trackMessage(sessionId, false);
     const metrics1 = conversationMonitor.getMetrics(sessionId);

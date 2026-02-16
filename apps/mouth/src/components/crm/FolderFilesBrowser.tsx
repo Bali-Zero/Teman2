@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   File,
   Download,
@@ -16,11 +16,11 @@ import {
   FileAudio,
   Archive,
   X,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
-import { api } from '@/lib/api';
-import { logger } from '@/lib/logger';
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { api } from "@/lib/api";
+import { logger } from "@/lib/logger";
 
 interface FileInfo {
   id: string;
@@ -43,26 +43,27 @@ interface FolderFilesBrowserProps {
 }
 
 const STANDARD_FOLDERS: Record<string, { label: string; icon: string }> = {
-  '00_Profile': { label: 'Profile', icon: '👤' },
-  '01_Immigration': { label: 'Immigration', icon: '🛂' },
-  '02_Company': { label: 'Company', icon: '🏢' },
-  '03_Tax': { label: 'Tax', icon: '💰' },
-  '04_Family': { label: 'Family', icon: '👨‍👩‍👧‍👦' },
-  '99_Misc': { label: 'Misc', icon: '📁' },
+  "00_Profile": { label: "Profile", icon: "👤" },
+  "01_Immigration": { label: "Immigration", icon: "🛂" },
+  "02_Company": { label: "Company", icon: "🏢" },
+  "03_Tax": { label: "Tax", icon: "💰" },
+  "04_Family": { label: "Family", icon: "👨‍👩‍👧‍👦" },
+  "99_Misc": { label: "Misc", icon: "📁" },
 };
 
 function getFileIcon(mimeType: string) {
-  if (mimeType.startsWith('image/')) return ImageIcon;
-  if (mimeType === 'application/pdf') return FileText;
-  if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) return FileSpreadsheet;
-  if (mimeType.startsWith('video/')) return FileVideo;
-  if (mimeType.startsWith('audio/')) return FileAudio;
-  if (mimeType.includes('zip') || mimeType.includes('archive')) return Archive;
+  if (mimeType.startsWith("image/")) return ImageIcon;
+  if (mimeType === "application/pdf") return FileText;
+  if (mimeType.includes("spreadsheet") || mimeType.includes("excel"))
+    return FileSpreadsheet;
+  if (mimeType.startsWith("video/")) return FileVideo;
+  if (mimeType.startsWith("audio/")) return FileAudio;
+  if (mimeType.includes("zip") || mimeType.includes("archive")) return Archive;
   return File;
 }
 
 function formatFileSize(bytes: number | null): string {
-  if (!bytes) return 'Unknown size';
+  if (!bytes) return "Unknown size";
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
@@ -78,14 +79,17 @@ export function FolderFilesBrowser({
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [total, setTotal] = useState(0);
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [previewFile, setPreviewFile] = useState<FileInfo | null>(null);
 
-  const folderInfo = STANDARD_FOLDERS[folderName] || { label: folderLabel, icon: '📁' };
+  const folderInfo = STANDARD_FOLDERS[folderName] || {
+    label: folderLabel,
+    icon: "📁",
+  };
 
   useEffect(() => {
     loadFiles(true);
@@ -127,7 +131,8 @@ export function FolderFilesBrowser({
       setHasMore(data.has_more);
       setOffset(currentOffset + data.files.length);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load files';
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to load files";
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
@@ -139,16 +144,16 @@ export function FolderFilesBrowser({
     try {
       // Download via proxy backend
       const response = await fetch(file.download_url, {
-        credentials: 'include',
+        credentials: "include",
       });
 
       if (!response.ok) {
-        throw new Error('Download failed');
+        throw new Error("Download failed");
       }
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = file.name;
       document.body.appendChild(a);
@@ -158,7 +163,8 @@ export function FolderFilesBrowser({
 
       toast.success(`Downloaded ${file.name}`);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to download file';
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to download file";
       toast.error(errorMessage);
     }
   };
@@ -180,20 +186,20 @@ export function FolderFilesBrowser({
       setSelectedFiles(new Set());
     } catch (error: unknown) {
       logger.error(
-        'Failed to download files',
-        { component: 'FolderFilesBrowser', action: 'handleDownloadMultiple' },
-        error instanceof Error ? error : new Error(String(error))
+        "Failed to download files",
+        { component: "FolderFilesBrowser", action: "handleDownloadMultiple" },
+        error instanceof Error ? error : new Error(String(error)),
       );
-      toast.error('Failed to download files');
+      toast.error("Failed to download files");
     }
   };
 
   const handlePreview = (file: FileInfo) => {
     // Only preview images for now
-    if (file.mime_type.startsWith('image/')) {
+    if (file.mime_type.startsWith("image/")) {
       setPreviewFile(file);
     } else {
-      toast.info('Preview available only for images');
+      toast.info("Preview available only for images");
     }
   };
 
@@ -210,14 +216,16 @@ export function FolderFilesBrowser({
   };
 
   const filteredFiles = files.filter((file) =>
-    file.name.toLowerCase().includes(searchQuery.toLowerCase())
+    file.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-12">
         <Loader2 className="w-6 h-6 animate-spin text-[var(--foreground-muted)]" />
-        <span className="ml-2 text-sm text-[var(--foreground-muted)]">Loading files...</span>
+        <span className="ml-2 text-sm text-[var(--foreground-muted)]">
+          Loading files...
+        </span>
       </div>
     );
   }
@@ -235,9 +243,11 @@ export function FolderFilesBrowser({
           <div className="flex items-center gap-2">
             <span className="text-2xl">{folderInfo.icon}</span>
             <div>
-              <h2 className="text-lg font-semibold text-[var(--foreground)]">{folderInfo.label}</h2>
+              <h2 className="text-lg font-semibold text-[var(--foreground)]">
+                {folderInfo.label}
+              </h2>
               <p className="text-xs text-[var(--foreground-muted)]">
-                {folderName} • {total} file{total !== 1 ? 's' : ''}
+                {folderName} • {total} file{total !== 1 ? "s" : ""}
               </p>
             </div>
           </div>
@@ -245,7 +255,8 @@ export function FolderFilesBrowser({
         {selectedFiles.size > 0 && (
           <Button onClick={handleDownloadMultiple} className="gap-2">
             <Download className="w-4 h-4" />
-            Download {selectedFiles.size} file{selectedFiles.size !== 1 ? 's' : ''}
+            Download {selectedFiles.size} file
+            {selectedFiles.size !== 1 ? "s" : ""}
           </Button>
         )}
       </div>
@@ -266,14 +277,18 @@ export function FolderFilesBrowser({
       {filteredFiles.length === 0 ? (
         <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--background-secondary)] p-12 text-center">
           <File className="w-12 h-12 mx-auto text-[var(--foreground-muted)] mb-4 opacity-50" />
-          <h3 className="text-lg font-semibold text-[var(--foreground)] mb-2">No files found</h3>
+          <h3 className="text-lg font-semibold text-[var(--foreground)] mb-2">
+            No files found
+          </h3>
           <p className="text-sm text-[var(--foreground-muted)] mb-4">
-            {searchQuery ? 'Try a different search term' : 'This folder is empty'}
+            {searchQuery
+              ? "Try a different search term"
+              : "This folder is empty"}
           </p>
           <Button
             variant="outline"
             onClick={() => {
-              toast.info('Upload feature coming soon');
+              toast.info("Upload feature coming soon");
             }}
             className="gap-2"
           >
@@ -287,15 +302,15 @@ export function FolderFilesBrowser({
             {filteredFiles.map((file) => {
               const FileIcon = getFileIcon(file.mime_type);
               const isSelected = selectedFiles.has(file.id);
-              const isImage = file.mime_type.startsWith('image/');
+              const isImage = file.mime_type.startsWith("image/");
 
               return (
                 <div
                   key={file.id}
                   className={`rounded-lg border p-4 bg-[var(--background-secondary)] hover:bg-[var(--background-elevated)] transition-colors cursor-pointer ${
                     isSelected
-                      ? 'border-[var(--accent)] bg-[var(--accent)]/10'
-                      : 'border-[var(--border)]'
+                      ? "border-[var(--accent)] bg-[var(--accent)]/10"
+                      : "border-[var(--border)]"
                   }`}
                   onClick={() => toggleFileSelection(file.id)}
                 >
@@ -308,7 +323,8 @@ export function FolderFilesBrowser({
                           alt={file.name}
                           className="w-full h-full object-cover"
                           onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none';
+                            (e.target as HTMLImageElement).style.display =
+                              "none";
                           }}
                         />
                       </div>
@@ -374,7 +390,7 @@ export function FolderFilesBrowser({
                     Loading...
                   </>
                 ) : (
-                  'Load More'
+                  "Load More"
                 )}
               </Button>
             </div>
@@ -383,7 +399,7 @@ export function FolderFilesBrowser({
       )}
 
       {/* Image Preview Modal */}
-      {previewFile && previewFile.mime_type.startsWith('image/') && (
+      {previewFile && previewFile.mime_type.startsWith("image/") && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="relative max-w-4xl max-h-[90vh]">
             <Button
@@ -401,7 +417,9 @@ export function FolderFilesBrowser({
             />
             <div className="absolute bottom-4 left-4 right-4 bg-black/50 text-white p-3 rounded-lg">
               <p className="font-medium">{previewFile.name}</p>
-              <p className="text-sm opacity-80">{formatFileSize(previewFile.size_bytes)}</p>
+              <p className="text-sm opacity-80">
+                {formatFileSize(previewFile.size_bytes)}
+              </p>
             </div>
           </div>
         </div>

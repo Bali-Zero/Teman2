@@ -3,9 +3,9 @@
  * Handles state persistence, AI generation, and tools.
  */
 
-import { ApiClientBase } from './client';
+import { ApiClientBase } from "./client";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 const apiClient = new ApiClientBase(API_BASE_URL);
 
 // --- Types ---
@@ -20,7 +20,7 @@ export interface DreamState {
 export interface GenerateRequest {
   prompt: string;
   context?: string;
-  mode: 'expand' | 'rewrite' | 'shorten' | 'tone-shift';
+  mode: "expand" | "rewrite" | "shorten" | "tone-shift";
 }
 
 export interface GenerateResponse {
@@ -45,9 +45,12 @@ export const dreamApi = {
   /**
    * Persist Dream Room state
    */
-  async saveState(userId: string, state: any): Promise<{ success: boolean; timestamp: string }> {
-    return apiClient.request('/api/dream/state', {
-      method: 'POST',
+  async saveState(
+    userId: string,
+    state: any,
+  ): Promise<{ success: boolean; timestamp: string }> {
+    return apiClient.request("/api/dream/state", {
+      method: "POST",
       // Mock user_id logic if auth not fully integrated in this view yet
       body: JSON.stringify({ state }),
       // Query param for user_id to match backend expectation for now,
@@ -62,7 +65,7 @@ export const dreamApi = {
    */
   async loadState(userId: string): Promise<{ success: boolean; state: any }> {
     return apiClient.request(`/api/dream/state/${userId}`, {
-      method: 'GET',
+      method: "GET",
     });
   },
 
@@ -71,12 +74,12 @@ export const dreamApi = {
    */
   async generate(request: GenerateRequest): Promise<GenerateResponse> {
     return apiClient.request<GenerateResponse>(
-      '/api/dream/ai/generate',
+      "/api/dream/ai/generate",
       {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify(request),
       },
-      60000 // 60s timeout
+      60000, // 60s timeout
     );
   },
 
@@ -85,12 +88,12 @@ export const dreamApi = {
    */
   async scrape(url: string): Promise<ScrapeResponse> {
     return apiClient.request<ScrapeResponse>(
-      '/api/dream/scrape',
+      "/api/dream/scrape",
       {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify({ url }),
       },
-      30000 // 30s timeout
+      30000, // 30s timeout
     );
   },
 };

@@ -1,4 +1,4 @@
-import { AgentStep } from '@/types';
+import { AgentStep } from "@/types";
 
 // Generic step type for flexible event handling
 export interface GenericStep {

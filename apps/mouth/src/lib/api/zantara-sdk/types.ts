@@ -8,7 +8,7 @@
 // ============================================================================
 
 export interface ConversationMessage {
-  role: 'user' | 'assistant' | 'system';
+  role: "user" | "assistant" | "system";
   content: string;
 }
 
@@ -72,23 +72,23 @@ export interface CollectiveMemory {
 }
 
 export type EpisodicEventType =
-  | 'milestone'
-  | 'problem'
-  | 'resolution'
-  | 'decision'
-  | 'meeting'
-  | 'deadline'
-  | 'discovery'
-  | 'general';
+  | "milestone"
+  | "problem"
+  | "resolution"
+  | "decision"
+  | "meeting"
+  | "deadline"
+  | "discovery"
+  | "general";
 
 export type EpisodicEmotion =
-  | 'positive'
-  | 'negative'
-  | 'neutral'
-  | 'urgent'
-  | 'frustrated'
-  | 'excited'
-  | 'worried';
+  | "positive"
+  | "negative"
+  | "neutral"
+  | "urgent"
+  | "frustrated"
+  | "excited"
+  | "worried";
 
 export interface EpisodicEvent {
   id: number;
@@ -116,7 +116,13 @@ export interface EpisodicTimelineRequest {
 // Audio Types
 // ============================================================================
 
-export type AudioVoice = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer';
+export type AudioVoice =
+  | "alloy"
+  | "echo"
+  | "fable"
+  | "onyx"
+  | "nova"
+  | "shimmer";
 
 export interface SpeechRequest {
   text: string;
@@ -137,9 +143,19 @@ export interface TranscribeResponse {
 // Client Journey Types
 // ============================================================================
 
-export type JourneyStatus = 'not_started' | 'in_progress' | 'completed' | 'blocked' | 'cancelled';
+export type JourneyStatus =
+  | "not_started"
+  | "in_progress"
+  | "completed"
+  | "blocked"
+  | "cancelled";
 
-export type StepStatus = 'pending' | 'in_progress' | 'completed' | 'blocked' | 'skipped';
+export type StepStatus =
+  | "pending"
+  | "in_progress"
+  | "completed"
+  | "blocked"
+  | "skipped";
 
 export interface JourneyStep {
   step_id: string;
@@ -186,7 +202,10 @@ export interface JourneyProgress {
   next_steps: string[];
 }
 
-export type JourneyTemplate = 'pt_pma_setup' | 'kitas_application' | 'property_purchase';
+export type JourneyTemplate =
+  | "pt_pma_setup"
+  | "kitas_application"
+  | "property_purchase";
 
 export interface CreateJourneyRequest {
   journey_type: JourneyTemplate;
@@ -207,15 +226,15 @@ export interface CreateJourneyRequest {
 // ============================================================================
 
 export type ComplianceType =
-  | 'visa_expiry'
-  | 'tax_deadline'
-  | 'license_renewal'
-  | 'annual_filing'
-  | 'other';
+  | "visa_expiry"
+  | "tax_deadline"
+  | "license_renewal"
+  | "annual_filing"
+  | "other";
 
-export type AlertSeverity = 'info' | 'warning' | 'urgent' | 'critical';
+export type AlertSeverity = "info" | "warning" | "urgent" | "critical";
 
-export type AlertStatus = 'active' | 'acknowledged' | 'resolved' | 'expired';
+export type AlertStatus = "active" | "acknowledged" | "resolved" | "expired";
 
 export interface ComplianceItem {
   item_id: string;
@@ -278,13 +297,19 @@ export interface PricingResult {
 // ============================================================================
 
 export type WebSocketChannel =
-  | 'USER_NOTIFICATIONS'
-  | 'AI_RESULTS'
-  | 'CHAT_MESSAGES'
-  | 'SYSTEM_EVENTS';
+  | "USER_NOTIFICATIONS"
+  | "AI_RESULTS"
+  | "CHAT_MESSAGES"
+  | "SYSTEM_EVENTS";
 
 export interface WebSocketMessage {
-  type: 'notification' | 'ai-result' | 'chat-message' | 'system-event' | 'ping' | 'pong';
+  type:
+    | "notification"
+    | "ai-result"
+    | "chat-message"
+    | "system-event"
+    | "ping"
+    | "pong";
   data: Record<string, unknown>;
 }
 
@@ -296,7 +321,7 @@ export interface BurnoutSignal {
   user: string;
   email: string;
   burnout_risk_score: number;
-  risk_level: 'High Risk' | 'Medium Risk' | 'Low Risk';
+  risk_level: "High Risk" | "Medium Risk" | "Low Risk";
   warning_signals: string[];
   warning_count: number;
   total_sessions_analyzed: number;

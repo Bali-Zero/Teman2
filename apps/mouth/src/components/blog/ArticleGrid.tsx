@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import * as React from 'react';
-import { motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
-import { ArticleCard, FeaturedCard } from './ArticleCard';
-import type { ArticleGridProps, ArticleListItem } from '@/lib/blog/types';
+import * as React from "react";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
+import { ArticleCard, FeaturedCard } from "./ArticleCard";
+import type { ArticleGridProps, ArticleListItem } from "@/lib/blog/types";
 
 // Masonry-style grid layout
 function MasonryGrid({
@@ -15,7 +15,9 @@ function MasonryGrid({
   showFeatured?: boolean;
 }) {
   // Separate featured article if requested
-  const featuredArticle = showFeatured ? articles.find((a) => a.featured) : null;
+  const featuredArticle = showFeatured
+    ? articles.find((a) => a.featured)
+    : null;
   const regularArticles = featuredArticle
     ? articles.filter((a) => a.id !== featuredArticle.id)
     : articles;
@@ -46,7 +48,7 @@ function MasonryGrid({
               key={article.id}
               article={article}
               index={index}
-              variant={index === 0 && !featuredArticle ? 'default' : 'default'}
+              variant={index === 0 && !featuredArticle ? "default" : "default"}
             />
           ))}
         </div>
@@ -54,7 +56,11 @@ function MasonryGrid({
         {/* Right column - offset for masonry effect */}
         <div className="space-y-6 md:space-y-8 md:mt-12">
           {rightColumn.map((article, index) => (
-            <ArticleCard key={article.id} article={article} index={index + leftColumn.length} />
+            <ArticleCard
+              key={article.id}
+              article={article}
+              index={index + leftColumn.length}
+            />
           ))}
         </div>
       </div>
@@ -72,15 +78,17 @@ function StandardGrid({
   columns?: 2 | 3 | 4;
   showFeatured?: boolean;
 }) {
-  const featuredArticle = showFeatured ? articles.find((a) => a.featured) : null;
+  const featuredArticle = showFeatured
+    ? articles.find((a) => a.featured)
+    : null;
   const regularArticles = featuredArticle
     ? articles.filter((a) => a.id !== featuredArticle.id)
     : articles;
 
   const gridCols = {
-    2: 'md:grid-cols-2',
-    3: 'md:grid-cols-2 lg:grid-cols-3',
-    4: 'md:grid-cols-2 lg:grid-cols-4',
+    2: "md:grid-cols-2",
+    3: "md:grid-cols-2 lg:grid-cols-3",
+    4: "md:grid-cols-2 lg:grid-cols-4",
   };
 
   return (
@@ -97,7 +105,7 @@ function StandardGrid({
       )}
 
       {/* Grid */}
-      <div className={cn('grid grid-cols-1 gap-6 md:gap-8', gridCols[columns])}>
+      <div className={cn("grid grid-cols-1 gap-6 md:gap-8", gridCols[columns])}>
         {regularArticles.map((article, index) => (
           <ArticleCard key={article.id} article={article} index={index} />
         ))}
@@ -114,7 +122,9 @@ function ListLayout({
   articles: ArticleListItem[];
   showFeatured?: boolean;
 }) {
-  const featuredArticle = showFeatured ? articles.find((a) => a.featured) : null;
+  const featuredArticle = showFeatured
+    ? articles.find((a) => a.featured)
+    : null;
   const regularArticles = featuredArticle
     ? articles.filter((a) => a.id !== featuredArticle.id)
     : articles;
@@ -135,7 +145,12 @@ function ListLayout({
       {/* List */}
       <div className="space-y-6">
         {regularArticles.map((article, index) => (
-          <ArticleCard key={article.id} article={article} index={index} variant="horizontal" />
+          <ArticleCard
+            key={article.id}
+            article={article}
+            index={index}
+            variant="horizontal"
+          />
         ))}
       </div>
     </div>
@@ -145,14 +160,14 @@ function ListLayout({
 // Main ArticleGrid component
 export function ArticleGrid({
   articles,
-  variant = 'masonry',
+  variant = "masonry",
   columns = 3,
   showFeatured = true,
   className,
 }: ArticleGridProps) {
   if (articles.length === 0) {
     return (
-      <div className={cn('text-center py-12', className)}>
+      <div className={cn("text-center py-12", className)}>
         <p className="text-white/50">No articles found</p>
       </div>
     );
@@ -160,11 +175,19 @@ export function ArticleGrid({
 
   return (
     <div className={className}>
-      {variant === 'masonry' && <MasonryGrid articles={articles} showFeatured={showFeatured} />}
-      {variant === 'grid' && (
-        <StandardGrid articles={articles} columns={columns} showFeatured={showFeatured} />
+      {variant === "masonry" && (
+        <MasonryGrid articles={articles} showFeatured={showFeatured} />
       )}
-      {variant === 'list' && <ListLayout articles={articles} showFeatured={showFeatured} />}
+      {variant === "grid" && (
+        <StandardGrid
+          articles={articles}
+          columns={columns}
+          showFeatured={showFeatured}
+        />
+      )}
+      {variant === "list" && (
+        <ListLayout articles={articles} showFeatured={showFeatured} />
+      )}
     </div>
   );
 }
@@ -172,14 +195,14 @@ export function ArticleGrid({
 // Skeleton loader for ArticleGrid
 export function ArticleGridSkeleton({
   count = 6,
-  variant = 'grid',
+  variant = "grid",
 }: {
   count?: number;
-  variant?: 'masonry' | 'grid' | 'list';
+  variant?: "masonry" | "grid" | "list";
 }) {
   const items = Array.from({ length: count }, (_, i) => i);
 
-  if (variant === 'list') {
+  if (variant === "list") {
     return (
       <div className="space-y-6">
         {items.map((i) => (

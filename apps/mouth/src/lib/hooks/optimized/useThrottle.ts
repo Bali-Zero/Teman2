@@ -4,14 +4,14 @@
  * Throttle a callback
  */
 
-import { useCallback, useRef, useEffect } from 'react';
+import { useCallback, useRef, useEffect } from "react";
 
 /**
  * Throttle a callback
  */
 export function useThrottledCallback<T extends (...args: unknown[]) => unknown>(
   callback: T,
-  limit: number
+  limit: number,
 ): (...args: Parameters<T>) => void {
   const inThrottleRef = useRef(false);
   const lastArgsRef = useRef<Parameters<T> | null>(null);
@@ -39,7 +39,7 @@ export function useThrottledCallback<T extends (...args: unknown[]) => unknown>(
         lastArgsRef.current = args;
       }
     },
-    [callback, limit]
+    [callback, limit],
   );
 }
 
@@ -71,4 +71,4 @@ export function useThrottle<T>(value: T, limit: number): T {
 }
 
 // Add missing import
-import { useState } from 'react';
+import { useState } from "react";

@@ -1,24 +1,24 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import { Loader2, ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { api } from '@/lib/api';
-import { toast } from 'sonner';
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { Loader2, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 export default function PortalLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [pin, setPin] = useState('');
-  const [step, setStep] = useState<'email' | 'pin'>('email');
+  const [email, setEmail] = useState("");
+  const [pin, setPin] = useState("");
+  const [step, setStep] = useState<"email" | "pin">("email");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmitEmail = (e: React.FormEvent) => {
     e.preventDefault();
-    if (email) setStep('pin');
+    if (email) setStep("pin");
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -27,9 +27,9 @@ export default function PortalLoginPage() {
     try {
       // Use existing auth login (it supports PIN)
       await api.login(email, pin);
-      router.push('/portal');
+      router.push("/portal");
     } catch (error) {
-      toast.error('Login failed', { description: 'Invalid email or PIN' });
+      toast.error("Login failed", { description: "Invalid email or PIN" });
     } finally {
       setIsLoading(false);
     }
@@ -53,10 +53,12 @@ export default function PortalLoginPage() {
         </div>
 
         <div className="bg-[#242424] border border-white/5 rounded-2xl p-6 md:p-8 space-y-6">
-          {step === 'email' ? (
+          {step === "email" ? (
             <form onSubmit={handleSubmitEmail} className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-[#E6E7EB]">Email Address</label>
+                <label className="text-sm font-medium text-[#E6E7EB]">
+                  Email Address
+                </label>
                 <Input
                   type="email"
                   value={email}
@@ -81,10 +83,12 @@ export default function PortalLoginPage() {
             >
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <label className="text-sm font-medium text-[#E6E7EB]">Access PIN</label>
+                  <label className="text-sm font-medium text-[#E6E7EB]">
+                    Access PIN
+                  </label>
                   <button
                     type="button"
-                    onClick={() => setStep('email')}
+                    onClick={() => setStep("email")}
                     className="text-xs text-[#4FD1C5] hover:underline"
                   >
                     Change Email
@@ -106,7 +110,11 @@ export default function PortalLoginPage() {
                 className="w-full bg-[#4FD1C5] hover:bg-[#4FD1C5]/80 text-[#0B0E13] font-medium"
                 disabled={isLoading}
               >
-                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Enter Portal'}
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  "Enter Portal"
+                )}
               </Button>
             </form>
           )}

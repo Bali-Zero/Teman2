@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { RefObject } from 'react';
-import Image from 'next/image';
-import { motion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
-import { MessageBubble } from './MessageBubble';
-import { ThinkingIndicator } from './ThinkingIndicator';
-import { Message } from '@/types';
+import { RefObject } from "react";
+import Image from "next/image";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { MessageBubble } from "./MessageBubble";
+import { ThinkingIndicator } from "./ThinkingIndicator";
+import { Message } from "@/types";
 
 export interface ChatMessageListProps {
   messages: Message[];
@@ -35,7 +35,7 @@ export function ChatMessageList({
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, ease: 'easeOut' }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
           className="relative mb-8"
         >
           <Image
@@ -49,7 +49,9 @@ export function ChatMessageList({
         </motion.div>
 
         <div className="space-y-4 text-center mb-12">
-          <h1 className="text-2xl font-light tracking-[0.2em] text-white/90 uppercase">Zantara</h1>
+          <h1 className="text-2xl font-light tracking-[0.2em] text-white/90 uppercase">
+            Zantara
+          </h1>
           <div className="flex items-center justify-center gap-4">
             <div className="h-[1px] w-12 bg-gradient-to-r from-transparent to-white/30" />
             <p className="text-xs text-[var(--foreground-muted)] tracking-[0.4em] uppercase font-medium">
@@ -65,7 +67,7 @@ export function ChatMessageList({
             variant="outline"
             size="lg"
             className="rounded-xl gap-2 hover:bg-[var(--accent)]/10 hover:border-[var(--accent)] transition-all"
-            onClick={() => onSetInput('What can you help me with?')}
+            onClick={() => onSetInput("What can you help me with?")}
           >
             <span className="text-lg">💡</span>
             <span>What can you do?</span>
@@ -74,7 +76,7 @@ export function ChatMessageList({
             variant="outline"
             size="lg"
             className="rounded-xl gap-2 hover:bg-[var(--accent)]/10 hover:border-[var(--accent)] transition-all"
-            onClick={() => onSetInput('Summarize my tasks for today')}
+            onClick={() => onSetInput("Summarize my tasks for today")}
           >
             <span className="text-lg">📋</span>
             <span>My Tasks</span>
@@ -98,7 +100,10 @@ export function ChatMessageList({
       {messages.map((message, index) => {
         const isLastMessage = index === messages.length - 1;
         const isEmptyAssistantPlaceholder =
-          message.role === 'assistant' && !message.content && isLastMessage && isLoading;
+          message.role === "assistant" &&
+          !message.content &&
+          isLastMessage &&
+          isLoading;
 
         if (isEmptyAssistantPlaceholder) {
           return null;

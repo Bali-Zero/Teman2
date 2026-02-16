@@ -76,8 +76,8 @@ import {
   Calculator,
   Checklist,
   InfoCard,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Property Tax Indonesia 2026: Complete Guide
 
@@ -93,43 +93,43 @@ Property ownership in Indonesia comes with tax obligations. Here's everything yo
       name: "PBB",
       subtitle: "Annual land/building tax",
       values: {
-        "When": "Every year",
-        "Rate": "~0.1-0.5% of NJOP",
+        When: "Every year",
+        Rate: "~0.1-0.5% of NJOP",
         "Paid by": "Owner",
-        "Due": "End of August"
+        Due: "End of August",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "BPHTB",
       subtitle: "Transfer/acquisition tax",
       values: {
-        "When": "On purchase",
-        "Rate": "5% of value",
+        When: "On purchase",
+        Rate: "5% of value",
         "Paid by": "Buyer",
-        "Due": "Before transfer"
-      }
+        Due: "Before transfer",
+      },
     },
     {
       name: "PPh Final",
       subtitle: "Seller's income tax",
       values: {
-        "When": "On sale",
-        "Rate": "2.5% of value",
+        When: "On sale",
+        Rate: "2.5% of value",
         "Paid by": "Seller",
-        "Due": "Before transfer"
-      }
+        Due: "Before transfer",
+      },
     },
     {
       name: "Rental Income",
       subtitle: "Tax on rent received",
       values: {
-        "When": "On rental income",
-        "Rate": "10% final",
+        When: "On rental income",
+        Rate: "10% final",
         "Paid by": "Owner",
-        "Due": "Monthly/annually"
-      }
-    }
+        Due: "Monthly/annually",
+      },
+    },
   ]}
 />
 
@@ -147,16 +147,17 @@ Property ownership in Indonesia comes with tax obligations. Here's everything yo
 - Due by August each year
 
 All landowners and building owners must pay PBB.
+
 </InfoCard>
 
 ### PBB Calculation
 
-| Component | Explanation |
-|-----------|-------------|
-| NJOP | Government assessed value |
-| NJOPTKP | Tax-free threshold (varies by region) |
-| Taxable value | NJOP minus NJOPTKP |
-| Tax rate | 0.1-0.5% (varies by region and value) |
+| Component     | Explanation                           |
+| ------------- | ------------------------------------- |
+| NJOP          | Government assessed value             |
+| NJOPTKP       | Tax-free threshold (varies by region) |
+| Taxable value | NJOP minus NJOPTKP                    |
+| Tax rate      | 0.1-0.5% (varies by region and value) |
 
 ### PBB Calculator
 
@@ -218,17 +219,18 @@ All landowners and building owners must pay PBB.
       currency: "IDR",
       note: "Actual tax may vary based on local regulations"
     };
-  }}
+
+}}
 />
 
 ### Paying PBB
 
-| Method | Details |
-|--------|---------|
-| Bank | BCA, Mandiri, BNI, etc. |
-| Online | Various payment apps |
-| Post Office | In person |
-| Village office | Local payment point |
+| Method         | Details                 |
+| -------------- | ----------------------- |
+| Bank           | BCA, Mandiri, BNI, etc. |
+| Online         | Various payment apps    |
+| Post Office    | In person               |
+| Village office | Local payment point     |
 
 Keep your SPPT (tax notice) as payment reference.
 
@@ -248,27 +250,28 @@ Keep your SPPT (tax notice) as payment reference.
 **Rate:** 5% of transfer value minus NJOPTKP
 **Paid by:** Buyer/recipient
 **When:** Before title transfer
+
 </InfoCard>
 
 ### BPHTB Calculation
 
-| Element | Calculation |
-|---------|-------------|
+| Element           | Calculation             |
+| ----------------- | ----------------------- |
 | Transaction value | Higher of price or NJOP |
-| Minus NJOPTKP | Tax-free threshold |
-| Tax base | Result |
-| BPHTB | 5% of tax base |
+| Minus NJOPTKP     | Tax-free threshold      |
+| Tax base          | Result                  |
+| BPHTB             | 5% of tax base          |
 
 ### Example
 
-| Item | Amount |
-|------|--------|
-| Purchase price | IDR 2,000,000,000 |
-| NJOP | IDR 1,500,000,000 |
-| Use higher value | IDR 2,000,000,000 |
-| NJOPTKP | IDR 60,000,000 |
-| Tax base | IDR 1,940,000,000 |
-| **BPHTB (5%)** | **IDR 97,000,000** |
+| Item             | Amount             |
+| ---------------- | ------------------ |
+| Purchase price   | IDR 2,000,000,000  |
+| NJOP             | IDR 1,500,000,000  |
+| Use higher value | IDR 2,000,000,000  |
+| NJOPTKP          | IDR 60,000,000     |
+| Tax base         | IDR 1,940,000,000  |
+| **BPHTB (5%)**   | **IDR 97,000,000** |
 
 ---
 
@@ -276,17 +279,14 @@ Keep your SPPT (tax notice) as payment reference.
 
 ### What Sellers Pay
 
-| Transaction | Tax Rate |
-|-------------|----------|
+| Transaction   | Tax Rate                  |
+| ------------- | ------------------------- |
 | Property sale | 2.5% of transaction value |
-| Land sale | 2.5% of transaction value |
+| Land sale     | 2.5% of transaction value |
 
 <InfoCard variant="note" title="Seller Tax">
-**PPh Final 2.5%** is:
-- Paid by seller
-- Based on transaction value (or NJOP if higher)
-- Due before title transfer
-- Final (no further income tax on gain)
+  **PPh Final 2.5%** is: - Paid by seller - Based on transaction value (or NJOP
+  if higher) - Due before title transfer - Final (no further income tax on gain)
 </InfoCard>
 
 ---
@@ -303,57 +303,57 @@ Keep your SPPT (tax notice) as payment reference.
       label: "BPHTB (5%)",
       description: "Buyer pays",
       required: true,
-      category: "buyer"
+      category: "buyer",
     },
     {
       id: "notary-buyer",
       label: "Notary fee (~1%)",
       description: "Buyer typically pays",
       required: true,
-      category: "buyer"
+      category: "buyer",
     },
     {
       id: "registration",
       label: "BPN registration",
       description: "Buyer pays",
       required: true,
-      category: "buyer"
+      category: "buyer",
     },
     {
       id: "pph-seller",
       label: "PPh Final (2.5%)",
       description: "Seller pays",
       required: true,
-      category: "seller"
+      category: "seller",
     },
     {
       id: "pbb-clear",
       label: "Clear PBB arrears",
       description: "Seller must clear",
       required: true,
-      category: "seller"
+      category: "seller",
     },
     {
       id: "agent",
       label: "Agent fee (if any)",
       description: "Usually seller pays",
       required: false,
-      category: "seller"
-    }
+      category: "seller",
+    },
   ]}
   categories={[
     { id: "buyer", label: "Buyer Pays", color: "blue" },
-    { id: "seller", label: "Seller Pays", color: "green" }
+    { id: "seller", label: "Seller Pays", color: "green" },
   ]}
   showProgress={false}
 />
 
 ### Total Cost Summary
 
-| Party | Approximate Cost |
-|-------|------------------|
-| Buyer | 6-7% of value (BPHTB + notary + fees) |
-| Seller | 2.5-5% of value (PPh + agent if any) |
+| Party  | Approximate Cost                      |
+| ------ | ------------------------------------- |
+| Buyer  | 6-7% of value (BPHTB + notary + fees) |
+| Seller | 2.5-5% of value (PPh + agent if any)  |
 
 ---
 
@@ -370,22 +370,22 @@ Rental income from property is subject to:
 - No deductions for expenses
 - Final (not added to other income)
 - Should be withheld by corporate tenants
-</InfoCard>
+  </InfoCard>
 
 ### Who Withholds?
 
-| Tenant Type | Tax Treatment |
-|-------------|---------------|
-| Corporate tenant | Must withhold 10% |
+| Tenant Type       | Tax Treatment          |
+| ----------------- | ---------------------- |
+| Corporate tenant  | Must withhold 10%      |
 | Individual tenant | Landlord self-assesses |
 
 ### Reporting
 
-| Situation | Action |
-|-----------|--------|
-| Corporate tenant | They issue bukti potong |
-| Individual tenant | You report and pay |
-| Mixed | Declare all in annual SPT |
+| Situation         | Action                    |
+| ----------------- | ------------------------- |
+| Corporate tenant  | They issue bukti potong   |
+| Individual tenant | You report and pay        |
+| Mixed             | Declare all in annual SPT |
 
 ---
 
@@ -401,16 +401,17 @@ Rental income from property is subject to:
 - Updated periodically
 
 Find your NJOP on your SPPT (tax notice) or check at local tax office.
+
 </InfoCard>
 
 ### NJOP vs Market Value
 
-| Aspect | NJOP | Market Value |
-|--------|------|--------------|
-| Set by | Government | Market |
-| Typical level | 50-80% of market | 100% |
-| Update frequency | Periodic | Real-time |
-| Used for | Taxes | Transactions |
+| Aspect           | NJOP             | Market Value |
+| ---------------- | ---------------- | ------------ |
+| Set by           | Government       | Market       |
+| Typical level    | 50-80% of market | 100%         |
+| Update frequency | Periodic         | Real-time    |
+| Used for         | Taxes            | Transactions |
 
 ---
 
@@ -418,13 +419,13 @@ Find your NJOP on your SPPT (tax notice) or check at local tax office.
 
 ### Legal Ways to Minimize
 
-| Strategy | How It Works |
-|----------|--------------|
-| Time acquisition | Year-end may allow planning |
-| Structure ownership | PT PMA vs personal |
-| Use NJOPTKP | Ensure threshold applied |
-| Clear PBB on time | Avoid penalties |
-| Document expenses | For future sale basis |
+| Strategy            | How It Works                |
+| ------------------- | --------------------------- |
+| Time acquisition    | Year-end may allow planning |
+| Structure ownership | PT PMA vs personal          |
+| Use NJOPTKP         | Ensure threshold applied    |
+| Clear PBB on time   | Avoid penalties             |
+| Document expenses   | For future sale basis       |
 
 <InfoCard variant="warning" title="Tax Compliance">
 **Don't:**
@@ -434,6 +435,7 @@ Find your NJOP on your SPPT (tax notice) or check at local tax office.
 - Ignore rental income
 
 Tax authorities cross-reference with BPN and notary records. Non-compliance creates problems when you want to sell.
+
 </InfoCard>
 
 ---
@@ -442,13 +444,13 @@ Tax authorities cross-reference with BPN and notary records. Non-compliance crea
 
 ### Different Treatment
 
-| Aspect | Personal | PT PMA |
-|--------|----------|--------|
-| PBB | Same | Same |
-| BPHTB | Same | Same |
-| Sale PPh | 2.5% final | Company income tax |
-| Rental income | 10% final | Company income tax |
-| Depreciation | None | Yes, for buildings |
+| Aspect        | Personal   | PT PMA             |
+| ------------- | ---------- | ------------------ |
+| PBB           | Same       | Same               |
+| BPHTB         | Same       | Same               |
+| Sale PPh      | 2.5% final | Company income tax |
+| Rental income | 10% final  | Company income tax |
+| Depreciation  | None       | Yes, for buildings |
 
 ---
 
@@ -461,7 +463,7 @@ Tax authorities cross-reference with BPN and notary records. Non-compliance crea
     "When is PBB due?",
     "How much is transfer tax on property?",
     "Do I pay tax on rental income?",
-    "What happens if I don't pay PBB?"
+    "What happens if I don't pay PBB?",
   ]}
 />
 

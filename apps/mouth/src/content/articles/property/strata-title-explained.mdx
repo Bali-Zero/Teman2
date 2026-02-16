@@ -76,8 +76,8 @@ import {
   InfoCard,
   GlossaryTerm,
   Checklist,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Strata Title in Indonesia 2026: What Apartment Buyers Need to Know
 
@@ -93,6 +93,7 @@ When you buy an apartment in Indonesia, you receive a strata title - a unique fo
 Strata title is a system that allows individual ownership of units within a multi-unit building while sharing ownership of common areas.
 
 ### Key Concepts
+
 - **Unit ownership**: You own your specific apartment
 - **Common property**: Shared ownership of building facilities
 - **Proportional share**: Based on unit size/value
@@ -112,25 +113,26 @@ Strata title is a system that allows individual ownership of units within a mult
       values: {
         "Internal space": "100% yours",
         "Fixtures inside": "Yours",
-        "Modifications": "With approval",
-        "Can sell": "Yes"
+        Modifications: "With approval",
+        "Can sell": "Yes",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "Common Property",
       subtitle: "Shared ownership",
       values: {
-        "Land": "Proportional share",
-        "Structure": "Proportional share",
-        "Facilities": "Equal access",
-        "Can sell": "Only with unit"
-      }
-    }
+        Land: "Proportional share",
+        Structure: "Proportional share",
+        Facilities: "Equal access",
+        "Can sell": "Only with unit",
+      },
+    },
   ]}
 />
 
 ### Private (Unit) Ownership
+
 - Interior space within walls
 - Doors and windows
 - Internal fixtures
@@ -138,6 +140,7 @@ Strata title is a system that allows individual ownership of units within a mult
 - Internal walls (non-structural)
 
 ### Common Property
+
 - Land the building sits on
 - Building structure (walls, roof, foundation)
 - Corridors, lobbies, stairs
@@ -153,17 +156,19 @@ Strata title is a system that allows individual ownership of units within a mult
 The SHMSRS certificate shows:
 
 ### Certificate Information
-| Element | Description |
-|---------|-------------|
-| Owner name | Your name as registered owner |
-| Unit number | Specific apartment identification |
-| Building name | The development |
-| Floor area | Size of your unit (sqm) |
-| Proportional value | Your share of common property |
-| Land rights | Underlying land title (usually HGB) |
+
+| Element            | Description                         |
+| ------------------ | ----------------------------------- |
+| Owner name         | Your name as registered owner       |
+| Unit number        | Specific apartment identification   |
+| Building name      | The development                     |
+| Floor area         | Size of your unit (sqm)             |
+| Proportional value | Your share of common property       |
+| Land rights        | Underlying land title (usually HGB) |
 
 <InfoCard variant="note" title="For Foreigners">
-Foreigners with KITAS/KITAP can hold strata title with **Hak Pakai** status rather than **Hak Milik** status. The certificate will reflect this.
+  Foreigners with KITAS/KITAP can hold strata title with **Hak Pakai** status
+  rather than **Hak Milik** status. The certificate will reflect this.
 </InfoCard>
 
 ---
@@ -199,6 +204,7 @@ Foreigners with KITAS/KITAP can hold strata title with **Hak Pakai** status rath
 />
 
 The P3SRS:
+
 - Sets and collects service charges
 - Maintains common property
 - Enforces building rules
@@ -208,6 +214,7 @@ The P3SRS:
 ### Service Charges
 
 Typical charges cover:
+
 - Building maintenance
 - Security
 - Cleaning
@@ -230,62 +237,62 @@ Typical charges cover:
       label: "Strata title (SHMSRS) exists",
       description: "Not just PPJB - actual title issued",
       required: true,
-      category: "title"
+      category: "title",
     },
     {
       id: "foreign-allowed",
       label: "Foreign ownership allowed",
       description: "Building permits foreigner purchase",
       required: true,
-      category: "title"
+      category: "title",
     },
     {
       id: "clear-title",
       label: "No encumbrances",
       description: "Check for mortgages, liens",
       required: true,
-      category: "title"
+      category: "title",
     },
     {
       id: "land-status",
       label: "Underlying land status",
       description: "HGB with sufficient years remaining",
       required: true,
-      category: "title"
+      category: "title",
     },
     {
       id: "p3srs",
       label: "P3SRS established",
       description: "Building management in place",
       required: true,
-      category: "management"
+      category: "management",
     },
     {
       id: "charges",
       label: "Review service charges",
       description: "Current and historical amounts",
       required: true,
-      category: "financial"
+      category: "financial",
     },
     {
       id: "sinking",
       label: "Check sinking fund",
       description: "Adequate reserves for repairs",
       required: true,
-      category: "financial"
+      category: "financial",
     },
     {
       id: "rules",
       label: "Read building rules",
       description: "Know the restrictions",
       required: true,
-      category: "management"
-    }
+      category: "management",
+    },
   ]}
   categories={[
     { id: "title", label: "Title", color: "blue" },
     { id: "management", label: "Management", color: "green" },
-    { id: "financial", label: "Financial", color: "amber" }
+    { id: "financial", label: "Financial", color: "amber" },
   ]}
   showProgress={true}
 />
@@ -330,6 +337,7 @@ If buying from PPJB only (before strata title issued):
 - Limited legal protection
 
 Prefer units where SHMSRS already exists.
+
 </InfoCard>
 
 ---
@@ -339,10 +347,12 @@ Prefer units where SHMSRS already exists.
 The building sits on land - usually HGB (Building Rights):
 
 ### Duration
+
 - HGB: 30+20+30 years = 80 years total
 - Your strata title follows the underlying land right
 
 ### What Happens at Expiry?
+
 - Land right must be extended
 - All owners apply together (via P3SRS)
 - Usually granted if in good standing
@@ -353,17 +363,20 @@ The building sits on land - usually HGB (Building Rights):
 ## Common Issues
 
 ### Service Charge Disputes
+
 - Increases can be contested
 - P3SRS must follow proper procedures
 - Non-payment can result in legal action
 
 ### Building Rule Violations
+
 - Unauthorized renovations
 - Noise complaints
 - Short-term rental restrictions
 - Pet policies
 
 ### Developer Issues
+
 - Delayed strata title issuance
 - Defects in common areas
 - Failed handover to P3SRS
@@ -379,7 +392,7 @@ The building sits on land - usually HGB (Building Rights):
     "What if developer doesn't issue strata title?",
     "Can I challenge service charge increases?",
     "What happens if building is demolished?",
-    "Can strata title be mortgaged?"
+    "Can strata title be mortgaged?",
   ]}
 />
 

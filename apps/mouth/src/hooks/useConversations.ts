@@ -1,17 +1,17 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, ConversationListItem } from '@/lib/api';
-import { logger } from '@/lib/logger';
-import { toError } from '@/lib/types/common';
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api, ConversationListItem } from "@/lib/api";
+import { logger } from "@/lib/logger";
+import { toError } from "@/lib/types/common";
 
 /**
  * Query key factory for conversations
  */
 export const conversationsKeys = {
-  all: ['conversations'] as const,
-  list: () => [...conversationsKeys.all, 'list'] as const,
-  stats: () => [...conversationsKeys.all, 'stats'] as const,
-  detail: (id: number) => [...conversationsKeys.all, 'detail', id] as const,
+  all: ["conversations"] as const,
+  list: () => [...conversationsKeys.all, "list"] as const,
+  stats: () => [...conversationsKeys.all, "stats"] as const,
+  detail: (id: number) => [...conversationsKeys.all, "detail", id] as const,
 };
 
 /**
@@ -38,7 +38,8 @@ export function useConversationMutations() {
   };
 
   const deleteConversation = useMutation({
-    mutationFn: (conversationId: number) => api.deleteConversation(conversationId),
+    mutationFn: (conversationId: number) =>
+      api.deleteConversation(conversationId),
     onMutate: async (conversationId) => {
       // Optimistic update: Remove from list immediately
       await queryClient.cancelQueries({ queryKey: conversationsKeys.list() });
@@ -48,7 +49,7 @@ export function useConversationMutations() {
 
       queryClient.setQueriesData<ConversationListItem[]>(
         { queryKey: conversationsKeys.list() },
-        (old) => (old ? old.filter((c) => c.id !== conversationId) : old)
+        (old) => (old ? old.filter((c) => c.id !== conversationId) : old),
       );
 
       return { previousData };
@@ -70,7 +71,7 @@ export function useConversationMutations() {
       // Clear the cache
       queryClient.setQueriesData<ConversationListItem[]>(
         { queryKey: conversationsKeys.list() },
-        () => []
+        () => [],
       );
     },
     onSettled: invalidateConversations,
@@ -87,7 +88,9 @@ export function useConversationMutations() {
  * Maintains backward compatibility with the original API
  */
 export function useConversations() {
-  const [currentConversationId, setCurrentConversationId] = useState<number | null>(null);
+  const [currentConversationId, setCurrentConversationId] = useState<
+    number | null
+  >(null);
 
   const {
     data: conversations = [],
@@ -108,9 +111,9 @@ export function useConversations() {
       }
     } catch (error) {
       logger.error(
-        'Failed to delete conversation',
-        { component: 'Conversations', action: 'delete' },
-        toError(error)
+        "Failed to delete conversation",
+        { component: "Conversations", action: "delete" },
+        toError(error),
       );
     }
   };
@@ -121,9 +124,9 @@ export function useConversations() {
       setCurrentConversationId(null);
     } catch (error) {
       logger.error(
-        'Failed to clear history',
-        { component: 'Conversations', action: 'clearHistory' },
-        toError(error)
+        "Failed to clear history",
+        { component: "Conversations", action: "clearHistory" },
+        toError(error),
       );
     }
   };

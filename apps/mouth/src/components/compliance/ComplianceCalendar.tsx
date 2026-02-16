@@ -3,12 +3,21 @@
  * Shows compliance deadlines with severity-based alerts
  */
 
-'use client';
+"use client";
 
-import { useState, useEffect, useMemo } from 'react';
-import { Calendar as CalendarIcon, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
-import type { ComplianceItem, ComplianceAlert, AlertSeverity } from '@/lib/api/zantara-sdk/types';
-import { ZantaraSDK } from '@/lib/api/zantara-sdk';
+import { useState, useEffect, useMemo } from "react";
+import {
+  Calendar as CalendarIcon,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+} from "lucide-react";
+import type {
+  ComplianceItem,
+  ComplianceAlert,
+  AlertSeverity,
+} from "@/lib/api/zantara-sdk/types";
+import { ZantaraSDK } from "@/lib/api/zantara-sdk";
 
 export interface ComplianceCalendarProps {
   clientId?: string;
@@ -18,10 +27,10 @@ export interface ComplianceCalendarProps {
 }
 
 const severityColors: Record<AlertSeverity, string> = {
-  info: 'bg-blue-100 border-blue-300 text-blue-800',
-  warning: 'bg-yellow-100 border-yellow-300 text-yellow-800',
-  urgent: 'bg-orange-100 border-orange-300 text-orange-800',
-  critical: 'bg-red-100 border-red-300 text-red-800',
+  info: "bg-blue-100 border-blue-300 text-blue-800",
+  warning: "bg-yellow-100 border-yellow-300 text-yellow-800",
+  urgent: "bg-orange-100 border-orange-300 text-orange-800",
+  critical: "bg-red-100 border-red-300 text-red-800",
 };
 
 const severityIcons: Record<AlertSeverity, typeof CalendarIcon> = {
@@ -52,13 +61,18 @@ export function ComplianceCalendar({
     setError(null);
     try {
       const [deadlinesData, alertsData] = await Promise.all([
-        sdk.getComplianceDeadlines({ client_id: clientId, days_ahead: daysAhead }),
+        sdk.getComplianceDeadlines({
+          client_id: clientId,
+          days_ahead: daysAhead,
+        }),
         sdk.getComplianceAlerts(clientId),
       ]);
       setDeadlines(deadlinesData);
       setAlerts(alertsData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load compliance data');
+      setError(
+        err instanceof Error ? err.message : "Failed to load compliance data",
+      );
     } finally {
       setLoading(false);
     }
@@ -69,7 +83,7 @@ export function ComplianceCalendar({
       await sdk.acknowledgeAlert(alertId);
       await loadComplianceData();
     } catch (err) {
-      console.error('Failed to acknowledge alert:', err);
+      console.error("Failed to acknowledge alert:", err);
     }
   };
 
@@ -89,7 +103,7 @@ export function ComplianceCalendar({
   // Get upcoming deadlines sorted by date
   const upcomingDeadlines = useMemo(() => {
     return [...deadlines].sort(
-      (a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
+      (a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime(),
     );
   }, [deadlines]);
 
@@ -128,27 +142,34 @@ export function ComplianceCalendar({
           Compliance Calendar
         </h2>
         <span className="text-sm text-muted-foreground">
-          {alerts.length} active alert{alerts.length !== 1 ? 's' : ''}
+          {alerts.length} active alert{alerts.length !== 1 ? "s" : ""}
         </span>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {(['critical', 'urgent', 'warning', 'info'] as AlertSeverity[]).map((severity) => {
-          const count = alerts.filter(
-            (a) => a.severity === severity && a.status === 'active'
-          ).length;
-          const Icon = severityIcons[severity];
-          return (
-            <div key={severity} className={`p-4 border rounded-lg ${severityColors[severity]}`}>
-              <div className="flex items-center gap-2">
-                <Icon className="h-5 w-5" />
-                <span className="text-sm font-medium capitalize">{severity}</span>
+        {(["critical", "urgent", "warning", "info"] as AlertSeverity[]).map(
+          (severity) => {
+            const count = alerts.filter(
+              (a) => a.severity === severity && a.status === "active",
+            ).length;
+            const Icon = severityIcons[severity];
+            return (
+              <div
+                key={severity}
+                className={`p-4 border rounded-lg ${severityColors[severity]}`}
+              >
+                <div className="flex items-center gap-2">
+                  <Icon className="h-5 w-5" />
+                  <span className="text-sm font-medium capitalize">
+                    {severity}
+                  </span>
+                </div>
+                <div className="text-2xl font-bold mt-2">{count}</div>
               </div>
-              <div className="text-2xl font-bold mt-2">{count}</div>
-            </div>
-          );
-        })}
+            );
+          },
+        )}
       </div>
 
       {/* Upcoming Deadlines */}
@@ -161,14 +182,16 @@ export function ComplianceCalendar({
         ) : (
           upcomingDeadlines.map((deadline) => {
             const daysUntil = getDaysUntil(deadline.deadline);
-            const alert = alerts.find((a) => a.compliance_type === deadline.compliance_type);
-            const severity = alert?.severity || 'info';
+            const alert = alerts.find(
+              (a) => a.compliance_type === deadline.compliance_type,
+            );
+            const severity = alert?.severity || "info";
             const Icon = severityIcons[severity];
 
             return (
               <div
                 key={deadline.item_id}
-                className={`p-4 border rounded-lg ${alert ? severityColors[severity] : 'bg-muted'}`}
+                className={`p-4 border rounded-lg ${alert ? severityColors[severity] : "bg-muted"}`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -176,27 +199,33 @@ export function ComplianceCalendar({
                       <Icon className="h-5 w-5" />
                       <h4 className="font-medium">{deadline.title}</h4>
                     </div>
-                    {deadline.description && <p className="text-sm mt-1">{deadline.description}</p>}
+                    {deadline.description && (
+                      <p className="text-sm mt-1">{deadline.description}</p>
+                    )}
                     <div className="flex items-center gap-4 mt-2 text-xs">
-                      <span>Due: {new Date(deadline.deadline).toLocaleDateString()}</span>
+                      <span>
+                        Due: {new Date(deadline.deadline).toLocaleDateString()}
+                      </span>
                       <span className="font-medium">
                         {daysUntil > 0
                           ? `${daysUntil} days remaining`
                           : daysUntil === 0
-                            ? 'Due today'
+                            ? "Due today"
                             : `${Math.abs(daysUntil)} days overdue`}
                       </span>
                     </div>
                     {deadline.required_documents.length > 0 && (
                       <div className="mt-2 text-xs">
-                        <span className="font-medium">Required Documents: </span>
-                        {deadline.required_documents.join(', ')}
+                        <span className="font-medium">
+                          Required Documents:{" "}
+                        </span>
+                        {deadline.required_documents.join(", ")}
                       </div>
                     )}
                     {deadline.estimated_cost && (
                       <div className="mt-1 text-xs">
                         <span className="font-medium">Estimated Cost: </span>
-                        Rp {deadline.estimated_cost.toLocaleString('id-ID')}
+                        Rp {deadline.estimated_cost.toLocaleString("id-ID")}
                       </div>
                     )}
                   </div>
@@ -208,11 +237,11 @@ export function ComplianceCalendar({
       </div>
 
       {/* Active Alerts */}
-      {alerts.filter((a) => a.status === 'active').length > 0 && (
+      {alerts.filter((a) => a.status === "active").length > 0 && (
         <div className="space-y-3">
           <h3 className="text-lg font-semibold">Active Alerts</h3>
           {alerts
-            .filter((a) => a.status === 'active')
+            .filter((a) => a.status === "active")
             .sort((a, b) => {
               const severityOrder: Record<AlertSeverity, number> = {
                 critical: 0,
@@ -238,12 +267,15 @@ export function ComplianceCalendar({
                       </div>
                       <p className="text-sm mt-1">{alert.description}</p>
                       <div className="flex items-center gap-4 mt-2 text-xs">
-                        <span>Deadline: {new Date(alert.deadline).toLocaleDateString()}</span>
+                        <span>
+                          Deadline:{" "}
+                          {new Date(alert.deadline).toLocaleDateString()}
+                        </span>
                         <span className="font-medium">
                           {alert.days_until > 0
                             ? `${alert.days_until} days remaining`
                             : alert.days_until === 0
-                              ? 'Due today'
+                              ? "Due today"
                               : `${Math.abs(alert.days_until)} days overdue`}
                         </span>
                       </div>

@@ -78,10 +78,10 @@ paths:
                   type: string
                   minLength: 6
                   maxLength: 6
-                  example: '123456'
+                  example: "123456"
                   description: PIN a 6 cifre
       responses:
-        '200':
+        "200":
           description: Login successful
           headers:
             Set-Cookie:
@@ -92,11 +92,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoginResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '429':
-          $ref: '#/components/responses/TooManyRequests'
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/auth/logout:
     post:
@@ -108,7 +108,7 @@ paths:
         - cookieAuth: []
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Logout successful
           content:
             application/json:
@@ -132,14 +132,14 @@ paths:
         - cookieAuth: []
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: User profile
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserProfile'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   # ============================================================================
   # PORTAL (Client-facing)
@@ -160,14 +160,14 @@ paths:
         - cookieAuth: []
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Dashboard data
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PortalDashboard'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/PortalDashboard"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /api/portal/timeline:
     get:
@@ -186,7 +186,7 @@ paths:
             default: 50
             maximum: 200
       responses:
-        '200':
+        "200":
           description: Timeline events
           content:
             application/json:
@@ -201,7 +201,7 @@ paths:
                       timeline:
                         type: array
                         items:
-                          $ref: '#/components/schemas/TimelineEvent'
+                          $ref: "#/components/schemas/TimelineEvent"
 
   /api/portal/visa:
     get:
@@ -213,12 +213,12 @@ paths:
         - cookieAuth: []
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Visa information
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/VisaInfo'
+                $ref: "#/components/schemas/VisaInfo"
 
   /api/portal/messages:
     get:
@@ -241,12 +241,12 @@ paths:
             type: integer
             default: 0
       responses:
-        '200':
+        "200":
           description: Messages list
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessagesResponse'
+                $ref: "#/components/schemas/MessagesResponse"
     post:
       tags: [Portal]
       summary: Send message
@@ -260,9 +260,9 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SendMessageRequest'
+              $ref: "#/components/schemas/SendMessageRequest"
       responses:
-        '200':
+        "200":
           description: Message sent
           content:
             application/json:
@@ -272,7 +272,7 @@ paths:
                   success:
                     type: boolean
                   data:
-                    $ref: '#/components/schemas/PortalMessage'
+                    $ref: "#/components/schemas/PortalMessage"
 
   # ============================================================================
   # CHAT (AI Streaming)
@@ -348,7 +348,7 @@ paths:
                       content:
                         type: string
       responses:
-        '200':
+        "200":
           description: SSE stream
           content:
             text/event-stream:
@@ -364,10 +364,10 @@ paths:
                   data: {"type":"sources","data":[{"title":"Visa Oracle","content":"..."}]}
 
                   data: [DONE]
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '429':
-          $ref: '#/components/responses/TooManyRequests'
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/agentic-rag/query:
     post:
@@ -394,12 +394,12 @@ paths:
                   type: boolean
                   default: false
       responses:
-        '200':
+        "200":
           description: Complete response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AgenticQueryResponse'
+                $ref: "#/components/schemas/AgenticQueryResponse"
 
   # ============================================================================
   # CRM (Team-facing)
@@ -430,14 +430,14 @@ paths:
             type: integer
             default: 0
       responses:
-        '200':
+        "200":
           description: Clients list
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Client'
+                  $ref: "#/components/schemas/Client"
     post:
       tags: [CRM]
       summary: Create client
@@ -457,14 +457,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateClientRequest'
+              $ref: "#/components/schemas/CreateClientRequest"
       responses:
-        '200':
+        "200":
           description: Client created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Client'
+                $ref: "#/components/schemas/Client"
 
   /api/crm/clients/{id}:
     get:
@@ -481,14 +481,14 @@ paths:
           schema:
             type: integer
       responses:
-        '200':
+        "200":
           description: Client details
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Client'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                $ref: "#/components/schemas/Client"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /api/crm/practices:
     get:
@@ -519,14 +519,14 @@ paths:
             type: integer
             default: 50
       responses:
-        '200':
+        "200":
           description: Practices list
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Practice'
+                  $ref: "#/components/schemas/Practice"
 
   /api/crm/practices/{id}:
     get:
@@ -543,12 +543,12 @@ paths:
           schema:
             type: integer
       responses:
-        '200':
+        "200":
           description: Practice details
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Practice'
+                $ref: "#/components/schemas/Practice"
     patch:
       tags: [CRM]
       summary: Update practice
@@ -587,12 +587,12 @@ paths:
                 notes:
                   type: string
       responses:
-        '200':
+        "200":
           description: Practice updated
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Practice'
+                $ref: "#/components/schemas/Practice"
 
   /api/crm/interactions:
     get:
@@ -615,14 +615,14 @@ paths:
             type: integer
             default: 50
       responses:
-        '200':
+        "200":
           description: Interactions list
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Interaction'
+                  $ref: "#/components/schemas/Interaction"
 
   # ============================================================================
   # GOOGLE DRIVE
@@ -649,7 +649,7 @@ paths:
           schema:
             type: integer
       responses:
-        '200':
+        "200":
           description: Folder created
           content:
             application/json:
@@ -691,7 +691,8 @@ paths:
           required: true
           schema:
             type: string
-            enum: [01_Immigration, 02_Business, 03_Tax, 04_Personal, 05_Internal]
+            enum:
+              [01_Immigration, 02_Business, 03_Tax, 04_Personal, 05_Internal]
       requestBody:
         required: true
         content:
@@ -704,7 +705,7 @@ paths:
                   type: string
                   format: binary
       responses:
-        '200':
+        "200":
           description: File uploaded
           content:
             application/json:
@@ -763,7 +764,7 @@ components:
               example: 86400
               description: Token expiration in seconds (24h)
             user:
-              $ref: '#/components/schemas/UserProfile'
+              $ref: "#/components/schemas/UserProfile"
             csrfToken:
               type: string
               description: CSRF token per protezione
@@ -887,7 +888,7 @@ components:
         messages:
           type: array
           items:
-            $ref: '#/components/schemas/PortalMessage'
+            $ref: "#/components/schemas/PortalMessage"
         total:
           type: integer
         unreadCount:
@@ -935,7 +936,8 @@ components:
           type: string
         type:
           type: string
-          enum: [practice_update, document_upload, message_sent, payment_received]
+          enum:
+            [practice_update, document_upload, message_sent, payment_received]
         title:
           type: string
         description:

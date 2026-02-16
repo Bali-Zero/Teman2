@@ -5,10 +5,10 @@
  * Reduces initial load time by splitting code into separate chunks.
  */
 
-import React, { Suspense } from 'react';
+import React, { Suspense } from "react";
 
 // Loading fallback component
-const LoadingFallback = ({ height = '400px' }: { height?: string }) => (
+const LoadingFallback = ({ height = "400px" }: { height?: string }) => (
   <div
     className="flex items-center justify-center bg-muted/20 rounded-lg animate-pulse"
     style={{ height }}
@@ -20,13 +20,19 @@ const LoadingFallback = ({ height = '400px' }: { height?: string }) => (
 // Dynamic imports for heavy components
 const DynamicChartComponents = {
   // Charts are heavy - lazy load them
-  BarChart: React.lazy(() => import('@nivo/bar').then((m) => ({ default: m.ResponsiveBar }))),
-  LineChart: React.lazy(() => import('@nivo/line').then((m) => ({ default: m.ResponsiveLine }))),
-  PieChart: React.lazy(() => import('@nivo/pie').then((m) => ({ default: m.ResponsivePie }))),
+  BarChart: React.lazy(() =>
+    import("@nivo/bar").then((m) => ({ default: m.ResponsiveBar })),
+  ),
+  LineChart: React.lazy(() =>
+    import("@nivo/line").then((m) => ({ default: m.ResponsiveLine })),
+  ),
+  PieChart: React.lazy(() =>
+    import("@nivo/pie").then((m) => ({ default: m.ResponsivePie })),
+  ),
 };
 
 interface LazyChartProps {
-  type: 'bar' | 'line' | 'pie';
+  type: "bar" | "line" | "pie";
   data: any;
   height?: string;
 }
@@ -35,10 +41,10 @@ interface LazyChartProps {
  * Lazy Loaded Chart Component
  * Loads chart library only when needed
  */
-export function LazyChart({ type, data, height = '400px' }: LazyChartProps) {
+export function LazyChart({ type, data, height = "400px" }: LazyChartProps) {
   const ChartComponent =
     DynamicChartComponents[
-      type === 'bar' ? 'BarChart' : type === 'line' ? 'LineChart' : 'PieChart'
+      type === "bar" ? "BarChart" : type === "line" ? "LineChart" : "PieChart"
     ];
 
   return (
@@ -94,21 +100,27 @@ export function LazyPage({ children, fallback }: LazyPageProps) {
 // Export pre-configured lazy imports for common patterns
 export const lazyImports = {
   // Intelligence features - heavy components
-  IntelligenceCenter: React.lazy(() => import('@/app/(workspace)/intelligence/page')),
-  NewsRoom: React.lazy(() => import('@/app/(workspace)/intelligence/news-room/page')),
-  ArticleComposer: React.lazy(() => import('@/app/(workspace)/intelligence/article-composer/page')),
+  IntelligenceCenter: React.lazy(
+    () => import("@/app/(workspace)/intelligence/page"),
+  ),
+  NewsRoom: React.lazy(
+    () => import("@/app/(workspace)/intelligence/news-room/page"),
+  ),
+  ArticleComposer: React.lazy(
+    () => import("@/app/(workspace)/intelligence/article-composer/page"),
+  ),
 
   // Settings - less frequently accessed
-  Settings: React.lazy(() => import('@/app/(workspace)/settings/page')),
+  Settings: React.lazy(() => import("@/app/(workspace)/settings/page")),
 
   // Client management
-  ClientDetail: React.lazy(() => import('@/app/(workspace)/clients/[id]/page')),
-  ClientNew: React.lazy(() => import('@/app/(workspace)/clients/new/page')),
+  ClientDetail: React.lazy(() => import("@/app/(workspace)/clients/[id]/page")),
+  ClientNew: React.lazy(() => import("@/app/(workspace)/clients/new/page")),
 };
 
 // Preload helper for predictive loading
 export const preloadComponent = <T extends React.ComponentType<any>>(
-  factory: () => Promise<{ default: T }>
+  factory: () => Promise<{ default: T }>,
 ) => {
   const Component = React.lazy(factory);
   // Start loading immediately but don't block

@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { logger } from '@/lib/logger';
-import { toError } from '@/lib/types/common';
+import { NextRequest, NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
+import { toError } from "@/lib/types/common";
 
-const ZANTARA_API = process.env.ZANTARA_API_URL || 'http://localhost:8080';
+const ZANTARA_API = process.env.ZANTARA_API_URL || "http://localhost:8080";
 
 /**
  * GET /api/blog/newsletter/confirm
@@ -11,41 +11,47 @@ const ZANTARA_API = process.env.ZANTARA_API_URL || 'http://localhost:8080';
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const token = searchParams.get('token');
+    const token = searchParams.get("token");
 
     if (!token) {
       return NextResponse.redirect(
-        new URL('/insights?newsletter=error&message=missing-token', request.url)
+        new URL(
+          "/insights?newsletter=error&message=missing-token",
+          request.url,
+        ),
       );
     }
 
     const response = await fetch(
       `${ZANTARA_API}/api/blog/newsletter/confirm?token=${encodeURIComponent(token)}`,
       {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-      }
+      },
     );
 
     if (!response.ok) {
-      const errorCode = response.status === 404 ? 'invalid-token' : 'confirmation-failed';
+      const errorCode =
+        response.status === 404 ? "invalid-token" : "confirmation-failed";
       return NextResponse.redirect(
-        new URL(`/insights?newsletter=error&message=${errorCode}`, request.url)
+        new URL(`/insights?newsletter=error&message=${errorCode}`, request.url),
       );
     }
 
     // Redirect to success page
-    return NextResponse.redirect(new URL('/insights?newsletter=confirmed', request.url));
+    return NextResponse.redirect(
+      new URL("/insights?newsletter=confirmed", request.url),
+    );
   } catch (error) {
     logger.error(
-      'Newsletter confirmation error',
-      { component: 'Newsletter', action: 'confirm' },
-      toError(error)
+      "Newsletter confirmation error",
+      { component: "Newsletter", action: "confirm" },
+      toError(error),
     );
     return NextResponse.redirect(
-      new URL('/insights?newsletter=error&message=server-error', request.url)
+      new URL("/insights?newsletter=error&message=server-error", request.url),
     );
   }
 }

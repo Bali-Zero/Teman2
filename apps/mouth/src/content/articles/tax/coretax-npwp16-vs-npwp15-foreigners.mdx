@@ -65,17 +65,17 @@ For foreigners, who do not have a NIK, the solution was different: prefix a "0" 
 
 ## The Two NPWP Formats Compared
 
-| Feature | Old NPWP (15-digit) | New NPWP (16-digit) |
-|---|---|---|
-| Length | 15 digits | 16 digits |
-| Format (display) | XX.XXX.XXX.X-XXX.XXX | XXXXXXXXXXXXXXXX |
-| For Indonesian citizens | Unique tax number | NIK (national ID number) |
-| For foreigners | Unique tax number | "0" + old 15-digit number |
-| For entities (PT, CV) | Unique tax number | "0" + old 15-digit number |
-| Used in CoreTax | No (deprecated) | Yes (required) |
-| Used in e-Faktur | Legacy only | Required for new invoices |
-| Used in e-Bupot | Legacy only | Required |
-| Status as of 2026 | Phased out | Active and mandatory |
+| Feature                 | Old NPWP (15-digit)  | New NPWP (16-digit)       |
+| ----------------------- | -------------------- | ------------------------- |
+| Length                  | 15 digits            | 16 digits                 |
+| Format (display)        | XX.XXX.XXX.X-XXX.XXX | XXXXXXXXXXXXXXXX          |
+| For Indonesian citizens | Unique tax number    | NIK (national ID number)  |
+| For foreigners          | Unique tax number    | "0" + old 15-digit number |
+| For entities (PT, CV)   | Unique tax number    | "0" + old 15-digit number |
+| Used in CoreTax         | No (deprecated)      | Yes (required)            |
+| Used in e-Faktur        | Legacy only          | Required for new invoices |
+| Used in e-Bupot         | Legacy only          | Required                  |
+| Status as of 2026       | Phased out           | Active and mandatory      |
 
 ## How the 15-Digit NPWP Was Structured
 
@@ -92,6 +92,7 @@ XX.XXX.XXX.X-XXX.XXX
 ```
 
 The first two digits indicated the type of taxpayer:
+
 - **01-03**: Individual taxpayers
 - **21-23**: Entity taxpayers (PT, CV, etc.)
 - **31-33**: Branch offices
@@ -103,12 +104,14 @@ For foreign nationals (WNA - Warga Negara Asing), the migration is straightforwa
 **Your new 16-digit NPWP = "0" + your old 15-digit NPWP (without dots and dashes)**
 
 **Example:**
+
 - Old NPWP: `74.523.891.2-904.000`
 - Remove formatting: `745238912904000`
 - Add leading zero: `0745238912904000`
 - New 16-digit NPWP: **0745238912904000**
 
 This applies to both:
+
 - Individual foreigners (holding KITAS/KITAP)
 - Foreign-owned entities (PT PMA)
 
@@ -140,6 +143,7 @@ When issuing withholding tax certificates (bukti potong) for PPh 21, PPh 23, or 
 ### 4. Bank and Financial Transactions
 
 Banks and financial institutions now request the 16-digit NPWP for:
+
 - Opening corporate bank accounts
 - Loan applications
 - International wire transfers above IDR 100 million
@@ -195,15 +199,15 @@ If your profile data needs correction:
 
 After verifying your CoreTax profile, update your 16-digit NPWP in:
 
-| Where to Update | How to Update | Priority |
-|---|---|---|
-| Bank accounts | Visit bank branch with new NPWP | High |
-| Company records (PT PMA) | Update through AHU/OSS | High |
-| Clients/vendors for invoicing | Send notification letter | High |
-| e-Faktur application | Update in settings | High |
-| Payroll system (if employer) | Notify HR department | Medium |
-| Insurance policies | Contact provider | Low |
-| Rental agreements | Amend with landlord | Low |
+| Where to Update               | How to Update                   | Priority |
+| ----------------------------- | ------------------------------- | -------- |
+| Bank accounts                 | Visit bank branch with new NPWP | High     |
+| Company records (PT PMA)      | Update through AHU/OSS          | High     |
+| Clients/vendors for invoicing | Send notification letter        | High     |
+| e-Faktur application          | Update in settings              | High     |
+| Payroll system (if employer)  | Notify HR department            | Medium   |
+| Insurance policies            | Contact provider                | Low      |
+| Rental agreements             | Amend with landlord             | Low      |
 
 ## Common Problems During Migration
 
@@ -212,6 +216,7 @@ After verifying your CoreTax profile, update your 16-digit NPWP in:
 You need your EFIN to reset your CoreTax password, but many taxpayers have lost or never received their EFIN.
 
 **Solution:**
+
 - Call Kring Pajak at 1500-200 with your NPWP ready
 - Visit your registered KPP with identification documents
 - EFIN can be re-issued on the spot at KPP
@@ -221,6 +226,7 @@ You need your EFIN to reset your CoreTax password, but many taxpayers have lost 
 The password reset email goes to your old email address that you no longer have access to.
 
 **Solution:**
+
 - Visit your KPP with identification documents
 - Request an email update
 - After the email is updated, retry the password reset process
@@ -231,6 +237,7 @@ The password reset email goes to your old email address that you no longer have 
 Your NPWP is registered at a KPP in Jakarta, but you now live in Bali.
 
 **Solution:**
+
 - You can visit any KPP for NPWP-related inquiries
 - However, official changes (address, email) may require your registered KPP
 - Consider filing for a KPP transfer (mutasi) to your current location
@@ -241,6 +248,7 @@ Your NPWP is registered at a KPP in Jakarta, but you now live in Bali.
 If you are a PT PMA director, you have two NPWPs: personal and company. Both need to be migrated.
 
 **Solution:**
+
 - Personal NPWP: "0" + old 15-digit personal NPWP
 - Company NPWP: "0" + old 15-digit company NPWP
 - Both must be activated separately in CoreTax
@@ -254,14 +262,14 @@ For PT PMA companies, the NPWP migration has specific operational implications:
 
 All monthly and annual tax filings now use the 16-digit company NPWP:
 
-| Filing Type | Format Required | Deadline |
-|---|---|---|
-| SPT Masa PPh 21 | 16-digit NPWP | 20th of following month |
-| SPT Masa PPh 23/26 | 16-digit NPWP | 20th of following month |
-| SPT Masa PPN | 16-digit NPWP | End of following month |
-| SPT Tahunan Badan | 16-digit NPWP | April 30 |
-| e-Faktur invoices | 16-digit NPWP | Real-time |
-| e-Bupot certificates | 16-digit NPWP | Same as SPT Masa |
+| Filing Type          | Format Required | Deadline                |
+| -------------------- | --------------- | ----------------------- |
+| SPT Masa PPh 21      | 16-digit NPWP   | 20th of following month |
+| SPT Masa PPh 23/26   | 16-digit NPWP   | 20th of following month |
+| SPT Masa PPN         | 16-digit NPWP   | End of following month  |
+| SPT Tahunan Badan    | 16-digit NPWP   | April 30                |
+| e-Faktur invoices    | 16-digit NPWP   | Real-time               |
+| e-Bupot certificates | 16-digit NPWP   | Same as SPT Masa        |
 
 ### Employee Tax (PPh 21)
 
@@ -287,14 +295,14 @@ Your PT PMA must communicate the new 16-digit NPWP to all business partners. A s
 
 ## Transition Timeline
 
-| Date | Milestone |
-|---|---|
-| October 2022 | PMK 112/2022 issued - NPWP migration announced |
-| January 2024 | Dual format accepted (both 15 and 16-digit) |
-| January 2025 | CoreTax launched - 16-digit required for new system |
-| July 2025 | 15-digit NPWP no longer accepted for e-Faktur |
-| December 2025 | Full migration deadline for all taxpayers |
-| 2026 onwards | 16-digit NPWP is the only valid format |
+| Date          | Milestone                                           |
+| ------------- | --------------------------------------------------- |
+| October 2022  | PMK 112/2022 issued - NPWP migration announced      |
+| January 2024  | Dual format accepted (both 15 and 16-digit)         |
+| January 2025  | CoreTax launched - 16-digit required for new system |
+| July 2025     | 15-digit NPWP no longer accepted for e-Faktur       |
+| December 2025 | Full migration deadline for all taxpayers           |
+| 2026 onwards  | 16-digit NPWP is the only valid format              |
 
 ## Frequently Asked Questions
 

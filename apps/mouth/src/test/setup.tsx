@@ -1,21 +1,21 @@
-import React from 'react';
-import '@testing-library/jest-dom';
-import { vi } from 'vitest';
+import React from "react";
+import "@testing-library/jest-dom";
+import { vi } from "vitest";
 
 // Mock Next.js router
-vi.mock('next/navigation', () => ({
+vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: vi.fn(),
     replace: vi.fn(),
     prefetch: vi.fn(),
     back: vi.fn(),
   }),
-  usePathname: () => '/',
+  usePathname: () => "/",
   useSearchParams: () => new URLSearchParams(),
 }));
 
 // Mock Next.js Image component
-vi.mock('next/image', () => ({
+vi.mock("next/image", () => ({
   default: ({
     src,
     alt,
@@ -71,7 +71,7 @@ class LocalStorageMock implements Storage {
 }
 
 const localStorageMock = new LocalStorageMock();
-Object.defineProperty(window, 'localStorage', {
+Object.defineProperty(window, "localStorage", {
   value: localStorageMock,
   writable: true,
   configurable: true,
@@ -84,7 +84,7 @@ global.fetch = vi.fn();
 const clipboardMock = {
   writeText: vi.fn().mockResolvedValue(undefined),
 };
-Object.defineProperty(navigator, 'clipboard', {
+Object.defineProperty(navigator, "clipboard", {
   value: clipboardMock,
   writable: true,
   configurable: true,

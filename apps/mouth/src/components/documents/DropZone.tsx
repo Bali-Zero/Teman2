@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useCallback, useState, useEffect } from 'react';
-import { Upload, X } from 'lucide-react';
+import { useCallback, useState, useEffect } from "react";
+import { Upload, X } from "lucide-react";
 
 interface DropZoneProps {
   onFilesDropped: (files: File[]) => void;
@@ -9,7 +9,11 @@ interface DropZoneProps {
   children: React.ReactNode;
 }
 
-export function DropZone({ onFilesDropped, disabled, children }: DropZoneProps) {
+export function DropZone({
+  onFilesDropped,
+  disabled,
+  children,
+}: DropZoneProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [dragCounter, setDragCounter] = useState(0);
 
@@ -24,7 +28,7 @@ export function DropZone({ onFilesDropped, disabled, children }: DropZoneProps) 
         setIsDragging(true);
       }
     },
-    [disabled]
+    [disabled],
   );
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
@@ -59,7 +63,7 @@ export function DropZone({ onFilesDropped, disabled, children }: DropZoneProps) 
         onFilesDropped(files);
       }
     },
-    [disabled, onFilesDropped]
+    [disabled, onFilesDropped],
   );
 
   // Reset drag state on window blur
@@ -69,8 +73,8 @@ export function DropZone({ onFilesDropped, disabled, children }: DropZoneProps) 
       setDragCounter(0);
     };
 
-    window.addEventListener('blur', handleBlur);
-    return () => window.removeEventListener('blur', handleBlur);
+    window.addEventListener("blur", handleBlur);
+    return () => window.removeEventListener("blur", handleBlur);
   }, []);
 
   return (
@@ -110,18 +114,22 @@ interface UploadProgressProps {
     id: string;
     name: string;
     progress: number;
-    status: 'uploading' | 'completed' | 'error';
+    status: "uploading" | "completed" | "error";
     error?: string;
   }>;
   onCancel: (id: string) => void;
   onDismiss: (id: string) => void;
 }
 
-export function UploadProgress({ uploads, onCancel, onDismiss }: UploadProgressProps) {
+export function UploadProgress({
+  uploads,
+  onCancel,
+  onDismiss,
+}: UploadProgressProps) {
   if (uploads.length === 0) return null;
 
-  const activeUploads = uploads.filter((u) => u.status === 'uploading');
-  const completedUploads = uploads.filter((u) => u.status !== 'uploading');
+  const activeUploads = uploads.filter((u) => u.status === "uploading");
+  const completedUploads = uploads.filter((u) => u.status !== "uploading");
 
   return (
     <div className="fixed bottom-4 right-4 z-50 w-80 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800">
@@ -131,7 +139,7 @@ export function UploadProgress({ uploads, onCancel, onDismiss }: UploadProgressP
           <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
             {activeUploads.length > 0
               ? `Caricamento ${activeUploads.length} file...`
-              : 'Upload completati'}
+              : "Upload completati"}
           </span>
           {completedUploads.length > 0 && activeUploads.length === 0 && (
             <button
@@ -156,7 +164,7 @@ export function UploadProgress({ uploads, onCancel, onDismiss }: UploadProgressP
                 {upload.name}
               </p>
 
-              {upload.status === 'uploading' && (
+              {upload.status === "uploading" && (
                 <div className="mt-1">
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
                     <div
@@ -170,20 +178,24 @@ export function UploadProgress({ uploads, onCancel, onDismiss }: UploadProgressP
                 </div>
               )}
 
-              {upload.status === 'completed' && (
-                <p className="mt-0.5 text-xs text-emerald-600 dark:text-emerald-400">Completato</p>
+              {upload.status === "completed" && (
+                <p className="mt-0.5 text-xs text-emerald-600 dark:text-emerald-400">
+                  Completato
+                </p>
               )}
 
-              {upload.status === 'error' && (
+              {upload.status === "error" && (
                 <p className="mt-0.5 text-xs text-red-600 dark:text-red-400">
-                  {upload.error || 'Errore durante il caricamento'}
+                  {upload.error || "Errore durante il caricamento"}
                 </p>
               )}
             </div>
 
             <button
               onClick={() =>
-                upload.status === 'uploading' ? onCancel(upload.id) : onDismiss(upload.id)
+                upload.status === "uploading"
+                  ? onCancel(upload.id)
+                  : onDismiss(upload.id)
               }
               className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-200"
             >

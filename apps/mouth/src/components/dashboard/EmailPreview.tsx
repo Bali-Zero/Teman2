@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Mail,
   MailOpen,
@@ -11,9 +11,9 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import type { EmailSummary } from '@/lib/api/email/email.types';
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { EmailSummary } from "@/lib/api/email/email.types";
 
 interface EmailPreviewProps {
   emails: EmailSummary[];
@@ -35,16 +35,17 @@ export function EmailPreview({
   onLoadMore,
 }: EmailPreviewProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
 
   const filteredEmails = emails.filter(
     (email) =>
       email.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      email.from.address.toLowerCase().includes(searchQuery.toLowerCase())
+      email.from.address.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const selectedCount = selectedIds.size;
-  const allSelected = filteredEmails.length > 0 && selectedIds.size === filteredEmails.length;
+  const allSelected =
+    filteredEmails.length > 0 && selectedIds.size === filteredEmails.length;
 
   const handleSelectAll = () => {
     if (allSelected) {
@@ -84,9 +85,9 @@ export function EmailPreview({
     const diffMs = now.getTime() - date.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
 
-    if (diffHours < 1) return 'Now';
+    if (diffHours < 1) return "Now";
     if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffHours < 48) return 'Yesterday';
+    if (diffHours < 48) return "Yesterday";
     return date.toLocaleDateString();
   };
 
@@ -94,7 +95,9 @@ export function EmailPreview({
     return (
       <div className="bg-[var(--background)] rounded-xl border border-[var(--border)] p-6">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-[var(--foreground)]">Recent Emails</h3>
+          <h3 className="text-lg font-semibold text-[var(--foreground)]">
+            Recent Emails
+          </h3>
           <div className="animate-pulse bg-[var(--muted)] w-20 h-6 rounded"></div>
         </div>
         <div className="space-y-3">
@@ -119,7 +122,9 @@ export function EmailPreview({
     <div className="bg-[var(--background)] rounded-xl border border-[var(--border)] p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-[var(--foreground)]">Recent Emails</h3>
+        <h3 className="text-lg font-semibold text-[var(--foreground)]">
+          Recent Emails
+        </h3>
         <div className="flex items-center gap-2 text-sm text-[var(--foreground-muted)]">
           <Mail className="w-4 h-4" />
           <span>{filteredEmails.length}</span>
@@ -141,7 +146,9 @@ export function EmailPreview({
       {/* Bulk Actions */}
       {selectedCount > 0 && (
         <div className="flex items-center gap-2 mb-4 p-2 bg-[var(--background-elevated)] rounded-lg">
-          <span className="text-sm text-[var(--foreground)]">{selectedCount} selected</span>
+          <span className="text-sm text-[var(--foreground)]">
+            {selectedCount} selected
+          </span>
           <div className="flex items-center gap-1 ml-auto">
             <button
               onClick={() => handleMarkReadSelected(true)}
@@ -173,7 +180,7 @@ export function EmailPreview({
         <div className="text-center py-12">
           <Mail className="w-12 h-12 text-[var(--foreground-muted)] mx-auto mb-4" />
           <p className="text-[var(--foreground-muted)]">
-            {searchQuery ? 'No emails found' : 'No recent emails'}
+            {searchQuery ? "No emails found" : "No recent emails"}
           </p>
         </div>
       ) : (
@@ -182,23 +189,26 @@ export function EmailPreview({
             <div
               key={email.message_id}
               className={cn(
-                'group flex items-start gap-3 p-3 rounded-lg border transition-all cursor-pointer',
-                'hover:bg-[var(--background-elevated)] hover:border-[var(--border)]',
-                selectedIds.has(email.message_id) && 'bg-[var(--accent)]/10 border-[var(--accent)]',
-                !email.is_read && 'bg-[var(--background-elevated)]'
+                "group flex items-start gap-3 p-3 rounded-lg border transition-all cursor-pointer",
+                "hover:bg-[var(--background-elevated)] hover:border-[var(--border)]",
+                selectedIds.has(email.message_id) &&
+                  "bg-[var(--accent)]/10 border-[var(--accent)]",
+                !email.is_read && "bg-[var(--background-elevated)]",
               )}
             >
               {/* Checkbox */}
               <button
                 onClick={() => handleToggleSelect(email.message_id)}
                 className={cn(
-                  'w-4 h-4 rounded border-2 flex items-center justify-center transition-colors mt-0.5',
+                  "w-4 h-4 rounded border-2 flex items-center justify-center transition-colors mt-0.5",
                   selectedIds.has(email.message_id)
-                    ? 'bg-[var(--accent)] border-[var(--accent)]'
-                    : 'border-[var(--border)] hover:border-[var(--accent)]'
+                    ? "bg-[var(--accent)] border-[var(--accent)]"
+                    : "border-[var(--border)] hover:border-[var(--accent)]",
                 )}
               >
-                {selectedIds.has(email.message_id) && <Check className="w-3 h-3 text-white" />}
+                {selectedIds.has(email.message_id) && (
+                  <Check className="w-3 h-3 text-white" />
+                )}
               </button>
 
               {/* Email Content */}
@@ -208,10 +218,10 @@ export function EmailPreview({
                     <div className="flex items-center gap-2 mb-1">
                       <span
                         className={cn(
-                          'text-sm font-medium truncate',
+                          "text-sm font-medium truncate",
                           email.is_read
-                            ? 'text-[var(--foreground-muted)]'
-                            : 'text-[var(--foreground)]'
+                            ? "text-[var(--foreground-muted)]"
+                            : "text-[var(--foreground)]",
                         )}
                       >
                         {email.from.name || email.from.address}
@@ -222,10 +232,10 @@ export function EmailPreview({
                     </div>
                     <p
                       className={cn(
-                        'text-sm truncate mb-1',
+                        "text-sm truncate mb-1",
                         email.is_read
-                          ? 'text-[var(--foreground-muted)]'
-                          : 'text-[var(--foreground)] font-medium'
+                          ? "text-[var(--foreground-muted)]"
+                          : "text-[var(--foreground)] font-medium",
                       )}
                     >
                       {email.subject}

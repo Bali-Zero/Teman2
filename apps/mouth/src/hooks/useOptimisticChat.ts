@@ -1,13 +1,19 @@
-'use client';
+"use client";
 
-import { useState, useOptimistic, useTransition, useCallback, useRef } from 'react';
+import {
+  useState,
+  useOptimistic,
+  useTransition,
+  useCallback,
+  useRef,
+} from "react";
 import {
   saveConversation,
   type ChatMessage,
   type Source,
   type StreamEvent,
-} from '@/app/chat/actions';
-import { sendMessageStream } from '@/app/chat/stream-helper';
+} from "@/app/chat/actions";
+import { sendMessageStream } from "@/app/chat/stream-helper";
 
 /**
  * Optimistic Chat Hook
@@ -50,8 +56,10 @@ interface UseOptimisticChatReturn {
 }
 
 // Utilities
-const generateId = () => `msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-const generateSessionId = () => `session_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+const generateId = () =>
+  `msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+const generateSessionId = () =>
+  `session_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 
 export function useOptimisticChat({
   userId,
@@ -60,15 +68,16 @@ export function useOptimisticChat({
   // Core state
   const [messages, setMessages] = useState<OptimisticMessage[]>([]);
   const [sessionId, setSessionId] = useState(() => generateSessionId());
-  const [input, setInput] = useState('');
-  const [currentStatus, setCurrentStatus] = useState('');
+  const [input, setInput] = useState("");
+  const [currentStatus, setCurrentStatus] = useState("");
   const [sources, setSources] = useState<Source[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
 
   // Refs for cancellation
   const abortControllerRef = useRef<AbortController | null>(null);
   const currentAssistantIdRef = useRef<string | null>(null);
-  const streamReaderRef = useRef<ReadableStreamDefaultReader<StreamEvent> | null>(null);
+  const streamReaderRef =
+    useRef<ReadableStreamDefaultReader<StreamEvent> | null>(null);
 
   // Transition for non-blocking updates
   const [isPending, startTransition] = useTransition();
@@ -78,9 +87,9 @@ export function useOptimisticChat({
   // ============================================
   const [optimisticMessages, addOptimisticMessage] = useOptimistic<
     OptimisticMessage[],
-    { action: 'add' | 'update'; message: OptimisticMessage }
+    { action: "add" | "update"; message: OptimisticMessage }
   >(messages, (state, { action, message }) => {
-    if (action === 'add') {
+    if (action === "add") {
       return [...state, message];
     }
     // Update existing message
@@ -95,7 +104,7 @@ export function useOptimisticChat({
     if (!trimmedInput || isPending || isStreaming) return;
 
     // Clear input immediately
-    setInput('');
+    setInput("");
     setIsStreaming(true);
 
     // Create new abort controller
@@ -104,7 +113,7 @@ export function useOptimisticChat({
     // Create messages
     const userMessage: OptimisticMessage = {
       id: generateId(),
-      role: 'user',
+      role: "user",
       content: trimmedInput,
       timestamp: new Date(),
       isPending: false,
@@ -112,8 +121,8 @@ export function useOptimisticChat({
 
     const assistantMessage: OptimisticMessage = {
       id: generateId(),
-      role: 'assistant',
-      content: '',
+      role: "assistant",
+      content: "",
       timestamp: new Date(),
       isPending: true,
       isStreaming: true,
@@ -123,8 +132,8 @@ export function useOptimisticChat({
 
     // 🔥 OPTIMISTIC UPDATE: Messages appear INSTANTLY
     startTransition(() => {
-      addOptimisticMessage({ action: 'add', message: userMessage });
-      addOptimisticMessage({ action: 'add', message: assistantMessage });
+      addOptimisticMessage({ action: "add", message: userMessage });
+      addOptimisticMessage({ action: "add", message: assistantMessage });
     });
 
     // Update actual state
@@ -136,7 +145,7 @@ export function useOptimisticChat({
       const stream = await sendMessageStream(
         newMessages.filter((m) => !m.isStreaming),
         sessionId,
-        userId
+        userId,
       );
 
       const reader = stream.getReader();
@@ -152,33 +161,37 @@ export function useOptimisticChat({
         const event = value as StreamEvent;
 
         switch (event.type) {
-          case 'token':
+          case "token":
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === assistantMessage.id
                   ? { ...m, content: event.data as string, isPending: false }
-                  : m
-              )
+                  : m,
+              ),
             );
             break;
 
-          case 'status':
+          case "status":
             setCurrentStatus(event.data as string);
             break;
 
-          case 'sources': {
+          case "sources": {
             const newSources = event.data as Source[];
             setSources(newSources);
             setMessages((prev) =>
-              prev.map((m) => (m.id === assistantMessage.id ? { ...m, sources: newSources } : m))
+              prev.map((m) =>
+                m.id === assistantMessage.id
+                  ? { ...m, sources: newSources }
+                  : m,
+              ),
             );
             break;
           }
 
-          case 'error':
+          case "error":
             throw new Error(event.data as string);
 
-          case 'done':
+          case "done":
             break;
         }
       }
@@ -186,19 +199,22 @@ export function useOptimisticChat({
       // Complete streaming
       setMessages((prev) =>
         prev.map((m) =>
-          m.id === assistantMessage.id ? { ...m, isStreaming: false, isPending: false } : m
-        )
+          m.id === assistantMessage.id
+            ? { ...m, isStreaming: false, isPending: false }
+            : m,
+        ),
       );
 
       // Save in background
       startTransition(async () => {
         await saveConversation(
           messages.filter((m) => !m.isStreaming),
-          sessionId
+          sessionId,
         );
       });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to send message';
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to send message";
 
       // Update with error message
       setMessages((prev) =>
@@ -210,18 +226,27 @@ export function useOptimisticChat({
                 isPending: false,
                 isStreaming: false,
               }
-            : m
-        )
+            : m,
+        ),
       );
 
       onError?.(errorMessage);
     } finally {
       setIsStreaming(false);
-      setCurrentStatus('');
+      setCurrentStatus("");
       currentAssistantIdRef.current = null;
       streamReaderRef.current = null;
     }
-  }, [input, isPending, isStreaming, messages, sessionId, userId, addOptimisticMessage, onError]);
+  }, [
+    input,
+    isPending,
+    isStreaming,
+    messages,
+    sessionId,
+    userId,
+    addOptimisticMessage,
+    onError,
+  ]);
 
   // ============================================
   // ❌ Cancel Stream
@@ -230,15 +255,20 @@ export function useOptimisticChat({
     abortControllerRef.current?.abort();
     streamReaderRef.current?.cancel();
     setIsStreaming(false);
-    setCurrentStatus('');
+    setCurrentStatus("");
 
     if (currentAssistantIdRef.current) {
       setMessages((prev) =>
         prev.map((m) =>
           m.id === currentAssistantIdRef.current
-            ? { ...m, content: m.content || 'Cancelled', isStreaming: false, isPending: false }
-            : m
-        )
+            ? {
+                ...m,
+                content: m.content || "Cancelled",
+                isStreaming: false,
+                isPending: false,
+              }
+            : m,
+        ),
       );
     }
   }, []);
@@ -250,7 +280,7 @@ export function useOptimisticChat({
     cancelStream();
     setMessages([]);
     setSources([]);
-    setCurrentStatus('');
+    setCurrentStatus("");
     setSessionId(generateSessionId());
   }, [cancelStream]);
 

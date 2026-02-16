@@ -1,11 +1,24 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Brain, User, Globe, ChevronDown, ChevronUp, Loader2, Sparkles } from 'lucide-react';
-import { api } from '@/lib/api';
-import { UserMemoryContext } from '@/types';
-import { motion, AnimatePresence } from 'framer-motion';
-import { logError, logWarn, logInfo, LogCategory } from '@/lib/logging/structured-logger';
+import React, { useState, useEffect, useRef } from "react";
+import {
+  Brain,
+  User,
+  Globe,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  Sparkles,
+} from "lucide-react";
+import { api } from "@/lib/api";
+import { UserMemoryContext } from "@/types";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  logError,
+  logWarn,
+  logInfo,
+  LogCategory,
+} from "@/lib/logging/structured-logger";
 
 // Circuit breaker configuration
 const CIRCUIT_BREAKER_THRESHOLD = 3; // Number of failures before opening circuit
@@ -27,14 +40,23 @@ export function MemoryPulse() {
     if (circuitOpen.current && circuitOpenedAt.current) {
       const timeSinceOpened = Date.now() - circuitOpenedAt.current;
       if (timeSinceOpened < CIRCUIT_BREAKER_TIMEOUT) {
-        logInfo(LogCategory.MEMORY, 'Circuit breaker open, skipping memory pulse request', {
-          failureCount: failureCount.current,
-          timeRemaining: Math.round((CIRCUIT_BREAKER_TIMEOUT - timeSinceOpened) / 1000) + 's',
-        });
+        logInfo(
+          LogCategory.MEMORY,
+          "Circuit breaker open, skipping memory pulse request",
+          {
+            failureCount: failureCount.current,
+            timeRemaining:
+              Math.round((CIRCUIT_BREAKER_TIMEOUT - timeSinceOpened) / 1000) +
+              "s",
+          },
+        );
         return;
       }
       // Timeout passed, attempt to close circuit
-      logInfo(LogCategory.MEMORY, 'Circuit breaker timeout passed, attempting to close circuit');
+      logInfo(
+        LogCategory.MEMORY,
+        "Circuit breaker timeout passed, attempting to close circuit",
+      );
       circuitOpen.current = false;
       circuitOpenedAt.current = null;
       failureCount.current = 0;
@@ -53,19 +75,22 @@ export function MemoryPulse() {
       }
     } catch (error) {
       failureCount.current++;
-      logError(LogCategory.MEMORY, 'Failed to load memory pulse', {
-        error: error instanceof Error ? error.message : 'Unknown error',
+      logError(LogCategory.MEMORY, "Failed to load memory pulse", {
+        error: error instanceof Error ? error.message : "Unknown error",
         failureCount: failureCount.current,
         circuitOpen: circuitOpen.current,
       });
 
       // Open circuit breaker if threshold reached
-      if (failureCount.current >= CIRCUIT_BREAKER_THRESHOLD && !circuitOpen.current) {
+      if (
+        failureCount.current >= CIRCUIT_BREAKER_THRESHOLD &&
+        !circuitOpen.current
+      ) {
         circuitOpen.current = true;
         circuitOpenedAt.current = Date.now();
         logWarn(
           LogCategory.MEMORY,
-          `Circuit breaker opened after ${CIRCUIT_BREAKER_THRESHOLD} failures. Will retry in ${CIRCUIT_BREAKER_TIMEOUT / 1000} seconds`
+          `Circuit breaker opened after ${CIRCUIT_BREAKER_THRESHOLD} failures. Will retry in ${CIRCUIT_BREAKER_TIMEOUT / 1000} seconds`,
         );
       }
     } finally {
@@ -113,7 +138,7 @@ export function MemoryPulse() {
         {isExpanded && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
+            animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             className="border-t border-white/5"
           >
@@ -162,7 +187,9 @@ export function MemoryPulse() {
                   <div className="h-1 flex-1 rounded-full bg-white/5 overflow-hidden">
                     <div className="h-full bg-teal-500/50 w-[65%]" />
                   </div>
-                  <span className="text-[9px] text-teal-400/80 font-mono">ACTIVE</span>
+                  <span className="text-[9px] text-teal-400/80 font-mono">
+                    ACTIVE
+                  </span>
                 </div>
               </div>
             </div>

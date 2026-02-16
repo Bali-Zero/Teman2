@@ -1,10 +1,10 @@
-import { useState, useCallback } from 'react';
-import { api } from '@/lib/api';
-import { logger } from '@/lib/logger';
-import { toError } from '@/lib/types/common';
+import { useState, useCallback } from "react";
+import { api } from "@/lib/api";
+import { logger } from "@/lib/logger";
+import { toError } from "@/lib/types/common";
 
 const logError = (message: string, error?: unknown) => {
-  logger.error(message, { component: 'AUTO', action: 'error' }, toError(error));
+  logger.error(message, { component: "AUTO", action: "error" }, toError(error));
 };
 
 export function useTeamStatus() {
@@ -17,7 +17,7 @@ export function useTeamStatus() {
       const status = await api.getClockStatus();
       setIsClockIn(status.is_clocked_in);
     } catch (err) {
-      logError('Failed to load clock status:', err);
+      logError("Failed to load clock status:", err);
     }
   }, []);
 
@@ -31,19 +31,19 @@ export function useTeamStatus() {
         if (result.success) {
           setIsClockIn(false);
         } else {
-          throw new Error(result.message || 'Clock out failed');
+          throw new Error(result.message || "Clock out failed");
         }
       } else {
         const result = await api.clockIn();
         if (result.success) {
           setIsClockIn(true);
         } else {
-          throw new Error(result.message || 'Clock in failed');
+          throw new Error(result.message || "Clock in failed");
         }
       }
     } catch (err) {
-      logError('Clock toggle failed:', err);
-      setError(err instanceof Error ? err.message : 'Clock toggle failed');
+      logError("Clock toggle failed:", err);
+      setError(err instanceof Error ? err.message : "Clock toggle failed");
     } finally {
       setIsLoading(false);
     }

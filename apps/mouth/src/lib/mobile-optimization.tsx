@@ -3,12 +3,12 @@
  * Adapts dashboard layout and features for mobile devices
  */
 
-import React from 'react';
+import React from "react";
 
 interface MobileExperiment {
   name: string;
   variants: MobileVariant[];
-  deviceTypes: ('mobile' | 'tablet' | 'desktop')[];
+  deviceTypes: ("mobile" | "tablet" | "desktop")[];
   breakpoints: {
     mobile: number;
     tablet: number;
@@ -21,10 +21,10 @@ interface MobileVariant {
   name: string;
   weight: number;
   config: {
-    layout: 'stacked' | 'tabbed' | 'carousel' | 'grid';
-    navigation: 'bottom' | 'side' | 'hamburger';
+    layout: "stacked" | "tabbed" | "carousel" | "grid";
+    navigation: "bottom" | "side" | "hamburger";
     widgets: string[];
-    interactions: 'swipe' | 'tap' | 'longpress';
+    interactions: "swipe" | "tap" | "longpress";
     animations: boolean;
     compactMode: boolean;
   };
@@ -32,7 +32,7 @@ interface MobileVariant {
 
 class MobileOptimizationService {
   private experiments: Map<string, MobileExperiment> = new Map();
-  private currentBreakpoint: 'mobile' | 'tablet' | 'desktop' = 'desktop';
+  private currentBreakpoint: "mobile" | "tablet" | "desktop" = "desktop";
   private assignedVariants: Map<string, string> = new Map();
   private listeners: Set<() => void> = new Set();
 
@@ -46,45 +46,45 @@ class MobileOptimizationService {
   private initializeExperiments(): void {
     const mobileExperiments: MobileExperiment[] = [
       {
-        name: 'mobile_layout',
-        deviceTypes: ['mobile', 'tablet'],
+        name: "mobile_layout",
+        deviceTypes: ["mobile", "tablet"],
         breakpoints: { mobile: 768, tablet: 1024, desktop: 1200 },
         variants: [
           {
-            id: 'stacked',
-            name: 'Stacked Layout',
+            id: "stacked",
+            name: "Stacked Layout",
             weight: 0.4,
             config: {
-              layout: 'stacked',
-              navigation: 'bottom',
-              widgets: ['stats', 'quick_actions', 'recent_items'],
-              interactions: 'swipe',
+              layout: "stacked",
+              navigation: "bottom",
+              widgets: ["stats", "quick_actions", "recent_items"],
+              interactions: "swipe",
               animations: true,
               compactMode: true,
             },
           },
           {
-            id: 'tabbed',
-            name: 'Tabbed Layout',
+            id: "tabbed",
+            name: "Tabbed Layout",
             weight: 0.35,
             config: {
-              layout: 'tabbed',
-              navigation: 'bottom',
-              widgets: ['stats', 'quick_actions', 'notifications'],
-              interactions: 'tap',
+              layout: "tabbed",
+              navigation: "bottom",
+              widgets: ["stats", "quick_actions", "notifications"],
+              interactions: "tap",
               animations: true,
               compactMode: true,
             },
           },
           {
-            id: 'carousel',
-            name: 'Carousel Layout',
+            id: "carousel",
+            name: "Carousel Layout",
             weight: 0.25,
             config: {
-              layout: 'carousel',
-              navigation: 'side',
-              widgets: ['stats', 'quick_actions'],
-              interactions: 'swipe',
+              layout: "carousel",
+              navigation: "side",
+              widgets: ["stats", "quick_actions"],
+              interactions: "swipe",
               animations: true,
               compactMode: false,
             },
@@ -92,32 +92,32 @@ class MobileOptimizationService {
         ],
       },
       {
-        name: 'mobile_navigation',
-        deviceTypes: ['mobile'],
+        name: "mobile_navigation",
+        deviceTypes: ["mobile"],
         breakpoints: { mobile: 768, tablet: 1024, desktop: 1200 },
         variants: [
           {
-            id: 'bottom_nav',
-            name: 'Bottom Navigation',
+            id: "bottom_nav",
+            name: "Bottom Navigation",
             weight: 0.6,
             config: {
-              layout: 'grid',
-              navigation: 'bottom',
-              widgets: ['home', 'cases', 'email', 'settings'],
-              interactions: 'tap',
+              layout: "grid",
+              navigation: "bottom",
+              widgets: ["home", "cases", "email", "settings"],
+              interactions: "tap",
               animations: true,
               compactMode: true,
             },
           },
           {
-            id: 'hamburger',
-            name: 'Hamburger Menu',
+            id: "hamburger",
+            name: "Hamburger Menu",
             weight: 0.4,
             config: {
-              layout: 'grid',
-              navigation: 'hamburger',
-              widgets: ['home', 'cases', 'email', 'settings'],
-              interactions: 'tap',
+              layout: "grid",
+              navigation: "hamburger",
+              widgets: ["home", "cases", "email", "settings"],
+              interactions: "tap",
               animations: false,
               compactMode: true,
             },
@@ -125,32 +125,32 @@ class MobileOptimizationService {
         ],
       },
       {
-        name: 'mobile_interactions',
-        deviceTypes: ['mobile', 'tablet'],
+        name: "mobile_interactions",
+        deviceTypes: ["mobile", "tablet"],
         breakpoints: { mobile: 768, tablet: 1024, desktop: 1200 },
         variants: [
           {
-            id: 'swipe_gestures',
-            name: 'Swipe Gestures',
+            id: "swipe_gestures",
+            name: "Swipe Gestures",
             weight: 0.5,
             config: {
-              layout: 'stacked',
-              navigation: 'bottom',
-              widgets: ['stats', 'quick_actions'],
-              interactions: 'swipe',
+              layout: "stacked",
+              navigation: "bottom",
+              widgets: ["stats", "quick_actions"],
+              interactions: "swipe",
               animations: true,
               compactMode: true,
             },
           },
           {
-            id: 'tap_only',
-            name: 'Tap Only',
+            id: "tap_only",
+            name: "Tap Only",
             weight: 0.5,
             config: {
-              layout: 'stacked',
-              navigation: 'bottom',
-              widgets: ['stats', 'quick_actions'],
-              interactions: 'tap',
+              layout: "stacked",
+              navigation: "bottom",
+              widgets: ["stats", "quick_actions"],
+              interactions: "tap",
               animations: false,
               compactMode: true,
             },
@@ -171,23 +171,23 @@ class MobileOptimizationService {
       if (newBreakpoint !== this.currentBreakpoint) {
         this.currentBreakpoint = newBreakpoint;
         this.notifyListeners();
-        if (process.env.NODE_ENV === 'development') {
+        if (process.env.NODE_ENV === "development") {
           // Breakpoint change detected
         }
       }
     };
 
     // Listen for window resize
-    window.addEventListener('resize', updateBreakpoint);
-    window.addEventListener('orientationchange', updateBreakpoint);
+    window.addEventListener("resize", updateBreakpoint);
+    window.addEventListener("orientationchange", updateBreakpoint);
   }
 
   // Detect current breakpoint
-  private detectBreakpoint(): 'mobile' | 'tablet' | 'desktop' {
+  private detectBreakpoint(): "mobile" | "tablet" | "desktop" {
     const width = window.innerWidth;
-    if (width < 768) return 'mobile';
-    if (width < 1024) return 'tablet';
-    return 'desktop';
+    if (width < 768) return "mobile";
+    if (width < 1024) return "tablet";
+    return "desktop";
   }
 
   private detectCurrentBreakpoint(): void {
@@ -266,13 +266,16 @@ class MobileOptimizationService {
 
   // Get user ID
   private getUserId(): string {
-    return localStorage.getItem('userId') || 'anonymous';
+    return localStorage.getItem("userId") || "anonymous";
   }
 
   // Save assignments to localStorage
   private saveAssignments(): void {
     const key = `mobile_ab_variants_${this.currentBreakpoint}`;
-    localStorage.setItem(key, JSON.stringify(Array.from(this.assignedVariants.entries())));
+    localStorage.setItem(
+      key,
+      JSON.stringify(Array.from(this.assignedVariants.entries())),
+    );
   }
 
   // Load assignments from localStorage
@@ -296,64 +299,64 @@ class MobileOptimizationService {
   }
 
   // Get current breakpoint
-  getCurrentBreakpoint(): 'mobile' | 'tablet' | 'desktop' {
+  getCurrentBreakpoint(): "mobile" | "tablet" | "desktop" {
     return this.currentBreakpoint;
   }
 
   // Check if mobile
   isMobile(): boolean {
-    return this.currentBreakpoint === 'mobile';
+    return this.currentBreakpoint === "mobile";
   }
 
   // Check if tablet
   isTablet(): boolean {
-    return this.currentBreakpoint === 'tablet';
+    return this.currentBreakpoint === "tablet";
   }
 
   // Check if desktop
   isDesktop(): boolean {
-    return this.currentBreakpoint === 'desktop';
+    return this.currentBreakpoint === "desktop";
   }
 
   // Get responsive classes
   getResponsiveClasses(
     baseClasses: string,
     mobileClasses?: string,
-    tabletClasses?: string
+    tabletClasses?: string,
   ): string {
     const classes = [baseClasses];
     if (mobileClasses && this.isMobile()) classes.push(mobileClasses);
     if (tabletClasses && this.isTablet()) classes.push(tabletClasses);
-    return classes.join(' ');
+    return classes.join(" ");
   }
 
   // Get mobile-optimized widget list
   getMobileWidgets(): string[] {
-    const config = this.getMobileConfig('mobile_layout');
-    return config.widgets || ['stats', 'quick_actions'];
+    const config = this.getMobileConfig("mobile_layout");
+    return config.widgets || ["stats", "quick_actions"];
   }
 
   // Get navigation style
-  getNavigationStyle(): 'bottom' | 'side' | 'hamburger' {
-    const config = this.getMobileConfig('mobile_navigation');
-    return config.navigation || 'bottom';
+  getNavigationStyle(): "bottom" | "side" | "hamburger" {
+    const config = this.getMobileConfig("mobile_navigation");
+    return config.navigation || "bottom";
   }
 
   // Get interaction mode
-  getInteractionMode(): 'swipe' | 'tap' | 'longpress' {
-    const config = this.getMobileConfig('mobile_interactions');
-    return config.interactions || 'tap';
+  getInteractionMode(): "swipe" | "tap" | "longpress" {
+    const config = this.getMobileConfig("mobile_interactions");
+    return config.interactions || "tap";
   }
 
   // Check if animations are enabled
   areAnimationsEnabled(): boolean {
-    const config = this.getMobileConfig('mobile_layout');
+    const config = this.getMobileConfig("mobile_layout");
     return config.animations !== false;
   }
 
   // Check if compact mode is enabled
   isCompactMode(): boolean {
-    const config = this.getMobileConfig('mobile_layout');
+    const config = this.getMobileConfig("mobile_layout");
     return config.compactMode === true;
   }
 }
@@ -363,7 +366,9 @@ export const mobileOptimization = new MobileOptimizationService();
 
 // React hook for mobile optimization
 export function useMobileOptimization() {
-  const [breakpoint, setBreakpoint] = React.useState<'mobile' | 'tablet' | 'desktop'>('desktop');
+  const [breakpoint, setBreakpoint] = React.useState<
+    "mobile" | "tablet" | "desktop"
+  >("desktop");
   const [isClient, setIsClient] = React.useState(false);
 
   React.useEffect(() => {
@@ -379,33 +384,43 @@ export function useMobileOptimization() {
 
   return {
     breakpoint,
-    isMobile: breakpoint === 'mobile',
-    isTablet: breakpoint === 'tablet',
-    isDesktop: breakpoint === 'desktop',
+    isMobile: breakpoint === "mobile",
+    isTablet: breakpoint === "tablet",
+    isDesktop: breakpoint === "desktop",
     isClient,
     getVariant: mobileOptimization.getVariant.bind(mobileOptimization),
-    getMobileConfig: mobileOptimization.getMobileConfig.bind(mobileOptimization),
-    getResponsiveClasses: mobileOptimization.getResponsiveClasses.bind(mobileOptimization),
-    getMobileWidgets: mobileOptimization.getMobileWidgets.bind(mobileOptimization),
-    getNavigationStyle: mobileOptimization.getNavigationStyle.bind(mobileOptimization),
-    getInteractionMode: mobileOptimization.getInteractionMode.bind(mobileOptimization),
-    areAnimationsEnabled: mobileOptimization.areAnimationsEnabled.bind(mobileOptimization),
+    getMobileConfig:
+      mobileOptimization.getMobileConfig.bind(mobileOptimization),
+    getResponsiveClasses:
+      mobileOptimization.getResponsiveClasses.bind(mobileOptimization),
+    getMobileWidgets:
+      mobileOptimization.getMobileWidgets.bind(mobileOptimization),
+    getNavigationStyle:
+      mobileOptimization.getNavigationStyle.bind(mobileOptimization),
+    getInteractionMode:
+      mobileOptimization.getInteractionMode.bind(mobileOptimization),
+    areAnimationsEnabled:
+      mobileOptimization.areAnimationsEnabled.bind(mobileOptimization),
     isCompactMode: mobileOptimization.isCompactMode.bind(mobileOptimization),
   };
 }
 
-import type { MobileOptimizationReturn } from './types/mobile-optimization.types';
+import type { MobileOptimizationReturn } from "./types/mobile-optimization.types";
 
 // Higher-order component for mobile optimization
 export function withMobileOptimization<P extends object>(
-  Component: React.ComponentType<P & { mobile?: ReturnType<typeof useMobileOptimization> }>
+  Component: React.ComponentType<
+    P & { mobile?: ReturnType<typeof useMobileOptimization> }
+  >,
 ) {
   const WrappedComponent = (props: P) => {
     const mobile = useMobileOptimization();
 
     return (
       <Component
-        {...(props as P & { mobile?: ReturnType<typeof useMobileOptimization> })}
+        {...(props as P & {
+          mobile?: ReturnType<typeof useMobileOptimization>;
+        })}
         mobile={mobile}
       />
     );
