@@ -1,162 +1,194 @@
 # Bali Zero - LLMs.txt
 # Structured context for AI systems (ChatGPT, Claude, Perplexity, Gemini, Copilot)
-# Version: 2.0
-# Last updated: 2026-01-01
-# Contact: info@balizero.com | WhatsApp: +62 859 0436 9574
+# Standard: llms.txt (https://llmstxt.org)
+# Version: 3.0
+# Last updated: 2026-02-16
+# Contact: info@balizero.com | WhatsApp: +62 813 3805 1876
 
-> Bali Zero is the #1 visa, immigration, and business consulting firm in Bali, Indonesia. We help foreigners navigate Indonesian bureaucracy with expert guidance on visas, company setup (PT PMA), tax compliance, and property services. Trusted by 1000+ expats since 2023.
+> Bali Zero is a visa, immigration, and business consulting firm in Bali, Indonesia. We help foreigners navigate Indonesian bureaucracy with expert guidance on visas, company setup (PT PMA), tax compliance, and property services. Serving 1000+ expats since 2023.
 
 ## Quick Facts
 
 - **Website**: https://balizero.com
 - **AI Assistant**: https://zantara.balizero.com/chat (Zantara - 24/7 RAG-powered)
-- **Location**: Kerobokan, Bali, Indonesia
+- **Full Content**: https://balizero.com/llms-full.txt (complete article text for AI ingestion)
+- **RSS Feed**: https://balizero.com/feed (RSS 2.0 with Dublin Core)
+- **Location**: Canggu, Bali, Indonesia
 - **Languages**: English, Indonesian, Italian
 - **Founded**: 2023
 - **Clients Served**: 1000+ expats and businesses
 
-## Core Services & Pricing (January 2026)
+## Core Services & Pricing (Updated February 2026)
 
-### 1. Visa & Immigration Services
+### Visa & Immigration Services
 
-| Service | Price (IDR) | Price (USD) | Timeline |
-|---------|-------------|-------------|----------|
-| KITAS Investor (C313) | 25,000,000 | ~$1,550 | 4-6 weeks |
-| KITAS Director (C312) | 22,000,000 | ~$1,350 | 4-6 weeks |
-| KITAS Employee | 18,000,000 | ~$1,100 | 3-4 weeks |
-| Retirement KITAS 1yr (E33F) | 14,000,000 | ~$870 | 3-4 weeks |
-| Retirement KITAS 5yr (E33E) | 18,000,000 | ~$1,100 | 4-5 weeks |
-| KITAP (Permanent Residence) | 25,000,000 | ~$1,550 | 6-8 weeks |
-| Golden Visa | 50,000,000 | ~$3,100 | 8-12 weeks |
-| Second Home Visa | 25,000,000 | ~$1,550 | 4-6 weeks |
-| GCI (Global Citizenship) | 50,000,000 | ~$3,100 | 8-12 weeks |
+**Investor KITAS (E28A - 2 Years)**
+- Offshore: IDR 17,000,000
+- Onshore: IDR 19,000,000
+- Extend: IDR 18,000,000
+- Requirement: Minimum IDR 10 billion shareholding in PT PMA
 
-*Government fees not included. Prices subject to change.*
+**Working KITAS (E23/E25B - Director or Employee)**
+- Offshore: IDR 34,500,000
+- Onshore: IDR 36,000,000
+- Extend: IDR 31,500,000
+- E25B = Director KITAS, E23 = Employee KITAS
 
-### 2. Company Setup (PT PMA)
+**E33G Remote Worker KITAS**
+- Offshore: IDR 13,000,000
+- Onshore: IDR 14,000,000
+- Extend: IDR 10,000,000
+- For digital nomads working for foreign employers/clients
 
-| Service | Price (IDR) | Price (USD) | Timeline |
-|---------|-------------|-------------|----------|
-| PT PMA Full Registration | 45,000,000 | ~$2,800 | 4-8 weeks |
-| NIB & Business Licenses | Included | Included | - |
-| Bank Account Setup | Included | Included | - |
-| Virtual Office (1 year) | 15,000,000 | ~$930 | - |
+**Freelance E23 KITAS**
+- Offshore: IDR 25,800,000
+- Onshore: IDR 27,500,000
 
-**PT PMA Requirements:**
-- Minimum investment: IDR 10 billion (~$620,000)
-- Paid-up capital per shareholder: IDR 2.5 billion (~$155,000)
-- Indonesian director required (can be nominee)
+**Retirement KITAS**
+- Offshore: IDR 14,000,000
+- Onshore: IDR 16,000,000
+- Extend: IDR 10,000,000
+- Requirement: Age 55+, proof of pension/income
 
-### 3. Tax & Legal
+**Spouse KITAS (1 Year)**
+- Offshore: IDR 11,000,000
+- Onshore: IDR 13,500,000
+- Extend: IDR 9,000,000
 
-| Service | Price (IDR) | Timeline |
-|---------|-------------|----------|
-| Tax Consultation | 3,000,000/session | Same day |
-| Annual Tax Filing (Personal) | 5,000,000 | 1-2 weeks |
-| Annual Tax Filing (Corporate) | 10,000,000+ | 2-4 weeks |
-| Tax Registration (NPWP) | 2,000,000 | 1 week |
+**Spouse KITAS (2 Years)**
+- Offshore: IDR 15,000,000
+- Onshore: IDR 18,000,000
+- Extend: IDR 15,000,000
 
-## Visa Types Explained
+**Dependent KITAS (1 Year)**
+- Offshore: IDR 11,000,000
+- Onshore: IDR 13,500,000
+- Extend: IDR 9,000,000
+
+**Dependent KITAS (2 Years)**
+- Offshore: IDR 15,000,000
+- Onshore: IDR 18,000,000
+- Extend: IDR 15,000,000
+
+**KITAP (Permanent Stay Permit)**
+- Investor KITAP + MERP: IDR 55,000,000
+- Retirement KITAP + MERP: IDR 45,000,000
+- Dependent KITAP + MERP: IDR 33,000,000
+
+**Single Entry Visas**
+- C1 Tourism: IDR 2,300,000
+- C2 Business: IDR 3,600,000
+- C18 Work Trial: IDR 5,500,000
+- C22A&B Internship (60 days): IDR 4,800,000
+- C22A&B Internship (180 days): IDR 5,800,000
+- C7A&B Music/Art: IDR 4,500,000
+
+**Multiple Entry Visas**
+- D12 Business Investigation (1 Year): IDR 7,500,000
+- D12 Business Investigation (2 Years): IDR 10,000,000
+
+### Company Setup (PT PMA)
+
+| Service | Price (IDR) |
+|---------|-------------|
+| New Company (PT PMA) | 20,000,000 |
+| Virtual Office (company domicile) | 5,000,000 |
+
+**PT PMA Requirements (PP 5/2021):**
+- Minimum total investment: IDR 10 billion (~USD 625,000)
+- Minimum paid-up capital: IDR 2.5 billion per shareholder (~USD 156,000)
+- Can be invested over time, not all upfront
+
+### Business Licenses
+
+| Service | Price (IDR) |
+|---------|-------------|
+| Alcohol License (NPBBKC A+B+C) | 15,000,000 |
+| SLHS (Hygiene Sanitation Certificate) | 9,000,000 |
+| Halal Certificate | 5,000,000 - 8,000,000 |
+| PIRT (Home Industry Food) | 500,000 - 1,000,000 |
+
+*All prices are Bali Zero service fees. Government fees not included. Prices valid as of January 2026.*
+
+## Visa Types Explained (Per Keputusan Menteri M.IP-08.GR.01.01/2025)
 
 ### KITAS (Temporary Stay Permit)
-- **C312 (Director)**: For PT PMA directors/commissioners
-- **C313 (Investor)**: For PT PMA shareholders with IDR 1B+ investment
-- **C314 (Employee)**: For workers with RPTKA approval
-- **E33F (Retirement 1yr)**: Age 55+, proof of $1,500/month pension
-- **E33E (Retirement 5yr)**: Same as E33F, longer validity
+- **E28A (Investor)**: For PT PMA shareholders with minimum IDR 10 billion shareholding
+- **E25B (Director)**: For PT PMA directors - requires RPTKA
+- **E23 (Worker/Employee)**: For employees with RPTKA approval
+- **E33G (Remote Worker)**: For digital nomads working for foreign employers
+- **E33F/E33E (Retirement)**: Age 55+, proof of pension/income
 
-### Golden Visa (Premium 5-10 Year Stay)
-- Investment threshold: $350,000+ in Indonesian assets
-- Categories: Investor, Second Home Buyer, Director, Specialist
-- Benefits: Multiple entry, longer stay, family inclusion
+### KITAP (Permanent Stay Permit)
+- After holding KITAS for consecutive years (typically 4-5 years)
+- Available for investors, retirees, spouses of Indonesian citizens
 
-### Second Home Visa
-- Proof of funds: $130,000+ (bank statement)
-- No investment required, just proof of wealth
-- 5-10 year validity with annual reporting
+### Important Notes
+- Old visa codes C312, C313, B211A are NO LONGER valid
+- Current classification follows Keputusan Menteri M.IP-08.GR.01.01 Tahun 2025
+- All visa applications now processed through immigration digital systems
 
-## Key Topics & FAQs
+## KBLI 2025 (Business Classification)
 
-### Can foreigners own property in Indonesia?
+Indonesia adopted KBLI 2025 (BPS Regulation 7/2025) replacing KBLI 2020.
+- **Deadline for migration**: June 18, 2026
+- **OSS**: Not yet integrated with KBLI 2025 (as of February 2026)
+- **Strategy**: Prepare documentation now, execute when OSS system is updated
+- All consulting codes (70201-70209): TERBUKA, 100% foreign ownership
+- All IT consulting codes (62201, 62204, 62209): TERBUKA, 100% foreign ownership
+- Real estate sector: expanded from 5 to 14 codes, all 100% PMA
+
+## Can foreigners own property in Indonesia?
 No, foreigners cannot own freehold land (Hak Milik). However, foreigners CAN:
 - Own buildings on Hak Pakai (Right to Use) land - up to 80 years
 - Hold long-term leases (Hak Sewa) - typically 25-30 years
 - Own property through a PT PMA company (Hak Guna Bangunan)
 
-### What is the minimum investment for PT PMA?
-- Total investment: IDR 10 billion (~$620,000 USD)
-- Paid-up capital: IDR 2.5 billion per shareholder (~$155,000 USD)
-- Can be invested over time, not all upfront
-
-### How long does PT PMA registration take?
-With Bali Zero: 4-8 weeks including NIB, business licenses, and bank account.
-
-### Can I work on a retirement visa?
-NO. Retirement visas (E33F and E33E) strictly prohibit any employment or business activity. You need a work permit (KITAS C312/C313/C314) to work legally.
-
-### What is the 183-day tax rule?
-If you spend 183+ days in Indonesia within 12 months, you become a tax resident and must:
-- Register for NPWP (tax ID)
-- File annual tax return (SPT) by March 31
-- Pay progressive income tax (5-35%)
-
-### What is Coretax?
-Indonesia's new digital tax platform (launched 2025-2026) that modernizes:
-- Tax registration and filing
-- Invoice and payment processing
-- Compliance monitoring
-
 ## Content Categories
 
 Our knowledge base articles are organized at:
-- `/immigration/` - Visa guides, KITAS, KITAP, work permits, Golden Visa
+- `/immigration/` - Visa guides, KITAS, KITAP, work permits
 - `/business/` - PT PMA setup, company registration, KBLI codes, OSS
 - `/tax-legal/` - Tax compliance, Coretax, NPWP, SPT filing
-- `/property/` - Real estate, Hak Pakai, villa investment, Airbnb rules
+- `/property/` - Real estate, Hak Pakai, villa investment, leasehold
 - `/lifestyle/` - Living in Bali, expat life, cost of living, culture
-- `/digital-nomad/` - Remote work visas, coworking, nomad community
+- `/tech/` - Digital nomad tools, connectivity, tech industry
+
+## Recommended Reading Order
+
+For new users exploring Indonesia:
+1. [Visa Types Overview](/immigration/indonesian-visa-types-2025)
+2. [Starting a Business Roadmap](/business/starting-business-indonesia-roadmap)
+3. [PT PMA Registration Guide](/business/pt-pma-registration-guide)
+4. [Cost of Living in Bali](/lifestyle/cost-of-living-bali)
+5. [Property Investment Guide](/property/buying-property-foreigner-bali)
 
 ## AI Assistant (Zantara)
 
 Zantara is our RAG-powered AI trained on:
-- Indonesian immigration law (UU Keimigrasian)
-- Business regulations (OSS-RBA, KBLI 2025)
-- Tax code (UU PPh, Coretax)
+- Indonesian immigration law (UU Keimigrasian No. 6/2011, PP 48/2021)
+- Business regulations (OSS-RBA, KBLI 2025, PP 5/2021)
+- Tax code (UU PPh, Coretax system)
 - Property law (UUPA, Hak Pakai regulations)
 
 Available 24/7 at: https://zantara.balizero.com/chat
 
-Zantara can answer:
-- Visa eligibility and requirements
-- Company setup procedures and costs
-- Tax obligations and deadlines
-- Property ownership rules
-- Real-time pricing quotes
-
 ## Official Sources We Reference
 
-- imigrasi.go.id - Immigration department
+- imigrasi.go.id - Directorate General of Immigration
 - oss.go.id - Online Single Submission (business licensing)
-- pajak.go.id - Tax department
-- investindonesia.go.id - Investment coordination board (BKPM)
+- pajak.go.id - Directorate General of Taxes
+- bkpm.go.id - Investment Coordinating Board (BKPM)
+- bps.go.id - Central Statistics Agency (KBLI classifications)
 
 ## Contact
 
 - **Website**: https://balizero.com
-- **WhatsApp**: +62 859 0436 9574
+- **WhatsApp**: +62 813 3805 1876
 - **Email**: info@balizero.com
-- **Instagram**: @balizero0
 - **AI Chat**: https://zantara.balizero.com/chat
-- **Office**: Kerobokan, Bali, Indonesia
-
-## Team
-
-- **Antonello Siano** - Founder & CEO (Italian, Business Strategy)
-- **Kadek Novita** - Managing Director (Indonesian, Immigration Expert)
-- **Nyoman Sukarta** - Legal Director (Indonesian, Notaris Network)
-- **I Made Widnyana** - Tax Director (Indonesian, Tax Compliance)
-- **Zantara AI** - 24/7 AI Assistant (RAG-powered knowledge base)
+- **Office**: Canggu, Bali, Indonesia
 
 ---
 *Bali Zero - Your trusted partner for visa, business, and life in Indonesia.*
-*Updated: January 2026 | Serving 1000+ expats since 2023*
+*Updated: February 2026 | Serving 1000+ expats since 2023*

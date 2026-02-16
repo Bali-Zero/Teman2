@@ -7,18 +7,23 @@
 // Article Types
 // ============================================================================
 
-export type ArticleStatus = 'draft' | 'review' | 'scheduled' | 'published' | 'archived';
+export type ArticleStatus =
+  | "draft"
+  | "review"
+  | "scheduled"
+  | "published"
+  | "archived";
 
 export type ArticleCategory =
-  | 'immigration'
-  | 'business'
-  | 'tax-legal'
-  | 'property'
-  | 'lifestyle'
-  | 'tech';
+  | "immigration"
+  | "business"
+  | "tax-legal"
+  | "property"
+  | "lifestyle"
+  | "tech";
 
-export type ArticleTone = 'professional' | 'casual' | 'urgent';
-export type ArticleLength = 'short' | 'medium' | 'long';
+export type ArticleTone = "professional" | "casual" | "urgent";
+export type ArticleLength = "short" | "medium" | "long";
 
 export interface Article {
   id: string;
@@ -65,8 +70,13 @@ export interface Article {
   aiConfidenceScore?: number;
   relatedArticleIds: string[];
 
+  // AI SEO Optimization
+  aiOptimization?: AIOptimization;
+  faq?: FAQItem[];
+  contentStructure?: ContentStructure;
+
   // Multilingual
-  locale: 'en' | 'id';
+  locale: "en" | "id";
   translations?: ArticleTranslation[];
 
   // Zantara Integration
@@ -76,7 +86,7 @@ export interface Article {
 }
 
 export interface ArticleTranslation {
-  locale: 'en' | 'id';
+  locale: "en" | "id";
   articleId: string;
 }
 
@@ -125,8 +135,8 @@ export interface NewsletterSubscriber {
   email: string;
   name?: string;
   categories: ArticleCategory[]; // Interessi
-  frequency: 'daily' | 'weekly' | 'monthly';
-  language: 'en' | 'id';
+  frequency: "daily" | "weekly" | "monthly";
+  language: "en" | "id";
   subscribedAt: Date;
   confirmed: boolean;
   zohoContactId?: string; // Link a Zoho
@@ -136,8 +146,8 @@ export interface NewsletterSubscribeRequest {
   email: string;
   name?: string;
   categories: ArticleCategory[];
-  frequency: 'daily' | 'weekly' | 'monthly';
-  language: 'en' | 'id';
+  frequency: "daily" | "weekly" | "monthly";
+  language: "en" | "id";
 }
 
 export interface NewsletterLog {
@@ -174,10 +184,10 @@ export interface AIGenerationResponse {
 
 export interface AIContentTrigger {
   id: string;
-  source: 'government' | 'news' | 'client_question' | 'manual';
+  source: "government" | "news" | "client_question" | "manual";
   topic: string;
   category: ArticleCategory;
-  urgency: 'low' | 'medium' | 'high';
+  urgency: "low" | "medium" | "high";
   sources: string[];
   detectedAt: Date;
   processed: boolean;
@@ -196,13 +206,13 @@ export interface ArticleSearchParams {
   featured?: boolean;
   trending?: boolean;
   aiGenerated?: boolean;
-  locale?: 'en' | 'id';
+  locale?: "en" | "id";
   dateFrom?: Date;
   dateTo?: Date;
   limit?: number;
   offset?: number;
-  sortBy?: 'publishedAt' | 'viewCount' | 'readingTime' | 'relevance';
-  sortOrder?: 'asc' | 'desc';
+  sortBy?: "publishedAt" | "viewCount" | "readingTime" | "relevance";
+  sortOrder?: "asc" | "desc";
 }
 
 export interface ArticleSearchResult {
@@ -260,7 +270,7 @@ export interface CategoryStat {
 }
 
 export interface ActivityItem {
-  type: 'article_published' | 'article_updated' | 'subscriber_joined';
+  type: "article_published" | "article_updated" | "subscriber_joined";
   description: string;
   timestamp: Date;
 }
@@ -271,7 +281,7 @@ export interface ActivityItem {
 
 export interface ArticleCardProps {
   article: ArticleListItem;
-  variant?: 'default' | 'featured' | 'compact' | 'horizontal';
+  variant?: "default" | "featured" | "compact" | "horizontal";
   index?: number;
   showCategory?: boolean;
   showAuthor?: boolean;
@@ -281,7 +291,7 @@ export interface ArticleCardProps {
 
 export interface ArticleGridProps {
   articles: ArticleListItem[];
-  variant?: 'masonry' | 'grid' | 'list';
+  variant?: "masonry" | "grid" | "list";
   columns?: 2 | 3 | 4;
   showFeatured?: boolean;
   className?: string;
@@ -297,7 +307,7 @@ export interface CategoryNavProps {
 }
 
 export interface NewsletterFormProps {
-  variant?: 'inline' | 'modal' | 'sidebar';
+  variant?: "inline" | "modal" | "sidebar";
   defaultCategories?: ArticleCategory[];
   onSuccess?: () => void;
   className?: string;
@@ -372,46 +382,46 @@ export const CATEGORY_METADATA: Record<
   }
 > = {
   immigration: {
-    label: 'Immigration',
-    description: 'Visas, permits, and relocation guides',
-    icon: 'Plane',
-    color: 'cyan',
-    gradient: 'from-blue-500/20 to-cyan-500/20',
+    label: "Immigration",
+    description: "Visas, permits, and relocation guides",
+    icon: "Plane",
+    color: "cyan",
+    gradient: "from-blue-500/20 to-cyan-500/20",
   },
   business: {
-    label: 'Business',
-    description: 'Company setup, KBLI codes, and regulations',
-    icon: 'Building2',
-    color: 'emerald',
-    gradient: 'from-emerald-500/20 to-teal-500/20',
+    label: "Business",
+    description: "Company setup, KBLI codes, and regulations",
+    icon: "Building2",
+    color: "emerald",
+    gradient: "from-emerald-500/20 to-teal-500/20",
   },
-  'tax-legal': {
-    label: 'Tax & Legal',
-    description: 'Tax obligations and legal compliance',
-    icon: 'Scale',
-    color: 'amber',
-    gradient: 'from-amber-500/20 to-orange-500/20',
+  "tax-legal": {
+    label: "Tax & Legal",
+    description: "Tax obligations and legal compliance",
+    icon: "Scale",
+    color: "amber",
+    gradient: "from-amber-500/20 to-orange-500/20",
   },
   property: {
-    label: 'Property',
-    description: 'Real estate and property ownership',
-    icon: 'Home',
-    color: 'rose',
-    gradient: 'from-rose-500/20 to-pink-500/20',
+    label: "Property",
+    description: "Real estate and property ownership",
+    icon: "Home",
+    color: "rose",
+    gradient: "from-rose-500/20 to-pink-500/20",
   },
   lifestyle: {
-    label: 'Lifestyle',
-    description: 'Living in Bali and Indonesia',
-    icon: 'Sun',
-    color: 'violet',
-    gradient: 'from-violet-500/20 to-purple-500/20',
+    label: "Lifestyle",
+    description: "Living in Bali and Indonesia",
+    icon: "Sun",
+    color: "violet",
+    gradient: "from-violet-500/20 to-purple-500/20",
   },
   tech: {
-    label: 'Tech',
-    description: 'Digital nomad and tech industry insights',
-    icon: 'Cpu',
-    color: 'fuchsia',
-    gradient: 'from-fuchsia-500/20 to-pink-500/20',
+    label: "Tech",
+    description: "Digital nomad and tech industry insights",
+    icon: "Cpu",
+    color: "fuchsia",
+    gradient: "from-fuchsia-500/20 to-pink-500/20",
   },
 };
 
@@ -420,11 +430,11 @@ export const CATEGORY_METADATA: Record<
 // ============================================================================
 
 export const ZANTARA_AI_AUTHOR: Author = {
-  id: 'zantara-ai',
-  name: 'Zantara AI',
-  avatar: '/static/zantara-avatar.png',
-  role: 'AI Research Assistant',
-  bio: 'Zantara AI is the intelligent assistant powering Bali Zero Insights, providing accurate and up-to-date information about business and immigration in Indonesia.',
+  id: "zantara-ai",
+  name: "Zantara AI",
+  avatar: "/static/zantara-avatar.png",
+  role: "AI Research Assistant",
+  bio: "Zantara AI is the intelligent assistant powering Bali Zero Insights, providing accurate and up-to-date information about business and immigration in Indonesia.",
   isAI: true,
 };
 
@@ -432,3 +442,36 @@ export const READING_SPEED_WPM = 200;
 export const MAX_EXCERPT_LENGTH = 200;
 export const MAX_SEO_TITLE_LENGTH = 60;
 export const MAX_SEO_DESCRIPTION_LENGTH = 160;
+
+// ============================================================================
+// AI SEO Optimization Types
+// ============================================================================
+
+export interface FAQItem {
+  question: string;
+  answer: string;
+}
+
+export interface EntityMention {
+  type:
+    | "Organization"
+    | "Place"
+    | "Service"
+    | "GovernmentOrganization"
+    | "LegalService"
+    | "Person"
+    | "Country";
+  name: string;
+  sameAs?: string; // Wikidata/Wikipedia URL for entity linking
+}
+
+export interface AIOptimization {
+  primaryQuestion: string;
+  answerSnippet: string;
+  entityMentions: EntityMention[];
+}
+
+export interface ContentStructure {
+  hasHowTo: boolean;
+  hasFAQ: boolean;
+}

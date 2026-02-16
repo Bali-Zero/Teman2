@@ -12,3 +12,5 @@ export {
 export { HomepageFAQSchema, HomepageServicesSchema, HomepageSEOSchemas } from './HomepageFAQ';
 
 export { SchemaInjector } from './SchemaInjector';
+
+export { ArticleWithFAQJsonLd, HowToJsonLd, EnhancedArticleJsonLd } from './EnhancedJsonLd';

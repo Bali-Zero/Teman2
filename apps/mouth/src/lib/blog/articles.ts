@@ -3,30 +3,30 @@
  * For Nuzantara/Bali Zero Insights Blog
  */
 
-import fs from 'fs';
-import path from 'path';
-import matter from 'gray-matter';
-import type { Article, ArticleListItem, ArticleCategory } from './types';
+import fs from "fs";
+import path from "path";
+import matter from "gray-matter";
+import type { Article, ArticleListItem, ArticleCategory } from "./types";
 
-const ARTICLES_PATH = path.join(process.cwd(), 'src/content/articles');
+const ARTICLES_PATH = path.join(process.cwd(), "src/content/articles");
 
 /**
  * Map folder/frontmatter categories to valid ArticleCategory
  * This handles legacy naming and folder structure differences
  */
 const CATEGORY_MAP: Record<string, ArticleCategory> = {
-  immigration: 'immigration',
-  business: 'business',
-  tax: 'tax-legal',
-  'tax-legal': 'tax-legal',
-  property: 'property',
-  lifestyle: 'lifestyle',
-  'digital-nomad': 'lifestyle', // Map digital-nomad to lifestyle
-  tech: 'tech',
+  immigration: "immigration",
+  business: "business",
+  tax: "tax-legal",
+  "tax-legal": "tax-legal",
+  property: "property",
+  lifestyle: "lifestyle",
+  "digital-nomad": "lifestyle", // Map digital-nomad to lifestyle
+  tech: "tech",
 };
 
 function normalizeCategory(rawCategory: string): ArticleCategory {
-  return CATEGORY_MAP[rawCategory] || 'lifestyle';
+  return CATEGORY_MAP[rawCategory] || "lifestyle";
 }
 
 /**
@@ -36,22 +36,30 @@ function normalizeCategory(rawCategory: string): ArticleCategory {
 export async function getAllArticleSlugs(): Promise<
   { folderCategory: string; category: ArticleCategory; slug: string }[]
 > {
-  const slugs: { folderCategory: string; category: ArticleCategory; slug: string }[] = [];
+  const slugs: {
+    folderCategory: string;
+    category: ArticleCategory;
+    slug: string;
+  }[] = [];
 
   const categories = fs.readdirSync(ARTICLES_PATH).filter((item) => {
     const itemPath = path.join(ARTICLES_PATH, item);
-    return fs.statSync(itemPath).isDirectory() && !item.startsWith('.');
+    return fs.statSync(itemPath).isDirectory() && !item.startsWith(".");
   });
 
   for (const folderCategory of categories) {
     const categoryPath = path.join(ARTICLES_PATH, folderCategory);
-    const files = fs.readdirSync(categoryPath).filter((file) => file.endsWith('.mdx'));
+    const files = fs
+      .readdirSync(categoryPath)
+      .filter(
+        (file) => file.endsWith(".mdx") && !file.includes(".sync-conflict-"),
+      );
 
     for (const file of files) {
       slugs.push({
         folderCategory,
         category: normalizeCategory(folderCategory),
-        slug: file.replace('.mdx', ''),
+        slug: file.replace(".mdx", ""),
       });
     }
   }
@@ -64,24 +72,27 @@ export async function getAllArticleSlugs(): Promise<
  * Some articles might be stored in legacy folder names
  */
 const CATEGORY_FOLDERS: Record<ArticleCategory, string[]> = {
-  immigration: ['immigration'],
-  business: ['business'],
-  'tax-legal': ['tax-legal', 'tax'], // Try tax-legal first, then tax
-  property: ['property'],
-  lifestyle: ['lifestyle', 'digital-nomad'], // Try lifestyle first, then digital-nomad
-  tech: ['tech'],
+  immigration: ["immigration"],
+  business: ["business"],
+  "tax-legal": ["tax-legal", "tax"], // Try tax-legal first, then tax
+  property: ["property"],
+  lifestyle: ["lifestyle", "digital-nomad"], // Try lifestyle first, then digital-nomad
+  tech: ["tech"],
 };
 
 /**
  * Get a single article by category and slug
  * Handles both normalized categories (from URLs) and folder categories (for file lookup)
  */
-export async function getArticleBySlug(category: string, slug: string): Promise<Article | null> {
+export async function getArticleBySlug(
+  category: string,
+  slug: string,
+): Promise<Article | null> {
   // Get possible folder paths for this category
   const normalizedCategory = normalizeCategory(category);
   const possibleFolders = CATEGORY_FOLDERS[normalizedCategory] || [category];
 
-  let filePath = '';
+  let filePath = "";
   let actualFolderCategory = category;
 
   // Try each possible folder
@@ -107,53 +118,62 @@ export async function getArticleBySlug(category: string, slug: string): Promise<
     return null;
   }
 
-  const fileContents = fs.readFileSync(filePath, 'utf8');
+  const fileContents = fs.readFileSync(filePath, "utf8");
   const { data: frontmatter, content } = matter(fileContents);
 
   // Parse author from frontmatter
   const author =
-    typeof frontmatter.author === 'object'
+    typeof frontmatter.author === "object"
       ? frontmatter.author
       : {
-          id: 'zantara-ai',
-          name: 'Zantara AI',
-          avatar: '/static/zantara-avatar.png',
-          role: 'AI Research Assistant',
+          id: "zantara-ai",
+          name: "Zantara AI",
+          avatar: "/static/zantara-avatar.png",
+          role: "AI Research Assistant",
           isAI: true,
         };
 
   const article: Article = {
     id: frontmatter.id || slug,
     slug: frontmatter.slug || slug,
-    title: frontmatter.title || 'Untitled',
+    title: frontmatter.title || "Untitled",
     subtitle: frontmatter.subtitle,
-    excerpt: frontmatter.excerpt || '',
+    excerpt: frontmatter.excerpt || "",
     content: content,
     coverImage:
       frontmatter.coverImage ||
       frontmatter.image?.src ||
       `/static/blog/${actualFolderCategory}/${slug}.jpg`,
-    coverImageAlt: frontmatter.coverImageAlt || frontmatter.image?.alt || frontmatter.title,
+    coverImageAlt:
+      frontmatter.coverImageAlt || frontmatter.image?.alt || frontmatter.title,
     category: normalizeCategory(frontmatter.category || category),
     tags: frontmatter.tags || [],
     author,
     createdAt: new Date(frontmatter.publishedAt || Date.now()),
-    updatedAt: new Date(frontmatter.updatedAt || frontmatter.publishedAt || Date.now()),
-    publishedAt: frontmatter.publishedAt ? new Date(frontmatter.publishedAt) : undefined,
-    status: frontmatter.status || 'published',
+    updatedAt: new Date(
+      frontmatter.updatedAt || frontmatter.publishedAt || Date.now(),
+    ),
+    publishedAt: frontmatter.publishedAt
+      ? new Date(frontmatter.publishedAt)
+      : undefined,
+    status: frontmatter.status || "published",
     featured: frontmatter.featured || false,
     trending: frontmatter.trending || false,
     seoTitle: frontmatter.seoTitle,
     seoDescription: frontmatter.seoDescription,
-    readingTime: frontmatter.readingTime || Math.ceil(content.split(/\s+/).length / 200),
+    readingTime:
+      frontmatter.readingTime || Math.ceil(content.split(/\s+/).length / 200),
     viewCount: frontmatter.viewCount || 0,
     shareCount: frontmatter.shareCount || 0,
     likeCount: frontmatter.likeCount || 0,
     commentCount: frontmatter.commentCount || 0,
     aiGenerated: frontmatter.aiGenerated || false,
     aiConfidenceScore: frontmatter.aiConfidenceScore,
+    aiOptimization: frontmatter.aiOptimization || undefined,
+    faq: frontmatter.faq || undefined,
+    contentStructure: frontmatter.contentStructure || undefined,
     relatedArticleIds: frontmatter.relatedArticles || [],
-    locale: frontmatter.locale || 'en',
+    locale: frontmatter.locale || "en",
   };
 
   return article;
@@ -192,7 +212,10 @@ export async function getAllArticles(options?: {
     const article = await getArticleBySlug(folderCategory, slug);
     if (article) {
       // Filter by featured if specified
-      if (options?.featured !== undefined && article.featured !== options.featured) {
+      if (
+        options?.featured !== undefined &&
+        article.featured !== options.featured
+      ) {
         continue;
       }
 
@@ -227,7 +250,9 @@ export async function getAllArticles(options?: {
 /**
  * Get featured articles
  */
-export async function getFeaturedArticles(limit = 6): Promise<ArticleListItem[]> {
+export async function getFeaturedArticles(
+  limit = 6,
+): Promise<ArticleListItem[]> {
   const { articles } = await getAllArticles({ featured: true, limit });
   return articles;
 }
@@ -238,7 +263,7 @@ export async function getFeaturedArticles(limit = 6): Promise<ArticleListItem[]>
 export async function getArticlesByCategory(
   category: string,
   limit = 20,
-  offset = 0
+  offset = 0,
 ): Promise<{ articles: ArticleListItem[]; total: number }> {
   return getAllArticles({ category, limit, offset });
 }
@@ -246,7 +271,9 @@ export async function getArticlesByCategory(
 /**
  * Get category counts (uses normalized categories)
  */
-export async function getCategoryCounts(): Promise<Record<ArticleCategory, number>> {
+export async function getCategoryCounts(): Promise<
+  Record<ArticleCategory, number>
+> {
   const allSlugs = await getAllArticleSlugs();
   const counts: Record<string, number> = {};
 
@@ -261,7 +288,10 @@ export async function getCategoryCounts(): Promise<Record<ArticleCategory, numbe
 /**
  * Search articles by query
  */
-export async function searchArticles(query: string, limit = 20): Promise<ArticleListItem[]> {
+export async function searchArticles(
+  query: string,
+  limit = 20,
+): Promise<ArticleListItem[]> {
   const { articles } = await getAllArticles({ limit: 200 }); // Get more for search
   const lowerQuery = query.toLowerCase();
 
