@@ -544,7 +544,8 @@ async def update_practice(
     Update practice information.
 
     Access Control:
-    All authenticated users can update any practice.
+    - Admin users: Can update any practice
+    - Team members: Can only update practices they created or are assigned to
 
     Common status values:
     - inquiry
@@ -564,10 +565,12 @@ async def update_practice(
             old_status: str | None = None
             practice_client_id: int | None = None
             practice_client_visible: bool = True
+            practice_created_by: str | None = None
+            practice_assigned_to: str | None = None
             try:
                 old_row = await conn.fetchrow(
                     """
-                    SELECT status, client_id, client_visible
+                    SELECT status, client_id, client_visible, created_by, assigned_to
                     FROM practices
                     WHERE id = $1
                     """,
@@ -581,12 +584,14 @@ async def update_practice(
                         if old_row["client_visible"] is not None
                         else True
                     )
+                    practice_created_by = old_row.get("created_by", "")
+                    practice_assigned_to = old_row.get("assigned_to", "")
             except Exception as e:
                 # Backward compatibility: client_visible column may not exist yet.
                 if getattr(e, "sqlstate", None) == "42703":
                     old_row = await conn.fetchrow(
                         """
-                        SELECT status, client_id
+                        SELECT status, client_id, created_by, assigned_to
                         FROM practices
                         WHERE id = $1
                         """,
@@ -596,8 +601,23 @@ async def update_practice(
                         old_status = old_row["status"]
                         practice_client_id = old_row["client_id"]
                         practice_client_visible = True
+                        practice_created_by = old_row.get("created_by", "")
+                        practice_assigned_to = old_row.get("assigned_to", "")
                 else:
                     raise
+
+            # RBAC: Check ownership or admin status
+            user_is_admin = is_crm_admin(current_user)
+            user_email_lower = user_email.lower()
+            if not user_is_admin:
+                # Check if user is creator or assigned to this practice
+                created_by_match = practice_created_by and practice_created_by.lower() == user_email_lower
+                assigned_to_match = practice_assigned_to and practice_assigned_to.lower() == user_email_lower
+                if not (created_by_match or assigned_to_match):
+                    raise HTTPException(
+                        status_code=403,
+                        detail="You don't have permission to update this practice"
+                    )
 
             # Build update query dynamically
             update_fields: list[str] = []
@@ -783,7 +803,9 @@ async def delete_practice(
     """
     Delete a practice (soft delete - marks as cancelled).
 
-    All authenticated users can delete any practice.
+    Access Control:
+    - Admin users: Can delete any practice
+    - Team members: Can only delete practices they created or are assigned to
 
     The practice is marked as 'cancelled' and not permanently deleted.
     """
@@ -791,6 +813,32 @@ async def delete_practice(
         user_email = current_user.get("email", "").lower()
 
         async with db_pool.acquire() as conn:
+            # Fetch practice to check ownership
+            practice_row = await conn.fetchrow(
+                """
+                SELECT created_by, assigned_to
+                FROM practices
+                WHERE id = $1
+                """,
+                practice_id,
+            )
+
+            if not practice_row:
+                raise HTTPException(status_code=404, detail="Practice not found")
+
+            # RBAC: Check ownership or admin status
+            user_is_admin = is_crm_admin(current_user)
+            if not user_is_admin:
+                created_by = (practice_row.get("created_by") or "").lower()
+                assigned_to = (practice_row.get("assigned_to") or "").lower()
+                created_by_match = created_by == user_email
+                assigned_to_match = assigned_to == user_email
+                if not (created_by_match or assigned_to_match):
+                    raise HTTPException(
+                        status_code=403,
+                        detail="You don't have permission to delete this practice"
+                    )
+
             # Soft delete - mark as cancelled
             row = await conn.fetchrow(
                 """
