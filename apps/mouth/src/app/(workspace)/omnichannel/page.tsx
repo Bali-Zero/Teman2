@@ -1,14 +1,25 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, Suspense, lazy } from 'react';
 import { api } from '@/lib/api';
 import { logger } from '@/lib/logger';
-import { InboxSidebar } from './components/InboxSidebar';
-import { ChatArea } from './components/ChatArea';
-import { LeadContextPanel } from './components/LeadContextPanel';
 import { EnrichedConversation, Message, ChannelType, ConversationStatus } from './types';
 import { useToast } from '@/components/ui/toast';
 import { useDashboardData } from '@/hooks/useDashboardData';
+
+// Lazy load heavy components to reduce initial bundle
+const InboxSidebar = lazy(() => import('./components/InboxSidebar').then(m => ({ default: m.InboxSidebar })));
+const ChatArea = lazy(() => import('./components/ChatArea').then(m => ({ default: m.ChatArea })));
+const LeadContextPanel = lazy(() => import('./components/LeadContextPanel').then(m => ({ default: m.LeadContextPanel })));
+
+// Lightweight skeleton for loading state
+const PageSkeleton = () => (
+  <div className="h-full w-full flex bg-background">
+    <div className="w-[350px] border-r border-white/20 bg-slate-900 animate-pulse" />
+    <div className="flex-1 bg-slate-900 animate-pulse" />
+    <div className="w-[400px] border-l border-white/20 bg-slate-900 animate-pulse" />
+  </div>
+);
 
 export default function OmnichannelPage() {
   const { systemStatus } = useDashboardData();
@@ -153,34 +164,36 @@ export default function OmnichannelPage() {
   }, [conversations, filterMode]);
 
   return (
-    <div className="flex h-full w-full bg-background overflow-hidden">
-      <InboxSidebar 
-        conversations={filteredConversations} 
-        selectedId={selectedId} 
-        onSelect={setSelectedId}
-        isLoading={loading}
-        filterMode={filterMode}
-        onFilterChange={setFilterType}
-        systemStatus={systemStatus}
-      />
+    <Suspense fallback={<PageSkeleton />}>
+      <div className="flex h-full w-full bg-background overflow-hidden">
+        <InboxSidebar 
+          conversations={filteredConversations} 
+          selectedId={selectedId} 
+          onSelect={setSelectedId}
+          isLoading={loading}
+          filterMode={filterMode}
+          onFilterChange={setFilterType}
+          systemStatus={systemStatus}
+        />
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <ChatArea 
+        <div className="flex-1 flex flex-col min-w-0">
+          <ChatArea 
+            conversation={selectedConversation} 
+            messages={messages}
+            onSendMessage={handleSendMessage}
+            onStatusChange={handleStatusChange}
+            isLoading={isDetailsLoading}
+          />
+        </div>
+
+        <LeadContextPanel 
           conversation={selectedConversation} 
-          messages={messages}
-          onSendMessage={handleSendMessage}
+          enrichment={enrichment}
+          onAssign={handleAssign}
           onStatusChange={handleStatusChange}
           isLoading={isDetailsLoading}
         />
       </div>
-
-      <LeadContextPanel 
-        conversation={selectedConversation} 
-        enrichment={enrichment}
-        onAssign={handleAssign}
-        onStatusChange={handleStatusChange}
-        isLoading={isDetailsLoading}
-      />
-    </div>
+    </Suspense>
   );
 }
