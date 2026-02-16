@@ -103,21 +103,26 @@ export default function NewsPageClient({
             <div className="grid grid-cols-12 gap-3 min-h-[850px] lg:min-h-[950px]">
               {/* LEFT COLUMN: Headline + News 2 + News 5 */}
               <div className="col-span-12 lg:col-span-4 flex flex-col gap-3">
-                {/* Headline Area with Looping Video Hero */}
-                <div className="py-8 lg:py-12 relative overflow-hidden bg-black/20 rounded-xl">
-                  {/* Background Video Loop */}
+                {/* Headline Area with Indonesian Flag Drape */}
+                <div className="py-8 lg:py-12 relative overflow-hidden">
+                  {/* Indonesian Flag Drape - Actual Image */}
                   <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                    <video
-                      autoPlay
-                      loop
-                      muted
-                      playsInline
-                      className="w-full h-full object-cover opacity-40 mix-blend-lighten scale-110"
-                    >
-                      <source src="/videos/kbli-logo-puzzle.mp4" type="video/mp4" />
-                    </video>
+                    <Image
+                      src="/assets/static/indonesian-flag-drape.jpg"
+                      alt=""
+                      fill
+                      className="object-cover opacity-30"
+                      style={{
+                        mixBlendMode: "screen",
+                        transform: "scale(1.3) rotate(-5deg)",
+                        transformOrigin: "center center",
+                      }}
+                      priority
+                      fetchPriority="high"
+                      sizes="(max-width: 1024px) 100vw, 40vw"
+                    />
                   </div>
-                  <div className="relative z-10 p-6">
+                  <div className="relative z-10">
                     <h1 className="font-serif text-4xl lg:text-5xl xl:text-6xl text-white leading-[1.1] mb-4">
                       Decode Indonesia.{" "}
                       <span className="text-red-500">Thrive</span> here
@@ -1045,8 +1050,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     id: "10",
     slug: "golden-visa-2026-updates",
     title: "Golden Visa 2026: One Year Later – What We've Learned",
-    excerpt:
-      "After 12 months of Indonesia's Golden Visa program, we analyze approval rates.",
+    excerpt: "After 12 months of Indonesia's Golden Visa program, we analyze approval rates.",
     coverImage: "/static/blog/golden-visa.jpg",
     category: "immigration",
     author: {
@@ -1181,7 +1185,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
       id: "zantara-ai",
       name: "Zantara AI",
       avatar: "/static/zantara-lotus.png",
-      role: "AI Research",
+      role: "AI Business Advisor",
       isAI: true,
     },
     publishedAt: new Date("2026-01-02"),
@@ -1224,7 +1228,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
       id: "zantara-ai",
       name: "Zantara AI",
       avatar: "/static/zantara-lotus.png",
-      role: "AI Research",
+      role: "AI Business Advisor",
       isAI: true,
     },
     publishedAt: new Date("2026-01-02"),

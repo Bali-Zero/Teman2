@@ -18,6 +18,10 @@ import type {
   DocumentCategory,
   ExpiryAlert,
   ExpiryAlertsSummary,
+  Company,
+  ClientCompanyLink,
+  CompanyDocument,
+  TaxRecord,
 } from './crm.types';
 
 /**
@@ -752,5 +756,86 @@ export class CrmApi {
     >;
   }> {
     return this.client.request(`/api/clients/${clientId}/drive-folder/stats`);
+  }
+
+  // ============================================
+  // COMPANIES (Company-Centric CRM)
+  // ============================================
+
+  /**
+   * Get all companies for a client
+   */
+  async getClientCompanies(clientId: number): Promise<ClientCompanyLink[]> {
+    return this.client.request<ClientCompanyLink[]>(`/api/crm/companies/by-client/${clientId}`);
+  }
+
+  /**
+   * Link a client to a company
+   */
+  async linkClientToCompany(
+    clientId: number,
+    companyId: number,
+    data: {
+      role?: string;
+      is_primary?: boolean;
+      ownership_percentage?: number;
+      shares_count?: number;
+      start_date?: string;
+    }
+  ): Promise<{ link_id: number; message: string }> {
+    return this.client.request<{ link_id: number; message: string }>(
+      `/api/crm/companies/${companyId}/clients/${clientId}/link`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+  }
+
+  /**
+   * Unlink a client from a company
+   */
+  async unlinkClientFromCompany(clientId: number, companyId: number): Promise<{ message: string }> {
+    return this.client.request<{ message: string }>(
+      `/api/crm/companies/${companyId}/clients/${clientId}/link`,
+      { method: 'DELETE' }
+    );
+  }
+
+  /**
+   * Get company details
+   */
+  async getCompany(companyId: number): Promise<Company & {
+    associates: ClientCompanyLink[];
+    documents: CompanyDocument[];
+    tax_record?: TaxRecord;
+  }> {
+    return this.client.request<Company & {
+      associates: ClientCompanyLink[];
+      documents: CompanyDocument[];
+      tax_record?: TaxRecord;
+    }>(`/api/crm/companies/${companyId}`);
+  }
+
+  /**
+   * Get company documents
+   */
+  async getCompanyDocuments(
+    companyId: number,
+    docType?: string
+  ): Promise<CompanyDocument[]> {
+    const params = new URLSearchParams();
+    if (docType) params.append('doc_type', docType);
+    const query = params.toString();
+    return this.client.request<CompanyDocument[]>(
+      `/api/crm/companies/${companyId}/documents${query ? `?${query}` : ''}`
+    );
+  }
+
+  /**
+   * Get company tax record
+   */
+  async getCompanyTax(companyId: number): Promise<TaxRecord> {
+    return this.client.request<TaxRecord>(`/api/crm/companies/${companyId}/tax`);
   }
 }
