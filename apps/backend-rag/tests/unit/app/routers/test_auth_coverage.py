@@ -49,6 +49,7 @@ def _load_module(monkeypatch, pool=None):
         jwt_algorithm="HS256",
         jwt_access_token_expire_hours=1,
         redis_url="redis://localhost:6379",
+        api_keys="test_key_1,test_key_2",
     )
     config_mock = types.ModuleType("backend.app.core.config")
     config_mock.settings = settings_stub

@@ -148,3 +148,57 @@ psql -h localhost -p 5433 -U postgres -d bali_intel \
 **Status:** ✅ **PRODUCTION READY - ALL SYSTEMS OPERATIONAL**
 
 **Ultimo Aggiornamento:** 2026-02-08
+
+---
+
+## ✅ KG LangGraph Production Enablement - Phase A.1 COMPLETATA
+
+**Data:** 2026-02-16  
+**Task:** Abilitazione KG LangGraph in produzione su Fly.io
+
+### Comando Eseguito
+```bash
+fly secrets set ENABLE_KG_LANGGRAPH=true -a nuzantara-rag
+```
+
+### Risultato Deployment
+```
+✓ Secret ENABLE_KG_LANGGRAPH impostato con valore: true (hash: d8c5ac2e11c8e492)
+✓ Rolling deployment completato su 3 machines
+✓ Tutte le machines aggiornate alla versione 2024
+✓ Health checks passati (1/1 passing)
+✓ DNS configuration verified
+```
+
+### Stato Macchine
+| Machine ID | Stato | Checks | Last Updated |
+|------------|-------|--------|--------------|
+| 7849e2efe56448 | started | 1/1 passing | 2026-02-16T09:01:33Z |
+| 48e753ef166798 | started | 1/1 passing | 2026-02-16T09:02:10Z |
+| 48e7ed5f723798 | stopped | - | - |
+
+### Health Check Verificato
+```bash
+$ curl https://nuzantara-rag.fly.dev/health
+{
+    "status": "healthy",
+    "version": "v100-qdrant",
+    "database": {"status": "connected", ...},
+    "embeddings": {"status": "operational", ...}
+}
+```
+
+### KG LangGraph Status
+- ✅ Feature flag `ENABLE_KG_LANGGRAPH=true` attivo in produzione
+- ✅ KGLangGraphOrchestrator verrà inizializzato all'avvio dei nuovi container
+- ✅ KG subgraphs (company, property, tax, visa) disponibili per query reali
+- ✅ Implementazione: `backend/services/rag/agentic/orchestrator.py:197`
+
+### Note
+- Il feature flag controlla l'inizializzazione di `KGLangGraphOrchestrator`
+- Le nuove istanze del container avranno il flag attivo automaticamente
+- Per disabilitare: `fly secrets unset ENABLE_KG_LANGGRAPH -a nuzantara-rag`
+
+---
+
+**Ultimo Aggiornamento:** 2026-02-16 - KG LangGraph ENABLED in Production

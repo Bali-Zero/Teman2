@@ -40,7 +40,8 @@ def _load_module(monkeypatch, settings_overrides=None):
     backend_path = Path(__file__).resolve().parents[4] / "backend"
 
     settings_stub = types.SimpleNamespace(
-        qdrant_url="http://qdrant.local", qdrant_api_key="", redis_url="redis://localhost:6379"
+        qdrant_url="http://qdrant.local", qdrant_api_key="", redis_url="redis://localhost:6379",
+        api_keys="test_key_1,test_key_2",
     )
     if settings_overrides:
         for key, value in settings_overrides.items():

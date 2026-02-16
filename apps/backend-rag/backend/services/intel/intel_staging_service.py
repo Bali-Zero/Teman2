@@ -99,8 +99,8 @@ class IntelStagingService:
         Returns:
             Path to saved file
         """
-        # #region agent log
-        with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
+        # #region agent log - DISABLED
+        # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
             log_file.write(
                 json.dumps(
                     {
@@ -123,8 +123,8 @@ class IntelStagingService:
         staging_dir = self.get_staging_dir(intel_type)
         staging_file = staging_dir / f"{item_id}.json"
 
-        # #region agent log
-        with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
+        # #region agent log - DISABLED
+        # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
             log_file.write(
                 json.dumps(
                     {
@@ -149,8 +149,8 @@ class IntelStagingService:
         temp_file = staging_file.with_suffix(".json.tmp")
 
         try:
-            # #region agent log
-            with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
+            # #region agent log - DISABLED
+            # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
                 log_file.write(
                     json.dumps(
                         {
@@ -172,8 +172,8 @@ class IntelStagingService:
 
             temp_file.write_text(json_content)
 
-            # #region agent log
-            with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
+            # #region agent log - DISABLED
+            # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
                 log_file.write(
                     json.dumps(
                         {
@@ -197,8 +197,8 @@ class IntelStagingService:
             # Atomic rename (works on most filesystems)
             temp_file.replace(staging_file)
 
-            # #region agent log
-            with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
+            # #region agent log - DISABLED
+            # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
                 log_file.write(
                     json.dumps(
                         {
@@ -219,8 +219,8 @@ class IntelStagingService:
             # #endregion
 
         except Exception as e:
-            # #region agent log
-            with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
+            # #region agent log - DISABLED
+            # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
                 log_file.write(
                     json.dumps(
                         {
@@ -294,8 +294,8 @@ class IntelStagingService:
         Returns:
             Existing item data if duplicate found, None otherwise
         """
-        # #region agent log
-        with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
+        # #region agent log - DISABLED
+        # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
             log_file.write(
                 json.dumps(
                     {
@@ -314,8 +314,8 @@ class IntelStagingService:
         staging_dir = self.get_staging_dir(intel_type)
         cutoff_date = datetime.utcnow() - timedelta(days=days)
 
-        # #region agent log
-        with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
+        # #region agent log - DISABLED
+        # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
             log_file.write(
                 json.dumps(
                     {
@@ -337,8 +337,8 @@ class IntelStagingService:
 
         file_paths = list(staging_dir.glob("*.json"))
 
-        # #region agent log
-        with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
+        # #region agent log - DISABLED
+        # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
             log_file.write(
                 json.dumps(
                     {
@@ -356,8 +356,8 @@ class IntelStagingService:
         # #endregion
 
         for file_path in file_paths:
-            # #region agent log
-            with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
+            # #region agent log - DISABLED
+            # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
                 log_file.write(
                     json.dumps(
                         {
@@ -377,7 +377,7 @@ class IntelStagingService:
                 )
             # #endregion
             try:
-                # #region agent log
+                # #region agent log - DISABLED
                 with open(
                     "/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a"
                 ) as log_file:
@@ -400,7 +400,7 @@ class IntelStagingService:
                 with open(file_path) as f:
                     data = json.load(f)
 
-                # #region agent log
+                # #region agent log - DISABLED
                 with open(
                     "/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a"
                 ) as log_file:
@@ -430,7 +430,7 @@ class IntelStagingService:
                         try:
                             detected_dt = datetime.fromisoformat(detected_at.replace("Z", "+00:00"))
                             if detected_dt >= cutoff_date:
-                                # #region agent log
+                                # #region agent log - DISABLED
                                 with open(
                                     "/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a"
                                 ) as log_file:
@@ -455,7 +455,7 @@ class IntelStagingService:
                                 # #endregion
                                 return data
                         except (ValueError, TypeError) as e:
-                            # #region agent log
+                            # #region agent log - DISABLED
                             with open(
                                 "/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a"
                             ) as log_file:
@@ -481,7 +481,7 @@ class IntelStagingService:
                             # If date parsing fails, consider it a duplicate anyway
                             return data
                     else:
-                        # #region agent log
+                        # #region agent log - DISABLED
                         with open(
                             "/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a"
                         ) as log_file:
@@ -503,7 +503,7 @@ class IntelStagingService:
                         # No date, consider it a duplicate
                         return data
             except json.JSONDecodeError as e:
-                # #region agent log
+                # #region agent log - DISABLED
                 with open(
                     "/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a"
                 ) as log_file:
@@ -529,7 +529,7 @@ class IntelStagingService:
                 logger.warning(f"Invalid JSON in staging file {file_path}: {e}")
                 continue
             except PermissionError as e:
-                # #region agent log
+                # #region agent log - DISABLED
                 with open(
                     "/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a"
                 ) as log_file:
@@ -555,7 +555,7 @@ class IntelStagingService:
                 logger.warning(f"Permission denied reading {file_path}: {e}")
                 continue
             except Exception as e:
-                # #region agent log
+                # #region agent log - DISABLED
                 with open(
                     "/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a"
                 ) as log_file:
@@ -581,8 +581,8 @@ class IntelStagingService:
                 logger.error(f"Error reading staging file {file_path}: {e}", exc_info=True)
                 continue
 
-        # #region agent log
-        with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
+        # #region agent log - DISABLED
+        # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
             log_file.write(
                 json.dumps(
                     {
@@ -692,8 +692,8 @@ class IntelStagingService:
         Returns:
             Path to archived file
         """
-        # #region agent log
-        with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
+        # #region agent log - DISABLED
+        # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
             log_file.write(
                 json.dumps(
                     {
@@ -716,8 +716,8 @@ class IntelStagingService:
         staging_dir = self.get_staging_dir(intel_type)
         file_path = staging_dir / f"{item_id}.json"
 
-        # #region agent log
-        with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
+        # #region agent log - DISABLED
+        # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
             log_file.write(
                 json.dumps(
                     {
@@ -735,8 +735,8 @@ class IntelStagingService:
         # #endregion
 
         if not file_path.exists():
-            # #region agent log
-            with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
+            # #region agent log - DISABLED
+            # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
                 log_file.write(
                     json.dumps(
                         {
@@ -758,8 +758,8 @@ class IntelStagingService:
         archive_dir.mkdir(parents=True, exist_ok=True)
         archive_path = archive_dir / file_path.name
 
-        # #region agent log
-        with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
+        # #region agent log - DISABLED
+        # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
             log_file.write(
                 json.dumps(
                     {
@@ -784,8 +784,8 @@ class IntelStagingService:
         try:
             shutil.move(str(file_path), str(archive_path))
 
-            # #region agent log
-            with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
+            # #region agent log - DISABLED
+            # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
                 log_file.write(
                     json.dumps(
                         {
@@ -808,8 +808,8 @@ class IntelStagingService:
             # #endregion
 
         except Exception as e:
-            # #region agent log
-            with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
+            # #region agent log - DISABLED
+            # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
                 log_file.write(
                     json.dumps(
                         {

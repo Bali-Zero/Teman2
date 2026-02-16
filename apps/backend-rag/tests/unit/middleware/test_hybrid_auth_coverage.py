@@ -26,6 +26,7 @@ def _load_module(
         zantara_allowed_origins=allowed_origin,
         dev_origins="",
         redis_url="redis://localhost:6379",
+        api_keys="test_key_1,test_key_2",
     )
     config_mock = types.ModuleType("backend.app.core.config")
     config_mock.settings = settings_stub

@@ -24,10 +24,133 @@
     ],
     "category": "General"
   },
+  "10113": {
+    "english": [
+      "house",
+      "housing",
+      "residential",
+      "gas",
+      "cut",
+      "cutting",
+      "barber"
+    ],
+    "category": "General"
+  },
+  "10119": {
+    "english": [
+      "house",
+      "housing",
+      "residential",
+      "animal",
+      "livestock",
+      "gas",
+      "cut",
+      "cutting",
+      "barber"
+    ],
+    "category": "General"
+  },
   "10120": {
     "english": [
       "production",
       "manufacturing"
+    ],
+    "category": "General"
+  },
+  "10211": {
+    "english": [
+      "processing",
+      "treatment"
+    ],
+    "category": "General"
+  },
+  "10212": {
+    "english": [
+      "processing",
+      "treatment",
+      "gas"
+    ],
+    "category": "General"
+  },
+  "10213": {
+    "english": [
+      "processing",
+      "treatment",
+      "cut",
+      "cutting",
+      "barber"
+    ],
+    "category": "General"
+  },
+  "10214": {
+    "english": [
+      "processing",
+      "treatment"
+    ],
+    "category": "General"
+  },
+  "10215": {
+    "english": [
+      "processing",
+      "treatment",
+      "manufacturing",
+      "production",
+      "making",
+      "wood",
+      "timber",
+      "lumber"
+    ],
+    "category": "General"
+  },
+  "10216": {
+    "english": [
+      "processing",
+      "treatment"
+    ],
+    "category": "General"
+  },
+  "10217": {
+    "english": [
+      "ship",
+      "vessel",
+      "marine",
+      "air",
+      "aviation",
+      "airline",
+      "processing",
+      "treatment",
+      "water"
+    ],
+    "category": "General"
+  },
+  "10218": {
+    "english": [
+      "processing",
+      "treatment"
+    ],
+    "category": "General"
+  },
+  "10219": {
+    "english": [
+      "processing",
+      "treatment"
+    ],
+    "category": "General"
+  },
+  "10291": {
+    "english": [
+      "processing",
+      "treatment",
+      "water"
+    ],
+    "category": "General"
+  },
+  "10292": {
+    "english": [
+      "processing",
+      "treatment",
+      "gas",
+      "water"
     ],
     "category": "General"
   },
@@ -38,6 +161,57 @@
     ],
     "category": "General"
   },
+  "10294": {
+    "english": [
+      "processing",
+      "treatment",
+      "water"
+    ],
+    "category": "General"
+  },
+  "10295": {
+    "english": [
+      "processing",
+      "treatment",
+      "water"
+    ],
+    "category": "General"
+  },
+  "10296": {
+    "english": [
+      "processing",
+      "treatment",
+      "water"
+    ],
+    "category": "General"
+  },
+  "10297": {
+    "english": [
+      "ship",
+      "vessel",
+      "marine",
+      "air",
+      "aviation",
+      "airline",
+      "processing",
+      "treatment",
+      "water"
+    ],
+    "category": "General"
+  },
+  "10298": {
+    "english": [
+      "sea",
+      "marine",
+      "maritime",
+      "processing",
+      "treatment",
+      "manufacturing",
+      "production",
+      "making"
+    ],
+    "category": "General"
+  },
   "10299": {
     "english": [
       "food",
@@ -45,6 +219,25 @@
       "cuisine"
     ],
     "category": "Food Service"
+  },
+  "10301": {
+    "english": [
+      "vegetable",
+      "vegetables",
+      "fruit",
+      "fruits",
+      "gas"
+    ],
+    "category": "General"
+  },
+  "10302": {
+    "english": [
+      "vegetable",
+      "vegetables",
+      "fruit",
+      "fruits"
+    ],
+    "category": "General"
   },
   "10303": {
     "english": [
@@ -61,11 +254,42 @@
     ],
     "category": "General"
   },
+  "10305": {
+    "english": [
+      "air",
+      "aviation",
+      "airline",
+      "processing",
+      "treatment",
+      "vegetable",
+      "vegetables",
+      "fruit",
+      "fruits",
+      "water"
+    ],
+    "category": "General"
+  },
   "10306": {
     "english": [
       "beverage",
       "drink",
       "drinks"
+    ],
+    "category": "General"
+  },
+  "10307": {
+    "english": [
+      "manufacturing",
+      "production",
+      "making"
+    ],
+    "category": "General"
+  },
+  "10308": {
+    "english": [
+      "manufacturing",
+      "production",
+      "making"
     ],
     "category": "General"
   },
@@ -815,6 +1039,13 @@
     ],
     "category": "General"
   },
+  "13111": {
+    "english": [
+      "textile",
+      "fabric"
+    ],
+    "category": "General"
+  },
   "13112": {
     "english": [
       "bar",
@@ -1120,6 +1351,17 @@
     ],
     "category": "General"
   },
+  "15111": {
+    "english": [
+      "wholesale",
+      "bulk",
+      "large",
+      "animal",
+      "livestock",
+      "gas"
+    ],
+    "category": "General"
+  },
   "15113": {
     "english": [
       "bar",
@@ -1211,6 +1453,38 @@
       "manufacturing"
     ],
     "category": "Construction"
+  },
+  "16101": {
+    "english": [
+      "train",
+      "railway",
+      "manufacturing",
+      "production",
+      "making",
+      "wood",
+      "timber",
+      "lumber"
+    ],
+    "category": "General"
+  },
+  "16102": {
+    "english": [
+      "processing",
+      "treatment",
+      "wood",
+      "timber",
+      "lumber",
+      "chemical",
+      "chemistry"
+    ],
+    "category": "General"
+  },
+  "16104": {
+    "english": [
+      "processing",
+      "treatment"
+    ],
+    "category": "General"
   },
   "16105": {
     "english": [
@@ -1460,6 +1734,16 @@
       "IT"
     ],
     "category": "Technology"
+  },
+  "18112": {
+    "english": [
+      "aircraft",
+      "airplane",
+      "aviation",
+      "paper",
+      "gas"
+    ],
+    "category": "General"
   },
   "18113": {
     "english": [
@@ -2647,6 +2931,19 @@
     ],
     "category": "General"
   },
+  "24204": {
+    "english": [
+      "manufacturing",
+      "production",
+      "making",
+      "metal",
+      "metallic",
+      "electricity",
+      "electric",
+      "power"
+    ],
+    "category": "General"
+  },
   "24205": {
     "english": [
       "industry",
@@ -2661,6 +2958,16 @@
       "industrial",
       "manufacturing",
       "production"
+    ],
+    "category": "General"
+  },
+  "24310": {
+    "english": [
+      "manufacturing",
+      "production",
+      "making",
+      "metal",
+      "metallic"
     ],
     "category": "General"
   },
@@ -2734,6 +3041,25 @@
       "industry",
       "industrial",
       "manufacturing"
+    ],
+    "category": "General"
+  },
+  "25910": {
+    "english": [
+      "manufacturing",
+      "production",
+      "making",
+      "metal",
+      "metallic"
+    ],
+    "category": "General"
+  },
+  "25920": {
+    "english": [
+      "processing",
+      "treatment",
+      "metal",
+      "metallic"
     ],
     "category": "General"
   },
@@ -4114,6 +4440,13 @@
     ],
     "category": "General"
   },
+  "33132": {
+    "english": [
+      "repair",
+      "maintenance"
+    ],
+    "category": "General"
+  },
   "33133": {
     "english": [
       "bar",
@@ -4131,6 +4464,21 @@
       "industrial",
       "manufacturing",
       "production"
+    ],
+    "category": "General"
+  },
+  "33142": {
+    "english": [
+      "car",
+      "automobile",
+      "vehicle",
+      "motorcycle",
+      "motor",
+      "electricity",
+      "electric",
+      "power",
+      "repair",
+      "maintenance"
     ],
     "category": "General"
   },
@@ -4172,6 +4520,21 @@
       "manufacturing"
     ],
     "category": "Construction"
+  },
+  "33153": {
+    "english": [
+      "aircraft",
+      "airplane",
+      "aviation",
+      "air",
+      "airline",
+      "machine",
+      "machinery",
+      "mechanical",
+      "repair",
+      "maintenance"
+    ],
+    "category": "General"
   },
   "33159": {
     "english": [
@@ -4271,6 +4634,68 @@
     ],
     "category": "General"
   },
+  "35132": {
+    "english": [
+      "air",
+      "aviation",
+      "airline",
+      "electricity",
+      "electric",
+      "power",
+      "energy",
+      "storage",
+      "warehousing"
+    ],
+    "category": "General"
+  },
+  "35133": {
+    "english": [
+      "vehicle",
+      "automotive",
+      "car",
+      "automobile",
+      "motorcycle",
+      "motor",
+      "electricity",
+      "electric",
+      "power"
+    ],
+    "category": "General"
+  },
+  "35140": {
+    "english": [
+      "network",
+      "networking",
+      "sales",
+      "selling",
+      "distribution",
+      "vehicle",
+      "automotive",
+      "electricity",
+      "electric",
+      "power",
+      "storage",
+      "warehousing"
+    ],
+    "category": "General"
+  },
+  "35151": {
+    "english": [
+      "electricity",
+      "electric",
+      "power",
+      "energy"
+    ],
+    "category": "General"
+  },
+  "35152": {
+    "english": [
+      "electricity",
+      "electric",
+      "power"
+    ],
+    "category": "General"
+  },
   "35159": {
     "english": [
       "service",
@@ -4320,6 +4745,21 @@
     ],
     "category": "General"
   },
+  "35401": {
+    "english": [
+      "system",
+      "systems",
+      "sales",
+      "selling",
+      "distribution",
+      "electricity",
+      "electric",
+      "power",
+      "storage",
+      "warehousing"
+    ],
+    "category": "General"
+  },
   "35402": {
     "english": [
       "transport",
@@ -4327,6 +4767,25 @@
       "freight",
       "service",
       "services"
+    ],
+    "category": "General"
+  },
+  "36001": {
+    "english": [
+      "beverage",
+      "drink",
+      "network",
+      "networking",
+      "distribution",
+      "car",
+      "automobile",
+      "vehicle",
+      "sea",
+      "marine",
+      "maritime",
+      "processing",
+      "treatment",
+      "water"
     ],
     "category": "General"
   },
@@ -4343,6 +4802,23 @@
     ],
     "category": "Agriculture"
   },
+  "36003": {
+    "english": [
+      "system",
+      "systems",
+      "network",
+      "networking",
+      "distribution",
+      "car",
+      "automobile",
+      "vehicle",
+      "processing",
+      "treatment",
+      "water",
+      "waste"
+    ],
+    "category": "General"
+  },
   "37001": {
     "english": [
       "transport",
@@ -4351,6 +4827,17 @@
       "industry",
       "industrial",
       "manufacturing"
+    ],
+    "category": "General"
+  },
+  "37002": {
+    "english": [
+      "processing",
+      "treatment",
+      "water",
+      "waste",
+      "garbage",
+      "trash"
     ],
     "category": "General"
   },
@@ -4937,6 +5424,41 @@
       "edifice"
     ],
     "category": "Technology"
+  },
+  "43214": {
+    "english": [
+      "system",
+      "systems",
+      "telecommunication",
+      "telecom",
+      "communication",
+      "care",
+      "treatment",
+      "nursing",
+      "sea",
+      "marine",
+      "maritime",
+      "air",
+      "aviation",
+      "airline",
+      "gas"
+    ],
+    "category": "General"
+  },
+  "43215": {
+    "english": [
+      "system",
+      "systems",
+      "telecommunication",
+      "telecom",
+      "communication",
+      "train",
+      "railway",
+      "repair",
+      "fixing",
+      "maintenance"
+    ],
+    "category": "General"
   },
   "43216": {
     "english": [
@@ -8284,6 +8806,13 @@
     ],
     "category": "General"
   },
+  "52212": {
+    "english": [
+      "train",
+      "railway"
+    ],
+    "category": "General"
+  },
   "52213": {
     "english": [
       "building",
@@ -8291,6 +8820,14 @@
       "structure"
     ],
     "category": "Construction"
+  },
+  "52214": {
+    "english": [
+      "road",
+      "street",
+      "highway"
+    ],
+    "category": "General"
   },
   "52215": {
     "english": [
@@ -8441,6 +8978,22 @@
     ],
     "category": "General"
   },
+  "52234": {
+    "english": [
+      "system",
+      "systems",
+      "shipping",
+      "delivery",
+      "aircraft",
+      "airplane",
+      "aviation",
+      "air",
+      "airline",
+      "security",
+      "safety"
+    ],
+    "category": "General"
+  },
   "52239": {
     "english": [
       "bar",
@@ -8476,6 +9029,14 @@
       "services"
     ],
     "category": "Transportation"
+  },
+  "52292": {
+    "english": [
+      "manufacturing",
+      "production",
+      "making"
+    ],
+    "category": "General"
   },
   "52299": {
     "english": [
@@ -8578,6 +9139,19 @@
       "services"
     ],
     "category": "Transportation"
+  },
+  "53100": {
+    "english": [
+      "road",
+      "street",
+      "highway",
+      "infrastructure",
+      "shipping",
+      "delivery",
+      "processing",
+      "treatment"
+    ],
+    "category": "General"
   },
   "53200": {
     "english": [
@@ -8719,6 +9293,14 @@
     ],
     "category": "General"
   },
+  "55203": {
+    "english": [
+      "house",
+      "housing",
+      "residential"
+    ],
+    "category": "General"
+  },
   "55204": {
     "english": [
       "hotel",
@@ -8734,6 +9316,15 @@
       "lodging",
       "service",
       "services"
+    ],
+    "category": "General"
+  },
+  "55300": {
+    "english": [
+      "train",
+      "railway",
+      "recreation",
+      "leisure"
     ],
     "category": "General"
   },
@@ -8754,6 +9345,16 @@
       "realty",
       "service",
       "services"
+    ],
+    "category": "General"
+  },
+  "55909": {
+    "english": [
+      "house",
+      "housing",
+      "residential",
+      "train",
+      "railway"
     ],
     "category": "General"
   },
@@ -9049,6 +9650,19 @@
     ],
     "category": "General"
   },
+  "59140": {
+    "english": [
+      "manufacturing",
+      "production",
+      "making",
+      "music",
+      "musical",
+      "film",
+      "movie",
+      "cinema"
+    ],
+    "category": "General"
+  },
   "59201": {
     "english": [
       "bar",
@@ -9095,6 +9709,14 @@
     "english": [
       "service",
       "services"
+    ],
+    "category": "General"
+  },
+  "60111": {
+    "english": [
+      "manufacturing",
+      "production",
+      "making"
     ],
     "category": "General"
   },
@@ -9167,6 +9789,30 @@
       "building",
       "edifice",
       "structure"
+    ],
+    "category": "General"
+  },
+  "61102": {
+    "english": [
+      "network",
+      "networking",
+      "telecommunication",
+      "telecom",
+      "communication",
+      "infrastructure",
+      "maintenance"
+    ],
+    "category": "General"
+  },
+  "61103": {
+    "english": [
+      "network",
+      "networking",
+      "telecommunication",
+      "telecom",
+      "communication",
+      "infrastructure",
+      "maintenance"
     ],
     "category": "General"
   },
@@ -9631,6 +10277,13 @@
     ],
     "category": "Finance"
   },
+  "64192": {
+    "english": [
+      "credit",
+      "loan"
+    ],
+    "category": "General"
+  },
   "64193": {
     "english": [
       "service",
@@ -9706,6 +10359,15 @@
     ],
     "category": "General"
   },
+  "64910": {
+    "english": [
+      "capital",
+      "equity",
+      "financing",
+      "funding"
+    ],
+    "category": "General"
+  },
   "64920": {
     "english": [
       "bar",
@@ -9721,12 +10383,35 @@
     ],
     "category": "Retail"
   },
+  "64930": {
+    "english": [
+      "financing",
+      "funding"
+    ],
+    "category": "General"
+  },
   "64940": {
     "english": [
       "service",
       "services",
       "finance",
       "financial"
+    ],
+    "category": "General"
+  },
+  "64951": {
+    "english": [
+      "infrastructure",
+      "financing",
+      "funding"
+    ],
+    "category": "General"
+  },
+  "64952": {
+    "english": [
+      "infrastructure",
+      "financing",
+      "funding"
     ],
     "category": "General"
   },
@@ -9747,6 +10432,45 @@
       "lounge",
       "service",
       "services"
+    ],
+    "category": "General"
+  },
+  "64955": {
+    "english": [
+      "house",
+      "housing",
+      "residential"
+    ],
+    "category": "General"
+  },
+  "64959": {
+    "english": [
+      "investment",
+      "investing",
+      "capital",
+      "equity",
+      "credit",
+      "loan",
+      "financing",
+      "funding"
+    ],
+    "category": "General"
+  },
+  "64991": {
+    "english": [
+      "capital",
+      "equity",
+      "financing",
+      "funding"
+    ],
+    "category": "General"
+  },
+  "64992": {
+    "english": [
+      "capital",
+      "equity",
+      "financing",
+      "funding"
     ],
     "category": "General"
   },
@@ -9925,6 +10649,15 @@
     ],
     "category": "Retail"
   },
+  "66112": {
+    "english": [
+      "system",
+      "systems",
+      "electronic",
+      "electronics"
+    ],
+    "category": "General"
+  },
   "66113": {
     "english": [
       "trading",
@@ -10042,6 +10775,12 @@
     ],
     "category": "General"
   },
+  "66125": {
+    "english": [
+      "paper"
+    ],
+    "category": "General"
+  },
   "66126": {
     "english": [
       "information technology",
@@ -10115,6 +10854,14 @@
       "information",
       "service",
       "services"
+    ],
+    "category": "General"
+  },
+  "66142": {
+    "english": [
+      "system",
+      "systems",
+      "infrastructure"
     ],
     "category": "General"
   },
@@ -10211,10 +10958,28 @@
     ],
     "category": "Technology"
   },
+  "66193": {
+    "english": [
+      "system",
+      "systems",
+      "information",
+      "data",
+      "investment",
+      "investing"
+    ],
+    "category": "General"
+  },
   "66194": {
     "english": [
       "market",
       "marketplace"
+    ],
+    "category": "General"
+  },
+  "66195": {
+    "english": [
+      "capital",
+      "equity"
     ],
     "category": "General"
   },
@@ -10454,6 +11219,14 @@
       "services"
     ],
     "category": "Construction"
+  },
+  "68124": {
+    "english": [
+      "road",
+      "street",
+      "highway"
+    ],
+    "category": "General"
   },
   "68125": {
     "english": [
@@ -10740,6 +11513,13 @@
     ],
     "category": "General"
   },
+  "71209": {
+    "english": [
+      "security",
+      "safety"
+    ],
+    "category": "General"
+  },
   "72101": {
     "english": [
       "research",
@@ -10750,6 +11530,22 @@
       "science"
     ],
     "category": "Professional Services"
+  },
+  "72102": {
+    "english": [
+      "system",
+      "systems",
+      "civil",
+      "civil engineering",
+      "research",
+      "study",
+      "chemical",
+      "chemistry",
+      "electricity",
+      "electric",
+      "power"
+    ],
+    "category": "General"
   },
   "72103": {
     "english": [
@@ -10782,6 +11578,24 @@
       "aquaculture"
     ],
     "category": "Healthcare"
+  },
+  "72106": {
+    "english": [
+      "system",
+      "systems",
+      "research",
+      "study"
+    ],
+    "category": "General"
+  },
+  "72109": {
+    "english": [
+      "system",
+      "systems",
+      "research",
+      "study"
+    ],
+    "category": "General"
   },
   "72201": {
     "english": [
@@ -10838,6 +11652,15 @@
       "marketplace",
       "service",
       "services"
+    ],
+    "category": "General"
+  },
+  "73202": {
+    "english": [
+      "social",
+      "welfare",
+      "research",
+      "study"
     ],
     "category": "General"
   },
@@ -11002,6 +11825,13 @@
     ],
     "category": "Technology"
   },
+  "74194": {
+    "english": [
+      "design",
+      "designer"
+    ],
+    "category": "General"
+  },
   "74199": {
     "english": [
       "school",
@@ -11054,6 +11884,12 @@
     "english": [
       "service",
       "services"
+    ],
+    "category": "General"
+  },
+  "74999": {
+    "english": [
+      "professional"
     ],
     "category": "General"
   },
@@ -11125,11 +11961,26 @@
     ],
     "category": "General"
   },
+  "77292": {
+    "english": [
+      "music",
+      "musical"
+    ],
+    "category": "General"
+  },
   "77293": {
     "english": [
       "bar",
       "pub",
       "lounge"
+    ],
+    "category": "General"
+  },
+  "77294": {
+    "english": [
+      "plant",
+      "crop",
+      "vegetation"
     ],
     "category": "General"
   },
@@ -11197,6 +12048,14 @@
     ],
     "category": "Construction"
   },
+  "77394": {
+    "english": [
+      "machine",
+      "machinery",
+      "mechanical"
+    ],
+    "category": "General"
+  },
   "77395": {
     "english": [
       "bar",
@@ -11252,6 +12111,32 @@
       "lounge",
       "service",
       "services"
+    ],
+    "category": "General"
+  },
+  "78101": {
+    "english": [
+      "house",
+      "housing",
+      "residential"
+    ],
+    "category": "General"
+  },
+  "78102": {
+    "english": [
+      "information",
+      "data"
+    ],
+    "category": "General"
+  },
+  "78103": {
+    "english": [
+      "house",
+      "housing",
+      "residential",
+      "medical",
+      "medicine",
+      "gas"
     ],
     "category": "General"
   },
@@ -11506,6 +12391,13 @@
     ],
     "category": "General"
   },
+  "82911": {
+    "english": [
+      "shipping",
+      "delivery"
+    ],
+    "category": "General"
+  },
   "82912": {
     "english": [
       "food",
@@ -11599,6 +12491,12 @@
     ],
     "category": "Food Service"
   },
+  "84112": {
+    "english": [
+      "gas"
+    ],
+    "category": "General"
+  },
   "84113": {
     "english": [
       "finance",
@@ -11649,6 +12547,23 @@
     ],
     "category": "Healthcare"
   },
+  "84123": {
+    "english": [
+      "house",
+      "housing",
+      "residential",
+      "cleaning",
+      "sanitation"
+    ],
+    "category": "General"
+  },
+  "84124": {
+    "english": [
+      "social",
+      "welfare"
+    ],
+    "category": "General"
+  },
   "84126": {
     "english": [
       "art",
@@ -11690,11 +12605,30 @@
     ],
     "category": "Agriculture"
   },
+  "84142": {
+    "english": [
+      "electricity",
+      "electric",
+      "power",
+      "energy",
+      "gas",
+      "water"
+    ],
+    "category": "General"
+  },
   "84143": {
     "english": [
       "industry",
       "industrial",
       "manufacturing"
+    ],
+    "category": "General"
+  },
+  "84144": {
+    "english": [
+      "application",
+      "app",
+      "software"
     ],
     "category": "General"
   },
@@ -11719,6 +12653,85 @@
     "english": [
       "production",
       "manufacturing"
+    ],
+    "category": "General"
+  },
+  "84221": {
+    "english": [
+      "civil",
+      "civil engineering",
+      "wholesale",
+      "bulk",
+      "large",
+      "shipping",
+      "delivery"
+    ],
+    "category": "General"
+  },
+  "84222": {
+    "english": [
+      "civil",
+      "civil engineering",
+      "wholesale",
+      "bulk",
+      "large"
+    ],
+    "category": "General"
+  },
+  "84223": {
+    "english": [
+      "civil",
+      "civil engineering",
+      "wholesale",
+      "bulk",
+      "large",
+      "air",
+      "aviation",
+      "airline"
+    ],
+    "category": "General"
+  },
+  "84224": {
+    "english": [
+      "civil",
+      "civil engineering",
+      "wholesale",
+      "bulk",
+      "large",
+      "sea",
+      "marine",
+      "maritime",
+      "maintenance",
+      "security",
+      "safety"
+    ],
+    "category": "General"
+  },
+  "84232": {
+    "english": [
+      "civil",
+      "civil engineering",
+      "security",
+      "safety"
+    ],
+    "category": "General"
+  },
+  "84233": {
+    "english": [
+      "legal",
+      "law"
+    ],
+    "category": "General"
+  },
+  "84234": {
+    "english": [
+      "road",
+      "street",
+      "highway",
+      "social",
+      "welfare",
+      "animal",
+      "livestock"
     ],
     "category": "General"
   },
@@ -12847,6 +13860,30 @@
     ],
     "category": "General"
   },
+  "88903": {
+    "english": [
+      "distribution",
+      "social",
+      "welfare"
+    ],
+    "category": "General"
+  },
+  "88904": {
+    "english": [
+      "distribution",
+      "social",
+      "welfare"
+    ],
+    "category": "General"
+  },
+  "88905": {
+    "english": [
+      "distribution",
+      "social",
+      "welfare"
+    ],
+    "category": "General"
+  },
   "88906": {
     "english": [
       "education",
@@ -12888,6 +13925,13 @@
       "IT"
     ],
     "category": "Technology"
+  },
+  "90112": {
+    "english": [
+      "music",
+      "musical"
+    ],
+    "category": "General"
   },
   "90113": {
     "english": [
@@ -13090,6 +14134,14 @@
     ],
     "category": "General"
   },
+  "91423": {
+    "english": [
+      "system",
+      "systems",
+      "water"
+    ],
+    "category": "General"
+  },
   "91424": {
     "english": [
       "bar",
@@ -13107,6 +14159,13 @@
       "bar",
       "pub",
       "lounge"
+    ],
+    "category": "General"
+  },
+  "91429": {
+    "english": [
+      "video",
+      "maintenance"
     ],
     "category": "General"
   },
@@ -13213,6 +14272,15 @@
     ],
     "category": "General"
   },
+  "93124": {
+    "english": [
+      "food",
+      "foodstuff",
+      "staple",
+      "professional"
+    ],
+    "category": "General"
+  },
   "93125": {
     "english": [
       "professional",
@@ -13263,6 +14331,12 @@
       "pilates"
     ],
     "category": "Recreation"
+  },
+  "93192": {
+    "english": [
+      "professional"
+    ],
+    "category": "General"
   },
   "93194": {
     "english": [
@@ -13329,6 +14403,13 @@
     ],
     "category": "Recreation"
   },
+  "93291": {
+    "english": [
+      "music",
+      "musical"
+    ],
+    "category": "General"
+  },
   "93292": {
     "english": [
       "food",
@@ -13382,6 +14463,18 @@
     ],
     "category": "Agriculture"
   },
+  "93297": {
+    "english": [
+      "road",
+      "street",
+      "highway",
+      "sales",
+      "selling",
+      "repair",
+      "fixing"
+    ],
+    "category": "General"
+  },
   "93299": {
     "english": [
       "art",
@@ -13416,6 +14509,12 @@
       "professional"
     ],
     "category": "Healthcare"
+  },
+  "94122": {
+    "english": [
+      "professional"
+    ],
+    "category": "General"
   },
   "94910": {
     "english": [
@@ -13504,6 +14603,14 @@
     ],
     "category": "General"
   },
+  "95291": {
+    "english": [
+      "clothing",
+      "garment",
+      "apparel"
+    ],
+    "category": "General"
+  },
   "95299": {
     "english": [
       "bar",
@@ -13511,6 +14618,42 @@
       "lounge",
       "service",
       "services"
+    ],
+    "category": "General"
+  },
+  "95311": {
+    "english": [
+      "system",
+      "systems",
+      "electronic",
+      "electronics",
+      "care",
+      "treatment",
+      "nursing",
+      "car",
+      "automobile",
+      "vehicle",
+      "processing",
+      "repair",
+      "maintenance"
+    ],
+    "category": "General"
+  },
+  "95312": {
+    "english": [
+      "care",
+      "treatment",
+      "nursing",
+      "car",
+      "automobile",
+      "vehicle",
+      "motorcycle",
+      "motor",
+      "processing",
+      "repair",
+      "maintenance",
+      "salon",
+      "beauty"
     ],
     "category": "General"
   },
@@ -13571,6 +14714,16 @@
     ],
     "category": "General"
   },
+  "96210": {
+    "english": [
+      "manufacturing",
+      "production",
+      "making",
+      "hair",
+      "hairdressing"
+    ],
+    "category": "General"
+  },
   "96220": {
     "english": [
       "data",
@@ -13596,6 +14749,19 @@
     ],
     "category": "Food Service"
   },
+  "96300": {
+    "english": [
+      "house",
+      "housing",
+      "residential",
+      "sales",
+      "selling",
+      "animal",
+      "livestock",
+      "maintenance"
+    ],
+    "category": "General"
+  },
   "96400": {
     "english": [
       "service",
@@ -13607,6 +14773,17 @@
     "english": [
       "service",
       "services"
+    ],
+    "category": "General"
+  },
+  "97000": {
+    "english": [
+      "house",
+      "housing",
+      "residential",
+      "research",
+      "study",
+      "gas"
     ],
     "category": "General"
   },
@@ -14476,6 +15653,391 @@
     "english": [
       "service",
       "services"
+    ],
+    "category": "General"
+  },
+  "01192": {
+    "english": [
+      "processing",
+      "treatment",
+      "plant",
+      "crop",
+      "vegetation",
+      "livestock",
+      "cattle",
+      "animal husbandry",
+      "maintenance"
+    ],
+    "category": "General"
+  },
+  "01302": {
+    "english": [
+      "plant",
+      "crop",
+      "vegetation",
+      "cut",
+      "cutting",
+      "barber"
+    ],
+    "category": "General"
+  },
+  "01411": {
+    "english": [
+      "livestock",
+      "cattle",
+      "animal husbandry",
+      "cut",
+      "cutting",
+      "barber"
+    ],
+    "category": "General"
+  },
+  "01413": {
+    "english": [
+      "livestock",
+      "cattle",
+      "animal husbandry",
+      "cut",
+      "cutting",
+      "barber"
+    ],
+    "category": "General"
+  },
+  "01441": {
+    "english": [
+      "livestock",
+      "cattle",
+      "animal husbandry",
+      "cut",
+      "cutting",
+      "barber"
+    ],
+    "category": "General"
+  },
+  "01442": {
+    "english": [
+      "livestock",
+      "cattle",
+      "animal husbandry",
+      "cut",
+      "cutting",
+      "barber"
+    ],
+    "category": "General"
+  },
+  "01443": {
+    "english": [
+      "livestock",
+      "cattle",
+      "animal husbandry"
+    ],
+    "category": "General"
+  },
+  "01444": {
+    "english": [
+      "livestock",
+      "cattle",
+      "animal husbandry"
+    ],
+    "category": "General"
+  },
+  "01464": {
+    "english": [
+      "cut",
+      "cutting",
+      "barber"
+    ],
+    "category": "General"
+  },
+  "01466": {
+    "english": [
+      "livestock",
+      "cattle",
+      "animal husbandry",
+      "cut",
+      "cutting",
+      "barber"
+    ],
+    "category": "General"
+  },
+  "01467": {
+    "english": [
+      "livestock",
+      "cattle",
+      "animal husbandry",
+      "cut",
+      "cutting",
+      "barber"
+    ],
+    "category": "General"
+  },
+  "01491": {
+    "english": [
+      "livestock",
+      "cattle",
+      "animal husbandry",
+      "cut",
+      "cutting",
+      "barber"
+    ],
+    "category": "General"
+  },
+  "01497": {
+    "english": [
+      "processing",
+      "treatment"
+    ],
+    "category": "General"
+  },
+  "01498": {
+    "english": [
+      "wholesale",
+      "bulk",
+      "large"
+    ],
+    "category": "General"
+  },
+  "02101": {
+    "english": [
+      "cake",
+      "pastry",
+      "bakery",
+      "sales",
+      "selling",
+      "wood",
+      "timber",
+      "lumber",
+      "plant",
+      "crop",
+      "vegetation",
+      "credit",
+      "loan",
+      "storage",
+      "warehousing"
+    ],
+    "category": "General"
+  },
+  "02300": {
+    "english": [
+      "wood",
+      "timber",
+      "lumber",
+      "vegetable",
+      "vegetables",
+      "fruit",
+      "fruits",
+      "hair",
+      "hairdressing"
+    ],
+    "category": "General"
+  },
+  "03110": {
+    "english": [
+      "sea",
+      "marine",
+      "maritime",
+      "water"
+    ],
+    "category": "General"
+  },
+  "03120": {
+    "english": [
+      "water"
+    ],
+    "category": "General"
+  },
+  "03212": {
+    "english": [
+      "wholesale",
+      "bulk",
+      "large",
+      "sea",
+      "marine",
+      "maritime",
+      "water",
+      "maintenance"
+    ],
+    "category": "General"
+  },
+  "03213": {
+    "english": [
+      "wholesale",
+      "bulk",
+      "large",
+      "sales",
+      "selling",
+      "sea",
+      "marine",
+      "maritime",
+      "credit",
+      "loan",
+      "gas",
+      "water",
+      "maintenance",
+      "storage",
+      "warehousing"
+    ],
+    "category": "General"
+  },
+  "03214": {
+    "english": [
+      "sea",
+      "marine",
+      "maritime",
+      "water"
+    ],
+    "category": "General"
+  },
+  "03221": {
+    "english": [
+      "wholesale",
+      "bulk",
+      "large",
+      "water",
+      "maintenance"
+    ],
+    "category": "General"
+  },
+  "03223": {
+    "english": [
+      "wholesale",
+      "bulk",
+      "large",
+      "sales",
+      "selling",
+      "plant",
+      "crop",
+      "vegetation",
+      "credit",
+      "loan",
+      "water",
+      "maintenance",
+      "storage",
+      "warehousing"
+    ],
+    "category": "General"
+  },
+  "03224": {
+    "english": [
+      "motorcycle",
+      "motor",
+      "water"
+    ],
+    "category": "General"
+  },
+  "03231": {
+    "english": [
+      "wholesale",
+      "bulk",
+      "large",
+      "water"
+    ],
+    "category": "General"
+  },
+  "03232": {
+    "english": [
+      "wholesale",
+      "bulk",
+      "large",
+      "water",
+      "maintenance"
+    ],
+    "category": "General"
+  },
+  "03233": {
+    "english": [
+      "wholesale",
+      "bulk",
+      "large",
+      "sales",
+      "selling",
+      "sea",
+      "marine",
+      "maritime",
+      "credit",
+      "loan",
+      "water",
+      "storage",
+      "warehousing"
+    ],
+    "category": "General"
+  },
+  "06201": {
+    "english": [
+      "manufacturing",
+      "production",
+      "making",
+      "gas"
+    ],
+    "category": "General"
+  },
+  "06202": {
+    "english": [
+      "metal",
+      "metallic",
+      "electricity",
+      "electric",
+      "power"
+    ],
+    "category": "General"
+  },
+  "07102": {
+    "english": [
+      "metal",
+      "metallic"
+    ],
+    "category": "General"
+  },
+  "07229": {
+    "english": [
+      "metal",
+      "metallic"
+    ],
+    "category": "General"
+  },
+  "08107": {
+    "english": [
+      "chemical",
+      "chemistry",
+      "water"
+    ],
+    "category": "General"
+  },
+  "08109": {
+    "english": [
+      "sea",
+      "marine",
+      "maritime",
+      "chemical",
+      "chemistry",
+      "water"
+    ],
+    "category": "General"
+  },
+  "08911": {
+    "english": [
+      "processing",
+      "treatment"
+    ],
+    "category": "General"
+  },
+  "08914": {
+    "english": [
+      "water"
+    ],
+    "category": "General"
+  },
+  "08919": {
+    "english": [
+      "chemical",
+      "chemistry"
+    ],
+    "category": "General"
+  },
+  "08996": {
+    "english": [
+      "metal",
+      "metallic"
     ],
     "category": "General"
   }

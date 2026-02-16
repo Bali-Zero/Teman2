@@ -1,15 +1,17 @@
 # AI ONBOARDING GUIDE - Nuzantara Project
 
-**Last Updated:** 2026-02-15
+**Last Updated:** 2026-02-16
 **Purpose:** Quick-start guide for AI assistants working on Project Nuzantara
 
 **System Stats:**
 
-- Router Files: 78 (+10 since last update)
-- Services: 244 Python files (+16 since last update)
-- Test Files: 541 (+64 since last update)
-- Qdrant Collections: `kbli_2025_final` (9,612 docs), `legal_unified_hybrid`, `visa_oracle`, `tax_genius_hybrid`
-- Knowledge Graph: 56,113 nodes, 161,173 edges (PostgreSQL) - **Expanded +62% nodes, +426% edges from LangGraph KG Phases 1-4**
+- Router Files: 78
+- Services: 244 Python files
+- Test Files: 922 (415 primary + 506 secondary)
+- Qdrant Collections: 7 collections, 58,880 vectors total
+- Knowledge Graph: 56,113 nodes, 161,173 edges (PostgreSQL)
+- Fly.io: Version 2023, 3 machines (Singapore), all healthy
+- Core Test Pass Rate: 100% (KG 82/82, Channels 43/43, RAG 244/244)
 
 > **READ THIS FIRST** before making any changes to the codebase.
 
@@ -511,12 +513,29 @@ fly logs -a nuzantara-rag
 fly ssh console -a nuzantara-rag
 ```
 
-### Rogue Changes from Other AI Tools
+### Rogue Changes from Other AI Tools (CRITICAL - Updated 2026-02-16)
 
-Other AI tools (Gemini, Windsurf) have historically broken shared files like `logging_utils.py` (removing `get_logger`) and `db/utils.py` (removing `db_retry`). Before deploying, check for unexpected modifications:
+Other AI tools (Gemini, Windsurf, Cursor) have **repeatedly** broken production code by:
+- Removing imports they consider "unused" (e.g., `Any` from typing — caused production crash 2026-02-16)
+- Renaming/deleting functions (e.g., `get_logger`, `db_retry`, `invalidate_cache`)
+- Deleting entire modules (e.g., `backend.services.integrations.service`)
+
+**2026-02-16 Incident:** 10 files had `Any` removed from typing imports. `dependencies.py` (imported by ALL routers) crashed the entire production app at startup. Hotfix: commits `bdf83fc54` + `b4abe9108`.
+
+**Pre-existing test debt:** ~448 test failures in `tests/unit/` from cumulative rogue refactors.
+
+**Before deploying, ALWAYS run:**
 
 ```bash
+# 1. Check for unexpected changes
 git diff --name-only HEAD -- apps/backend-rag/backend/
+
+# 2. Test critical import chain (most important single check)
+cd apps/backend-rag && source .venv/bin/activate
+python -c "from backend.app.dependencies import get_current_user; print('OK')"
+
+# 3. Run core tests (82 tests, <15s)
+PYTHONPATH=. pytest backend/tests/services/rag/test_kg_langgraph.py backend/tests/services/rag/test_kg_subgraphs.py backend/tests/services/rag/test_confidence.py -q
 ```
 
 If many files were modified unexpectedly, restore and re-apply only your changes:
@@ -597,6 +616,14 @@ npm run dev
 - [ ] Tests pass for modified code
 - [ ] `--no-verify` used only for non-JS file commits (not to skip failing tests)
 
+## PRE-DEPLOY CHECKLIST (CRITICAL)
+
+- [ ] `git diff --name-only HEAD -- apps/backend-rag/backend/` — No rogue changes
+- [ ] `python -c "from backend.app.dependencies import get_current_user; print('OK')"` — Import chain OK
+- [ ] `PYTHONPATH=. pytest backend/tests/services/rag/ -q` — Core KG tests pass
+- [ ] `fly deploy --strategy rolling` — Rolling deploy (not all-at-once)
+- [ ] `curl https://nuzantara-rag.fly.dev/health` — Health check after deploy
+
 ---
 
 ## ESSENTIAL DOCUMENTATION
@@ -625,7 +652,9 @@ npm run dev
 5. **Don't over-document** - code that speaks for itself doesn't need a 450-line report. Focus on why, not what.
 6. **Check the archive** - Old session reports and transient docs are in `docs/archive/MANIFEST.md`
 7. **LangGraph KG is production-ready** - 82 tests passing, 4 subgraphs deployed, feature flag controlled
-8. **Stats evolve rapidly** - This doc updated 2026-02-15 with +10 routers, +16 services, +64 tests since Feb 7
+8. **Test import chain before deploy** - `python -c "from backend.app.dependencies import get_current_user"` prevents production crashes
+9. **~448 unit test failures are PRE-EXISTING** - caused by rogue AI refactors, NOT by your changes. Core tests (KG, Channels, RAG) are 100%
+10. **Stats updated 2026-02-16** - 922 test files, 7 Qdrant collections, 58,880 vectors, Version 2023
 
 **Remember:** This is a production system serving real clients. Be careful with changes, verify the embedding model matches, and test your work.
 

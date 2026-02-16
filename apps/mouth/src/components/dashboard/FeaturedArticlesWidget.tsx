@@ -120,12 +120,14 @@ export function FeaturedArticlesWidget() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+    
     const fetchArticles = async () => {
       try {
         const response = await api.get<{ articles: FeaturedArticle[] }>(
           '/api/dashboard/featured-articles'
         );
-        if (response.articles && response.articles.length > 0) {
+        if (mounted && response.articles && response.articles.length > 0) {
           setArticles(response.articles);
         }
       } catch (error) {
@@ -139,12 +141,18 @@ export function FeaturedArticlesWidget() {
         );
         // Use fallback articles
       } finally {
-        setIsLoading(false);
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchArticles();
-  }, []);
+    
+    return () => {
+      mounted = false;
+    };
+  }, [])
 
   return (
     <div className="rounded-xl border border-[#FFB347]/60 bg-[#FFB347]/25 p-6 overflow-hidden">

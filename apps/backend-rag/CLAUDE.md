@@ -1,5 +1,67 @@
 # Claude Memory - Backend RAG
 
+## Session Update (2026-02-16 - Production Hotfix: Missing `Any` Imports)
+
+### Incident: Production Outage + Recovery
+
+**Root Cause:** Rogue AI refactor (Gemini/Windsurf) removed `Any` from `typing` imports in 10 production files.
+
+**Critical file:** `backend/app/dependencies.py` — imported by EVERY router. Missing `Any` at line 381 (`def get_orchestrator(request: Request) -> Any:`) crashed the entire app at startup.
+
+**Fix Commits:**
+1. `bdf83fc54` — Restored `Any` in 7 service files + 1 test fix
+2. `b4abe9108` — Restored `Any` in 3 more files (PRODUCTION HOTFIX)
+
+**Files Fixed (10 total):**
+- `backend/app/dependencies.py:22` — `Annotated` → `Annotated, Any`
+- `backend/services/crm/lead_assignment_agent.py:15`
+- `backend/services/crm/auto_crm_service.py:25`
+- `backend/services/memory/collective_memory_workflow.py:9`
+- `backend/services/rag/kg_subgraph_company.py:13`
+- `backend/services/rag/kg_subgraph_visa.py:13`
+- `backend/services/rag/kg_subgraph_property.py:13`
+- `backend/services/rag/kg_subgraph_tax.py:13`
+- `backend/services/article_composer/claude_client.py:15`
+- `backend/services/communication/language_detector.py:17`
+
+**Test fix:** `test_kg_subgraphs.py` assertion `rptka` → `imta_tka`
+
+**Deployment:** Version 2023, 3 machines Singapore, all healthy.
+
+### Comprehensive Test Results
+
+| Suite | Passed | Failed | Notes |
+|-------|--------|--------|-------|
+| KG LangGraph + Subgraphs | 58/58 | 0 | All 4 domains |
+| Dynamic Confidence | 24/24 | 0 | 6-factor scoring |
+| Channels | 43/43 | 0 | Telegram, Web, WhatsApp |
+| Full KG + RAG | 244/244 | 16* | *pre-existing |
+| Main Unit Suite | 3,675 | 448* | *pre-existing rogue AI debt |
+| Production API | 7/7 | 0 | health, agent, KBLI |
+
+**Pre-existing test debt (~448 failures):**
+- `invalidate_cache` removed from `backend.core.cache` (~30 errors)
+- `backend.services.integrations.service` module missing (~40 errors)
+- `reasoning.py` functions removed (16 failures)
+- `LLMGateway._available` property setter missing (10 errors)
+- Various mock/numpy issues
+
+### Prevention Checklist (NEW)
+
+Before any deploy:
+```bash
+# 1. Check for rogue changes
+git diff --name-only HEAD -- apps/backend-rag/backend/
+
+# 2. Test critical import chain
+python -c "from backend.app.dependencies import get_current_user; print('OK')"
+
+# 3. Run core tests
+PYTHONPATH=. pytest backend/tests/services/rag/ -q
+```
+
+---
+
 ## Session Update (2026-02-14 - LangGraph Agentic Layer Deployment)
 
 ### Mission Accomplished ✅
