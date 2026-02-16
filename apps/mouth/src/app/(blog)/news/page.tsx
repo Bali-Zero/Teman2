@@ -24,6 +24,12 @@ export default function NewsPage() {
   const mainNews4 = articles.find((a) => a.slug === 'ota-data-crackdown-bali-2026'); // MIDDLE bottom - OTA TAX CRACKDOWN
   const mainNews5 = articles.find((a) => a.slug === 'property-green-zone-alert'); // LEFT bottom - Property Alert
 
+  // Get KBLI Navigator articles for Latest Insights section
+  const kbliInsight1 = articles.find((a) => a.slug === 'kbli-2025-changes-foreign-investors');
+  const kbliInsight2 = articles.find((a) => a.slug === 'kbli-risk-levels-explained');
+  const kbliInsight3 = articles.find((a) => a.slug === 'finding-kbli-code-fast');
+  const kbliInsights = [kbliInsight1, kbliInsight2, kbliInsight3].filter(Boolean) as ArticleListItem[];
+
   // Get IDs of main news articles to exclude them from other sections
   const mainNewsIds = new Set(
     [mainNews1?.id, mainNews2?.id, mainNews3?.id, mainNews4?.id, mainNews5?.id].filter(Boolean)
@@ -163,13 +169,13 @@ export default function NewsPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {otherArticles.slice(0, 3).map((article, index) => (
+              {kbliInsights.map((article, index) => (
                 <div
                   key={article.id}
                   className="animate-in fade-in slide-in-from-bottom-4 duration-500"
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
-                  <Link href={`/${article.category}/${article.slug}`}>
+                  <Link href="/kbli-explorer">
                     <article className="group">
                       <div className="aspect-[16/10] relative overflow-hidden rounded-lg mb-5">
                         <Image
@@ -177,7 +183,7 @@ export default function NewsPage() {
                           alt={article.title}
                           fill
                           className="object-cover group-hover:scale-105 transition-transform duration-700"
-                          style={{ objectPosition: 'center 25%' }}
+                          style={{ objectPosition: 'center center' }}
                         />
                         {article.aiGenerated && (
                           <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#2251ff] text-white text-xs font-medium">
@@ -212,60 +218,63 @@ export default function NewsPage() {
           </div>
         </section>
 
-        {/* Featured Collection */}
+        {/* Featured Tool - KBLI Navigator */}
         <section className="border-b border-white/10">
           <div className="max-w-[1400px] mx-auto">
-            <div className="grid grid-cols-1 lg:grid-cols-2">
-              <div className="bg-gradient-to-br from-[#e85c41] to-[#d14832] p-10 lg:p-16 flex flex-col justify-center">
-                <span className="text-white/80 text-xs font-semibold uppercase tracking-wider mb-4">
-                  Featured Collection
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
+              {/* Left: Hero Image */}
+              <div className="relative aspect-video lg:aspect-auto lg:min-h-[500px] overflow-hidden">
+                <Image
+                  src="/images/kbli-2025-hero-cover.png"
+                  alt="KBLI 2025 Navigator - Indonesia Business Classification System"
+                  fill
+                  className="object-cover"
+                  priority
+                />
+              </div>
+
+              {/* Right: Content */}
+              <div className="bg-gradient-to-br from-[#0a2540] to-[#051C2C] p-10 lg:p-16 flex flex-col justify-center">
+                <span className="text-[#2251ff] text-xs font-semibold uppercase tracking-wider mb-4">
+                  Featured Tool
                 </span>
                 <h2 className="font-serif text-3xl lg:text-4xl text-white mb-4 leading-tight">
-                  The Complete Guide to Living in Bali
+                  KBLI 2025 Navigator
                 </h2>
-                <p className="text-white/80 text-lg mb-8 leading-relaxed max-w-md">
-                  Everything you need: visas, banking, housing, healthcare, community, and insider
-                  tips.
+                <p className="text-white/70 text-lg mb-6 leading-relaxed">
+                  Instant access to all 1,562 KBLI 2025 codes with intelligent search, 4-level
+                  risk assessment, PMA status tracking, and AI-powered guidance. Perfect for PT PMA
+                  setup, work permits, and business compliance.
                 </p>
+
+                <div className="flex flex-wrap gap-3 mb-8 text-sm text-white/60">
+                  <span className="flex items-center gap-1.5">
+                    <Search className="w-4 h-4" />
+                    Smart bilingual search
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Activity className="w-4 h-4" />
+                    4-level risk system
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Building2 className="w-4 h-4" />
+                    PMA status tracking
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4" />
+                    AI assistant
+                  </span>
+                </div>
+
                 <Link
-                  href="/lifestyle"
+                  href="/kbli-explorer"
                   className="inline-flex items-center gap-3 text-white group w-fit"
                 >
-                  <span className="text-lg font-medium">Explore the guide</span>
-                  <span className="w-10 h-10 rounded-full border-2 border-white/40 flex items-center justify-center group-hover:bg-white group-hover:text-[#e85c41] transition-all duration-300">
+                  <span className="text-lg font-medium">Explore Navigator</span>
+                  <span className="w-10 h-10 rounded-full border-2 border-white/40 flex items-center justify-center group-hover:bg-[#2251ff] group-hover:border-[#2251ff] transition-all duration-300">
                     <ArrowRight className="w-4 h-4" />
                   </span>
                 </Link>
-              </div>
-
-              <div className="divide-y divide-white/10">
-                {otherArticles.slice(3, 6).map((article) => (
-                  <Link key={article.id} href={`/${article.category}/${article.slug}`}>
-                    <article className="group flex gap-5 p-6 lg:p-8 hover:bg-white/5 transition-colors">
-                      <div className="w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden relative">
-                        <Image
-                          src={article.coverImage}
-                          alt={article.title}
-                          fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <span className="text-[#2251ff] text-xs font-semibold uppercase tracking-wider mb-1 block">
-                          {formatCategory(article.category)}
-                        </span>
-                        <h3 className="font-serif text-lg text-white mb-2 leading-snug group-hover:text-[#2251ff] transition-colors line-clamp-2">
-                          {article.title}
-                        </h3>
-                        <div className="flex items-center gap-3 text-white/40 text-sm">
-                          <span>{article.readingTime} min</span>
-                          <span>•</span>
-                          <span>{formatViewCount(article.viewCount)} views</span>
-                        </div>
-                      </div>
-                    </article>
-                  </Link>
-                ))}
               </div>
             </div>
           </div>
@@ -277,68 +286,88 @@ export default function NewsPage() {
             <div className="flex items-center justify-between mb-10">
               <h2 className="text-2xl font-serif text-white">Watch & Listen</h2>
               <Link
-                href="/lifestyle"
+                href="/kbli-explorer"
                 className="flex items-center gap-2 text-[#2251ff] hover:text-[#4d73ff] text-sm font-medium transition-colors"
               >
-                All media
+                Explore Navigator
                 <ChevronRight className="w-4 h-4" />
               </Link>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="group relative rounded-xl overflow-hidden">
-                <div className="aspect-video relative">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+              {/* Podcast Cover */}
+              <Link href="/kbli-explorer" className="group">
+                <div className="relative aspect-square rounded-xl overflow-hidden">
                   <Image
-                    src="/assets/blog/golden-visa.jpg"
-                    alt="Video thumbnail"
+                    src="/images/podcast-kbli-2025.png"
+                    alt="KBLI 2025 Deep Dive Podcast"
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-700"
                   />
-                  <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors" />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Play className="w-6 h-6 text-[#051C2C] ml-1" fill="currentColor" />
-                    </div>
+                </div>
+              </Link>
+
+              {/* Podcast Details */}
+              <div className="podcast-content">
+                <span className="inline-block px-3 py-1 rounded-md text-xs font-semibold uppercase bg-[#2251ff]/10 text-[#2251ff] mb-4">
+                  Podcast Series
+                </span>
+
+                <h3 className="font-serif text-3xl text-white mb-3 leading-tight">
+                  KBLI 2025 Deep Dive
+                </h3>
+
+                <p className="text-lg text-white/70 mb-6 leading-relaxed">
+                  Expert analysis of Indonesia's new business classification system. Everything
+                  foreign investors need to know about the 1,562 codes, risk levels, PMA
+                  restrictions, and practical implementation strategies.
+                </p>
+
+                <div className="space-y-3 mb-6 text-sm text-white/60">
+                  <div className="flex items-center gap-2">
+                    <svg
+                      className="w-5 h-5 text-[#2251ff]"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" />
+                    </svg>
+                    <span>28 minutes of expert insights</span>
                   </div>
-                  <div className="absolute bottom-0 left-0 right-0 p-6">
-                    <span className="text-[#2251ff] text-xs font-semibold uppercase tracking-wider mb-2 block">
-                      Video • 12 min
-                    </span>
-                    <h3 className="font-serif text-xl text-white leading-snug">
-                      Golden Visa Explained: Is It Right for You?
-                    </h3>
+                  <div className="flex items-center gap-2">
+                    <svg
+                      className="w-5 h-5 text-[#2251ff]"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                    </svg>
+                    <span>Immigration consultants, tax specialists, business advisors</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <svg
+                      className="w-5 h-5 text-[#2251ff]"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <span>Real-world case studies and practical guidance</span>
                   </div>
                 </div>
-              </div>
 
-              <div className="group relative rounded-xl overflow-hidden bg-gradient-to-br from-[#0a2540] to-[#0d3347] border border-white/10">
-                <div className="p-8">
-                  <div className="flex items-start gap-5">
-                    <div className="w-20 h-20 rounded-lg bg-[#2251ff] flex items-center justify-center flex-shrink-0">
-                      <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
-                        <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <span className="text-[#e85c41] text-xs font-semibold uppercase tracking-wider mb-2 block">
-                        Podcast • Episode 24
-                      </span>
-                      <h3 className="font-serif text-xl text-white mb-3 leading-snug">
-                        Tax Strategies for Digital Nomads in Indonesia
-                      </h3>
-                      <p className="text-white/60 text-sm mb-4">
-                        Our tax experts discuss the latest regulations and how to stay compliant.
-                      </p>
-                      <div className="flex items-center gap-4">
-                        <button className="flex items-center gap-2 text-white text-sm font-medium hover:text-[#2251ff] transition-colors">
-                          <Play className="w-4 h-4" fill="currentColor" />
-                          Play now
-                        </button>
-                        <span className="text-white/40 text-sm">45 min</span>
-                      </div>
-                    </div>
-                  </div>
+                <div className="flex gap-4">
+                  <Link
+                    href="/kbli-explorer"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-[#2251ff] text-white font-semibold hover:bg-[#1a3fcc] transition-colors"
+                  >
+                    <Play className="w-5 h-5" fill="currentColor" />
+                    Explore Navigator
+                  </Link>
                 </div>
               </div>
             </div>
@@ -580,6 +609,73 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     readingTime: 13,
     viewCount: 980,
     featured: false,
+    trending: true,
+    aiGenerated: true,
+  },
+  // === KBLI Navigator Articles (Feb 2026) - Homepage Featured ===
+  {
+    id: '302',
+    slug: 'kbli-2025-changes-foreign-investors',
+    title: 'KBLI 2025: What Changed for Foreign Investors',
+    excerpt:
+      'The new KBLI 2025 classification system brings significant changes for foreign businesses operating in Indonesia. From restructured categories to updated PMA restrictions, understand what the 1,562 codes mean for your business strategy.',
+    coverImage: '/images/article-1-kbli-changes.png',
+    category: 'business',
+    author: {
+      id: 'zantara-ai',
+      name: 'Zantara AI',
+      avatar: '/static/zantara-avatar.png',
+      role: 'AI Business Advisor',
+      isAI: true,
+    },
+    publishedAt: new Date('2026-02-16'),
+    readingTime: 5,
+    viewCount: 12430,
+    featured: true,
+    trending: true,
+    aiGenerated: true,
+  },
+  {
+    id: '303',
+    slug: 'kbli-risk-levels-explained',
+    title: 'High-Risk vs Low-Risk Business Codes Explained',
+    excerpt:
+      'KBLI 2025 introduces a sophisticated 4-level risk assessment system that directly impacts foreign worker permits, investment requirements, and compliance obligations. Learn how L, ML, MH, and H classifications affect your operations.',
+    coverImage: '/images/article-2-risk-levels.png',
+    category: 'immigration',
+    author: {
+      id: 'zantara-ai',
+      name: 'Zantara AI',
+      avatar: '/static/zantara-avatar.png',
+      role: 'AI Business Advisor',
+      isAI: true,
+    },
+    publishedAt: new Date('2026-02-16'),
+    readingTime: 4,
+    viewCount: 9150,
+    featured: true,
+    trending: true,
+    aiGenerated: true,
+  },
+  {
+    id: '304',
+    slug: 'finding-kbli-code-fast',
+    title: 'Finding Your Perfect KBLI Code in 30 Seconds',
+    excerpt:
+      'With 1,562 codes to choose from, finding the right classification can feel overwhelming. Our KBLI Navigator uses AI-powered search and intelligent categorization to help you identify the perfect code—fast.',
+    coverImage: '/images/article-3-finding-code.png',
+    category: 'business',
+    author: {
+      id: 'zantara-ai',
+      name: 'Zantara AI',
+      avatar: '/static/zantara-avatar.png',
+      role: 'AI Business Advisor',
+      isAI: true,
+    },
+    publishedAt: new Date('2026-02-16'),
+    readingTime: 3,
+    viewCount: 18920,
+    featured: true,
     trending: true,
     aiGenerated: true,
   },
