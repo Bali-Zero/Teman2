@@ -37,6 +37,7 @@ def include_routers(api: FastAPI) -> None:
         conversations,
         crm_auto,
         crm_clients,
+        crm_company,  # [NEW] Company-Centric CRM
         crm_enhanced,
         crm_interactions,
         crm_portal_integration,
@@ -126,6 +127,7 @@ def include_routers(api: FastAPI) -> None:
 
     # CRM routers
     api.include_router(crm_clients.router)
+    api.include_router(crm_company.router)  # [NEW] Company-Centric CRM
     api.include_router(crm_enhanced.router)  # Family members, Documents, Expiry Alerts
     api.include_router(crm_interactions.router)
     api.include_router(crm_practices.router)

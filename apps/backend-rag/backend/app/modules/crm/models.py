@@ -53,6 +53,9 @@ class Client(SQLModel, table=True):
     # Relationships
     practices: list["Practice"] = Relationship(back_populates="client")
     interactions: list["Interaction"] = Relationship(back_populates="client")
+    company_links: list["ClientCompanyLink"] = Relationship(
+        back_populates="client", sa_relationship_kwargs={"lazy": "selectin"}
+    )
 
 
 class PracticeType(SQLModel, table=True):
