@@ -1173,6 +1173,50 @@ input, textarea { font-family: inherit; }
   line-height: 1.6;
   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
+.msg-a p { margin-bottom: 12px; }
+.msg-a p:last-child { margin-bottom: 0; }
+.msg-a ul, .msg-a ol { margin: 8px 0 8px 18px; }
+.msg-a li { margin-bottom: 4px; }
+
+/* Chat Cards Styling */
+.chat-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.kbli-card-mini {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.kbli-card-mini:hover {
+  background: rgba(212,132,90,0.08);
+  border-color: var(--accent);
+  transform: translateX(4px);
+}
+.kbli-card-mini strong { color: var(--accent); font-family: var(--font-mono); font-size: 14px; }
+.kbli-card-mini .badge {
+  align-self: flex-start;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: rgba(255,255,255,0.05);
+  margin-bottom: 4px;
+}
+.kbli-card-mini .badge.low { background: rgba(52, 211, 153, 0.15); color: #34d399; }
+.kbli-card-mini .badge.medium { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+.kbli-card-mini .badge.high { background: rgba(248, 113, 113, 0.15); color: #f87171; }
+
 .msg-a strong { color: var(--text-primary); font-weight: 600; }
 .msg-a code {
   font-family: var(--font-mono);
@@ -3098,6 +3142,17 @@ input, textarea { font-family: inherit; }
 <script>
 // Section switching
 function showSection(name) {
+  // Sync history with parent if inside iframe
+  try {
+    if (window.self !== window.top) {
+      const url = new URL(window.parent.location);
+      if (url.searchParams.get('section') !== name) {
+        url.searchParams.set('section', name);
+        window.parent.history.pushState({ section: name }, '', url);
+      }
+    }
+  } catch(e) { /* ignore cross-origin if any */ }
+
   document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
   const navBtn = document.querySelector('.nav-item[data-section="' + name + '"]');
   if (navBtn) navBtn.classList.add('active');
@@ -3903,23 +3958,78 @@ document.querySelectorAll('.chat-chip').forEach(c => {
       "You can also use the suggestion chips above for quick questions!";
   }
 
-  function sendChatMessage(){
-    const text = chatInput.value.trim();
+  function formatMarkdown(text) {
+    if (!text) return '';
+    // Basic Markdown to HTML
+    return text
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/\n/g, '<br>')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/^\s*[-*+]\s+(.+)$/gm, '<li>$1</li>')
+      .replace(/(<li>.+<\/li>)/s, '<ul>$1</ul>')
+      .replace(/<\/p><p><ul>/g, '<ul>')
+      .replace(/<\/ul><\/p><p>/g, '</ul><p>')
+      .replace(/^<br>|<br>$/g, '');
+  }
+
+  async function sendChatMessage(overrideText){
+    const text = (overrideText || chatInput.value).trim();
     if(!text) return;
     addMsg(text, 'msg-u');
-    chatInput.value = '';
-    chatInput.style.height = 'auto';
+    if(!overrideText) {
+      chatInput.value = '';
+      chatInput.style.height = 'auto';
+    }
+    
     // Typing indicator
     const typing = addMsg('<div class="typing-dots"><span></span><span></span><span></span></div>', 'msg-a');
-    setTimeout(()=>{
-      const response = generateResponse(text);
-      typing.querySelector('div').innerHTML = response;
+    const container = typing.querySelector('div');
+
+    try {
+      // Direct call to Balizero API
+      const response = await fetch('/api/v1/kbli-notebook/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: text })
+      });
+
+      if(!response.ok) throw new Error('API Error');
+      const data = await response.json();
+
+      // Clear typing and set response
+      container.innerHTML = '<p>' + formatMarkdown(data.answer) + '</p>';
+
+      // Add KBLI Cards if results exist
+      if(data.results && data.results.length > 0) {
+        const cardsDiv = document.createElement('div');
+        cardsDiv.className = 'chat-cards';
+        data.results.forEach(r => {
+          const card = document.createElement('div');
+          card.className = 'kbli-card-mini';
+          const risk = (r.risk_category || 'unknown').toLowerCase();
+          card.innerHTML = `
+            <span class="badge ${risk}">${r.risk_category || 'Risk Info'}</span>
+            <strong>KBLI ${r.code}</strong>
+            <span>${r.title}</span>
+          `;
+          card.onclick = () => {
+             showSection('finder');
+             inspectCode(r.code);
+          };
+          cardsDiv.appendChild(card);
+        });
+        container.appendChild(cardsDiv);
+      }
+    } catch (err) {
+      console.error('Chat error:', err);
+      container.innerHTML = "I encountered an issue connecting to the knowledge base. Please try again or search for a specific code in the Finder.";
+    } finally {
       chatMsgs.scrollTop = chatMsgs.scrollHeight;
-    }, 400 + Math.random()*600);
+    }
   }
 
   // Send button click
-  chatSendBtn.addEventListener('click', sendChatMessage);
+  chatSendBtn.addEventListener('click', () => sendChatMessage());
 
   // Enter key (shift+enter for newline)
   chatInput.addEventListener('keydown', function(e){
@@ -3929,14 +4039,28 @@ document.querySelectorAll('.chat-chip').forEach(c => {
     }
   });
 
+  // Handle suggestion chips
+  document.querySelectorAll('.suggestion-chips .chip').forEach(chip => {
+    chip.addEventListener('click', function() {
+      sendChatMessage(this.textContent);
+    });
+  });
+
   // Auto-resize textarea
   chatInput.addEventListener('input', function(){
     this.style.height = 'auto';
     this.style.height = Math.min(this.scrollHeight, 120)+'px';
   });
 
-  // Make sendChatMessage global for chip clicks
+  // Make sendChatMessage global for external calls
   window.sendChatMessage = sendChatMessage;
+
+  // Handle section switching from parent (Back Button support)
+  window.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'SET_SECTION') {
+      if (typeof showSection === 'function') showSection(e.data.section);
+    }
+  });
 })();
 
 

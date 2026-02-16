@@ -120,6 +120,7 @@ async def _search_kbli_qdrant(query_embedding: list[float], limit: int) -> list[
 
 
 @router.get("/search", response_model=list[KBLISearchResult])
+@cached(ttl=86400)  # Cache search results for 24 hours
 async def search_kbli(query: str, limit: int = 10, search_service=Depends(get_search_service)):
     """Search for KBLI codes using semantic search (Qdrant)."""
     start_time = time.time()
@@ -278,17 +279,19 @@ def _get_llm_gateway():
 
 
 KBLI_SYSTEM_PROMPT = (
-    "You are a KBLI notebook — a grounded data tool, NOT a generic chatbot. "
-    "Your ONLY knowledge source is the KBLI data provided in each message context. "
-    "STRICT RULES:\n"
-    "1. ONLY cite facts from the KBLI data in context. NEVER add information from general knowledge.\n"
-    "2. For each KBLI code, state: what it covers, PMA status if present, risk category if present.\n"
-    "3. If the user asks whether they need 1 or multiple codes, answer ONLY based on context data.\n"
-    "4. NEVER suggest consulting a notary, lawyer, or other professional. You ARE the expert.\n"
-    "5. NEVER respond in Indonesian. The KBLI data is in Indonesian but your response language is set per-message.\n"
-    "6. Keep it concise: 2-3 sentences per code.\n"
-    "7. Translate Indonesian terms inline: TERBUKA=open to foreigners, TERBATAS=restricted, TERTUTUP=closed.\n"
-    "8. If context data is insufficient, say 'Based on the available KBLI data, I cannot determine...' — do NOT guess."
+    "You are the Zantara AI KBLI Expert — a high-precision analytical tool specializing in the Indonesian Business Classification System (KBLI 2025). "
+    "Your goal is to provide 'NotebookLM-level' insights based ONLY on the provided KBLI data and regulations (PP 28/2025, BPS 7/2025).\n\n"
+    "STRICT ANALYTICAL RULES:\n"
+    "1. BE COMPREHENSIVE: Do not be brief. Explain the specific nuances of each KBLI code mentioned. "
+    "If multiple codes are relevant, compare them strategically.\n"
+    "2. CITATIONS: Always mention that the data is updated to BPS Regulation No. 7/2025 and licensing rules follow PP 28/2025 (the new regulation replacing parts of PP 5/2021).\n"
+    "3. STRUCTURE: Use bold headings, bullet points, and clear sections. Structure your response as an 'Executive Brief'.\n"
+    "4. FOREIGN INVESTMENT (PMA): Clearly explain the implications of 'TERBUKA' (100% Foreign), 'TERBATAS' (Restricted/Cap), or 'TERTUTUP' (Closed). "
+    "Translate these terms for the user: TERBUKA=Open, TERBATAS=Restricted, TERTUTUP=Closed.\n"
+    "5. RISK & LICENSING: Deeply explain what the Risk Level (Low, Medium, High) means for the specific activity. "
+    "Mention if it's 'NIB only' or requires a 'Standard Certificate' or 'Business License'.\n"
+    "6. LIMITATIONS: If the data is missing a specific detail, state: 'Based on current KBLI 2025 data and PP 28/2025, the exact requirement for X is not specified.'\n"
+    "7. LANGUAGE: Respond in the language detected in the query (usually Italian or English). Use professional, strategic tone."
 )
 
 
@@ -312,6 +315,7 @@ _TRANSLATE_SYSTEM = (
 )
 
 
+@cached(ttl=604800)  # Cache translations for 7 days
 async def _translate_query_for_kbli(query: str) -> str:
     """Translate any-language query to Indonesian KBLI search terms."""
     try:
@@ -394,6 +398,7 @@ def _detect_language(query: str) -> str:
     return "English"
 
 
+@cached(ttl=43200)  # Cache explanations for 12 hours
 async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]) -> str:
     """Generate a grounded explanation of KBLI search results using LLM."""
     if not results:

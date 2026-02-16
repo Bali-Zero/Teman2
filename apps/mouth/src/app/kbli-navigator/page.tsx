@@ -1,33 +1,22 @@
 import fs from 'fs';
 import path from 'path';
-import KBLIIntroOverlay from '@/components/kbli/KBLIIntroOverlay';
+import KBLINavigatorClient from '@/components/kbli/KBLINavigatorClient';
+
+export const metadata = {
+  title: 'KBLI 2025 Navigator | Balizero',
+  description: 'Intelligent Indonesian Business Classification Navigator with Zantara AI.',
+};
 
 export default function KBLINavigatorPage() {
   const filePath = path.join(process.cwd(), 'public', 'kbli-navigator', 'index.html');
-  const htmlContent = fs.readFileSync(filePath, 'utf8');
+  let htmlContent = '';
+  
+  try {
+    htmlContent = fs.readFileSync(filePath, 'utf8');
+  } catch (err) {
+    console.error('Error reading KBLI Navigator index.html:', err);
+    htmlContent = '<html><body><h1>KBLI Navigator Load Error</h1></body></html>';
+  }
 
-  // Script per sincronizzare l'History API tra iframe e browser principale
-  const historyFixScript = `
-    <script>
-      window.addEventListener('message', function(e) {
-        if (e.data.type === 'NAVIGATE') {
-          history.pushState(null, '', '/kbli-navigator#' + e.data.path);
-        }
-      });
-    </script>
-  `;
-
-  return (
-    <div className="relative w-full h-screen bg-[#2a2a2a] overflow-hidden">
-      <KBLIIntroOverlay />
-      <iframe 
-        srcDoc={htmlContent}
-        className="w-full h-full border-none"
-        style={{ pointerEvents: 'auto' }}
-        title="KBLI 2025 Navigator"
-        id="kbli-frame"
-        allow="autoplay"
-      />
-    </div>
-  );
+  return <KBLINavigatorClient htmlContent={htmlContent} />;
 }
