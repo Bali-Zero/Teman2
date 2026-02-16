@@ -239,16 +239,16 @@ export default function NewsPage() {
                 >
                   <Link href="/kbli-navigator">
                     <article className="group">
-                      <div className="aspect-[16/10] relative overflow-hidden rounded-lg mb-5">
+                      <div className="aspect-[16/10] relative overflow-hidden rounded-lg mb-5 bg-[#0a1628]">
                         <Image
                           src={article.coverImage}
                           alt={article.title}
                           fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-700"
-                          style={{ objectPosition: 'center center' }}
+                          className="object-cover object-bottom group-hover:scale-105 transition-transform duration-700"
+                          style={{ objectPosition: 'center bottom' }}
                         />
-                        {/* Dark overlay to hide text on images */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/40 to-transparent" />
+                        {/* Dark box to completely hide text at top */}
+                        <div className="absolute inset-0 bg-gradient-to-b from-[#0a1628] via-[#0a1628]/80 to-transparent h-1/3" />
                       </div>
 
                       <span className="text-[#2251ff] text-xs font-semibold uppercase tracking-wider mb-2 block">
