@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, Sparkles, Play, ChevronRight } from 'lucide-react';
+import { ArrowRight, Sparkles, Play, ChevronRight, Search, Building2, Activity } from 'lucide-react';
 import type { ArticleListItem } from '@/lib/blog/types';
 import { HomepageSEOSchemas } from '@/components/seo/HomepageFAQ';
 
