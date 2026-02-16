@@ -154,70 +154,6 @@ export default function NewsPage() {
           </div>
         </section>
 
-        {/* Latest Insights Grid */}
-        <section className="border-b border-white/10">
-          <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
-            <div className="flex items-center justify-between mb-10">
-              <h2 className="text-2xl font-serif text-white">Latest Insights</h2>
-              <Link
-                href="/immigration"
-                className="flex items-center gap-2 text-[#2251ff] hover:text-[#4d73ff] text-sm font-medium transition-colors"
-              >
-                View all
-                <ChevronRight className="w-4 h-4" />
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {kbliInsights.map((article, index) => (
-                <div
-                  key={article.id}
-                  className="animate-in fade-in slide-in-from-bottom-4 duration-500"
-                  style={{ animationDelay: `${index * 100}ms` }}
-                >
-                  <Link href="/kbli-explorer">
-                    <article className="group">
-                      <div className="aspect-[16/10] relative overflow-hidden rounded-lg mb-5">
-                        <Image
-                          src={article.coverImage}
-                          alt={article.title}
-                          fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-700"
-                          style={{ objectPosition: 'center center' }}
-                        />
-                        {article.aiGenerated && (
-                          <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#2251ff] text-white text-xs font-medium">
-                            <Sparkles className="w-3 h-3" />
-                            AI
-                          </div>
-                        )}
-                      </div>
-
-                      <span className="text-[#2251ff] text-xs font-semibold uppercase tracking-wider mb-2 block">
-                        {formatCategory(article.category)}
-                      </span>
-
-                      <h3 className="font-serif text-xl text-white mb-3 leading-snug group-hover:text-[#2251ff] transition-colors line-clamp-2">
-                        {article.title}
-                      </h3>
-
-                      <p className="text-white/60 text-sm leading-relaxed mb-4 line-clamp-2">
-                        {article.excerpt}
-                      </p>
-
-                      <div className="flex items-center gap-3 text-white/40 text-sm">
-                        <span>{article.readingTime} min read</span>
-                        <span>•</span>
-                        <span>{formatViewCount(article.viewCount)} views</span>
-                      </div>
-                    </article>
-                  </Link>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
         {/* Featured Tool - KBLI Navigator */}
         <section className="border-b border-white/10">
           <div className="max-w-[1400px] mx-auto">
@@ -267,7 +203,7 @@ export default function NewsPage() {
                 </div>
 
                 <Link
-                  href="/kbli-explorer"
+                  href="/kbli-navigator"
                   className="inline-flex items-center gap-3 text-white group w-fit"
                 >
                   <span className="text-lg font-medium">Explore Navigator</span>
@@ -280,13 +216,71 @@ export default function NewsPage() {
           </div>
         </section>
 
+        {/* Latest Insights Grid */}
+        <section className="border-b border-white/10">
+          <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
+            <div className="flex items-center justify-between mb-10">
+              <h2 className="text-2xl font-serif text-white">Latest Insights</h2>
+              <Link
+                href="/immigration"
+                className="flex items-center gap-2 text-[#2251ff] hover:text-[#4d73ff] text-sm font-medium transition-colors"
+              >
+                View all
+                <ChevronRight className="w-4 h-4" />
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {kbliInsights.map((article, index) => (
+                <div
+                  key={article.id}
+                  className="animate-in fade-in slide-in-from-bottom-4 duration-500"
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
+                  <Link href="/kbli-navigator">
+                    <article className="group">
+                      <div className="aspect-[16/10] relative overflow-hidden rounded-lg mb-5">
+                        <Image
+                          src={article.coverImage}
+                          alt={article.title}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-700"
+                          style={{ objectPosition: 'center center' }}
+                        />
+                      </div>
+
+                      <span className="text-[#2251ff] text-xs font-semibold uppercase tracking-wider mb-2 block">
+                        {formatCategory(article.category)}
+                      </span>
+
+                      <h3 className="font-serif text-xl text-white mb-3 leading-snug group-hover:text-[#2251ff] transition-colors line-clamp-2">
+                        {article.title}
+                      </h3>
+
+                      <p className="text-white/60 text-sm leading-relaxed mb-4 line-clamp-2">
+                        {article.excerpt}
+                      </p>
+
+                      <div className="flex items-center gap-3 text-white/40 text-sm">
+                        <span>{article.readingTime} min read</span>
+                        <span>•</span>
+                        <span>{formatViewCount(article.viewCount)} views</span>
+                      </div>
+                    </article>
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* Podcast/Video Section */}
         <section className="border-b border-white/10">
           <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
             <div className="flex items-center justify-between mb-10">
               <h2 className="text-2xl font-serif text-white">Watch & Listen</h2>
               <Link
-                href="/kbli-explorer"
+                href="/kbli-navigator"
                 className="flex items-center gap-2 text-[#2251ff] hover:text-[#4d73ff] text-sm font-medium transition-colors"
               >
                 Explore Navigator
@@ -296,7 +290,7 @@ export default function NewsPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
               {/* Podcast Cover */}
-              <Link href="/kbli-explorer" className="group">
+              <Link href="/kbli-navigator" className="group">
                 <div className="relative aspect-square rounded-xl overflow-hidden">
                   <Image
                     src="/images/podcast-kbli-2025.png"
@@ -362,7 +356,7 @@ export default function NewsPage() {
 
                 <div className="flex gap-4">
                   <Link
-                    href="/kbli-explorer"
+                    href="/kbli-navigator"
                     className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-[#2251ff] text-white font-semibold hover:bg-[#1a3fcc] transition-colors"
                   >
                     <Play className="w-5 h-5" fill="currentColor" />
