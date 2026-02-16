@@ -12,7 +12,7 @@ Flow:
 """
 
 import logging
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
 
 if TYPE_CHECKING:
     import asyncpg
