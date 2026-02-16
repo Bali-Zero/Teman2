@@ -6,54 +6,19 @@ for the agentic RAG orchestrator.
 
 Author: Windsurf (QA Engineer)
 Created: 2026-02-09
+Updated: 2026-02-16 - Fixed to use correct reasoning_utils API
 """
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-# Mock imports for testing without full backend setup
-try:
-    from backend.services.rag.agentic.reasoning_utils import (
-        calculate_evidence_score,
-        is_critical_domain,
-        get_critical_domain_type,
-    )
-    from backend.app.core.constants import EvidenceScoreConstants
-except ImportError:
-    # Fallback mocks for when backend is not available
-    def calculate_evidence_score(context_items, query, tool_calls_count, has_citations):
-        """Mock implementation for testing"""
-        if not context_items:
-            return 0.0
-        base_score = min(len(context_items) * 0.2, 0.6)
-        if has_citations:
-            base_score += 0.15
-        if tool_calls_count > 1:
-            base_score += 0.1
-        return min(base_score, 1.0)
-    
-    def is_critical_domain(query):
-        """Mock implementation for testing"""
-        query_lower = query.lower()
-        critical_keywords = ['visa', 'tax', 'legal', 'immigration', 'law']
-        return any(keyword in query_lower for keyword in critical_keywords)
-    
-    def get_critical_domain_type(query):
-        """Mock implementation for testing"""
-        query_lower = query.lower()
-        if 'visa' in query_lower or 'immigration' in query_lower:
-            return 'visa'
-        if 'tax' in query_lower:
-            return 'tax'
-        if 'legal' in query_lower or 'law' in query_lower:
-            return 'legal'
-        return None
-    
-    class EvidenceScoreConstants:
-        LOW_CONFIDENCE_THRESHOLD = 0.3
-        MEDIUM_CONFIDENCE_THRESHOLD = 0.5
-        HIGH_CONFIDENCE_THRESHOLD = 0.7
-        CRITICAL_DOMAIN_THRESHOLD = 0.8
+# Import from the correct module
+from backend.services.rag.agentic.reasoning_utils import (
+    calculate_evidence_score,
+    is_critical_domain,
+    get_critical_domain_type,
+)
+from backend.app.core.constants import EvidenceScoreConstants
 
 
 class TestConfidenceScoring:
@@ -61,87 +26,113 @@ class TestConfidenceScoring:
 
     def test_calculate_evidence_score_high_confidence(self):
         """Test evidence score calculation with high confidence indicators"""
-        # High quality context with multiple chunks
-        context_items = [
+        # High quality sources with scores > HIGH_QUALITY_SOURCE_THRESHOLD (0.15)
+        sources = [
+            {"id": 1, "title": "Source 1", "score": 0.85},
+            {"id": 2, "title": "Source 2", "score": 0.75},
+            {"id": 3, "title": "Source 3", "score": 0.70},
+            {"id": 4, "title": "Source 4", "score": 0.65},
+        ]
+        # Context with query keywords for relevance bonus
+        context = [
             "Visa requirements for Bali: Tourist visa valid for 30 days",
             "Extension process: Apply at immigration office 7 days before expiry",
             "Required documents: Passport, return ticket, proof of accommodation"
         ]
+        query = "What are visa requirements for Bali?"
         
         score = calculate_evidence_score(
-            context_items=context_items,
-            query="What are visa requirements for Bali?",
-            tool_calls_count=1,
-            has_citations=True
+            sources=sources,
+            context_gathered=context,
+            query=query
         )
         
-        assert score >= EvidenceScoreConstants.HIGH_CONFIDENCE_THRESHOLD
+        # Should have high score: +0.5 (high quality) + 0.2 (multiple sources) + 0.3 (keywords)
+        # Score should be >= 0.7 to be considered high confidence
+        assert score >= 0.7
         assert score <= 1.0
 
     def test_calculate_evidence_score_low_confidence(self):
         """Test evidence score calculation with low confidence indicators"""
-        # Poor quality context
-        context_items = ["Generic information not related to query"]
+        # No sources, minimal context
+        sources = []
+        context = ["Generic information not related to query"]
+        query = "What are visa requirements for Bali?"
         
         score = calculate_evidence_score(
-            context_items=context_items,
-            query="What are visa requirements for Bali?",
-            tool_calls_count=0,
-            has_citations=False
+            sources=sources,
+            context_gathered=context,
+            query=query
         )
         
-        assert score < EvidenceScoreConstants.MEDIUM_CONFIDENCE_THRESHOLD
+        # Low confidence is below ABSTAIN_THRESHOLD (0.3)
+        assert score < 0.3
 
     def test_calculate_evidence_score_no_context(self):
         """Test evidence score with no context items"""
         score = calculate_evidence_score(
-            context_items=[],
-            query="Test query",
-            tool_calls_count=0,
-            has_citations=False
+            sources=[],
+            context_gathered=[],
+            query="Test query"
         )
         
         assert score == 0.0
 
-    def test_calculate_evidence_score_with_citations(self):
-        """Test that citations boost evidence score"""
-        context_items = ["Relevant information about visa"]
+    def test_calculate_evidence_score_with_sources(self):
+        """Test that high-quality sources boost evidence score"""
+        # Low quality sources (score <= HIGH_QUALITY_SOURCE_THRESHOLD=0.15)
+        sources_low = [{"id": 1, "title": "Source 1", "score": 0.1}]
+        context = ["Relevant information about visa"]
+        query = "visa requirements"
         
-        score_with_citations = calculate_evidence_score(
-            context_items=context_items,
-            query="visa requirements",
-            tool_calls_count=1,
-            has_citations=True
+        score_low_quality = calculate_evidence_score(
+            sources=sources_low,
+            context_gathered=context,
+            query=query
         )
         
-        score_without_citations = calculate_evidence_score(
-            context_items=context_items,
-            query="visa requirements",
-            tool_calls_count=1,
-            has_citations=False
+        # High quality sources (score > 0.15)
+        sources_high = [{"id": 1, "title": "Source 1", "score": 0.85}]
+        
+        score_high_quality = calculate_evidence_score(
+            sources=sources_high,
+            context_gathered=context,
+            query=query
         )
         
-        assert score_with_citations > score_without_citations
+        # High quality source adds HIGH_QUALITY_SOURCE_BONUS (0.5)
+        assert score_high_quality > score_low_quality
 
-    def test_calculate_evidence_score_multiple_tool_calls(self):
-        """Test that multiple tool calls increase confidence"""
-        context_items = ["Information from search"]
+    def test_calculate_evidence_score_multiple_sources(self):
+        """Test that multiple sources increase confidence"""
+        context = ["Information from search"]
+        query = "test query"
         
-        score_single_tool = calculate_evidence_score(
-            context_items=context_items,
-            query="test query",
-            tool_calls_count=1,
-            has_citations=True
+        # Single source
+        sources_single = [{"id": 1, "title": "Source 1", "score": 0.85}]
+        
+        score_single_source = calculate_evidence_score(
+            sources=sources_single,
+            context_gathered=context,
+            query=query
         )
         
-        score_multiple_tools = calculate_evidence_score(
-            context_items=context_items,
-            query="test query",
-            tool_calls_count=3,
-            has_citations=True
+        # Multiple sources (> MIN_SOURCES_FOR_BONUS which is 3)
+        sources_multiple = [
+            {"id": 1, "title": "Source 1", "score": 0.85},
+            {"id": 2, "title": "Source 2", "score": 0.80},
+            {"id": 3, "title": "Source 3", "score": 0.75},
+            {"id": 4, "title": "Source 4", "score": 0.70},
+        ]
+        
+        score_multiple_sources = calculate_evidence_score(
+            sources=sources_multiple,
+            context_gathered=context,
+            query=query
         )
         
-        assert score_multiple_tools >= score_single_tool
+        # Multiple sources adds MULTIPLE_SOURCES_BONUS (0.2)
+        assert score_multiple_sources >= score_single_source
 
 
 class TestCriticalDomainDetection:
@@ -157,19 +148,19 @@ class TestCriticalDomainDetection:
         ]
         
         for query in visa_queries:
-            assert is_critical_domain(query) is True
+            assert is_critical_domain(query, "business_simple") is True
 
-    def test_is_critical_domain_tax(self):
-        """Test tax queries are detected as critical"""
-        tax_queries = [
-            "What is my tax obligation?",
-            "How to calculate income tax?",
-            "Tax filing deadline in Indonesia",
-            "Corporate tax rates"
+    def test_is_critical_domain_pricing(self):
+        """Test pricing queries are detected as critical"""
+        pricing_queries = [
+            "What is the price?",
+            "How much does it cost?",
+            "Quanto costa?",
+            "What are the fees?"
         ]
         
-        for query in tax_queries:
-            assert is_critical_domain(query) is True
+        for query in pricing_queries:
+            assert is_critical_domain(query, "business_simple") is True
 
     def test_is_critical_domain_legal(self):
         """Test legal queries are detected as critical"""
@@ -181,7 +172,7 @@ class TestCriticalDomainDetection:
         ]
         
         for query in legal_queries:
-            assert is_critical_domain(query) is True
+            assert is_critical_domain(query, "business_simple") is True
 
     def test_is_not_critical_domain(self):
         """Test non-critical queries are not flagged"""
@@ -193,27 +184,37 @@ class TestCriticalDomainDetection:
         ]
         
         for query in non_critical_queries:
-            assert is_critical_domain(query) is False
+            assert is_critical_domain(query, "casual") is False
+
+    def test_is_critical_domain_complex_intent(self):
+        """Test that business_complex intent is always critical"""
+        assert is_critical_domain("Tell me about Bali", "business_complex") is True
+        assert is_critical_domain("Random query", "business_strategic") is True
 
     def test_get_critical_domain_type_visa(self):
         """Test critical domain type detection for visa"""
         domain = get_critical_domain_type("How do I apply for a visa?")
         assert domain == "visa"
 
-    def test_get_critical_domain_type_tax(self):
-        """Test critical domain type detection for tax"""
-        domain = get_critical_domain_type("What is my tax obligation?")
-        assert domain == "tax"
+    def test_get_critical_domain_type_pricing(self):
+        """Test critical domain type detection for pricing"""
+        domain = get_critical_domain_type("How much does it cost?")
+        assert domain == "pricing"
 
     def test_get_critical_domain_type_legal(self):
         """Test critical domain type detection for legal"""
         domain = get_critical_domain_type("What are my legal rights?")
         assert domain == "legal"
 
-    def test_get_critical_domain_type_none(self):
-        """Test non-critical queries return None"""
+    def test_get_critical_domain_type_procedure(self):
+        """Test critical domain type detection for procedure"""
+        domain = get_critical_domain_type("What documents do I need?")
+        assert domain == "procedure"
+
+    def test_get_critical_domain_type_default(self):
+        """Test non-critical queries return 'business_complex' as default"""
         domain = get_critical_domain_type("Best restaurants in Bali")
-        assert domain is None
+        assert domain == "business_complex"
 
 
 class TestAbstainDecision:
@@ -223,15 +224,15 @@ class TestAbstainDecision:
         """Test abstain decision for critical domain with low confidence"""
         # Critical domain query
         query = "What are visa requirements for Bali?"
-        is_critical = is_critical_domain(query)
+        is_crit = is_critical_domain(query, "business_simple")
         
-        # Low evidence score
-        evidence_score = 0.3
+        # Low evidence score (below ABSTAIN_THRESHOLD = 0.10)
+        evidence_score = 0.05
         
         # Should abstain if critical and low confidence
         should_abstain = (
-            is_critical and 
-            evidence_score < EvidenceScoreConstants.CRITICAL_DOMAIN_THRESHOLD
+            is_crit and 
+            evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD
         )
         
         assert should_abstain is True
@@ -239,14 +240,14 @@ class TestAbstainDecision:
     def test_should_not_abstain_critical_high_confidence(self):
         """Test no abstain for critical domain with high confidence"""
         query = "What are visa requirements for Bali?"
-        is_critical = is_critical_domain(query)
+        is_crit = is_critical_domain(query, "business_simple")
         
-        # High evidence score
+        # High evidence score (above ABSTAIN_THRESHOLD = 0.10)
         evidence_score = 0.85
         
         should_abstain = (
-            is_critical and 
-            evidence_score < EvidenceScoreConstants.CRITICAL_DOMAIN_THRESHOLD
+            is_crit and 
+            evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD
         )
         
         assert should_abstain is False
@@ -254,14 +255,14 @@ class TestAbstainDecision:
     def test_should_not_abstain_non_critical_low_confidence(self):
         """Test no abstain for non-critical domain even with low confidence"""
         query = "Best restaurants in Bali"
-        is_critical = is_critical_domain(query)
+        is_crit = is_critical_domain(query, "casual")
         
         # Low evidence score
-        evidence_score = 0.3
+        evidence_score = 0.2
         
         should_abstain = (
-            is_critical and 
-            evidence_score < EvidenceScoreConstants.CRITICAL_DOMAIN_THRESHOLD
+            is_crit and 
+            evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD
         )
         
         assert should_abstain is False
@@ -270,21 +271,21 @@ class TestAbstainDecision:
 class TestConfidenceThresholds:
     """Test confidence threshold constants"""
 
-    def test_threshold_ordering(self):
-        """Test that thresholds are properly ordered"""
-        assert EvidenceScoreConstants.LOW_CONFIDENCE_THRESHOLD < \
-               EvidenceScoreConstants.MEDIUM_CONFIDENCE_THRESHOLD
-        assert EvidenceScoreConstants.MEDIUM_CONFIDENCE_THRESHOLD < \
-               EvidenceScoreConstants.HIGH_CONFIDENCE_THRESHOLD
-        assert EvidenceScoreConstants.HIGH_CONFIDENCE_THRESHOLD < \
-               EvidenceScoreConstants.CRITICAL_DOMAIN_THRESHOLD
+    def test_abstain_threshold(self):
+        """Test that ABSTAIN_THRESHOLD is within valid range"""
+        assert 0.0 <= EvidenceScoreConstants.ABSTAIN_THRESHOLD <= 1.0
+        # ABSTAIN_THRESHOLD should be low (0.3 or less)
+        assert EvidenceScoreConstants.ABSTAIN_THRESHOLD <= 0.3
 
-    def test_threshold_ranges(self):
-        """Test that thresholds are within valid ranges"""
-        assert 0.0 <= EvidenceScoreConstants.LOW_CONFIDENCE_THRESHOLD <= 1.0
-        assert 0.0 <= EvidenceScoreConstants.MEDIUM_CONFIDENCE_THRESHOLD <= 1.0
-        assert 0.0 <= EvidenceScoreConstants.HIGH_CONFIDENCE_THRESHOLD <= 1.0
-        assert 0.0 <= EvidenceScoreConstants.CRITICAL_DOMAIN_THRESHOLD <= 1.0
+    def test_high_quality_source_threshold(self):
+        """Test that HIGH_QUALITY_SOURCE_THRESHOLD is within valid range"""
+        assert 0.0 <= EvidenceScoreConstants.HIGH_QUALITY_SOURCE_THRESHOLD <= 1.0
+
+    def test_threshold_values(self):
+        """Test that all threshold values are reasonable"""
+        assert EvidenceScoreConstants.ABSTAIN_THRESHOLD >= 0.0
+        assert EvidenceScoreConstants.HIGH_QUALITY_SOURCE_THRESHOLD >= 0.0
+        assert EvidenceScoreConstants.MAX_SCORE == 1.0
 
 
 @pytest.mark.integration

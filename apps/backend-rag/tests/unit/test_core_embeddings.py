@@ -3,7 +3,7 @@ Unit tests for Core Embeddings Module - Multi-provider embedding generation
 Comprehensive coverage for OpenAI and Sentence Transformers
 """
 
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -16,13 +16,23 @@ from backend.core.embeddings import (
 class TestEmbeddingsGeneratorOpenAI:
     """Test suite for EmbeddingsGenerator with OpenAI provider"""
 
-    @patch("openai.OpenAI")
+    @pytest.fixture(autouse=True)
+    def setup_mock_settings(self):
+        """Setup mock settings with all required attributes"""
+        self.mock_settings = Mock()
+        self.mock_settings.embedding_provider = "openai"
+        self.mock_settings.openai_api_key = "test-key"
+        self.mock_settings.embedding_model = "text-embedding-3-small"
+        self.mock_settings.api_keys = "test-api-key"
+
+    @patch("openai.AsyncOpenAI")
     def test_init_openai_with_api_key(self, mock_openai):
         """Test initialization with OpenAI provider and API key"""
         mock_settings = Mock()
         mock_settings.embedding_provider = "openai"
         mock_settings.openai_api_key = "test-key"
         mock_settings.embedding_model = "text-embedding-3-small"
+        mock_settings.api_keys = "test-api-key"
 
         generator = EmbeddingsGenerator(
             api_key="test-key", provider="openai", settings=mock_settings
@@ -33,41 +43,44 @@ class TestEmbeddingsGeneratorOpenAI:
         assert generator.dimensions == 1536
         assert generator.api_key == "test-key"
 
-    @patch("openai.OpenAI")
+    @patch("openai.AsyncOpenAI")
     def test_init_openai_without_api_key_raises(self, mock_openai):
         """Test initialization without API key raises ValueError"""
         mock_settings = Mock()
         mock_settings.embedding_provider = "openai"
         mock_settings.openai_api_key = None
+        mock_settings.api_keys = "test-api-key"
 
         with pytest.raises(ValueError, match="OpenAI API key is required"):
             EmbeddingsGenerator(provider="openai", settings=mock_settings)
 
-    @patch("openai.OpenAI")
+    @patch("openai.AsyncOpenAI")
     def test_init_openai_default_model(self, mock_openai):
         """Test OpenAI initialization uses default model"""
         generator = EmbeddingsGenerator(api_key="test-key", provider="openai", settings=None)
 
         assert generator.model == "text-embedding-3-small"
 
-    @patch("openai.OpenAI")
-    def test_generate_embeddings_openai_single_text(self, mock_openai):
+    @patch("openai.AsyncOpenAI")
+    @pytest.mark.asyncio
+    async def test_generate_embeddings_openai_single_text(self, mock_openai):
         """Test generating embeddings for single text with OpenAI"""
         mock_client = Mock()
         mock_response = Mock()
         mock_response.data = [Mock(embedding=[0.1, 0.2, 0.3])]
-        mock_client.embeddings.create.return_value = mock_response
+        mock_client.embeddings.create = AsyncMock(return_value=mock_response)
         mock_openai.return_value = mock_client
 
         generator = EmbeddingsGenerator(api_key="test-key", provider="openai", settings=None)
-        result = generator.generate_embeddings(["Hello world"])
+        result = await generator.generate_embeddings(["Hello world"])
 
         assert len(result) == 1
         assert result[0] == [0.1, 0.2, 0.3]
         mock_client.embeddings.create.assert_called_once()
 
-    @patch("openai.OpenAI")
-    def test_generate_embeddings_openai_multiple_texts(self, mock_openai):
+    @patch("openai.AsyncOpenAI")
+    @pytest.mark.asyncio
+    async def test_generate_embeddings_openai_multiple_texts(self, mock_openai):
         """Test generating embeddings for multiple texts with OpenAI"""
         mock_client = Mock()
         mock_response = Mock()
@@ -76,73 +89,84 @@ class TestEmbeddingsGeneratorOpenAI:
             Mock(embedding=[0.3, 0.4]),
             Mock(embedding=[0.5, 0.6]),
         ]
-        mock_client.embeddings.create.return_value = mock_response
+        mock_client.embeddings.create = AsyncMock(return_value=mock_response)
         mock_openai.return_value = mock_client
 
         generator = EmbeddingsGenerator(api_key="test-key", provider="openai", settings=None)
-        result = generator.generate_embeddings(["Text 1", "Text 2", "Text 3"])
+        result = await generator.generate_embeddings(["Text 1", "Text 2", "Text 3"])
 
         assert len(result) == 3
         assert result[0] == [0.1, 0.2]
         assert result[1] == [0.3, 0.4]
         assert result[2] == [0.5, 0.6]
 
-    @patch("openai.OpenAI")
-    def test_generate_embeddings_openai_batching(self, mock_openai):
+    @patch("openai.AsyncOpenAI")
+    @pytest.mark.asyncio
+    async def test_generate_embeddings_openai_batching(self, mock_openai):
         """Test OpenAI embedding generation batches large requests"""
         mock_client = Mock()
 
         # Mock returns variable-length responses based on input
-        def create_side_effect(**kwargs):
+        async def create_side_effect(**kwargs):
             batch_size = len(kwargs.get("input", []))
             mock_response = Mock()
             mock_response.data = [Mock(embedding=[0.1] * 1536) for _ in range(batch_size)]
             return mock_response
 
-        mock_client.embeddings.create.side_effect = create_side_effect
+        mock_client.embeddings.create = AsyncMock(side_effect=create_side_effect)
         mock_openai.return_value = mock_client
 
         generator = EmbeddingsGenerator(api_key="test-key", provider="openai", settings=None)
 
         # Generate 3000 embeddings (should batch into 2 calls)
         texts = [f"Text {i}" for i in range(3000)]
-        result = generator.generate_embeddings(texts)
+        result = await generator.generate_embeddings(texts)
 
         # Should make 2 API calls (2048 + 952)
         assert mock_client.embeddings.create.call_count == 2
         assert len(result) == 3000
 
-    @patch("openai.OpenAI")
-    def test_generate_single_embedding_openai(self, mock_openai):
+    @patch("openai.AsyncOpenAI")
+    @pytest.mark.asyncio
+    async def test_generate_single_embedding_openai(self, mock_openai):
         """Test generating single embedding with OpenAI"""
         mock_client = Mock()
         mock_response = Mock()
         mock_response.data = [Mock(embedding=[0.1, 0.2, 0.3])]
-        mock_client.embeddings.create.return_value = mock_response
+        mock_client.embeddings.create = AsyncMock(return_value=mock_response)
         mock_openai.return_value = mock_client
 
         generator = EmbeddingsGenerator(api_key="test-key", provider="openai", settings=None)
-        result = generator.generate_single_embedding("Hello world")
+        result = await generator.generate_single_embedding("Hello world")
 
         assert result == [0.1, 0.2, 0.3]
 
-    @patch("openai.OpenAI")
-    def test_generate_query_embedding_openai(self, mock_openai):
+    @patch("openai.AsyncOpenAI")
+    @pytest.mark.asyncio
+    async def test_generate_query_embedding_openai(self, mock_openai):
         """Test generating query embedding with OpenAI"""
         mock_client = Mock()
         mock_response = Mock()
         mock_response.data = [Mock(embedding=[0.1, 0.2])]
-        mock_client.embeddings.create.return_value = mock_response
+        mock_client.embeddings.create = AsyncMock(return_value=mock_response)
         mock_openai.return_value = mock_client
 
         generator = EmbeddingsGenerator(api_key="test-key", provider="openai", settings=None)
-        result = generator.generate_query_embedding("search query")
+        result = await generator.generate_query_embedding("search query")
 
         assert result == [0.1, 0.2]
 
 
 class TestEmbeddingsGeneratorSentenceTransformers:
     """Test suite for EmbeddingsGenerator with Sentence Transformers provider"""
+
+    @pytest.fixture(autouse=True)
+    def setup_mock_settings(self):
+        """Setup mock settings with all required attributes"""
+        self.mock_settings = Mock()
+        self.mock_settings.embedding_provider = "sentence-transformers"
+        self.mock_settings.embedding_model = None
+        self.mock_settings.api_keys = "test-api-key"
 
     def test_init_sentence_transformers_default(self):
         """Test initialization with Sentence Transformers provider"""
@@ -265,7 +289,7 @@ class TestEmbeddingsGeneratorCommon:
 
         assert result == [[0.1, 0.2]]
 
-    @patch("openai.OpenAI")
+    @patch("openai.AsyncOpenAI")
     def test_get_model_info_openai(self, mock_openai):
         """Test get_model_info for OpenAI provider"""
         generator = EmbeddingsGenerator(api_key="test-key", provider="openai", settings=None)
@@ -316,7 +340,7 @@ class TestEmbeddingsGeneratorCommon:
 class TestFactoryFunctions:
     """Test suite for factory and convenience functions"""
 
-    @patch("openai.OpenAI")
+    @patch("openai.AsyncOpenAI")
     def test_create_embeddings_generator(self, mock_openai):
         """Test factory function"""
         generator = create_embeddings_generator(api_key="test-key", provider="openai")
@@ -335,17 +359,18 @@ class TestFactoryFunctions:
 class TestEdgeCases:
     """Test suite for edge cases and error conditions"""
 
-    @patch("openai.OpenAI")
-    def test_generate_single_embedding_empty_result(self, mock_openai):
+    @patch("openai.AsyncOpenAI")
+    @pytest.mark.asyncio
+    async def test_generate_single_embedding_empty_result(self, mock_openai):
         """Test generate_single_embedding with empty result"""
         mock_client = Mock()
         mock_response = Mock()
         mock_response.data = []
-        mock_client.embeddings.create.return_value = mock_response
+        mock_client.embeddings.create = AsyncMock(return_value=mock_response)
         mock_openai.return_value = mock_client
 
         generator = EmbeddingsGenerator(api_key="test-key", provider="openai", settings=None)
-        result = generator.generate_single_embedding("Text")
+        result = await generator.generate_single_embedding("Text")
 
         assert result == []
 
@@ -365,13 +390,14 @@ class TestEdgeCases:
         with pytest.raises(Exception, match="Encoding error"):
             generator.generate_embeddings(["Text"])
 
-    @patch("openai.OpenAI")
+    @patch("openai.AsyncOpenAI")
     def test_init_openai_production_without_key(self, mock_openai):
         """Test OpenAI init in production without key raises critical error"""
         mock_settings = Mock()
         mock_settings.embedding_provider = "openai"
         mock_settings.openai_api_key = None
         mock_settings.environment = "production"
+        mock_settings.api_keys = "test-api-key"
 
         with pytest.raises(ValueError, match="required for OpenAI provider in production"):
             EmbeddingsGenerator(provider="openai", settings=mock_settings)
@@ -391,7 +417,7 @@ class TestEdgeCases:
 
         assert len(result) == 100
 
-    @patch("openai.OpenAI")
+    @patch("openai.AsyncOpenAI")
     def test_custom_model_parameter(self, mock_openai):
         """Test using custom model parameter"""
         generator = EmbeddingsGenerator(

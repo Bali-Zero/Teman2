@@ -7,10 +7,20 @@ export {
   BreadcrumbJsonLd,
   WebsiteJsonLd,
   AggregateRatingJsonLd,
-} from './JsonLd';
+} from "./JsonLd";
 
-export { HomepageFAQSchema, HomepageServicesSchema, HomepageSEOSchemas } from './HomepageFAQ';
+export {
+  HomepageFAQSchema,
+  HomepageServicesSchema,
+  HomepageSEOSchemas,
+} from "./HomepageFAQ";
 
-export { SchemaInjector } from './SchemaInjector';
+export { SchemaInjector } from "./SchemaInjector";
 
-export { ArticleWithFAQJsonLd, HowToJsonLd, EnhancedArticleJsonLd } from './EnhancedJsonLd';
+export {
+  ArticleWithFAQJsonLd,
+  HowToJsonLd,
+  EnhancedArticleJsonLd,
+} from "./EnhancedJsonLd";
+
+export { DynamicJsonLd } from "./DynamicJsonLd";

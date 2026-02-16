@@ -86,12 +86,14 @@ def mock_env(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/db")
     monkeypatch.setenv("GOOGLE_API_KEY", "test_key")
     monkeypatch.setenv("GOOGLE_CREDENTIALS_JSON", "{}")
+    monkeypatch.setenv("API_KEYS", "test-api-key")
 
     # Patch settings object directly as it might be already instantiated
     with patch("backend.app.core.config.settings") as mock_settings:
         mock_settings.database_url = "postgresql://user:pass@localhost:5432/db"
         mock_settings.google_api_key = "test_key"
         mock_settings.google_credentials_json = "{}"
+        mock_settings.api_keys = "test-api-key"
         mock_settings.API_V1_STR = "/api/v1"
         mock_settings.PROJECT_NAME = "Test Project"
         mock_settings.log_level = "INFO"

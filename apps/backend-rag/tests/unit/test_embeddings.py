@@ -4,7 +4,7 @@ Unit tests for Embeddings Generator
 
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -23,6 +23,7 @@ def mock_settings():
     mock.embedding_provider = "openai"
     mock.embedding_model = "text-embedding-3-small"
     mock.openai_api_key = "test-key"
+    mock.api_keys = "test-api-key"
     return mock
 
 
@@ -71,13 +72,14 @@ def test_init_sentence_transformers(mock_settings):
         assert generator.dimensions == 384
 
 
-def test_generate_embeddings_openai(mock_settings, mock_openai_client):
+@pytest.mark.asyncio
+async def test_generate_embeddings_openai(mock_settings, mock_openai_client):
     """Test generating embeddings with OpenAI"""
-    with patch("openai.OpenAI", return_value=mock_openai_client):
+    with patch("openai.AsyncOpenAI", return_value=mock_openai_client):
         generator = EmbeddingsGenerator(
             provider="openai", api_key="test-key", settings=mock_settings
         )
-        embeddings = generator.generate_embeddings(["text1", "text2"])
+        embeddings = await generator.generate_embeddings(["text1", "text2"])
 
         assert len(embeddings) == 2
         assert len(embeddings[0]) == 1536
@@ -94,25 +96,27 @@ def test_generate_embeddings_empty_list(mock_settings):
         assert embeddings == []
 
 
-def test_generate_single_embedding(mock_settings, mock_openai_client):
+@pytest.mark.asyncio
+async def test_generate_single_embedding(mock_settings, mock_openai_client):
     """Test generating single embedding"""
-    with patch("openai.OpenAI", return_value=mock_openai_client):
+    with patch("openai.AsyncOpenAI", return_value=mock_openai_client):
         generator = EmbeddingsGenerator(
             provider="openai", api_key="test-key", settings=mock_settings
         )
-        embedding = generator.generate_single_embedding("test text")
+        embedding = await generator.generate_single_embedding("test text")
 
         assert isinstance(embedding, list)
         assert len(embedding) == 1536
 
 
-def test_generate_query_embedding(mock_settings, mock_openai_client):
+@pytest.mark.asyncio
+async def test_generate_query_embedding(mock_settings, mock_openai_client):
     """Test generating query embedding"""
-    with patch("openai.OpenAI", return_value=mock_openai_client):
+    with patch("openai.AsyncOpenAI", return_value=mock_openai_client):
         generator = EmbeddingsGenerator(
             provider="openai", api_key="test-key", settings=mock_settings
         )
-        embedding = generator.generate_query_embedding("test query")
+        embedding = await generator.generate_query_embedding("test query")
 
         assert isinstance(embedding, list)
         assert len(embedding) == 1536
@@ -184,14 +188,15 @@ def test_default_settings_when_none_provided(mock_openai_client):
             assert generator.provider == "openai"
 
 
-def test_generate_batch_embeddings_alias(mock_settings, mock_openai_client):
+@pytest.mark.asyncio
+async def test_generate_batch_embeddings_alias(mock_settings, mock_openai_client):
     """Test that generate_batch_embeddings is an alias for generate_embeddings"""
-    with patch("openai.OpenAI", return_value=mock_openai_client):
+    with patch("openai.AsyncOpenAI", return_value=mock_openai_client):
         generator = EmbeddingsGenerator(
             provider="openai", api_key="test-key", settings=mock_settings
         )
-        embeddings1 = generator.generate_embeddings(["text1", "text2"])
-        embeddings2 = generator.generate_batch_embeddings(["text1", "text2"])
+        embeddings1 = await generator.generate_embeddings(["text1", "text2"])
+        embeddings2 = await generator.generate_batch_embeddings(["text1", "text2"])
 
         assert embeddings1 == embeddings2
         assert len(embeddings1) == 2
@@ -328,21 +333,22 @@ def test_generate_embeddings_openai_error(mock_settings, mock_openai_client):
             generator.generate_embeddings(["text1"])
 
 
-def test_generate_single_embedding_empty_result(mock_settings, mock_openai_client):
+@pytest.mark.asyncio
+async def test_generate_single_embedding_empty_result(mock_settings, mock_openai_client):
     """Test generate_single_embedding when generate_embeddings returns empty list"""
     # Mock to return empty response
     mock_response = MagicMock()
     mock_response.data = []
-    mock_openai_client.embeddings.create = MagicMock(return_value=mock_response)
+    mock_openai_client.embeddings.create = AsyncMock(return_value=mock_response)
 
-    with patch("openai.OpenAI", return_value=mock_openai_client):
+    with patch("openai.AsyncOpenAI", return_value=mock_openai_client):
         generator = EmbeddingsGenerator(
             provider="openai", api_key="test-key", settings=mock_settings
         )
         # Override generate_embeddings to return empty list
-        generator.generate_embeddings = MagicMock(return_value=[])
+        generator.generate_embeddings = AsyncMock(return_value=[])
 
-        embedding = generator.generate_single_embedding("test")
+        embedding = await generator.generate_single_embedding("test")
         assert embedding == []
 
 
@@ -406,21 +412,23 @@ def test_sentence_transformers_default_model():
         mock_st.assert_called_once_with("sentence-transformers/all-MiniLM-L6-v2")
 
 
-def test_convenience_function_generate_embeddings(mock_openai_client):
+@pytest.mark.asyncio
+async def test_convenience_function_generate_embeddings(mock_openai_client):
     """Test the convenience function generate_embeddings"""
     from backend.core.embeddings import generate_embeddings
 
     mock_response = MagicMock()
     mock_response.data = [MagicMock(embedding=[0.1] * 1536)]
-    mock_openai_client.embeddings.create = MagicMock(return_value=mock_response)
+    mock_openai_client.embeddings.create = AsyncMock(return_value=mock_response)
 
-    with patch("openai.OpenAI", return_value=mock_openai_client):
-        embeddings = generate_embeddings(["test text"], api_key="test-key")
+    with patch("openai.AsyncOpenAI", return_value=mock_openai_client):
+        embeddings = await generate_embeddings(["test text"], api_key="test-key")
         assert len(embeddings) == 1
         assert len(embeddings[0]) == 1536
 
 
-def test_convenience_function_without_api_key():
+@pytest.mark.asyncio
+async def test_convenience_function_without_api_key():
     """Test convenience function without API key (uses sentence transformers)"""
     import numpy as np
 
@@ -433,7 +441,7 @@ def test_convenience_function_without_api_key():
 
     with patch("sentence_transformers.SentenceTransformer", return_value=mock_transformer):
         with patch("backend.core.embeddings._default_settings", None):
-            embeddings = generate_embeddings(["test text"])
+            embeddings = await generate_embeddings(["test text"])
             assert len(embeddings) == 1
             assert len(embeddings[0]) == 384
 
@@ -444,8 +452,9 @@ def test_api_key_from_settings(mock_openai_client):
     mock_settings.embedding_provider = "openai"
     mock_settings.openai_api_key = "settings-api-key"
     mock_settings.embedding_model = "text-embedding-3-small"
+    mock_settings.api_keys = "test-api-key"
 
-    with patch("openai.OpenAI", return_value=mock_openai_client) as mock_openai_init:
+    with patch("openai.AsyncOpenAI", return_value=mock_openai_client) as mock_openai_init:
         generator = EmbeddingsGenerator(provider="openai", settings=mock_settings)
         # Verify it used the API key from settings
         mock_openai_init.assert_called_once_with(api_key="settings-api-key")
@@ -457,8 +466,9 @@ def test_provider_from_settings(mock_openai_client):
     mock_settings.embedding_provider = "openai"
     mock_settings.openai_api_key = "test-key"
     mock_settings.embedding_model = "text-embedding-3-small"
+    mock_settings.api_keys = "test-api-key"
 
-    with patch("openai.OpenAI", return_value=mock_openai_client):
+    with patch("openai.AsyncOpenAI", return_value=mock_openai_client):
         # Don't specify provider - should come from settings
         generator = EmbeddingsGenerator(settings=mock_settings)
         assert generator.provider == "openai"
@@ -477,7 +487,7 @@ def test_default_provider_sentence_transformers():
 
 def test_get_model_info_includes_all_fields(mock_settings, mock_openai_client):
     """Test that get_model_info returns all expected fields"""
-    with patch("openai.OpenAI", return_value=mock_openai_client):
+    with patch("openai.AsyncOpenAI", return_value=mock_openai_client):
         generator = EmbeddingsGenerator(
             provider="openai", api_key="test-key", settings=mock_settings
         )
@@ -505,30 +515,31 @@ def test_get_model_info_sentence_transformers_cost(mock_settings):
         assert info["cost"] == "FREE (Local)"
 
 
-def test_multiple_calls_to_generate_embeddings(mock_settings):
+@pytest.mark.asyncio
+async def test_multiple_calls_to_generate_embeddings(mock_settings):
     """Test multiple calls to generate_embeddings work correctly"""
     # Create a fresh mock client for this test
     client = MagicMock()
 
     # Setup different responses for each call
-    def create_response(model, input):
+    async def create_response(model, input):
         response = MagicMock()
         response.data = [MagicMock(embedding=[0.1] * 1536) for _ in input]
         return response
 
-    client.embeddings.create = MagicMock(side_effect=create_response)
+    client.embeddings.create = AsyncMock(side_effect=create_response)
 
-    with patch("openai.OpenAI", return_value=client):
+    with patch("openai.AsyncOpenAI", return_value=client):
         generator = EmbeddingsGenerator(
             provider="openai", api_key="test-key", settings=mock_settings
         )
 
         # First call
-        embeddings1 = generator.generate_embeddings(["text1"])
+        embeddings1 = await generator.generate_embeddings(["text1"])
         assert len(embeddings1) == 1
 
         # Second call
-        embeddings2 = generator.generate_embeddings(["text2", "text3"])
+        embeddings2 = await generator.generate_embeddings(["text2", "text3"])
         assert len(embeddings2) == 2
 
         # Verify client was called multiple times

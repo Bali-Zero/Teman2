@@ -258,7 +258,7 @@ class TestCachingPerformance:
         from backend.core.cache import cached, invalidate_cache
 
         # Clear cache
-        invalidate_cache("test_perf:*")
+        await invalidate_cache("test_perf:*")
 
         call_count = 0
 
@@ -285,7 +285,7 @@ class TestCachingPerformance:
         assert call_count == 1  # Function called only once
 
         # Cleanup
-        invalidate_cache("test_perf:*")
+        await invalidate_cache("test_perf:*")
 
 
 @pytest.mark.integration

@@ -46,11 +46,11 @@ def stubbed_knowledge_service():
 
 
 @pytest.fixture(autouse=True)
-def clear_cached_results():
+async def clear_cached_results():
     """Ensure cached decorator does not short-circuit consecutive tests."""
-    invalidate_cache("zantara:rag_search:*")
+    await invalidate_cache("zantara:rag_search:*")
     yield
-    invalidate_cache("zantara:rag_search:*")
+    await invalidate_cache("zantara:rag_search:*")
 
 
 @pytest.mark.integration
