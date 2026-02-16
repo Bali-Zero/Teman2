@@ -420,7 +420,11 @@ export default async function RootLayout({
   return (
     <html lang="en" className="dark">
       <head>
-        {/* AI Discovery Links */}
+        {/* ⚡ Performance: Preconnect to critical domains */}
+        <link rel="preconnect" href="https://nuzantara-rag.fly.dev" />
+        <link rel="dns-prefetch" href="https://nuzantara-rag.fly.dev" />
+        
+        {/* AI Discovery Links -->
         <link
           rel="alternate"
           type="text/plain"

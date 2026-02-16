@@ -22,6 +22,7 @@ from backend.app.dependencies import (
     get_optional_database_pool,
     get_search_service,
 )
+from backend.core.cache import cached
 
 logger = logging.getLogger(__name__)
 
@@ -153,6 +154,7 @@ async def search_kbli(query: str, limit: int = 10, search_service=Depends(get_se
 
 
 @router.get("/inspect/{code}", response_model=KBLIDetail)
+@cached(ttl=3600)  # Cache for 1 hour - KBLI data is relatively static
 async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)):
     """Retrieve deep KG metadata for a specific KBLI code from PostgreSQL."""
     logger.info(f"🧐 KBLI Inspection: {code}")
