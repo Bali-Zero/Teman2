@@ -10,3 +10,4 @@ export { NusantaraHealthWidget } from './NusantaraHealthWidget';
 export { EmailPreview } from './EmailPreview';
 export { GrafanaWidget } from './GrafanaWidget';
 export { FeaturedArticlesWidget } from './FeaturedArticlesWidget';
+export { HomepagePreviewWidget, HomepagePreviewCompact } from './HomepagePreviewWidget';

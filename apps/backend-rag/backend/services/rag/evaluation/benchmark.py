@@ -33,7 +33,7 @@ from backend.services.rag.evaluation.ragas_evaluator import (
     get_ragas_evaluator,
 )
 from backend.services.rag.hybrid_search import HybridSearchService
-from backend.services.rag.reranker_integration import RerankerIntegration
+from backend.services.rag.reranker_integration import CrossEncoderRerankerMixin, SearchServiceWithCrossEncoder
 
 logger = logging.getLogger(__name__)
 

@@ -462,7 +462,6 @@ async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]
 @router.post("/chat", response_model=KBLINotebookChatResponse)
 async def chat_kbli(
     request: KBLINotebookChatRequest, 
-    http_req: Request,
     search_service=Depends(get_search_service)
 ):
     """Specialized chat for KBLI Notebook with BPS 2025 focus."""
