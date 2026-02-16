@@ -1,16 +1,16 @@
-import fs from "fs";
-import path from "path";
-import KBLINavigatorIntro from "@/components/kbli/KBLINavigatorIntro";
+import fs from 'fs';
+import path from 'path';
+import KBLIIntroOverlay from '@/components/kbli/KBLIIntroOverlay';
 
 export default function KBLINavigatorPage() {
-  // Read and serve the static HTML file
-  const filePath = path.join(
-    process.cwd(),
-    "public",
-    "kbli-navigator",
-    "index.html",
-  );
-  const htmlContent = fs.readFileSync(filePath, "utf8");
+  // Legge il file HTML statico dal server
+  const filePath = path.join(process.cwd(), 'public', 'kbli-navigator', 'index.html');
+  const htmlContent = fs.readFileSync(filePath, 'utf8');
 
-  return <KBLINavigatorIntro htmlContent={htmlContent} />;
+  return (
+    <>
+      <KBLIIntroOverlay />
+      <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
+    </>
+  );
 }
