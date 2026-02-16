@@ -1,5 +1,5 @@
-import type { IApiClient } from '../types/api-client.types';
-import type { ClockResponse, UserStatusResponse } from './team.types';
+import type { IApiClient } from "../types/api-client.types";
+import type { ClockResponse, UserStatusResponse } from "./team.types";
 
 /**
  * Team Activity API methods
@@ -10,11 +10,11 @@ export class TeamApi {
   async clockIn(): Promise<ClockResponse> {
     const userProfile = this.client.getUserProfile();
     if (!userProfile) {
-      throw new Error('User profile not loaded. Please login again.');
+      throw new Error("User profile not loaded. Please login again.");
     }
 
-    return this.client.request<ClockResponse>('/api/team/clock-in', {
-      method: 'POST',
+    return this.client.request<ClockResponse>("/api/team/clock-in", {
+      method: "POST",
       body: JSON.stringify({
         user_id: userProfile.id,
         email: userProfile.email,
@@ -25,11 +25,11 @@ export class TeamApi {
   async clockOut(): Promise<ClockResponse> {
     const userProfile = this.client.getUserProfile();
     if (!userProfile) {
-      throw new Error('User profile not loaded. Please login again.');
+      throw new Error("User profile not loaded. Please login again.");
     }
 
-    return this.client.request<ClockResponse>('/api/team/clock-out', {
-      method: 'POST',
+    return this.client.request<ClockResponse>("/api/team/clock-out", {
+      method: "POST",
       body: JSON.stringify({
         user_id: userProfile.id,
         email: userProfile.email,
@@ -49,7 +49,7 @@ export class TeamApi {
 
     try {
       const response = await this.client.request<UserStatusResponse>(
-        `/api/team/my-status?user_id=${encodeURIComponent(userProfile.id)}`
+        `/api/team/my-status?user_id=${encodeURIComponent(userProfile.id)}`,
       );
 
       return {

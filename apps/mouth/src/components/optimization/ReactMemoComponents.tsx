@@ -5,7 +5,7 @@
  * when props haven't changed. Use for frequently rendered components.
  */
 
-import React from 'react';
+import React from "react";
 
 interface MemoCardProps {
   title: string;
@@ -20,7 +20,7 @@ interface MemoCardProps {
 export const MemoCard = React.memo<MemoCardProps>(function MemoCard({
   title,
   children,
-  className = '',
+  className = "",
 }) {
   return (
     <div className={`rounded-lg border bg-card p-4 ${className}`}>
@@ -42,28 +42,27 @@ interface MemoListItemProps {
  * Essential for long lists - prevents all items from re-rendering
  * when only one item changes
  */
-export const MemoListItem = React.memo<MemoListItemProps>(function MemoListItem({
-  id,
-  title,
-  subtitle,
-  onClick,
-}) {
-  return (
-    <div
-      className="flex items-center justify-between p-3 hover:bg-accent rounded-md cursor-pointer"
-      onClick={() => onClick?.(id)}
-    >
-      <div>
-        <div className="font-medium">{title}</div>
-        {subtitle && <div className="text-sm text-muted-foreground">{subtitle}</div>}
+export const MemoListItem = React.memo<MemoListItemProps>(
+  function MemoListItem({ id, title, subtitle, onClick }) {
+    return (
+      <div
+        className="flex items-center justify-between p-3 hover:bg-accent rounded-md cursor-pointer"
+        onClick={() => onClick?.(id)}
+      >
+        <div>
+          <div className="font-medium">{title}</div>
+          {subtitle && (
+            <div className="text-sm text-muted-foreground">{subtitle}</div>
+          )}
+        </div>
       </div>
-    </div>
-  );
-});
+    );
+  },
+);
 
 interface MemoBadgeProps {
   children: React.ReactNode;
-  variant?: 'default' | 'secondary' | 'destructive' | 'outline';
+  variant?: "default" | "secondary" | "destructive" | "outline";
 }
 
 /**
@@ -72,13 +71,13 @@ interface MemoBadgeProps {
  */
 export const MemoBadge = React.memo<MemoBadgeProps>(function MemoBadge({
   children,
-  variant = 'default',
+  variant = "default",
 }) {
   const variantClasses = {
-    default: 'bg-primary text-primary-foreground',
-    secondary: 'bg-secondary text-secondary-foreground',
-    destructive: 'bg-destructive text-destructive-foreground',
-    outline: 'border border-input bg-background',
+    default: "bg-primary text-primary-foreground",
+    secondary: "bg-secondary text-secondary-foreground",
+    destructive: "bg-destructive text-destructive-foreground",
+    outline: "border border-input bg-background",
   };
 
   return (
@@ -99,7 +98,7 @@ export const optimizationUtils = {
   compareProps: <T extends Record<string, unknown>>(
     prevProps: T,
     nextProps: T,
-    keysToCompare?: (keyof T)[]
+    keysToCompare?: (keyof T)[],
   ): boolean => {
     const keys = keysToCompare || (Object.keys(prevProps) as (keyof T)[]);
     return keys.every((key) => prevProps[key] === nextProps[key]);
@@ -110,10 +109,11 @@ export const optimizationUtils = {
    */
   withMemo: <P extends object>(
     Component: React.ComponentType<P>,
-    displayName?: string
+    displayName?: string,
   ): React.NamedExoticComponent<P> => {
     const Memoized = React.memo(Component);
-    Memoized.displayName = displayName || Component.displayName || 'MemoizedComponent';
+    Memoized.displayName =
+      displayName || Component.displayName || "MemoizedComponent";
     return Memoized;
   },
 };

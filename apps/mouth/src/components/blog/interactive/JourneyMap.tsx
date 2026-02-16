@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import * as React from 'react';
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import * as React from "react";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronRight,
   Clock,
@@ -12,8 +12,8 @@ import {
   AlertTriangle,
   Info,
   Zap,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // ============================================================================
 // Types
@@ -35,7 +35,7 @@ export interface JourneyStep {
   /** Warnings */
   warnings?: string[];
   /** Status */
-  status?: 'pending' | 'current' | 'completed';
+  status?: "pending" | "current" | "completed";
   /** Icon */
   icon?: string;
 }
@@ -84,25 +84,32 @@ export function JourneyMap({
 
   // Calculate totals
   const calculatedDuration = activeSteps.reduce((acc, step) => {
-    if (typeof step.duration === 'number') return acc + step.duration;
+    if (typeof step.duration === "number") return acc + step.duration;
     return acc;
   }, 0);
 
   const calculatedCost = activeSteps.reduce((acc, step) => {
-    if (typeof step.cost === 'number') return acc + step.cost;
+    if (typeof step.cost === "number") return acc + step.cost;
     return acc;
   }, 0);
 
   return (
     <div
-      className={cn('bg-black/40 rounded-2xl border border-white/10 overflow-hidden', className)}
+      className={cn(
+        "bg-black/40 rounded-2xl border border-white/10 overflow-hidden",
+        className,
+      )}
     >
       {/* Header */}
       <div className="px-6 py-4 border-b border-white/10 bg-gradient-to-r from-purple-500/10 to-transparent">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-serif text-xl font-semibold text-white">{title}</h3>
-            {subtitle && <p className="text-white/60 text-sm mt-1">{subtitle}</p>}
+            <h3 className="font-serif text-xl font-semibold text-white">
+              {title}
+            </h3>
+            {subtitle && (
+              <p className="text-white/60 text-sm mt-1">{subtitle}</p>
+            )}
           </div>
 
           {/* Fast track toggle */}
@@ -110,10 +117,10 @@ export function JourneyMap({
             <button
               onClick={() => setIsFastTrack(!isFastTrack)}
               className={cn(
-                'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors',
+                "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors",
                 isFastTrack
-                  ? 'bg-amber-500/20 text-amber-400'
-                  : 'bg-white/5 text-white/60 hover:bg-white/10'
+                  ? "bg-amber-500/20 text-amber-400"
+                  : "bg-white/5 text-white/60 hover:bg-white/10",
               )}
             >
               <Zap className="w-4 h-4" />
@@ -129,14 +136,16 @@ export function JourneyMap({
         <div className="flex items-center gap-6 mt-4">
           <div className="flex items-center gap-2 text-white/60">
             <Clock className="w-4 h-4" />
-            <span className="text-sm">{totalDuration || `~${calculatedDuration} days`}</span>
+            <span className="text-sm">
+              {totalDuration || `~${calculatedDuration} days`}
+            </span>
           </div>
           <div className="flex items-center gap-2 text-white/60">
             <DollarSign className="w-4 h-4" />
             <span className="text-sm">
-              {typeof totalCost === 'number'
-                ? `Rp ${totalCost.toLocaleString('id-ID')}`
-                : totalCost || `Rp ${calculatedCost.toLocaleString('id-ID')}`}
+              {typeof totalCost === "number"
+                ? `Rp ${totalCost.toLocaleString("id-ID")}`
+                : totalCost || `Rp ${calculatedCost.toLocaleString("id-ID")}`}
             </span>
           </div>
           <div className="flex items-center gap-2 text-white/60">
@@ -156,8 +165,8 @@ export function JourneyMap({
           <div className="space-y-4">
             {activeSteps.map((step, index) => {
               const isSelected = selectedStep === step.id;
-              const isCompleted = step.status === 'completed';
-              const isCurrent = step.status === 'current';
+              const isCompleted = step.status === "completed";
+              const isCurrent = step.status === "current";
 
               return (
                 <motion.div
@@ -172,10 +181,14 @@ export function JourneyMap({
                     {/* Circle */}
                     <div
                       className={cn(
-                        'relative z-10 w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-colors',
-                        isCompleted && 'bg-emerald-500/20 border-2 border-emerald-500/50',
-                        isCurrent && 'bg-[#2251ff]/20 border-2 border-[#2251ff]/50 animate-pulse',
-                        !isCompleted && !isCurrent && 'bg-white/5 border-2 border-white/20'
+                        "relative z-10 w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-colors",
+                        isCompleted &&
+                          "bg-emerald-500/20 border-2 border-emerald-500/50",
+                        isCurrent &&
+                          "bg-[#2251ff]/20 border-2 border-[#2251ff]/50 animate-pulse",
+                        !isCompleted &&
+                          !isCurrent &&
+                          "bg-white/5 border-2 border-white/20",
                       )}
                     >
                       {step.icon ? (
@@ -185,8 +198,8 @@ export function JourneyMap({
                       ) : (
                         <span
                           className={cn(
-                            'font-bold',
-                            isCurrent ? 'text-[#2251ff]' : 'text-white/60'
+                            "font-bold",
+                            isCurrent ? "text-[#2251ff]" : "text-white/60",
                           )}
                         >
                           {index + 1}
@@ -197,24 +210,28 @@ export function JourneyMap({
                     {/* Content */}
                     <div className="flex-1 pb-4">
                       <button
-                        onClick={() => setSelectedStep(isSelected ? null : step.id)}
+                        onClick={() =>
+                          setSelectedStep(isSelected ? null : step.id)
+                        }
                         className="w-full text-left group"
                       >
                         <div className="flex items-center justify-between">
                           <div>
                             <h4
                               className={cn(
-                                'font-medium transition-colors',
-                                isCompleted && 'text-emerald-400',
-                                isCurrent && 'text-[#2251ff]',
+                                "font-medium transition-colors",
+                                isCompleted && "text-emerald-400",
+                                isCurrent && "text-[#2251ff]",
                                 !isCompleted &&
                                   !isCurrent &&
-                                  'text-white group-hover:text-[#2251ff]'
+                                  "text-white group-hover:text-[#2251ff]",
                               )}
                             >
                               {step.title}
                             </h4>
-                            <p className="text-white/50 text-sm mt-0.5">{step.description}</p>
+                            <p className="text-white/50 text-sm mt-0.5">
+                              {step.description}
+                            </p>
                           </div>
 
                           {/* Quick stats */}
@@ -222,7 +239,7 @@ export function JourneyMap({
                             {step.duration && (
                               <span className="flex items-center gap-1">
                                 <Clock className="w-3 h-3" />
-                                {typeof step.duration === 'number'
+                                {typeof step.duration === "number"
                                   ? `${step.duration} days`
                                   : step.duration}
                               </span>
@@ -230,15 +247,15 @@ export function JourneyMap({
                             {step.cost && (
                               <span className="flex items-center gap-1">
                                 <DollarSign className="w-3 h-3" />
-                                {typeof step.cost === 'number'
+                                {typeof step.cost === "number"
                                   ? `Rp ${(step.cost / 1000000).toFixed(1)}M`
                                   : step.cost}
                               </span>
                             )}
                             <ChevronRight
                               className={cn(
-                                'w-4 h-4 transition-transform',
-                                isSelected && 'rotate-90'
+                                "w-4 h-4 transition-transform",
+                                isSelected && "rotate-90",
                               )}
                             />
                           </div>
@@ -250,7 +267,7 @@ export function JourneyMap({
                         {isSelected && (
                           <motion.div
                             initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
+                            animate={{ opacity: 1, height: "auto" }}
                             exit={{ opacity: 0, height: 0 }}
                             className="overflow-hidden"
                           >

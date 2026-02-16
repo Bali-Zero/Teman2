@@ -89,8 +89,8 @@ import {
   InfoCard,
   GlossaryTerm,
   ConfidenceMeter,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Bali for Digital Nomads: The Complete 2026 Guide
 
@@ -103,11 +103,31 @@ This guide covers everything you need to know to make Bali work as your remote w
 <ConfidenceMeter
   title="Information Confidence"
   items={[
-    { label: "Coworking Information", confidence: 92, source: "Direct research + user reviews 2024" },
-    { label: "Internet Data", confidence: 88, source: "Speed tests + provider data" },
-    { label: "Visa Information", confidence: 95, source: "Immigration regulations" },
-    { label: "Cost Estimates", confidence: 85, source: "Community surveys + market research" },
-    { label: "Legal Guidance", confidence: 80, source: "Regulations + practitioner input" }
+    {
+      label: "Coworking Information",
+      confidence: 92,
+      source: "Direct research + user reviews 2024",
+    },
+    {
+      label: "Internet Data",
+      confidence: 88,
+      source: "Speed tests + provider data",
+    },
+    {
+      label: "Visa Information",
+      confidence: 95,
+      source: "Immigration regulations",
+    },
+    {
+      label: "Cost Estimates",
+      confidence: 85,
+      source: "Community surveys + market research",
+    },
+    {
+      label: "Legal Guidance",
+      confidence: 80,
+      source: "Regulations + practitioner input",
+    },
   ]}
 />
 
@@ -123,6 +143,7 @@ Let's address the elephant in the room first.
 **In practice**, Indonesia has not historically enforced this against remote workers serving clients outside Indonesia. Thousands of digital nomads work from Bali on tourist visas without issue.
 
 **But**: This is a gray area, not a legal pathway. The risk is real, even if enforcement is rare. This guide presents the facts; you make your own risk assessment.
+
 </InfoCard>
 
 <DecisionTree
@@ -133,28 +154,37 @@ Let's address the elephant in the room first.
       id: "start",
       question: "What type of remote work do you do?",
       options: [
-        { label: "Employee (remote for foreign company)", nextNodeId: "employee-length" },
+        {
+          label: "Employee (remote for foreign company)",
+          nextNodeId: "employee-length",
+        },
         { label: "Freelancer/contractor", nextNodeId: "freelance-clients" },
         { label: "Own online business", nextNodeId: "business-size" },
-        { label: "Content creator/influencer", nextNodeId: "creator-income" }
-      ]
+        { label: "Content creator/influencer", nextNodeId: "creator-income" },
+      ],
     },
     {
       id: "employee-length",
       question: "How long do you plan to stay in Bali?",
       options: [
-        { label: "Short visit (1-2 months)", nextNodeId: "result-short-tourist" },
-        { label: "Extended stay (3-6 months)", nextNodeId: "result-extended-stay" },
-        { label: "Long-term (6+ months/year)", nextNodeId: "employee-assets" }
-      ]
+        {
+          label: "Short visit (1-2 months)",
+          nextNodeId: "result-short-tourist",
+        },
+        {
+          label: "Extended stay (3-6 months)",
+          nextNodeId: "result-extended-stay",
+        },
+        { label: "Long-term (6+ months/year)", nextNodeId: "employee-assets" },
+      ],
     },
     {
       id: "employee-assets",
       question: "Do you have $130,000+ in savings/investments?",
       options: [
         { label: "Yes", nextNodeId: "result-second-home" },
-        { label: "No", nextNodeId: "result-rotation-strategy" }
-      ]
+        { label: "No", nextNodeId: "result-rotation-strategy" },
+      ],
     },
     {
       id: "freelance-clients",
@@ -162,25 +192,37 @@ Let's address the elephant in the room first.
       options: [
         { label: "100% outside Indonesia", nextNodeId: "freelance-length" },
         { label: "Some Indonesian clients", nextNodeId: "result-need-pt" },
-        { label: "Mostly Indonesian clients", nextNodeId: "result-need-pt-serious" }
-      ]
+        {
+          label: "Mostly Indonesian clients",
+          nextNodeId: "result-need-pt-serious",
+        },
+      ],
     },
     {
       id: "freelance-length",
       question: "How long do you plan to stay?",
       options: [
-        { label: "Short stays (visa runs)", nextNodeId: "result-freelance-tourist" },
-        { label: "Long-term base", nextNodeId: "freelance-assets" }
-      ]
+        {
+          label: "Short stays (visa runs)",
+          nextNodeId: "result-freelance-tourist",
+        },
+        { label: "Long-term base", nextNodeId: "freelance-assets" },
+      ],
     },
     {
       id: "freelance-assets",
       question: "Do you have $130,000+ in savings/investments?",
       options: [
         { label: "Yes", nextNodeId: "result-second-home-freelance" },
-        { label: "No, but want legitimate status", nextNodeId: "result-investor-kitas" },
-        { label: "No, will accept gray area", nextNodeId: "result-rotation-strategy" }
-      ]
+        {
+          label: "No, but want legitimate status",
+          nextNodeId: "result-investor-kitas",
+        },
+        {
+          label: "No, will accept gray area",
+          nextNodeId: "result-rotation-strategy",
+        },
+      ],
     },
     {
       id: "business-size",
@@ -188,138 +230,234 @@ Let's address the elephant in the room first.
       options: [
         { label: "Small (< $50k/year)", nextNodeId: "result-small-business" },
         { label: "Medium ($50k-200k/year)", nextNodeId: "result-consider-pt" },
-        { label: "Large ($200k+/year)", nextNodeId: "result-pt-recommended" }
-      ]
+        { label: "Large ($200k+/year)", nextNodeId: "result-pt-recommended" },
+      ],
     },
     {
       id: "creator-income",
       question: "Where does your income come from?",
       options: [
-        { label: "International platforms (YouTube, etc.)", nextNodeId: "result-creator-international" },
-        { label: "Indonesian brands/sponsors", nextNodeId: "result-creator-local" },
-        { label: "Mix of both", nextNodeId: "result-creator-mixed" }
-      ]
+        {
+          label: "International platforms (YouTube, etc.)",
+          nextNodeId: "result-creator-international",
+        },
+        {
+          label: "Indonesian brands/sponsors",
+          nextNodeId: "result-creator-local",
+        },
+        { label: "Mix of both", nextNodeId: "result-creator-mixed" },
+      ],
     },
     {
       id: "result-short-tourist",
       isResult: true,
       title: "VOA / C1 Tourism",
       description: "Short-term remote work",
-      recommendation: "For short visits, most digital nomads use VOA (30+30 days) or C1 Tourism (60 days). Technically gray area but common practice. Low risk for short stays.",
-      nextSteps: ["VOA for up to 60 days", "C1 Tourism for 60 days", "Don't advertise working locally", "Keep income documentation for home country"]
+      recommendation:
+        "For short visits, most digital nomads use VOA (30+30 days) or C1 Tourism (60 days). Technically gray area but common practice. Low risk for short stays.",
+      nextSteps: [
+        "VOA for up to 60 days",
+        "C1 Tourism for 60 days",
+        "Don't advertise working locally",
+        "Keep income documentation for home country",
+      ],
     },
     {
       id: "result-extended-stay",
       isResult: true,
       title: "D12 Business Investigation or E33G",
       description: "Extended stay option",
-      recommendation: "D12 visa allows 180 days per entry for business investigation. For long-term, consider E33G Digital Nomad KITAS (5 years) if you earn $2,000+/month from overseas.",
-      nextSteps: ["D12 for 180-day business stays", "E33G for 5-year digital nomad KITAS", "Have proof of income ready", "Consider visa agent for convenience"]
+      recommendation:
+        "D12 visa allows 180 days per entry for business investigation. For long-term, consider E33G Digital Nomad KITAS (5 years) if you earn $2,000+/month from overseas.",
+      nextSteps: [
+        "D12 for 180-day business stays",
+        "E33G for 5-year digital nomad KITAS",
+        "Have proof of income ready",
+        "Consider visa agent for convenience",
+      ],
     },
     {
       id: "result-second-home",
       isResult: true,
       title: "Second Home Visa",
       description: "5-10 year legitimate stay",
-      recommendation: "If you have $130k+ in bank/investments, the Second Home Visa offers 5-10 year legitimate residency. No work permit but allows you to manage overseas affairs.",
-      nextSteps: ["Verify asset requirements", "Apply through Immigration", "Long-term residence rights", "Clearest legal pathway"]
+      recommendation:
+        "If you have $130k+ in bank/investments, the Second Home Visa offers 5-10 year legitimate residency. No work permit but allows you to manage overseas affairs.",
+      nextSteps: [
+        "Verify asset requirements",
+        "Apply through Immigration",
+        "Long-term residence rights",
+        "Clearest legal pathway",
+      ],
     },
     {
       id: "result-rotation-strategy",
       isResult: true,
       title: "Visa Rotation Strategy",
       description: "Common but not ideal",
-      recommendation: "Many long-term nomads rotate between VOA with exits to neighboring countries. This works but is not a real solution—consider E33G Digital Nomad KITAS for legal status.",
-      nextSteps: ["Plan regular exits", "Keep travel funds available", "Monitor policy changes", "Consider long-term alternatives"]
+      recommendation:
+        "Many long-term nomads rotate between VOA with exits to neighboring countries. This works but is not a real solution—consider E33G Digital Nomad KITAS for legal status.",
+      nextSteps: [
+        "Plan regular exits",
+        "Keep travel funds available",
+        "Monitor policy changes",
+        "Consider long-term alternatives",
+      ],
     },
     {
       id: "result-freelance-tourist",
       isResult: true,
       title: "Freelancer on Tourist Visa",
       description: "Common practice",
-      recommendation: "Freelancers with 100% international clients commonly work from Bali on tourist visas. Gray area but widespread. Don't create Indonesian income streams.",
-      nextSteps: ["Use appropriate visa for length", "All clients outside Indonesia", "Home country tax compliance", "Keep low profile"]
+      recommendation:
+        "Freelancers with 100% international clients commonly work from Bali on tourist visas. Gray area but widespread. Don't create Indonesian income streams.",
+      nextSteps: [
+        "Use appropriate visa for length",
+        "All clients outside Indonesia",
+        "Home country tax compliance",
+        "Keep low profile",
+      ],
     },
     {
       id: "result-second-home-freelance",
       isResult: true,
       title: "Second Home Visa + Freelancing",
       description: "Legitimate long-term option",
-      recommendation: "Second Home Visa with international freelance work is the cleanest option. You have legitimate residence; your work doesn't touch Indonesia. Pay taxes at home.",
-      nextSteps: ["Apply for Second Home Visa", "Maintain home country tax status", "Keep Indonesian income at zero", "Long-term stability"]
+      recommendation:
+        "Second Home Visa with international freelance work is the cleanest option. You have legitimate residence; your work doesn't touch Indonesia. Pay taxes at home.",
+      nextSteps: [
+        "Apply for Second Home Visa",
+        "Maintain home country tax status",
+        "Keep Indonesian income at zero",
+        "Long-term stability",
+      ],
     },
     {
       id: "result-investor-kitas",
       isResult: true,
       title: "Investor KITAS via PT PMA",
       description: "Full legitimacy, higher cost",
-      recommendation: "Establishing PT PMA (IDR 10B investment) gives you legitimate work rights through Investor KITAS. Expensive but fully legal. Makes sense if you're committed long-term.",
-      nextSteps: ["PT PMA establishment", "IDR 10B investment commitment", "Investor KITAS application", "Full work rights in Indonesia"]
+      recommendation:
+        "Establishing PT PMA (IDR 10B investment) gives you legitimate work rights through Investor KITAS. Expensive but fully legal. Makes sense if you're committed long-term.",
+      nextSteps: [
+        "PT PMA establishment",
+        "IDR 10B investment commitment",
+        "Investor KITAS application",
+        "Full work rights in Indonesia",
+      ],
     },
     {
       id: "result-need-pt",
       isResult: true,
       title: "PT PMA Recommended",
       description: "Indonesian clients require legality",
-      recommendation: "If you have Indonesian clients, you need PT PMA to invoice them legally. Working without this creates legal exposure for both you and your clients.",
-      nextSteps: ["Establish PT PMA", "Get proper KBLI codes", "Invoice through company", "Full tax compliance"]
+      recommendation:
+        "If you have Indonesian clients, you need PT PMA to invoice them legally. Working without this creates legal exposure for both you and your clients.",
+      nextSteps: [
+        "Establish PT PMA",
+        "Get proper KBLI codes",
+        "Invoice through company",
+        "Full tax compliance",
+      ],
     },
     {
       id: "result-need-pt-serious",
       isResult: true,
       title: "PT PMA Required",
       description: "Indonesian market requires structure",
-      recommendation: "With mostly Indonesian clients, you absolutely need PT PMA. Operating without it is tax evasion and illegal work—much higher risk than international remote work.",
-      nextSteps: ["Priority: establish PT PMA", "Register for Indonesian taxes", "Proper invoicing setup", "Consult tax professional"]
+      recommendation:
+        "With mostly Indonesian clients, you absolutely need PT PMA. Operating without it is tax evasion and illegal work—much higher risk than international remote work.",
+      nextSteps: [
+        "Priority: establish PT PMA",
+        "Register for Indonesian taxes",
+        "Proper invoicing setup",
+        "Consult tax professional",
+      ],
     },
     {
       id: "result-small-business",
       isResult: true,
       title: "Small Online Business",
       description: "Similar to freelancing",
-      recommendation: "Small online businesses serving international markets are treated similarly to freelancing. Gray area on tourist visa, but lower risk with no Indonesian presence.",
-      nextSteps: ["Tourist or social visa", "International clients only", "Home country taxes", "Consider growth path"]
+      recommendation:
+        "Small online businesses serving international markets are treated similarly to freelancing. Gray area on tourist visa, but lower risk with no Indonesian presence.",
+      nextSteps: [
+        "Tourist or social visa",
+        "International clients only",
+        "Home country taxes",
+        "Consider growth path",
+      ],
     },
     {
       id: "result-consider-pt",
       isResult: true,
       title: "Consider PT PMA",
       description: "Growing business needs structure",
-      recommendation: "At $50k-200k revenue, you're beyond casual nomading. PT PMA gives legitimacy, ability to hire locally, and proper business structure. The investment makes sense.",
-      nextSteps: ["Evaluate PT PMA benefits", "Consider timing", "Plan transition", "Professional advice"]
+      recommendation:
+        "At $50k-200k revenue, you're beyond casual nomading. PT PMA gives legitimacy, ability to hire locally, and proper business structure. The investment makes sense.",
+      nextSteps: [
+        "Evaluate PT PMA benefits",
+        "Consider timing",
+        "Plan transition",
+        "Professional advice",
+      ],
     },
     {
       id: "result-pt-recommended",
       isResult: true,
       title: "PT PMA Strongly Recommended",
       description: "Serious business needs serious structure",
-      recommendation: "At $200k+ revenue, operating informally creates unnecessary risk. PT PMA gives you legal standing, ability to scale with local team, and proper accounting.",
-      nextSteps: ["Establish PT PMA", "Hire properly", "Full compliance", "Growth infrastructure"]
+      recommendation:
+        "At $200k+ revenue, operating informally creates unnecessary risk. PT PMA gives you legal standing, ability to scale with local team, and proper accounting.",
+      nextSteps: [
+        "Establish PT PMA",
+        "Hire properly",
+        "Full compliance",
+        "Growth infrastructure",
+      ],
     },
     {
       id: "result-creator-international",
       isResult: true,
       title: "International Creator",
       description: "Platform income is straightforward",
-      recommendation: "Income from YouTube, Patreon, etc. to international accounts is similar to freelancing. Work from Bali, get paid internationally, pay taxes at home.",
-      nextSteps: ["Appropriate visa for stay length", "International bank accounts", "Home country tax compliance", "Don't take Indonesian sponsorships"]
+      recommendation:
+        "Income from YouTube, Patreon, etc. to international accounts is similar to freelancing. Work from Bali, get paid internationally, pay taxes at home.",
+      nextSteps: [
+        "Appropriate visa for stay length",
+        "International bank accounts",
+        "Home country tax compliance",
+        "Don't take Indonesian sponsorships",
+      ],
     },
     {
       id: "result-creator-local",
       isResult: true,
       title: "Local Brand Creator",
       description: "Indonesian income needs structure",
-      recommendation: "If Indonesian brands pay you, you're earning Indonesian income. This technically requires work permit and local tax registration. Consider PT PMA.",
-      nextSteps: ["Evaluate PT PMA", "Proper invoicing", "Tax compliance", "Work permit consideration"]
+      recommendation:
+        "If Indonesian brands pay you, you're earning Indonesian income. This technically requires work permit and local tax registration. Consider PT PMA.",
+      nextSteps: [
+        "Evaluate PT PMA",
+        "Proper invoicing",
+        "Tax compliance",
+        "Work permit consideration",
+      ],
     },
     {
       id: "result-creator-mixed",
       isResult: true,
       title: "Mixed Income Creator",
       description: "Separate streams carefully",
-      recommendation: "Keep international and Indonesian income separate. International income = freelancer treatment. Indonesian income = needs proper structure.",
-      nextSteps: ["Separate income streams", "International via personal", "Indonesian via company", "Professional tax advice"]
-    }
+      recommendation:
+        "Keep international and Indonesian income separate. International income = freelancer treatment. Indonesian income = needs proper structure.",
+      nextSteps: [
+        "Separate income streams",
+        "International via personal",
+        "Indonesian via company",
+        "Professional tax advice",
+      ],
+    },
   ]}
 />
 
@@ -336,58 +474,66 @@ Let's address the elephant in the room first.
       subtitle: "Visa on Arrival",
       values: {
         "Initial Duration": "30 days",
-        "Extensions": "1x 30 days",
+        Extensions: "1x 30 days",
         "Max Stay": "60 days",
-        "Cost": "~$70 total",
+        Cost: "~$70 total",
         "Work Permitted": "No (gray area)",
         "Best For": "Short visits",
-        "Effort": "Easiest"
-      }
+        Effort: "Easiest",
+      },
     },
     {
       name: "D12",
       subtitle: "Business Investigation",
       values: {
         "Initial Duration": "180 days",
-        "Extensions": "Multiple entry",
+        Extensions: "Multiple entry",
         "Max Stay": "180 days/entry",
-        "Cost": "~$400-600 total",
+        Cost: "~$400-600 total",
         "Work Permitted": "Business activities",
         "Best For": "Extended stays",
-        "Effort": "Moderate"
+        Effort: "Moderate",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "Second Home",
       subtitle: "Long-term residence",
       values: {
         "Initial Duration": "5-10 years",
-        "Extensions": "Renewable",
+        Extensions: "Renewable",
         "Max Stay": "5-10 years",
-        "Cost": "~$1,500 + bank req.",
+        Cost: "~$1,500 + bank req.",
         "Work Permitted": "Overseas work OK",
         "Best For": "Long-term, wealthy",
-        "Effort": "Moderate"
-      }
+        Effort: "Moderate",
+      },
     },
     {
       name: "Investor KITAS",
       subtitle: "Via PT PMA",
       values: {
         "Initial Duration": "1-2 years",
-        "Extensions": "Renewable",
+        Extensions: "Renewable",
         "Max Stay": "Indefinite",
-        "Cost": "$50k+ (company setup)",
+        Cost: "$50k+ (company setup)",
         "Work Permitted": "Yes (full)",
         "Best For": "Serious business",
-        "Effort": "Significant"
-      }
-    }
+        Effort: "Significant",
+      },
+    },
   ]}
   categories={[
-    { id: "duration", label: "Duration", fields: ["Initial Duration", "Extensions", "Max Stay"] },
-    { id: "practical", label: "Practical", fields: ["Cost", "Work Permitted", "Effort"] }
+    {
+      id: "duration",
+      label: "Duration",
+      fields: ["Initial Duration", "Extensions", "Max Stay"],
+    },
+    {
+      id: "practical",
+      label: "Practical",
+      fields: ["Cost", "Work Permitted", "Effort"],
+    },
   ]}
 />
 
@@ -399,6 +545,7 @@ The E33G Digital Nomad KITAS is the best legal option for remote workers:
 - Process takes 2-3 weeks through agent
 
 For shorter stays, use VOA (60 days) or D12 Business Investigation (180 days).
+
 </InfoCard>
 
 ---
@@ -416,78 +563,82 @@ Bali's coworking scene is mature and diverse. Here are the top options:
       subtitle: "Canggu",
       values: {
         "Day Pass": "IDR 250,000",
-        "Monthly": "IDR 3,500,000",
-        "Internet": "100+ Mbps",
-        "Vibe": "Social, energetic",
+        Monthly: "IDR 3,500,000",
+        Internet: "100+ Mbps",
+        Vibe: "Social, energetic",
         "Best For": "Networking, community",
-        "Extras": "Pool, events, restaurant"
+        Extras: "Pool, events, restaurant",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "Outpost",
       subtitle: "Canggu & Ubud",
       values: {
         "Day Pass": "IDR 300,000",
-        "Monthly": "IDR 4,000,000",
-        "Internet": "100+ Mbps",
-        "Vibe": "Professional, focused",
+        Monthly: "IDR 4,000,000",
+        Internet: "100+ Mbps",
+        Vibe: "Professional, focused",
         "Best For": "Serious work",
-        "Extras": "Meeting rooms, Skype booths"
-      }
+        Extras: "Meeting rooms, Skype booths",
+      },
     },
     {
       name: "Hubud",
       subtitle: "Ubud",
       values: {
         "Day Pass": "IDR 250,000",
-        "Monthly": "IDR 3,200,000",
-        "Internet": "50+ Mbps",
-        "Vibe": "Bamboo, eco-conscious",
+        Monthly: "IDR 3,200,000",
+        Internet: "50+ Mbps",
+        Vibe: "Bamboo, eco-conscious",
         "Best For": "Wellness + work",
-        "Extras": "Yoga, events, cafe"
-      }
+        Extras: "Yoga, events, cafe",
+      },
     },
     {
       name: "Tropical Nomad",
       subtitle: "Canggu",
       values: {
         "Day Pass": "IDR 200,000",
-        "Monthly": "IDR 2,800,000",
-        "Internet": "100+ Mbps",
-        "Vibe": "Relaxed, affordable",
+        Monthly: "IDR 2,800,000",
+        Internet: "100+ Mbps",
+        Vibe: "Relaxed, affordable",
         "Best For": "Budget-conscious",
-        "Extras": "24/7 access, kitchen"
-      }
+        Extras: "24/7 access, kitchen",
+      },
     },
     {
       name: "BWork",
       subtitle: "Sanur",
       values: {
         "Day Pass": "IDR 180,000",
-        "Monthly": "IDR 2,500,000",
-        "Internet": "75+ Mbps",
-        "Vibe": "Quiet, professional",
+        Monthly: "IDR 2,500,000",
+        Internet: "75+ Mbps",
+        Vibe: "Quiet, professional",
         "Best For": "Focused work, families",
-        "Extras": "Meeting rooms, parking"
-      }
+        Extras: "Meeting rooms, parking",
+      },
     },
     {
       name: "Livit",
       subtitle: "Sanur",
       values: {
         "Day Pass": "IDR 200,000",
-        "Monthly": "IDR 3,000,000",
-        "Internet": "100+ Mbps",
-        "Vibe": "Coliving + coworking",
+        Monthly: "IDR 3,000,000",
+        Internet: "100+ Mbps",
+        Vibe: "Coliving + coworking",
         "Best For": "All-in-one living",
-        "Extras": "Accommodation packages"
-      }
-    }
+        Extras: "Accommodation packages",
+      },
+    },
   ]}
   categories={[
     { id: "pricing", label: "Pricing", fields: ["Day Pass", "Monthly"] },
-    { id: "features", label: "Features", fields: ["Internet", "Vibe", "Best For", "Extras"] }
+    {
+      id: "features",
+      label: "Features",
+      fields: ["Internet", "Vibe", "Best For", "Extras"],
+    },
   ]}
 />
 
@@ -498,6 +649,7 @@ Many digital nomads work from:
 - **Beach clubs**: Some have WiFi (La Brisa, The Lawn) for casual work
 
 Coworking makes sense for: reliable internet, community, meeting rooms, and work-life separation.
+
 </InfoCard>
 
 ---
@@ -511,20 +663,21 @@ Bali's internet has improved dramatically. In popular areas, you can expect:
 - **Coworking**: Generally 100+ Mbps, redundant connections
 
 But it's not perfect:
+
 - Outages happen (rain, infrastructure issues)
 - Some areas still have poor coverage
 - Always have a backup (phone hotspot)
-</InfoCard>
+  </InfoCard>
 
 ### Internet Options
 
-| Option | Speed | Cost/Month | Reliability | Notes |
-|--------|-------|------------|-------------|-------|
-| **Fiber (Biznet, MyRepublic)** | 50-200 Mbps | IDR 400-900k | Good | Requires address, 1yr contract |
-| **IndiHome** | 20-100 Mbps | IDR 300-600k | Variable | Government provider, widespread |
-| **4G Hotspot** | 10-50 Mbps | IDR 100-300k | Good | Telkomsel/XL, good backup |
-| **Coworking** | 100+ Mbps | Included | Excellent | Most reliable option |
-| **Starlink** | 50-150 Mbps | ~$120/mo | Excellent | New option, needs registration |
+| Option                         | Speed       | Cost/Month   | Reliability | Notes                           |
+| ------------------------------ | ----------- | ------------ | ----------- | ------------------------------- |
+| **Fiber (Biznet, MyRepublic)** | 50-200 Mbps | IDR 400-900k | Good        | Requires address, 1yr contract  |
+| **IndiHome**                   | 20-100 Mbps | IDR 300-600k | Variable    | Government provider, widespread |
+| **4G Hotspot**                 | 10-50 Mbps  | IDR 100-300k | Good        | Telkomsel/XL, good backup       |
+| **Coworking**                  | 100+ Mbps   | Included     | Excellent   | Most reliable option            |
+| **Starlink**                   | 50-150 Mbps | ~$120/mo     | Excellent   | New option, needs registration  |
 
 ### Internet Tips
 
@@ -679,7 +832,8 @@ But it's not perfect:
       currency: "IDR",
       note: `Approximately $${usdTotal} USD. Excludes visa costs, flights, and savings.`
     };
-  }}
+
+}}
 />
 
 ---
@@ -701,8 +855,8 @@ But it's not perfect:
         "Sunrise surf at Echo Beach",
         "Yoga class in Ubud",
         "Morning run in rice fields",
-        "Or just coffee on your villa terrace"
-      ]
+        "Or just coffee on your villa terrace",
+      ],
     },
     {
       id: "breakfast",
@@ -714,8 +868,8 @@ But it's not perfect:
         "Smoothie bowl at cafe",
         "Local nasi for budget",
         "Cook at home",
-        "Many work cafes serve excellent breakfast"
-      ]
+        "Many work cafes serve excellent breakfast",
+      ],
     },
     {
       id: "deep-work",
@@ -727,8 +881,8 @@ But it's not perfect:
         "Head to coworking or work cafe",
         "Focus mode - no meetings",
         "Tackle hardest tasks first",
-        "Reliable internet essential"
-      ]
+        "Reliable internet essential",
+      ],
     },
     {
       id: "lunch",
@@ -739,8 +893,8 @@ But it's not perfect:
       tips: [
         "Explore different warungs",
         "Network with other nomads",
-        "Take a real break from screens"
-      ]
+        "Take a real break from screens",
+      ],
     },
     {
       id: "afternoon",
@@ -752,8 +906,8 @@ But it's not perfect:
         "Good time for Europe calls",
         "Collaborative work",
         "Emails and admin",
-        "Wrap up key tasks"
-      ]
+        "Wrap up key tasks",
+      ],
     },
     {
       id: "evening-activity",
@@ -765,8 +919,8 @@ But it's not perfect:
         "Sunset surf session",
         "Beach club drinks",
         "Yoga class",
-        "Gym workout"
-      ]
+        "Gym workout",
+      ],
     },
     {
       id: "dinner",
@@ -778,8 +932,8 @@ But it's not perfect:
         "Dinner with nomad friends",
         "Explore Bali's food scene",
         "Night markets for adventure",
-        "Cook at home for savings"
-      ]
+        "Cook at home for savings",
+      ],
     },
     {
       id: "evening",
@@ -791,13 +945,13 @@ But it's not perfect:
         "US West Coast coming online",
         "Quick evening work if needed",
         "Or fully disconnect",
-        "Social events and meetups"
+        "Social events and meetups",
       ],
       warnings: [
         "Don't let US hours consume your life",
-        "Async communication is your friend"
-      ]
-    }
+        "Async communication is your friend",
+      ],
+    },
   ]}
 />
 
@@ -817,20 +971,20 @@ One of Bali's biggest assets is the community.
 
 ### Key Facebook Groups
 
-| Group | Focus | Members |
-|-------|-------|---------|
-| Digital Nomads Bali | General DN community | 50k+ |
-| Canggu Community | Canggu-specific | 30k+ |
-| Ubud Community | Ubud-specific | 20k+ |
-| Bali Surfing | Surf community | 15k+ |
-| Bali Remote Workers | Work-focused | 10k+ |
+| Group               | Focus                | Members |
+| ------------------- | -------------------- | ------- |
+| Digital Nomads Bali | General DN community | 50k+    |
+| Canggu Community    | Canggu-specific      | 30k+    |
+| Ubud Community      | Ubud-specific        | 20k+    |
+| Bali Surfing        | Surf community       | 15k+    |
+| Bali Remote Workers | Work-focused         | 10k+    |
 
 <InfoCard variant="tip" title="Community Pro Tips">
-1. **Show up consistently** - Same coworking, same cafe, relationships build
-2. **Join activities** - Sports, workshops, volunteering
-3. **Give value** - Help others, share knowledge
-4. **Avoid transient mentality** - Invest in connections even if temporary
-5. **Mix it up** - Don't only hang with people from your country
+  1. **Show up consistently** - Same coworking, same cafe, relationships build
+  2. **Join activities** - Sports, workshops, volunteering 3. **Give value** -
+  Help others, share knowledge 4. **Avoid transient mentality** - Invest in
+  connections even if temporary 5. **Mix it up** - Don't only hang with people
+  from your country
 </InfoCard>
 
 ---
@@ -848,9 +1002,9 @@ One of Bali's biggest assets is the community.
         "Time Difference": "0-3 hours",
         "Work Overlap": "Full day",
         "Lifestyle Impact": "None",
-        "Strategy": "Normal hours"
+        Strategy: "Normal hours",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "Europe",
@@ -859,8 +1013,8 @@ One of Bali's biggest assets is the community.
         "Time Difference": "6-8 hours ahead",
         "Work Overlap": "Afternoon/evening",
         "Lifestyle Impact": "Moderate",
-        "Strategy": "Morning freedom, afternoon work"
-      }
+        Strategy: "Morning freedom, afternoon work",
+      },
     },
     {
       name: "US East Coast",
@@ -869,8 +1023,8 @@ One of Bali's biggest assets is the community.
         "Time Difference": "12-13 hours ahead",
         "Work Overlap": "Evening/night calls",
         "Lifestyle Impact": "Significant",
-        "Strategy": "Negotiate async, limit live meetings"
-      }
+        Strategy: "Negotiate async, limit live meetings",
+      },
     },
     {
       name: "US West Coast",
@@ -879,9 +1033,9 @@ One of Bali's biggest assets is the community.
         "Time Difference": "15-16 hours ahead",
         "Work Overlap": "Late night calls",
         "Lifestyle Impact": "High",
-        "Strategy": "Strong async culture essential"
-      }
-    }
+        Strategy: "Strong async culture essential",
+      },
+    },
   ]}
 />
 
@@ -907,85 +1061,85 @@ One of Bali's biggest assets is the community.
       label: "Visa arranged",
       description: "VOA, D12, or appropriate long-term visa (E33G)",
       required: true,
-      category: "legal"
+      category: "legal",
     },
     {
       id: "insurance",
       label: "Travel/health insurance",
       description: "International coverage including Indonesia",
       required: true,
-      category: "legal"
+      category: "legal",
     },
     {
       id: "bank-cards",
       label: "International cards sorted",
       description: "Wise, Revolut, or no-fee debit cards",
       required: true,
-      category: "money"
+      category: "money",
     },
     {
       id: "vpn",
       label: "VPN installed",
       description: "Some sites blocked in Indonesia",
       required: true,
-      category: "tech"
+      category: "tech",
     },
     {
       id: "phone",
       label: "Unlocked phone",
       description: "For Indonesian SIM card",
       required: true,
-      category: "tech"
+      category: "tech",
     },
     {
       id: "accommodation",
       label: "First week accommodation",
       description: "Flexible booking to explore",
       required: true,
-      category: "setup"
+      category: "setup",
     },
     {
       id: "coworking",
       label: "Coworking researched",
       description: "Know your options for day 1",
       required: false,
-      category: "work"
+      category: "work",
     },
     {
       id: "backup-internet",
       label: "Mobile data plan",
       description: "Telkomsel or XL for backup",
       required: true,
-      category: "tech"
+      category: "tech",
     },
     {
       id: "time-management",
       label: "Timezone strategy",
       description: "Plan how you'll manage work hours",
       required: true,
-      category: "work"
+      category: "work",
     },
     {
       id: "scooter",
       label: "Scooter/transport sorted",
       description: "Rental or Gojek strategy",
       required: false,
-      category: "setup"
+      category: "setup",
     },
     {
       id: "community",
       label: "Community groups joined",
       description: "Facebook groups, Slack channels",
       required: false,
-      category: "social"
+      category: "social",
     },
     {
       id: "routine",
       label: "Routine planned",
       description: "Work blocks, exercise, social time",
       required: false,
-      category: "work"
-    }
+      category: "work",
+    },
   ]}
   categories={[
     { id: "legal", label: "Legal/Admin", color: "blue" },
@@ -993,7 +1147,7 @@ One of Bali's biggest assets is the community.
     { id: "tech", label: "Tech", color: "purple" },
     { id: "setup", label: "Setup", color: "amber" },
     { id: "work", label: "Work", color: "red" },
-    { id: "social", label: "Social", color: "pink" }
+    { id: "social", label: "Social", color: "pink" },
   ]}
   showProgress={true}
   allowExport={true}
@@ -1024,6 +1178,7 @@ It works until it doesn't. Build toward something stable.
 
 **7. All work, no play**
 You came to Bali. Experience it. The laptop will wait.
+
 </InfoCard>
 
 ---
@@ -1040,7 +1195,7 @@ Every digital nomad situation is unique. If you have specific questions:
     "Can I legally work on a tourist visa?",
     "How do I get an E33G Digital Nomad visa?",
     "What internet speed can I expect?",
-    "How do I handle US timezone from Bali?"
+    "How do I handle US timezone from Bali?",
   ]}
 />
 
@@ -1057,5 +1212,8 @@ Every digital nomad situation is unique. If you have specific questions:
 ---
 
 <InfoCard variant="note" title="Disclaimer">
-This guide is for informational purposes only. Visa and work regulations can change. The legal status of remote work on tourist visas is a gray area - this guide presents facts, not legal advice. Consult appropriate professionals for your specific situation. Last updated: January 2026.
+  This guide is for informational purposes only. Visa and work regulations can
+  change. The legal status of remote work on tourist visas is a gray area - this
+  guide presents facts, not legal advice. Consult appropriate professionals for
+  your specific situation. Last updated: January 2026.
 </InfoCard>

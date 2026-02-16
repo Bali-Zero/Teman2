@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { motion } from 'framer-motion';
+import { motion } from "framer-motion";
 import {
   Building2,
   Users,
@@ -14,9 +14,9 @@ import {
   FolderOpen,
   ChevronRight,
   Sparkles,
-} from 'lucide-react';
-import type { FileItem } from '@/lib/api/drive/drive.types';
-import { DEPARTMENT_COLORS, getDepartmentInfo } from './file-icon';
+} from "lucide-react";
+import type { FileItem } from "@/lib/api/drive/drive.types";
+import { DEPARTMENT_COLORS, getDepartmentInfo } from "./file-icon";
 
 interface DepartmentHomeProps {
   files: FileItem[];
@@ -26,7 +26,14 @@ interface DepartmentHomeProps {
 }
 
 // Department order for consistent display
-const DEPARTMENT_ORDER = ['BOARD', 'CRM', 'MARKETING', 'PERATURAN', 'SETUP TEAM', 'TAX DEPARTMENT'];
+const DEPARTMENT_ORDER = [
+  "BOARD",
+  "CRM",
+  "MARKETING",
+  "PERATURAN",
+  "SETUP TEAM",
+  "TAX DEPARTMENT",
+];
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -46,7 +53,7 @@ const itemVariants = {
     y: 0,
     scale: 1,
     transition: {
-      type: 'spring' as const,
+      type: "spring" as const,
       stiffness: 200,
       damping: 20,
     },
@@ -60,7 +67,7 @@ const heroVariants = {
     y: 0,
     transition: {
       duration: 0.6,
-      ease: 'easeOut' as const,
+      ease: "easeOut" as const,
     },
   },
 };
@@ -75,14 +82,22 @@ export function DepartmentHome({
   const safeFiles = Array.isArray(files) ? files : [];
 
   // Separate department folders from other folders
-  const departmentFolders = safeFiles.filter((f) => f.is_folder && getDepartmentInfo(f.name));
-  const otherFolders = safeFiles.filter((f) => f.is_folder && !getDepartmentInfo(f.name));
+  const departmentFolders = safeFiles.filter(
+    (f) => f.is_folder && getDepartmentInfo(f.name),
+  );
+  const otherFolders = safeFiles.filter(
+    (f) => f.is_folder && !getDepartmentInfo(f.name),
+  );
   const recentFiles = safeFiles.filter((f) => !f.is_folder).slice(0, 6);
 
   // Sort department folders by defined order
   const sortedDepartments = [...departmentFolders].sort((a, b) => {
-    const aIndex = DEPARTMENT_ORDER.findIndex((d) => a.name.toUpperCase().includes(d));
-    const bIndex = DEPARTMENT_ORDER.findIndex((d) => b.name.toUpperCase().includes(d));
+    const aIndex = DEPARTMENT_ORDER.findIndex((d) =>
+      a.name.toUpperCase().includes(d),
+    );
+    const bIndex = DEPARTMENT_ORDER.findIndex((d) =>
+      b.name.toUpperCase().includes(d),
+    );
     return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
   });
 
@@ -109,10 +124,16 @@ export function DepartmentHome({
             <div>
               <div className="mb-2 flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-blue-200" />
-                <span className="text-sm font-medium text-blue-100">Documents Workspace</span>
+                <span className="text-sm font-medium text-blue-100">
+                  Documents Workspace
+                </span>
               </div>
-              <h1 className="text-3xl font-bold text-white md:text-4xl">Welcome to your Drive</h1>
-              <p className="mt-2 text-blue-100">Access your documents organized by department</p>
+              <h1 className="text-3xl font-bold text-white md:text-4xl">
+                Welcome to your Drive
+              </h1>
+              <p className="mt-2 text-blue-100">
+                Access your documents organized by department
+              </p>
             </div>
 
             {/* Storage indicator */}
@@ -217,7 +238,8 @@ export function DepartmentHome({
                     <button
                       key={file.id}
                       onClick={() =>
-                        file.web_view_link && window.open(file.web_view_link, '_blank')
+                        file.web_view_link &&
+                        window.open(file.web_view_link, "_blank")
                       }
                       className="flex w-full items-center gap-3 rounded-xl bg-[var(--background-subtle)] p-3 transition-all hover:bg-[var(--accent)] hover:shadow-md"
                     >
@@ -230,7 +252,9 @@ export function DepartmentHome({
                         </div>
                         <div className="text-xs text-[var(--foreground-muted)]">
                           {file.modified_time &&
-                            new Date(file.modified_time).toLocaleDateString('en-US')}
+                            new Date(file.modified_time).toLocaleDateString(
+                              "en-US",
+                            )}
                         </div>
                       </div>
                       <ChevronRight className="h-4 w-4 text-[var(--foreground-muted)]" />
@@ -269,7 +293,7 @@ function DepartmentCard({ folder, deptInfo, onClick }: DepartmentCardProps) {
       onClick={handleClick}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => e.key === 'Enter' && onClick()}
+      onKeyDown={(e) => e.key === "Enter" && onClick()}
       className="group relative flex cursor-pointer items-start gap-5 overflow-hidden rounded-2xl bg-[var(--background)] p-6 text-left shadow-lg transition-all hover:shadow-xl"
       style={{
         boxShadow: `0 4px 20px -4px ${deptInfo.primary}20`,
@@ -302,7 +326,9 @@ function DepartmentCard({ folder, deptInfo, onClick }: DepartmentCardProps) {
 
       {/* Content */}
       <div className="pointer-events-none relative flex-1">
-        <h3 className="mb-1 text-lg font-bold text-[var(--foreground)]">{folder.name}</h3>
+        <h3 className="mb-1 text-lg font-bold text-[var(--foreground)]">
+          {folder.name}
+        </h3>
         <p className="text-sm text-[var(--foreground-muted)]">
           Access {deptInfo.label.toLowerCase()} documents
         </p>
@@ -336,8 +362,8 @@ function DepartmentCard({ folder, deptInfo, onClick }: DepartmentCardProps) {
 }
 
 function formatStorage(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  if (bytes === 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
   return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[i]}`;
 }

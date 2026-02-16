@@ -76,8 +76,8 @@ import {
   ComparisonTable,
   Checklist,
   InfoCard,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Land Ownership Rules Indonesia 2026: Foreigner Guide
 
@@ -93,6 +93,7 @@ Foreigners cannot directly own freehold land in Indonesia. However, there are le
 - Land automatically reverts to state if foreigner holds Hak Milik
 
 This is constitutional law - it cannot be bypassed legally.
+
 </InfoCard>
 
 ---
@@ -107,43 +108,43 @@ This is constitutional law - it cannot be bypassed legally.
       name: "Hak Milik",
       subtitle: "Freehold",
       values: {
-        "Owner": "Indonesian only",
-        "Duration": "Perpetual",
-        "Rights": "Full ownership",
-        "Foreigner": "Not allowed"
-      }
+        Owner: "Indonesian only",
+        Duration: "Perpetual",
+        Rights: "Full ownership",
+        Foreigner: "Not allowed",
+      },
     },
     {
       name: "Hak Guna Bangunan (HGB)",
       subtitle: "Right to Build",
       values: {
-        "Owner": "Indonesian/PT PMA",
-        "Duration": "30+20+20 years",
-        "Rights": "Build on land",
-        "Foreigner": "Via PT PMA only"
+        Owner: "Indonesian/PT PMA",
+        Duration: "30+20+20 years",
+        Rights: "Build on land",
+        Foreigner: "Via PT PMA only",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "Hak Pakai",
       subtitle: "Right to Use",
       values: {
-        "Owner": "Indonesian/Foreigner",
-        "Duration": "30+20+20 years",
-        "Rights": "Use, build residence",
-        "Foreigner": "Allowed (with conditions)"
-      }
+        Owner: "Indonesian/Foreigner",
+        Duration: "30+20+20 years",
+        Rights: "Use, build residence",
+        Foreigner: "Allowed (with conditions)",
+      },
     },
     {
       name: "Hak Sewa",
       subtitle: "Leasehold",
       values: {
-        "Owner": "Anyone",
-        "Duration": "As agreed (typically 25-30 years)",
-        "Rights": "Use during lease",
-        "Foreigner": "Allowed"
-      }
-    }
+        Owner: "Anyone",
+        Duration: "As agreed (typically 25-30 years)",
+        Rights: "Use during lease",
+        Foreigner: "Allowed",
+      },
+    },
   ]}
 />
 
@@ -161,45 +162,49 @@ This is constitutional law - it cannot be bypassed legally.
       options: [
         { label: "Residential (house/apartment)", next: "residential" },
         { label: "Commercial/Investment", next: "commercial" },
-        { label: "Agricultural land", next: "agricultural" }
-      ]
+        { label: "Agricultural land", next: "agricultural" },
+      ],
     },
     {
       id: "residential",
       question: "For personal use or investment?",
       options: [
         { label: "Personal residence", next: "hakpakai" },
-        { label: "Investment/rental", next: "ptpma" }
-      ]
+        { label: "Investment/rental", next: "ptpma" },
+      ],
     },
     {
       id: "commercial",
       result: {
         title: "PT PMA with HGB",
-        description: "Foreign investment company (PT PMA) can hold HGB title for commercial purposes. Most secure structure for business property investment."
-      }
+        description:
+          "Foreign investment company (PT PMA) can hold HGB title for commercial purposes. Most secure structure for business property investment.",
+      },
     },
     {
       id: "agricultural",
       result: {
         title: "Very Restricted",
-        description: "Agricultural land is heavily restricted for foreigners. PT PMA with specific licenses may access through HGU (cultivation rights) for large-scale projects only."
-      }
+        description:
+          "Agricultural land is heavily restricted for foreigners. PT PMA with specific licenses may access through HGU (cultivation rights) for large-scale projects only.",
+      },
     },
     {
       id: "hakpakai",
       result: {
         title: "Hak Pakai (Right to Use)",
-        description: "Foreigners with KITAS/KITAP can hold Hak Pakai over residential property. 30+20+20 year terms. Must be for personal residence only, not commercial."
-      }
+        description:
+          "Foreigners with KITAS/KITAP can hold Hak Pakai over residential property. 30+20+20 year terms. Must be for personal residence only, not commercial.",
+      },
     },
     {
       id: "ptpma",
       result: {
         title: "PT PMA with HGB",
-        description: "Set up a foreign investment company to hold HGB title. Can use for investment, rental, or development. More complex but more flexible."
-      }
-    }
+        description:
+          "Set up a foreign investment company to hold HGB title. Can use for investment, rental, or development. More complex but more flexible.",
+      },
+    },
   ]}
 />
 
@@ -219,43 +224,43 @@ This is constitutional law - it cannot be bypassed legally.
       label: "Valid KITAS/KITAP",
       description: "Legal stay permit required",
       required: true,
-      category: "visa"
+      category: "visa",
     },
     {
       id: "residence",
       label: "For personal residence only",
       description: "Cannot use commercially",
       required: true,
-      category: "purpose"
+      category: "purpose",
     },
     {
       id: "minvalue",
       label: "Minimum property value",
       description: "Varies by region (IDR 5B+ in Bali)",
       required: true,
-      category: "property"
+      category: "property",
     },
     {
       id: "single",
       label: "Maximum one property",
       description: "Per individual foreigner",
       required: true,
-      category: "limits"
+      category: "limits",
     },
     {
       id: "notary",
       label: "Notarized deed",
       description: "Through PPAT",
       required: true,
-      category: "legal"
+      category: "legal",
     },
     {
       id: "convert",
       label: "Conversion from Hak Milik",
       description: "If buying from Indonesian",
       required: true,
-      category: "process"
-    }
+      category: "process",
+    },
   ]}
   categories={[
     { id: "visa", label: "Visa", color: "blue" },
@@ -263,29 +268,30 @@ This is constitutional law - it cannot be bypassed legally.
     { id: "property", label: "Property", color: "amber" },
     { id: "limits", label: "Limits", color: "red" },
     { id: "legal", label: "Legal", color: "purple" },
-    { id: "process", label: "Process", color: "cyan" }
+    { id: "process", label: "Process", color: "cyan" },
   ]}
   showProgress={true}
 />
 
 ### Minimum Property Values
 
-| Region | Minimum Value |
-|--------|---------------|
-| Bali | IDR 5 billion |
-| Jakarta | IDR 10 billion |
-| Other Java | IDR 5 billion |
+| Region        | Minimum Value   |
+| ------------- | --------------- |
+| Bali          | IDR 5 billion   |
+| Jakarta       | IDR 10 billion  |
+| Other Java    | IDR 5 billion   |
 | Other regions | IDR 2-5 billion |
 
 <InfoCard variant="note" title="Hak Pakai Duration">
 **Hak Pakai term:** 30 + 20 + 20 years = 70 years total
 
 Extensions are subject to:
+
 - Continued valid stay permit
 - Land used as intended
 - No violations
 - Application before expiry
-</InfoCard>
+  </InfoCard>
 
 ---
 
@@ -300,23 +306,23 @@ Extensions are subject to:
 
 ### Advantages
 
-| Benefit | Details |
-|---------|---------|
-| Commercial use | Can rent out property |
-| Multiple properties | No single-property limit |
+| Benefit             | Details                    |
+| ------------------- | -------------------------- |
+| Commercial use      | Can rent out property      |
+| Multiple properties | No single-property limit   |
 | Business operations | Full commercial activities |
-| Transferable | Sell shares, not property |
-| Bank financing | Easier to obtain |
+| Transferable        | Sell shares, not property  |
+| Bank financing      | Easier to obtain           |
 
 ### Disadvantages
 
-| Challenge | Details |
-|-----------|---------|
-| Setup cost | IDR 100-200M+ |
-| Ongoing compliance | Reporting, tax |
-| Capital requirements | Minimum investment |
-| Complexity | Legal and admin burden |
-| Running costs | Accounting, licenses |
+| Challenge            | Details                |
+| -------------------- | ---------------------- |
+| Setup cost           | IDR 100-200M+          |
+| Ongoing compliance   | Reporting, tax         |
+| Capital requirements | Minimum investment     |
+| Complexity           | Legal and admin burden |
+| Running costs        | Accounting, licenses   |
 
 ---
 
@@ -334,17 +340,18 @@ Extensions are subject to:
 - No minimum value requirements
 
 Many expats prefer this for simplicity.
+
 </InfoCard>
 
 ### Lease Structure
 
-| Element | Typical Terms |
-|---------|---------------|
-| Duration | 25-30 years |
-| Extension | Often negotiable |
-| Registration | Notarized agreement |
-| Building rights | Usually included |
-| Improvements | Revert to owner or compensated |
+| Element         | Typical Terms                  |
+| --------------- | ------------------------------ |
+| Duration        | 25-30 years                    |
+| Extension       | Often negotiable               |
+| Registration    | Notarized agreement            |
+| Building rights | Usually included               |
+| Improvements    | Revert to owner or compensated |
 
 ---
 
@@ -354,6 +361,7 @@ Many expats prefer this for simplicity.
 **Nominee = Indonesian holds title for foreigner**
 
 **The truth:**
+
 - Common but **legally risky**
 - Land law doesn't recognize nominee
 - Nominee can claim true ownership
@@ -361,20 +369,21 @@ Many expats prefer this for simplicity.
 - Can be void if challenged
 
 **If you use nominee:**
+
 - Use comprehensive legal agreements
 - Understand you have LIMITED protection
 - Consider PT PMA instead for security
-</InfoCard>
+  </InfoCard>
 
 ### Nominee Risks
 
-| Risk | Consequence |
-|------|-------------|
-| Nominee claims ownership | May lose property |
-| Nominee dies | Inheritance complications |
-| Nominee's debts | Property may be seized |
-| Nominee divorce | Spouse may claim |
-| Legal challenge | Arrangement void |
+| Risk                     | Consequence               |
+| ------------------------ | ------------------------- |
+| Nominee claims ownership | May lose property         |
+| Nominee dies             | Inheritance complications |
+| Nominee's debts          | Property may be seized    |
+| Nominee divorce          | Spouse may claim          |
+| Legal challenge          | Arrangement void          |
 
 ---
 
@@ -386,22 +395,24 @@ Many expats prefer this for simplicity.
 **Apartments are different!**
 
 Foreigners can hold strata title (HMSRS) directly:
+
 - No PT PMA needed
 - No KITAS needed (check specific development)
 - Minimum value requirements still apply
 - Easier transaction process
 
 Many foreigners choose apartments for simplicity.
+
 </InfoCard>
 
 ### Requirements
 
-| Requirement | Details |
-|-------------|---------|
-| Minimum value | Varies by region |
-| Building type | Apartments/strata only |
+| Requirement   | Details                      |
+| ------------- | ---------------------------- |
+| Minimum value | Varies by region             |
+| Building type | Apartments/strata only       |
 | Documentation | Passport, purchase agreement |
-| Registration | Through developer/BPN |
+| Registration  | Through developer/BPN        |
 
 ---
 
@@ -417,64 +428,64 @@ Many foreigners choose apartments for simplicity.
       label: "Verify land certificate",
       description: "Check at BPN office",
       required: true,
-      category: "title"
+      category: "title",
     },
     {
       id: "zoning",
       label: "Check zoning status",
       description: "Permitted use",
       required: true,
-      category: "title"
+      category: "title",
     },
     {
       id: "owner",
       label: "Verify seller is owner",
       description: "Match certificate",
       required: true,
-      category: "seller"
+      category: "seller",
     },
     {
       id: "encumbrances",
       label: "Check for mortgages/liens",
       description: "Clean title",
       required: true,
-      category: "title"
+      category: "title",
     },
     {
       id: "tax",
       label: "Verify taxes paid",
       description: "PBB up to date",
       required: true,
-      category: "financial"
+      category: "financial",
     },
     {
       id: "boundaries",
       label: "Survey boundaries",
       description: "Match certificate",
       required: true,
-      category: "physical"
+      category: "physical",
     },
     {
       id: "access",
       label: "Verify legal access",
       description: "Road access rights",
       required: true,
-      category: "physical"
+      category: "physical",
     },
     {
       id: "building",
       label: "Check building permits",
       description: "IMB/PBG if applicable",
       required: true,
-      category: "permits"
-    }
+      category: "permits",
+    },
   ]}
   categories={[
     { id: "title", label: "Title", color: "blue" },
     { id: "seller", label: "Seller", color: "green" },
     { id: "financial", label: "Financial", color: "amber" },
     { id: "physical", label: "Physical", color: "purple" },
-    { id: "permits", label: "Permits", color: "cyan" }
+    { id: "permits", label: "Permits", color: "cyan" },
   ]}
   showProgress={true}
 />
@@ -485,20 +496,20 @@ Many foreigners choose apartments for simplicity.
 
 ### Purchase Costs
 
-| Cost | Rate |
-|------|------|
+| Cost                    | Rate                    |
+| ----------------------- | ----------------------- |
 | BPHTB (acquisition tax) | 5% of transaction value |
-| Notary/PPAT fees | 0.5-1% |
-| Registration (AJB) | ~1% |
-| Legal fees | Varies |
+| Notary/PPAT fees        | 0.5-1%                  |
+| Registration (AJB)      | ~1%                     |
+| Legal fees              | Varies                  |
 
 ### Ongoing Costs
 
-| Cost | Frequency |
-|------|-----------|
-| PBB (land tax) | Annual |
-| Building maintenance | Ongoing |
-| PT PMA compliance | Annual (if applicable) |
+| Cost                 | Frequency              |
+| -------------------- | ---------------------- |
+| PBB (land tax)       | Annual                 |
+| Building maintenance | Ongoing                |
+| PT PMA compliance    | Annual (if applicable) |
 
 ---
 
@@ -511,7 +522,7 @@ Many foreigners choose apartments for simplicity.
     "Can I buy rice field land as foreigner?",
     "Is nominee arrangement safe?",
     "How long does PT PMA setup take?",
-    "Can I get bank loan as foreigner?"
+    "Can I get bank loan as foreigner?",
   ]}
 />
 

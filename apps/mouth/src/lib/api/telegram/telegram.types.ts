@@ -20,10 +20,10 @@ export interface TelegramMessage {
   interaction_id: number;
   chat_id: string | number;
   message_text: string;
-  direction: 'inbound' | 'outbound';
+  direction: "inbound" | "outbound";
   timestamp: string;
   message_id?: string; // Telegram message ID
-  status?: 'sent' | 'delivered' | 'read' | 'failed';
+  status?: "sent" | "delivered" | "read" | "failed";
   reply_to_message_id?: string;
 }
 
@@ -31,7 +31,7 @@ export interface TelegramInteraction extends TelegramMessage {
   client_id?: number;
   client_name?: string;
   team_member: string;
-  sentiment?: 'positive' | 'neutral' | 'negative' | 'urgent';
+  sentiment?: "positive" | "neutral" | "negative" | "urgent";
   summary?: string;
   full_content?: string;
 }

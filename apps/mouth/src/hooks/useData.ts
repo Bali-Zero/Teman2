@@ -1,10 +1,10 @@
-import useSWR from 'swr';
+import useSWR from "swr";
 
 // Base fetcher function - simple wrapper around fetch
 const fetcher = async (url: string) => {
   const res = await fetch(url);
   if (!res.ok) {
-    const error = new Error('An error occurred while fetching the data.');
+    const error = new Error("An error occurred while fetching the data.");
     // info property attaches extra info to error object
     // @ts-expect-error - Custom property on Error object
     error.info = await res.json();

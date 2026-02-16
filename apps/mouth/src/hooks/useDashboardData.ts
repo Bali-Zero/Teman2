@@ -3,10 +3,13 @@
  * Replaces 7 separate API calls with 1 optimized call using React Query
  */
 
-import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { dashboardApi, type DashboardData } from '@/lib/api/dashboard/dashboard.api';
-import { logger } from '@/lib/logger';
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  dashboardApi,
+  type DashboardData,
+} from "@/lib/api/dashboard/dashboard.api";
+import { logger } from "@/lib/logger";
 
 export function useDashboardData() {
   const {
@@ -15,7 +18,7 @@ export function useDashboardData() {
     error,
     refetch,
   } = useQuery<DashboardData>({
-    queryKey: ['dashboard'],
+    queryKey: ["dashboard"],
     queryFn: async () => {
       try {
         const result = await dashboardApi.getDashboardSummary();
@@ -24,45 +27,57 @@ export function useDashboardData() {
         // Detailed error logging for debugging
         const errorDetails = {
           message: err instanceof Error ? err.message : String(err),
-          name: err instanceof Error ? err.name : 'UnknownError',
-          stack: err instanceof Error ? (err.stack ?? '') : '',
+          name: err instanceof Error ? err.name : "UnknownError",
+          stack: err instanceof Error ? (err.stack ?? "") : "",
           timestamp: new Date().toISOString(),
-          endpoint: '/api/dashboard/summary',
+          endpoint: "/api/dashboard/summary",
         };
 
         // Log error with structured logger
         logger.error(
-          'Failed to load dashboard data',
+          "Failed to load dashboard data",
           {
-            component: 'useDashboardData',
-            action: 'getDashboardSummary',
+            component: "useDashboardData",
+            action: "getDashboardSummary",
             metadata: errorDetails,
           },
-          err instanceof Error ? err : new Error(String(err))
+          err instanceof Error ? err : new Error(String(err)),
         );
 
         // Check for specific error types
         if (err instanceof Error) {
-          if (err.message.includes('401') || err.message.includes('Unauthorized')) {
-            logger.warn('Authentication error - user may need to login again', {
-              component: 'useDashboardData',
-              action: 'getDashboardSummary',
+          if (
+            err.message.includes("401") ||
+            err.message.includes("Unauthorized")
+          ) {
+            logger.warn("Authentication error - user may need to login again", {
+              component: "useDashboardData",
+              action: "getDashboardSummary",
             });
-          } else if (err.message.includes('403') || err.message.includes('Forbidden')) {
-            logger.warn('Authorization error - user may not have permission', {
-              component: 'useDashboardData',
-              action: 'getDashboardSummary',
+          } else if (
+            err.message.includes("403") ||
+            err.message.includes("Forbidden")
+          ) {
+            logger.warn("Authorization error - user may not have permission", {
+              component: "useDashboardData",
+              action: "getDashboardSummary",
             });
-          } else if (err.message.includes('Network') || err.message.includes('fetch')) {
-            logger.warn('Network error - backend may be unreachable', {
-              component: 'useDashboardData',
-              action: 'getDashboardSummary',
+          } else if (
+            err.message.includes("Network") ||
+            err.message.includes("fetch")
+          ) {
+            logger.warn("Network error - backend may be unreachable", {
+              component: "useDashboardData",
+              action: "getDashboardSummary",
             });
-          } else if (err.message.includes('CORS')) {
-            logger.warn('CORS error - backend CORS configuration may be incorrect', {
-              component: 'useDashboardData',
-              action: 'getDashboardSummary',
-            });
+          } else if (err.message.includes("CORS")) {
+            logger.warn(
+              "CORS error - backend CORS configuration may be incorrect",
+              {
+                component: "useDashboardData",
+                action: "getDashboardSummary",
+              },
+            );
           }
         }
 
@@ -78,10 +93,10 @@ export function useDashboardData() {
   // Log error details when error occurs
   if (error) {
     logger.error(
-      'Dashboard error state detected',
+      "Dashboard error state detected",
       {
-        component: 'useDashboardData',
-        action: 'error_state',
+        component: "useDashboardData",
+        action: "error_state",
         metadata: {
           error:
             error instanceof Error
@@ -95,12 +110,15 @@ export function useDashboardData() {
           timestamp: new Date().toISOString(),
         },
       },
-      error instanceof Error ? error : new Error(String(error))
+      error instanceof Error ? error : new Error(String(error)),
     );
   }
 
   // Extract data with fallbacks (memoized to prevent unnecessary recalculations)
-  const user = useMemo(() => data?.user || { email: '', role: '', is_admin: false }, [data?.user]);
+  const user = useMemo(
+    () => data?.user || { email: "", role: "", is_admin: false },
+    [data?.user],
+  );
 
   const stats = useMemo(
     () =>
@@ -109,21 +127,30 @@ export function useDashboardData() {
         criticalDeadlines: 0,
         whatsappUnread: 0,
         emailUnread: 0,
-        hoursWorked: '0h 0m',
+        hoursWorked: "0h 0m",
       },
-    [data?.stats]
+    [data?.stats],
   );
 
-  const practices = useMemo(() => data?.data?.practices || [], [data?.data?.practices]);
+  const practices = useMemo(
+    () => data?.data?.practices || [],
+    [data?.data?.practices],
+  );
 
-  const interactions = useMemo(() => data?.data?.interactions || [], [data?.data?.interactions]);
+  const interactions = useMemo(
+    () => data?.data?.interactions || [],
+    [data?.data?.interactions],
+  );
 
   const emailStats = useMemo(
     () => data?.data?.email || { connected: false, unread_count: 0 },
-    [data?.data?.email]
+    [data?.data?.email],
   );
 
-  const systemStatus = useMemo(() => data?.system_status || 'degraded', [data?.system_status]);
+  const systemStatus = useMemo(
+    () => data?.system_status || "degraded",
+    [data?.system_status],
+  );
 
   // Check if user is admin (using is_admin field from API)
   const isZero = useMemo(() => user.is_admin, [user.is_admin]);
@@ -131,15 +158,18 @@ export function useDashboardData() {
   // Computed values (memoized to prevent recalculation on every render)
   const totalUnread = useMemo(
     () => stats.whatsappUnread + stats.emailUnread,
-    [stats.whatsappUnread, stats.emailUnread]
+    [stats.whatsappUnread, stats.emailUnread],
   );
 
-  const isHealthy = useMemo(() => systemStatus === 'healthy', [systemStatus]);
+  const isHealthy = useMemo(() => systemStatus === "healthy", [systemStatus]);
 
   // Admin-only data
   const revenue = useMemo(() => data?.revenue || null, [data?.revenue]);
 
-  const revenueGrowth = useMemo(() => data?.revenue_growth ?? null, [data?.revenue_growth]);
+  const revenueGrowth = useMemo(
+    () => data?.revenue_growth ?? null,
+    [data?.revenue_growth],
+  );
 
   return {
     // Data

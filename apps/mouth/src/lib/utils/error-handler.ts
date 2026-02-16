@@ -3,7 +3,7 @@
  * Provides standardized error handling with structured logging
  */
 
-import { logger } from '@/lib/logger';
+import { logger } from "@/lib/logger";
 
 export interface ErrorContext {
   component: string;
@@ -19,13 +19,17 @@ export interface ErrorContext {
  * @param userMessage - Optional user-friendly error message
  * @returns Formatted error message
  */
-export function handleError(error: unknown, context: ErrorContext, userMessage?: string): string {
+export function handleError(
+  error: unknown,
+  context: ErrorContext,
+  userMessage?: string,
+): string {
   const errorMessage = error instanceof Error ? error.message : String(error);
-  const errorName = error instanceof Error ? error.name : 'UnknownError';
+  const errorName = error instanceof Error ? error.name : "UnknownError";
 
   // Log error with structured context
   logger.error(
-    userMessage || 'Operation failed',
+    userMessage || "Operation failed",
     {
       component: context.component,
       action: context.action,
@@ -35,7 +39,7 @@ export function handleError(error: unknown, context: ErrorContext, userMessage?:
         errorMessage,
       },
     },
-    error instanceof Error ? error : new Error(errorMessage)
+    error instanceof Error ? error : new Error(errorMessage),
   );
 
   // Return user-friendly message or fallback
@@ -48,7 +52,7 @@ export function handleError(error: unknown, context: ErrorContext, userMessage?:
 export function handleApiError(
   error: unknown,
   context: ErrorContext,
-  defaultMessage = 'An error occurred'
+  defaultMessage = "An error occurred",
 ): { message: string; code?: string } {
   const errorMessage = error instanceof Error ? error.message : String(error);
 
@@ -58,16 +62,17 @@ export function handleApiError(
 
   // Map common error codes to user-friendly messages
   const errorMessages: Record<string, string> = {
-    TIMEOUT: 'Request timed out. Please try again.',
-    ABORTED: 'Request was cancelled.',
-    NETWORK_ERROR: 'Network error. Please check your connection.',
-    UNAUTHORIZED: 'Authentication required. Please log in.',
-    FORBIDDEN: 'You do not have permission to perform this action.',
-    NOT_FOUND: 'Resource not found.',
-    SERVER_ERROR: 'Server error. Please try again later.',
+    TIMEOUT: "Request timed out. Please try again.",
+    ABORTED: "Request was cancelled.",
+    NETWORK_ERROR: "Network error. Please check your connection.",
+    UNAUTHORIZED: "Authentication required. Please log in.",
+    FORBIDDEN: "You do not have permission to perform this action.",
+    NOT_FOUND: "Resource not found.",
+    SERVER_ERROR: "Server error. Please try again later.",
   };
 
-  const userMessage = code && errorMessages[code] ? errorMessages[code] : defaultMessage;
+  const userMessage =
+    code && errorMessages[code] ? errorMessages[code] : defaultMessage;
 
   handleError(error, context, userMessage);
 

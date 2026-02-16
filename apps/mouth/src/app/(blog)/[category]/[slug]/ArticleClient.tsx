@@ -99,8 +99,12 @@ export function ArticleClient({ category, slug }: ArticleClientProps) {
           setArticle(data);
           setRelatedArticles(data.relatedArticles || []);
         }
-      } catch (error) {
-        logger.error("Failed to fetch article:", error);
+      } catch (err) {
+        logger.error(
+          "Failed to fetch article:",
+          {},
+          err instanceof Error ? err : new Error(String(err)),
+        );
       } finally {
         setLoading(false);
       }
@@ -115,8 +119,12 @@ export function ArticleClient({ category, slug }: ArticleClientProps) {
       await navigator.clipboard.writeText(window.location.href);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      logger.error("Failed to copy:", error);
+    } catch (err) {
+      logger.error(
+        "Failed to copy:",
+        {},
+        err instanceof Error ? err : new Error(String(err)),
+      );
     }
   };
 

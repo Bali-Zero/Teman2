@@ -1,19 +1,19 @@
-'use client';
+"use client";
 
-import { motion } from 'framer-motion';
+import { motion } from "framer-motion";
 
 interface FileGridSkeletonProps {
   count?: number;
 }
 
 const shimmer = {
-  hidden: { backgroundPosition: '-200% 0' },
+  hidden: { backgroundPosition: "-200% 0" },
   visible: {
-    backgroundPosition: '200% 0',
+    backgroundPosition: "200% 0",
     transition: {
       repeat: Infinity,
       duration: 1.5,
-      ease: 'linear' as const,
+      ease: "linear" as const,
     },
   },
 };
@@ -32,8 +32,9 @@ function SkeletonCard() {
         animate="visible"
         className="mb-4 h-12 w-12 rounded-lg"
         style={{
-          background: 'linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)',
-          backgroundSize: '200% 100%',
+          background:
+            "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+          backgroundSize: "200% 100%",
         }}
       />
 
@@ -44,8 +45,9 @@ function SkeletonCard() {
         animate="visible"
         className="h-4 w-24 rounded"
         style={{
-          background: 'linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)',
-          backgroundSize: '200% 100%',
+          background:
+            "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+          backgroundSize: "200% 100%",
         }}
       />
 
@@ -56,8 +58,9 @@ function SkeletonCard() {
         animate="visible"
         className="mt-2 h-3 w-16 rounded"
         style={{
-          background: 'linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)',
-          backgroundSize: '200% 100%',
+          background:
+            "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+          backgroundSize: "200% 100%",
         }}
       />
     </motion.div>
@@ -76,8 +79,9 @@ export function FileGridSkeleton({ count = 12 }: FileGridSkeletonProps) {
           animate="visible"
           className="h-4 w-16 rounded"
           style={{
-            background: 'linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)',
-            backgroundSize: '200% 100%',
+            background:
+              "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+            backgroundSize: "200% 100%",
           }}
         />
         <span className="h-px flex-1 bg-gradient-to-l from-[#dadce0] to-transparent" />

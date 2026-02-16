@@ -9,22 +9,25 @@
  * - Error tracking with full context
  */
 
-import { debug as consoleDebug, error as consoleError } from '@/lib/utils/console';
-import type { ApiRequestParams, ErrorInfo } from '@/lib/api/types/logger.types';
+import {
+  debug as consoleDebug,
+  error as consoleError,
+} from "@/lib/utils/console";
+import type { ApiRequestParams, ErrorInfo } from "@/lib/api/types/logger.types";
 
 export enum LogLevel {
-  DEBUG = 'DEBUG',
-  INFO = 'INFO',
-  WARN = 'WARN',
-  ERROR = 'ERROR',
+  DEBUG = "DEBUG",
+  INFO = "INFO",
+  WARN = "WARN",
+  ERROR = "ERROR",
 }
 
 export enum LogCategory {
-  USER_ACTION = 'USER_ACTION',
-  API_CALL = 'API_CALL',
-  STATE_CHANGE = 'STATE_CHANGE',
-  PERFORMANCE = 'PERFORMANCE',
-  ERROR = 'ERROR',
+  USER_ACTION = "USER_ACTION",
+  API_CALL = "API_CALL",
+  STATE_CHANGE = "STATE_CHANGE",
+  PERFORMANCE = "PERFORMANCE",
+  ERROR = "ERROR",
 }
 
 interface LogContext {
@@ -57,15 +60,15 @@ interface LogData {
 
 class CasesLogger {
   private context: Partial<LogContext> = {};
-  private isProduction = process.env.NODE_ENV === 'production';
-  private isDevelopment = process.env.NODE_ENV === 'development';
+  private isProduction = process.env.NODE_ENV === "production";
+  private isDevelopment = process.env.NODE_ENV === "development";
 
   constructor() {
     this.initializeContext();
   }
 
   private initializeContext() {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       this.context = {
         pageUrl: window.location.href,
         userAgent: window.navigator.userAgent,
@@ -75,12 +78,12 @@ class CasesLogger {
   }
 
   private getOrCreateSessionId(): string {
-    if (typeof window === 'undefined') return '';
+    if (typeof window === "undefined") return "";
 
-    let sessionId = sessionStorage.getItem('cases_session_id');
+    let sessionId = sessionStorage.getItem("cases_session_id");
     if (!sessionId) {
       sessionId = `session_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-      sessionStorage.setItem('cases_session_id', sessionId);
+      sessionStorage.setItem("cases_session_id", sessionId);
     }
     return sessionId;
   }
@@ -94,7 +97,7 @@ class CasesLogger {
     level: LogLevel,
     category: LogCategory,
     message: string,
-    metadata?: LogMetadata
+    metadata?: LogMetadata,
   ): LogData {
     return {
       ...this.context,
@@ -112,11 +115,11 @@ class CasesLogger {
       // Example: Sentry.captureMessage(JSON.stringify(logData));
 
       // For now, send to our backend
-      fetch('/api/logs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      fetch("/api/logs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(logData),
-      }).catch((err) => consoleError('Failed to send log:', err));
+      }).catch((err) => consoleError("Failed to send log:", err));
     }
 
     if (this.isDevelopment) {
@@ -124,7 +127,7 @@ class CasesLogger {
       consoleDebug(
         `[${logData.level}] [${logData.category}]`,
         logData.message,
-        logData.metadata || ''
+        logData.metadata || "",
       );
     }
   }
@@ -135,32 +138,46 @@ class CasesLogger {
     const logData = this.formatLog(
       LogLevel.INFO,
       LogCategory.USER_ACTION,
-      'User performed search',
+      "User performed search",
       {
         query,
         resultCount,
         duration,
-        action: 'search',
-      }
+        action: "search",
+      },
     );
     this.sendToLoggingService(logData);
   }
 
-  logFilterApplied(filterType: string, filterValue: string, resultCount: number) {
-    const logData = this.formatLog(LogLevel.INFO, LogCategory.USER_ACTION, 'User applied filter', {
-      filterType,
-      filterValue,
-      resultCount,
-      action: 'filter_applied',
-    });
+  logFilterApplied(
+    filterType: string,
+    filterValue: string,
+    resultCount: number,
+  ) {
+    const logData = this.formatLog(
+      LogLevel.INFO,
+      LogCategory.USER_ACTION,
+      "User applied filter",
+      {
+        filterType,
+        filterValue,
+        resultCount,
+        action: "filter_applied",
+      },
+    );
     this.sendToLoggingService(logData);
   }
 
   logFilterRemoved(filterType: string) {
-    const logData = this.formatLog(LogLevel.INFO, LogCategory.USER_ACTION, 'User removed filter', {
-      filterType,
-      action: 'filter_removed',
-    });
+    const logData = this.formatLog(
+      LogLevel.INFO,
+      LogCategory.USER_ACTION,
+      "User removed filter",
+      {
+        filterType,
+        action: "filter_removed",
+      },
+    );
     this.sendToLoggingService(logData);
   }
 
@@ -168,31 +185,41 @@ class CasesLogger {
     const logData = this.formatLog(
       LogLevel.INFO,
       LogCategory.USER_ACTION,
-      'User changed view mode',
+      "User changed view mode",
       {
         oldMode,
         newMode,
-        action: 'view_mode_change',
-      }
+        action: "view_mode_change",
+      },
     );
     this.sendToLoggingService(logData);
   }
 
   logSortApplied(field: string, order: string) {
-    const logData = this.formatLog(LogLevel.INFO, LogCategory.USER_ACTION, 'User applied sort', {
-      field,
-      order,
-      action: 'sort_applied',
-    });
+    const logData = this.formatLog(
+      LogLevel.INFO,
+      LogCategory.USER_ACTION,
+      "User applied sort",
+      {
+        field,
+        order,
+        action: "sort_applied",
+      },
+    );
     this.sendToLoggingService(logData);
   }
 
   logCaseClicked(caseId: number, caseType: string) {
-    const logData = this.formatLog(LogLevel.INFO, LogCategory.USER_ACTION, 'User clicked on case', {
-      caseId,
-      caseType,
-      action: 'case_clicked',
-    });
+    const logData = this.formatLog(
+      LogLevel.INFO,
+      LogCategory.USER_ACTION,
+      "User clicked on case",
+      {
+        caseId,
+        caseType,
+        action: "case_clicked",
+      },
+    );
     this.sendToLoggingService(logData);
   }
 
@@ -202,18 +229,23 @@ class CasesLogger {
       LogCategory.USER_ACTION,
       'User clicked "+ New Case" button',
       {
-        action: 'new_case_clicked',
-      }
+        action: "new_case_clicked",
+      },
     );
     this.sendToLoggingService(logData);
   }
 
   logPaginationChange(page: number, itemsPerPage: number) {
-    const logData = this.formatLog(LogLevel.INFO, LogCategory.USER_ACTION, 'User changed page', {
-      page,
-      itemsPerPage,
-      action: 'pagination_change',
-    });
+    const logData = this.formatLog(
+      LogLevel.INFO,
+      LogCategory.USER_ACTION,
+      "User changed page",
+      {
+        page,
+        itemsPerPage,
+        action: "pagination_change",
+      },
+    );
     this.sendToLoggingService(logData);
   }
 
@@ -228,13 +260,18 @@ class CasesLogger {
         endpoint,
         method,
         params,
-        requestType: 'outgoing',
-      }
+        requestType: "outgoing",
+      },
     );
     this.sendToLoggingService(logData);
   }
 
-  logApiSuccess(endpoint: string, method: string, duration: number, resultSize?: number) {
+  logApiSuccess(
+    endpoint: string,
+    method: string,
+    duration: number,
+    resultSize?: number,
+  ) {
     const logData = this.formatLog(
       LogLevel.INFO,
       LogCategory.API_CALL,
@@ -244,13 +281,18 @@ class CasesLogger {
         method,
         duration,
         resultSize,
-        status: 'success',
-      }
+        status: "success",
+      },
     );
     this.sendToLoggingService(logData);
   }
 
-  logApiError(endpoint: string, method: string, error: Error, duration: number) {
+  logApiError(
+    endpoint: string,
+    method: string,
+    error: Error,
+    duration: number,
+  ) {
     const logData = this.formatLog(
       LogLevel.ERROR,
       LogCategory.API_CALL,
@@ -264,8 +306,8 @@ class CasesLogger {
           message: error.message,
           stack: error.stack,
         },
-        status: 'error',
-      }
+        status: "error",
+      },
     );
     this.sendToLoggingService(logData);
   }
@@ -277,12 +319,12 @@ class CasesLogger {
     oldStatus: string,
     newStatus: string,
     success: boolean,
-    error?: Error
+    error?: Error,
   ) {
     const logData = this.formatLog(
       success ? LogLevel.INFO : LogLevel.ERROR,
       LogCategory.STATE_CHANGE,
-      `Case status ${success ? 'changed' : 'change failed'}`,
+      `Case status ${success ? "changed" : "change failed"}`,
       {
         caseId,
         oldStatus,
@@ -294,7 +336,7 @@ class CasesLogger {
               message: error.message,
             }
           : undefined,
-      }
+      },
     );
     this.sendToLoggingService(logData);
   }
@@ -303,12 +345,12 @@ class CasesLogger {
     const logData = this.formatLog(
       LogLevel.INFO,
       LogCategory.STATE_CHANGE,
-      'Cases loaded successfully',
+      "Cases loaded successfully",
       {
         count,
         duration,
-        event: 'cases_loaded',
-      }
+        event: "cases_loaded",
+      },
     );
     this.sendToLoggingService(logData);
   }
@@ -317,7 +359,7 @@ class CasesLogger {
     const logData = this.formatLog(
       LogLevel.ERROR,
       LogCategory.STATE_CHANGE,
-      'Failed to load cases',
+      "Failed to load cases",
       {
         duration,
         error: {
@@ -325,8 +367,8 @@ class CasesLogger {
           message: error.message,
           stack: error.stack,
         },
-        event: 'cases_load_failed',
-      }
+        event: "cases_load_failed",
+      },
     );
     this.sendToLoggingService(logData);
   }
@@ -334,10 +376,15 @@ class CasesLogger {
   // ===== PERFORMANCE =====
 
   logPageLoad(duration: number) {
-    const logData = this.formatLog(LogLevel.INFO, LogCategory.PERFORMANCE, 'Page loaded', {
-      duration,
-      metric: 'page_load',
-    });
+    const logData = this.formatLog(
+      LogLevel.INFO,
+      LogCategory.PERFORMANCE,
+      "Page loaded",
+      {
+        duration,
+        metric: "page_load",
+      },
+    );
     this.sendToLoggingService(logData);
   }
 
@@ -349,23 +396,27 @@ class CasesLogger {
       {
         componentName,
         duration,
-        metric: 'render_time',
-      }
+        metric: "render_time",
+      },
     );
     this.sendToLoggingService(logData);
   }
 
-  logFilterPerformance(filterCount: number, resultCount: number, duration: number) {
+  logFilterPerformance(
+    filterCount: number,
+    resultCount: number,
+    duration: number,
+  ) {
     const logData = this.formatLog(
       LogLevel.DEBUG,
       LogCategory.PERFORMANCE,
-      'Filter operation completed',
+      "Filter operation completed",
       {
         filterCount,
         resultCount,
         duration,
-        metric: 'filter_performance',
-      }
+        metric: "filter_performance",
+      },
     );
     this.sendToLoggingService(logData);
   }
@@ -374,13 +425,13 @@ class CasesLogger {
     const logData = this.formatLog(
       LogLevel.DEBUG,
       LogCategory.PERFORMANCE,
-      'Search operation completed',
+      "Search operation completed",
       {
         query,
         resultCount,
         duration,
-        metric: 'search_performance',
-      }
+        metric: "search_performance",
+      },
     );
     this.sendToLoggingService(logData);
   }
@@ -400,11 +451,20 @@ class CasesLogger {
   }
 
   logWarning(message: string, context?: LogMetadata) {
-    const logData = this.formatLog(LogLevel.WARN, LogCategory.ERROR, message, context);
+    const logData = this.formatLog(
+      LogLevel.WARN,
+      LogCategory.ERROR,
+      message,
+      context,
+    );
     this.sendToLoggingService(logData);
   }
 
-  logComponentError(componentName: string, error: Error, errorInfo?: ErrorInfo): void {
+  logComponentError(
+    componentName: string,
+    error: Error,
+    errorInfo?: ErrorInfo,
+  ): void {
     const logData = this.formatLog(
       LogLevel.ERROR,
       LogCategory.ERROR,
@@ -417,7 +477,7 @@ class CasesLogger {
           stack: error.stack,
         },
         errorInfo,
-      }
+      },
     );
     this.sendToLoggingService(logData);
   }
@@ -431,8 +491,13 @@ class CasesLogger {
 
   debug(message: string, metadata?: LogMetadata) {
     if (this.isDevelopment) {
-      const logData = this.formatLog(LogLevel.DEBUG, LogCategory.USER_ACTION, message, metadata);
-      consoleDebug(`[DEBUG]`, message, metadata || '');
+      const logData = this.formatLog(
+        LogLevel.DEBUG,
+        LogCategory.USER_ACTION,
+        message,
+        metadata,
+      );
+      consoleDebug(`[DEBUG]`, message, metadata || "");
     }
   }
 }

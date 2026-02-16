@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   FileText,
@@ -20,9 +20,9 @@ import {
   Sparkles,
   ChevronRight,
   Building2,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { api } from '@/lib/api';
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
 
 // =============================================================================
 // License Data
@@ -33,14 +33,14 @@ interface License {
   code: string;
   title: string;
   title_id: string;
-  category: 'Food & Beverage' | 'Certification';
+  category: "Food & Beverage" | "Certification";
   price: string;
   price_note?: string;
   processing_time: string;
   validity: string;
   mandatory_for: string[];
   issuer: string;
-  icon: 'utensils' | 'wine' | 'badge' | 'cookie';
+  icon: "utensils" | "wine" | "badge" | "cookie";
   description: string;
   key_points: string[];
   warning?: string;
@@ -48,98 +48,109 @@ interface License {
 
 const LICENSES: License[] = [
   {
-    id: 'slhs',
-    code: 'SLHS',
-    title: 'Hygiene Sanitation Certificate',
-    title_id: 'Sertifikat Laik Higiene Sanitasi',
-    category: 'Food & Beverage',
-    price: 'IDR 9.000.000',
-    processing_time: '3-4 weeks',
-    validity: '3 years',
-    mandatory_for: ['Restaurants', 'Cafes', 'Hotels with F&B', 'Catering', 'Food Production'],
-    issuer: 'Dinas Kesehatan (Dinkes)',
-    icon: 'utensils',
-    description:
-      'Mandatory hygiene certificate for all food and beverage businesses in Indonesia. Required before opening.',
-    key_points: [
-      'Required for all F&B businesses',
-      'Health inspection included',
-      'Kitchen standards verification',
-      'Renewable every 3 years',
-    ],
-    warning: 'Cannot operate legally without SLHS - risk of closure and fines!',
-  },
-  {
-    id: 'npbbkc',
-    code: 'NPBBKC',
-    title: 'Alcohol License (A+B+C)',
-    title_id: 'Nomor Pokok Pengusaha Barang Kena Cukai',
-    category: 'Food & Beverage',
-    price: 'IDR 15.000.000',
-    processing_time: '45-60 days MINIMUM',
-    validity: '5 years',
-    mandatory_for: ['Bars', 'Beach Clubs', 'Restaurants serving alcohol', 'Hotels with bars'],
-    issuer: 'Bea Cukai (Customs)',
-    icon: 'wine',
-    description:
-      'License to sell alcoholic beverages. Covers all categories: A (<5%), B (5-20%), C (>20% alcohol).',
-    key_points: [
-      'Golongan A: Beer, wine coolers',
-      'Golongan B: Wine, sake',
-      'Golongan C: Spirits, liquor',
-      'Full coverage included',
-    ],
-    warning: 'Takes 45-60 days MINIMUM - major bottleneck! Start EARLY!',
-  },
-  {
-    id: 'halal',
-    code: 'HALAL',
-    title: 'Halal Certificate',
-    title_id: 'Sertifikat Halal',
-    category: 'Certification',
-    price: 'IDR 5.000.000 - 8.000.000',
-    processing_time: '4-8 weeks',
-    validity: '4 years',
+    id: "slhs",
+    code: "SLHS",
+    title: "Hygiene Sanitation Certificate",
+    title_id: "Sertifikat Laik Higiene Sanitasi",
+    category: "Food & Beverage",
+    price: "IDR 9.000.000",
+    processing_time: "3-4 weeks",
+    validity: "3 years",
     mandatory_for: [
-      'F&B targeting Muslim market',
-      'Export to Muslim countries',
-      'Supermarket products',
+      "Restaurants",
+      "Cafes",
+      "Hotels with F&B",
+      "Catering",
+      "Food Production",
     ],
-    issuer: 'BPJPH (Badan Penyelenggara Jaminan Produk Halal)',
-    icon: 'badge',
+    issuer: "Dinas Kesehatan (Dinkes)",
+    icon: "utensils",
     description:
-      'Official halal certification for food products. Optional but recommended for wider market reach.',
+      "Mandatory hygiene certificate for all food and beverage businesses in Indonesia. Required before opening.",
     key_points: [
-      'Expands market reach',
-      'Required for some exports',
-      'Ingredient audit included',
-      'Renewable every 4 years',
+      "Required for all F&B businesses",
+      "Health inspection included",
+      "Kitchen standards verification",
+      "Renewable every 3 years",
+    ],
+    warning: "Cannot operate legally without SLHS - risk of closure and fines!",
+  },
+  {
+    id: "npbbkc",
+    code: "NPBBKC",
+    title: "Alcohol License (A+B+C)",
+    title_id: "Nomor Pokok Pengusaha Barang Kena Cukai",
+    category: "Food & Beverage",
+    price: "IDR 15.000.000",
+    processing_time: "45-60 days MINIMUM",
+    validity: "5 years",
+    mandatory_for: [
+      "Bars",
+      "Beach Clubs",
+      "Restaurants serving alcohol",
+      "Hotels with bars",
+    ],
+    issuer: "Bea Cukai (Customs)",
+    icon: "wine",
+    description:
+      "License to sell alcoholic beverages. Covers all categories: A (<5%), B (5-20%), C (>20% alcohol).",
+    key_points: [
+      "Golongan A: Beer, wine coolers",
+      "Golongan B: Wine, sake",
+      "Golongan C: Spirits, liquor",
+      "Full coverage included",
+    ],
+    warning: "Takes 45-60 days MINIMUM - major bottleneck! Start EARLY!",
+  },
+  {
+    id: "halal",
+    code: "HALAL",
+    title: "Halal Certificate",
+    title_id: "Sertifikat Halal",
+    category: "Certification",
+    price: "IDR 5.000.000 - 8.000.000",
+    processing_time: "4-8 weeks",
+    validity: "4 years",
+    mandatory_for: [
+      "F&B targeting Muslim market",
+      "Export to Muslim countries",
+      "Supermarket products",
+    ],
+    issuer: "BPJPH (Badan Penyelenggara Jaminan Produk Halal)",
+    icon: "badge",
+    description:
+      "Official halal certification for food products. Optional but recommended for wider market reach.",
+    key_points: [
+      "Expands market reach",
+      "Required for some exports",
+      "Ingredient audit included",
+      "Renewable every 4 years",
     ],
   },
   {
-    id: 'pirt',
-    code: 'PIRT',
-    title: 'Home Industry Food License',
-    title_id: 'Pangan Industri Rumah Tangga',
-    category: 'Food & Beverage',
-    price: 'IDR 500.000 - 1.000.000',
-    processing_time: '2-3 weeks',
-    validity: '5 years',
+    id: "pirt",
+    code: "PIRT",
+    title: "Home Industry Food License",
+    title_id: "Pangan Industri Rumah Tangga",
+    category: "Food & Beverage",
+    price: "IDR 500.000 - 1.000.000",
+    processing_time: "2-3 weeks",
+    validity: "5 years",
     mandatory_for: [
-      'Small-scale food production',
-      'Home bakeries',
-      'Homemade snacks',
-      'Cottage food',
+      "Small-scale food production",
+      "Home bakeries",
+      "Homemade snacks",
+      "Cottage food",
     ],
-    issuer: 'Dinas Kesehatan (Dinkes)',
-    icon: 'cookie',
+    issuer: "Dinas Kesehatan (Dinkes)",
+    icon: "cookie",
     description:
-      'License for small-scale home food production. More affordable option for cottage industries.',
+      "License for small-scale home food production. More affordable option for cottage industries.",
     key_points: [
-      'Low cost option',
-      'For home-based production',
-      'Simpler requirements',
-      'Good for starting small',
+      "Low cost option",
+      "For home-based production",
+      "Simpler requirements",
+      "Good for starting small",
     ],
   },
 ];
@@ -150,35 +161,35 @@ const LICENSES: License[] = [
 
 function getCategoryColor(category: string): string {
   switch (category) {
-    case 'Food & Beverage':
-      return 'from-orange-500/20 to-amber-500/20 border-orange-500/30';
-    case 'Certification':
-      return 'from-emerald-500/20 to-teal-500/20 border-emerald-500/30';
+    case "Food & Beverage":
+      return "from-orange-500/20 to-amber-500/20 border-orange-500/30";
+    case "Certification":
+      return "from-emerald-500/20 to-teal-500/20 border-emerald-500/30";
     default:
-      return 'from-gray-500/20 to-slate-500/20 border-gray-500/30';
+      return "from-gray-500/20 to-slate-500/20 border-gray-500/30";
   }
 }
 
 function getCategoryBadgeColor(category: string): string {
   switch (category) {
-    case 'Food & Beverage':
-      return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
-    case 'Certification':
-      return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+    case "Food & Beverage":
+      return "bg-orange-500/20 text-orange-400 border-orange-500/30";
+    case "Certification":
+      return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
     default:
-      return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+      return "bg-gray-500/20 text-gray-400 border-gray-500/30";
   }
 }
 
 function getIcon(icon: string) {
   switch (icon) {
-    case 'utensils':
+    case "utensils":
       return UtensilsCrossed;
-    case 'wine':
+    case "wine":
       return Wine;
-    case 'badge':
+    case "badge":
       return BadgeCheck;
-    case 'cookie':
+    case "cookie":
       return Cookie;
     default:
       return FileText;
@@ -196,7 +207,7 @@ interface LicenseCardProps {
 
 function LicenseCard({ license, onClick }: LicenseCardProps) {
   const IconComponent = getIcon(license.icon);
-  const isCritical = license.code === 'SLHS' || license.code === 'NPBBKC';
+  const isCritical = license.code === "SLHS" || license.code === "NPBBKC";
 
   return (
     <div
@@ -254,7 +265,9 @@ function LicenseCard({ license, onClick }: LicenseCardProps) {
           <div className="flex items-center gap-1 p-1 rounded bg-[var(--background)]/50">
             <DollarSign className="w-2.5 h-2.5 text-emerald-400" />
             <div>
-              <p className="text-[8px] text-[var(--foreground-muted)] leading-tight">Price</p>
+              <p className="text-[8px] text-[var(--foreground-muted)] leading-tight">
+                Price
+              </p>
               <p className="text-[10px] font-semibold text-[var(--foreground)] leading-tight line-clamp-1">
                 {license.price}
               </p>
@@ -263,7 +276,9 @@ function LicenseCard({ license, onClick }: LicenseCardProps) {
           <div className="flex items-center gap-1 p-1 rounded bg-[var(--background)]/50">
             <Clock className="w-2.5 h-2.5 text-blue-400" />
             <div>
-              <p className="text-[8px] text-[var(--foreground-muted)] leading-tight">Processing</p>
+              <p className="text-[8px] text-[var(--foreground-muted)] leading-tight">
+                Processing
+              </p>
               <p className="text-[10px] font-semibold text-[var(--foreground)] leading-tight line-clamp-1">
                 {license.processing_time}
               </p>
@@ -317,15 +332,20 @@ function LicenseCard({ license, onClick }: LicenseCardProps) {
 
 export default function LicensesPage() {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   // Track KB page view
   useEffect(() => {
-    api.kbActivity.logView('licenses', undefined, 'Business Licenses', 'licenses');
+    api.kbActivity.logView(
+      "licenses",
+      undefined,
+      "Business Licenses",
+      "licenses",
+    );
   }, []);
 
-  const categories = ['Food & Beverage', 'Certification'];
+  const categories = ["Food & Beverage", "Certification"];
 
   const filteredLicenses = LICENSES.filter((lic) => {
     const matchesSearch =
@@ -333,7 +353,8 @@ export default function LicensesPage() {
       lic.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       lic.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
       lic.title_id.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = !selectedCategory || lic.category === selectedCategory;
+    const matchesCategory =
+      !selectedCategory || lic.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
@@ -342,13 +363,13 @@ export default function LicensesPage() {
       acc[lic.category] = (acc[lic.category] || 0) + 1;
       return acc;
     },
-    {} as Record<string, number>
+    {} as Record<string, number>,
   );
 
   const handleCardClick = (license: License) => {
     // Navigate to chat with context
     router.push(
-      `/chat?q=${encodeURIComponent(`Tell me about ${license.title} (${license.code}) license in Indonesia`)}`
+      `/chat?q=${encodeURIComponent(`Tell me about ${license.title} (${license.code}) license in Indonesia`)}`,
     );
   };
 
@@ -358,16 +379,19 @@ export default function LicensesPage() {
       <div className="flex items-start justify-between">
         <div>
           <button
-            onClick={() => router.push('/knowledge')}
+            onClick={() => router.push("/knowledge")}
             className="flex items-center gap-2 text-sm text-[var(--foreground-muted)] hover:text-[var(--foreground)] mb-4 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Knowledge Base
           </button>
-          <h1 className="text-3xl font-bold text-[var(--foreground)]">Business Licenses Guide</h1>
+          <h1 className="text-3xl font-bold text-[var(--foreground)]">
+            Business Licenses Guide
+          </h1>
           <p className="text-[var(--foreground-muted)] mt-2 max-w-2xl">
-            Essential licenses for F&B and food businesses in Indonesia. SLHS, NPBBKC (alcohol),
-            Halal certification, and more - with Bali Zero 2026 prices.
+            Essential licenses for F&B and food businesses in Indonesia. SLHS,
+            NPBBKC (alcohol), Halal certification, and more - with Bali Zero
+            2026 prices.
           </p>
         </div>
 
@@ -377,8 +401,12 @@ export default function LicensesPage() {
             <UtensilsCrossed className="w-5 h-5 text-white" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-[var(--foreground)]">Bali Zero</p>
-            <p className="text-xs text-[var(--foreground-muted)]">Licensing Experts</p>
+            <p className="text-sm font-semibold text-[var(--foreground)]">
+              Bali Zero
+            </p>
+            <p className="text-xs text-[var(--foreground-muted)]">
+              Licensing Experts
+            </p>
           </div>
         </div>
       </div>
@@ -391,8 +419,12 @@ export default function LicensesPage() {
               <FileText className="w-5 h-5 text-indigo-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-[var(--foreground)]">{LICENSES.length}</p>
-              <p className="text-xs text-[var(--foreground-muted)]">License Types</p>
+              <p className="text-2xl font-bold text-[var(--foreground)]">
+                {LICENSES.length}
+              </p>
+              <p className="text-xs text-[var(--foreground-muted)]">
+                License Types
+              </p>
             </div>
           </div>
         </div>
@@ -402,8 +434,12 @@ export default function LicensesPage() {
               <Shield className="w-5 h-5 text-emerald-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-[var(--foreground)]">100%</p>
-              <p className="text-xs text-[var(--foreground-muted)]">Legal Compliance</p>
+              <p className="text-2xl font-bold text-[var(--foreground)]">
+                100%
+              </p>
+              <p className="text-xs text-[var(--foreground-muted)]">
+                Legal Compliance
+              </p>
             </div>
           </div>
         </div>
@@ -413,8 +449,12 @@ export default function LicensesPage() {
               <Star className="w-5 h-5 text-amber-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-[var(--foreground)]">2026</p>
-              <p className="text-xs text-[var(--foreground-muted)]">Updated Prices</p>
+              <p className="text-2xl font-bold text-[var(--foreground)]">
+                2026
+              </p>
+              <p className="text-xs text-[var(--foreground-muted)]">
+                Updated Prices
+              </p>
             </div>
           </div>
         </div>
@@ -424,7 +464,9 @@ export default function LicensesPage() {
               <TrendingUp className="w-5 h-5 text-blue-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-[var(--foreground)]">Full</p>
+              <p className="text-2xl font-bold text-[var(--foreground)]">
+                Full
+              </p>
               <p className="text-xs text-[var(--foreground-muted)]">Support</p>
             </div>
           </div>
@@ -451,8 +493,8 @@ export default function LicensesPage() {
             onClick={() => setSelectedCategory(null)}
             className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
               selectedCategory === null
-                ? 'bg-[var(--accent)] text-white'
-                : 'bg-[var(--background-secondary)] text-[var(--foreground-secondary)] hover:bg-[var(--background-elevated)]'
+                ? "bg-[var(--accent)] text-white"
+                : "bg-[var(--background-secondary)] text-[var(--foreground-secondary)] hover:bg-[var(--background-elevated)]"
             }`}
           >
             All ({LICENSES.length})
@@ -463,8 +505,8 @@ export default function LicensesPage() {
               onClick={() => setSelectedCategory(cat)}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
                 selectedCategory === cat
-                  ? 'bg-[var(--accent)] text-white'
-                  : 'bg-[var(--background-secondary)] text-[var(--foreground-secondary)] hover:bg-[var(--background-elevated)]'
+                  ? "bg-[var(--accent)] text-white"
+                  : "bg-[var(--background-secondary)] text-[var(--foreground-secondary)] hover:bg-[var(--background-elevated)]"
               }`}
             >
               {cat} ({categoryCounts[cat] || 0})
@@ -488,7 +530,9 @@ export default function LicensesPage() {
       {filteredLicenses.length === 0 && (
         <div className="p-12 rounded-xl bg-[var(--background-secondary)] border border-[var(--border)] text-center">
           <FileText className="w-16 h-16 text-[var(--foreground-muted)] mx-auto mb-4 opacity-50" />
-          <h3 className="text-lg font-semibold text-[var(--foreground)] mb-2">No licenses found</h3>
+          <h3 className="text-lg font-semibold text-[var(--foreground)] mb-2">
+            No licenses found
+          </h3>
           <p className="text-sm text-[var(--foreground-muted)]">
             Try adjusting your search or filter criteria.
           </p>
@@ -505,29 +549,41 @@ export default function LicensesPage() {
           <div className="space-y-2">
             <div className="flex items-center gap-2 p-2 rounded-lg bg-[var(--background)]/50">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span className="text-sm text-[var(--foreground)]">PT PMA / Company Setup</span>
+              <span className="text-sm text-[var(--foreground)]">
+                PT PMA / Company Setup
+              </span>
             </div>
             <div className="flex items-center gap-2 p-2 rounded-lg bg-[var(--background)]/50">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span className="text-sm text-[var(--foreground)]">NIB (Business ID)</span>
+              <span className="text-sm text-[var(--foreground)]">
+                NIB (Business ID)
+              </span>
             </div>
             <div className="flex items-center gap-2 p-2 rounded-lg bg-[var(--background)]/50">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span className="text-sm text-[var(--foreground)]">SLHS (Hygiene Certificate)</span>
+              <span className="text-sm text-[var(--foreground)]">
+                SLHS (Hygiene Certificate)
+              </span>
             </div>
           </div>
           <div className="space-y-2">
             <div className="flex items-center gap-2 p-2 rounded-lg bg-[var(--background)]/50">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span className="text-sm text-[var(--foreground)]">NPBBKC (if serving alcohol)</span>
+              <span className="text-sm text-[var(--foreground)]">
+                NPBBKC (if serving alcohol)
+              </span>
             </div>
             <div className="flex items-center gap-2 p-2 rounded-lg bg-[var(--background)]/50">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span className="text-sm text-[var(--foreground)]">NPWP & Tax Registration</span>
+              <span className="text-sm text-[var(--foreground)]">
+                NPWP & Tax Registration
+              </span>
             </div>
             <div className="flex items-center gap-2 p-2 rounded-lg bg-[var(--background)]/50">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span className="text-sm text-[var(--foreground)]">Halal Certificate (optional)</span>
+              <span className="text-sm text-[var(--foreground)]">
+                Halal Certificate (optional)
+              </span>
             </div>
           </div>
         </div>
@@ -541,12 +597,12 @@ export default function LicensesPage() {
               Need Help with Business Licenses?
             </h3>
             <p className="text-[var(--foreground-secondary)]">
-              Our licensing experts handle the entire process from application to approval. Free
-              consultation available.
+              Our licensing experts handle the entire process from application
+              to approval. Free consultation available.
             </p>
           </div>
           <Button
-            onClick={() => router.push('/chat')}
+            onClick={() => router.push("/chat")}
             className="gap-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white whitespace-nowrap"
           >
             <Sparkles className="w-4 h-4" />

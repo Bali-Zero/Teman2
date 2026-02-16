@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useMemo, useCallback, useRef, useState, useEffect } from 'react';
+import { useMemo, useCallback, useRef, useState, useEffect } from "react";
 
 interface UseOptimizedListOptions<T> {
   items: T[];
@@ -45,7 +45,7 @@ export function useOptimizedList<T>({
   sortFn,
   keyExtractor,
 }: UseOptimizedListOptions<T>): UseOptimizedListReturn<T> {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -127,7 +127,7 @@ export function useOptimizedList<T>({
 export function useInfiniteScroll(
   onLoadMore: () => void,
   hasMore: boolean,
-  options?: IntersectionObserverInit
+  options?: IntersectionObserverInit,
 ) {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const targetRef = useRef<HTMLDivElement | null>(null);
@@ -147,10 +147,10 @@ export function useInfiniteScroll(
         }
       },
       {
-        rootMargin: '100px',
+        rootMargin: "100px",
         threshold: 0.1,
         ...options,
-      }
+      },
     );
 
     observerRef.current = observer;

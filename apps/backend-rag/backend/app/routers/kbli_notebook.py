@@ -551,7 +551,7 @@ async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]
 
 
 # Minimum score threshold for ABSTAIN logic
-MIN_RELEVANCE_SCORE = 0.45  # Results below this score trigger ABSTAIN
+MIN_RELEVANCE_SCORE = 0.60  # Results below this score trigger ABSTAIN
 
 # Non-business keywords that should trigger helpful redirect
 NON_BUSINESS_KEYWORDS = [
@@ -571,7 +571,8 @@ def _is_non_business_query(query: str) -> bool:
 async def chat_kbli(
     http_request: Request,  # Iniezione corretta dell'oggetto Request di FastAPI
     kbli_request: KBLINotebookChatRequest,  # Il body della richiesta
-    search_service=Depends(get_search_service)
+    search_service=Depends(get_search_service),
+    pool=Depends(get_optional_database_pool),
 ):
     """Specialized chat for KBLI Notebook with BPS 2025 focus."""
     logger.info(f"💬 KBLI Chat Request: '{kbli_request.query[:50]}...'")
@@ -587,6 +588,39 @@ async def chat_kbli(
         # Translate query to Indonesian KBLI terms for better matching
         search_query = await _translate_query_for_kbli(kbli_request.query)
 
+        # Extract KBLI codes from query for direct lookup
+        codes_from_query = re.findall(r"\b\d{5}\b", kbli_request.query)
+        direct_kbli_match = None
+
+        
+        # Try direct KBLI lookup from PostgreSQL (bypasses semantic search)
+        # Use pool from Depends (same as inspect_kbli which works)
+        if codes_from_query and pool:
+            for code in codes_from_query:
+                try:
+                    async with pool.acquire() as conn:
+                        entity_id = f"kbli:{code}"
+                        row = await conn.fetchrow(
+                            "SELECT entity_id, name, description, properties FROM kg_nodes WHERE entity_id = $1",
+                            entity_id
+                        )
+
+                        if row:
+                            props = json.loads(row["properties"]) if isinstance(row["properties"], str) else row["properties"]
+                            direct_kbli_match = KBLISearchResult(
+                                code=code,
+                                title=row["name"],
+                                description=row["description"][:200] + "...",
+                                score=1.0,
+                                pma_status=props.get("pma_status", "UNKNOWN"),
+                                risk_category=props.get("kategori_risiko", "Unknown"),
+                            )
+
+                            break
+                except Exception as lookup_err:
+                    logger.warning(f"Direct lookup failed for {code}: {lookup_err}")
+
+        
         # Search semantic context with translated query
         results = []
         try:
@@ -613,6 +647,12 @@ async def chat_kbli(
                 )
                 if len(results) >= 5:
                     break
+            
+            # Add direct match at the beginning if found
+            if direct_kbli_match and direct_kbli_match.code not in seen_codes:
+                results.insert(0, direct_kbli_match)
+                logger.info(f"✅ Added direct KBLI match: {direct_kbli_match.code}")
+            
             logger.info(f"✅ Found {len(results)} KBLI results from Qdrant")
         except Exception as q_err:
             logger.warning(f"⚠️ Qdrant search failed, falling back to PostgreSQL: {q_err}")
@@ -642,8 +682,7 @@ async def chat_kbli(
             except Exception as db_err:
                 logger.error(f"❌ PostgreSQL fallback failed: {db_err}")
 
-        # Detect KBLI codes from results + regex on query
-        codes_from_query = re.findall(r"\d{5}", kbli_request.query)
+        # Detect KBLI codes from results
         codes_from_results = [r.code for r in results if r.code != "N/A"]
         detected_kbli = list(dict.fromkeys(codes_from_query + codes_from_results))
 
@@ -673,32 +712,37 @@ async def chat_kbli(
             )
 
         # ABSTAIN LOGIC: Filter results by minimum relevance score
+        # BUT: Bypass if there's a direct KBLI code match (exact code lookup)
+        has_direct_match = direct_kbli_match is not None
+        logger.info(f"🔍 ABSTAIN check: has_direct_match={has_direct_match}, results={len(results)}, codes={codes_from_query}")
         filtered_results = [r for r in results if r.score >= MIN_RELEVANCE_SCORE]
-        if not filtered_results and results:
-            logger.warning(f"⚠️ All results below threshold {MIN_RELEVANCE_SCORE}. Triggering ABSTAIN.")
-            abstain_answer = (
-                "Mi dispiace, ma non ho trovato codici KBLI rilevanti per la tua ricerca.\n\n"
-                "Prova a:\n"
-                "• Usare termini più specifici relativi all'attività commerciale\n"
-                "• Descrivere il tipo di business che vuoi avviare\n"
-                "• Verificare l'ortografia dei termini\n\n"
-                "Sono specializzato in KBLI 2025 (BPS Regulation No. 7/2025) e posso aiutarti a trovare "
-                "il codice corretto per la tua attività in Indonesia."
-            )
-            return KBLINotebookChatResponse(
-                answer=abstain_answer,
-                detected_kbli=[],
-                results=[],
-                sources=[],
-                suggested_queries=[
-                    "Ristorante a Bali",
-                    "Import export Indonesia",
-                    "Hotel e hospitality"
-                ],
-            )
         
-        # Use filtered results for explanation
-        results = filtered_results if filtered_results else results
+        if not has_direct_match and not filtered_results and results:
+                logger.warning(f"⚠️ All results below threshold {MIN_RELEVANCE_SCORE}. Triggering ABSTAIN.")
+                abstain_answer = (
+                    "Mi dispiace, ma non ho trovato codici KBLI rilevanti per la tua ricerca.\n\n"
+                    "Prova a:\n"
+                    "• Usare termini più specifici relativi all'attività commerciale\n"
+                    "• Descrivere il tipo di business che vuoi avviare\n"
+                    "• Verificare l'ortografia dei termini\n\n"
+                    "Sono specializzato in KBLI 2025 (BPS Regulation No. 7/2025) e posso aiutarti a trovare "
+                    "il codice corretto per la tua attività in Indonesia."
+                )
+                return KBLINotebookChatResponse(
+                    answer=abstain_answer,
+                    detected_kbli=[],
+                    results=[],
+                    sources=[],
+                    suggested_queries=[
+                        "Ristorante a Bali",
+                        "Import export Indonesia",
+                        "Hotel e hospitality"
+                    ],
+                )
+        
+        # Use filtered results for explanation (unless we have direct match)
+        if not has_direct_match:
+            results = filtered_results if filtered_results else results
 
         # Generate Italian explanation via LLM (with fallback)
         answer = await _generate_kbli_explanation(kbli_request.query, results)
@@ -731,6 +775,8 @@ async def chat_kbli(
                 suggested_queries.append(f"What are the risk requirements for KBLI {top.code}?")
 
         logger.info(f"✅ KBLI Chat Response: answer_length={len(answer)}, results={len(results)}, detected={detected_kbli}")
+        
+
         
         return KBLINotebookChatResponse(
             answer=answer,

@@ -1,4 +1,4 @@
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function IntelligenceLoading() {
   return (
@@ -15,7 +15,13 @@ export default function IntelligenceLoading() {
       {/* Navigation Tabs */}
       <div className="flex items-center gap-2 border-b">
         {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} variant="text" width={100} height={40} className="rounded-t-lg" />
+          <Skeleton
+            key={i}
+            variant="text"
+            width={100}
+            height={40}
+            className="rounded-t-lg"
+          />
         ))}
       </div>
 

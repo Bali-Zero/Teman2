@@ -1,9 +1,9 @@
-import React, { useState, useRef } from 'react';
-import { Client } from '@/lib/api/crm/crm.types';
-import { ClientCard } from './ClientCard';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useAutoAnimate } from '@formkit/auto-animate/react';
-import { useVirtualizer } from '@tanstack/react-virtual';
+import React, { useState, useRef } from "react";
+import { Client } from "@/lib/api/crm/crm.types";
+import { ClientCard } from "./ClientCard";
+import { motion, AnimatePresence } from "framer-motion";
+import { useAutoAnimate } from "@formkit/auto-animate/react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 
 interface ClientKanbanProps {
   clients: Client[];
@@ -11,11 +11,11 @@ interface ClientKanbanProps {
 }
 
 const COLUMNS = [
-  { id: 'lead', title: 'Leads', color: 'bg-blue-500' },
-  { id: 'prospect', title: 'Prospects', color: 'bg-purple-500' },
-  { id: 'active', title: 'Active', color: 'bg-green-500' },
-  { id: 'inactive', title: 'Inactive', color: 'bg-gray-500' },
-  { id: 'completed', title: 'Completed', color: 'bg-indigo-500' },
+  { id: "lead", title: "Leads", color: "bg-blue-500" },
+  { id: "prospect", title: "Prospects", color: "bg-purple-500" },
+  { id: "active", title: "Active", color: "bg-green-500" },
+  { id: "inactive", title: "Inactive", color: "bg-gray-500" },
+  { id: "completed", title: "Completed", color: "bg-indigo-500" },
 ];
 
 // Estimated height for ClientCard (for virtualization)
@@ -68,7 +68,10 @@ function ColumnBody({
               onDragStart={(e) => onDragStart(e, client)}
               onDragEnd={onDragEnd}
             >
-              <ClientCard client={client} isDragging={draggedClient?.id === client.id} />
+              <ClientCard
+                client={client}
+                isDragging={draggedClient?.id === client.id}
+              />
             </div>
           ))}
         </AnimatePresence>
@@ -83,13 +86,13 @@ function ColumnBody({
     <div
       ref={parentRef}
       className="p-3 flex-1 overflow-y-auto custom-scrollbar"
-      style={{ contain: 'strict' }}
+      style={{ contain: "strict" }}
     >
       <div
         style={{
           height: `${virtualizer.getTotalSize()}px`,
-          width: '100%',
-          position: 'relative',
+          width: "100%",
+          position: "relative",
         }}
       >
         {virtualItems.map((virtualItem) => {
@@ -98,10 +101,10 @@ function ColumnBody({
             <div
               key={client.id}
               style={{
-                position: 'absolute',
+                position: "absolute",
                 top: 0,
                 left: 0,
-                width: '100%',
+                width: "100%",
                 height: `${virtualItem.size}px`,
                 transform: `translateY(${virtualItem.start}px)`,
               }}
@@ -112,7 +115,10 @@ function ColumnBody({
                 onDragEnd={onDragEnd}
                 className="mb-3"
               >
-                <ClientCard client={client} isDragging={draggedClient?.id === client.id} />
+                <ClientCard
+                  client={client}
+                  isDragging={draggedClient?.id === client.id}
+                />
               </div>
             </div>
           );
@@ -122,32 +128,36 @@ function ColumnBody({
   );
 }
 
-export const ClientKanban = ({ clients, onStatusChange }: ClientKanbanProps) => {
+export const ClientKanban = ({
+  clients,
+  onStatusChange,
+}: ClientKanbanProps) => {
   const [draggedClient, setDraggedClient] = useState<Client | null>(null);
 
   // Group clients by status
   const getClientsByStatus = (status: string) => {
-    return clients.filter((c) => (c.status || 'lead') === status);
+    return clients.filter((c) => (c.status || "lead") === status);
   };
 
   const handleDragStart = (e: React.DragEvent, client: Client) => {
     setDraggedClient(client);
-    e.dataTransfer.setData('clientId', client.id.toString());
-    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData("clientId", client.id.toString());
+    e.dataTransfer.effectAllowed = "move";
     // Transparent drag image
     const img = new Image();
-    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    img.src =
+      "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
     e.dataTransfer.setDragImage(img, 0, 0);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
+    e.dataTransfer.dropEffect = "move";
   };
 
   const handleDrop = async (e: React.DragEvent, status: string) => {
     e.preventDefault();
-    const clientId = parseInt(e.dataTransfer.getData('clientId'));
+    const clientId = parseInt(e.dataTransfer.getData("clientId"));
 
     if (clientId && draggedClient && draggedClient.status !== status) {
       // Optimistic update handled by parent usually, but we call the handler
@@ -169,7 +179,9 @@ export const ClientKanban = ({ clients, onStatusChange }: ClientKanbanProps) => 
           <div className="p-3 border-b border-[var(--border)] flex items-center justify-between sticky top-0 bg-inherit rounded-t-xl z-10 backdrop-blur-sm">
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${column.color}`} />
-              <h3 className="font-medium text-sm text-[var(--foreground)]">{column.title}</h3>
+              <h3 className="font-medium text-sm text-[var(--foreground)]">
+                {column.title}
+              </h3>
             </div>
             <span className="text-xs text-[var(--foreground-muted)] bg-[var(--background-elevated)] px-2 py-0.5 rounded-full">
               {getClientsByStatus(column.id).length}

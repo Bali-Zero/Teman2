@@ -1,18 +1,22 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Search, BarChart3, Sparkles } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Search, BarChart3, Sparkles } from "lucide-react";
 
 const STAGES = [
-  { icon: Search, text: 'Searching 9,612 business codes...', delay: 0 },
-  { icon: BarChart3, text: 'Analyzing matches...', delay: 2500 },
-  { icon: Sparkles, text: 'Generating answer...', delay: 6000 },
+  { icon: Search, text: "Searching 9,612 business codes...", delay: 0 },
+  { icon: BarChart3, text: "Analyzing matches...", delay: 2500 },
+  { icon: Sparkles, text: "Generating answer...", delay: 6000 },
 ];
 
 const PROGRESS_DURATION = 12; // seconds to reach 95%
 
-export default function ThinkingIndicator({ isComplete }: { isComplete?: boolean }) {
+export default function ThinkingIndicator({
+  isComplete,
+}: {
+  isComplete?: boolean;
+}) {
   const [activeStage, setActiveStage] = useState(0);
   const [progress, setProgress] = useState(0);
 
@@ -60,10 +64,12 @@ export default function ThinkingIndicator({ isComplete }: { isComplete?: boolean
                 >
                   <stage.icon
                     size={14}
-                    className={idx === activeStage ? 'text-[#D4B483]' : 'text-[#555]'}
+                    className={
+                      idx === activeStage ? "text-[#D4B483]" : "text-[#555]"
+                    }
                   />
                   <span
-                    className={`text-sm ${idx === activeStage ? 'text-[#CCC]' : 'text-[#555]'}`}
+                    className={`text-sm ${idx === activeStage ? "text-[#CCC]" : "text-[#555]"}`}
                   >
                     {stage.text}
                   </span>
@@ -77,7 +83,7 @@ export default function ThinkingIndicator({ isComplete }: { isComplete?: boolean
                     </motion.span>
                   )}
                 </motion.div>
-              )
+              ),
           )}
         </AnimatePresence>
 
@@ -86,8 +92,12 @@ export default function ThinkingIndicator({ isComplete }: { isComplete?: boolean
           <motion.div
             className="h-full bg-gradient-to-r from-[#D4B483] to-[#C4A473]"
             style={{ width: `${progress}%` }}
-            animate={isComplete ? { width: '100%' } : undefined}
-            transition={isComplete ? { type: 'spring', stiffness: 200, damping: 20 } : undefined}
+            animate={isComplete ? { width: "100%" } : undefined}
+            transition={
+              isComplete
+                ? { type: "spring", stiffness: 200, damping: 20 }
+                : undefined
+            }
           />
         </div>
       </div>

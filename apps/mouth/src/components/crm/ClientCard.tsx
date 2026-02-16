@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import {
   MessageCircle,
   Clock,
@@ -9,9 +9,9 @@ import {
   CheckCircle2,
   Mail,
   Phone,
-} from 'lucide-react';
-import { Client } from '@/lib/api/crm/crm.types';
-import { useRouter } from 'next/navigation';
+} from "lucide-react";
+import { Client } from "@/lib/api/crm/crm.types";
+import { useRouter } from "next/navigation";
 
 interface ClientCardProps {
   client: Client;
@@ -19,86 +19,86 @@ interface ClientCardProps {
 }
 
 const SENTIMENT_COLORS = {
-  positive: 'ring-green-500',
-  neutral: 'ring-yellow-500',
-  negative: 'ring-red-500',
-  mixed: 'ring-purple-500',
-  none: 'ring-gray-200 dark:ring-gray-700',
+  positive: "ring-green-500",
+  neutral: "ring-yellow-500",
+  negative: "ring-red-500",
+  mixed: "ring-purple-500",
+  none: "ring-gray-200 dark:ring-gray-700",
 };
 
 const SENTIMENT_BG = {
-  positive: 'bg-green-500/10 text-green-600 dark:text-green-400',
-  neutral: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400',
-  negative: 'bg-red-500/10 text-red-600 dark:text-red-400',
-  mixed: 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
-  none: 'bg-gray-100 dark:bg-gray-800 text-gray-500',
+  positive: "bg-green-500/10 text-green-600 dark:text-green-400",
+  neutral: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
+  negative: "bg-red-500/10 text-red-600 dark:text-red-400",
+  mixed: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
+  none: "bg-gray-100 dark:bg-gray-800 text-gray-500",
 };
 
 // Map nationalities to flag emojis
 const NATIONALITY_FLAGS: Record<string, string> = {
-  Italian: '🇮🇹',
-  Italy: '🇮🇹',
-  Russian: '🇷🇺',
-  Russia: '🇷🇺',
-  Ukrainian: '🇺🇦',
-  Ukraine: '🇺🇦',
-  American: '🇺🇸',
-  USA: '🇺🇸',
-  'United States': '🇺🇸',
-  British: '🇬🇧',
-  UK: '🇬🇧',
-  'United Kingdom': '🇬🇧',
-  Australian: '🇦🇺',
-  Australia: '🇦🇺',
-  German: '🇩🇪',
-  Germany: '🇩🇪',
-  French: '🇫🇷',
-  France: '🇫🇷',
-  Spanish: '🇪🇸',
-  Spain: '🇪🇸',
-  Dutch: '🇳🇱',
-  Netherlands: '🇳🇱',
-  Indonesian: '🇮🇩',
-  Indonesia: '🇮🇩',
-  Chinese: '🇨🇳',
-  China: '🇨🇳',
-  Japanese: '🇯🇵',
-  Japan: '🇯🇵',
-  Korean: '🇰🇷',
-  Korea: '🇰🇷',
-  'South Korea': '🇰🇷',
-  Indian: '🇮🇳',
-  India: '🇮🇳',
-  Brazilian: '🇧🇷',
-  Brazil: '🇧🇷',
-  Canadian: '🇨🇦',
-  Canada: '🇨🇦',
-  Mexican: '🇲🇽',
-  Mexico: '🇲🇽',
-  Argentinian: '🇦🇷',
-  Argentina: '🇦🇷',
-  'South African': '🇿🇦',
-  'South Africa': '🇿🇦',
-  'New Zealander': '🇳🇿',
-  'New Zealand': '🇳🇿',
-  Irish: '🇮🇪',
-  Ireland: '🇮🇪',
-  Portuguese: '🇵🇹',
-  Portugal: '🇵🇹',
-  Polish: '🇵🇱',
-  Poland: '🇵🇱',
-  Turkish: '🇹🇷',
-  Turkey: '🇹🇷',
-  Thai: '🇹🇭',
-  Thailand: '🇹🇭',
-  Vietnamese: '🇻🇳',
-  Vietnam: '🇻🇳',
-  Filipino: '🇵🇭',
-  Philippines: '🇵🇭',
-  Malaysian: '🇲🇾',
-  Malaysia: '🇲🇾',
-  Singaporean: '🇸🇬',
-  Singapore: '🇸🇬',
+  Italian: "🇮🇹",
+  Italy: "🇮🇹",
+  Russian: "🇷🇺",
+  Russia: "🇷🇺",
+  Ukrainian: "🇺🇦",
+  Ukraine: "🇺🇦",
+  American: "🇺🇸",
+  USA: "🇺🇸",
+  "United States": "🇺🇸",
+  British: "🇬🇧",
+  UK: "🇬🇧",
+  "United Kingdom": "🇬🇧",
+  Australian: "🇦🇺",
+  Australia: "🇦🇺",
+  German: "🇩🇪",
+  Germany: "🇩🇪",
+  French: "🇫🇷",
+  France: "🇫🇷",
+  Spanish: "🇪🇸",
+  Spain: "🇪🇸",
+  Dutch: "🇳🇱",
+  Netherlands: "🇳🇱",
+  Indonesian: "🇮🇩",
+  Indonesia: "🇮🇩",
+  Chinese: "🇨🇳",
+  China: "🇨🇳",
+  Japanese: "🇯🇵",
+  Japan: "🇯🇵",
+  Korean: "🇰🇷",
+  Korea: "🇰🇷",
+  "South Korea": "🇰🇷",
+  Indian: "🇮🇳",
+  India: "🇮🇳",
+  Brazilian: "🇧🇷",
+  Brazil: "🇧🇷",
+  Canadian: "🇨🇦",
+  Canada: "🇨🇦",
+  Mexican: "🇲🇽",
+  Mexico: "🇲🇽",
+  Argentinian: "🇦🇷",
+  Argentina: "🇦🇷",
+  "South African": "🇿🇦",
+  "South Africa": "🇿🇦",
+  "New Zealander": "🇳🇿",
+  "New Zealand": "🇳🇿",
+  Irish: "🇮🇪",
+  Ireland: "🇮🇪",
+  Portuguese: "🇵🇹",
+  Portugal: "🇵🇹",
+  Polish: "🇵🇱",
+  Poland: "🇵🇱",
+  Turkish: "🇹🇷",
+  Turkey: "🇹🇷",
+  Thai: "🇹🇭",
+  Thailand: "🇹🇭",
+  Vietnamese: "🇻🇳",
+  Vietnam: "🇻🇳",
+  Filipino: "🇵🇭",
+  Philippines: "🇵🇭",
+  Malaysian: "🇲🇾",
+  Malaysia: "🇲🇾",
+  Singaporean: "🇸🇬",
+  Singapore: "🇸🇬",
 };
 
 // Get flag emoji from nationality
@@ -119,7 +119,7 @@ export const ClientCard = React.memo(
 
     // Determine sentiment aura
     const sentiment = (
-      client.last_sentiment || 'none'
+      client.last_sentiment || "none"
     ).toLowerCase() as keyof typeof SENTIMENT_COLORS;
     const ringColor = SENTIMENT_COLORS[sentiment] || SENTIMENT_COLORS.none;
     const badgeStyle = SENTIMENT_BG[sentiment] || SENTIMENT_BG.none;
@@ -135,7 +135,7 @@ export const ClientCard = React.memo(
           className={`
           relative bg-[var(--background-secondary)] rounded-xl border border-[var(--border)] 
           p-4 cursor-pointer hover:shadow-lg transition-all duration-300
-          ${isDragging ? 'opacity-50 scale-95 rotate-3' : 'hover:-translate-y-1'}
+          ${isDragging ? "opacity-50 scale-95 rotate-3" : "hover:-translate-y-1"}
         `}
           onClick={() => router.push(`/clients/${client.id}`)}
         >
@@ -162,23 +162,29 @@ export const ClientCard = React.memo(
               <div
                 className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-[var(--background-secondary)]
               ${
-                client.status === 'active'
-                  ? 'bg-green-500'
-                  : client.status === 'lead'
-                    ? 'bg-blue-500'
-                    : 'bg-gray-400'
+                client.status === "active"
+                  ? "bg-green-500"
+                  : client.status === "lead"
+                    ? "bg-blue-500"
+                    : "bg-gray-400"
               }`}
               />
             </div>
 
             <div className="flex-1 min-w-0">
-              <h4 className="font-medium text-[var(--foreground)] truncate">{client.full_name}</h4>
+              <h4 className="font-medium text-[var(--foreground)] truncate">
+                {client.full_name}
+              </h4>
               <div className="flex items-center gap-2 text-xs text-[var(--foreground-muted)]">
-                <span className="truncate">{client.nationality || 'Unknown'}</span>
+                <span className="truncate">
+                  {client.nationality || "Unknown"}
+                </span>
                 {client.company_name && (
                   <>
                     <span>•</span>
-                    <span className="truncate max-w-[80px]">{client.company_name}</span>
+                    <span className="truncate max-w-[80px]">
+                      {client.company_name}
+                    </span>
                   </>
                 )}
               </div>
@@ -192,7 +198,9 @@ export const ClientCard = React.memo(
               <div className={`p-2 rounded-lg ${badgeStyle} line-clamp-2`}>
                 <div className="flex items-center gap-1.5 mb-1 opacity-75">
                   <MessageCircle className="w-3 h-3" />
-                  <span className="font-medium capitalize">{sentiment} Interaction</span>
+                  <span className="font-medium capitalize">
+                    {sentiment} Interaction
+                  </span>
                 </div>
                 "{client.last_interaction_summary}"
               </div>
@@ -209,12 +217,14 @@ export const ClientCard = React.memo(
                 <span>
                   {client.last_interaction_date
                     ? isMounted
-                      ? new Date(client.last_interaction_date).toLocaleDateString(undefined, {
-                          month: 'short',
-                          day: 'numeric',
+                      ? new Date(
+                          client.last_interaction_date,
+                        ).toLocaleDateString(undefined, {
+                          month: "short",
+                          day: "numeric",
                         })
-                      : '...'
-                    : 'Never'}
+                      : "..."
+                    : "Never"}
                 </span>
               </div>
 
@@ -235,7 +245,9 @@ export const ClientCard = React.memo(
         <div className="absolute z-50 left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-300 translate-y-2 group-hover:translate-y-0">
           <div className="bg-black/90 backdrop-blur-md text-white p-3 rounded-lg shadow-xl text-xs">
             <div className="flex items-center justify-between mb-2">
-              <span className="font-bold text-[var(--accent)]">WAR ROOM INTEL</span>
+              <span className="font-bold text-[var(--accent)]">
+                WAR ROOM INTEL
+              </span>
               <TrendingUp className="w-3 h-3 text-green-400" />
             </div>
             <div className="space-y-1.5">
@@ -264,9 +276,11 @@ export const ClientCard = React.memo(
     return (
       prevProps.client.id === nextProps.client.id &&
       prevProps.client.last_sentiment === nextProps.client.last_sentiment &&
-      prevProps.client.last_interaction_date === nextProps.client.last_interaction_date &&
-      prevProps.client.last_interaction_summary === nextProps.client.last_interaction_summary &&
+      prevProps.client.last_interaction_date ===
+        nextProps.client.last_interaction_date &&
+      prevProps.client.last_interaction_summary ===
+        nextProps.client.last_interaction_summary &&
       prevProps.isDragging === nextProps.isDragging
     );
-  }
+  },
 );

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -20,12 +20,12 @@ const localStorageMock = (() => {
     }),
   };
 })();
-Object.defineProperty(window, 'localStorage', { value: localStorageMock });
+Object.defineProperty(window, "localStorage", { value: localStorageMock });
 
 // Import after mocking
-import { api } from './api';
+import { api } from "./api";
 
-describe('ApiClient', () => {
+describe("ApiClient", () => {
   beforeEach(() => {
     mockFetch.mockReset();
     localStorageMock.clear();
@@ -41,30 +41,33 @@ describe('ApiClient', () => {
   // ============================================================================
   // Token Management Tests
   // ============================================================================
-  describe('Token management', () => {
-    it('should start with no token when localStorage is empty', () => {
+  describe("Token management", () => {
+    it("should start with no token when localStorage is empty", () => {
       expect(api.getToken()).toBeNull();
       expect(api.isAuthenticated()).toBe(false);
     });
 
-    it('should set token and become authenticated', () => {
-      api.setToken('test-token-123');
-      expect(api.getToken()).toBe('test-token-123');
+    it("should set token and become authenticated", () => {
+      api.setToken("test-token-123");
+      expect(api.getToken()).toBe("test-token-123");
       expect(api.isAuthenticated()).toBe(true);
-      expect(localStorageMock.setItem).toHaveBeenCalledWith('auth_token', 'test-token-123');
+      expect(localStorageMock.setItem).toHaveBeenCalledWith(
+        "auth_token",
+        "test-token-123",
+      );
     });
 
-    it('should clear token and become unauthenticated', () => {
-      api.setToken('test-token');
+    it("should clear token and become unauthenticated", () => {
+      api.setToken("test-token");
       api.clearToken();
       expect(api.getToken()).toBeNull();
       expect(api.isAuthenticated()).toBe(false);
-      expect(localStorageMock.removeItem).toHaveBeenCalledWith('auth_token');
-      expect(localStorageMock.removeItem).toHaveBeenCalledWith('user_profile');
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith("auth_token");
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith("user_profile");
     });
 
-    it('should return false for empty string token', () => {
-      api.setToken('');
+    it("should return false for empty string token", () => {
+      api.setToken("");
       expect(api.isAuthenticated()).toBe(false);
     });
   });
@@ -72,19 +75,29 @@ describe('ApiClient', () => {
   // ============================================================================
   // User Profile Tests
   // ============================================================================
-  describe('User profile management', () => {
-    it('should store and retrieve user profile', () => {
-      const profile = { id: '1', email: 'test@example.com', name: 'Test', role: 'user' };
+  describe("User profile management", () => {
+    it("should store and retrieve user profile", () => {
+      const profile = {
+        id: "1",
+        email: "test@example.com",
+        name: "Test",
+        role: "user",
+      };
       api.setUserProfile(profile);
       expect(api.getUserProfile()).toEqual(profile);
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        'user_profile',
-        JSON.stringify(profile)
+        "user_profile",
+        JSON.stringify(profile),
       );
     });
 
-    it('should clear user profile on clearToken', () => {
-      api.setUserProfile({ id: '1', email: 'test@example.com', name: 'Test', role: 'user' });
+    it("should clear user profile on clearToken", () => {
+      api.setUserProfile({
+        id: "1",
+        email: "test@example.com",
+        name: "Test",
+        role: "user",
+      });
       api.clearToken();
       expect(api.getUserProfile()).toBeNull();
     });
@@ -93,91 +106,98 @@ describe('ApiClient', () => {
   // ============================================================================
   // Login Tests
   // ============================================================================
-  describe('login', () => {
-    it('should login successfully and set token', async () => {
+  describe("login", () => {
+    it("should login successfully and set token", async () => {
       const mockResponse = {
         success: true,
-        message: 'Login successful',
+        message: "Login successful",
         data: {
-          token: 'jwt-token-123',
-          token_type: 'Bearer',
+          token: "jwt-token-123",
+          token_type: "Bearer",
           expiresIn: 3600,
           user: {
-            id: '1',
-            email: 'test@example.com',
-            name: 'Test User',
-            role: 'user',
-            status: 'active',
+            id: "1",
+            email: "test@example.com",
+            name: "Test User",
+            role: "user",
+            status: "active",
             metadata: null,
-            language_preference: 'en',
+            language_preference: "en",
           },
         },
       };
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: () => Promise.resolve(mockResponse),
       });
 
-      const result = await api.login('test@example.com', '123456');
+      const result = await api.login("test@example.com", "123456");
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/auth/login'),
+        expect.stringContaining("/api/auth/login"),
         expect.objectContaining({
-          method: 'POST',
-          body: JSON.stringify({ email: 'test@example.com', pin: '123456' }),
-        })
+          method: "POST",
+          body: JSON.stringify({ email: "test@example.com", pin: "123456" }),
+        }),
       );
-      expect(result.access_token).toBe('jwt-token-123');
-      expect(result.user.email).toBe('test@example.com');
-      expect(api.getToken()).toBe('jwt-token-123');
-      expect(api.getUserProfile()?.email).toBe('test@example.com');
+      expect(result.access_token).toBe("jwt-token-123");
+      expect(result.user.email).toBe("test@example.com");
+      expect(api.getToken()).toBe("jwt-token-123");
+      expect(api.getUserProfile()?.email).toBe("test@example.com");
     });
 
-    it('should throw error when login fails with success: false', async () => {
+    it("should throw error when login fails with success: false", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
-        json: () => Promise.resolve({ success: false, message: 'Invalid credentials' }),
+        headers: new Headers({ "content-type": "application/json" }),
+        json: () =>
+          Promise.resolve({ success: false, message: "Invalid credentials" }),
       });
 
-      await expect(api.login('test@example.com', 'wrong')).rejects.toThrow('Invalid credentials');
+      await expect(api.login("test@example.com", "wrong")).rejects.toThrow(
+        "Invalid credentials",
+      );
     });
 
-    it('should throw error on HTTP error', async () => {
+    it("should throw error on HTTP error", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 401,
-        statusText: 'Unauthorized',
+        statusText: "Unauthorized",
         headers: {
           get: vi.fn((name: string) => {
-            if (name === 'content-type') return 'application/json';
+            if (name === "content-type") return "application/json";
             return null;
           }),
         },
-        json: () => Promise.resolve({ detail: 'Unauthorized' }),
+        json: () => Promise.resolve({ detail: "Unauthorized" }),
       });
 
-      await expect(api.login('test@example.com', 'wrong')).rejects.toThrow('Unauthorized');
+      await expect(api.login("test@example.com", "wrong")).rejects.toThrow(
+        "Unauthorized",
+      );
     });
 
-    it('should throw error when data is missing', async () => {
+    it("should throw error when data is missing", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: () => Promise.resolve({ success: true, data: null }),
       });
 
-      await expect(api.login('test@example.com', '123456')).rejects.toThrow('Login failed');
+      await expect(api.login("test@example.com", "123456")).rejects.toThrow(
+        "Login failed",
+      );
     });
   });
 
   // ============================================================================
   // Logout Tests
   // ============================================================================
-  describe('logout', () => {
-    it('should logout and clear token', async () => {
-      api.setToken('test-token');
+  describe("logout", () => {
+    it("should logout and clear token", async () => {
+      api.setToken("test-token");
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 204,
@@ -190,9 +210,9 @@ describe('ApiClient', () => {
       expect(api.getUserProfile()).toBeNull();
     });
 
-    it('should clear token even if logout request fails', async () => {
-      api.setToken('test-token');
-      mockFetch.mockRejectedValueOnce(new Error('Network error'));
+    it("should clear token even if logout request fails", async () => {
+      api.setToken("test-token");
+      mockFetch.mockRejectedValueOnce(new Error("Network error"));
 
       await expect(api.logout()).rejects.toThrow();
       expect(api.getToken()).toBeNull();
@@ -202,13 +222,18 @@ describe('ApiClient', () => {
   // ============================================================================
   // Profile Tests
   // ============================================================================
-  describe('getProfile', () => {
-    it('should fetch and store user profile', async () => {
-      api.setToken('test-token');
-      const mockProfile = { id: '1', email: 'test@example.com', name: 'Test', role: 'user' };
+  describe("getProfile", () => {
+    it("should fetch and store user profile", async () => {
+      api.setToken("test-token");
+      const mockProfile = {
+        id: "1",
+        email: "test@example.com",
+        name: "Test",
+        role: "user",
+      };
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: () => Promise.resolve(mockProfile),
       });
 
@@ -222,46 +247,51 @@ describe('ApiClient', () => {
   // ============================================================================
   // Send Message Tests
   // ============================================================================
-  describe('sendMessage', () => {
+  describe("sendMessage", () => {
     beforeEach(() => {
-      api.setToken('test-token');
-      api.setUserProfile({ id: 'user-1', email: 'test@example.com', name: 'Test', role: 'user' });
+      api.setToken("test-token");
+      api.setUserProfile({
+        id: "user-1",
+        email: "test@example.com",
+        name: "Test",
+        role: "user",
+      });
     });
 
-    it('should send message and return response', async () => {
+    it("should send message and return response", async () => {
       const mockResponse = {
-        answer: 'Hello! How can I help you?',
-        sources: [{ title: 'Doc 1', content: 'Some content' }],
+        answer: "Hello! How can I help you?",
+        sources: [{ title: "Doc 1", content: "Some content" }],
         context_length: 100,
         execution_time: 0.5,
-        route_used: 'rag',
+        route_used: "rag",
       };
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: () => Promise.resolve(mockResponse),
       });
 
-      const result = await api.sendMessage('Hello');
+      const result = await api.sendMessage("Hello");
 
-      expect(result.response).toBe('Hello! How can I help you?');
+      expect(result.response).toBe("Hello! How can I help you?");
       expect(result.sources).toHaveLength(1);
     });
 
-    it('should use provided userId', async () => {
+    it("should use provided userId", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
-        json: () => Promise.resolve({ answer: 'test', sources: [] }),
+        headers: new Headers({ "content-type": "application/json" }),
+        json: () => Promise.resolve({ answer: "test", sources: [] }),
       });
 
-      await api.sendMessage('Hello', 'custom-user-id');
+      await api.sendMessage("Hello", "custom-user-id");
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
-          body: expect.stringContaining('custom-user-id'),
-        })
+          body: expect.stringContaining("custom-user-id"),
+        }),
       );
     });
   });
@@ -269,13 +299,18 @@ describe('ApiClient', () => {
   // ============================================================================
   // Send Message Streaming Tests
   // ============================================================================
-  describe('sendMessageStreaming', () => {
+  describe("sendMessageStreaming", () => {
     beforeEach(() => {
-      api.setToken('test-token');
-      api.setUserProfile({ id: 'user-1', email: 'test@example.com', name: 'Test', role: 'user' });
+      api.setToken("test-token");
+      api.setUserProfile({
+        id: "user-1",
+        email: "test@example.com",
+        name: "Test",
+        role: "user",
+      });
     });
 
-    it('should call callbacks correctly on success', async () => {
+    it("should call callbacks correctly on success", async () => {
       const encoder = new TextEncoder();
       const streamData = [
         'data: {"type":"token","content":"Hello "}\n',
@@ -306,22 +341,34 @@ describe('ApiClient', () => {
       const onDone = vi.fn();
       const onError = vi.fn();
 
-      await api.sendMessageStreaming('Hello', undefined, onChunk, onDone, onError);
+      await api.sendMessageStreaming(
+        "Hello",
+        undefined,
+        onChunk,
+        onDone,
+        onError,
+      );
 
-      expect(onChunk).toHaveBeenCalledWith('Hello ');
-      expect(onChunk).toHaveBeenCalledWith('Hello from AI!');
-      expect(onDone).toHaveBeenCalledWith('Hello from AI!', [], undefined);
+      expect(onChunk).toHaveBeenCalledWith("Hello ");
+      expect(onChunk).toHaveBeenCalledWith("Hello from AI!");
+      expect(onDone).toHaveBeenCalledWith("Hello from AI!", [], undefined);
       expect(onError).not.toHaveBeenCalled();
     });
 
-    it('should call onError on failure', async () => {
-      mockFetch.mockRejectedValueOnce(new Error('Network error'));
+    it("should call onError on failure", async () => {
+      mockFetch.mockRejectedValueOnce(new Error("Network error"));
 
       const onChunk = vi.fn();
       const onDone = vi.fn();
       const onError = vi.fn();
 
-      await api.sendMessageStreaming('Hello', undefined, onChunk, onDone, onError);
+      await api.sendMessageStreaming(
+        "Hello",
+        undefined,
+        onChunk,
+        onDone,
+        onError,
+      );
 
       expect(onChunk).not.toHaveBeenCalled();
       expect(onDone).not.toHaveBeenCalled();
@@ -332,23 +379,23 @@ describe('ApiClient', () => {
   // ============================================================================
   // Conversation History Tests
   // ============================================================================
-  describe('getConversationHistory', () => {
+  describe("getConversationHistory", () => {
     beforeEach(() => {
-      api.setToken('test-token');
+      api.setToken("test-token");
     });
 
-    it('should fetch conversation history', async () => {
+    it("should fetch conversation history", async () => {
       const mockHistory = {
         success: true,
         messages: [
-          { role: 'user', content: 'Hello' },
-          { role: 'assistant', content: 'Hi there!' },
+          { role: "user", content: "Hello" },
+          { role: "assistant", content: "Hi there!" },
         ],
         total_messages: 2,
       };
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: () => Promise.resolve(mockHistory),
       });
 
@@ -358,18 +405,19 @@ describe('ApiClient', () => {
       expect(result.messages).toHaveLength(2);
     });
 
-    it('should pass sessionId if provided', async () => {
+    it("should pass sessionId if provided", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
-        json: () => Promise.resolve({ success: true, messages: [], total_messages: 0 }),
+        headers: new Headers({ "content-type": "application/json" }),
+        json: () =>
+          Promise.resolve({ success: true, messages: [], total_messages: 0 }),
       });
 
-      await api.getConversationHistory('session-123');
+      await api.getConversationHistory("session-123");
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('session_id=session-123'),
-        expect.any(Object)
+        expect.stringContaining("session_id=session-123"),
+        expect.any(Object),
       );
     });
   });
@@ -377,21 +425,26 @@ describe('ApiClient', () => {
   // ============================================================================
   // Save Conversation Tests
   // ============================================================================
-  describe('saveConversation', () => {
+  describe("saveConversation", () => {
     beforeEach(() => {
-      api.setToken('test-token');
+      api.setToken("test-token");
     });
 
-    it('should save conversation', async () => {
+    it("should save conversation", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
-        json: () => Promise.resolve({ success: true, conversation_id: 1, messages_saved: 2 }),
+        headers: new Headers({ "content-type": "application/json" }),
+        json: () =>
+          Promise.resolve({
+            success: true,
+            conversation_id: 1,
+            messages_saved: 2,
+          }),
       });
 
       const messages = [
-        { role: 'user', content: 'Hello' },
-        { role: 'assistant', content: 'Hi!' },
+        { role: "user", content: "Hello" },
+        { role: "assistant", content: "Hi!" },
       ];
       const result = await api.saveConversation(messages);
 
@@ -399,22 +452,31 @@ describe('ApiClient', () => {
       expect(result.messages_saved).toBe(2);
     });
 
-    it('should include metadata if provided', async () => {
+    it("should include metadata if provided", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
-        json: () => Promise.resolve({ success: true, conversation_id: 1, messages_saved: 1 }),
+        headers: new Headers({ "content-type": "application/json" }),
+        json: () =>
+          Promise.resolve({
+            success: true,
+            conversation_id: 1,
+            messages_saved: 1,
+          }),
       });
 
-      await api.saveConversation([{ role: 'user', content: 'test' }], 'session-1', {
-        tag: 'important',
-      });
+      await api.saveConversation(
+        [{ role: "user", content: "test" }],
+        "session-1",
+        {
+          tag: "important",
+        },
+      );
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
-          body: expect.stringContaining('important'),
-        })
+          body: expect.stringContaining("important"),
+        }),
       );
     });
   });
@@ -422,15 +484,15 @@ describe('ApiClient', () => {
   // ============================================================================
   // Clear Conversations Tests
   // ============================================================================
-  describe('clearConversations', () => {
+  describe("clearConversations", () => {
     beforeEach(() => {
-      api.setToken('test-token');
+      api.setToken("test-token");
     });
 
-    it('should clear all conversations', async () => {
+    it("should clear all conversations", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: () => Promise.resolve({ success: true, deleted_count: 5 }),
       });
 
@@ -440,10 +502,10 @@ describe('ApiClient', () => {
       expect(result.deleted_count).toBe(5);
     });
 
-    it('should use DELETE method', async () => {
+    it("should use DELETE method", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: () => Promise.resolve({ success: true, deleted_count: 0 }),
       });
 
@@ -451,7 +513,7 @@ describe('ApiClient', () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
-        expect.objectContaining({ method: 'DELETE' })
+        expect.objectContaining({ method: "DELETE" }),
       );
     });
   });
@@ -459,22 +521,22 @@ describe('ApiClient', () => {
   // ============================================================================
   // Conversation Stats Tests
   // ============================================================================
-  describe('getConversationStats', () => {
+  describe("getConversationStats", () => {
     beforeEach(() => {
-      api.setToken('test-token');
+      api.setToken("test-token");
     });
 
-    it('should fetch conversation stats', async () => {
+    it("should fetch conversation stats", async () => {
       const mockStats = {
         success: true,
-        user_email: 'test@example.com',
+        user_email: "test@example.com",
         total_conversations: 10,
         total_messages: 50,
-        last_conversation: '2024-01-01',
+        last_conversation: "2024-01-01",
       };
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: () => Promise.resolve(mockStats),
       });
 
@@ -488,73 +550,88 @@ describe('ApiClient', () => {
   // ============================================================================
   // Clock In/Out Tests
   // ============================================================================
-  describe('clockIn', () => {
-    it('should throw error if user profile is not loaded', async () => {
+  describe("clockIn", () => {
+    it("should throw error if user profile is not loaded", async () => {
       api.clearToken();
-      await expect(api.clockIn()).rejects.toThrow('User profile not loaded');
+      await expect(api.clockIn()).rejects.toThrow("User profile not loaded");
     });
 
-    it('should clock in successfully', async () => {
-      api.setToken('test-token');
-      api.setUserProfile({ id: 'user-1', email: 'test@example.com', name: 'Test', role: 'user' });
+    it("should clock in successfully", async () => {
+      api.setToken("test-token");
+      api.setUserProfile({
+        id: "user-1",
+        email: "test@example.com",
+        name: "Test",
+        role: "user",
+      });
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: () =>
           Promise.resolve({
             success: true,
-            action: 'clock_in',
-            message: 'Clocked in successfully',
-            bali_time: '2024-01-01 09:00:00',
+            action: "clock_in",
+            message: "Clocked in successfully",
+            bali_time: "2024-01-01 09:00:00",
           }),
       });
 
       const result = await api.clockIn();
 
       expect(result.success).toBe(true);
-      expect(result.action).toBe('clock_in');
+      expect(result.action).toBe("clock_in");
     });
 
-    it('should send user_id and email in request body', async () => {
-      api.setToken('test-token');
-      api.setUserProfile({ id: 'user-1', email: 'test@example.com', name: 'Test', role: 'user' });
+    it("should send user_id and email in request body", async () => {
+      api.setToken("test-token");
+      api.setUserProfile({
+        id: "user-1",
+        email: "test@example.com",
+        name: "Test",
+        role: "user",
+      });
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
-        json: () => Promise.resolve({ success: true, message: 'OK' }),
+        headers: new Headers({ "content-type": "application/json" }),
+        json: () => Promise.resolve({ success: true, message: "OK" }),
       });
 
       await api.clockIn();
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/team/clock-in'),
+        expect.stringContaining("/api/team/clock-in"),
         expect.objectContaining({
-          body: expect.stringContaining('user-1'),
-        })
+          body: expect.stringContaining("user-1"),
+        }),
       );
     });
   });
 
-  describe('clockOut', () => {
-    it('should throw error if user profile is not loaded', async () => {
+  describe("clockOut", () => {
+    it("should throw error if user profile is not loaded", async () => {
       api.clearToken();
-      await expect(api.clockOut()).rejects.toThrow('User profile not loaded');
+      await expect(api.clockOut()).rejects.toThrow("User profile not loaded");
     });
 
-    it('should clock out successfully', async () => {
-      api.setToken('test-token');
-      api.setUserProfile({ id: 'user-1', email: 'test@example.com', name: 'Test', role: 'user' });
+    it("should clock out successfully", async () => {
+      api.setToken("test-token");
+      api.setUserProfile({
+        id: "user-1",
+        email: "test@example.com",
+        name: "Test",
+        role: "user",
+      });
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: () =>
           Promise.resolve({
             success: true,
-            action: 'clock_out',
-            message: 'Clocked out',
+            action: "clock_out",
+            message: "Clocked out",
             hours_worked: 8.5,
           }),
       });
@@ -566,8 +643,8 @@ describe('ApiClient', () => {
     });
   });
 
-  describe('getClockStatus', () => {
-    it('should return default values if user profile is not loaded', async () => {
+  describe("getClockStatus", () => {
+    it("should return default values if user profile is not loaded", async () => {
       api.clearToken();
       const result = await api.getClockStatus();
 
@@ -576,19 +653,24 @@ describe('ApiClient', () => {
       expect(result.week_hours).toBe(0);
     });
 
-    it('should fetch clock status', async () => {
-      api.setToken('test-token');
-      api.setUserProfile({ id: 'user-1', email: 'test@example.com', name: 'Test', role: 'user' });
+    it("should fetch clock status", async () => {
+      api.setToken("test-token");
+      api.setUserProfile({
+        id: "user-1",
+        email: "test@example.com",
+        name: "Test",
+        role: "user",
+      });
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: () =>
           Promise.resolve({
-            user_id: 'user-1',
+            user_id: "user-1",
             is_online: true,
-            last_action: '2024-01-01',
-            last_action_type: 'clock_in',
+            last_action: "2024-01-01",
+            last_action_type: "clock_in",
             today_hours: 4.5,
             week_hours: 20,
             week_days: 4,
@@ -602,11 +684,16 @@ describe('ApiClient', () => {
       expect(result.week_hours).toBe(20);
     });
 
-    it('should return default values on error', async () => {
-      api.setToken('test-token');
-      api.setUserProfile({ id: 'user-1', email: 'test@example.com', name: 'Test', role: 'user' });
+    it("should return default values on error", async () => {
+      api.setToken("test-token");
+      api.setUserProfile({
+        id: "user-1",
+        email: "test@example.com",
+        name: "Test",
+        role: "user",
+      });
 
-      mockFetch.mockRejectedValueOnce(new Error('Service unavailable'));
+      mockFetch.mockRejectedValueOnce(new Error("Service unavailable"));
 
       const result = await api.getClockStatus();
 
@@ -618,42 +705,51 @@ describe('ApiClient', () => {
   // ============================================================================
   // Team Status Tests (Admin)
   // ============================================================================
-  describe('getTeamStatus', () => {
-    it('should throw error if not admin', async () => {
-      api.setToken('test-token');
-      api.setUserProfile({ id: 'user-1', email: 'test@example.com', name: 'Test', role: 'user' });
+  describe("getTeamStatus", () => {
+    it("should throw error if not admin", async () => {
+      api.setToken("test-token");
+      api.setUserProfile({
+        id: "user-1",
+        email: "test@example.com",
+        name: "Test",
+        role: "user",
+      });
 
-      await expect(api.getTeamStatus()).rejects.toThrow('Admin access required');
+      await expect(api.getTeamStatus()).rejects.toThrow(
+        "Admin access required",
+      );
     });
 
-    it('should throw error if no user profile', async () => {
-      api.setToken('test-token');
+    it("should throw error if no user profile", async () => {
+      api.setToken("test-token");
       api.clearToken();
 
-      await expect(api.getTeamStatus()).rejects.toThrow('Admin access required');
+      await expect(api.getTeamStatus()).rejects.toThrow(
+        "Admin access required",
+      );
     });
 
-    it('should fetch team status for admin', async () => {
-      api.setToken('test-token');
+    it("should fetch team status for admin", async () => {
+      api.setToken("test-token");
       api.setUserProfile({
-        id: 'admin-1',
-        email: 'admin@example.com',
-        name: 'Admin',
-        role: 'admin',
+        id: "admin-1",
+        email: "admin@example.com",
+        name: "Admin",
+        role: "admin",
       });
 
       const mockTeam = [
         {
-          user_id: '1',
-          email: 'user1@example.com',
+          user_id: "1",
+          email: "user1@example.com",
           is_online: true,
-          last_action: '2024-01-01',
-          last_action_type: 'clock_in',
+          last_action: "2024-01-01",
+          last_action_type: "clock_in",
         },
       ];
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: () => Promise.resolve(mockTeam),
       });
 
@@ -663,18 +759,18 @@ describe('ApiClient', () => {
       expect(result[0].is_online).toBe(true);
     });
 
-    it('should include X-User-Email header', async () => {
-      api.setToken('test-token');
+    it("should include X-User-Email header", async () => {
+      api.setToken("test-token");
       api.setUserProfile({
-        id: 'admin-1',
-        email: 'admin@example.com',
-        name: 'Admin',
-        role: 'admin',
+        id: "admin-1",
+        email: "admin@example.com",
+        name: "Admin",
+        role: "admin",
       });
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: () => Promise.resolve([]),
       });
 
@@ -684,9 +780,9 @@ describe('ApiClient', () => {
         expect.any(String),
         expect.objectContaining({
           headers: expect.objectContaining({
-            'X-User-Email': 'admin@example.com',
+            "X-User-Email": "admin@example.com",
           }),
-        })
+        }),
       );
     });
   });
@@ -694,65 +790,72 @@ describe('ApiClient', () => {
   // ============================================================================
   // Admin: getDailyHours Tests
   // ============================================================================
-  describe('getDailyHours', () => {
-    it('should throw error if not admin', async () => {
-      api.setToken('test-token');
-      api.setUserProfile({ id: 'user-1', email: 'test@example.com', name: 'Test', role: 'user' });
+  describe("getDailyHours", () => {
+    it("should throw error if not admin", async () => {
+      api.setToken("test-token");
+      api.setUserProfile({
+        id: "user-1",
+        email: "test@example.com",
+        name: "Test",
+        role: "user",
+      });
 
-      await expect(api.getDailyHours()).rejects.toThrow('Admin access required');
+      await expect(api.getDailyHours()).rejects.toThrow(
+        "Admin access required",
+      );
     });
 
-    it('should fetch daily hours for admin', async () => {
-      api.setToken('test-token');
+    it("should fetch daily hours for admin", async () => {
+      api.setToken("test-token");
       api.setUserProfile({
-        id: 'admin-1',
-        email: 'admin@example.com',
-        name: 'Admin',
-        role: 'admin',
+        id: "admin-1",
+        email: "admin@example.com",
+        name: "Admin",
+        role: "admin",
       });
 
       const mockData = [
         {
-          user_id: '1',
-          email: 'user@example.com',
-          date: '2024-01-15',
-          clock_in: '09:00',
-          clock_out: '17:00',
+          user_id: "1",
+          email: "user@example.com",
+          date: "2024-01-15",
+          clock_in: "09:00",
+          clock_out: "17:00",
           hours_worked: 8,
         },
       ];
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: () => Promise.resolve(mockData),
       });
 
-      const result = await api.getDailyHours('2024-01-15');
+      const result = await api.getDailyHours("2024-01-15");
 
       expect(result).toHaveLength(1);
       expect(result[0].hours_worked).toBe(8);
     });
 
-    it('should include date param when provided', async () => {
-      api.setToken('test-token');
+    it("should include date param when provided", async () => {
+      api.setToken("test-token");
       api.setUserProfile({
-        id: 'admin-1',
-        email: 'admin@example.com',
-        name: 'Admin',
-        role: 'admin',
+        id: "admin-1",
+        email: "admin@example.com",
+        name: "Admin",
+        role: "admin",
       });
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: () => Promise.resolve([]),
       });
 
-      await api.getDailyHours('2024-01-15');
+      await api.getDailyHours("2024-01-15");
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('date=2024-01-15'),
-        expect.any(Object)
+        expect.stringContaining("date=2024-01-15"),
+        expect.any(Object),
       );
     });
   });
@@ -760,28 +863,35 @@ describe('ApiClient', () => {
   // ============================================================================
   // Admin: getWeeklySummary Tests
   // ============================================================================
-  describe('getWeeklySummary', () => {
-    it('should throw error if not admin', async () => {
-      api.setToken('test-token');
-      api.setUserProfile({ id: 'user-1', email: 'test@example.com', name: 'Test', role: 'user' });
+  describe("getWeeklySummary", () => {
+    it("should throw error if not admin", async () => {
+      api.setToken("test-token");
+      api.setUserProfile({
+        id: "user-1",
+        email: "test@example.com",
+        name: "Test",
+        role: "user",
+      });
 
-      await expect(api.getWeeklySummary()).rejects.toThrow('Admin access required');
+      await expect(api.getWeeklySummary()).rejects.toThrow(
+        "Admin access required",
+      );
     });
 
-    it('should fetch weekly summary for admin', async () => {
-      api.setToken('test-token');
+    it("should fetch weekly summary for admin", async () => {
+      api.setToken("test-token");
       api.setUserProfile({
-        id: 'admin-1',
-        email: 'admin@example.com',
-        name: 'Admin',
-        role: 'admin',
+        id: "admin-1",
+        email: "admin@example.com",
+        name: "Admin",
+        role: "admin",
       });
 
       const mockData = [
         {
-          user_id: '1',
-          email: 'user@example.com',
-          week_start: '2024-01-15',
+          user_id: "1",
+          email: "user@example.com",
+          week_start: "2024-01-15",
           days_worked: 5,
           total_hours: 40,
           avg_hours_per_day: 8,
@@ -789,7 +899,7 @@ describe('ApiClient', () => {
       ];
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: () => Promise.resolve(mockData),
       });
 
@@ -799,26 +909,26 @@ describe('ApiClient', () => {
       expect(result[0].total_hours).toBe(40);
     });
 
-    it('should include week_start param when provided', async () => {
-      api.setToken('test-token');
+    it("should include week_start param when provided", async () => {
+      api.setToken("test-token");
       api.setUserProfile({
-        id: 'admin-1',
-        email: 'admin@example.com',
-        name: 'Admin',
-        role: 'admin',
+        id: "admin-1",
+        email: "admin@example.com",
+        name: "Admin",
+        role: "admin",
       });
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: () => Promise.resolve([]),
       });
 
-      await api.getWeeklySummary('2024-01-15');
+      await api.getWeeklySummary("2024-01-15");
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('week_start=2024-01-15'),
-        expect.any(Object)
+        expect.stringContaining("week_start=2024-01-15"),
+        expect.any(Object),
       );
     });
   });
@@ -826,28 +936,35 @@ describe('ApiClient', () => {
   // ============================================================================
   // Admin: getMonthlySummary Tests
   // ============================================================================
-  describe('getMonthlySummary', () => {
-    it('should throw error if not admin', async () => {
-      api.setToken('test-token');
-      api.setUserProfile({ id: 'user-1', email: 'test@example.com', name: 'Test', role: 'user' });
+  describe("getMonthlySummary", () => {
+    it("should throw error if not admin", async () => {
+      api.setToken("test-token");
+      api.setUserProfile({
+        id: "user-1",
+        email: "test@example.com",
+        name: "Test",
+        role: "user",
+      });
 
-      await expect(api.getMonthlySummary()).rejects.toThrow('Admin access required');
+      await expect(api.getMonthlySummary()).rejects.toThrow(
+        "Admin access required",
+      );
     });
 
-    it('should fetch monthly summary for admin', async () => {
-      api.setToken('test-token');
+    it("should fetch monthly summary for admin", async () => {
+      api.setToken("test-token");
       api.setUserProfile({
-        id: 'admin-1',
-        email: 'admin@example.com',
-        name: 'Admin',
-        role: 'admin',
+        id: "admin-1",
+        email: "admin@example.com",
+        name: "Admin",
+        role: "admin",
       });
 
       const mockData = [
         {
-          user_id: '1',
-          email: 'user@example.com',
-          month_start: '2024-01-01',
+          user_id: "1",
+          email: "user@example.com",
+          month_start: "2024-01-01",
           days_worked: 22,
           total_hours: 176,
           avg_hours_per_day: 8,
@@ -855,7 +972,7 @@ describe('ApiClient', () => {
       ];
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: () => Promise.resolve(mockData),
       });
 
@@ -869,43 +986,48 @@ describe('ApiClient', () => {
   // ============================================================================
   // Admin: exportTimesheet Tests
   // ============================================================================
-  describe('exportTimesheet', () => {
-    it('should throw error if not admin', async () => {
-      api.setToken('test-token');
-      api.setUserProfile({ id: 'user-1', email: 'test@example.com', name: 'Test', role: 'user' });
-
-      await expect(api.exportTimesheet('2024-01-01', '2024-01-31')).rejects.toThrow(
-        'Admin access required'
-      );
-    });
-
-    it('should export timesheet as blob for admin', async () => {
-      api.setToken('test-token');
+  describe("exportTimesheet", () => {
+    it("should throw error if not admin", async () => {
+      api.setToken("test-token");
       api.setUserProfile({
-        id: 'admin-1',
-        email: 'admin@example.com',
-        name: 'Admin',
-        role: 'admin',
+        id: "user-1",
+        email: "test@example.com",
+        name: "Test",
+        role: "user",
       });
 
-      const mockBlob = new Blob(['csv,data'], { type: 'text/csv' });
+      await expect(
+        api.exportTimesheet("2024-01-01", "2024-01-31"),
+      ).rejects.toThrow("Admin access required");
+    });
+
+    it("should export timesheet as blob for admin", async () => {
+      api.setToken("test-token");
+      api.setUserProfile({
+        id: "admin-1",
+        email: "admin@example.com",
+        name: "Admin",
+        role: "admin",
+      });
+
+      const mockBlob = new Blob(["csv,data"], { type: "text/csv" });
       mockFetch.mockResolvedValueOnce({
         ok: true,
         blob: () => Promise.resolve(mockBlob),
       });
 
-      const result = await api.exportTimesheet('2024-01-01', '2024-01-31');
+      const result = await api.exportTimesheet("2024-01-01", "2024-01-31");
 
       expect(result).toBeInstanceOf(Blob);
     });
 
-    it('should throw error on failed export', async () => {
-      api.setToken('test-token');
+    it("should throw error on failed export", async () => {
+      api.setToken("test-token");
       api.setUserProfile({
-        id: 'admin-1',
-        email: 'admin@example.com',
-        name: 'Admin',
-        role: 'admin',
+        id: "admin-1",
+        email: "admin@example.com",
+        name: "Admin",
+        role: "admin",
       });
 
       mockFetch.mockResolvedValueOnce({
@@ -913,35 +1035,35 @@ describe('ApiClient', () => {
         status: 500,
       });
 
-      await expect(api.exportTimesheet('2024-01-01', '2024-01-31')).rejects.toThrow(
-        'Failed to export timesheet'
-      );
+      await expect(
+        api.exportTimesheet("2024-01-01", "2024-01-31"),
+      ).rejects.toThrow("Failed to export timesheet");
     });
 
-    it('should include start_date and end_date params', async () => {
-      api.setToken('test-token');
+    it("should include start_date and end_date params", async () => {
+      api.setToken("test-token");
       api.setUserProfile({
-        id: 'admin-1',
-        email: 'admin@example.com',
-        name: 'Admin',
-        role: 'admin',
+        id: "admin-1",
+        email: "admin@example.com",
+        name: "Admin",
+        role: "admin",
       });
 
-      const mockBlob = new Blob(['csv'], { type: 'text/csv' });
+      const mockBlob = new Blob(["csv"], { type: "text/csv" });
       mockFetch.mockResolvedValueOnce({
         ok: true,
         blob: () => Promise.resolve(mockBlob),
       });
 
-      await api.exportTimesheet('2024-01-01', '2024-01-31');
+      await api.exportTimesheet("2024-01-01", "2024-01-31");
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('start_date=2024-01-01'),
-        expect.any(Object)
+        expect.stringContaining("start_date=2024-01-01"),
+        expect.any(Object),
       );
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('end_date=2024-01-31'),
-        expect.any(Object)
+        expect.stringContaining("end_date=2024-01-31"),
+        expect.any(Object),
       );
     });
   });
@@ -949,23 +1071,28 @@ describe('ApiClient', () => {
   // ============================================================================
   // isAdmin Tests
   // ============================================================================
-  describe('isAdmin', () => {
-    it('should return false when no user profile', () => {
+  describe("isAdmin", () => {
+    it("should return false when no user profile", () => {
       api.clearToken();
       expect(api.isAdmin()).toBe(false);
     });
 
-    it('should return false for regular user', () => {
-      api.setUserProfile({ id: 'user-1', email: 'test@example.com', name: 'Test', role: 'user' });
+    it("should return false for regular user", () => {
+      api.setUserProfile({
+        id: "user-1",
+        email: "test@example.com",
+        name: "Test",
+        role: "user",
+      });
       expect(api.isAdmin()).toBe(false);
     });
 
-    it('should return true for admin user', () => {
+    it("should return true for admin user", () => {
       api.setUserProfile({
-        id: 'admin-1',
-        email: 'admin@example.com',
-        name: 'Admin',
-        role: 'admin',
+        id: "admin-1",
+        email: "admin@example.com",
+        name: "Admin",
+        role: "admin",
       });
       expect(api.isAdmin()).toBe(true);
     });
@@ -974,33 +1101,37 @@ describe('ApiClient', () => {
   // ============================================================================
   // Image Generation Tests
   // ============================================================================
-  describe('generateImage', () => {
+  describe("generateImage", () => {
     beforeEach(() => {
-      api.setToken('test-token');
+      api.setToken("test-token");
     });
 
-    it('should generate image', async () => {
+    it("should generate image", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
-        json: () => Promise.resolve({ success: true, images: ['https://example.com/image.png'] }),
+        headers: new Headers({ "content-type": "application/json" }),
+        json: () =>
+          Promise.resolve({
+            success: true,
+            images: ["https://example.com/image.png"],
+          }),
       });
 
-      const result = await api.generateImage('A beautiful sunset');
+      const result = await api.generateImage("A beautiful sunset");
 
-      expect(result.image_url).toBe('https://example.com/image.png');
+      expect(result.image_url).toBe("https://example.com/image.png");
     });
 
-    it('should use 60s timeout', async () => {
+    it("should use 60s timeout", async () => {
       // This is tested by checking the function signature accepts timeout
       // The actual timeout behavior is tested in the request method
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
-        json: () => Promise.resolve({ success: true, images: ['test.png'] }),
+        headers: new Headers({ "content-type": "application/json" }),
+        json: () => Promise.resolve({ success: true, images: ["test.png"] }),
       });
 
-      await api.generateImage('test');
+      await api.generateImage("test");
 
       // Verify it was called (the 60s timeout is internal)
       expect(mockFetch).toHaveBeenCalled();
@@ -1010,36 +1141,36 @@ describe('ApiClient', () => {
   // ============================================================================
   // WebSocket URL Tests
   // ============================================================================
-  describe('getWebSocketUrl', () => {
-    it('should convert https to wss', () => {
-      api.setToken('test-token');
+  describe("getWebSocketUrl", () => {
+    it("should convert https to wss", () => {
+      api.setToken("test-token");
       const wsUrl = api.getWebSocketUrl();
 
       expect(wsUrl).toMatch(/^wss?:\/\//);
       // SECURITY: Token should NOT be in URL
-      expect(wsUrl).not.toContain('token=test-token');
-      expect(wsUrl).not.toContain('?token=');
+      expect(wsUrl).not.toContain("token=test-token");
+      expect(wsUrl).not.toContain("?token=");
     });
 
-    it('should NOT include token in URL (security)', () => {
-      api.setToken('my-jwt-token');
+    it("should NOT include token in URL (security)", () => {
+      api.setToken("my-jwt-token");
       const wsUrl = api.getWebSocketUrl();
 
       // SECURITY: Token should NOT be exposed in URL
-      expect(wsUrl).not.toContain('token=my-jwt-token');
-      expect(wsUrl).not.toContain('?token=');
+      expect(wsUrl).not.toContain("token=my-jwt-token");
+      expect(wsUrl).not.toContain("?token=");
     });
   });
 
-  describe('getWebSocketSubprotocol', () => {
-    it('should return token as subprotocol', () => {
-      api.setToken('test-token');
+  describe("getWebSocketSubprotocol", () => {
+    it("should return token as subprotocol", () => {
+      api.setToken("test-token");
       const subprotocol = api.getWebSocketSubprotocol();
 
-      expect(subprotocol).toBe('bearer.test-token');
+      expect(subprotocol).toBe("bearer.test-token");
     });
 
-    it('should return null when no token', () => {
+    it("should return null when no token", () => {
       api.clearToken();
       const subprotocol = api.getWebSocketSubprotocol();
 
@@ -1050,12 +1181,12 @@ describe('ApiClient', () => {
   // ============================================================================
   // Request Error Handling Tests
   // ============================================================================
-  describe('Request error handling', () => {
+  describe("Request error handling", () => {
     beforeEach(() => {
-      api.setToken('test-token');
+      api.setToken("test-token");
     });
 
-    it('should handle 204 No Content responses', async () => {
+    it("should handle 204 No Content responses", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 204,
@@ -1067,43 +1198,48 @@ describe('ApiClient', () => {
       expect(result).toBeUndefined();
     });
 
-    it('should handle network errors', async () => {
-      mockFetch.mockRejectedValueOnce(new Error('Network error'));
+    it("should handle network errors", async () => {
+      mockFetch.mockRejectedValueOnce(new Error("Network error"));
 
-      await expect(api.getProfile()).rejects.toThrow('Network error');
+      await expect(api.getProfile()).rejects.toThrow("Network error");
     });
 
-    it('should handle timeout with AbortError', async () => {
-      const abortError = new Error('AbortError');
-      abortError.name = 'AbortError';
+    it("should handle timeout with AbortError", async () => {
+      const abortError = new Error("AbortError");
+      abortError.name = "AbortError";
       mockFetch.mockRejectedValueOnce(abortError);
 
-      await expect(api.getProfile()).rejects.toThrow('Request timeout');
+      await expect(api.getProfile()).rejects.toThrow("Request timeout");
     });
 
-    it('should handle JSON parse error', async () => {
+    it("should handle JSON parse error", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 500,
-        statusText: 'Internal Server Error',
+        statusText: "Internal Server Error",
         headers: {
           get: vi.fn((name: string) => {
-            if (name === 'content-type') return 'application/json';
+            if (name === "content-type") return "application/json";
             return null;
           }),
         },
-        json: () => Promise.reject(new Error('Invalid JSON')),
+        json: () => Promise.reject(new Error("Invalid JSON")),
       });
 
-      await expect(api.getProfile()).rejects.toThrow('Request failed');
+      await expect(api.getProfile()).rejects.toThrow("Request failed");
     });
 
-    it('should include Authorization header when token is set', async () => {
+    it("should include Authorization header when token is set", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: () =>
-          Promise.resolve({ id: '1', email: 'test@example.com', name: 'Test', role: 'user' }),
+          Promise.resolve({
+            id: "1",
+            email: "test@example.com",
+            name: "Test",
+            role: "user",
+          }),
       });
 
       await api.getProfile();
@@ -1112,17 +1248,17 @@ describe('ApiClient', () => {
         expect.any(String),
         expect.objectContaining({
           headers: expect.objectContaining({
-            Authorization: 'Bearer test-token',
+            Authorization: "Bearer test-token",
           }),
-        })
+        }),
       );
     });
 
-    it('should not include Authorization header when no token', async () => {
+    it("should not include Authorization header when no token", async () => {
       api.clearToken();
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: () => Promise.resolve({}),
       });
 
@@ -1136,22 +1272,22 @@ describe('ApiClient', () => {
 
       const call = mockFetch.mock.calls[0];
       const headers = call[1].headers;
-      expect(headers['Authorization']).toBeUndefined();
+      expect(headers["Authorization"]).toBeUndefined();
     });
   });
 
   // ============================================================================
   // deleteConversation Tests
   // ============================================================================
-  describe('deleteConversation', () => {
+  describe("deleteConversation", () => {
     beforeEach(() => {
-      api.setToken('test-token');
+      api.setToken("test-token");
     });
 
-    it('should delete a conversation by ID', async () => {
+    it("should delete a conversation by ID", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: () => Promise.resolve({ success: true, deleted_id: 123 }),
       });
 
@@ -1161,28 +1297,28 @@ describe('ApiClient', () => {
       expect(result.deleted_id).toBe(123);
     });
 
-    it('should use DELETE method', async () => {
+    it("should use DELETE method", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: () => Promise.resolve({ success: true, deleted_id: 1 }),
       });
 
       await api.deleteConversation(1);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/conversations/1'),
+        expect.stringContaining("/conversations/1"),
         expect.objectContaining({
-          method: 'DELETE',
-        })
+          method: "DELETE",
+        }),
       );
     });
 
-    it('should handle delete failure', async () => {
+    it("should handle delete failure", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 404,
-        json: () => Promise.resolve({ error: 'Not found' }),
+        json: () => Promise.resolve({ error: "Not found" }),
       });
 
       await expect(api.deleteConversation(999)).rejects.toThrow();
@@ -1192,43 +1328,45 @@ describe('ApiClient', () => {
   // ============================================================================
   // listConversations Tests
   // ============================================================================
-  describe('listConversations', () => {
+  describe("listConversations", () => {
     beforeEach(() => {
-      api.setToken('test-token');
+      api.setToken("test-token");
     });
 
-    it('should list conversations with default params', async () => {
+    it("should list conversations with default params", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
-        json: () => Promise.resolve({ success: true, conversations: [], total: 0 }),
+        headers: new Headers({ "content-type": "application/json" }),
+        json: () =>
+          Promise.resolve({ success: true, conversations: [], total: 0 }),
       });
 
       const result = await api.listConversations();
 
       expect(result.success).toBe(true);
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('limit=20'),
-        expect.any(Object)
+        expect.stringContaining("limit=20"),
+        expect.any(Object),
       );
     });
 
-    it('should list conversations with custom params', async () => {
+    it("should list conversations with custom params", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
-        json: () => Promise.resolve({ success: true, conversations: [], total: 0 }),
+        headers: new Headers({ "content-type": "application/json" }),
+        json: () =>
+          Promise.resolve({ success: true, conversations: [], total: 0 }),
       });
 
       await api.listConversations(50, 10);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('limit=50'),
-        expect.any(Object)
+        expect.stringContaining("limit=50"),
+        expect.any(Object),
       );
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('offset=10'),
-        expect.any(Object)
+        expect.stringContaining("offset=10"),
+        expect.any(Object),
       );
     });
   });
@@ -1236,20 +1374,20 @@ describe('ApiClient', () => {
   // ============================================================================
   // getConversation Tests
   // ============================================================================
-  describe('getConversation', () => {
+  describe("getConversation", () => {
     beforeEach(() => {
-      api.setToken('test-token');
+      api.setToken("test-token");
     });
 
-    it('should get a single conversation by ID', async () => {
+    it("should get a single conversation by ID", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: () =>
           Promise.resolve({
             success: true,
-            messages: [{ role: 'user', content: 'Hello' }],
-            created_at: '2024-01-01T00:00:00Z',
+            messages: [{ role: "user", content: "Hello" }],
+            created_at: "2024-01-01T00:00:00Z",
           }),
       });
 
@@ -1259,38 +1397,38 @@ describe('ApiClient', () => {
       expect(result.messages).toHaveLength(1);
     });
 
-    it('should include conversation ID in URL', async () => {
+    it("should include conversation ID in URL", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        headers: new Headers({ 'content-type': 'application/json' }),
+        headers: new Headers({ "content-type": "application/json" }),
         json: () => Promise.resolve({ success: true, messages: [] }),
       });
 
       await api.getConversation(456);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/conversations/456'),
-        expect.any(Object)
+        expect.stringContaining("/conversations/456"),
+        expect.any(Object),
       );
     });
   });
 });
 
 // Separate test for constructor JSON parse error handling
-describe('ApiClient initialization with invalid JSON', () => {
-  it('should handle invalid JSON in stored profile gracefully', async () => {
+describe("ApiClient initialization with invalid JSON", () => {
+  it("should handle invalid JSON in stored profile gracefully", async () => {
     // Store invalid JSON in localStorage before importing fresh api
     const invalidJsonStorage = {
       getItem: vi.fn((key: string) => {
-        if (key === 'user_profile') return 'invalid{json';
-        if (key === 'auth_token') return 'test-token';
+        if (key === "user_profile") return "invalid{json";
+        if (key === "auth_token") return "test-token";
         return null;
       }),
       setItem: vi.fn(),
       removeItem: vi.fn(),
       clear: vi.fn(),
     };
-    Object.defineProperty(window, 'localStorage', {
+    Object.defineProperty(window, "localStorage", {
       value: invalidJsonStorage,
       configurable: true,
     });
@@ -1299,7 +1437,7 @@ describe('ApiClient initialization with invalid JSON', () => {
     vi.resetModules();
 
     // Re-import the api module - this will run constructor with invalid JSON
-    const { api: freshApi } = await import('./api');
+    const { api: freshApi } = await import("./api");
 
     // The api should still work - userProfile should be null due to JSON parse error
     expect(freshApi.getUserProfile()).toBeNull();
@@ -1321,6 +1459,9 @@ describe('ApiClient initialization with invalid JSON', () => {
         }),
       };
     })();
-    Object.defineProperty(window, 'localStorage', { value: originalMock, configurable: true });
+    Object.defineProperty(window, "localStorage", {
+      value: originalMock,
+      configurable: true,
+    });
   });
 });

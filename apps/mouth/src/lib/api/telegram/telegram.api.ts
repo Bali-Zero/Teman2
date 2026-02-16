@@ -3,8 +3,8 @@
  * Optimized for Omnichannel Dashboard using the conversations table.
  */
 
-import type { IApiClient } from '../types/api-client.types';
-import type { TelegramConversation, TelegramMessage } from './telegram.types';
+import type { IApiClient } from "../types/api-client.types";
+import type { TelegramConversation, TelegramMessage } from "./telegram.types";
 
 export class TelegramApi {
   constructor(private client: IApiClient) {}
@@ -16,19 +16,22 @@ export class TelegramApi {
     params: {
       limit?: number;
       offset?: number;
-    } = {}
+    } = {},
   ): Promise<TelegramConversation[]> {
     return await this.client.request<TelegramConversation[]>(
-      `/api/telegram/conversations?limit=${params.limit || 50}&offset=${params.offset || 0}`
+      `/api/telegram/conversations?limit=${params.limit || 50}&offset=${params.offset || 0}`,
     );
   }
 
   /**
    * Get messages for a specific chat_id
    */
-  async getMessages(chatId: string | number, limit: number = 100): Promise<TelegramMessage[]> {
+  async getMessages(
+    chatId: string | number,
+    limit: number = 100,
+  ): Promise<TelegramMessage[]> {
     return await this.client.request<TelegramMessage[]>(
-      `/api/telegram/messages/${chatId}?limit=${limit}`
+      `/api/telegram/messages/${chatId}?limit=${limit}`,
     );
   }
 
@@ -38,18 +41,18 @@ export class TelegramApi {
   async sendMessage(
     chatId: string | number,
     text: string,
-    replyToMessageId?: string
+    replyToMessageId?: string,
   ): Promise<{ success: boolean; message_id?: string }> {
     return await this.client.request<{ success: boolean; message_id?: string }>(
-      '/api/telegram/send',
+      "/api/telegram/send",
       {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify({
           chat_id: String(chatId),
           text,
           reply_to: replyToMessageId,
         }),
-      }
+      },
     );
   }
 }

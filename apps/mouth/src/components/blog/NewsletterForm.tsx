@@ -1,73 +1,85 @@
-'use client';
+"use client";
 
-import * as React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Check, Loader2, Sparkles, ChevronDown } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { subscribeToNewsletter } from '@/lib/blog/newsletter';
-import type { ArticleCategory, NewsletterFormProps } from '@/lib/blog/types';
+import * as React from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Mail, Check, Loader2, Sparkles, ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { subscribeToNewsletter } from "@/lib/blog/newsletter";
+import type { ArticleCategory, NewsletterFormProps } from "@/lib/blog/types";
 
 // Category options for newsletter
 const CATEGORY_OPTIONS: { value: ArticleCategory; label: string }[] = [
-  { value: 'immigration', label: 'Immigration & Visas' },
-  { value: 'business', label: 'Business Setup' },
-  { value: 'tax-legal', label: 'Tax & Legal' },
-  { value: 'property', label: 'Property' },
-  { value: 'lifestyle', label: 'Lifestyle' },
-  { value: 'tech', label: 'Tech & Digital Nomad' },
+  { value: "immigration", label: "Immigration & Visas" },
+  { value: "business", label: "Business Setup" },
+  { value: "tax-legal", label: "Tax & Legal" },
+  { value: "property", label: "Property" },
+  { value: "lifestyle", label: "Lifestyle" },
+  { value: "tech", label: "Tech & Digital Nomad" },
 ];
 
 // Frequency options
-const FREQUENCY_OPTIONS: { value: 'daily' | 'weekly' | 'monthly'; label: string }[] = [
-  { value: 'weekly', label: 'Weekly Digest' },
-  { value: 'daily', label: 'Daily Updates' },
-  { value: 'monthly', label: 'Monthly Roundup' },
+const FREQUENCY_OPTIONS: {
+  value: "daily" | "weekly" | "monthly";
+  label: string;
+}[] = [
+  { value: "weekly", label: "Weekly Digest" },
+  { value: "daily", label: "Daily Updates" },
+  { value: "monthly", label: "Monthly Roundup" },
 ];
 
 // Inline form variant (default)
-function InlineForm({ defaultCategories = [], onSuccess, className }: NewsletterFormProps) {
-  const [email, setEmail] = React.useState('');
-  const [status, setStatus] = React.useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [errorMessage, setErrorMessage] = React.useState('');
+function InlineForm({
+  defaultCategories = [],
+  onSuccess,
+  className,
+}: NewsletterFormProps) {
+  const [email, setEmail] = React.useState("");
+  const [status, setStatus] = React.useState<
+    "idle" | "loading" | "success" | "error"
+  >("idle");
+  const [errorMessage, setErrorMessage] = React.useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email || !email.includes('@')) {
-      setErrorMessage('Please enter a valid email address');
-      setStatus('error');
+    if (!email || !email.includes("@")) {
+      setErrorMessage("Please enter a valid email address");
+      setStatus("error");
       return;
     }
 
-    setStatus('loading');
-    setErrorMessage('');
+    setStatus("loading");
+    setErrorMessage("");
 
     try {
       const result = await subscribeToNewsletter({
         email,
-        categories: defaultCategories.length > 0 ? defaultCategories : ['immigration', 'business'],
-        frequency: 'weekly',
-        language: 'en',
+        categories:
+          defaultCategories.length > 0
+            ? defaultCategories
+            : ["immigration", "business"],
+        frequency: "weekly",
+        language: "en",
       });
 
       if (result.success) {
-        setStatus('success');
-        setEmail('');
+        setStatus("success");
+        setEmail("");
         onSuccess?.();
       } else {
-        setStatus('error');
+        setStatus("error");
         setErrorMessage(result.message);
       }
     } catch {
-      setStatus('error');
-      setErrorMessage('Something went wrong. Please try again.');
+      setStatus("error");
+      setErrorMessage("Something went wrong. Please try again.");
     }
   };
 
   return (
-    <div className={cn('relative', className)}>
+    <div className={cn("relative", className)}>
       <AnimatePresence mode="wait">
-        {status === 'success' ? (
+        {status === "success" ? (
           <motion.div
             key="success"
             initial={{ opacity: 0, y: 10 }}
@@ -79,8 +91,12 @@ function InlineForm({ defaultCategories = [], onSuccess, className }: Newsletter
               <Check className="w-5 h-5 text-emerald-400" />
             </div>
             <div>
-              <p className="font-medium text-emerald-400">You&apos;re subscribed!</p>
-              <p className="text-sm text-white/60">Check your email to confirm.</p>
+              <p className="font-medium text-emerald-400">
+                You&apos;re subscribed!
+              </p>
+              <p className="text-sm text-white/60">
+                Check your email to confirm.
+              </p>
             </div>
           </motion.div>
         ) : (
@@ -100,29 +116,29 @@ function InlineForm({ defaultCategories = [], onSuccess, className }: Newsletter
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email"
-                  disabled={status === 'loading'}
+                  disabled={status === "loading"}
                   className={cn(
-                    'w-full h-12 pl-11 pr-4 rounded-xl',
-                    'bg-white/5 border border-white/10',
-                    'text-white placeholder-white/40',
-                    'focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50',
-                    'disabled:opacity-50',
-                    'transition-all duration-200'
+                    "w-full h-12 pl-11 pr-4 rounded-xl",
+                    "bg-white/5 border border-white/10",
+                    "text-white placeholder-white/40",
+                    "focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50",
+                    "disabled:opacity-50",
+                    "transition-all duration-200",
                   )}
                 />
               </div>
               <button
                 type="submit"
-                disabled={status === 'loading'}
+                disabled={status === "loading"}
                 className={cn(
-                  'px-6 h-12 rounded-xl font-medium transition-all',
-                  'bg-gradient-to-r from-violet-600 to-fuchsia-600',
-                  'hover:from-violet-500 hover:to-fuchsia-500',
-                  'disabled:opacity-50 disabled:cursor-not-allowed',
-                  'flex items-center gap-2'
+                  "px-6 h-12 rounded-xl font-medium transition-all",
+                  "bg-gradient-to-r from-violet-600 to-fuchsia-600",
+                  "hover:from-violet-500 hover:to-fuchsia-500",
+                  "disabled:opacity-50 disabled:cursor-not-allowed",
+                  "flex items-center gap-2",
                 )}
               >
-                {status === 'loading' ? (
+                {status === "loading" ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   <>
@@ -133,7 +149,7 @@ function InlineForm({ defaultCategories = [], onSuccess, className }: Newsletter
               </button>
             </div>
 
-            {status === 'error' && errorMessage && (
+            {status === "error" && errorMessage && (
               <motion.p
                 initial={{ opacity: 0, y: -5 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -150,38 +166,50 @@ function InlineForm({ defaultCategories = [], onSuccess, className }: Newsletter
 }
 
 // Sidebar variant (with category selection)
-function SidebarForm({ defaultCategories = [], onSuccess, className }: NewsletterFormProps) {
-  const [email, setEmail] = React.useState('');
-  const [name, setName] = React.useState('');
+function SidebarForm({
+  defaultCategories = [],
+  onSuccess,
+  className,
+}: NewsletterFormProps) {
+  const [email, setEmail] = React.useState("");
+  const [name, setName] = React.useState("");
   const [categories, setCategories] = React.useState<ArticleCategory[]>(
-    defaultCategories.length > 0 ? defaultCategories : ['immigration', 'business']
+    defaultCategories.length > 0
+      ? defaultCategories
+      : ["immigration", "business"],
   );
-  const [frequency, setFrequency] = React.useState<'daily' | 'weekly' | 'monthly'>('weekly');
+  const [frequency, setFrequency] = React.useState<
+    "daily" | "weekly" | "monthly"
+  >("weekly");
   const [showCategories, setShowCategories] = React.useState(false);
-  const [status, setStatus] = React.useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [errorMessage, setErrorMessage] = React.useState('');
+  const [status, setStatus] = React.useState<
+    "idle" | "loading" | "success" | "error"
+  >("idle");
+  const [errorMessage, setErrorMessage] = React.useState("");
 
   const toggleCategory = (cat: ArticleCategory) => {
-    setCategories((prev) => (prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]));
+    setCategories((prev) =>
+      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat],
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email || !email.includes('@')) {
-      setErrorMessage('Please enter a valid email address');
-      setStatus('error');
+    if (!email || !email.includes("@")) {
+      setErrorMessage("Please enter a valid email address");
+      setStatus("error");
       return;
     }
 
     if (categories.length === 0) {
-      setErrorMessage('Please select at least one category');
-      setStatus('error');
+      setErrorMessage("Please select at least one category");
+      setStatus("error");
       return;
     }
 
-    setStatus('loading');
-    setErrorMessage('');
+    setStatus("loading");
+    setErrorMessage("");
 
     try {
       const result = await subscribeToNewsletter({
@@ -189,40 +217,44 @@ function SidebarForm({ defaultCategories = [], onSuccess, className }: Newslette
         name: name || undefined,
         categories,
         frequency,
-        language: 'en',
+        language: "en",
       });
 
       if (result.success) {
-        setStatus('success');
-        setEmail('');
-        setName('');
+        setStatus("success");
+        setEmail("");
+        setName("");
         onSuccess?.();
       } else {
-        setStatus('error');
+        setStatus("error");
         setErrorMessage(result.message);
       }
     } catch {
-      setStatus('error');
-      setErrorMessage('Something went wrong. Please try again.');
+      setStatus("error");
+      setErrorMessage("Something went wrong. Please try again.");
     }
   };
 
-  if (status === 'success') {
+  if (status === "success") {
     return (
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         className={cn(
-          'p-6 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20',
-          className
+          "p-6 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20",
+          className,
         )}
       >
         <div className="text-center">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-500/20 flex items-center justify-center">
             <Check className="w-8 h-8 text-emerald-400" />
           </div>
-          <h3 className="font-serif text-xl font-semibold text-white mb-2">Welcome Aboard!</h3>
-          <p className="text-white/60">Check your inbox to confirm your subscription.</p>
+          <h3 className="font-serif text-xl font-semibold text-white mb-2">
+            Welcome Aboard!
+          </h3>
+          <p className="text-white/60">
+            Check your inbox to confirm your subscription.
+          </p>
         </div>
       </motion.div>
     );
@@ -231,8 +263,8 @@ function SidebarForm({ defaultCategories = [], onSuccess, className }: Newslette
   return (
     <div
       className={cn(
-        'p-6 rounded-2xl bg-gradient-to-br from-violet-500/10 to-fuchsia-500/10 border border-violet-500/20',
-        className
+        "p-6 rounded-2xl bg-gradient-to-br from-violet-500/10 to-fuchsia-500/10 border border-violet-500/20",
+        className,
       )}
     >
       {/* Header */}
@@ -258,10 +290,10 @@ function SidebarForm({ defaultCategories = [], onSuccess, className }: Newslette
           onChange={(e) => setName(e.target.value)}
           placeholder="Your name (optional)"
           className={cn(
-            'w-full h-11 px-4 rounded-xl',
-            'bg-white/5 border border-white/10',
-            'text-white placeholder-white/40 text-sm',
-            'focus:outline-none focus:ring-2 focus:ring-violet-500/50'
+            "w-full h-11 px-4 rounded-xl",
+            "bg-white/5 border border-white/10",
+            "text-white placeholder-white/40 text-sm",
+            "focus:outline-none focus:ring-2 focus:ring-violet-500/50",
           )}
         />
 
@@ -273,10 +305,10 @@ function SidebarForm({ defaultCategories = [], onSuccess, className }: Newslette
           placeholder="Your email address"
           required
           className={cn(
-            'w-full h-11 px-4 rounded-xl',
-            'bg-white/5 border border-white/10',
-            'text-white placeholder-white/40 text-sm',
-            'focus:outline-none focus:ring-2 focus:ring-violet-500/50'
+            "w-full h-11 px-4 rounded-xl",
+            "bg-white/5 border border-white/10",
+            "text-white placeholder-white/40 text-sm",
+            "focus:outline-none focus:ring-2 focus:ring-violet-500/50",
           )}
         />
 
@@ -286,19 +318,22 @@ function SidebarForm({ defaultCategories = [], onSuccess, className }: Newslette
             type="button"
             onClick={() => setShowCategories(!showCategories)}
             className={cn(
-              'w-full flex items-center justify-between px-4 py-3 rounded-xl',
-              'bg-white/5 border border-white/10',
-              'text-white text-sm',
-              'hover:bg-white/10 transition-colors'
+              "w-full flex items-center justify-between px-4 py-3 rounded-xl",
+              "bg-white/5 border border-white/10",
+              "text-white text-sm",
+              "hover:bg-white/10 transition-colors",
             )}
           >
             <span>
               {categories.length === 0
-                ? 'Select topics'
-                : `${categories.length} topic${categories.length > 1 ? 's' : ''} selected`}
+                ? "Select topics"
+                : `${categories.length} topic${categories.length > 1 ? "s" : ""} selected`}
             </span>
             <ChevronDown
-              className={cn('w-4 h-4 transition-transform', showCategories && 'rotate-180')}
+              className={cn(
+                "w-4 h-4 transition-transform",
+                showCategories && "rotate-180",
+              )}
             />
           </button>
 
@@ -306,7 +341,7 @@ function SidebarForm({ defaultCategories = [], onSuccess, className }: Newslette
             {showCategories && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
+                animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
                 className="overflow-hidden"
               >
@@ -317,21 +352,23 @@ function SidebarForm({ defaultCategories = [], onSuccess, className }: Newslette
                       type="button"
                       onClick={() => toggleCategory(cat.value)}
                       className={cn(
-                        'w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors',
+                        "w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors",
                         categories.includes(cat.value)
-                          ? 'bg-violet-500/20 text-violet-400'
-                          : 'text-white/60 hover:text-white hover:bg-white/5'
+                          ? "bg-violet-500/20 text-violet-400"
+                          : "text-white/60 hover:text-white hover:bg-white/5",
                       )}
                     >
                       <div
                         className={cn(
-                          'w-4 h-4 rounded border flex items-center justify-center',
+                          "w-4 h-4 rounded border flex items-center justify-center",
                           categories.includes(cat.value)
-                            ? 'bg-violet-500 border-violet-500'
-                            : 'border-white/20'
+                            ? "bg-violet-500 border-violet-500"
+                            : "border-white/20",
                         )}
                       >
-                        {categories.includes(cat.value) && <Check className="w-3 h-3 text-white" />}
+                        {categories.includes(cat.value) && (
+                          <Check className="w-3 h-3 text-white" />
+                        )}
                       </div>
                       {cat.label}
                     </button>
@@ -350,10 +387,10 @@ function SidebarForm({ defaultCategories = [], onSuccess, className }: Newslette
               type="button"
               onClick={() => setFrequency(freq.value)}
               className={cn(
-                'flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors',
+                "flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors",
                 frequency === freq.value
-                  ? 'bg-violet-500/20 text-violet-400'
-                  : 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10'
+                  ? "bg-violet-500/20 text-violet-400"
+                  : "bg-white/5 text-white/60 hover:text-white hover:bg-white/10",
               )}
             >
               {freq.label}
@@ -362,23 +399,23 @@ function SidebarForm({ defaultCategories = [], onSuccess, className }: Newslette
         </div>
 
         {/* Error message */}
-        {status === 'error' && errorMessage && (
+        {status === "error" && errorMessage && (
           <p className="text-sm text-red-400">{errorMessage}</p>
         )}
 
         {/* Submit button */}
         <button
           type="submit"
-          disabled={status === 'loading'}
+          disabled={status === "loading"}
           className={cn(
-            'w-full h-11 rounded-xl font-medium transition-all',
-            'bg-gradient-to-r from-violet-600 to-fuchsia-600',
-            'hover:from-violet-500 hover:to-fuchsia-500',
-            'disabled:opacity-50 disabled:cursor-not-allowed',
-            'flex items-center justify-center gap-2'
+            "w-full h-11 rounded-xl font-medium transition-all",
+            "bg-gradient-to-r from-violet-600 to-fuchsia-600",
+            "hover:from-violet-500 hover:to-fuchsia-500",
+            "disabled:opacity-50 disabled:cursor-not-allowed",
+            "flex items-center justify-center gap-2",
           )}
         >
-          {status === 'loading' ? (
+          {status === "loading" ? (
             <Loader2 className="w-5 h-5 animate-spin" />
           ) : (
             <>
@@ -398,8 +435,11 @@ function SidebarForm({ defaultCategories = [], onSuccess, className }: Newslette
 }
 
 // Main component with variant support
-export function NewsletterForm({ variant = 'inline', ...props }: NewsletterFormProps) {
-  if (variant === 'sidebar' || variant === 'modal') {
+export function NewsletterForm({
+  variant = "inline",
+  ...props
+}: NewsletterFormProps) {
+  if (variant === "sidebar" || variant === "modal") {
     return <SidebarForm {...props} />;
   }
   return <InlineForm {...props} />;

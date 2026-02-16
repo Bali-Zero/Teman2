@@ -257,7 +257,7 @@ const filteredAndSortedItems = useMemo(() => {
 
 ```typescript
 // Select items
-setSelectedItems(new Set(['item-1', 'item-2']));
+setSelectedItems(new Set(["item-1", "item-2"]));
 
 // Bulk approve
 await handleBulkApprove(); // Processes all selected items

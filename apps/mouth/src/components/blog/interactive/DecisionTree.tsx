@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import * as React from 'react';
-import { useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import * as React from "react";
+import { useState, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronRight,
   RotateCcw,
@@ -10,8 +10,8 @@ import {
   ArrowRight,
   HelpCircle,
   ExternalLink,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // ============================================================================
 // Types
@@ -29,7 +29,7 @@ export interface DecisionNode {
     title: string;
     description: string;
     icon?: string;
-    color?: 'blue' | 'green' | 'amber' | 'red' | 'purple';
+    color?: "blue" | "green" | "amber" | "red" | "purple";
     learnMoreUrl?: string;
     learnMoreLabel?: string;
     recommendations?: string[];
@@ -71,34 +71,34 @@ export interface DecisionTreeProps {
 
 const resultColors = {
   blue: {
-    bg: 'bg-blue-500/10',
-    border: 'border-blue-500/30',
-    text: 'text-blue-400',
-    icon: 'text-blue-400',
+    bg: "bg-blue-500/10",
+    border: "border-blue-500/30",
+    text: "text-blue-400",
+    icon: "text-blue-400",
   },
   green: {
-    bg: 'bg-emerald-500/10',
-    border: 'border-emerald-500/30',
-    text: 'text-emerald-400',
-    icon: 'text-emerald-400',
+    bg: "bg-emerald-500/10",
+    border: "border-emerald-500/30",
+    text: "text-emerald-400",
+    icon: "text-emerald-400",
   },
   amber: {
-    bg: 'bg-amber-500/10',
-    border: 'border-amber-500/30',
-    text: 'text-amber-400',
-    icon: 'text-amber-400',
+    bg: "bg-amber-500/10",
+    border: "border-amber-500/30",
+    text: "text-amber-400",
+    icon: "text-amber-400",
   },
   red: {
-    bg: 'bg-red-500/10',
-    border: 'border-red-500/30',
-    text: 'text-red-400',
-    icon: 'text-red-400',
+    bg: "bg-red-500/10",
+    border: "border-red-500/30",
+    text: "text-red-400",
+    icon: "text-red-400",
   },
   purple: {
-    bg: 'bg-purple-500/10',
-    border: 'border-purple-500/30',
-    text: 'text-purple-400',
-    icon: 'text-purple-400',
+    bg: "bg-purple-500/10",
+    border: "border-purple-500/30",
+    text: "text-purple-400",
+    icon: "text-purple-400",
   },
 };
 
@@ -118,9 +118,12 @@ export function DecisionTree({
   className,
 }: DecisionTreeProps) {
   // Compute defaults
-  const effectiveId = id || title.toLowerCase().replace(/\s+/g, '-');
+  const effectiveId = id || title.toLowerCase().replace(/\s+/g, "-");
   const effectiveStartNodeId =
-    startNodeId || nodes.find((n) => n.id === 'start')?.id || nodes[0]?.id || '';
+    startNodeId ||
+    nodes.find((n) => n.id === "start")?.id ||
+    nodes[0]?.id ||
+    "";
   const effectiveSubtitle = subtitle || description;
 
   // Track the path of node IDs visited
@@ -134,7 +137,8 @@ export function DecisionTree({
   // Calculate progress
   const nodesMap = new Map(nodes.map((n) => [n.id, n]));
   const maxDepth = calculateMaxDepth(nodesMap, effectiveStartNodeId);
-  const progress = maxDepth > 0 ? Math.min(((path.length - 1) / maxDepth) * 100, 100) : 0;
+  const progress =
+    maxDepth > 0 ? Math.min(((path.length - 1) / maxDepth) * 100, 100) : 0;
 
   // Handle option selection
   const handleSelect = useCallback(
@@ -152,7 +156,7 @@ export function DecisionTree({
 
       setTimeout(() => setIsAnimating(false), 300);
     },
-    [path, isAnimating, nodesMap, onComplete]
+    [path, isAnimating, nodesMap, onComplete],
   );
 
   // Handle going back
@@ -177,14 +181,21 @@ export function DecisionTree({
 
   return (
     <div
-      className={cn('bg-black/40 rounded-2xl border border-white/10 overflow-hidden', className)}
+      className={cn(
+        "bg-black/40 rounded-2xl border border-white/10 overflow-hidden",
+        className,
+      )}
     >
       {/* Header */}
       <div className="px-6 py-4 border-b border-white/10 bg-gradient-to-r from-[#2251ff]/10 to-transparent">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-serif text-xl font-semibold text-white">{title}</h3>
-            {subtitle && <p className="text-white/60 text-sm mt-1">{subtitle}</p>}
+            <h3 className="font-serif text-xl font-semibold text-white">
+              {title}
+            </h3>
+            {subtitle && (
+              <p className="text-white/60 text-sm mt-1">{subtitle}</p>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {path.length > 1 && (
@@ -259,7 +270,7 @@ export function DecisionTree({
                       className="hover:text-white/60 transition-colors truncate max-w-[150px]"
                     >
                       {node.question.length > 30
-                        ? node.question.slice(0, 30) + '...'
+                        ? node.question.slice(0, 30) + "..."
                         : node.question}
                     </button>
                     <ChevronRight className="w-3 h-3 flex-shrink-0" />
@@ -268,7 +279,7 @@ export function DecisionTree({
               })}
               <span className="text-white/60 truncate max-w-[150px]">
                 {currentNode.question.length > 30
-                  ? currentNode.question.slice(0, 30) + '...'
+                  ? currentNode.question.slice(0, 30) + "..."
                   : currentNode.question}
               </span>
             </div>
@@ -299,7 +310,9 @@ function QuestionView({
         </div>
         <div>
           <h4 className="text-lg font-medium text-white">{node.question}</h4>
-          {node.description && <p className="text-white/60 text-sm mt-1">{node.description}</p>}
+          {node.description && (
+            <p className="text-white/60 text-sm mt-1">{node.description}</p>
+          )}
         </div>
       </div>
 
@@ -313,9 +326,9 @@ function QuestionView({
             transition={{ delay: index * 0.05 }}
             onClick={() => onSelect(option.nextNodeId)}
             className={cn(
-              'w-full p-4 rounded-xl text-left',
-              'bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#2251ff]/50',
-              'transition-all duration-200 group'
+              "w-full p-4 rounded-xl text-left",
+              "bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#2251ff]/50",
+              "transition-all duration-200 group",
             )}
           >
             <div className="flex items-center justify-between">
@@ -326,7 +339,9 @@ function QuestionView({
                     {option.label}
                   </span>
                   {option.description && (
-                    <p className="text-white/50 text-sm mt-0.5">{option.description}</p>
+                    <p className="text-white/50 text-sm mt-0.5">
+                      {option.description}
+                    </p>
                   )}
                 </div>
               </div>
@@ -343,26 +358,34 @@ function QuestionView({
 // Result View
 // ============================================================================
 
-function ResultView({ node, onRestart }: { node: DecisionNode; onRestart: () => void }) {
+function ResultView({
+  node,
+  onRestart,
+}: {
+  node: DecisionNode;
+  onRestart: () => void;
+}) {
   const result = node.result;
   if (!result) return null;
 
-  const colors = resultColors[result.color || 'blue'];
+  const colors = resultColors[result.color || "blue"];
 
   return (
     <div>
       {/* Result card */}
-      <div className={cn('p-6 rounded-xl border', colors.bg, colors.border)}>
+      <div className={cn("p-6 rounded-xl border", colors.bg, colors.border)}>
         <div className="flex items-start gap-4">
-          <div className={cn('p-3 rounded-xl', colors.bg)}>
+          <div className={cn("p-3 rounded-xl", colors.bg)}>
             {result.icon ? (
               <span className="text-3xl">{result.icon}</span>
             ) : (
-              <CheckCircle2 className={cn('w-8 h-8', colors.icon)} />
+              <CheckCircle2 className={cn("w-8 h-8", colors.icon)} />
             )}
           </div>
           <div className="flex-1">
-            <h4 className={cn('text-xl font-semibold', colors.text)}>{result.title}</h4>
+            <h4 className={cn("text-xl font-semibold", colors.text)}>
+              {result.title}
+            </h4>
             <p className="text-white/70 mt-2">{result.description}</p>
           </div>
         </div>
@@ -370,11 +393,18 @@ function ResultView({ node, onRestart }: { node: DecisionNode; onRestart: () => 
         {/* Recommendations */}
         {result.recommendations && result.recommendations.length > 0 && (
           <div className="mt-6 pt-4 border-t border-white/10">
-            <h5 className="text-sm font-medium text-white/80 mb-3">Recommendations</h5>
+            <h5 className="text-sm font-medium text-white/80 mb-3">
+              Recommendations
+            </h5>
             <ul className="space-y-2">
               {result.recommendations.map((rec, index) => (
-                <li key={index} className="flex items-start gap-2 text-sm text-white/60">
-                  <CheckCircle2 className={cn('w-4 h-4 mt-0.5 flex-shrink-0', colors.icon)} />
+                <li
+                  key={index}
+                  className="flex items-start gap-2 text-sm text-white/60"
+                >
+                  <CheckCircle2
+                    className={cn("w-4 h-4 mt-0.5 flex-shrink-0", colors.icon)}
+                  />
                   <span>{rec}</span>
                 </li>
               ))}
@@ -385,15 +415,20 @@ function ResultView({ node, onRestart }: { node: DecisionNode; onRestart: () => 
         {/* Next steps */}
         {result.nextSteps && result.nextSteps.length > 0 && (
           <div className="mt-4 pt-4 border-t border-white/10">
-            <h5 className="text-sm font-medium text-white/80 mb-3">Next Steps</h5>
+            <h5 className="text-sm font-medium text-white/80 mb-3">
+              Next Steps
+            </h5>
             <ol className="space-y-2">
               {result.nextSteps.map((step, index) => (
-                <li key={index} className="flex items-start gap-3 text-sm text-white/60">
+                <li
+                  key={index}
+                  className="flex items-start gap-3 text-sm text-white/60"
+                >
                   <span
                     className={cn(
-                      'w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium',
+                      "w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium",
                       colors.bg,
-                      colors.text
+                      colors.text,
                     )}
                   >
                     {index + 1}
@@ -410,12 +445,12 @@ function ResultView({ node, onRestart }: { node: DecisionNode; onRestart: () => 
           <a
             href={result.learnMoreUrl}
             className={cn(
-              'inline-flex items-center gap-2 mt-6 px-4 py-2 rounded-lg',
-              'bg-white/5 hover:bg-white/10 transition-colors',
-              colors.text
+              "inline-flex items-center gap-2 mt-6 px-4 py-2 rounded-lg",
+              "bg-white/5 hover:bg-white/10 transition-colors",
+              colors.text,
             )}
           >
-            <span>{result.learnMoreLabel || 'Learn more'}</span>
+            <span>{result.learnMoreLabel || "Learn more"}</span>
             <ExternalLink className="w-4 h-4" />
           </a>
         )}
@@ -440,7 +475,7 @@ function ResultView({ node, onRestart }: { node: DecisionNode; onRestart: () => 
 function calculateMaxDepth(
   nodesMap: Map<string, DecisionNode>,
   nodeId: string,
-  visited = new Set<string>()
+  visited = new Set<string>(),
 ): number {
   if (visited.has(nodeId)) return 0;
   visited.add(nodeId);

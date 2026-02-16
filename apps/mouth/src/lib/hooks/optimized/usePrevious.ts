@@ -4,7 +4,7 @@
  * Track previous value
  */
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect } from "react";
 
 /**
  * Get the previous value of a state or prop
@@ -26,7 +26,7 @@ export function usePrevious<T>(value: T): T | undefined {
  */
 export function usePreviousWithCompare<T>(
   value: T,
-  compare: (a: T, b: T) => boolean
+  compare: (a: T, b: T) => boolean,
 ): T | undefined {
   const ref = useRef<T | undefined>(undefined);
   const prevRef = useRef<T | undefined>(undefined);

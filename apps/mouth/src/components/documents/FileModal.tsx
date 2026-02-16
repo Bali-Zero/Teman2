@@ -1,10 +1,21 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef } from 'react';
-import { X, Folder, FileText, FileSpreadsheet, Presentation } from 'lucide-react';
-import type { DocType } from '@/lib/api/drive/drive.types';
+import { useState, useEffect, useRef } from "react";
+import {
+  X,
+  Folder,
+  FileText,
+  FileSpreadsheet,
+  Presentation,
+} from "lucide-react";
+import type { DocType } from "@/lib/api/drive/drive.types";
 
-type ModalMode = 'folder' | 'document' | 'spreadsheet' | 'presentation' | 'rename';
+type ModalMode =
+  | "folder"
+  | "document"
+  | "spreadsheet"
+  | "presentation"
+  | "rename";
 
 interface FileModalProps {
   mode: ModalMode;
@@ -17,37 +28,42 @@ interface FileModalProps {
 
 const modeConfig: Record<
   ModalMode,
-  { title: string; placeholder: string; icon: React.ElementType; buttonText: string }
+  {
+    title: string;
+    placeholder: string;
+    icon: React.ElementType;
+    buttonText: string;
+  }
 > = {
   folder: {
-    title: 'Nuova cartella',
-    placeholder: 'Nome cartella',
+    title: "Nuova cartella",
+    placeholder: "Nome cartella",
     icon: Folder,
-    buttonText: 'Crea',
+    buttonText: "Crea",
   },
   document: {
-    title: 'Nuovo documento',
-    placeholder: 'Nome documento',
+    title: "Nuovo documento",
+    placeholder: "Nome documento",
     icon: FileText,
-    buttonText: 'Crea',
+    buttonText: "Crea",
   },
   spreadsheet: {
-    title: 'Nuovo foglio di calcolo',
-    placeholder: 'Nome foglio',
+    title: "Nuovo foglio di calcolo",
+    placeholder: "Nome foglio",
     icon: FileSpreadsheet,
-    buttonText: 'Crea',
+    buttonText: "Crea",
   },
   presentation: {
-    title: 'Nuova presentazione',
-    placeholder: 'Nome presentazione',
+    title: "Nuova presentazione",
+    placeholder: "Nome presentazione",
     icon: Presentation,
-    buttonText: 'Crea',
+    buttonText: "Crea",
   },
   rename: {
-    title: 'Rinomina',
-    placeholder: 'Nuovo nome',
+    title: "Rinomina",
+    placeholder: "Nuovo nome",
     icon: FileText,
-    buttonText: 'Rinomina',
+    buttonText: "Rinomina",
   },
 };
 
@@ -56,7 +72,7 @@ export function FileModal({
   isOpen,
   onClose,
   onSubmit,
-  initialName = '',
+  initialName = "",
   loading = false,
 }: FileModalProps) {
   const [name, setName] = useState(initialName);
@@ -76,13 +92,13 @@ export function FileModal({
   // Close on escape
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === "Escape" && isOpen) {
         onClose();
       }
     };
 
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen, onClose]);
 
   // Early return AFTER all hooks - mode can be null when modal is closed
@@ -95,14 +111,18 @@ export function FileModal({
     e.preventDefault();
     if (!name.trim() || loading) return;
 
-    const docType = mode === 'folder' || mode === 'rename' ? undefined : (mode as DocType);
+    const docType =
+      mode === "folder" || mode === "rename" ? undefined : (mode as DocType);
     onSubmit(name.trim(), docType);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        onClick={onClose}
+      />
 
       {/* Modal */}
       <div className="relative z-10 w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-700 dark:bg-gray-800">
@@ -169,11 +189,18 @@ export function FileModal({
 interface CreateMenuProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelect: (mode: 'folder' | 'document' | 'spreadsheet' | 'presentation') => void;
+  onSelect: (
+    mode: "folder" | "document" | "spreadsheet" | "presentation",
+  ) => void;
   position: { x: number; y: number };
 }
 
-export function CreateMenu({ isOpen, onClose, onSelect, position }: CreateMenuProps) {
+export function CreateMenu({
+  isOpen,
+  onClose,
+  onSelect,
+  position,
+}: CreateMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -185,26 +212,36 @@ export function CreateMenu({ isOpen, onClose, onSelect, position }: CreateMenuPr
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
   const items = [
-    { mode: 'folder' as const, icon: Folder, label: 'Nuova cartella', color: 'text-amber-600' },
-    { mode: 'document' as const, icon: FileText, label: 'Google Docs', color: 'text-blue-600' },
     {
-      mode: 'spreadsheet' as const,
-      icon: FileSpreadsheet,
-      label: 'Google Sheets',
-      color: 'text-green-600',
+      mode: "folder" as const,
+      icon: Folder,
+      label: "Nuova cartella",
+      color: "text-amber-600",
     },
     {
-      mode: 'presentation' as const,
+      mode: "document" as const,
+      icon: FileText,
+      label: "Google Docs",
+      color: "text-blue-600",
+    },
+    {
+      mode: "spreadsheet" as const,
+      icon: FileSpreadsheet,
+      label: "Google Sheets",
+      color: "text-green-600",
+    },
+    {
+      mode: "presentation" as const,
       icon: Presentation,
-      label: 'Google Slides',
-      color: 'text-yellow-600',
+      label: "Google Slides",
+      color: "text-yellow-600",
     },
   ];
 

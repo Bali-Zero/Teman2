@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useRef, useCallback, memo } from 'react';
-import { useVirtualizer } from '@tanstack/react-virtual';
-import { cn } from '@/lib/utils';
+import { useRef, useCallback, memo } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { cn } from "@/lib/utils";
 
 interface VirtualListProps<T> {
   items: T[];
@@ -61,12 +61,16 @@ function VirtualListInner<T>({
   }
 
   return (
-    <div ref={parentRef} className={cn('overflow-auto', className)} style={{ contain: 'strict' }}>
+    <div
+      ref={parentRef}
+      className={cn("overflow-auto", className)}
+      style={{ contain: "strict" }}
+    >
       <div
         style={{
           height: `${virtualizer.getTotalSize()}px`,
-          width: '100%',
-          position: 'relative',
+          width: "100%",
+          position: "relative",
         }}
       >
         {virtualItems.map((virtualItem) => {
@@ -77,10 +81,10 @@ function VirtualListInner<T>({
             <div
               key={keyExtractor(item, virtualItem.index)}
               style={{
-                position: 'absolute',
+                position: "absolute",
                 top: 0,
                 left: 0,
-                width: '100%',
+                width: "100%",
                 height: `${estimateSize}px`,
                 transform: `translateY(${virtualItem.start}px)`,
               }}
@@ -99,7 +103,7 @@ function VirtualListInner<T>({
  * Use this for large, stable lists where items don't change frequently.
  */
 const VirtualListComponent = memo(VirtualListInner) as <T>(
-  props: VirtualListProps<T>
+  props: VirtualListProps<T>,
 ) => React.ReactElement;
 
 export { VirtualListComponent as VirtualList };
@@ -112,8 +116,11 @@ interface ListItemProps {
   className?: string;
 }
 
-export const ListItem = memo(function ListItem({ children, className }: ListItemProps) {
+export const ListItem = memo(function ListItem({
+  children,
+  className,
+}: ListItemProps) {
   return <div className={className}>{children}</div>;
 });
 
-ListItem.displayName = 'ListItem';
+ListItem.displayName = "ListItem";

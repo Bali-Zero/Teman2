@@ -75,8 +75,8 @@ import {
   ComparisonTable,
   Checklist,
   InfoCard,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Exit & Re-Entry Permits Indonesia 2026: KITAS Holder Guide
 
@@ -92,33 +92,33 @@ If you hold a KITAS and need to travel abroad, you'll need to understand exit an
       name: "MERP",
       subtitle: "Multiple Exit Re-Entry",
       values: {
-        "Trips": "Unlimited",
-        "Duration": "Matches KITAS validity",
-        "Cost": "IDR 1-1.5M",
-        "Best for": "Regular travelers"
+        Trips: "Unlimited",
+        Duration: "Matches KITAS validity",
+        Cost: "IDR 1-1.5M",
+        "Best for": "Regular travelers",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "SERP",
       subtitle: "Single Exit Re-Entry",
       values: {
-        "Trips": "One trip",
-        "Duration": "Set period",
-        "Cost": "~IDR 500K",
-        "Best for": "One-time travel"
-      }
+        Trips: "One trip",
+        Duration: "Set period",
+        Cost: "~IDR 500K",
+        "Best for": "One-time travel",
+      },
     },
     {
       name: "EPO",
       subtitle: "Exit Permit Only",
       values: {
-        "Trips": "Exit only (no return)",
-        "Duration": "N/A",
-        "Cost": "~IDR 500K",
-        "Best for": "Leaving permanently"
-      }
-    }
+        Trips: "Exit only (no return)",
+        Duration: "N/A",
+        Cost: "~IDR 500K",
+        "Best for": "Leaving permanently",
+      },
+    },
   ]}
 />
 
@@ -137,17 +137,18 @@ If you hold a KITAS and need to travel abroad, you'll need to understand exit an
 - Most convenient for business travelers
 
 Most KITAS holders get MERP from the start.
+
 </InfoCard>
 
 ### MERP Details
 
-| Feature | Details |
-|---------|---------|
-| Validity | Same as KITAS validity |
-| Trips allowed | Unlimited |
-| Application | Usually with KITAS processing |
-| Cost | IDR 1-1.5M typically |
-| Processing | 3-5 working days |
+| Feature       | Details                       |
+| ------------- | ----------------------------- |
+| Validity      | Same as KITAS validity        |
+| Trips allowed | Unlimited                     |
+| Application   | Usually with KITAS processing |
+| Cost          | IDR 1-1.5M typically          |
+| Processing    | 3-5 working days              |
 
 ### Applying for MERP
 
@@ -161,41 +162,41 @@ Most KITAS holders get MERP from the start.
       label: "Valid KITAS",
       description: "Current KITAS card/sticker",
       required: true,
-      category: "documents"
+      category: "documents",
     },
     {
       id: "passport",
       label: "Passport",
       description: "Original + copy",
       required: true,
-      category: "documents"
+      category: "documents",
     },
     {
       id: "form",
       label: "Application form",
       description: "Immigration form",
       required: true,
-      category: "application"
+      category: "application",
     },
     {
       id: "photo",
       label: "Passport photo",
       description: "Recent photo",
       required: true,
-      category: "documents"
+      category: "documents",
     },
     {
       id: "fee",
       label: "Payment",
       description: "Government fee",
       required: true,
-      category: "payment"
-    }
+      category: "payment",
+    },
   ]}
   categories={[
     { id: "documents", label: "Documents", color: "blue" },
     { id: "application", label: "Application", color: "green" },
-    { id: "payment", label: "Payment", color: "amber" }
+    { id: "payment", label: "Payment", color: "amber" },
   ]}
   showProgress={true}
 />
@@ -206,11 +207,11 @@ Most KITAS holders get MERP from the start.
 
 ### When to Use
 
-| Use Case | SERP Makes Sense |
-|----------|------------------|
+| Use Case         | SERP Makes Sense     |
+| ---------------- | -------------------- |
 | One planned trip | Short KITAS validity |
-| Budget conscious | Saves money vs MERP |
-| Rare travel | Don't travel often |
+| Budget conscious | Saves money vs MERP  |
+| Rare travel      | Don't travel often   |
 
 ### SERP Limitations
 
@@ -223,6 +224,7 @@ Most KITAS holders get MERP from the start.
 - Consider MERP if you might travel more
 
 If you're likely to travel multiple times, MERP is better value.
+
 </InfoCard>
 
 ---
@@ -231,11 +233,11 @@ If you're likely to travel multiple times, MERP is better value.
 
 ### What is EPO?
 
-| Purpose | Details |
-|---------|---------|
-| Final departure | Leaving Indonesia permanently |
+| Purpose           | Details                         |
+| ----------------- | ------------------------------- |
+| Final departure   | Leaving Indonesia permanently   |
 | KITAS cancelation | Usually accompanies cancelation |
-| No return | Cannot re-enter on same KITAS |
+| No return         | Cannot re-enter on same KITAS   |
 
 ### When EPO Required
 
@@ -248,17 +250,18 @@ If you're likely to travel multiple times, MERP is better value.
 - Leaving Indonesia permanently
 
 EPO effectively cancels your KITAS.
+
 </InfoCard>
 
 ### EPO Process
 
-| Step | Action |
-|------|--------|
-| 1 | Submit KITAS for cancelation |
-| 2 | Apply for EPO |
-| 3 | Pay fees |
-| 4 | Receive EPO |
-| 5 | Must depart within 7 days |
+| Step | Action                       |
+| ---- | ---------------------------- |
+| 1    | Submit KITAS for cancelation |
+| 2    | Apply for EPO                |
+| 3    | Pay fees                     |
+| 4    | Receive EPO                  |
+| 5    | Must depart within 7 days    |
 
 ---
 
@@ -266,40 +269,40 @@ EPO effectively cancels your KITAS.
 
 ### Before You Travel
 
-| Check | Action |
-|-------|--------|
-| MERP validity | Ensure still valid |
-| KITAS validity | Must cover travel period |
-| Passport validity | 6+ months usually |
-| Return within permit | Don't overstay abroad |
+| Check                | Action                   |
+| -------------------- | ------------------------ |
+| MERP validity        | Ensure still valid       |
+| KITAS validity       | Must cover travel period |
+| Passport validity    | 6+ months usually        |
+| Return within permit | Don't overstay abroad    |
 
 ### At Immigration
 
-| Departure | Return |
-|-----------|--------|
-| Show passport | Show passport |
-| KITAS scanned | KITAS scanned |
-| MERP verified | MERP verified |
+| Departure        | Return            |
+| ---------------- | ----------------- |
+| Show passport    | Show passport     |
+| KITAS scanned    | KITAS scanned     |
+| MERP verified    | MERP verified     |
 | Exit stamp given | Entry stamp given |
 
 ### Common Issues
 
-| Issue | Solution |
-|-------|----------|
-| No MERP | Apply before travel |
-| Expired MERP | Renew or get SERP |
-| Lost KITAS abroad | Contact embassy immediately |
-| Overstayed KITAS abroad | Contact immigration/agent |
+| Issue                   | Solution                    |
+| ----------------------- | --------------------------- |
+| No MERP                 | Apply before travel         |
+| Expired MERP            | Renew or get SERP           |
+| Lost KITAS abroad       | Contact embassy immediately |
+| Overstayed KITAS abroad | Contact immigration/agent   |
 
 ---
 
 ## Costs Summary
 
-| Permit | Government Fee | Agent Fee | Total |
-|--------|----------------|-----------|-------|
-| MERP | IDR 800K-1M | IDR 500K-1M | IDR 1.3-2M |
-| SERP | IDR 300-500K | IDR 300-500K | IDR 600K-1M |
-| EPO | IDR 300-500K | IDR 300-500K | IDR 600K-1M |
+| Permit | Government Fee | Agent Fee    | Total       |
+| ------ | -------------- | ------------ | ----------- |
+| MERP   | IDR 800K-1M    | IDR 500K-1M  | IDR 1.3-2M  |
+| SERP   | IDR 300-500K   | IDR 300-500K | IDR 600K-1M |
+| EPO    | IDR 300-500K   | IDR 300-500K | IDR 600K-1M |
 
 ---
 
@@ -314,6 +317,7 @@ EPO effectively cancels your KITAS.
 - Same travel freedom
 
 KITAP is more convenient for frequent travelers.
+
 </InfoCard>
 
 ---
@@ -322,22 +326,22 @@ KITAP is more convenient for frequent travelers.
 
 ### For KITAS Holders
 
-| Tip | Why |
-|-----|-----|
-| Get MERP early | Don't wait until trip |
-| Keep copies | Passport, KITAS, MERP |
-| Track validity | Set calendar reminders |
-| Use agent | For renewals |
+| Tip               | Why                     |
+| ----------------- | ----------------------- |
+| Get MERP early    | Don't wait until trip   |
+| Keep copies       | Passport, KITAS, MERP   |
+| Track validity    | Set calendar reminders  |
+| Use agent         | For renewals            |
 | Know your sponsor | May need their approval |
 
 ### Emergency Situations
 
-| Situation | Action |
-|-----------|--------|
-| Lost passport abroad | Indonesian embassy |
-| KITAS expired while abroad | Contact sponsor/agent |
-| Medical emergency | Embassy assistance |
-| Family emergency | Can travel, sort permit later |
+| Situation                  | Action                        |
+| -------------------------- | ----------------------------- |
+| Lost passport abroad       | Indonesian embassy            |
+| KITAS expired while abroad | Contact sponsor/agent         |
+| Medical emergency          | Embassy assistance            |
+| Family emergency           | Can travel, sort permit later |
 
 ---
 
@@ -352,6 +356,7 @@ KITAP is more convenient for frequent travelers.
 - Always check current requirements
 
 Requirements can change - verify before travel.
+
 </InfoCard>
 
 ---
@@ -365,7 +370,7 @@ Requirements can change - verify before travel.
     "Do I need MERP for every trip?",
     "What if my KITAS expires while abroad?",
     "How long does MERP take to process?",
-    "Can I cancel EPO and stay?"
+    "Can I cancel EPO and stay?",
   ]}
 />
 

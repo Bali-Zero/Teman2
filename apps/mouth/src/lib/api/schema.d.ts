@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-  '/api/auth/login': {
+  "/api/auth/login": {
     parameters: {
       query?: never;
       header?: never;
@@ -20,14 +20,14 @@ export interface paths {
      *     Returns JWT token and user profile on successful authentication.
      *     Also sets httpOnly cookie with JWT token and CSRF cookie.
      */
-    post: operations['login_api_auth_login_post'];
+    post: operations["login_api_auth_login_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/auth/profile': {
+  "/api/auth/profile": {
     parameters: {
       query?: never;
       header?: never;
@@ -38,7 +38,7 @@ export interface paths {
      * Get Profile
      * @description Get current user profile
      */
-    get: operations['get_profile_api_auth_profile_get'];
+    get: operations["get_profile_api_auth_profile_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -47,7 +47,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/auth/logout': {
+  "/api/auth/logout": {
     parameters: {
       query?: never;
       header?: never;
@@ -63,14 +63,14 @@ export interface paths {
      *     Note: JWT tokens are stateless, so we only clear cookies.
      *     Client should also discard any stored tokens.
      */
-    post: operations['logout_api_auth_logout_post'];
+    post: operations["logout_api_auth_logout_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/auth/check': {
+  "/api/auth/check": {
     parameters: {
       query?: never;
       header?: never;
@@ -81,7 +81,7 @@ export interface paths {
      * Check Auth
      * @description Check if current session is valid
      */
-    get: operations['check_auth_api_auth_check_get'];
+    get: operations["check_auth_api_auth_check_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -90,7 +90,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/auth/csrf-token': {
+  "/api/auth/csrf-token": {
     parameters: {
       query?: never;
       header?: never;
@@ -102,7 +102,7 @@ export interface paths {
      * @description Generate CSRF token and session ID for frontend security.
      *     Returns token in both JSON body and response headers.
      */
-    get: operations['get_csrf_token_api_auth_csrf_token_get'];
+    get: operations["get_csrf_token_api_auth_csrf_token_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -111,7 +111,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/auth/refresh': {
+  "/api/auth/refresh": {
     parameters: {
       query?: never;
       header?: never;
@@ -128,14 +128,14 @@ export interface paths {
      *     re-authentication. The user must provide a valid current token.
      *     Also updates the httpOnly cookie with the new token.
      */
-    post: operations['refresh_token_api_auth_refresh_post'];
+    post: operations["refresh_token_api_auth_refresh_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/health': {
+  "/health": {
     parameters: {
       query?: never;
       header?: never;
@@ -149,7 +149,7 @@ export interface paths {
      *     Returns "initializing" immediately if service not ready.
      *     Prevents container crashes during warmup by not creating heavy objects.
      */
-    get: operations['health_check_health_get'];
+    get: operations["health_check_health_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -158,7 +158,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/health/detailed': {
+  "/health/detailed": {
     parameters: {
       query?: never;
       header?: never;
@@ -179,7 +179,7 @@ export interface paths {
      *     Returns:
      *         dict: Detailed health status with per-service breakdown
      */
-    get: operations['detailed_health_health_detailed_get'];
+    get: operations["detailed_health_health_detailed_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -188,7 +188,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/health/ready': {
+  "/health/ready": {
     parameters: {
       query?: never;
       header?: never;
@@ -205,7 +205,7 @@ export interface paths {
      *     Returns:
      *         dict: Readiness status with critical service check
      */
-    get: operations['readiness_check_health_ready_get'];
+    get: operations["readiness_check_health_ready_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -214,7 +214,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/health/live': {
+  "/health/live": {
     parameters: {
       query?: never;
       header?: never;
@@ -231,7 +231,7 @@ export interface paths {
      *     Returns:
      *         dict: Liveness status
      */
-    get: operations['liveness_check_health_live_get'];
+    get: operations["liveness_check_health_live_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -240,7 +240,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/health/metrics/qdrant': {
+  "/health/metrics/qdrant": {
     parameters: {
       query?: never;
       header?: never;
@@ -258,7 +258,7 @@ export interface paths {
      *     - Retry counts
      *     - Error counts
      */
-    get: operations['qdrant_metrics_health_metrics_qdrant_get'];
+    get: operations["qdrant_metrics_health_metrics_qdrant_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -267,7 +267,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/nusantara/health': {
+  "/api/nusantara/health": {
     parameters: {
       query?: never;
       header?: never;
@@ -279,7 +279,7 @@ export interface paths {
      * @description Get system health visualized as Nusantara archipelago.
      *     Each major system component is mapped to an Indonesian island.
      */
-    get: operations['get_nusantara_health_api_nusantara_health_get'];
+    get: operations["get_nusantara_health_api_nusantara_health_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -288,7 +288,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/handlers/list': {
+  "/api/handlers/list": {
     parameters: {
       query?: never;
       header?: never;
@@ -300,7 +300,7 @@ export interface paths {
      * @description Returns complete registry of all available handlers
      *     This is the master catalog that ZANTARA uses to see all available tools
      */
-    get: operations['list_all_handlers_api_handlers_list_get'];
+    get: operations["list_all_handlers_api_handlers_list_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -309,7 +309,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/handlers/search': {
+  "/api/handlers/search": {
     parameters: {
       query?: never;
       header?: never;
@@ -320,7 +320,7 @@ export interface paths {
      * Search Handlers
      * @description Search handlers by name, path, or description
      */
-    get: operations['search_handlers_api_handlers_search_get'];
+    get: operations["search_handlers_api_handlers_search_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -329,7 +329,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/handlers/category/{category}': {
+  "/api/handlers/category/{category}": {
     parameters: {
       query?: never;
       header?: never;
@@ -340,7 +340,7 @@ export interface paths {
      * Get Handlers By Category
      * @description Get all handlers in a specific category
      */
-    get: operations['get_handlers_by_category_api_handlers_category__category__get'];
+    get: operations["get_handlers_by_category_api_handlers_category__category__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -349,7 +349,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/debug/request/{request_id}': {
+  "/api/debug/request/{request_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -366,7 +366,7 @@ export interface paths {
      *     Returns:
      *         Trace data
      */
-    get: operations['get_request_trace_api_debug_request__request_id__get'];
+    get: operations["get_request_trace_api_debug_request__request_id__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -375,7 +375,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/debug/logs': {
+  "/api/debug/logs": {
     parameters: {
       query?: never;
       header?: never;
@@ -397,7 +397,7 @@ export interface paths {
      *     Returns:
      *         Logs data
      */
-    get: operations['get_logs_api_debug_logs_get'];
+    get: operations["get_logs_api_debug_logs_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -406,7 +406,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/debug/state': {
+  "/api/debug/state": {
     parameters: {
       query?: never;
       header?: never;
@@ -423,7 +423,7 @@ export interface paths {
      *     Returns:
      *         Application state information
      */
-    get: operations['get_app_state_api_debug_state_get'];
+    get: operations["get_app_state_api_debug_state_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -432,7 +432,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/debug/services': {
+  "/api/debug/services": {
     parameters: {
       query?: never;
       header?: never;
@@ -449,7 +449,7 @@ export interface paths {
      *     Returns:
      *         Services status
      */
-    get: operations['get_services_status_api_debug_services_get'];
+    get: operations["get_services_status_api_debug_services_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -458,7 +458,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/debug/traces/recent': {
+  "/api/debug/traces/recent": {
     parameters: {
       query?: never;
       header?: never;
@@ -475,7 +475,7 @@ export interface paths {
      *     Returns:
      *         Recent traces
      */
-    get: operations['get_recent_traces_endpoint_api_debug_traces_recent_get'];
+    get: operations["get_recent_traces_endpoint_api_debug_traces_recent_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -484,7 +484,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/debug/traces': {
+  "/api/debug/traces": {
     parameters: {
       query?: never;
       header?: never;
@@ -501,13 +501,13 @@ export interface paths {
      *     Returns:
      *         Confirmation message
      */
-    delete: operations['clear_traces_api_debug_traces_delete'];
+    delete: operations["clear_traces_api_debug_traces_delete"];
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/debug/rag/pipeline/{correlation_id}': {
+  "/api/debug/rag/pipeline/{correlation_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -527,7 +527,7 @@ export interface paths {
      *     Returns:
      *         RAG pipeline trace
      */
-    get: operations['get_rag_pipeline_trace_api_debug_rag_pipeline__correlation_id__get'];
+    get: operations["get_rag_pipeline_trace_api_debug_rag_pipeline__correlation_id__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -536,7 +536,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/debug/db/queries/slow': {
+  "/api/debug/db/queries/slow": {
     parameters: {
       query?: never;
       header?: never;
@@ -553,7 +553,7 @@ export interface paths {
      *     Returns:
      *         Slow queries list
      */
-    get: operations['get_slow_queries_api_debug_db_queries_slow_get'];
+    get: operations["get_slow_queries_api_debug_db_queries_slow_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -562,7 +562,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/debug/db/queries/recent': {
+  "/api/debug/db/queries/recent": {
     parameters: {
       query?: never;
       header?: never;
@@ -579,7 +579,7 @@ export interface paths {
      *     Returns:
      *         Recent queries list
      */
-    get: operations['get_recent_queries_api_debug_db_queries_recent_get'];
+    get: operations["get_recent_queries_api_debug_db_queries_recent_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -588,7 +588,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/debug/db/queries/analyze': {
+  "/api/debug/db/queries/analyze": {
     parameters: {
       query?: never;
       header?: never;
@@ -602,7 +602,7 @@ export interface paths {
      *     Returns:
      *         Query pattern analysis
      */
-    get: operations['analyze_query_patterns_api_debug_db_queries_analyze_get'];
+    get: operations["analyze_query_patterns_api_debug_db_queries_analyze_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -611,7 +611,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/debug/qdrant/collections/health': {
+  "/api/debug/qdrant/collections/health": {
     parameters: {
       query?: never;
       header?: never;
@@ -625,7 +625,7 @@ export interface paths {
      *     Returns:
      *         Collections health status
      */
-    get: operations['get_qdrant_collections_health_api_debug_qdrant_collections_health_get'];
+    get: operations["get_qdrant_collections_health_api_debug_qdrant_collections_health_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -634,7 +634,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/debug/qdrant/collection/{collection_name}/stats': {
+  "/api/debug/qdrant/collection/{collection_name}/stats": {
     parameters: {
       query?: never;
       header?: never;
@@ -651,7 +651,7 @@ export interface paths {
      *     Returns:
      *         Collection statistics
      */
-    get: operations['get_collection_stats_api_debug_qdrant_collection__collection_name__stats_get'];
+    get: operations["get_collection_stats_api_debug_qdrant_collection__collection_name__stats_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -660,7 +660,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/debug/parent-documents-public/{document_id}': {
+  "/api/debug/parent-documents-public/{document_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -678,7 +678,7 @@ export interface paths {
      *     Returns:
      *         List of BAB (chapters) with metadata
      */
-    get: operations['get_parent_documents_public_api_debug_parent_documents_public__document_id__get'];
+    get: operations["get_parent_documents_public_api_debug_parent_documents_public__document_id__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -687,7 +687,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/debug/parent-documents/{document_id}/{bab_id}/text': {
+  "/api/debug/parent-documents/{document_id}/{bab_id}/text": {
     parameters: {
       query?: never;
       header?: never;
@@ -705,7 +705,7 @@ export interface paths {
      *     Returns:
      *         Full text of the BAB
      */
-    get: operations['get_bab_full_text_api_debug_parent_documents__document_id___bab_id__text_get'];
+    get: operations["get_bab_full_text_api_debug_parent_documents__document_id___bab_id__text_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -714,7 +714,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/debug/profile': {
+  "/api/debug/profile": {
     parameters: {
       query?: never;
       header?: never;
@@ -733,14 +733,14 @@ export interface paths {
      *     Returns:
      *         Profiling results summary
      */
-    post: operations['run_performance_profiling_api_debug_profile_post'];
+    post: operations["run_performance_profiling_api_debug_profile_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/debug/postgres/connection': {
+  "/api/debug/postgres/connection": {
     parameters: {
       query?: never;
       header?: never;
@@ -757,7 +757,7 @@ export interface paths {
      *     Returns:
      *         Connection information and status
      */
-    get: operations['get_postgres_connection_api_debug_postgres_connection_get'];
+    get: operations["get_postgres_connection_api_debug_postgres_connection_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -766,7 +766,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/debug/postgres/schema/tables': {
+  "/api/debug/postgres/schema/tables": {
     parameters: {
       query?: never;
       header?: never;
@@ -783,7 +783,7 @@ export interface paths {
      *     Returns:
      *         List of tables
      */
-    get: operations['get_postgres_tables_api_debug_postgres_schema_tables_get'];
+    get: operations["get_postgres_tables_api_debug_postgres_schema_tables_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -792,7 +792,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/debug/postgres/schema/table/{table_name}': {
+  "/api/debug/postgres/schema/table/{table_name}": {
     parameters: {
       query?: never;
       header?: never;
@@ -810,7 +810,7 @@ export interface paths {
      *     Returns:
      *         Table details including columns, indexes, foreign keys, constraints
      */
-    get: operations['get_postgres_table_details_api_debug_postgres_schema_table__table_name__get'];
+    get: operations["get_postgres_table_details_api_debug_postgres_schema_table__table_name__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -819,7 +819,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/debug/postgres/schema/indexes': {
+  "/api/debug/postgres/schema/indexes": {
     parameters: {
       query?: never;
       header?: never;
@@ -836,7 +836,7 @@ export interface paths {
      *     Returns:
      *         List of indexes
      */
-    get: operations['get_postgres_indexes_api_debug_postgres_schema_indexes_get'];
+    get: operations["get_postgres_indexes_api_debug_postgres_schema_indexes_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -845,7 +845,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/debug/postgres/stats/tables': {
+  "/api/debug/postgres/stats/tables": {
     parameters: {
       query?: never;
       header?: never;
@@ -862,7 +862,7 @@ export interface paths {
      *     Returns:
      *         Table statistics
      */
-    get: operations['get_postgres_table_stats_api_debug_postgres_stats_tables_get'];
+    get: operations["get_postgres_table_stats_api_debug_postgres_stats_tables_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -871,7 +871,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/debug/postgres/stats/database': {
+  "/api/debug/postgres/stats/database": {
     parameters: {
       query?: never;
       header?: never;
@@ -885,7 +885,7 @@ export interface paths {
      *     Returns:
      *         Database statistics
      */
-    get: operations['get_postgres_database_stats_api_debug_postgres_stats_database_get'];
+    get: operations["get_postgres_database_stats_api_debug_postgres_stats_database_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -894,7 +894,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/debug/postgres/query': {
+  "/api/debug/postgres/query": {
     parameters: {
       query?: never;
       header?: never;
@@ -914,14 +914,14 @@ export interface paths {
      *     Returns:
      *         Query results
      */
-    post: operations['execute_postgres_query_api_debug_postgres_query_post'];
+    post: operations["execute_postgres_query_api_debug_postgres_query_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/debug/postgres/performance/slow-queries': {
+  "/api/debug/postgres/performance/slow-queries": {
     parameters: {
       query?: never;
       header?: never;
@@ -938,7 +938,7 @@ export interface paths {
      *     Returns:
      *         Slow queries list
      */
-    get: operations['get_postgres_slow_queries_api_debug_postgres_performance_slow_queries_get'];
+    get: operations["get_postgres_slow_queries_api_debug_postgres_performance_slow_queries_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -947,7 +947,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/debug/postgres/performance/locks': {
+  "/api/debug/postgres/performance/locks": {
     parameters: {
       query?: never;
       header?: never;
@@ -961,7 +961,7 @@ export interface paths {
      *     Returns:
      *         Active locks list
      */
-    get: operations['get_postgres_locks_api_debug_postgres_performance_locks_get'];
+    get: operations["get_postgres_locks_api_debug_postgres_performance_locks_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -970,7 +970,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/debug/postgres/performance/connections': {
+  "/api/debug/postgres/performance/connections": {
     parameters: {
       query?: never;
       header?: never;
@@ -984,7 +984,7 @@ export interface paths {
      *     Returns:
      *         Connection statistics
      */
-    get: operations['get_postgres_connection_stats_api_debug_postgres_performance_connections_get'];
+    get: operations["get_postgres_connection_stats_api_debug_postgres_performance_connections_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -993,7 +993,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/v1/debug/sentry-test': {
+  "/api/v1/debug/sentry-test": {
     parameters: {
       query?: never;
       header?: never;
@@ -1007,7 +1007,7 @@ export interface paths {
      *
      *     SECURITY: Requires authentication to prevent abuse.
      */
-    get: operations['sentry_test_error_api_v1_debug_sentry_test_get'];
+    get: operations["sentry_test_error_api_v1_debug_sentry_test_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1016,7 +1016,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/agents/status': {
+  "/api/agents/status": {
     parameters: {
       query?: never;
       header?: never;
@@ -1032,7 +1032,7 @@ export interface paths {
      *
      *     Performance: Cached for 5 minutes (90% faster on cache hit)
      */
-    get: operations['get_agents_status_api_agents_status_get'];
+    get: operations["get_agents_status_api_agents_status_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1041,7 +1041,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/agents/journey/create': {
+  "/api/agents/journey/create": {
     parameters: {
       query?: never;
       header?: never;
@@ -1061,14 +1061,14 @@ export interface paths {
      *     - kitas_application: KITAS visa application (5 steps)
      *     - property_purchase: Property purchase process (6 steps)
      */
-    post: operations['create_client_journey_api_agents_journey_create_post'];
+    post: operations["create_client_journey_api_agents_journey_create_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/agents/journey/{journey_id}': {
+  "/api/agents/journey/{journey_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -1079,7 +1079,7 @@ export interface paths {
      * Get Journey
      * @description Get journey details and progress
      */
-    get: operations['get_journey_api_agents_journey__journey_id__get'];
+    get: operations["get_journey_api_agents_journey__journey_id__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1088,7 +1088,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/agents/journey/{journey_id}/step/{step_id}/complete': {
+  "/api/agents/journey/{journey_id}/step/{step_id}/complete": {
     parameters: {
       query?: never;
       header?: never;
@@ -1101,14 +1101,14 @@ export interface paths {
      * Complete Journey Step
      * @description Mark a journey step as completed
      */
-    post: operations['complete_journey_step_api_agents_journey__journey_id__step__step_id__complete_post'];
+    post: operations["complete_journey_step_api_agents_journey__journey_id__step__step_id__complete_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/agents/journey/{journey_id}/next-steps': {
+  "/api/agents/journey/{journey_id}/next-steps": {
     parameters: {
       query?: never;
       header?: never;
@@ -1119,7 +1119,7 @@ export interface paths {
      * Get Next Steps
      * @description Get next available steps in the journey
      */
-    get: operations['get_next_steps_api_agents_journey__journey_id__next_steps_get'];
+    get: operations["get_next_steps_api_agents_journey__journey_id__next_steps_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1128,7 +1128,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/agents/compliance/track': {
+  "/api/agents/compliance/track": {
     parameters: {
       query?: never;
       header?: never;
@@ -1149,14 +1149,14 @@ export interface paths {
      *     - license_renewal: IMTA, NIB, business permits
      *     - regulatory_change: Law/regulation changes
      */
-    post: operations['add_compliance_tracking_api_agents_compliance_track_post'];
+    post: operations["add_compliance_tracking_api_agents_compliance_track_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/agents/compliance/alerts': {
+  "/api/agents/compliance/alerts": {
     parameters: {
       query?: never;
       header?: never;
@@ -1172,7 +1172,7 @@ export interface paths {
      *         severity: Filter by severity
      *         auto_notify: Automatically send notifications for alerts
      */
-    get: operations['get_compliance_alerts_api_agents_compliance_alerts_get'];
+    get: operations["get_compliance_alerts_api_agents_compliance_alerts_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1181,7 +1181,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/agents/compliance/client/{client_id}': {
+  "/api/agents/compliance/client/{client_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -1192,7 +1192,7 @@ export interface paths {
      * Get Client Compliance
      * @description Get all compliance items for a client
      */
-    get: operations['get_client_compliance_api_agents_compliance_client__client_id__get'];
+    get: operations["get_client_compliance_api_agents_compliance_client__client_id__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1201,7 +1201,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/agents/knowledge-graph/extract': {
+  "/api/agents/knowledge-graph/extract": {
     parameters: {
       query?: never;
       header?: never;
@@ -1220,14 +1220,14 @@ export interface paths {
      *     Entities: Person, Organization, Location, Document, Concept
      *     Relationships: WORKS_FOR, LOCATED_IN, REQUIRES, RELATED_TO, etc.
      */
-    post: operations['extract_knowledge_graph_api_agents_knowledge_graph_extract_post'];
+    post: operations["extract_knowledge_graph_api_agents_knowledge_graph_extract_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/agents/knowledge-graph/export': {
+  "/api/agents/knowledge-graph/export": {
     parameters: {
       query?: never;
       header?: never;
@@ -1243,7 +1243,7 @@ export interface paths {
      *     - json: JSON format (.json)
      *     - graphml: GraphML format for Gephi/Cytoscape (.graphml)
      */
-    get: operations['export_knowledge_graph_api_agents_knowledge_graph_export_get'];
+    get: operations["export_knowledge_graph_api_agents_knowledge_graph_export_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1252,7 +1252,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/agents/ingestion/run': {
+  "/api/agents/ingestion/run": {
     parameters: {
       query?: never;
       header?: never;
@@ -1276,14 +1276,14 @@ export interface paths {
      *     - https://jdih.kemendag.go.id (Trade regulations)
      *     - https://ortax.org (Tax news)
      */
-    post: operations['run_auto_ingestion_api_agents_ingestion_run_post'];
+    post: operations["run_auto_ingestion_api_agents_ingestion_run_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/agents/ingestion/status': {
+  "/api/agents/ingestion/status": {
     parameters: {
       query?: never;
       header?: never;
@@ -1294,7 +1294,7 @@ export interface paths {
      * Get Ingestion Status
      * @description Get status of automatic ingestion service
      */
-    get: operations['get_ingestion_status_api_agents_ingestion_status_get'];
+    get: operations["get_ingestion_status_api_agents_ingestion_status_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1303,7 +1303,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/agents/synthesis/cross-oracle': {
+  "/api/agents/synthesis/cross-oracle": {
     parameters: {
       query?: never;
       header?: never;
@@ -1322,14 +1322,14 @@ export interface paths {
      *     → Queries: kbli_eye, legal_architect, tax_genius, visa_oracle, property_knowledge
      *     → Synthesizes: Integrated plan with KBLI code, legal structure, tax obligations, etc.
      */
-    post: operations['cross_oracle_synthesis_api_agents_synthesis_cross_oracle_post'];
+    post: operations["cross_oracle_synthesis_api_agents_synthesis_cross_oracle_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/agents/pricing/calculate': {
+  "/api/agents/pricing/calculate": {
     parameters: {
       query?: never;
       header?: never;
@@ -1344,14 +1344,14 @@ export interface paths {
      *
      *     Calculate pricing based on service type, complexity, and urgency
      */
-    post: operations['calculate_dynamic_pricing_api_agents_pricing_calculate_post'];
+    post: operations["calculate_dynamic_pricing_api_agents_pricing_calculate_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/agents/research/autonomous': {
+  "/api/agents/research/autonomous": {
     parameters: {
       query?: never;
       header?: never;
@@ -1378,14 +1378,14 @@ export interface paths {
      *         depth: standard (3 iterations), deep (5 iterations)
      *         sources: Optional list of specific collections to search
      */
-    post: operations['run_autonomous_research_api_agents_research_autonomous_post'];
+    post: operations["run_autonomous_research_api_agents_research_autonomous_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/agents/analytics/summary': {
+  "/api/agents/analytics/summary": {
     parameters: {
       query?: never;
       header?: never;
@@ -1398,7 +1398,7 @@ export interface paths {
      *
      *     Performance: Cached for 3 minutes (reduces database load)
      */
-    get: operations['get_analytics_summary_api_agents_analytics_summary_get'];
+    get: operations["get_analytics_summary_api_agents_analytics_summary_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1407,7 +1407,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/autonomous-agents/conversation-trainer/run': {
+  "/api/autonomous-agents/conversation-trainer/run": {
     parameters: {
       query?: never;
       header?: never;
@@ -1428,14 +1428,14 @@ export interface paths {
      *     Returns:
      *         Execution status (agent runs in background)
      */
-    post: operations['run_conversation_trainer_api_autonomous_agents_conversation_trainer_run_post'];
+    post: operations["run_conversation_trainer_api_autonomous_agents_conversation_trainer_run_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/autonomous-agents/client-value-predictor/run': {
+  "/api/autonomous-agents/client-value-predictor/run": {
     parameters: {
       query?: never;
       header?: never;
@@ -1455,14 +1455,14 @@ export interface paths {
      *     Returns:
      *         Execution status (agent runs in background)
      */
-    post: operations['run_client_value_predictor_api_autonomous_agents_client_value_predictor_run_post'];
+    post: operations["run_client_value_predictor_api_autonomous_agents_client_value_predictor_run_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/autonomous-agents/knowledge-graph-builder/run': {
+  "/api/autonomous-agents/knowledge-graph-builder/run": {
     parameters: {
       query?: never;
       header?: never;
@@ -1484,14 +1484,14 @@ export interface paths {
      *     Returns:
      *         Execution status (agent runs in background)
      */
-    post: operations['run_knowledge_graph_builder_api_autonomous_agents_knowledge_graph_builder_run_post'];
+    post: operations["run_knowledge_graph_builder_api_autonomous_agents_knowledge_graph_builder_run_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/autonomous-agents/knowledge-graph/extract-sample': {
+  "/api/autonomous-agents/knowledge-graph/extract-sample": {
     parameters: {
       query?: never;
       header?: never;
@@ -1507,7 +1507,7 @@ export interface paths {
      *
      *     Returns entities and relationships found for human approval.
      */
-    get: operations['extract_kg_sample_api_autonomous_agents_knowledge_graph_extract_sample_get'];
+    get: operations["extract_kg_sample_api_autonomous_agents_knowledge_graph_extract_sample_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1516,7 +1516,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/autonomous-agents/knowledge-graph/persist-sample': {
+  "/api/autonomous-agents/knowledge-graph/persist-sample": {
     parameters: {
       query?: never;
       header?: never;
@@ -1532,14 +1532,14 @@ export interface paths {
      *     Extracts and persists entities/relationships to PostgreSQL.
      *     Run /extract-sample first to review!
      */
-    post: operations['persist_kg_sample_api_autonomous_agents_knowledge_graph_persist_sample_post'];
+    post: operations["persist_kg_sample_api_autonomous_agents_knowledge_graph_persist_sample_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/autonomous-agents/status': {
+  "/api/autonomous-agents/status": {
     parameters: {
       query?: never;
       header?: never;
@@ -1554,7 +1554,7 @@ export interface paths {
      *         Agent capabilities, execution statistics, and recent executions
      *         Format matches frontend AgentStatus interface
      */
-    get: operations['get_autonomous_agents_status_api_autonomous_agents_status_get'];
+    get: operations["get_autonomous_agents_status_api_autonomous_agents_status_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1563,7 +1563,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/autonomous-agents/executions/{execution_id}': {
+  "/api/autonomous-agents/executions/{execution_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -1580,7 +1580,7 @@ export interface paths {
      *     Returns:
      *         Execution details and result
      */
-    get: operations['get_execution_status_api_autonomous_agents_executions__execution_id__get'];
+    get: operations["get_execution_status_api_autonomous_agents_executions__execution_id__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1589,7 +1589,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/autonomous-agents/executions': {
+  "/api/autonomous-agents/executions": {
     parameters: {
       query?: never;
       header?: never;
@@ -1606,7 +1606,7 @@ export interface paths {
      *     Returns:
      *         List of recent executions
      */
-    get: operations['list_executions_api_autonomous_agents_executions_get'];
+    get: operations["list_executions_api_autonomous_agents_executions_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1615,7 +1615,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/autonomous-agents/scheduler/status': {
+  "/api/autonomous-agents/scheduler/status": {
     parameters: {
       query?: never;
       header?: never;
@@ -1632,7 +1632,7 @@ export interface paths {
      *         - task_count: Number of registered tasks
      *         - tasks: Details of each task (intervals, run counts, errors)
      */
-    get: operations['get_scheduler_status_api_autonomous_agents_scheduler_status_get'];
+    get: operations["get_scheduler_status_api_autonomous_agents_scheduler_status_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1641,7 +1641,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/autonomous-agents/scheduler/task/{task_name}/enable': {
+  "/api/autonomous-agents/scheduler/task/{task_name}/enable": {
     parameters: {
       query?: never;
       header?: never;
@@ -1657,14 +1657,14 @@ export interface paths {
      *     Args:
      *         task_name: Name of the task to enable
      */
-    post: operations['enable_scheduler_task_api_autonomous_agents_scheduler_task__task_name__enable_post'];
+    post: operations["enable_scheduler_task_api_autonomous_agents_scheduler_task__task_name__enable_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/autonomous-agents/scheduler/task/{task_name}/disable': {
+  "/api/autonomous-agents/scheduler/task/{task_name}/disable": {
     parameters: {
       query?: never;
       header?: never;
@@ -1680,14 +1680,14 @@ export interface paths {
      *     Args:
      *         task_name: Name of the task to disable
      */
-    post: operations['disable_scheduler_task_api_autonomous_agents_scheduler_task__task_name__disable_post'];
+    post: operations["disable_scheduler_task_api_autonomous_agents_scheduler_task__task_name__disable_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/agentic-rag/query': {
+  "/api/agentic-rag/query": {
     parameters: {
       query?: never;
       header?: never;
@@ -1703,14 +1703,14 @@ export interface paths {
      *     **AUTHENTICATION REQUIRED**: This endpoint requires a valid JWT token.
      *     The user_id is extracted from the authenticated user, not from the request body.
      */
-    post: operations['query_agentic_rag_api_agentic_rag_query_post'];
+    post: operations["query_agentic_rag_api_agentic_rag_query_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/agentic-rag/stream': {
+  "/api/agentic-rag/stream": {
     parameters: {
       query?: never;
       header?: never;
@@ -1730,14 +1730,14 @@ export interface paths {
      *     1. Direct conversation_history from frontend (preferred - works even if DB is down)
      *     2. conversation_id or session_id lookup from database (fallback)
      */
-    post: operations['stream_agentic_rag_api_agentic_rag_stream_post'];
+    post: operations["stream_agentic_rag_api_agentic_rag_stream_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/agentic-rag/proactive-trigger': {
+  "/api/agentic-rag/proactive-trigger": {
     parameters: {
       query?: never;
       header?: never;
@@ -1751,14 +1751,14 @@ export interface paths {
      * @description Trigger a proactive AI event (Zero-Shot Proactivity).
      *     The AI will analyze the user's context/memory and decide whether to speak.
      */
-    post: operations['trigger_proactivity_api_agentic_rag_proactive_trigger_post'];
+    post: operations["trigger_proactivity_api_agentic_rag_proactive_trigger_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/bali-zero/conversations/save': {
+  "/api/bali-zero/conversations/save": {
     parameters: {
       query?: never;
       header?: never;
@@ -1798,14 +1798,14 @@ export interface paths {
      *         }
      *     }
      */
-    post: operations['save_conversation_api_bali_zero_conversations_save_post'];
+    post: operations["save_conversation_api_bali_zero_conversations_save_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/bali-zero/conversations/history': {
+  "/api/bali-zero/conversations/history": {
     parameters: {
       query?: never;
       header?: never;
@@ -1822,7 +1822,7 @@ export interface paths {
      *     - limit: Max number of messages to return (default: 20)
      *     - session_id: Optional session filter
      */
-    get: operations['get_conversation_history_api_bali_zero_conversations_history_get'];
+    get: operations["get_conversation_history_api_bali_zero_conversations_history_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1831,7 +1831,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/bali-zero/conversations/clear': {
+  "/api/bali-zero/conversations/clear": {
     parameters: {
       query?: never;
       header?: never;
@@ -1850,13 +1850,13 @@ export interface paths {
      *     Query params:
      *     - session_id: Optional session filter (if omitted, clears ALL conversations for user)
      */
-    delete: operations['clear_conversation_history_api_bali_zero_conversations_clear_delete'];
+    delete: operations["clear_conversation_history_api_bali_zero_conversations_clear_delete"];
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/bali-zero/conversations/stats': {
+  "/api/bali-zero/conversations/stats": {
     parameters: {
       query?: never;
       header?: never;
@@ -1869,7 +1869,7 @@ export interface paths {
      *
      *     SECURITY: User identity is extracted from JWT token.
      */
-    get: operations['get_conversation_stats_api_bali_zero_conversations_stats_get'];
+    get: operations["get_conversation_stats_api_bali_zero_conversations_stats_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1878,7 +1878,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/bali-zero/conversations/list': {
+  "/api/bali-zero/conversations/list": {
     parameters: {
       query?: never;
       header?: never;
@@ -1897,7 +1897,7 @@ export interface paths {
      *
      *     Returns list with title (first user message), preview, and message count.
      */
-    get: operations['list_conversations_api_bali_zero_conversations_list_get'];
+    get: operations["list_conversations_api_bali_zero_conversations_list_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1906,7 +1906,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/bali-zero/conversations/{conversation_id}': {
+  "/api/bali-zero/conversations/{conversation_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -1919,7 +1919,7 @@ export interface paths {
      *
      *     SECURITY: Only returns conversation if it belongs to authenticated user.
      */
-    get: operations['get_conversation_api_bali_zero_conversations__conversation_id__get'];
+    get: operations["get_conversation_api_bali_zero_conversations__conversation_id__get"];
     put?: never;
     post?: never;
     /**
@@ -1928,13 +1928,13 @@ export interface paths {
      *
      *     SECURITY: Only deletes conversation if it belongs to authenticated user.
      */
-    delete: operations['delete_conversation_api_bali_zero_conversations__conversation_id__delete'];
+    delete: operations["delete_conversation_api_bali_zero_conversations__conversation_id__delete"];
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/bali-zero/conversations/memory/context': {
+  "/api/bali-zero/conversations/memory/context": {
     parameters: {
       query?: never;
       header?: never;
@@ -1950,7 +1950,7 @@ export interface paths {
      *     Returns the user's stored memory facts and context that the AI uses
      *     to personalize responses.
      */
-    get: operations['get_user_memory_context_api_bali_zero_conversations_memory_context_get'];
+    get: operations["get_user_memory_context_api_bali_zero_conversations_memory_context_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1959,7 +1959,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/sessions/create': {
+  "/api/sessions/create": {
     parameters: {
       query?: never;
       header?: never;
@@ -1972,14 +1972,14 @@ export interface paths {
      * Create Session
      * @description Create a new conversation session
      */
-    post: operations['create_session_api_sessions_create_post'];
+    post: operations["create_session_api_sessions_create_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/sessions/{session_id}': {
+  "/api/sessions/{session_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -1990,24 +1990,24 @@ export interface paths {
      * Get Session
      * @description Get conversation history for a session
      */
-    get: operations['get_session_api_sessions__session_id__get'];
+    get: operations["get_session_api_sessions__session_id__get"];
     /**
      * Update Session
      * @description Update conversation history for a session
      */
-    put: operations['update_session_api_sessions__session_id__put'];
+    put: operations["update_session_api_sessions__session_id__put"];
     post?: never;
     /**
      * Delete Session
      * @description Delete a session
      */
-    delete: operations['delete_session_api_sessions__session_id__delete'];
+    delete: operations["delete_session_api_sessions__session_id__delete"];
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/sessions/{session_id}/ttl': {
+  "/api/sessions/{session_id}/ttl": {
     parameters: {
       query?: never;
       header?: never;
@@ -2019,7 +2019,7 @@ export interface paths {
      * Update Session With Ttl
      * @description Update session with custom TTL
      */
-    put: operations['update_session_with_ttl_api_sessions__session_id__ttl_put'];
+    put: operations["update_session_with_ttl_api_sessions__session_id__ttl_put"];
     post?: never;
     delete?: never;
     options?: never;
@@ -2027,7 +2027,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/sessions/{session_id}/extend': {
+  "/api/sessions/{session_id}/extend": {
     parameters: {
       query?: never;
       header?: never;
@@ -2040,14 +2040,14 @@ export interface paths {
      * Extend Session Ttl
      * @description Extend session TTL
      */
-    post: operations['extend_session_ttl_api_sessions__session_id__extend_post'];
+    post: operations["extend_session_ttl_api_sessions__session_id__extend_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/sessions/{session_id}/extend-custom': {
+  "/api/sessions/{session_id}/extend-custom": {
     parameters: {
       query?: never;
       header?: never;
@@ -2060,14 +2060,14 @@ export interface paths {
      * Extend Session Ttl Custom
      * @description Extend session TTL to custom duration
      */
-    post: operations['extend_session_ttl_custom_api_sessions__session_id__extend_custom_post'];
+    post: operations["extend_session_ttl_custom_api_sessions__session_id__extend_custom_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/sessions/{session_id}/info': {
+  "/api/sessions/{session_id}/info": {
     parameters: {
       query?: never;
       header?: never;
@@ -2078,7 +2078,7 @@ export interface paths {
      * Get Session Info
      * @description Get session metadata
      */
-    get: operations['get_session_info_api_sessions__session_id__info_get'];
+    get: operations["get_session_info_api_sessions__session_id__info_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -2087,7 +2087,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/sessions/{session_id}/export': {
+  "/api/sessions/{session_id}/export": {
     parameters: {
       query?: never;
       header?: never;
@@ -2098,7 +2098,7 @@ export interface paths {
      * Export Session
      * @description Export session conversation
      */
-    get: operations['export_session_api_sessions__session_id__export_get'];
+    get: operations["export_session_api_sessions__session_id__export_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -2107,7 +2107,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/sessions/analytics/overview': {
+  "/api/sessions/analytics/overview": {
     parameters: {
       query?: never;
       header?: never;
@@ -2118,7 +2118,7 @@ export interface paths {
      * Get Analytics
      * @description Get analytics about all sessions
      */
-    get: operations['get_analytics_api_sessions_analytics_overview_get'];
+    get: operations["get_analytics_api_sessions_analytics_overview_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -2127,7 +2127,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/sessions/cleanup': {
+  "/api/sessions/cleanup": {
     parameters: {
       query?: never;
       header?: never;
@@ -2140,14 +2140,14 @@ export interface paths {
      * Cleanup Sessions
      * @description Cleanup expired sessions (no-op, Redis handles automatically)
      */
-    post: operations['cleanup_sessions_api_sessions_cleanup_post'];
+    post: operations["cleanup_sessions_api_sessions_cleanup_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/sessions/health': {
+  "/api/sessions/health": {
     parameters: {
       query?: never;
       header?: never;
@@ -2158,7 +2158,7 @@ export interface paths {
      * Health Check
      * @description Health check for session service
      */
-    get: operations['health_check_api_sessions_health_get'];
+    get: operations["health_check_api_sessions_health_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -2167,7 +2167,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/collective-memory/contribute': {
+  "/api/collective-memory/contribute": {
     parameters: {
       query?: never;
       header?: never;
@@ -2183,14 +2183,14 @@ export interface paths {
      *     When 3+ different users contribute/confirm the same fact,
      *     it becomes "promoted" and is included in AI context for all users.
      */
-    post: operations['contribute_fact_api_collective_memory_contribute_post'];
+    post: operations["contribute_fact_api_collective_memory_contribute_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/collective-memory/refute': {
+  "/api/collective-memory/refute": {
     parameters: {
       query?: never;
       header?: never;
@@ -2205,14 +2205,14 @@ export interface paths {
      *
      *     Decreases confidence. If confidence drops below 0.2, fact is removed.
      */
-    post: operations['refute_fact_api_collective_memory_refute_post'];
+    post: operations["refute_fact_api_collective_memory_refute_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/collective-memory/facts': {
+  "/api/collective-memory/facts": {
     parameters: {
       query?: never;
       header?: never;
@@ -2225,7 +2225,7 @@ export interface paths {
      *
      *     Optional: filter by category.
      */
-    get: operations['get_collective_facts_api_collective_memory_facts_get'];
+    get: operations["get_collective_facts_api_collective_memory_facts_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -2234,7 +2234,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/collective-memory/stats': {
+  "/api/collective-memory/stats": {
     parameters: {
       query?: never;
       header?: never;
@@ -2245,7 +2245,7 @@ export interface paths {
      * Get Collective Stats
      * @description Get collective memory statistics.
      */
-    get: operations['get_collective_stats_api_collective_memory_stats_get'];
+    get: operations["get_collective_stats_api_collective_memory_stats_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -2254,7 +2254,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/episodic-memory/events': {
+  "/api/episodic-memory/events": {
     parameters: {
       query?: never;
       header?: never;
@@ -2275,14 +2275,14 @@ export interface paths {
      *     - Meetings held
      *     - Deadlines set
      */
-    post: operations['add_event_api_episodic_memory_events_post'];
+    post: operations["add_event_api_episodic_memory_events_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/episodic-memory/extract': {
+  "/api/episodic-memory/extract": {
     parameters: {
       query?: never;
       header?: never;
@@ -2303,14 +2303,14 @@ export interface paths {
      *
      *     If no temporal reference is found, no event is created.
      */
-    post: operations['extract_and_save_event_api_episodic_memory_extract_post'];
+    post: operations["extract_and_save_event_api_episodic_memory_extract_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/episodic-memory/timeline': {
+  "/api/episodic-memory/timeline": {
     parameters: {
       query?: never;
       header?: never;
@@ -2328,7 +2328,7 @@ export interface paths {
      *     - start_date/end_date: Filter by date range
      *     - limit: Maximum number of events (default 20)
      */
-    get: operations['get_timeline_api_episodic_memory_timeline_get'];
+    get: operations["get_timeline_api_episodic_memory_timeline_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -2337,7 +2337,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/episodic-memory/context': {
+  "/api/episodic-memory/context": {
     parameters: {
       query?: never;
       header?: never;
@@ -2351,7 +2351,7 @@ export interface paths {
      *     Returns recent events formatted as markdown for inclusion
      *     in AI system prompts.
      */
-    get: operations['get_context_summary_api_episodic_memory_context_get'];
+    get: operations["get_context_summary_api_episodic_memory_context_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -2360,7 +2360,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/episodic-memory/stats': {
+  "/api/episodic-memory/stats": {
     parameters: {
       query?: never;
       header?: never;
@@ -2373,7 +2373,7 @@ export interface paths {
      *
      *     Returns counts by event type and overall stats.
      */
-    get: operations['get_stats_api_episodic_memory_stats_get'];
+    get: operations["get_stats_api_episodic_memory_stats_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -2382,7 +2382,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/episodic-memory/events/{event_id}': {
+  "/api/episodic-memory/events/{event_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -2398,13 +2398,13 @@ export interface paths {
      *
      *     Users can only delete their own events.
      */
-    delete: operations['delete_event_api_episodic_memory_events__event_id__delete'];
+    delete: operations["delete_event_api_episodic_memory_events__event_id__delete"];
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/v2/feedback/': {
+  "/api/v2/feedback/": {
     parameters: {
       query?: never;
       header?: never;
@@ -2429,14 +2429,14 @@ export interface paths {
      *     Returns:
      *         Success response with optional review_queue_id if created
      */
-    post: operations['submit_feedback_api_v2_feedback__post'];
+    post: operations["submit_feedback_api_v2_feedback__post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/v2/feedback/ratings/{session_id}': {
+  "/api/v2/feedback/ratings/{session_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -2455,7 +2455,7 @@ export interface paths {
      *     Returns:
      *         Rating data if found, 404 if not found
      */
-    get: operations['get_conversation_rating_api_v2_feedback_ratings__session_id__get'];
+    get: operations["get_conversation_rating_api_v2_feedback_ratings__session_id__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -2464,7 +2464,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/v2/feedback/stats': {
+  "/api/v2/feedback/stats": {
     parameters: {
       query?: never;
       header?: never;
@@ -2478,7 +2478,7 @@ export interface paths {
      *     Returns:
      *         Statistics about review queue and feedback
      */
-    get: operations['get_feedback_stats_api_v2_feedback_stats_get'];
+    get: operations["get_feedback_stats_api_v2_feedback_stats_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -2487,7 +2487,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/crm/clients/': {
+  "/api/crm/clients/": {
     parameters: {
       query?: never;
       header?: never;
@@ -2507,7 +2507,7 @@ export interface paths {
      *     - **limit**: Max results (default: 50, max: 200)
      *     - **offset**: For pagination
      */
-    get: operations['list_clients_api_crm_clients__get'];
+    get: operations["list_clients_api_crm_clients__get"];
     put?: never;
     /**
      * Create Client
@@ -2523,14 +2523,14 @@ export interface paths {
      *     - **avatar_url**: URL to client avatar image
      *     - **tags**: Array of tags (e.g., ['vip', 'urgent'])
      */
-    post: operations['create_client_api_crm_clients__post'];
+    post: operations["create_client_api_crm_clients__post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/crm/clients/{client_id}': {
+  "/api/crm/clients/{client_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -2545,7 +2545,7 @@ export interface paths {
      *     - Admin users: Can view any client
      *     - Team members: Can only view clients assigned to them
      */
-    get: operations['get_client_api_crm_clients__client_id__get'];
+    get: operations["get_client_api_crm_clients__client_id__get"];
     put?: never;
     post?: never;
     /**
@@ -2556,7 +2556,7 @@ export interface paths {
      *
      *     All authenticated users can delete any client.
      */
-    delete: operations['delete_client_api_crm_clients__client_id__delete'];
+    delete: operations["delete_client_api_crm_clients__client_id__delete"];
     options?: never;
     head?: never;
     /**
@@ -2567,10 +2567,10 @@ export interface paths {
      *
      *     All authenticated users can update any client.
      */
-    patch: operations['update_client_api_crm_clients__client_id__patch'];
+    patch: operations["update_client_api_crm_clients__client_id__patch"];
     trace?: never;
   };
-  '/api/crm/clients/by-email/{email}': {
+  "/api/crm/clients/by-email/{email}": {
     parameters: {
       query?: never;
       header?: never;
@@ -2583,7 +2583,7 @@ export interface paths {
      *
      *     All authenticated users can view any client.
      */
-    get: operations['get_client_by_email_api_crm_clients_by_email__email__get'];
+    get: operations["get_client_by_email_api_crm_clients_by_email__email__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -2592,7 +2592,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/crm/clients/{client_id}/summary': {
+  "/api/crm/clients/{client_id}/summary": {
     parameters: {
       query?: never;
       header?: never;
@@ -2608,7 +2608,7 @@ export interface paths {
      *     - Documents
      *     - Upcoming renewals
      */
-    get: operations['get_client_summary_api_crm_clients__client_id__summary_get'];
+    get: operations["get_client_summary_api_crm_clients__client_id__summary_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -2617,7 +2617,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/crm/clients/stats/overview': {
+  "/api/crm/clients/stats/overview": {
     parameters: {
       query?: never;
       header?: never;
@@ -2632,7 +2632,7 @@ export interface paths {
      *
      *     Performance: Cached for 5 minutes to reduce database load.
      */
-    get: operations['get_clients_stats_api_crm_clients_stats_overview_get'];
+    get: operations["get_clients_stats_api_crm_clients_stats_overview_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -2641,7 +2641,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/crm/clients/{client_id}/audit-trail': {
+  "/api/crm/clients/{client_id}/audit-trail": {
     parameters: {
       query?: never;
       header?: never;
@@ -2654,7 +2654,7 @@ export interface paths {
      *
      *     All authenticated users can view audit trails for any client.
      */
-    get: operations['get_client_audit_trail_api_crm_clients__client_id__audit_trail_get'];
+    get: operations["get_client_audit_trail_api_crm_clients__client_id__audit_trail_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -2663,7 +2663,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/crm/clients/metrics/summary': {
+  "/api/crm/clients/metrics/summary": {
     parameters: {
       query?: never;
       header?: never;
@@ -2674,7 +2674,7 @@ export interface paths {
      * Get Crm Metrics Summary
      * @description Get CRM metrics summary for dashboard
      */
-    get: operations['get_crm_metrics_summary_api_crm_clients_metrics_summary_get'];
+    get: operations["get_crm_metrics_summary_api_crm_clients_metrics_summary_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -2683,7 +2683,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/crm/clients/metrics/refresh': {
+  "/api/crm/clients/metrics/refresh": {
     parameters: {
       query?: never;
       header?: never;
@@ -2696,14 +2696,14 @@ export interface paths {
      * Refresh Crm Metrics
      * @description Force refresh of CRM metrics (Admin only)
      */
-    post: operations['refresh_crm_metrics_api_crm_clients_metrics_refresh_post'];
+    post: operations["refresh_crm_metrics_api_crm_clients_metrics_refresh_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/crm/clients/extract-passport': {
+  "/api/crm/clients/extract-passport": {
     parameters: {
       query?: never;
       header?: never;
@@ -2717,14 +2717,14 @@ export interface paths {
      * @description Extract passport number and expiry date from passport image using Gemini Vision.
      *     Updates the client record with extracted data.
      */
-    post: operations['extract_passport_data_api_crm_clients_extract_passport_post'];
+    post: operations["extract_passport_data_api_crm_clients_extract_passport_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/crm/clients/extract-passport-enhanced': {
+  "/api/crm/clients/extract-passport-enhanced": {
     parameters: {
       query?: never;
       header?: never;
@@ -2749,14 +2749,14 @@ export interface paths {
      *         - MRZ lines (if visible)
      *         - confidence score
      */
-    post: operations['extract_passport_enhanced_api_crm_clients_extract_passport_enhanced_post'];
+    post: operations["extract_passport_enhanced_api_crm_clients_extract_passport_enhanced_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/crm/clients/documents/{document_id}': {
+  "/api/crm/clients/documents/{document_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -2779,13 +2779,13 @@ export interface paths {
      *     Returns:
      *         Success message
      */
-    delete: operations['delete_client_document_api_crm_clients_documents__document_id__delete'];
+    delete: operations["delete_client_document_api_crm_clients_documents__document_id__delete"];
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/crm/clients/{client_id}/profile': {
+  "/api/crm/clients/{client_id}/profile": {
     parameters: {
       query?: never;
       header?: never;
@@ -2797,7 +2797,7 @@ export interface paths {
      * @description Get enhanced client profile with family members, documents, and expiry alerts.
      *     RBAC REMOVED: All authenticated users can view all client profiles.
      */
-    get: operations['get_client_profile_api_crm_clients__client_id__profile_get'];
+    get: operations["get_client_profile_api_crm_clients__client_id__profile_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -2808,10 +2808,10 @@ export interface paths {
      * @description Update client profile fields (avatar, Google Drive folder, etc.)
      *     RBAC REMOVED: All authenticated users can update client profiles.
      */
-    patch: operations['update_client_profile_api_crm_clients__client_id__profile_patch'];
+    patch: operations["update_client_profile_api_crm_clients__client_id__profile_patch"];
     trace?: never;
   };
-  '/api/crm/clients/{client_id}/family': {
+  "/api/crm/clients/{client_id}/family": {
     parameters: {
       query?: never;
       header?: never;
@@ -2823,21 +2823,21 @@ export interface paths {
      * @description Get all family members for a client.
      *     RBAC REMOVED: All authenticated users can view family members.
      */
-    get: operations['get_family_members_api_crm_clients__client_id__family_get'];
+    get: operations["get_family_members_api_crm_clients__client_id__family_get"];
     put?: never;
     /**
      * Create Family Member
      * @description Add a family member to a client.
      *     RBAC REMOVED: All authenticated users can create family members.
      */
-    post: operations['create_family_member_api_crm_clients__client_id__family_post'];
+    post: operations["create_family_member_api_crm_clients__client_id__family_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/crm/clients/{client_id}/family/{member_id}': {
+  "/api/crm/clients/{client_id}/family/{member_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -2852,7 +2852,7 @@ export interface paths {
      * @description Delete a family member.
      *     RBAC REMOVED: All authenticated users can delete family members.
      */
-    delete: operations['delete_family_member_api_crm_clients__client_id__family__member_id__delete'];
+    delete: operations["delete_family_member_api_crm_clients__client_id__family__member_id__delete"];
     options?: never;
     head?: never;
     /**
@@ -2860,10 +2860,10 @@ export interface paths {
      * @description Update a family member.
      *     RBAC REMOVED: All authenticated users can update family members.
      */
-    patch: operations['update_family_member_api_crm_clients__client_id__family__member_id__patch'];
+    patch: operations["update_family_member_api_crm_clients__client_id__family__member_id__patch"];
     trace?: never;
   };
-  '/api/crm/clients/{client_id}/documents': {
+  "/api/crm/clients/{client_id}/documents": {
     parameters: {
       query?: never;
       header?: never;
@@ -2875,21 +2875,21 @@ export interface paths {
      * @description Get all documents for a client, optionally filtered by category.
      *     RBAC REMOVED: All authenticated users can view documents.
      */
-    get: operations['get_client_documents_api_crm_clients__client_id__documents_get'];
+    get: operations["get_client_documents_api_crm_clients__client_id__documents_get"];
     put?: never;
     /**
      * Create Document
      * @description Add a document to a client. Auto-triggers OCR for passport documents.
      *     RBAC REMOVED: All authenticated users can create documents.
      */
-    post: operations['create_document_api_crm_clients__client_id__documents_post'];
+    post: operations["create_document_api_crm_clients__client_id__documents_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/crm/clients/{client_id}/documents/bulk': {
+  "/api/crm/clients/{client_id}/documents/bulk": {
     parameters: {
       query?: never;
       header?: never;
@@ -2925,14 +2925,14 @@ export interface paths {
      *     Raises:
      *         HTTPException: If max limit exceeded or client not found
      */
-    post: operations['create_documents_bulk_api_crm_clients__client_id__documents_bulk_post'];
+    post: operations["create_documents_bulk_api_crm_clients__client_id__documents_bulk_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/crm/clients/{client_id}/documents/{doc_id}': {
+  "/api/crm/clients/{client_id}/documents/{doc_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -2947,7 +2947,7 @@ export interface paths {
      * @description Archive or delete a document.
      *     RBAC REMOVED: All authenticated users can archive/delete documents.
      */
-    delete: operations['archive_document_api_crm_clients__client_id__documents__doc_id__delete'];
+    delete: operations["archive_document_api_crm_clients__client_id__documents__doc_id__delete"];
     options?: never;
     head?: never;
     /**
@@ -2955,10 +2955,10 @@ export interface paths {
      * @description Update a document.
      *     RBAC REMOVED: All authenticated users can update documents.
      */
-    patch: operations['update_document_api_crm_clients__client_id__documents__doc_id__patch'];
+    patch: operations["update_document_api_crm_clients__client_id__documents__doc_id__patch"];
     trace?: never;
   };
-  '/api/crm/document-categories': {
+  "/api/crm/document-categories": {
     parameters: {
       query?: never;
       header?: never;
@@ -2969,7 +2969,7 @@ export interface paths {
      * Get Document Categories
      * @description Get all document categories for dropdowns.
      */
-    get: operations['get_document_categories_api_crm_document_categories_get'];
+    get: operations["get_document_categories_api_crm_document_categories_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -2978,7 +2978,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/crm/expiry-alerts': {
+  "/api/crm/expiry-alerts": {
     parameters: {
       query?: never;
       header?: never;
@@ -2991,7 +2991,7 @@ export interface paths {
      *     RBAC REMOVED: All authenticated users can view all expiry alerts.
      *     Optional filtering by assigned_to is available as a query parameter.
      */
-    get: operations['get_all_expiry_alerts_api_crm_expiry_alerts_get'];
+    get: operations["get_all_expiry_alerts_api_crm_expiry_alerts_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -3000,7 +3000,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/crm/expiry-alerts/summary': {
+  "/api/crm/expiry-alerts/summary": {
     parameters: {
       query?: never;
       header?: never;
@@ -3011,7 +3011,7 @@ export interface paths {
      * Get Expiry Alerts Summary
      * @description Get summary counts of expiry alerts for dashboard.
      */
-    get: operations['get_expiry_alerts_summary_api_crm_expiry_alerts_summary_get'];
+    get: operations["get_expiry_alerts_summary_api_crm_expiry_alerts_summary_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -3020,7 +3020,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/crm/clients/{client_id}/documents/upload': {
+  "/api/crm/clients/{client_id}/documents/upload": {
     parameters: {
       query?: never;
       header?: never;
@@ -3034,14 +3034,14 @@ export interface paths {
      * @description Upload a document via Base64 (for frontend integration).
      *     Handles Google Drive upload and document creation.
      */
-    post: operations['upload_document_base64_api_crm_clients__client_id__documents_upload_post'];
+    post: operations["upload_document_base64_api_crm_clients__client_id__documents_upload_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/crm/documents/{doc_id}': {
+  "/api/crm/documents/{doc_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -3055,13 +3055,13 @@ export interface paths {
      * Delete Document
      * @description Delete a document (Soft delete by default).
      */
-    delete: operations['delete_document_api_crm_documents__doc_id__delete'];
+    delete: operations["delete_document_api_crm_documents__doc_id__delete"];
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/crm/interactions/': {
+  "/api/crm/interactions/": {
     parameters: {
       query?: never;
       header?: never;
@@ -3072,7 +3072,7 @@ export interface paths {
      * List Interactions
      * @description List interactions with optional filtering
      */
-    get: operations['list_interactions_api_crm_interactions__get'];
+    get: operations["list_interactions_api_crm_interactions__get"];
     put?: never;
     /**
      * Create Interaction
@@ -3093,14 +3093,14 @@ export interface paths {
      *     - phone: Phone call
      *     - in_person: Face-to-face meeting
      */
-    post: operations['create_interaction_api_crm_interactions__post'];
+    post: operations["create_interaction_api_crm_interactions__post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/crm/interactions/{interaction_id}': {
+  "/api/crm/interactions/{interaction_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -3111,7 +3111,7 @@ export interface paths {
      * Get Interaction
      * @description Get full interaction details by ID
      */
-    get: operations['get_interaction_api_crm_interactions__interaction_id__get'];
+    get: operations["get_interaction_api_crm_interactions__interaction_id__get"];
     put?: never;
     post?: never;
     /**
@@ -3119,13 +3119,13 @@ export interface paths {
      * @description Delete an interaction (soft delete - marks as archived).
      *     User must be admin or the creator of the interaction.
      */
-    delete: operations['delete_interaction_api_crm_interactions__interaction_id__delete'];
+    delete: operations["delete_interaction_api_crm_interactions__interaction_id__delete"];
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/crm/interactions/client/{client_id}/timeline': {
+  "/api/crm/interactions/client/{client_id}/timeline": {
     parameters: {
       query?: never;
       header?: never;
@@ -3137,7 +3137,7 @@ export interface paths {
      * @description Get complete interaction timeline for a client.
      *     RBAC REMOVED: All authenticated users can view all client timelines.
      */
-    get: operations['get_client_timeline_api_crm_interactions_client__client_id__timeline_get'];
+    get: operations["get_client_timeline_api_crm_interactions_client__client_id__timeline_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -3146,7 +3146,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/crm/interactions/practice/{practice_id}/history': {
+  "/api/crm/interactions/practice/{practice_id}/history": {
     parameters: {
       query?: never;
       header?: never;
@@ -3158,7 +3158,7 @@ export interface paths {
      * @description Get all interactions related to a specific practice.
      *     RBAC REMOVED: All authenticated users can view all practice histories.
      */
-    get: operations['get_practice_history_api_crm_interactions_practice__practice_id__history_get'];
+    get: operations["get_practice_history_api_crm_interactions_practice__practice_id__history_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -3167,7 +3167,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/crm/interactions/stats/overview': {
+  "/api/crm/interactions/stats/overview": {
     parameters: {
       query?: never;
       header?: never;
@@ -3185,7 +3185,7 @@ export interface paths {
      *
      *     Performance: Cached for 5 minutes to reduce database load.
      */
-    get: operations['get_interactions_stats_api_crm_interactions_stats_overview_get'];
+    get: operations["get_interactions_stats_api_crm_interactions_stats_overview_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -3194,7 +3194,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/crm/interactions/from-conversation': {
+  "/api/crm/interactions/from-conversation": {
     parameters: {
       query?: never;
       header?: never;
@@ -3209,14 +3209,14 @@ export interface paths {
      *
      *     This is called automatically when a chat session ends or at intervals
      */
-    post: operations['create_interaction_from_conversation_api_crm_interactions_from_conversation_post'];
+    post: operations["create_interaction_from_conversation_api_crm_interactions_from_conversation_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/crm/practices/': {
+  "/api/crm/practices/": {
     parameters: {
       query?: never;
       header?: never;
@@ -3233,7 +3233,7 @@ export interface paths {
      *
      *     Returns practices with client and practice type information joined
      */
-    get: operations['list_practices_api_crm_practices__get'];
+    get: operations["list_practices_api_crm_practices__get"];
     put?: never;
     /**
      * Create Practice
@@ -3245,14 +3245,14 @@ export interface paths {
      *     - **quoted_price**: Price quoted to client
      *     - **assigned_to**: Team member email to handle this
      */
-    post: operations['create_practice_api_crm_practices__post'];
+    post: operations["create_practice_api_crm_practices__post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/crm/practices/active': {
+  "/api/crm/practices/active": {
     parameters: {
       query?: never;
       header?: never;
@@ -3265,7 +3265,7 @@ export interface paths {
      *
      *     Optionally filter by assigned team member
      */
-    get: operations['get_active_practices_api_crm_practices_active_get'];
+    get: operations["get_active_practices_api_crm_practices_active_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -3274,7 +3274,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/crm/practices/renewals/upcoming': {
+  "/api/crm/practices/renewals/upcoming": {
     parameters: {
       query?: never;
       header?: never;
@@ -3287,7 +3287,7 @@ export interface paths {
      *
      *     Default: next 90 days
      */
-    get: operations['get_upcoming_renewals_api_crm_practices_renewals_upcoming_get'];
+    get: operations["get_upcoming_renewals_api_crm_practices_renewals_upcoming_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -3296,7 +3296,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/crm/practices/{practice_id}': {
+  "/api/crm/practices/{practice_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -3309,7 +3309,7 @@ export interface paths {
      *
      *     All authenticated users can view any practice.
      */
-    get: operations['get_practice_api_crm_practices__practice_id__get'];
+    get: operations["get_practice_api_crm_practices__practice_id__get"];
     put?: never;
     post?: never;
     /**
@@ -3320,7 +3320,7 @@ export interface paths {
      *
      *     The practice is marked as 'cancelled' and not permanently deleted.
      */
-    delete: operations['delete_practice_api_crm_practices__practice_id__delete'];
+    delete: operations["delete_practice_api_crm_practices__practice_id__delete"];
     options?: never;
     head?: never;
     /**
@@ -3341,10 +3341,10 @@ export interface paths {
      *     - completed
      *     - cancelled
      */
-    patch: operations['update_practice_api_crm_practices__practice_id__patch'];
+    patch: operations["update_practice_api_crm_practices__practice_id__patch"];
     trace?: never;
   };
-  '/api/crm/practices/{practice_id}/documents/add': {
+  "/api/crm/practices/{practice_id}/documents/add": {
     parameters: {
       query?: never;
       header?: never;
@@ -3361,14 +3361,14 @@ export interface paths {
      *     - **drive_file_id**: Google Drive file ID
      *     - **uploaded_by**: Email of person uploading
      */
-    post: operations['add_document_to_practice_api_crm_practices__practice_id__documents_add_post'];
+    post: operations["add_document_to_practice_api_crm_practices__practice_id__documents_add_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/crm/practices/stats/overview': {
+  "/api/crm/practices/stats/overview": {
     parameters: {
       query?: never;
       header?: never;
@@ -3385,7 +3385,7 @@ export interface paths {
      *
      *     Performance: Cached for 5 minutes to reduce database load.
      */
-    get: operations['get_practices_stats_api_crm_practices_stats_overview_get'];
+    get: operations["get_practices_stats_api_crm_practices_stats_overview_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -3394,7 +3394,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/crm/practices/{practice_id}/regenerate-invoice': {
+  "/api/crm/practices/{practice_id}/regenerate-invoice": {
     parameters: {
       query?: never;
       header?: never;
@@ -3419,14 +3419,14 @@ export interface paths {
      *     Returns:
      *         dict: Invoice generation result with file IDs, links, and notification status
      */
-    post: operations['regenerate_invoice_api_crm_practices__practice_id__regenerate_invoice_post'];
+    post: operations["regenerate_invoice_api_crm_practices__practice_id__regenerate_invoice_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/crm/shared-memory/search': {
+  "/api/crm/shared-memory/search": {
     parameters: {
       query?: never;
       header?: never;
@@ -3446,7 +3446,7 @@ export interface paths {
      *
      *     Returns relevant results from clients, practices, and interactions
      */
-    get: operations['search_shared_memory_api_crm_shared_memory_search_get'];
+    get: operations["search_shared_memory_api_crm_shared_memory_search_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -3455,7 +3455,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/crm/shared-memory/upcoming-renewals': {
+  "/api/crm/shared-memory/upcoming-renewals": {
     parameters: {
       query?: never;
       header?: never;
@@ -3470,7 +3470,7 @@ export interface paths {
      *
      *     Performance: Cached for 10 minutes to reduce database load.
      */
-    get: operations['get_upcoming_renewals_api_crm_shared_memory_upcoming_renewals_get'];
+    get: operations["get_upcoming_renewals_api_crm_shared_memory_upcoming_renewals_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -3479,7 +3479,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/crm/shared-memory/client/{client_id}/full-context': {
+  "/api/crm/shared-memory/client/{client_id}/full-context": {
     parameters: {
       query?: never;
       header?: never;
@@ -3498,7 +3498,7 @@ export interface paths {
      *     - Upcoming renewals
      *     - Action items
      */
-    get: operations['get_client_full_context_api_crm_shared_memory_client__client_id__full_context_get'];
+    get: operations["get_client_full_context_api_crm_shared_memory_client__client_id__full_context_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -3507,7 +3507,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/crm/shared-memory/team-overview': {
+  "/api/crm/shared-memory/team-overview": {
     parameters: {
       query?: never;
       header?: never;
@@ -3525,7 +3525,7 @@ export interface paths {
      *
      *     Performance: Cached for 5 minutes to reduce database load.
      */
-    get: operations['get_team_overview_api_crm_shared_memory_team_overview_get'];
+    get: operations["get_team_overview_api_crm_shared_memory_team_overview_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -3534,7 +3534,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/crm/auto/stats': {
+  "/api/crm/auto/stats": {
     parameters: {
       query?: never;
       header?: never;
@@ -3556,7 +3556,7 @@ export interface paths {
      *
      *     Performance: Cached for 5 minutes.
      */
-    get: operations['get_auto_crm_stats_api_crm_auto_stats_get'];
+    get: operations["get_auto_crm_stats_api_crm_auto_stats_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -3565,7 +3565,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/crm/portal/clients/{client_id}/status': {
+  "/api/crm/portal/clients/{client_id}/status": {
     parameters: {
       query?: never;
       header?: never;
@@ -3581,7 +3581,7 @@ export interface paths {
      *     - Portal user details if exists
      *     - Pending invitation status
      */
-    get: operations['get_portal_status_api_crm_portal_clients__client_id__status_get'];
+    get: operations["get_portal_status_api_crm_portal_clients__client_id__status_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -3590,7 +3590,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/crm/portal/clients/{client_id}/invite': {
+  "/api/crm/portal/clients/{client_id}/invite": {
     parameters: {
       query?: never;
       header?: never;
@@ -3605,14 +3605,14 @@ export interface paths {
      *
      *     If email not provided, uses client's email from the clients table.
      */
-    post: operations['send_portal_invite_api_crm_portal_clients__client_id__invite_post'];
+    post: operations["send_portal_invite_api_crm_portal_clients__client_id__invite_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/crm/portal/clients/{client_id}/preview': {
+  "/api/crm/portal/clients/{client_id}/preview": {
     parameters: {
       query?: never;
       header?: never;
@@ -3625,7 +3625,7 @@ export interface paths {
      *
      *     Returns the same data the client would see in their portal dashboard.
      */
-    get: operations['get_portal_preview_api_crm_portal_clients__client_id__preview_get'];
+    get: operations["get_portal_preview_api_crm_portal_clients__client_id__preview_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -3634,7 +3634,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/crm/portal/messages/unread-count': {
+  "/api/crm/portal/messages/unread-count": {
     parameters: {
       query?: never;
       header?: never;
@@ -3647,7 +3647,7 @@ export interface paths {
      *
      *     For header notification badge.
      */
-    get: operations['get_unread_messages_count_api_crm_portal_messages_unread_count_get'];
+    get: operations["get_unread_messages_count_api_crm_portal_messages_unread_count_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -3656,7 +3656,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/crm/portal/clients/{client_id}/messages': {
+  "/api/crm/portal/clients/{client_id}/messages": {
     parameters: {
       query?: never;
       header?: never;
@@ -3669,20 +3669,20 @@ export interface paths {
      *
      *     Same messages as client sees, but from team perspective.
      */
-    get: operations['get_client_messages_api_crm_portal_clients__client_id__messages_get'];
+    get: operations["get_client_messages_api_crm_portal_clients__client_id__messages_get"];
     put?: never;
     /**
      * Send Message To Client
      * @description Send a message to a client (team → client).
      */
-    post: operations['send_message_to_client_api_crm_portal_clients__client_id__messages_post'];
+    post: operations["send_message_to_client_api_crm_portal_clients__client_id__messages_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/crm/portal/clients/{client_id}/messages/{message_id}/read': {
+  "/api/crm/portal/clients/{client_id}/messages/{message_id}/read": {
     parameters: {
       query?: never;
       header?: never;
@@ -3695,14 +3695,14 @@ export interface paths {
      * Mark Client Message Read
      * @description Mark a client message as read (team reading client's message).
      */
-    post: operations['mark_client_message_read_api_crm_portal_clients__client_id__messages__message_id__read_post'];
+    post: operations["mark_client_message_read_api_crm_portal_clients__client_id__messages__message_id__read_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/crm/portal/activity/recent': {
+  "/api/crm/portal/activity/recent": {
     parameters: {
       query?: never;
       header?: never;
@@ -3718,7 +3718,7 @@ export interface paths {
      *     - Document uploads
      *     - Login activity
      */
-    get: operations['get_recent_portal_activity_api_crm_portal_activity_recent_get'];
+    get: operations["get_recent_portal_activity_api_crm_portal_activity_recent_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -3727,7 +3727,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/portal/dashboard': {
+  "/api/portal/dashboard": {
     parameters: {
       query?: never;
       header?: never;
@@ -3746,7 +3746,7 @@ export interface paths {
      *     - Unread messages
      *     - Required actions
      */
-    get: operations['get_dashboard_api_portal_dashboard_get'];
+    get: operations["get_dashboard_api_portal_dashboard_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -3755,7 +3755,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/portal/visa': {
+  "/api/portal/visa": {
     parameters: {
       query?: never;
       header?: never;
@@ -3772,7 +3772,7 @@ export interface paths {
      *     - Immigration documents
      *     - Renewal warnings
      */
-    get: operations['get_visa_status_api_portal_visa_get'];
+    get: operations["get_visa_status_api_portal_visa_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -3781,7 +3781,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/portal/companies': {
+  "/api/portal/companies": {
     parameters: {
       query?: never;
       header?: never;
@@ -3794,7 +3794,7 @@ export interface paths {
      *
      *     For multi-company support - returns all linked companies.
      */
-    get: operations['get_companies_api_portal_companies_get'];
+    get: operations["get_companies_api_portal_companies_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -3803,7 +3803,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/portal/company/{company_id}': {
+  "/api/portal/company/{company_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -3820,7 +3820,7 @@ export interface paths {
      *     - Compliance calendar
      *     - Related documents
      */
-    get: operations['get_company_detail_api_portal_company__company_id__get'];
+    get: operations["get_company_detail_api_portal_company__company_id__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -3829,7 +3829,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/portal/company/{company_id}/select': {
+  "/api/portal/company/{company_id}/select": {
     parameters: {
       query?: never;
       header?: never;
@@ -3842,14 +3842,14 @@ export interface paths {
      * Set Primary Company
      * @description Set primary company for dashboard context.
      */
-    post: operations['set_primary_company_api_portal_company__company_id__select_post'];
+    post: operations["set_primary_company_api_portal_company__company_id__select_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/portal/taxes': {
+  "/api/portal/taxes": {
     parameters: {
       query?: never;
       header?: never;
@@ -3865,7 +3865,7 @@ export interface paths {
      *     - Upcoming deadlines
      *     - Tax history
      */
-    get: operations['get_tax_overview_api_portal_taxes_get'];
+    get: operations["get_tax_overview_api_portal_taxes_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -3874,7 +3874,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/portal/documents': {
+  "/api/portal/documents": {
     parameters: {
       query?: never;
       header?: never;
@@ -3888,7 +3888,7 @@ export interface paths {
      *     Only returns client-visible documents.
      *     Optional filter by document type.
      */
-    get: operations['get_documents_api_portal_documents_get'];
+    get: operations["get_documents_api_portal_documents_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -3897,7 +3897,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/portal/documents/upload': {
+  "/api/portal/documents/upload": {
     parameters: {
       query?: never;
       header?: never;
@@ -3915,14 +3915,14 @@ export interface paths {
      *     - document_type: Type of document (passport, nib, etc.)
      *     - practice_id: Optional practice to link to
      */
-    post: operations['upload_document_api_portal_documents_upload_post'];
+    post: operations["upload_document_api_portal_documents_upload_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/portal/messages': {
+  "/api/portal/messages": {
     parameters: {
       query?: never;
       header?: never;
@@ -3936,20 +3936,20 @@ export interface paths {
      *     Returns messages with pagination.
      *     Frontend polls this endpoint every 30s.
      */
-    get: operations['get_messages_api_portal_messages_get'];
+    get: operations["get_messages_api_portal_messages_get"];
     put?: never;
     /**
      * Send Message
      * @description Send a message to the team.
      */
-    post: operations['send_message_api_portal_messages_post'];
+    post: operations["send_message_api_portal_messages_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/portal/messages/{message_id}/read': {
+  "/api/portal/messages/{message_id}/read": {
     parameters: {
       query?: never;
       header?: never;
@@ -3962,14 +3962,14 @@ export interface paths {
      * Mark Message Read
      * @description Mark a message as read.
      */
-    post: operations['mark_message_read_api_portal_messages__message_id__read_post'];
+    post: operations["mark_message_read_api_portal_messages__message_id__read_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/portal/settings': {
+  "/api/portal/settings": {
     parameters: {
       query?: never;
       header?: never;
@@ -3980,7 +3980,7 @@ export interface paths {
      * Get Preferences
      * @description Get client preferences/settings.
      */
-    get: operations['get_preferences_api_portal_settings_get'];
+    get: operations["get_preferences_api_portal_settings_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -3990,10 +3990,10 @@ export interface paths {
      * Update Preferences
      * @description Update client preferences/settings.
      */
-    patch: operations['update_preferences_api_portal_settings_patch'];
+    patch: operations["update_preferences_api_portal_settings_patch"];
     trace?: never;
   };
-  '/api/portal/timeline': {
+  "/api/portal/timeline": {
     parameters: {
       query?: never;
       header?: never;
@@ -4010,7 +4010,7 @@ export interface paths {
      *     - Practice updates
      *     - Upcoming deadlines
      */
-    get: operations['get_timeline_api_portal_timeline_get'];
+    get: operations["get_timeline_api_portal_timeline_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -4019,7 +4019,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/portal/profile': {
+  "/api/portal/profile": {
     parameters: {
       query?: never;
       header?: never;
@@ -4030,7 +4030,7 @@ export interface paths {
      * Get Profile
      * @description Get client profile information.
      */
-    get: operations['get_profile_api_portal_profile_get'];
+    get: operations["get_profile_api_portal_profile_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -4039,7 +4039,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/portal/invite/send': {
+  "/api/portal/invite/send": {
     parameters: {
       query?: never;
       header?: never;
@@ -4054,14 +4054,14 @@ export interface paths {
      *
      *     Requires team authentication. Creates invite token and sends email via Zoho.
      */
-    post: operations['send_invitation_api_portal_invite_send_post'];
+    post: operations["send_invitation_api_portal_invite_send_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/portal/invite/client/{client_id}': {
+  "/api/portal/invite/client/{client_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -4074,7 +4074,7 @@ export interface paths {
      *
      *     Returns invitation history with status (pending/used/expired).
      */
-    get: operations['get_client_invitations_api_portal_invite_client__client_id__get'];
+    get: operations["get_client_invitations_api_portal_invite_client__client_id__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -4083,7 +4083,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/portal/invite/resend/{client_id}': {
+  "/api/portal/invite/resend/{client_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -4096,14 +4096,14 @@ export interface paths {
      * Resend Invitation
      * @description Resend invitation to a client (creates new token).
      */
-    post: operations['resend_invitation_api_portal_invite_resend__client_id__post'];
+    post: operations["resend_invitation_api_portal_invite_resend__client_id__post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/portal/invite/validate/{token}': {
+  "/api/portal/invite/validate/{token}": {
     parameters: {
       query?: never;
       header?: never;
@@ -4116,7 +4116,7 @@ export interface paths {
      *
      *     Called when client clicks invite link. Returns client info if valid.
      */
-    get: operations['validate_token_api_portal_invite_validate__token__get'];
+    get: operations["validate_token_api_portal_invite_validate__token__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -4125,7 +4125,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/portal/invite/complete': {
+  "/api/portal/invite/complete": {
     parameters: {
       query?: never;
       header?: never;
@@ -4141,14 +4141,14 @@ export interface paths {
      *     Called after client validates token and sets their PIN.
      *     Creates user account and returns login redirect.
      */
-    post: operations['complete_registration_api_portal_invite_complete_post'];
+    post: operations["complete_registration_api_portal_invite_complete_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/portal/taxes/': {
+  "/api/portal/taxes/": {
     parameters: {
       query?: never;
       header?: never;
@@ -4163,7 +4163,7 @@ export interface paths {
      *         - summary: TaxSummary (total_due, next_deadline, status)
      *         - obligations: List[TaxObligation]
      */
-    get: operations['get_taxes_api_portal_taxes__get'];
+    get: operations["get_taxes_api_portal_taxes__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -4172,7 +4172,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/portal/taxes/summary': {
+  "/api/portal/taxes/summary": {
     parameters: {
       query?: never;
       header?: never;
@@ -4183,7 +4183,7 @@ export interface paths {
      * Get Tax Summary
      * @description Get tax summary for dashboard card.
      */
-    get: operations['get_tax_summary_api_portal_taxes_summary_get'];
+    get: operations["get_tax_summary_api_portal_taxes_summary_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -4192,7 +4192,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/portal/visa/': {
+  "/api/portal/visa/": {
     parameters: {
       query?: never;
       header?: never;
@@ -4208,7 +4208,7 @@ export interface paths {
      *         - current_visa: VisaRecord or null
      *         - history: List[VisaRecord]
      */
-    get: operations['get_visa_status_api_portal_visa__get'];
+    get: operations["get_visa_status_api_portal_visa__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -4217,7 +4217,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/portal/visa/summary': {
+  "/api/portal/visa/summary": {
     parameters: {
       query?: never;
       header?: never;
@@ -4228,7 +4228,7 @@ export interface paths {
      * Get Visa Summary
      * @description Get visa summary for dashboard card.
      */
-    get: operations['get_visa_summary_api_portal_visa_summary_get'];
+    get: operations["get_visa_summary_api_portal_visa_summary_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -4237,7 +4237,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/analytics/completion-rates': {
+  "/api/analytics/completion-rates": {
     parameters: {
       query?: never;
       header?: never;
@@ -4252,7 +4252,7 @@ export interface paths {
      *     - **start_date**: Start date for analysis period (optional)
      *     - **end_date**: End date for analysis period (optional)
      */
-    get: operations['get_completion_rates_api_analytics_completion_rates_get'];
+    get: operations["get_completion_rates_api_analytics_completion_rates_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -4261,7 +4261,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/analytics/response-times': {
+  "/api/analytics/response-times": {
     parameters: {
       query?: never;
       header?: never;
@@ -4276,7 +4276,7 @@ export interface paths {
      *     - **start_date**: Start date for analysis period (optional)
      *     - **end_date**: End date for analysis period (optional)
      */
-    get: operations['get_response_times_api_analytics_response_times_get'];
+    get: operations["get_response_times_api_analytics_response_times_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -4285,7 +4285,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/analytics/sla-compliance': {
+  "/api/analytics/sla-compliance": {
     parameters: {
       query?: never;
       header?: never;
@@ -4300,7 +4300,7 @@ export interface paths {
      *     - **start_date**: Start date for analysis period (optional)
      *     - **end_date**: End date for analysis period (optional)
      */
-    get: operations['get_sla_compliance_api_analytics_sla_compliance_get'];
+    get: operations["get_sla_compliance_api_analytics_sla_compliance_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -4309,7 +4309,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/analytics/revenue': {
+  "/api/analytics/revenue": {
     parameters: {
       query?: never;
       header?: never;
@@ -4324,7 +4324,7 @@ export interface paths {
      *     - **start_date**: Start date for analysis period (optional)
      *     - **end_date**: End date for analysis period (optional)
      */
-    get: operations['get_revenue_metrics_api_analytics_revenue_get'];
+    get: operations["get_revenue_metrics_api_analytics_revenue_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -4333,7 +4333,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/analytics/monthly-report/{year}/{month}': {
+  "/api/analytics/monthly-report/{year}/{month}": {
     parameters: {
       query?: never;
       header?: never;
@@ -4347,7 +4347,7 @@ export interface paths {
      *     - **year**: Year (e.g., 2026)
      *     - **month**: Month (1-12)
      */
-    get: operations['get_monthly_report_api_analytics_monthly_report__year___month__get'];
+    get: operations["get_monthly_report_api_analytics_monthly_report__year___month__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -4356,7 +4356,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/ingest/upload': {
+  "/api/ingest/upload": {
     parameters: {
       query?: never;
       header?: never;
@@ -4374,14 +4374,14 @@ export interface paths {
      *     - **author**: Optional author name
      *     - **tier_override**: Optional manual tier (S/A/B/C/D)
      */
-    post: operations['upload_and_ingest_api_ingest_upload_post'];
+    post: operations["upload_and_ingest_api_ingest_upload_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/ingest/file': {
+  "/api/ingest/file": {
     parameters: {
       query?: never;
       header?: never;
@@ -4399,14 +4399,14 @@ export interface paths {
      *     - **author**: Optional author name
      *     - **tier_override**: Optional manual tier classification
      */
-    post: operations['ingest_local_file_api_ingest_file_post'];
+    post: operations["ingest_local_file_api_ingest_file_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/ingest/batch': {
+  "/api/ingest/batch": {
     parameters: {
       query?: never;
       header?: never;
@@ -4423,14 +4423,14 @@ export interface paths {
      *     - **file_patterns**: File patterns to match (default: ["*.pdf", "*.epub"])
      *     - **skip_existing**: Skip books already in database
      */
-    post: operations['batch_ingest_api_ingest_batch_post'];
+    post: operations["batch_ingest_api_ingest_batch_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/ingest/stats': {
+  "/api/ingest/stats": {
     parameters: {
       query?: never;
       header?: never;
@@ -4443,7 +4443,7 @@ export interface paths {
      *
      *     Returns total documents, tier distribution, and collection info.
      */
-    get: operations['get_ingestion_stats_api_ingest_stats_get'];
+    get: operations["get_ingestion_stats_api_ingest_stats_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -4452,7 +4452,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/legal/ingest': {
+  "/api/legal/ingest": {
     parameters: {
       query?: never;
       header?: never;
@@ -4478,14 +4478,14 @@ export interface paths {
      *     Returns:
      *         Ingestion result with metadata and statistics
      */
-    post: operations['ingest_legal_document_api_legal_ingest_post'];
+    post: operations["ingest_legal_document_api_legal_ingest_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/legal/upload': {
+  "/api/legal/upload": {
     parameters: {
       query?: never;
       header?: never;
@@ -4519,14 +4519,14 @@ export interface paths {
      *     Returns:
      *         Ingestion result with metadata and statistics
      */
-    post: operations['upload_legal_document_api_legal_upload_post'];
+    post: operations["upload_legal_document_api_legal_upload_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/legal/ingest-batch': {
+  "/api/legal/ingest-batch": {
     parameters: {
       query?: never;
       header?: never;
@@ -4546,14 +4546,14 @@ export interface paths {
      *     Returns:
      *         Batch ingestion results
      */
-    post: operations['ingest_legal_documents_batch_api_legal_ingest_batch_post'];
+    post: operations["ingest_legal_documents_batch_api_legal_ingest_batch_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/legal/collections/stats': {
+  "/api/legal/collections/stats": {
     parameters: {
       query?: never;
       header?: never;
@@ -4570,7 +4570,7 @@ export interface paths {
      *     Returns:
      *         Collection statistics
      */
-    get: operations['get_collection_stats_api_legal_collections_stats_get'];
+    get: operations["get_collection_stats_api_legal_collections_stats_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -4579,7 +4579,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/legal/parent-documents': {
+  "/api/legal/parent-documents": {
     parameters: {
       query?: never;
       header?: never;
@@ -4599,14 +4599,14 @@ export interface paths {
      *     Returns:
      *         Registration result
      */
-    post: operations['register_parent_document_api_legal_parent_documents_post'];
+    post: operations["register_parent_document_api_legal_parent_documents_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/legal/parent-documents/{document_id}': {
+  "/api/legal/parent-documents/{document_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -4624,7 +4624,7 @@ export interface paths {
      *     Returns:
      *         List of BAB with metadata
      */
-    get: operations['get_parent_documents_api_legal_parent_documents__document_id__get'];
+    get: operations["get_parent_documents_api_legal_parent_documents__document_id__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -4633,7 +4633,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/legal/parent-documents/{document_id}/{bab_id}/text': {
+  "/api/legal/parent-documents/{document_id}/{bab_id}/text": {
     parameters: {
       query?: never;
       header?: never;
@@ -4652,7 +4652,7 @@ export interface paths {
      *     Returns:
      *         Full text of the BAB
      */
-    get: operations['get_bab_full_text_api_legal_parent_documents__document_id___bab_id__text_get'];
+    get: operations["get_bab_full_text_api_legal_parent_documents__document_id___bab_id__text_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -4661,7 +4661,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/oracle/ingest': {
+  "/api/oracle/ingest": {
     parameters: {
       query?: never;
       header?: never;
@@ -4700,14 +4700,14 @@ export interface paths {
      *     - Max 1000 documents per request
      *     - Batch processing for large uploads
      */
-    post: operations['ingest_documents_api_oracle_ingest_post'];
+    post: operations["ingest_documents_api_oracle_ingest_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/oracle/collections': {
+  "/api/oracle/collections": {
     parameters: {
       query?: never;
       header?: never;
@@ -4722,7 +4722,7 @@ export interface paths {
      *     - List of collection names
      *     - Document counts for each collection
      */
-    get: operations['list_collections_api_oracle_collections_get'];
+    get: operations["list_collections_api_oracle_collections_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -4731,7 +4731,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/intel/scraper/submit': {
+  "/api/intel/scraper/submit": {
     parameters: {
       query?: never;
       header?: never;
@@ -4756,14 +4756,14 @@ export interface paths {
      *     5. Team votes via Telegram
      *     6. If approved → ingested to Qdrant
      */
-    post: operations['submit_from_scraper_api_intel_scraper_submit_post'];
+    post: operations["submit_from_scraper_api_intel_scraper_submit_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/intel/staging/pending': {
+  "/api/intel/staging/pending": {
     parameters: {
       query?: never;
       header?: never;
@@ -4774,7 +4774,7 @@ export interface paths {
      * List Pending Items
      * @description List items pending approval in staging area with filtering and sorting
      */
-    get: operations['list_pending_items_api_intel_staging_pending_get'];
+    get: operations["list_pending_items_api_intel_staging_pending_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -4783,7 +4783,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/intel/staging/preview/{type}/{item_id}': {
+  "/api/intel/staging/preview/{type}/{item_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -4794,7 +4794,7 @@ export interface paths {
      * Preview Staging Item
      * @description Get full content of a staging item
      */
-    get: operations['preview_staging_item_api_intel_staging_preview__type___item_id__get'];
+    get: operations["preview_staging_item_api_intel_staging_preview__type___item_id__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -4803,7 +4803,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/intel/staging/bulk-approve/{type}': {
+  "/api/intel/staging/bulk-approve/{type}": {
     parameters: {
       query?: never;
       header?: never;
@@ -4816,14 +4816,14 @@ export interface paths {
      * Bulk Approve Items
      * @description Bulk approve multiple items
      */
-    post: operations['bulk_approve_items_api_intel_staging_bulk_approve__type__post'];
+    post: operations["bulk_approve_items_api_intel_staging_bulk_approve__type__post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/intel/staging/bulk-reject/{type}': {
+  "/api/intel/staging/bulk-reject/{type}": {
     parameters: {
       query?: never;
       header?: never;
@@ -4836,14 +4836,14 @@ export interface paths {
      * Bulk Reject Items
      * @description Bulk reject multiple items
      */
-    post: operations['bulk_reject_items_api_intel_staging_bulk_reject__type__post'];
+    post: operations["bulk_reject_items_api_intel_staging_bulk_reject__type__post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/intel/staging/approve/{type}/{item_id}': {
+  "/api/intel/staging/approve/{type}/{item_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -4867,14 +4867,14 @@ export interface paths {
      *         "image_path": "/path/to/image.jpg"  # From Gemini image generation
      *     }
      */
-    post: operations['approve_staging_item_api_intel_staging_approve__type___item_id__post'];
+    post: operations["approve_staging_item_api_intel_staging_approve__type___item_id__post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/intel/staging/{type}/{item_id}': {
+  "/api/intel/staging/{type}/{item_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -4888,7 +4888,7 @@ export interface paths {
      *
      *     Only updates provided fields (partial update).
      */
-    put: operations['edit_staging_item_api_intel_staging__type___item_id__put'];
+    put: operations["edit_staging_item_api_intel_staging__type___item_id__put"];
     post?: never;
     delete?: never;
     options?: never;
@@ -4896,7 +4896,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/intel/staging/{type}/{item_id}/cover': {
+  "/api/intel/staging/{type}/{item_id}/cover": {
     parameters: {
       query?: never;
       header?: never;
@@ -4912,14 +4912,14 @@ export interface paths {
      *     Saves image to data/staging/{type}/covers/{item_id}.{ext}
      *     Updates staging JSON with cover_image path.
      */
-    post: operations['upload_cover_image_api_intel_staging__type___item_id__cover_post'];
+    post: operations["upload_cover_image_api_intel_staging__type___item_id__cover_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/intel/staging/reject/{type}/{item_id}': {
+  "/api/intel/staging/reject/{type}/{item_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -4932,14 +4932,14 @@ export interface paths {
      * Reject Staging Item
      * @description Reject item and move to archive
      */
-    post: operations['reject_staging_item_api_intel_staging_reject__type___item_id__post'];
+    post: operations["reject_staging_item_api_intel_staging_reject__type___item_id__post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/intel/staging/publish/{type}/{item_id}': {
+  "/api/intel/staging/publish/{type}/{item_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -4959,14 +4959,14 @@ export interface paths {
      *
      *     Should be called after team approval (manual or via Telegram).
      */
-    post: operations['publish_staging_item_api_intel_staging_publish__type___item_id__post'];
+    post: operations["publish_staging_item_api_intel_staging_publish__type___item_id__post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/intel/metrics': {
+  "/api/intel/metrics": {
     parameters: {
       query?: never;
       header?: never;
@@ -4977,7 +4977,7 @@ export interface paths {
      * Get System Metrics
      * @description Get real-time system metrics for System Pulse dashboard
      */
-    get: operations['get_system_metrics_api_intel_metrics_get'];
+    get: operations["get_system_metrics_api_intel_metrics_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -4986,7 +4986,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/intel/search': {
+  "/api/intel/search": {
     parameters: {
       query?: never;
       header?: never;
@@ -4999,14 +4999,14 @@ export interface paths {
      * Search Intel
      * @description Search intel news with semantic search
      */
-    post: operations['search_intel_api_intel_search_post'];
+    post: operations["search_intel_api_intel_search_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/intel/store': {
+  "/api/intel/store": {
     parameters: {
       query?: never;
       header?: never;
@@ -5019,14 +5019,14 @@ export interface paths {
      * Store Intel
      * @description Store intel news item in Qdrant
      */
-    post: operations['store_intel_api_intel_store_post'];
+    post: operations["store_intel_api_intel_store_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/intel/critical': {
+  "/api/intel/critical": {
     parameters: {
       query?: never;
       header?: never;
@@ -5037,7 +5037,7 @@ export interface paths {
      * Get Critical Items
      * @description Get critical impact items
      */
-    get: operations['get_critical_items_api_intel_critical_get'];
+    get: operations["get_critical_items_api_intel_critical_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -5046,7 +5046,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/intel/trends': {
+  "/api/intel/trends": {
     parameters: {
       query?: never;
       header?: never;
@@ -5057,7 +5057,7 @@ export interface paths {
      * Get Trends
      * @description Get trending topics and keywords
      */
-    get: operations['get_trends_api_intel_trends_get'];
+    get: operations["get_trends_api_intel_trends_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -5066,7 +5066,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/intel/analytics': {
+  "/api/intel/analytics": {
     parameters: {
       query?: never;
       header?: never;
@@ -5077,7 +5077,7 @@ export interface paths {
      * Get Intelligence Analytics
      * @description Get historical analytics and trends for Intelligence Center
      */
-    get: operations['get_intelligence_analytics_api_intel_analytics_get'];
+    get: operations["get_intelligence_analytics_api_intel_analytics_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -5086,7 +5086,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/intel/stats/{collection}': {
+  "/api/intel/stats/{collection}": {
     parameters: {
       query?: never;
       header?: never;
@@ -5097,7 +5097,7 @@ export interface paths {
      * Get Collection Stats
      * @description Get statistics for a specific intel collection
      */
-    get: operations['get_collection_stats_api_intel_stats__collection__get'];
+    get: operations["get_collection_stats_api_intel_stats__collection__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -5106,7 +5106,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/oracle/query': {
+  "/api/oracle/query": {
     parameters: {
       query?: never;
       header?: never;
@@ -5120,14 +5120,14 @@ export interface paths {
      * @description Ultra Hybrid Oracle Query - v5.3 (Refactored)
      *     Integrates Qdrant search, Google Drive, and Gemini reasoning via OracleService.
      */
-    post: operations['hybrid_oracle_query_api_oracle_query_post'];
+    post: operations["hybrid_oracle_query_api_oracle_query_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/oracle/feedback': {
+  "/api/oracle/feedback": {
     parameters: {
       query?: never;
       header?: never;
@@ -5140,14 +5140,14 @@ export interface paths {
      * Submit User Feedback
      * @description Submit user feedback for continuous learning and system improvement
      */
-    post: operations['submit_user_feedback_api_oracle_feedback_post'];
+    post: operations["submit_user_feedback_api_oracle_feedback_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/oracle/health': {
+  "/api/oracle/health": {
     parameters: {
       query?: never;
       header?: never;
@@ -5158,7 +5158,7 @@ export interface paths {
      * Oracle Health Check
      * @description Health check for Oracle v5.3 services
      */
-    get: operations['oracle_health_check_api_oracle_health_get'];
+    get: operations["oracle_health_check_api_oracle_health_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -5167,7 +5167,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/oracle/drive/test': {
+  "/api/oracle/drive/test": {
     parameters: {
       query?: never;
       header?: never;
@@ -5178,7 +5178,7 @@ export interface paths {
      * Test Drive Connection
      * @description Test Google Drive integration
      */
-    get: operations['test_drive_connection_api_oracle_drive_test_get'];
+    get: operations["test_drive_connection_api_oracle_drive_test_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -5187,7 +5187,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/oracle/gemini/test': {
+  "/api/oracle/gemini/test": {
     parameters: {
       query?: never;
       header?: never;
@@ -5198,7 +5198,7 @@ export interface paths {
      * Test Gemini Integration
      * @description Test Google Gemini integration
      */
-    get: operations['test_gemini_integration_api_oracle_gemini_test_get'];
+    get: operations["test_gemini_integration_api_oracle_gemini_test_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -5207,7 +5207,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/oracle/user/profile/{user_email}': {
+  "/api/oracle/user/profile/{user_email}": {
     parameters: {
       query?: never;
       header?: never;
@@ -5218,7 +5218,7 @@ export interface paths {
      * Get User Profile Endpoint
      * @description Get user profile with localization preferences
      */
-    get: operations['get_user_profile_endpoint_api_oracle_user_profile__user_email__get'];
+    get: operations["get_user_profile_endpoint_api_oracle_user_profile__user_email__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -5227,7 +5227,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/v1/kbli-notebook/search': {
+  "/api/v1/kbli-notebook/search": {
     parameters: {
       query?: never;
       header?: never;
@@ -5238,7 +5238,7 @@ export interface paths {
      * Search Kbli
      * @description Search for KBLI codes using semantic search (Qdrant).
      */
-    get: operations['search_kbli_api_v1_kbli_notebook_search_get'];
+    get: operations["search_kbli_api_v1_kbli_notebook_search_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -5247,7 +5247,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/v1/kbli-notebook/inspect/{code}': {
+  "/api/v1/kbli-notebook/inspect/{code}": {
     parameters: {
       query?: never;
       header?: never;
@@ -5258,7 +5258,7 @@ export interface paths {
      * Inspect Kbli
      * @description Retrieve deep KG metadata for a specific KBLI code from PostgreSQL.
      */
-    get: operations['inspect_kbli_api_v1_kbli_notebook_inspect__code__get'];
+    get: operations["inspect_kbli_api_v1_kbli_notebook_inspect__code__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -5267,7 +5267,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/v1/kbli-notebook/chat': {
+  "/api/v1/kbli-notebook/chat": {
     parameters: {
       query?: never;
       header?: never;
@@ -5280,14 +5280,14 @@ export interface paths {
      * Chat Kbli
      * @description Specialized chat for KBLI Notebook with BPS 2025 focus.
      */
-    post: operations['chat_kbli_api_v1_kbli_notebook_chat_post'];
+    post: operations["chat_kbli_api_v1_kbli_notebook_chat_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/preview/upload': {
+  "/preview/upload": {
     parameters: {
       query?: never;
       header?: never;
@@ -5310,14 +5310,14 @@ export interface paths {
      *             "html_content": "<html>...</html>"
      *         }
      */
-    post: operations['upload_preview_preview_upload_post'];
+    post: operations["upload_preview_preview_upload_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/preview/{article_id}.html': {
+  "/preview/{article_id}.html": {
     parameters: {
       query?: never;
       header?: never;
@@ -5331,7 +5331,7 @@ export interface paths {
      *
      *     Example: https://nuzantara-rag.fly.dev/preview/19d416944a15.html
      */
-    get: operations['get_preview_preview__article_id__html_get'];
+    get: operations["get_preview_preview__article_id__html_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -5340,7 +5340,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/preview/': {
+  "/preview/": {
     parameters: {
       query?: never;
       header?: never;
@@ -5351,7 +5351,7 @@ export interface paths {
      * Preview Index
      * @description List all available previews (dev only)
      */
-    get: operations['preview_index_preview__get'];
+    get: operations["preview_index_preview__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -5360,7 +5360,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/telegram/webhook': {
+  "/api/telegram/webhook": {
     parameters: {
       query?: never;
       header?: never;
@@ -5375,18 +5375,18 @@ export interface paths {
      *
      *     Receives updates from Telegram and processes messages using RAG.
      */
-    post: operations['telegram_webhook_api_telegram_webhook_post'];
+    post: operations["telegram_webhook_api_telegram_webhook_post"];
     /**
      * Delete Webhook
      * @description Remove Telegram webhook.
      */
-    delete: operations['delete_webhook_api_telegram_webhook_delete'];
+    delete: operations["delete_webhook_api_telegram_webhook_delete"];
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/telegram/setup-webhook': {
+  "/api/telegram/setup-webhook": {
     parameters: {
       query?: never;
       header?: never;
@@ -5401,14 +5401,14 @@ export interface paths {
      *
      *     If webhook_url is not provided, uses default Fly.io URL.
      */
-    post: operations['setup_webhook_api_telegram_setup_webhook_post'];
+    post: operations["setup_webhook_api_telegram_setup_webhook_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/telegram/webhook-info': {
+  "/api/telegram/webhook-info": {
     parameters: {
       query?: never;
       header?: never;
@@ -5419,7 +5419,7 @@ export interface paths {
      * Get Webhook Info
      * @description Get current webhook configuration.
      */
-    get: operations['get_webhook_info_api_telegram_webhook_info_get'];
+    get: operations["get_webhook_info_api_telegram_webhook_info_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -5428,7 +5428,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/telegram/bot-info': {
+  "/api/telegram/bot-info": {
     parameters: {
       query?: never;
       header?: never;
@@ -5439,7 +5439,7 @@ export interface paths {
      * Get Bot Info
      * @description Get bot information.
      */
-    get: operations['get_bot_info_api_telegram_bot_info_get'];
+    get: operations["get_bot_info_api_telegram_bot_info_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -5448,7 +5448,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/webhook/whatsapp': {
+  "/webhook/whatsapp": {
     parameters: {
       query?: never;
       header?: never;
@@ -5464,7 +5464,7 @@ export interface paths {
      *
      *     This is called during initial webhook setup in Meta Business Manager.
      */
-    get: operations['verify_webhook_webhook_whatsapp_get'];
+    get: operations["verify_webhook_webhook_whatsapp_get"];
     put?: never;
     /**
      * Whatsapp Webhook
@@ -5479,14 +5479,14 @@ export interface paths {
      *     3. Process in background (triage + RAG)
      *     4. Return 200 to Meta (within 5s)
      */
-    post: operations['whatsapp_webhook_webhook_whatsapp_post'];
+    post: operations["whatsapp_webhook_webhook_whatsapp_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/webhook/whatsapp/status': {
+  "/webhook/whatsapp/status": {
     parameters: {
       query?: never;
       header?: never;
@@ -5499,7 +5499,7 @@ export interface paths {
      *
      *     Public endpoint for health monitoring.
      */
-    get: operations['whatsapp_status_webhook_whatsapp_status_get'];
+    get: operations["whatsapp_status_webhook_whatsapp_status_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -5508,7 +5508,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/webhooks/openclaw/crm-logging': {
+  "/webhooks/openclaw/crm-logging": {
     parameters: {
       query?: never;
       header?: never;
@@ -5521,14 +5521,14 @@ export interface paths {
      * OpenClaw CRM Logging Webhook
      * @description Receives message logs from OpenClaw service for CRM tracking
      */
-    post: operations['openclaw_crm_logging_webhooks_openclaw_crm_logging_post'];
+    post: operations["openclaw_crm_logging_webhooks_openclaw_crm_logging_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/admin/messaging-identity/mappings': {
+  "/api/admin/messaging-identity/mappings": {
     parameters: {
       query?: never;
       header?: never;
@@ -5541,7 +5541,7 @@ export interface paths {
      *
      *     Admin only. Returns stats + recent mappings.
      */
-    get: operations['list_all_mappings_api_admin_messaging_identity_mappings_get'];
+    get: operations["list_all_mappings_api_admin_messaging_identity_mappings_get"];
     put?: never;
     /**
      * Create Mapping
@@ -5549,14 +5549,14 @@ export interface paths {
      *
      *     Admin only. Maps phone or telegram_chat_id to a user (team member or portal client).
      */
-    post: operations['create_mapping_api_admin_messaging_identity_mappings_post'];
+    post: operations["create_mapping_api_admin_messaging_identity_mappings_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/admin/messaging-identity/mappings/{user_id}': {
+  "/api/admin/messaging-identity/mappings/{user_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -5569,7 +5569,7 @@ export interface paths {
      *
      *     Admin only.
      */
-    get: operations['get_mappings_for_user_api_admin_messaging_identity_mappings__user_id__get'];
+    get: operations["get_mappings_for_user_api_admin_messaging_identity_mappings__user_id__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -5578,7 +5578,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/admin/messaging-identity/mappings/deactivate': {
+  "/api/admin/messaging-identity/mappings/deactivate": {
     parameters: {
       query?: never;
       header?: never;
@@ -5593,14 +5593,14 @@ export interface paths {
      *
      *     Admin only.
      */
-    post: operations['deactivate_mapping_api_admin_messaging_identity_mappings_deactivate_post'];
+    post: operations["deactivate_mapping_api_admin_messaging_identity_mappings_deactivate_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/admin/messaging-identity/lookup/phone/{phone}': {
+  "/api/admin/messaging-identity/lookup/phone/{phone}": {
     parameters: {
       query?: never;
       header?: never;
@@ -5613,7 +5613,7 @@ export interface paths {
      *
      *     Admin only. Returns mapping if exists (team member or portal client).
      */
-    get: operations['lookup_by_phone_api_admin_messaging_identity_lookup_phone__phone__get'];
+    get: operations["lookup_by_phone_api_admin_messaging_identity_lookup_phone__phone__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -5622,7 +5622,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/admin/messaging-identity/lookup/telegram/{chat_id}': {
+  "/api/admin/messaging-identity/lookup/telegram/{chat_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -5635,7 +5635,7 @@ export interface paths {
      *
      *     Admin only. Returns mapping if exists (team member or portal client).
      */
-    get: operations['lookup_by_telegram_api_admin_messaging_identity_lookup_telegram__chat_id__get'];
+    get: operations["lookup_by_telegram_api_admin_messaging_identity_lookup_telegram__chat_id__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -5644,7 +5644,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/integrations/zoho/auth/url': {
+  "/api/integrations/zoho/auth/url": {
     parameters: {
       query?: never;
       header?: never;
@@ -5658,7 +5658,7 @@ export interface paths {
      *     Returns URL to redirect user to Zoho login page.
      *     The state parameter includes user_id for CSRF protection.
      */
-    get: operations['get_auth_url_api_integrations_zoho_auth_url_get'];
+    get: operations["get_auth_url_api_integrations_zoho_auth_url_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -5667,7 +5667,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/integrations/zoho/callback': {
+  "/api/integrations/zoho/callback": {
     parameters: {
       query?: never;
       header?: never;
@@ -5681,7 +5681,7 @@ export interface paths {
      *     Exchanges authorization code for tokens and stores them.
      *     Redirects to /email page with success or error status.
      */
-    get: operations['oauth_callback_api_integrations_zoho_callback_get'];
+    get: operations["oauth_callback_api_integrations_zoho_callback_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -5690,7 +5690,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/integrations/zoho/status': {
+  "/api/integrations/zoho/status": {
     parameters: {
       query?: never;
       header?: never;
@@ -5703,7 +5703,7 @@ export interface paths {
      *
      *     Returns connection status with email and expiry information.
      */
-    get: operations['get_connection_status_api_integrations_zoho_status_get'];
+    get: operations["get_connection_status_api_integrations_zoho_status_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -5712,7 +5712,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/integrations/zoho/disconnect': {
+  "/api/integrations/zoho/disconnect": {
     parameters: {
       query?: never;
       header?: never;
@@ -5728,13 +5728,13 @@ export interface paths {
      *
      *     Revokes OAuth tokens and clears all stored data.
      */
-    delete: operations['disconnect_account_api_integrations_zoho_disconnect_delete'];
+    delete: operations["disconnect_account_api_integrations_zoho_disconnect_delete"];
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/integrations/zoho/folders': {
+  "/api/integrations/zoho/folders": {
     parameters: {
       query?: never;
       header?: never;
@@ -5747,7 +5747,7 @@ export interface paths {
      *
      *     Returns object with folders list and unread counts.
      */
-    get: operations['list_folders_api_integrations_zoho_folders_get'];
+    get: operations["list_folders_api_integrations_zoho_folders_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -5756,7 +5756,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/integrations/zoho/emails': {
+  "/api/integrations/zoho/emails": {
     parameters: {
       query?: never;
       header?: never;
@@ -5769,7 +5769,7 @@ export interface paths {
      *
      *     Returns emails with pagination info.
      */
-    get: operations['list_emails_api_integrations_zoho_emails_get'];
+    get: operations["list_emails_api_integrations_zoho_emails_get"];
     put?: never;
     /**
      * Send Email
@@ -5777,24 +5777,24 @@ export interface paths {
      *
      *     Supports HTML content, CC/BCC, and attachments.
      */
-    post: operations['send_email_api_integrations_zoho_emails_post'];
+    post: operations["send_email_api_integrations_zoho_emails_post"];
     /**
      * Delete Emails
      * @description Move emails to trash.
      *
      *     Supports bulk deletion of multiple messages.
      */
-    delete: operations['delete_emails_api_integrations_zoho_emails_delete'];
+    delete: operations["delete_emails_api_integrations_zoho_emails_delete"];
     /**
      * Options Emails
      * @description Handle OPTIONS requests for DELETE /emails endpoint.
      */
-    options: operations['options_emails_api_integrations_zoho_emails_options'];
+    options: operations["options_emails_api_integrations_zoho_emails_options"];
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/integrations/zoho/emails/{message_id}': {
+  "/api/integrations/zoho/emails/{message_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -5808,7 +5808,7 @@ export interface paths {
      *     Returns complete email with body and attachments.
      *     Automatically marks the email as read.
      */
-    get: operations['get_email_api_integrations_zoho_emails__message_id__get'];
+    get: operations["get_email_api_integrations_zoho_emails__message_id__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -5817,7 +5817,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/integrations/zoho/emails/search': {
+  "/api/integrations/zoho/emails/search": {
     parameters: {
       query?: never;
       header?: never;
@@ -5830,7 +5830,7 @@ export interface paths {
      *
      *     Returns matching emails.
      */
-    get: operations['search_emails_api_integrations_zoho_emails_search_get'];
+    get: operations["search_emails_api_integrations_zoho_emails_search_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -5839,7 +5839,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/integrations/zoho/emails/{message_id}/reply': {
+  "/api/integrations/zoho/emails/{message_id}/reply": {
     parameters: {
       query?: never;
       header?: never;
@@ -5854,14 +5854,14 @@ export interface paths {
      *
      *     Supports reply to sender only or reply all.
      */
-    post: operations['reply_email_api_integrations_zoho_emails__message_id__reply_post'];
+    post: operations["reply_email_api_integrations_zoho_emails__message_id__reply_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/integrations/zoho/emails/{message_id}/forward': {
+  "/api/integrations/zoho/emails/{message_id}/forward": {
     parameters: {
       query?: never;
       header?: never;
@@ -5876,14 +5876,14 @@ export interface paths {
      *
      *     Optionally add additional content to forwarded message.
      */
-    post: operations['forward_email_api_integrations_zoho_emails__message_id__forward_post'];
+    post: operations["forward_email_api_integrations_zoho_emails__message_id__forward_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/integrations/zoho/emails/mark-read': {
+  "/api/integrations/zoho/emails/mark-read": {
     parameters: {
       query?: never;
       header?: never;
@@ -5902,10 +5902,10 @@ export interface paths {
      *
      *     Supports bulk operation on multiple messages.
      */
-    patch: operations['mark_emails_read_api_integrations_zoho_emails_mark_read_patch'];
+    patch: operations["mark_emails_read_api_integrations_zoho_emails_mark_read_patch"];
     trace?: never;
   };
-  '/api/integrations/zoho/emails/{message_id}/flag': {
+  "/api/integrations/zoho/emails/{message_id}/flag": {
     parameters: {
       query?: never;
       header?: never;
@@ -5922,10 +5922,10 @@ export interface paths {
      * Toggle Flag
      * @description Flag or unflag an email.
      */
-    patch: operations['toggle_flag_api_integrations_zoho_emails__message_id__flag_patch'];
+    patch: operations["toggle_flag_api_integrations_zoho_emails__message_id__flag_patch"];
     trace?: never;
   };
-  '/api/integrations/zoho/emails/delete': {
+  "/api/integrations/zoho/emails/delete": {
     parameters: {
       query?: never;
       header?: never;
@@ -5940,14 +5940,14 @@ export interface paths {
      *
      *     Supports bulk deletion of multiple messages.
      */
-    post: operations['delete_emails_post_api_integrations_zoho_emails_delete_post'];
+    post: operations["delete_emails_post_api_integrations_zoho_emails_delete_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/integrations/zoho/drafts': {
+  "/api/integrations/zoho/drafts": {
     parameters: {
       query?: never;
       header?: never;
@@ -5960,14 +5960,14 @@ export interface paths {
      * Save Draft
      * @description Save an email as draft.
      */
-    post: operations['save_draft_api_integrations_zoho_drafts_post'];
+    post: operations["save_draft_api_integrations_zoho_drafts_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/integrations/zoho/attachments': {
+  "/api/integrations/zoho/attachments": {
     parameters: {
       query?: never;
       header?: never;
@@ -5981,14 +5981,14 @@ export interface paths {
      * @description Upload an attachment.
      *     Expects multipart/form-data with 'file' field.
      */
-    post: operations['upload_attachment_api_integrations_zoho_attachments_post'];
+    post: operations["upload_attachment_api_integrations_zoho_attachments_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/integrations/zoho/emails/{message_id}/attachments/{attachment_id}': {
+  "/api/integrations/zoho/emails/{message_id}/attachments/{attachment_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -6001,7 +6001,7 @@ export interface paths {
      *
      *     Returns attachment content as binary stream.
      */
-    get: operations['download_attachment_api_integrations_zoho_emails__message_id__attachments__attachment_id__get'];
+    get: operations["download_attachment_api_integrations_zoho_emails__message_id__attachments__attachment_id__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -6010,7 +6010,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/integrations/zoho/unread-count': {
+  "/api/integrations/zoho/unread-count": {
     parameters: {
       query?: never;
       header?: never;
@@ -6023,7 +6023,7 @@ export interface paths {
      *
      *     Useful for displaying badge in navigation.
      */
-    get: operations['get_unread_count_api_integrations_zoho_unread_count_get'];
+    get: operations["get_unread_count_api_integrations_zoho_unread_count_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -6032,7 +6032,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/integrations/google-drive/status': {
+  "/api/integrations/google-drive/status": {
     parameters: {
       query?: never;
       header?: never;
@@ -6043,7 +6043,7 @@ export interface paths {
      * Get Connection Status
      * @description Check if user has connected Google Drive.
      */
-    get: operations['get_connection_status_api_integrations_google_drive_status_get'];
+    get: operations["get_connection_status_api_integrations_google_drive_status_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -6052,7 +6052,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/integrations/google-drive/auth/url': {
+  "/api/integrations/google-drive/auth/url": {
     parameters: {
       query?: never;
       header?: never;
@@ -6065,7 +6065,7 @@ export interface paths {
      *
      *     Returns URL to redirect user to for Google consent.
      */
-    get: operations['get_auth_url_api_integrations_google_drive_auth_url_get'];
+    get: operations["get_auth_url_api_integrations_google_drive_auth_url_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -6074,7 +6074,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/integrations/google-drive/callback': {
+  "/api/integrations/google-drive/callback": {
     parameters: {
       query?: never;
       header?: never;
@@ -6087,7 +6087,7 @@ export interface paths {
      *
      *     Google redirects here after user grants consent.
      */
-    get: operations['oauth_callback_api_integrations_google_drive_callback_get'];
+    get: operations["oauth_callback_api_integrations_google_drive_callback_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -6096,7 +6096,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/integrations/google-drive/disconnect': {
+  "/api/integrations/google-drive/disconnect": {
     parameters: {
       query?: never;
       header?: never;
@@ -6109,14 +6109,14 @@ export interface paths {
      * Disconnect
      * @description Disconnect Google Drive for current user.
      */
-    post: operations['disconnect_api_integrations_google_drive_disconnect_post'];
+    post: operations["disconnect_api_integrations_google_drive_disconnect_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/integrations/google-drive/system/status': {
+  "/api/integrations/google-drive/system/status": {
     parameters: {
       query?: never;
       header?: never;
@@ -6128,7 +6128,7 @@ export interface paths {
      * @description Check if system-wide Google Drive OAuth is connected.
      *     This token is used by all team members for file operations.
      */
-    get: operations['get_system_status_api_integrations_google_drive_system_status_get'];
+    get: operations["get_system_status_api_integrations_google_drive_system_status_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -6137,7 +6137,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/integrations/google-drive/system/authorize': {
+  "/api/integrations/google-drive/system/authorize": {
     parameters: {
       query?: never;
       header?: never;
@@ -6151,7 +6151,7 @@ export interface paths {
      *     ADMIN ONLY: Only zero@balizero.com and antonellosiano@gmail.com can authorize.
      *     This connects antonellosiano@gmail.com's 30TB account for all team members.
      */
-    get: operations['get_system_auth_url_api_integrations_google_drive_system_authorize_get'];
+    get: operations["get_system_auth_url_api_integrations_google_drive_system_authorize_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -6160,7 +6160,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/integrations/google-drive/system/disconnect': {
+  "/api/integrations/google-drive/system/disconnect": {
     parameters: {
       query?: never;
       header?: never;
@@ -6175,14 +6175,14 @@ export interface paths {
      *
      *     ADMIN ONLY: Only admin emails can disconnect the SYSTEM account.
      */
-    post: operations['disconnect_system_api_integrations_google_drive_system_disconnect_post'];
+    post: operations["disconnect_system_api_integrations_google_drive_system_disconnect_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/integrations/google-drive/files': {
+  "/api/integrations/google-drive/files": {
     parameters: {
       query?: never;
       header?: never;
@@ -6195,7 +6195,7 @@ export interface paths {
      *
      *     Files are filtered based on user's Google Drive permissions.
      */
-    get: operations['list_files_api_integrations_google_drive_files_get'];
+    get: operations["list_files_api_integrations_google_drive_files_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -6204,7 +6204,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/integrations/google-drive/files/{file_id}': {
+  "/api/integrations/google-drive/files/{file_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -6215,7 +6215,7 @@ export interface paths {
      * Get File
      * @description Get file metadata.
      */
-    get: operations['get_file_api_integrations_google_drive_files__file_id__get'];
+    get: operations["get_file_api_integrations_google_drive_files__file_id__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -6224,7 +6224,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/integrations/google-drive/search': {
+  "/api/integrations/google-drive/search": {
     parameters: {
       query?: never;
       header?: never;
@@ -6235,7 +6235,7 @@ export interface paths {
      * Search Files
      * @description Search files by name.
      */
-    get: operations['search_files_api_integrations_google_drive_search_get'];
+    get: operations["search_files_api_integrations_google_drive_search_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -6244,7 +6244,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/integrations/google-drive/my-folder': {
+  "/api/integrations/google-drive/my-folder": {
     parameters: {
       query?: never;
       header?: never;
@@ -6257,7 +6257,7 @@ export interface paths {
      *
      *     Returns the folder matching user's name in the team structure.
      */
-    get: operations['get_my_folder_api_integrations_google_drive_my_folder_get'];
+    get: operations["get_my_folder_api_integrations_google_drive_my_folder_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -6266,7 +6266,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/documents/proxy/{file_id}': {
+  "/api/documents/proxy/{file_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -6284,7 +6284,7 @@ export interface paths {
      *     Returns:
      *         Binary file content with appropriate mime type
      */
-    get: operations['proxy_drive_file_api_documents_proxy__file_id__get'];
+    get: operations["proxy_drive_file_api_documents_proxy__file_id__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -6293,7 +6293,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/documents/thumbnail/{file_id}': {
+  "/api/documents/thumbnail/{file_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -6312,7 +6312,7 @@ export interface paths {
      *     Returns:
      *         JPEG thumbnail image
      */
-    get: operations['get_drive_thumbnail_api_documents_thumbnail__file_id__get'];
+    get: operations["get_drive_thumbnail_api_documents_thumbnail__file_id__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -6321,7 +6321,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/drive/status': {
+  "/api/drive/status": {
     parameters: {
       query?: never;
       header?: never;
@@ -6334,7 +6334,7 @@ export interface paths {
      *
      *     Shows OAuth status if connected (30TB quota).
      */
-    get: operations['drive_status_api_drive_status_get'];
+    get: operations["drive_status_api_drive_status_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -6343,7 +6343,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/drive/files': {
+  "/api/drive/files": {
     parameters: {
       query?: never;
       header?: never;
@@ -6359,7 +6359,7 @@ export interface paths {
      *     - If `q` is provided, searches for files matching the query
      *     - Otherwise, lists root-level folders filtered by permissions
      */
-    get: operations['list_files_api_drive_files_get'];
+    get: operations["list_files_api_drive_files_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -6368,7 +6368,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/drive/files/{file_id}': {
+  "/api/drive/files/{file_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -6379,20 +6379,20 @@ export interface paths {
      * Get File
      * @description Get metadata for a specific file.
      */
-    get: operations['get_file_api_drive_files__file_id__get'];
+    get: operations["get_file_api_drive_files__file_id__get"];
     put?: never;
     post?: never;
     /**
      * Delete File
      * @description Delete a file or folder (move to trash by default).
      */
-    delete: operations['delete_file_api_drive_files__file_id__delete'];
+    delete: operations["delete_file_api_drive_files__file_id__delete"];
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/drive/files/{file_id}/download': {
+  "/api/drive/files/{file_id}/download": {
     parameters: {
       query?: never;
       header?: never;
@@ -6406,7 +6406,7 @@ export interface paths {
      *     For Google Docs/Sheets/Slides, exports to PDF/XLSX.
      *     For regular files, downloads the content directly.
      */
-    get: operations['download_file_api_drive_files__file_id__download_get'];
+    get: operations["download_file_api_drive_files__file_id__download_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -6415,7 +6415,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/drive/folders/{folder_id}/path': {
+  "/api/drive/folders/{folder_id}/path": {
     parameters: {
       query?: never;
       header?: never;
@@ -6426,7 +6426,7 @@ export interface paths {
      * Get Folder Path
      * @description Get the breadcrumb path to a folder.
      */
-    get: operations['get_folder_path_api_drive_folders__folder_id__path_get'];
+    get: operations["get_folder_path_api_drive_folders__folder_id__path_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -6435,7 +6435,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/drive/search': {
+  "/api/drive/search": {
     parameters: {
       query?: never;
       header?: never;
@@ -6446,7 +6446,7 @@ export interface paths {
      * Search Files
      * @description Search for files by name.
      */
-    get: operations['search_files_api_drive_search_get'];
+    get: operations["search_files_api_drive_search_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -6455,7 +6455,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/drive/files/upload': {
+  "/api/drive/files/upload": {
     parameters: {
       query?: never;
       header?: never;
@@ -6468,14 +6468,14 @@ export interface paths {
      * Upload File
      * @description Upload a file to Google Drive.
      */
-    post: operations['upload_file_api_drive_files_upload_post'];
+    post: operations["upload_file_api_drive_files_upload_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/drive/folders': {
+  "/api/drive/folders": {
     parameters: {
       query?: never;
       header?: never;
@@ -6488,14 +6488,14 @@ export interface paths {
      * Create Folder
      * @description Create a new folder.
      */
-    post: operations['create_folder_api_drive_folders_post'];
+    post: operations["create_folder_api_drive_folders_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/drive/files/create': {
+  "/api/drive/files/create": {
     parameters: {
       query?: never;
       header?: never;
@@ -6508,14 +6508,14 @@ export interface paths {
      * Create Doc
      * @description Create a new Google Doc, Sheet, or Slides.
      */
-    post: operations['create_doc_api_drive_files_create_post'];
+    post: operations["create_doc_api_drive_files_create_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/drive/files/{file_id}/rename': {
+  "/api/drive/files/{file_id}/rename": {
     parameters: {
       query?: never;
       header?: never;
@@ -6532,10 +6532,10 @@ export interface paths {
      * Rename File
      * @description Rename a file or folder.
      */
-    patch: operations['rename_file_api_drive_files__file_id__rename_patch'];
+    patch: operations["rename_file_api_drive_files__file_id__rename_patch"];
     trace?: never;
   };
-  '/api/drive/files/{file_id}/move': {
+  "/api/drive/files/{file_id}/move": {
     parameters: {
       query?: never;
       header?: never;
@@ -6552,10 +6552,10 @@ export interface paths {
      * Move File
      * @description Move a file to a different folder.
      */
-    patch: operations['move_file_api_drive_files__file_id__move_patch'];
+    patch: operations["move_file_api_drive_files__file_id__move_patch"];
     trace?: never;
   };
-  '/api/drive/files/{file_id}/copy': {
+  "/api/drive/files/{file_id}/copy": {
     parameters: {
       query?: never;
       header?: never;
@@ -6568,14 +6568,14 @@ export interface paths {
      * Copy File
      * @description Copy a file.
      */
-    post: operations['copy_file_api_drive_files__file_id__copy_post'];
+    post: operations["copy_file_api_drive_files__file_id__copy_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/drive/files/{file_id}/permissions': {
+  "/api/drive/files/{file_id}/permissions": {
     parameters: {
       query?: never;
       header?: never;
@@ -6588,20 +6588,20 @@ export interface paths {
      *     All authenticated users can view who has access.
      *     Zero is hidden from other users (invisible admin).
      */
-    get: operations['list_permissions_api_drive_files__file_id__permissions_get'];
+    get: operations["list_permissions_api_drive_files__file_id__permissions_get"];
     put?: never;
     /**
      * Add Permission
      * @description Add permission for a user. All authenticated users can manage permissions.
      */
-    post: operations['add_permission_api_drive_files__file_id__permissions_post'];
+    post: operations["add_permission_api_drive_files__file_id__permissions_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/drive/files/{file_id}/permissions/{permission_id}': {
+  "/api/drive/files/{file_id}/permissions/{permission_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -6615,17 +6615,17 @@ export interface paths {
      * Remove Permission
      * @description Remove permission. All authenticated users can manage permissions.
      */
-    delete: operations['remove_permission_api_drive_files__file_id__permissions__permission_id__delete'];
+    delete: operations["remove_permission_api_drive_files__file_id__permissions__permission_id__delete"];
     options?: never;
     head?: never;
     /**
      * Update Permission
      * @description Update permission role. All authenticated users can manage permissions.
      */
-    patch: operations['update_permission_api_drive_files__file_id__permissions__permission_id__patch'];
+    patch: operations["update_permission_api_drive_files__file_id__permissions__permission_id__patch"];
     trace?: never;
   };
-  '/api/blog/newsletter/subscribe': {
+  "/api/blog/newsletter/subscribe": {
     parameters: {
       query?: never;
       header?: never;
@@ -6639,14 +6639,14 @@ export interface paths {
      * @description Subscribe to the newsletter.
      *     Creates a new subscriber and sends confirmation email.
      */
-    post: operations['subscribe_api_blog_newsletter_subscribe_post'];
+    post: operations["subscribe_api_blog_newsletter_subscribe_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/blog/newsletter/confirm': {
+  "/api/blog/newsletter/confirm": {
     parameters: {
       query?: never;
       header?: never;
@@ -6659,14 +6659,14 @@ export interface paths {
      * Confirm Subscription
      * @description Confirm a newsletter subscription using the token from email.
      */
-    post: operations['confirm_subscription_api_blog_newsletter_confirm_post'];
+    post: operations["confirm_subscription_api_blog_newsletter_confirm_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/blog/newsletter/unsubscribe': {
+  "/api/blog/newsletter/unsubscribe": {
     parameters: {
       query?: never;
       header?: never;
@@ -6679,14 +6679,14 @@ export interface paths {
      * Unsubscribe
      * @description Unsubscribe from the newsletter.
      */
-    post: operations['unsubscribe_api_blog_newsletter_unsubscribe_post'];
+    post: operations["unsubscribe_api_blog_newsletter_unsubscribe_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/blog/newsletter/preferences': {
+  "/api/blog/newsletter/preferences": {
     parameters: {
       query?: never;
       header?: never;
@@ -6703,10 +6703,10 @@ export interface paths {
      * Update Preferences
      * @description Update newsletter preferences.
      */
-    patch: operations['update_preferences_api_blog_newsletter_preferences_patch'];
+    patch: operations["update_preferences_api_blog_newsletter_preferences_patch"];
     trace?: never;
   };
-  '/api/blog/newsletter/subscribers': {
+  "/api/blog/newsletter/subscribers": {
     parameters: {
       query?: never;
       header?: never;
@@ -6717,7 +6717,7 @@ export interface paths {
      * List Subscribers
      * @description List newsletter subscribers (admin endpoint).
      */
-    get: operations['list_subscribers_api_blog_newsletter_subscribers_get'];
+    get: operations["list_subscribers_api_blog_newsletter_subscribers_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -6726,7 +6726,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/blog/newsletter/log': {
+  "/api/blog/newsletter/log": {
     parameters: {
       query?: never;
       header?: never;
@@ -6739,14 +6739,14 @@ export interface paths {
      * Log Newsletter Send
      * @description Log a newsletter send event (admin endpoint).
      */
-    post: operations['log_newsletter_send_api_blog_newsletter_log_post'];
+    post: operations["log_newsletter_send_api_blog_newsletter_log_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/blog/ask': {
+  "/api/blog/ask": {
     parameters: {
       query?: never;
       header?: never;
@@ -6762,14 +6762,14 @@ export interface paths {
      *     Allows visitors to ask questions about article topics.
      *     No authentication required.
      */
-    post: operations['ask_zantara_api_blog_ask_post'];
+    post: operations["ask_zantara_api_blog_ask_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/articles/compose': {
+  "/api/articles/compose": {
     parameters: {
       query?: never;
       header?: never;
@@ -6799,14 +6799,14 @@ export interface paths {
      *     - Next steps by profile
      *     - AI tags and summary
      */
-    post: operations['compose_article_api_articles_compose_post'];
+    post: operations["compose_article_api_articles_compose_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/articles/compose/status': {
+  "/api/articles/compose/status": {
     parameters: {
       query?: never;
       header?: never;
@@ -6817,7 +6817,7 @@ export interface paths {
      * Compose Status
      * @description Check if article composer is properly configured
      */
-    get: operations['compose_status_api_articles_compose_status_get'];
+    get: operations["compose_status_api_articles_compose_status_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -6826,7 +6826,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/articles/publish': {
+  "/api/articles/publish": {
     parameters: {
       query?: never;
       header?: never;
@@ -6842,14 +6842,14 @@ export interface paths {
      *     Creates MDX file and optionally uploads cover image via GitHub API.
      *     Triggers Vercel auto-deploy.
      */
-    post: operations['publish_article_api_articles_publish_post'];
+    post: operations["publish_article_api_articles_publish_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/articles/publish/status': {
+  "/api/articles/publish/status": {
     parameters: {
       query?: never;
       header?: never;
@@ -6860,7 +6860,7 @@ export interface paths {
      * Publish Status
      * @description Check if article publishing is properly configured
      */
-    get: operations['publish_status_api_articles_publish_status_get'];
+    get: operations["publish_status_api_articles_publish_status_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -6869,7 +6869,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/news': {
+  "/api/news": {
     parameters: {
       query?: never;
       header?: never;
@@ -6880,20 +6880,20 @@ export interface paths {
      * List News
      * @description List news items with filtering, search, and pagination.
      */
-    get: operations['list_news_api_news_get'];
+    get: operations["list_news_api_news_get"];
     put?: never;
     /**
      * Create News
      * @description Create a new news item (from scraper or manual)
      */
-    post: operations['create_news_api_news_post'];
+    post: operations["create_news_api_news_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/news/categories': {
+  "/api/news/categories": {
     parameters: {
       query?: never;
       header?: never;
@@ -6904,7 +6904,7 @@ export interface paths {
      * Get Categories
      * @description Get available news categories with counts
      */
-    get: operations['get_categories_api_news_categories_get'];
+    get: operations["get_categories_api_news_categories_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -6913,7 +6913,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/news/{slug}': {
+  "/api/news/{slug}": {
     parameters: {
       query?: never;
       header?: never;
@@ -6924,7 +6924,7 @@ export interface paths {
      * Get News By Slug
      * @description Get a single news item by slug and increment view count
      */
-    get: operations['get_news_by_slug_api_news__slug__get'];
+    get: operations["get_news_by_slug_api_news__slug__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -6933,7 +6933,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/news/bulk': {
+  "/api/news/bulk": {
     parameters: {
       query?: never;
       header?: never;
@@ -6946,14 +6946,14 @@ export interface paths {
      * Create News Bulk
      * @description Create multiple news items at once (for scraper batch uploads)
      */
-    post: operations['create_news_bulk_api_news_bulk_post'];
+    post: operations["create_news_bulk_api_news_bulk_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/news/{news_id}/status': {
+  "/api/news/{news_id}/status": {
     parameters: {
       query?: never;
       header?: never;
@@ -6970,10 +6970,10 @@ export interface paths {
      * Update News Status
      * @description Update news item status (approve/reject)
      */
-    patch: operations['update_news_status_api_news__news_id__status_patch'];
+    patch: operations["update_news_status_api_news__news_id__status_patch"];
     trace?: never;
   };
-  '/api/news/subscribe': {
+  "/api/news/subscribe": {
     parameters: {
       query?: never;
       header?: never;
@@ -6986,14 +6986,14 @@ export interface paths {
      * Subscribe To News
      * @description Subscribe to news alerts
      */
-    post: operations['subscribe_to_news_api_news_subscribe_post'];
+    post: operations["subscribe_to_news_api_news_subscribe_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/news/unsubscribe': {
+  "/api/news/unsubscribe": {
     parameters: {
       query?: never;
       header?: never;
@@ -7006,14 +7006,14 @@ export interface paths {
      * Unsubscribe From News
      * @description Unsubscribe from news alerts
      */
-    post: operations['unsubscribe_from_news_api_news_unsubscribe_post'];
+    post: operations["unsubscribe_from_news_api_news_unsubscribe_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/news/feed/rss': {
+  "/api/news/feed/rss": {
     parameters: {
       query?: never;
       header?: never;
@@ -7024,7 +7024,7 @@ export interface paths {
      * Get Rss Feed
      * @description Generate RSS feed for news items
      */
-    get: operations['get_rss_feed_api_news_feed_rss_get'];
+    get: operations["get_rss_feed_api_news_feed_rss_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -7033,7 +7033,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/performance/metrics': {
+  "/api/performance/metrics": {
     parameters: {
       query?: never;
       header?: never;
@@ -7044,7 +7044,7 @@ export interface paths {
      * Get Performance Metrics
      * @description Get performance metrics
      */
-    get: operations['get_performance_metrics_api_performance_metrics_get'];
+    get: operations["get_performance_metrics_api_performance_metrics_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -7053,7 +7053,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/performance/clear-cache': {
+  "/api/performance/clear-cache": {
     parameters: {
       query?: never;
       header?: never;
@@ -7066,14 +7066,14 @@ export interface paths {
      * Clear Caches
      * @description Clear all caches
      */
-    post: operations['clear_caches_api_performance_clear_cache_post'];
+    post: operations["clear_caches_api_performance_clear_cache_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/performance/clear-cache/embedding': {
+  "/api/performance/clear-cache/embedding": {
     parameters: {
       query?: never;
       header?: never;
@@ -7086,14 +7086,14 @@ export interface paths {
      * Clear Embedding Cache
      * @description Clear embedding cache only
      */
-    post: operations['clear_embedding_cache_api_performance_clear_cache_embedding_post'];
+    post: operations["clear_embedding_cache_api_performance_clear_cache_embedding_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/performance/clear-cache/search': {
+  "/api/performance/clear-cache/search": {
     parameters: {
       query?: never;
       header?: never;
@@ -7106,14 +7106,14 @@ export interface paths {
      * Clear Search Cache
      * @description Clear search cache only
      */
-    post: operations['clear_search_cache_api_performance_clear_cache_search_post'];
+    post: operations["clear_search_cache_api_performance_clear_cache_search_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/performance/cache/stats': {
+  "/api/performance/cache/stats": {
     parameters: {
       query?: never;
       header?: never;
@@ -7124,7 +7124,7 @@ export interface paths {
      * Get Cache Stats
      * @description Get cache statistics
      */
-    get: operations['get_cache_stats_api_performance_cache_stats_get'];
+    get: operations["get_cache_stats_api_performance_cache_stats_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -7133,7 +7133,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/dream/state': {
+  "/api/dream/state": {
     parameters: {
       query?: never;
       header?: never;
@@ -7146,14 +7146,14 @@ export interface paths {
      * Save State
      * @description Persist Dream Room state (Articles, Inspirations, etc.)
      */
-    post: operations['save_state_api_dream_state_post'];
+    post: operations["save_state_api_dream_state_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/dream/state/{user_id}': {
+  "/api/dream/state/{user_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -7164,7 +7164,7 @@ export interface paths {
      * Get State
      * @description Retrieve persisted state
      */
-    get: operations['get_state_api_dream_state__user_id__get'];
+    get: operations["get_state_api_dream_state__user_id__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -7173,7 +7173,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/dream/scrape': {
+  "/api/dream/scrape": {
     parameters: {
       query?: never;
       header?: never;
@@ -7187,14 +7187,14 @@ export interface paths {
      * @description Mock scraper for now.
      *     TODO: Integrate with Firecrawl or standard BeautifulSoup scraper.
      */
-    post: operations['scrape_url_api_dream_scrape_post'];
+    post: operations["scrape_url_api_dream_scrape_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/dream/ai/generate': {
+  "/api/dream/ai/generate": {
     parameters: {
       query?: never;
       header?: never;
@@ -7207,14 +7207,14 @@ export interface paths {
      * Generate Content
      * @description Generate content using Claude.
      */
-    post: operations['generate_content_api_dream_ai_generate_post'];
+    post: operations["generate_content_api_dream_ai_generate_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/auth/team/login': {
+  "/api/auth/team/login": {
     parameters: {
       query?: never;
       header?: never;
@@ -7238,14 +7238,14 @@ export interface paths {
      *     Returns:
      *         LoginResponse with JWT token and user data
      */
-    post: operations['team_login_api_auth_team_login_post'];
+    post: operations["team_login_api_auth_team_login_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/search': {
+  "/api/search": {
     parameters: {
       query?: never;
       header?: never;
@@ -7268,14 +7268,14 @@ export interface paths {
      *     REFACTORED: Now uses SearchService (canonical retriever) instead of KnowledgeService singleton.
      *     This ensures consistent RAG pipeline across chat agentic and /api/search endpoints.
      */
-    post: operations['semantic_search_api_search_post'];
+    post: operations["semantic_search_api_search_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/search/': {
+  "/api/search/": {
     parameters: {
       query?: never;
       header?: never;
@@ -7291,12 +7291,12 @@ export interface paths {
      * @description Explicit OPTIONS handler for CORS preflight requests.
      *     Fix for "Method Not Allowed" - ensures preflight requests succeed.
      */
-    options: operations['search_options_api_search__options'];
+    options: operations["search_options_api_search__options"];
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/search/health': {
+  "/api/search/health": {
     parameters: {
       query?: never;
       header?: never;
@@ -7307,7 +7307,7 @@ export interface paths {
      * Search Health
      * @description Quick health check for search service
      */
-    get: operations['search_health_api_search_health_get'];
+    get: operations["search_health_api_search_health_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -7316,7 +7316,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/search/debug/parent-documents/{document_id}': {
+  "/api/search/debug/parent-documents/{document_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -7327,7 +7327,7 @@ export interface paths {
      * Get Parent Documents Debug
      * @description DEBUG endpoint: Get parent documents (BAB) from PostgreSQL for a document
      */
-    get: operations['get_parent_documents_debug_api_search_debug_parent_documents__document_id__get'];
+    get: operations["get_parent_documents_debug_api_search_debug_parent_documents__document_id__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -7336,7 +7336,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/knowledge/visa/': {
+  "/api/knowledge/visa/": {
     parameters: {
       query?: never;
       header?: never;
@@ -7349,20 +7349,20 @@ export interface paths {
      *
      *     Categories: KITAS, KITAP, Tourist, Business, Social
      */
-    get: operations['list_visa_types_api_knowledge_visa__get'];
+    get: operations["list_visa_types_api_knowledge_visa__get"];
     put?: never;
     /**
      * Create Visa Type
      * @description Create a new visa type (admin only)
      */
-    post: operations['create_visa_type_api_knowledge_visa__post'];
+    post: operations["create_visa_type_api_knowledge_visa__post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/knowledge/visa/{visa_id}': {
+  "/api/knowledge/visa/{visa_id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -7373,12 +7373,12 @@ export interface paths {
      * Get Visa Type
      * @description Get a specific visa type by ID
      */
-    get: operations['get_visa_type_api_knowledge_visa__visa_id__get'];
+    get: operations["get_visa_type_api_knowledge_visa__visa_id__get"];
     /**
      * Update Visa Type
      * @description Update a visa type by ID
      */
-    put: operations['update_visa_type_api_knowledge_visa__visa_id__put'];
+    put: operations["update_visa_type_api_knowledge_visa__visa_id__put"];
     post?: never;
     delete?: never;
     options?: never;
@@ -7386,7 +7386,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/knowledge/visa/code/{code}': {
+  "/api/knowledge/visa/code/{code}": {
     parameters: {
       query?: never;
       header?: never;
@@ -7397,7 +7397,7 @@ export interface paths {
      * Get Visa By Code
      * @description Get a specific visa type by code (e.g., 'C316', 'KITAS-INVESTOR')
      */
-    get: operations['get_visa_by_code_api_knowledge_visa_code__code__get'];
+    get: operations["get_visa_by_code_api_knowledge_visa_code__code__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -7406,7 +7406,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/knowledge/activity/log': {
+  "/api/knowledge/activity/log": {
     parameters: {
       query?: never;
       header?: never;
@@ -7419,14 +7419,14 @@ export interface paths {
      * Log Knowledge Activity
      * @description Log a knowledge base view or download activity
      */
-    post: operations['log_knowledge_activity_api_knowledge_activity_log_post'];
+    post: operations["log_knowledge_activity_api_knowledge_activity_log_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/team/members': {
+  "/api/team/members": {
     parameters: {
       query?: never;
       header?: never;
@@ -7442,7 +7442,7 @@ export interface paths {
      *     2. Department-based visibility (all users in same department)
      *     3. Board/Founders see everyone
      */
-    get: operations['get_team_members_api_team_members_get'];
+    get: operations["get_team_members_api_team_members_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -7451,7 +7451,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/team/clock-in': {
+  "/api/team/clock-in": {
     parameters: {
       query?: never;
       header?: never;
@@ -7467,14 +7467,14 @@ export interface paths {
      *     Team members use this to start their work day.
      *     One clock-in per day allowed.
      */
-    post: operations['clock_in_api_team_clock_in_post'];
+    post: operations["clock_in_api_team_clock_in_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/team/clock-out': {
+  "/api/team/clock-out": {
     parameters: {
       query?: never;
       header?: never;
@@ -7490,14 +7490,14 @@ export interface paths {
      *     Team members use this to end their work day.
      *     Must be clocked in first.
      */
-    post: operations['clock_out_api_team_clock_out_post'];
+    post: operations["clock_out_api_team_clock_out_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/team/my-status': {
+  "/api/team/my-status": {
     parameters: {
       query?: never;
       header?: never;
@@ -7513,7 +7513,7 @@ export interface paths {
      *     - Today's hours worked
      *     - This week's summary
      */
-    get: operations['get_my_status_api_team_my_status_get'];
+    get: operations["get_my_status_api_team_my_status_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -7522,7 +7522,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/team/status': {
+  "/api/team/status": {
     parameters: {
       query?: never;
       header?: never;
@@ -7535,7 +7535,7 @@ export interface paths {
      *
      *     Shows who is currently clocked in and who is offline.
      */
-    get: operations['get_team_status_api_team_status_get'];
+    get: operations["get_team_status_api_team_status_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -7544,7 +7544,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/team/hours': {
+  "/api/team/hours": {
     parameters: {
       query?: never;
       header?: never;
@@ -7557,7 +7557,7 @@ export interface paths {
      *
      *     Returns all team members' work hours for the specified date.
      */
-    get: operations['get_daily_hours_api_team_hours_get'];
+    get: operations["get_daily_hours_api_team_hours_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -7566,7 +7566,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/team/activity/weekly': {
+  "/api/team/activity/weekly": {
     parameters: {
       query?: never;
       header?: never;
@@ -7579,7 +7579,7 @@ export interface paths {
      *
      *     Returns total hours, days worked, and averages for each team member.
      */
-    get: operations['get_weekly_summary_api_team_activity_weekly_get'];
+    get: operations["get_weekly_summary_api_team_activity_weekly_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -7588,7 +7588,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/team/activity/monthly': {
+  "/api/team/activity/monthly": {
     parameters: {
       query?: never;
       header?: never;
@@ -7601,7 +7601,7 @@ export interface paths {
      *
      *     Returns total hours, days worked, and averages for each team member.
      */
-    get: operations['get_monthly_summary_api_team_activity_monthly_get'];
+    get: operations["get_monthly_summary_api_team_activity_monthly_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -7610,7 +7610,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/team/export': {
+  "/api/team/export": {
     parameters: {
       query?: never;
       header?: never;
@@ -7623,7 +7623,7 @@ export interface paths {
      *
      *     Returns CSV file with all work hours in the specified date range.
      */
-    get: operations['export_timesheet_api_team_export_get'];
+    get: operations["export_timesheet_api_team_export_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -7632,7 +7632,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/team/health': {
+  "/api/team/health": {
     parameters: {
       query?: never;
       header?: never;
@@ -7643,7 +7643,7 @@ export interface paths {
      * Health Check
      * @description Health check for team activity service
      */
-    get: operations['health_check_api_team_health_get'];
+    get: operations["health_check_api_team_health_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -7652,7 +7652,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/team-analytics/patterns': {
+  "/api/team-analytics/patterns": {
     parameters: {
       query?: never;
       header?: never;
@@ -7663,7 +7663,7 @@ export interface paths {
      * Get Work Patterns
      * @description Analyze work hour patterns and habits
      */
-    get: operations['get_work_patterns_api_team_analytics_patterns_get'];
+    get: operations["get_work_patterns_api_team_analytics_patterns_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -7672,7 +7672,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/team-analytics/productivity': {
+  "/api/team-analytics/productivity": {
     parameters: {
       query?: never;
       header?: never;
@@ -7683,7 +7683,7 @@ export interface paths {
      * Get Productivity Scores
      * @description Calculate productivity scores for team members
      */
-    get: operations['get_productivity_scores_api_team_analytics_productivity_get'];
+    get: operations["get_productivity_scores_api_team_analytics_productivity_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -7692,7 +7692,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/team-analytics/burnout': {
+  "/api/team-analytics/burnout": {
     parameters: {
       query?: never;
       header?: never;
@@ -7703,7 +7703,7 @@ export interface paths {
      * Get Burnout Signals
      * @description Detect early warning signs of burnout
      */
-    get: operations['get_burnout_signals_api_team_analytics_burnout_get'];
+    get: operations["get_burnout_signals_api_team_analytics_burnout_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -7712,7 +7712,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/team-analytics/trends/{user_email}': {
+  "/api/team-analytics/trends/{user_email}": {
     parameters: {
       query?: never;
       header?: never;
@@ -7723,7 +7723,7 @@ export interface paths {
      * Get Performance Trends
      * @description Analyze performance trends over time
      */
-    get: operations['get_performance_trends_api_team_analytics_trends__user_email__get'];
+    get: operations["get_performance_trends_api_team_analytics_trends__user_email__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -7732,7 +7732,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/team-analytics/workload-balance': {
+  "/api/team-analytics/workload-balance": {
     parameters: {
       query?: never;
       header?: never;
@@ -7743,7 +7743,7 @@ export interface paths {
      * Get Workload Balance
      * @description Analyze workload distribution across team
      */
-    get: operations['get_workload_balance_api_team_analytics_workload_balance_get'];
+    get: operations["get_workload_balance_api_team_analytics_workload_balance_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -7752,7 +7752,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/team-analytics/optimal-hours': {
+  "/api/team-analytics/optimal-hours": {
     parameters: {
       query?: never;
       header?: never;
@@ -7763,7 +7763,7 @@ export interface paths {
      * Get Optimal Hours
      * @description Identify most productive time windows
      */
-    get: operations['get_optimal_hours_api_team_analytics_optimal_hours_get'];
+    get: operations["get_optimal_hours_api_team_analytics_optimal_hours_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -7772,7 +7772,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/team-analytics/team-insights': {
+  "/api/team-analytics/team-insights": {
     parameters: {
       query?: never;
       header?: never;
@@ -7783,7 +7783,7 @@ export interface paths {
      * Get Team Insights
      * @description Generate comprehensive team collaboration insights
      */
-    get: operations['get_team_insights_api_team_analytics_team_insights_get'];
+    get: operations["get_team_insights_api_team_analytics_team_insights_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -7792,7 +7792,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/media/generate-image': {
+  "/media/generate-image": {
     parameters: {
       query?: never;
       header?: never;
@@ -7808,14 +7808,14 @@ export interface paths {
      *     This endpoint always succeeds if prompt is valid, returning a pollinations.ai URL.
      *     No API key required.
      */
-    post: operations['generate_image_media_generate_image_post'];
+    post: operations["generate_image_media_generate_image_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/media/upload': {
+  "/media/upload": {
     parameters: {
       query?: never;
       header?: never;
@@ -7829,14 +7829,14 @@ export interface paths {
      * @description Upload a file (image, audio, doc) to the server.
      *     Returns the URL/path to the file.
      */
-    post: operations['upload_file_media_upload_post'];
+    post: operations["upload_file_media_upload_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/voice/query': {
+  "/api/voice/query": {
     parameters: {
       query?: never;
       header?: never;
@@ -7856,14 +7856,14 @@ export interface paths {
      *
      *     Expected latency: 5-8 seconds (vs 40s for agentic)
      */
-    post: operations['voice_query_api_voice_query_post'];
+    post: operations["voice_query_api_voice_query_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/voice/elevenlabs': {
+  "/api/voice/elevenlabs": {
     parameters: {
       query?: never;
       header?: never;
@@ -7879,18 +7879,18 @@ export interface paths {
      *     PUBLIC endpoint - no auth required for ElevenLabs to call.
      *     Returns: {"result": "text response"}
      */
-    post: operations['elevenlabs_webhook_api_voice_elevenlabs_post'];
+    post: operations["elevenlabs_webhook_api_voice_elevenlabs_post"];
     delete?: never;
     /**
      * Elevenlabs Options
      * @description CORS preflight for ElevenLabs webhook.
      */
-    options: operations['elevenlabs_options_api_voice_elevenlabs_options'];
+    options: operations["elevenlabs_options_api_voice_elevenlabs_options"];
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/v1/image/generate': {
+  "/api/v1/image/generate": {
     parameters: {
       query?: never;
       header?: never;
@@ -7909,14 +7909,14 @@ export interface paths {
      *     Returns:
      *         ImageGenerationResponse with generated images or error
      */
-    post: operations['generate_image_api_v1_image_generate_post'];
+    post: operations["generate_image_api_v1_image_generate_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/admin/logs/activity': {
+  "/api/admin/logs/activity": {
     parameters: {
       query?: never;
       header?: never;
@@ -7930,7 +7930,7 @@ export interface paths {
      *     Returns:
      *         Activity logs matching filters
      */
-    get: operations['get_activity_logs_api_admin_logs_activity_get'];
+    get: operations["get_activity_logs_api_admin_logs_activity_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -7939,7 +7939,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/admin/logs/interactions': {
+  "/api/admin/logs/interactions": {
     parameters: {
       query?: never;
       header?: never;
@@ -7953,7 +7953,7 @@ export interface paths {
      *     Returns:
      *         Team interactions matching filters
      */
-    get: operations['get_team_interactions_api_admin_logs_interactions_get'];
+    get: operations["get_team_interactions_api_admin_logs_interactions_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -7962,7 +7962,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/admin/logs/api-audit': {
+  "/api/admin/logs/api-audit": {
     parameters: {
       query?: never;
       header?: never;
@@ -7976,7 +7976,7 @@ export interface paths {
      *     Returns:
      *         API calls matching filters
      */
-    get: operations['get_api_audit_trail_api_admin_logs_api_audit_get'];
+    get: operations["get_api_audit_trail_api_admin_logs_api_audit_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -7985,7 +7985,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/admin/logs/summary/today': {
+  "/api/admin/logs/summary/today": {
     parameters: {
       query?: never;
       header?: never;
@@ -7999,7 +7999,7 @@ export interface paths {
      *     Returns:
      *         Summary of today's activity by team member
      */
-    get: operations['get_today_summary_api_admin_logs_summary_today_get'];
+    get: operations["get_today_summary_api_admin_logs_summary_today_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -8008,7 +8008,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/admin/logs/summary/interactions': {
+  "/api/admin/logs/summary/interactions": {
     parameters: {
       query?: never;
       header?: never;
@@ -8022,7 +8022,7 @@ export interface paths {
      *     Returns:
      *         Summary of team interactions over specified period
      */
-    get: operations['get_interactions_summary_api_admin_logs_summary_interactions_get'];
+    get: operations["get_interactions_summary_api_admin_logs_summary_interactions_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -8031,7 +8031,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/admin/team-activity/overview': {
+  "/api/admin/team-activity/overview": {
     parameters: {
       query?: never;
       header?: never;
@@ -8042,7 +8042,7 @@ export interface paths {
      * Get Overview
      * @description Get overview statistics for team activity
      */
-    get: operations['get_overview_api_admin_team_activity_overview_get'];
+    get: operations["get_overview_api_admin_team_activity_overview_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -8051,7 +8051,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/admin/team-activity/messages': {
+  "/api/admin/team-activity/messages": {
     parameters: {
       query?: never;
       header?: never;
@@ -8062,7 +8062,7 @@ export interface paths {
      * Get Messages
      * @description Get messages from v_messages view with filters
      */
-    get: operations['get_messages_api_admin_team_activity_messages_get'];
+    get: operations["get_messages_api_admin_team_activity_messages_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -8071,7 +8071,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/admin/team-activity/team-stats': {
+  "/api/admin/team-activity/team-stats": {
     parameters: {
       query?: never;
       header?: never;
@@ -8082,7 +8082,7 @@ export interface paths {
      * Get Team Stats
      * @description Get detailed stats for each team member
      */
-    get: operations['get_team_stats_api_admin_team_activity_team_stats_get'];
+    get: operations["get_team_stats_api_admin_team_activity_team_stats_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -8091,7 +8091,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/admin/team-activity/timesheet': {
+  "/api/admin/team-activity/timesheet": {
     parameters: {
       query?: never;
       header?: never;
@@ -8102,7 +8102,7 @@ export interface paths {
      * Get Timesheet
      * @description Get timesheet records
      */
-    get: operations['get_timesheet_api_admin_team_activity_timesheet_get'];
+    get: operations["get_timesheet_api_admin_team_activity_timesheet_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -8111,7 +8111,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/admin/team-activity/crm-actions': {
+  "/api/admin/team-activity/crm-actions": {
     parameters: {
       query?: never;
       header?: never;
@@ -8122,7 +8122,7 @@ export interface paths {
      * Get Crm Actions
      * @description Get CRM activity log
      */
-    get: operations['get_crm_actions_api_admin_team_activity_crm_actions_get'];
+    get: operations["get_crm_actions_api_admin_team_activity_crm_actions_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -8131,7 +8131,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/admin/team-activity/export/messages': {
+  "/api/admin/team-activity/export/messages": {
     parameters: {
       query?: never;
       header?: never;
@@ -8142,7 +8142,7 @@ export interface paths {
      * Export Messages
      * @description Export messages as CSV
      */
-    get: operations['export_messages_api_admin_team_activity_export_messages_get'];
+    get: operations["export_messages_api_admin_team_activity_export_messages_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -8151,7 +8151,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/dashboard/featured-articles': {
+  "/api/dashboard/featured-articles": {
     parameters: {
       query?: never;
       header?: never;
@@ -8165,7 +8165,7 @@ export interface paths {
      *     Currently returns static articles from balizero.com.
      *     Can be extended to fetch from database or external API.
      */
-    get: operations['get_featured_articles_api_dashboard_featured_articles_get'];
+    get: operations["get_featured_articles_api_dashboard_featured_articles_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -8174,7 +8174,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/dashboard/summary': {
+  "/api/dashboard/summary": {
     parameters: {
       query?: never;
       header?: never;
@@ -8187,7 +8187,7 @@ export interface paths {
      *
      *     Replaces 7 separate API calls with 1 optimized call.
      */
-    get: operations['get_dashboard_summary_api_dashboard_summary_get'];
+    get: operations["get_dashboard_summary_api_dashboard_summary_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -8196,7 +8196,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/dashboard/neural-pulse': {
+  "/api/dashboard/neural-pulse": {
     parameters: {
       query?: never;
       header?: never;
@@ -8208,7 +8208,7 @@ export interface paths {
      * @description Get real-time AI status metrics (Neural Pulse).
      *     Cached for 60 seconds to reduce load.
      */
-    get: operations['get_neural_pulse_api_dashboard_neural_pulse_get'];
+    get: operations["get_neural_pulse_api_dashboard_neural_pulse_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -8217,7 +8217,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/': {
+  "/": {
     parameters: {
       query?: never;
       header?: never;
@@ -8228,7 +8228,7 @@ export interface paths {
      * Root
      * @description Root endpoint - health check
      */
-    get: operations['root__get'];
+    get: operations["root__get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -8237,7 +8237,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/csrf-token': {
+  "/api/csrf-token": {
     parameters: {
       query?: never;
       header?: never;
@@ -8249,7 +8249,7 @@ export interface paths {
      * @description Generate CSRF token and session ID for frontend security.
      *     Returns token in both JSON body and response headers.
      */
-    get: operations['get_csrf_token_api_csrf_token_get'];
+    get: operations["get_csrf_token_api_csrf_token_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -8258,7 +8258,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/dashboard/stats': {
+  "/api/dashboard/stats": {
     parameters: {
       query?: never;
       header?: never;
@@ -8271,7 +8271,7 @@ export interface paths {
      *
      *     PRODUCTION: Returns actual statistics from database and services.
      */
-    get: operations['get_dashboard_stats_api_dashboard_stats_get'];
+    get: operations["get_dashboard_stats_api_dashboard_stats_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -8280,7 +8280,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/audio/transcribe': {
+  "/api/audio/transcribe": {
     parameters: {
       query?: never;
       header?: never;
@@ -8293,14 +8293,14 @@ export interface paths {
      * Transcribe Audio
      * @description Transcribe uploaded audio file to text.
      */
-    post: operations['transcribe_audio_api_audio_transcribe_post'];
+    post: operations["transcribe_audio_api_audio_transcribe_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/audio/speech': {
+  "/api/audio/speech": {
     parameters: {
       query?: never;
       header?: never;
@@ -8313,14 +8313,14 @@ export interface paths {
      * Generate Speech
      * @description Generate speech from text (TTS). Returns audio/mpeg stream.
      */
-    post: operations['generate_speech_api_audio_speech_post'];
+    post: operations["generate_speech_api_audio_speech_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/bali-zero/chat-stream': {
+  "/bali-zero/chat-stream": {
     parameters: {
       query?: never;
       header?: never;
@@ -8331,7 +8331,7 @@ export interface paths {
      * Bali Zero Chat Stream
      * @description Streaming chat endpoint using IntelligentRouter for RAG-based responses.
      */
-    get: operations['bali_zero_chat_stream_bali_zero_chat_stream_get'];
+    get: operations["bali_zero_chat_stream_bali_zero_chat_stream_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -8340,7 +8340,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/v2/bali-zero/chat-stream': {
+  "/api/v2/bali-zero/chat-stream": {
     parameters: {
       query?: never;
       header?: never;
@@ -8351,7 +8351,7 @@ export interface paths {
      * Bali Zero Chat Stream
      * @description Streaming chat endpoint using IntelligentRouter for RAG-based responses.
      */
-    get: operations['bali_zero_chat_stream_api_v2_bali_zero_chat_stream_get'];
+    get: operations["bali_zero_chat_stream_api_v2_bali_zero_chat_stream_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -8360,7 +8360,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/chat/stream': {
+  "/api/chat/stream": {
     parameters: {
       query?: never;
       header?: never;
@@ -8374,14 +8374,14 @@ export interface paths {
      * @description Modern POST endpoint for chat streaming (JSON body).
      *     Compatible with frontend Next.js client.
      */
-    post: operations['chat_stream_post_api_chat_stream_post'];
+    post: operations["chat_stream_post_api_chat_stream_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/api/admin/system-health': {
+  "/api/admin/system-health": {
     parameters: {
       query?: never;
       header?: never;
@@ -8399,7 +8399,7 @@ export interface paths {
      *     - API (Self-check)
      *     - System Metrics (CPU, RAM, Disk, Uptime)
      */
-    get: operations['get_system_health_api_admin_system_health_get'];
+    get: operations["get_system_health_api_admin_system_health_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -8408,7 +8408,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/admin/postgres/tables': {
+  "/api/admin/postgres/tables": {
     parameters: {
       query?: never;
       header?: never;
@@ -8419,7 +8419,7 @@ export interface paths {
      * Get Postgres Tables
      * @description List all public tables in PostgreSQL (ADMIN ONLY)
      */
-    get: operations['get_postgres_tables_api_admin_postgres_tables_get'];
+    get: operations["get_postgres_tables_api_admin_postgres_tables_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -8428,7 +8428,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/admin/postgres/data': {
+  "/api/admin/postgres/data": {
     parameters: {
       query?: never;
       header?: never;
@@ -8439,7 +8439,7 @@ export interface paths {
      * Get Table Data
      * @description Get raw data from a table (ADMIN ONLY)
      */
-    get: operations['get_table_data_api_admin_postgres_data_get'];
+    get: operations["get_table_data_api_admin_postgres_data_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -8448,7 +8448,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/admin/qdrant/collections': {
+  "/api/admin/qdrant/collections": {
     parameters: {
       query?: never;
       header?: never;
@@ -8459,7 +8459,7 @@ export interface paths {
      * Get Qdrant Collections
      * @description List Qdrant collections with stats (ADMIN ONLY)
      */
-    get: operations['get_qdrant_collections_api_admin_qdrant_collections_get'];
+    get: operations["get_qdrant_collections_api_admin_qdrant_collections_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -8468,7 +8468,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/admin/qdrant/points': {
+  "/api/admin/qdrant/points": {
     parameters: {
       query?: never;
       header?: never;
@@ -8479,7 +8479,7 @@ export interface paths {
      * Get Qdrant Points
      * @description Browse Qdrant points (ADMIN ONLY)
      */
-    get: operations['get_qdrant_points_api_admin_qdrant_points_get'];
+    get: operations["get_qdrant_points_api_admin_qdrant_points_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -8488,7 +8488,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/metrics': {
+  "/metrics": {
     parameters: {
       query?: never;
       header?: never;
@@ -8499,7 +8499,7 @@ export interface paths {
      * Metrics
      * @description Endpoint that serves Prometheus metrics.
      */
-    get: operations['metrics_metrics_get'];
+    get: operations["metrics_metrics_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -8635,13 +8635,15 @@ export interface components {
        */
       enable_vision: boolean | null;
       /** Images */
-      images?: components['schemas']['ImageInput'][] | null;
+      images?: components["schemas"]["ImageInput"][] | null;
       /** Session Id */
       session_id?: string | null;
       /** Conversation Id */
       conversation_id?: number | null;
       /** Conversation History */
-      conversation_history?: components['schemas']['ConversationMessageInput'][] | null;
+      conversation_history?:
+        | components["schemas"]["ConversationMessageInput"][]
+        | null;
     };
     /** AgenticQueryResponse */
     AgenticQueryResponse: {
@@ -8788,7 +8790,7 @@ export interface components {
       /** Failed */
       failed: number;
       /** Results */
-      results: components['schemas']['BookIngestionResponse'][];
+      results: components["schemas"]["BookIngestionResponse"][];
       /** Execution Time Seconds */
       execution_time_seconds: number;
     };
@@ -8904,7 +8906,7 @@ export interface components {
        * @default en
        */
       language: string;
-      tier_override?: components['schemas']['TierLevel'] | null;
+      tier_override?: components["schemas"]["TierLevel"] | null;
     };
     /**
      * BookIngestionResponse
@@ -8917,7 +8919,7 @@ export interface components {
       book_title: string;
       /** Book Author */
       book_author: string;
-      tier: components['schemas']['TierLevel'];
+      tier: components["schemas"]["TierLevel"];
       /** Chunks Created */
       chunks_created: number;
       /** Message */
@@ -8970,7 +8972,7 @@ export interface components {
       book_title: string;
       /** Book Author */
       book_author: string;
-      tier: components['schemas']['TierLevel'];
+      tier: components["schemas"]["TierLevel"];
       /** Min Level */
       min_level: number;
       /** Chunk Index */
@@ -9297,9 +9299,9 @@ export interface components {
     ComposeResponse: {
       /** Success */
       success: boolean;
-      article?: components['schemas']['EnrichedArticle'] | null;
+      article?: components["schemas"]["EnrichedArticle"] | null;
       /** Error */
-      error?: components['schemas']['APIError'] | string | null;
+      error?: components["schemas"]["APIError"] | string | null;
       /**
        * Api Cost Cents
        * @default 0
@@ -9414,7 +9416,7 @@ export interface components {
        * Conversations
        * @default []
        */
-      conversations: components['schemas']['ConversationListItem'][];
+      conversations: components["schemas"]["ConversationListItem"][];
       /**
        * Total
        * @default 0
@@ -9747,11 +9749,11 @@ export interface components {
       title: string;
       /** Headline */
       headline: string;
-      tldr: components['schemas']['TLDRSection'];
+      tldr: components["schemas"]["TLDRSection"];
       /** Facts */
       facts: string;
-      bali_zero_take: components['schemas']['BaliZeroTake'];
-      next_steps: components['schemas']['NextSteps'];
+      bali_zero_take: components["schemas"]["BaliZeroTake"];
+      next_steps: components["schemas"]["NextSteps"];
       /** Category */
       category: string;
       /** Priority */
@@ -9918,7 +9920,7 @@ export interface components {
      */
     FileListResponse: {
       /** Files */
-      files: components['schemas']['FileItem'][];
+      files: components["schemas"]["FileItem"][];
       /** Next Page Token */
       next_page_token?: string | null;
       /**
@@ -9970,7 +9972,7 @@ export interface components {
     /** HTTPValidationError */
     HTTPValidationError: {
       /** Detail */
-      detail?: components['schemas']['ValidationError'][];
+      detail?: components["schemas"]["ValidationError"][];
     };
     /**
      * HealthResponse
@@ -10054,7 +10056,7 @@ export interface components {
        * Documents
        * @description List of document chunks to ingest
        */
-      documents: components['schemas']['DocumentChunk'][];
+      documents: components["schemas"]["DocumentChunk"][];
       /**
        * Batch Size
        * @description Batch size for ingestion
@@ -10245,7 +10247,7 @@ export interface components {
       /** Risk Profile */
       risk_profile: string;
       /** Licenses */
-      licenses: components['schemas']['KBLILicense'][];
+      licenses: components["schemas"]["KBLILicense"][];
       /**
        * Related Codes
        * @default []
@@ -10279,7 +10281,7 @@ export interface components {
       /** Detected Kbli */
       detected_kbli: string[];
       /** Results */
-      results: components['schemas']['KBLISearchResult'][];
+      results: components["schemas"]["KBLISearchResult"][];
       /** Sources */
       sources: {
         [key: string]: unknown;
@@ -10320,7 +10322,7 @@ export interface components {
        * Action Type
        * @enum {string}
        */
-      action_type: 'view' | 'download';
+      action_type: "view" | "download";
       /** Resource Type */
       resource_type: string;
       /** Resource Id */
@@ -10537,7 +10539,7 @@ export interface components {
       /** Success */
       success: boolean;
       /** Data */
-      data: components['schemas']['NewsItemResponse'][];
+      data: components["schemas"]["NewsItemResponse"][];
       /** Total */
       total: number;
       /** Page */
@@ -10571,7 +10573,7 @@ export interface components {
       };
       /** Islands */
       islands: {
-        [key: string]: components['schemas']['IslandHealth'];
+        [key: string]: components["schemas"]["IslandHealth"];
       };
     };
     /**
@@ -10636,7 +10638,7 @@ export interface components {
        */
       media_type?: string | null;
       /** @description Additional metadata */
-      metadata?: components['schemas']['OpenClawMetadata'] | null;
+      metadata?: components["schemas"]["OpenClawMetadata"] | null;
     };
     /**
      * OperationResponse
@@ -10645,7 +10647,9 @@ export interface components {
     OperationResponse: {
       /** Success */
       success: boolean;
-      file?: components['schemas']['backend__app__routers__team_drive__FileItem'] | null;
+      file?:
+        | components["schemas"]["backend__app__routers__team_drive__FileItem"]
+        | null;
       /** Message */
       message?: string | null;
     };
@@ -10712,7 +10716,9 @@ export interface components {
        * Conversation History
        * @description Previous messages in this conversation for context continuity
        */
-      conversation_history?: components['schemas']['ConversationMessage'][] | null;
+      conversation_history?:
+        | components["schemas"]["ConversationMessage"][]
+        | null;
     };
     /**
      * OracleQueryResponse
@@ -10751,7 +10757,7 @@ export interface components {
       domain_confidence?: {
         [key: string]: number;
       } | null;
-      user_profile?: components['schemas']['UserProfile'] | null;
+      user_profile?: components["schemas"]["UserProfile"] | null;
       /** Language Detected */
       language_detected?: string | null;
       /** Execution Time Ms */
@@ -11032,7 +11038,7 @@ export interface components {
      * @description Request to publish an article to the site
      */
     PublishRequest: {
-      article: components['schemas']['EnrichedArticle'];
+      article: components["schemas"]["EnrichedArticle"];
       /**
        * Cover Image Base64
        * @description Cover image as base64 encoded string
@@ -11310,7 +11316,7 @@ export interface components {
        * Attachment Ids
        * @description Attachments
        */
-      attachment_ids?: components['schemas']['AttachmentObject'][] | null;
+      attachment_ids?: components["schemas"]["AttachmentObject"][] | null;
     };
     /**
      * ScraperSubmission
@@ -11397,7 +11403,7 @@ export interface components {
        * Tier Filter
        * @description Filter by specific tiers
        */
-      tier_filter?: components['schemas']['TierLevel'][] | null;
+      tier_filter?: components["schemas"]["TierLevel"][] | null;
       /**
        * Collection
        * @description Optional specific collection to search
@@ -11412,7 +11418,7 @@ export interface components {
       /** Query */
       query: string;
       /** Results */
-      results: components['schemas']['SearchResult'][];
+      results: components["schemas"]["SearchResult"][];
       /** Total Found */
       total_found: number;
       /** User Level */
@@ -11427,7 +11433,7 @@ export interface components {
     SearchResult: {
       /** Text */
       text: string;
-      metadata: components['schemas']['ChunkMetadata'];
+      metadata: components["schemas"]["ChunkMetadata"];
       /** Similarity Score */
       similarity_score: number;
     };
@@ -11475,7 +11481,7 @@ export interface components {
        * Attachment Ids
        * @description Attachments
        */
-      attachment_ids?: components['schemas']['AttachmentObject'][] | null;
+      attachment_ids?: components["schemas"]["AttachmentObject"][] | null;
       /**
        * Is Html
        * @description Whether content is HTML
@@ -11765,7 +11771,7 @@ export interface components {
      * @description Book tier classifications
      * @enum {string}
      */
-    TierLevel: 'S' | 'A' | 'B' | 'C' | 'D';
+    TierLevel: "S" | "A" | "B" | "C" | "D";
     /**
      * UnsubscribeRequest
      * @description Unsubscribe request
@@ -12072,7 +12078,7 @@ export interface components {
      */
     VisaTypeListResponse: {
       /** Items */
-      items: components['schemas']['VisaTypeResponse'][];
+      items: components["schemas"]["VisaTypeResponse"][];
       /** Total */
       total: number;
       /** Categories */
@@ -12296,7 +12302,7 @@ export interface components {
       /** Id */
       id: string;
       /** Changes */
-      changes: components['schemas']['WhatsAppChange'][];
+      changes: components["schemas"]["WhatsAppChange"][];
     };
     /**
      * WhatsAppWebhook
@@ -12306,7 +12312,7 @@ export interface components {
       /** Object */
       object: string;
       /** Entry */
-      entry: components['schemas']['WhatsAppEntry'][];
+      entry: components["schemas"]["WhatsAppEntry"][];
     };
     /**
      * LoginRequest
@@ -12388,7 +12394,7 @@ export interface components {
      */
     backend__app__routers__team_drive__FileListResponse: {
       /** Files */
-      files: components['schemas']['backend__app__routers__team_drive__FileItem'][];
+      files: components["schemas"]["backend__app__routers__team_drive__FileItem"][];
       /** Next Page Token */
       next_page_token?: string | null;
     };
@@ -12410,7 +12416,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['LoginRequest'];
+        "application/json": components["schemas"]["LoginRequest"];
       };
     };
     responses: {
@@ -12420,7 +12426,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['LoginResponse'];
+          "application/json": components["schemas"]["LoginResponse"];
         };
       };
       /** @description Validation Error */
@@ -12429,7 +12435,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -12449,7 +12455,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['UserProfile'];
+          "application/json": components["schemas"]["UserProfile"];
         };
       };
     };
@@ -12469,7 +12475,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -12489,7 +12495,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -12509,7 +12515,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -12529,7 +12535,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['LoginResponse'];
+          "application/json": components["schemas"]["LoginResponse"];
         };
       };
     };
@@ -12549,7 +12555,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HealthResponse'];
+          "application/json": components["schemas"]["HealthResponse"];
         };
       };
     };
@@ -12569,7 +12575,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -12591,7 +12597,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -12613,7 +12619,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -12635,7 +12641,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -12657,7 +12663,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['NusantaraHealth'];
+          "application/json": components["schemas"]["NusantaraHealth"];
         };
       };
     };
@@ -12677,7 +12683,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -12699,7 +12705,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -12708,7 +12714,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -12730,7 +12736,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -12739,7 +12745,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -12761,7 +12767,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -12772,7 +12778,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -12799,7 +12805,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -12810,7 +12816,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -12830,7 +12836,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -12852,7 +12858,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -12877,7 +12883,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -12888,7 +12894,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -12908,7 +12914,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -12932,7 +12938,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -12943,7 +12949,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -12965,7 +12971,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -12976,7 +12982,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -12998,7 +13004,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -13009,7 +13015,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -13029,7 +13035,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -13051,7 +13057,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -13075,7 +13081,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -13086,7 +13092,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -13108,7 +13114,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -13119,7 +13125,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -13142,7 +13148,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -13153,7 +13159,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -13173,7 +13179,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -13195,7 +13201,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -13220,7 +13226,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -13231,7 +13237,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -13256,7 +13262,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -13267,7 +13273,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -13290,7 +13296,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -13301,7 +13307,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -13324,7 +13330,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -13335,7 +13341,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -13355,7 +13361,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -13371,7 +13377,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['QueryRequest'];
+        "application/json": components["schemas"]["QueryRequest"];
       };
     };
     responses: {
@@ -13381,7 +13387,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -13392,7 +13398,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -13415,7 +13421,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -13426,7 +13432,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -13446,7 +13452,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -13468,7 +13474,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -13490,7 +13496,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -13510,7 +13516,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -13524,7 +13530,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['CreateJourneyRequest'];
+        "application/json": components["schemas"]["CreateJourneyRequest"];
       };
     };
     responses: {
@@ -13534,7 +13540,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -13543,7 +13549,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -13565,7 +13571,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -13574,7 +13580,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -13599,7 +13605,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -13608,7 +13614,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -13630,7 +13636,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -13639,7 +13645,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -13653,7 +13659,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['AddComplianceItemRequest'];
+        "application/json": components["schemas"]["AddComplianceItemRequest"];
       };
     };
     responses: {
@@ -13663,7 +13669,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -13672,7 +13678,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -13696,7 +13702,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -13705,7 +13711,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -13727,7 +13733,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -13736,7 +13742,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -13759,7 +13765,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -13768,7 +13774,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -13790,7 +13796,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -13799,7 +13805,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -13815,7 +13821,7 @@ export interface operations {
     };
     requestBody?: {
       content: {
-        'application/json': string[] | null;
+        "application/json": string[] | null;
       };
     };
     responses: {
@@ -13825,7 +13831,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -13834,7 +13840,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -13854,7 +13860,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -13878,7 +13884,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -13887,7 +13893,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -13911,7 +13917,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -13920,7 +13926,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -13937,7 +13943,7 @@ export interface operations {
     };
     requestBody?: {
       content: {
-        'application/json': string[] | null;
+        "application/json": string[] | null;
       };
     };
     responses: {
@@ -13947,7 +13953,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -13956,7 +13962,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -13976,7 +13982,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -13999,7 +14005,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['AgentExecutionResponse'];
+          "application/json": components["schemas"]["AgentExecutionResponse"];
         };
       };
       /** @description Validation Error */
@@ -14008,7 +14014,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -14028,7 +14034,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['AgentExecutionResponse'];
+          "application/json": components["schemas"]["AgentExecutionResponse"];
         };
       };
     };
@@ -14053,7 +14059,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['AgentExecutionResponse'];
+          "application/json": components["schemas"]["AgentExecutionResponse"];
         };
       };
       /** @description Validation Error */
@@ -14062,7 +14068,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -14087,7 +14093,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -14096,7 +14102,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -14119,7 +14125,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -14128,7 +14134,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -14148,7 +14154,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -14170,7 +14176,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['AgentExecutionResponse'];
+          "application/json": components["schemas"]["AgentExecutionResponse"];
         };
       };
       /** @description Validation Error */
@@ -14179,7 +14185,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -14201,7 +14207,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -14210,7 +14216,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -14230,7 +14236,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -14252,7 +14258,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -14261,7 +14267,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -14283,7 +14289,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -14292,7 +14298,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -14306,7 +14312,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['AgenticQueryRequest'];
+        "application/json": components["schemas"]["AgenticQueryRequest"];
       };
     };
     responses: {
@@ -14316,7 +14322,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['AgenticQueryResponse'];
+          "application/json": components["schemas"]["AgenticQueryResponse"];
         };
       };
       /** @description Not found */
@@ -14332,7 +14338,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -14346,7 +14352,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['AgenticQueryRequest'];
+        "application/json": components["schemas"]["AgenticQueryRequest"];
       };
     };
     responses: {
@@ -14356,7 +14362,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Not found */
@@ -14372,7 +14378,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -14386,7 +14392,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['ProactiveTriggerRequest'];
+        "application/json": components["schemas"]["ProactiveTriggerRequest"];
       };
     };
     responses: {
@@ -14396,7 +14402,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Not found */
@@ -14412,7 +14418,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -14426,7 +14432,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['SaveConversationRequest'];
+        "application/json": components["schemas"]["SaveConversationRequest"];
       };
     };
     responses: {
@@ -14436,7 +14442,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -14445,7 +14451,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -14469,7 +14475,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ConversationHistoryResponse'];
+          "application/json": components["schemas"]["ConversationHistoryResponse"];
         };
       };
       /** @description Validation Error */
@@ -14478,7 +14484,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -14501,7 +14507,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -14510,7 +14516,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -14530,7 +14536,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -14553,7 +14559,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ConversationListResponse'];
+          "application/json": components["schemas"]["ConversationListResponse"];
         };
       };
       /** @description Validation Error */
@@ -14562,7 +14568,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -14584,7 +14590,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['SingleConversationResponse'];
+          "application/json": components["schemas"]["SingleConversationResponse"];
         };
       };
       /** @description Validation Error */
@@ -14593,7 +14599,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -14615,7 +14621,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -14624,7 +14630,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -14644,7 +14650,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['UserMemoryContextResponse'];
+          "application/json": components["schemas"]["UserMemoryContextResponse"];
         };
       };
     };
@@ -14664,7 +14670,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -14686,7 +14692,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -14695,7 +14701,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -14711,7 +14717,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['SessionHistoryRequest'];
+        "application/json": components["schemas"]["SessionHistoryRequest"];
       };
     };
     responses: {
@@ -14721,7 +14727,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -14730,7 +14736,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -14752,7 +14758,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -14761,7 +14767,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -14777,7 +14783,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['SessionUpdateRequest'];
+        "application/json": components["schemas"]["SessionUpdateRequest"];
       };
     };
     responses: {
@@ -14787,7 +14793,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -14796,7 +14802,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -14818,7 +14824,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -14827,7 +14833,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -14843,7 +14849,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['SessionTTLRequest'];
+        "application/json": components["schemas"]["SessionTTLRequest"];
       };
     };
     responses: {
@@ -14853,7 +14859,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -14862,7 +14868,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -14884,7 +14890,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -14893,7 +14899,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -14917,7 +14923,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -14926,7 +14932,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -14946,7 +14952,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -14966,7 +14972,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -14986,7 +14992,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -15000,7 +15006,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['ContributeRequest'];
+        "application/json": components["schemas"]["ContributeRequest"];
       };
     };
     responses: {
@@ -15010,7 +15016,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -15019,7 +15025,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -15033,7 +15039,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['RefuteRequest'];
+        "application/json": components["schemas"]["RefuteRequest"];
       };
     };
     responses: {
@@ -15043,7 +15049,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -15052,7 +15058,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -15074,7 +15080,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -15083,7 +15089,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -15103,7 +15109,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -15117,7 +15123,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['AddEventRequest'];
+        "application/json": components["schemas"]["AddEventRequest"];
       };
     };
     responses: {
@@ -15127,7 +15133,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -15136,7 +15142,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -15150,7 +15156,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['ExtractEventRequest'];
+        "application/json": components["schemas"]["ExtractEventRequest"];
       };
     };
     responses: {
@@ -15160,7 +15166,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -15169,7 +15175,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -15195,7 +15201,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -15204,7 +15210,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -15226,7 +15232,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -15235,7 +15241,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -15255,7 +15261,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -15277,7 +15283,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -15286,7 +15292,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -15300,7 +15306,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['RateConversationRequest'];
+        "application/json": components["schemas"]["RateConversationRequest"];
       };
     };
     responses: {
@@ -15310,7 +15316,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['FeedbackResponse'];
+          "application/json": components["schemas"]["FeedbackResponse"];
         };
       };
       /** @description Validation Error */
@@ -15319,7 +15325,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -15341,7 +15347,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ConversationRatingResponse'];
+          "application/json": components["schemas"]["ConversationRatingResponse"];
         };
       };
       /** @description Validation Error */
@@ -15350,7 +15356,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -15370,7 +15376,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ReviewQueueStatsResponse'];
+          "application/json": components["schemas"]["ReviewQueueStatsResponse"];
         };
       };
     };
@@ -15401,7 +15407,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ClientResponse'][];
+          "application/json": components["schemas"]["ClientResponse"][];
         };
       };
       /** @description Validation Error */
@@ -15410,7 +15416,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -15424,7 +15430,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['ClientCreate'];
+        "application/json": components["schemas"]["ClientCreate"];
       };
     };
     responses: {
@@ -15434,7 +15440,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ClientResponse'];
+          "application/json": components["schemas"]["ClientResponse"];
         };
       };
       /** @description Validation Error */
@@ -15443,7 +15449,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -15465,7 +15471,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ClientResponse'];
+          "application/json": components["schemas"]["ClientResponse"];
         };
       };
       /** @description Validation Error */
@@ -15474,7 +15480,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -15497,7 +15503,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -15506,7 +15512,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -15523,7 +15529,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['ClientUpdate'];
+        "application/json": components["schemas"]["ClientUpdate"];
       };
     };
     responses: {
@@ -15533,7 +15539,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ClientResponse'];
+          "application/json": components["schemas"]["ClientResponse"];
         };
       };
       /** @description Validation Error */
@@ -15542,7 +15548,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -15565,7 +15571,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ClientResponse'];
+          "application/json": components["schemas"]["ClientResponse"];
         };
       };
       /** @description Validation Error */
@@ -15574,7 +15580,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -15597,7 +15603,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -15606,7 +15612,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -15626,7 +15632,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -15652,7 +15658,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -15661,7 +15667,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -15681,7 +15687,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -15701,7 +15707,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -15715,7 +15721,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['PassportExtractRequest'];
+        "application/json": components["schemas"]["PassportExtractRequest"];
       };
     };
     responses: {
@@ -15725,7 +15731,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['PassportExtractResponse'];
+          "application/json": components["schemas"]["PassportExtractResponse"];
         };
       };
       /** @description Validation Error */
@@ -15734,7 +15740,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -15748,7 +15754,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['PassportEnhancedRequest'];
+        "application/json": components["schemas"]["PassportEnhancedRequest"];
       };
     };
     responses: {
@@ -15758,7 +15764,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['PassportEnhancedResponse'];
+          "application/json": components["schemas"]["PassportEnhancedResponse"];
         };
       };
       /** @description Validation Error */
@@ -15767,7 +15773,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -15790,7 +15796,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -15799,7 +15805,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -15821,7 +15827,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -15830,7 +15836,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -15846,7 +15852,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['ClientProfileUpdate'];
+        "application/json": components["schemas"]["ClientProfileUpdate"];
       };
     };
     responses: {
@@ -15856,7 +15862,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -15865,7 +15871,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -15887,7 +15893,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -15896,7 +15902,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -15912,7 +15918,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['FamilyMemberCreate'];
+        "application/json": components["schemas"]["FamilyMemberCreate"];
       };
     };
     responses: {
@@ -15922,7 +15928,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -15931,7 +15937,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -15954,7 +15960,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -15963,7 +15969,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -15980,7 +15986,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['FamilyMemberUpdate'];
+        "application/json": components["schemas"]["FamilyMemberUpdate"];
       };
     };
     responses: {
@@ -15990,7 +15996,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -15999,7 +16005,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -16026,7 +16032,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -16035,7 +16041,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -16051,7 +16057,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['DocumentCreate'];
+        "application/json": components["schemas"]["DocumentCreate"];
       };
     };
     responses: {
@@ -16061,7 +16067,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -16070,7 +16076,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -16086,7 +16092,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['DocumentCreate'][];
+        "application/json": components["schemas"]["DocumentCreate"][];
       };
     };
     responses: {
@@ -16096,7 +16102,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -16105,7 +16111,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -16131,7 +16137,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -16140,7 +16146,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -16157,7 +16163,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['DocumentUpdate'];
+        "application/json": components["schemas"]["DocumentUpdate"];
       };
     };
     responses: {
@@ -16167,7 +16173,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -16176,7 +16182,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -16196,7 +16202,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -16222,7 +16228,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -16231,7 +16237,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -16251,7 +16257,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -16267,7 +16273,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['DocumentUploadBase64'];
+        "application/json": components["schemas"]["DocumentUploadBase64"];
       };
     };
     responses: {
@@ -16277,7 +16283,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -16288,7 +16294,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -16312,7 +16318,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -16323,7 +16329,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -16358,7 +16364,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           }[];
         };
@@ -16369,7 +16375,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -16383,7 +16389,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['InteractionCreate'];
+        "application/json": components["schemas"]["InteractionCreate"];
       };
     };
     responses: {
@@ -16393,7 +16399,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['InteractionResponse'];
+          "application/json": components["schemas"]["InteractionResponse"];
         };
       };
       /** @description Validation Error */
@@ -16402,7 +16408,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -16425,7 +16431,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -16434,7 +16440,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -16456,7 +16462,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -16465,7 +16471,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -16490,7 +16496,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -16499,7 +16505,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -16522,7 +16528,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -16531,7 +16537,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -16556,7 +16562,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -16565,7 +16571,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -16591,7 +16597,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -16600,7 +16606,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -16636,7 +16642,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           }[];
         };
@@ -16647,7 +16653,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -16661,7 +16667,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['PracticeCreate'];
+        "application/json": components["schemas"]["PracticeCreate"];
       };
     };
     responses: {
@@ -16671,7 +16677,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['PracticeResponse'];
+          "application/json": components["schemas"]["PracticeResponse"];
         };
       };
       /** @description Validation Error */
@@ -16680,7 +16686,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -16702,7 +16708,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -16711,7 +16717,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -16734,7 +16740,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -16743,7 +16749,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -16766,7 +16772,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -16775,7 +16781,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -16798,7 +16804,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -16807,7 +16813,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -16824,7 +16830,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['PracticeUpdate'];
+        "application/json": components["schemas"]["PracticeUpdate"];
       };
     };
     responses: {
@@ -16834,7 +16840,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -16843,7 +16849,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -16870,7 +16876,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -16879,7 +16885,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -16903,7 +16909,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -16912,7 +16918,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -16935,7 +16941,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -16944,7 +16950,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -16968,7 +16974,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -16977,7 +16983,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -17000,7 +17006,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -17009,7 +17015,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -17032,7 +17038,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -17041,7 +17047,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -17061,7 +17067,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -17084,7 +17090,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['AutoCRMStats'];
+          "application/json": components["schemas"]["AutoCRMStats"];
         };
       };
       /** @description Validation Error */
@@ -17093,7 +17099,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -17115,7 +17121,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -17126,7 +17132,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -17142,8 +17148,8 @@ export interface operations {
     };
     requestBody?: {
       content: {
-        'application/json':
-          | components['schemas']['backend__app__routers__crm_portal_integration__SendInviteRequest']
+        "application/json":
+          | components["schemas"]["backend__app__routers__crm_portal_integration__SendInviteRequest"]
           | null;
       };
     };
@@ -17154,7 +17160,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -17165,7 +17171,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -17187,7 +17193,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -17198,7 +17204,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -17218,7 +17224,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -17245,7 +17251,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -17256,7 +17262,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -17272,7 +17278,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['TeamMessageRequest'];
+        "application/json": components["schemas"]["TeamMessageRequest"];
       };
     };
     responses: {
@@ -17282,7 +17288,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -17293,7 +17299,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -17316,7 +17322,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -17327,7 +17333,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -17349,7 +17355,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -17360,7 +17366,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -17380,7 +17386,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -17402,7 +17408,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -17424,7 +17430,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -17448,7 +17454,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -17459,7 +17465,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -17481,7 +17487,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -17492,7 +17498,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -17512,7 +17518,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -17537,7 +17543,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -17548,7 +17554,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -17562,7 +17568,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'multipart/form-data': components['schemas']['Body_upload_document_api_portal_documents_upload_post'];
+        "multipart/form-data": components["schemas"]["Body_upload_document_api_portal_documents_upload_post"];
       };
     };
     responses: {
@@ -17572,7 +17578,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -17583,7 +17589,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -17606,7 +17612,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -17617,7 +17623,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -17631,7 +17637,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['SendMessageRequest'];
+        "application/json": components["schemas"]["SendMessageRequest"];
       };
     };
     responses: {
@@ -17641,7 +17647,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -17652,7 +17658,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -17674,7 +17680,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -17685,7 +17691,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -17705,7 +17711,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -17721,7 +17727,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['UpdatePreferencesRequest'];
+        "application/json": components["schemas"]["UpdatePreferencesRequest"];
       };
     };
     responses: {
@@ -17731,7 +17737,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -17742,7 +17748,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -17764,7 +17770,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -17775,7 +17781,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -17795,7 +17801,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -17811,7 +17817,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['SendInviteRequest'];
+        "application/json": components["schemas"]["SendInviteRequest"];
       };
     };
     responses: {
@@ -17821,7 +17827,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -17832,7 +17838,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -17854,7 +17860,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -17865,7 +17871,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -17887,7 +17893,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -17898,7 +17904,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -17920,7 +17926,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ValidateTokenResponse'];
+          "application/json": components["schemas"]["ValidateTokenResponse"];
         };
       };
       /** @description Validation Error */
@@ -17929,7 +17935,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -17943,7 +17949,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['CompleteRegistrationRequest'];
+        "application/json": components["schemas"]["CompleteRegistrationRequest"];
       };
     };
     responses: {
@@ -17953,7 +17959,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['RegistrationResponse'];
+          "application/json": components["schemas"]["RegistrationResponse"];
         };
       };
       /** @description Validation Error */
@@ -17962,7 +17968,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -17984,7 +17990,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -17995,7 +18001,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -18015,7 +18021,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['TaxSummary'];
+          "application/json": components["schemas"]["TaxSummary"];
         };
       };
     };
@@ -18035,7 +18041,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -18057,7 +18063,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['VisaSummary'];
+          "application/json": components["schemas"]["VisaSummary"];
         };
       };
     };
@@ -18081,7 +18087,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -18090,7 +18096,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -18114,7 +18120,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -18123,7 +18129,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -18147,7 +18153,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -18156,7 +18162,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -18180,7 +18186,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -18189,7 +18195,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -18212,7 +18218,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -18221,7 +18227,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -18231,7 +18237,7 @@ export interface operations {
       query?: {
         title?: string | null;
         author?: string | null;
-        tier_override?: components['schemas']['TierLevel'] | null;
+        tier_override?: components["schemas"]["TierLevel"] | null;
       };
       header?: never;
       path?: never;
@@ -18239,7 +18245,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'multipart/form-data': components['schemas']['Body_upload_and_ingest_api_ingest_upload_post'];
+        "multipart/form-data": components["schemas"]["Body_upload_and_ingest_api_ingest_upload_post"];
       };
     };
     responses: {
@@ -18249,7 +18255,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['BookIngestionResponse'];
+          "application/json": components["schemas"]["BookIngestionResponse"];
         };
       };
       /** @description Validation Error */
@@ -18258,7 +18264,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -18272,7 +18278,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['BookIngestionRequest'];
+        "application/json": components["schemas"]["BookIngestionRequest"];
       };
     };
     responses: {
@@ -18282,7 +18288,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['BookIngestionResponse'];
+          "application/json": components["schemas"]["BookIngestionResponse"];
         };
       };
       /** @description Validation Error */
@@ -18291,7 +18297,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -18305,7 +18311,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['BatchIngestionRequest'];
+        "application/json": components["schemas"]["BatchIngestionRequest"];
       };
     };
     responses: {
@@ -18315,7 +18321,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['BatchIngestionResponse'];
+          "application/json": components["schemas"]["BatchIngestionResponse"];
         };
       };
       /** @description Validation Error */
@@ -18324,7 +18330,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -18344,7 +18350,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -18358,7 +18364,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['LegalIngestRequest'];
+        "application/json": components["schemas"]["LegalIngestRequest"];
       };
     };
     responses: {
@@ -18368,7 +18374,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['LegalIngestResponse'];
+          "application/json": components["schemas"]["LegalIngestResponse"];
         };
       };
       /** @description Validation Error */
@@ -18377,7 +18383,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -18395,7 +18401,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'multipart/form-data': components['schemas']['Body_upload_legal_document_api_legal_upload_post'];
+        "multipart/form-data": components["schemas"]["Body_upload_legal_document_api_legal_upload_post"];
       };
     };
     responses: {
@@ -18405,7 +18411,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['LegalIngestResponse'];
+          "application/json": components["schemas"]["LegalIngestResponse"];
         };
       };
       /** @description Validation Error */
@@ -18414,7 +18420,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -18430,7 +18436,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': string[];
+        "application/json": string[];
       };
     };
     responses: {
@@ -18440,7 +18446,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -18451,7 +18457,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -18473,7 +18479,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -18484,7 +18490,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -18493,14 +18499,14 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
-        'X-API-Key'?: string | null;
+        "X-API-Key"?: string | null;
       };
       path?: never;
       cookie?: never;
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['RegisterParentDocRequest'];
+        "application/json": components["schemas"]["RegisterParentDocRequest"];
       };
     };
     responses: {
@@ -18510,7 +18516,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -18521,7 +18527,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -18543,7 +18549,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -18554,7 +18560,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -18577,7 +18583,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -18588,7 +18594,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -18602,7 +18608,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['IngestRequest'];
+        "application/json": components["schemas"]["IngestRequest"];
       };
     };
     responses: {
@@ -18612,7 +18618,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['IngestResponse'];
+          "application/json": components["schemas"]["IngestResponse"];
         };
       };
       /** @description Validation Error */
@@ -18621,7 +18627,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -18641,7 +18647,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -18650,14 +18656,14 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
-        'X-API-Key'?: string | null;
+        "X-API-Key"?: string | null;
       };
       path?: never;
       cookie?: never;
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['ScraperSubmission'];
+        "application/json": components["schemas"]["ScraperSubmission"];
       };
     };
     responses: {
@@ -18667,7 +18673,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -18676,7 +18682,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -18701,7 +18707,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -18710,7 +18716,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -18733,7 +18739,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -18742,7 +18748,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -18758,7 +18764,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': string[];
+        "application/json": string[];
       };
     };
     responses: {
@@ -18768,7 +18774,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -18777,7 +18783,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -18793,7 +18799,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': string[];
+        "application/json": string[];
       };
     };
     responses: {
@@ -18803,7 +18809,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -18812,7 +18818,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -18821,7 +18827,7 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
-        'X-API-Key'?: string | null;
+        "X-API-Key"?: string | null;
       };
       path: {
         type: string;
@@ -18831,7 +18837,7 @@ export interface operations {
     };
     requestBody?: {
       content: {
-        'application/json': components['schemas']['ApprovalRequest'] | null;
+        "application/json": components["schemas"]["ApprovalRequest"] | null;
       };
     };
     responses: {
@@ -18841,7 +18847,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -18850,7 +18856,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -18867,7 +18873,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['EditStagingItemRequest'];
+        "application/json": components["schemas"]["EditStagingItemRequest"];
       };
     };
     responses: {
@@ -18877,7 +18883,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -18886,7 +18892,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -18903,7 +18909,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['CoverImageUploadRequest'];
+        "application/json": components["schemas"]["CoverImageUploadRequest"];
       };
     };
     responses: {
@@ -18913,7 +18919,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -18922,7 +18928,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -18945,7 +18951,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -18954,7 +18960,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -18977,7 +18983,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -18986,7 +18992,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -19006,7 +19012,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -19020,7 +19026,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['IntelSearchRequest'];
+        "application/json": components["schemas"]["IntelSearchRequest"];
       };
     };
     responses: {
@@ -19030,7 +19036,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -19039,7 +19045,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -19053,7 +19059,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['IntelStoreRequest'];
+        "application/json": components["schemas"]["IntelStoreRequest"];
       };
     };
     responses: {
@@ -19063,7 +19069,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -19072,7 +19078,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -19095,7 +19101,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -19104,7 +19110,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -19127,7 +19133,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -19136,7 +19142,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -19158,7 +19164,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -19167,7 +19173,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -19189,7 +19195,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -19198,7 +19204,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -19212,7 +19218,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['OracleQueryRequest'];
+        "application/json": components["schemas"]["OracleQueryRequest"];
       };
     };
     responses: {
@@ -19222,7 +19228,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['OracleQueryResponse'];
+          "application/json": components["schemas"]["OracleQueryResponse"];
         };
       };
       /** @description Validation Error */
@@ -19231,7 +19237,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -19245,7 +19251,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['FeedbackRequest'];
+        "application/json": components["schemas"]["FeedbackRequest"];
       };
     };
     responses: {
@@ -19255,7 +19261,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -19264,7 +19270,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -19284,7 +19290,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -19304,7 +19310,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -19324,7 +19330,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -19346,7 +19352,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -19355,7 +19361,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -19378,7 +19384,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['KBLISearchResult'][];
+          "application/json": components["schemas"]["KBLISearchResult"][];
         };
       };
       /** @description Validation Error */
@@ -19387,7 +19393,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -19409,7 +19415,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['KBLIDetail'];
+          "application/json": components["schemas"]["KBLIDetail"];
         };
       };
       /** @description Validation Error */
@@ -19418,7 +19424,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -19432,7 +19438,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['KBLINotebookChatRequest'];
+        "application/json": components["schemas"]["KBLINotebookChatRequest"];
       };
     };
     responses: {
@@ -19442,7 +19448,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['KBLINotebookChatResponse'];
+          "application/json": components["schemas"]["KBLINotebookChatResponse"];
         };
       };
       /** @description Validation Error */
@@ -19451,7 +19457,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -19460,14 +19466,14 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
-        'X-API-Key'?: string | null;
+        "X-API-Key"?: string | null;
       };
       path?: never;
       cookie?: never;
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['PreviewUpload'];
+        "application/json": components["schemas"]["PreviewUpload"];
       };
     };
     responses: {
@@ -19477,7 +19483,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -19486,7 +19492,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -19508,7 +19514,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'text/html': string;
+          "text/html": string;
         };
       };
       /** @description Validation Error */
@@ -19517,7 +19523,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -19537,7 +19543,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'text/html': string;
+          "text/html": string;
         };
       };
     };
@@ -19546,7 +19552,7 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
-        'x-telegram-bot-api-secret-token'?: string | null;
+        "x-telegram-bot-api-secret-token"?: string | null;
       };
       path?: never;
       cookie?: never;
@@ -19559,7 +19565,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -19568,7 +19574,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -19588,7 +19594,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -19602,7 +19608,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['WebhookSetupRequest'];
+        "application/json": components["schemas"]["WebhookSetupRequest"];
       };
     };
     responses: {
@@ -19612,7 +19618,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -19621,7 +19627,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -19641,7 +19647,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -19661,7 +19667,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -19681,7 +19687,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -19695,7 +19701,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['WhatsAppWebhook'];
+        "application/json": components["schemas"]["WhatsAppWebhook"];
       };
     };
     responses: {
@@ -19705,7 +19711,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -19714,7 +19720,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -19734,7 +19740,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -19743,14 +19749,14 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
-        'x-openclaw-signature'?: string | null;
+        "x-openclaw-signature"?: string | null;
       };
       path?: never;
       cookie?: never;
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['OpenClawWebhookPayload'];
+        "application/json": components["schemas"]["OpenClawWebhookPayload"];
       };
     };
     responses: {
@@ -19760,7 +19766,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -19771,7 +19777,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -19791,7 +19797,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -19805,7 +19811,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['CreateMappingRequest'];
+        "application/json": components["schemas"]["CreateMappingRequest"];
       };
     };
     responses: {
@@ -19815,7 +19821,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -19824,7 +19830,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -19846,7 +19852,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -19855,7 +19861,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -19869,7 +19875,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['DeactivateMappingRequest'];
+        "application/json": components["schemas"]["DeactivateMappingRequest"];
       };
     };
     responses: {
@@ -19879,7 +19885,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -19888,7 +19894,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -19910,7 +19916,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -19919,7 +19925,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -19941,7 +19947,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -19950,7 +19956,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -19970,7 +19976,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: string;
           };
         };
@@ -19996,7 +20002,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -20005,7 +20011,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -20025,7 +20031,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ConnectionStatusResponse'];
+          "application/json": components["schemas"]["ConnectionStatusResponse"];
         };
       };
     };
@@ -20045,7 +20051,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -20067,7 +20073,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -20100,7 +20106,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -20111,7 +20117,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -20125,7 +20131,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['SendEmailRequest'];
+        "application/json": components["schemas"]["SendEmailRequest"];
       };
     };
     responses: {
@@ -20135,7 +20141,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -20146,7 +20152,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -20160,7 +20166,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['DeleteEmailsRequest'];
+        "application/json": components["schemas"]["DeleteEmailsRequest"];
       };
     };
     responses: {
@@ -20170,7 +20176,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: boolean;
           };
         };
@@ -20181,7 +20187,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -20201,7 +20207,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -20227,7 +20233,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -20238,7 +20244,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -20263,7 +20269,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           }[];
         };
@@ -20274,7 +20280,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -20291,7 +20297,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['ReplyEmailRequest'];
+        "application/json": components["schemas"]["ReplyEmailRequest"];
       };
     };
     responses: {
@@ -20301,7 +20307,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -20312,7 +20318,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -20329,7 +20335,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['ForwardEmailRequest'];
+        "application/json": components["schemas"]["ForwardEmailRequest"];
       };
     };
     responses: {
@@ -20339,7 +20345,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -20350,7 +20356,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -20364,7 +20370,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['MarkReadRequest'];
+        "application/json": components["schemas"]["MarkReadRequest"];
       };
     };
     responses: {
@@ -20374,7 +20380,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: boolean;
           };
         };
@@ -20385,7 +20391,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -20411,7 +20417,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: boolean;
           };
         };
@@ -20422,7 +20428,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -20436,7 +20442,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['DeleteEmailsRequest'];
+        "application/json": components["schemas"]["DeleteEmailsRequest"];
       };
     };
     responses: {
@@ -20446,7 +20452,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: boolean;
           };
         };
@@ -20457,7 +20463,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -20471,7 +20477,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['SaveDraftRequest'];
+        "application/json": components["schemas"]["SaveDraftRequest"];
       };
     };
     responses: {
@@ -20481,7 +20487,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -20492,7 +20498,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -20506,7 +20512,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'multipart/form-data': components['schemas']['Body_upload_attachment_api_integrations_zoho_attachments_post'];
+        "multipart/form-data": components["schemas"]["Body_upload_attachment_api_integrations_zoho_attachments_post"];
       };
     };
     responses: {
@@ -20516,7 +20522,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -20527,7 +20533,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -20552,7 +20558,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -20561,7 +20567,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -20581,7 +20587,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: number;
           };
         };
@@ -20603,7 +20609,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ConnectionStatus'];
+          "application/json": components["schemas"]["ConnectionStatus"];
         };
       };
     };
@@ -20623,7 +20629,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: string;
           };
         };
@@ -20649,7 +20655,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -20658,7 +20664,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -20678,7 +20684,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: boolean;
           };
         };
@@ -20700,7 +20706,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['SystemConnectionStatus'];
+          "application/json": components["schemas"]["SystemConnectionStatus"];
         };
       };
     };
@@ -20720,7 +20726,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: string;
           };
         };
@@ -20742,7 +20748,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -20770,7 +20776,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['FileListResponse'];
+          "application/json": components["schemas"]["FileListResponse"];
         };
       };
       /** @description Validation Error */
@@ -20779,7 +20785,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -20801,7 +20807,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['FileItem'];
+          "application/json": components["schemas"]["FileItem"];
         };
       };
       /** @description Validation Error */
@@ -20810,7 +20816,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -20834,7 +20840,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['FileItem'][];
+          "application/json": components["schemas"]["FileItem"][];
         };
       };
       /** @description Validation Error */
@@ -20843,7 +20849,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -20863,7 +20869,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           } | null;
         };
@@ -20887,7 +20893,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -20896,7 +20902,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -20921,7 +20927,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -20930,7 +20936,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -20950,7 +20956,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -20978,7 +20984,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['backend__app__routers__team_drive__FileListResponse'];
+          "application/json": components["schemas"]["backend__app__routers__team_drive__FileListResponse"];
         };
       };
       /** @description Validation Error */
@@ -20987,7 +20993,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -21009,7 +21015,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -21018,7 +21024,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -21043,7 +21049,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -21052,7 +21058,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -21074,7 +21080,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -21083,7 +21089,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -21105,7 +21111,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['BreadcrumbItem'][];
+          "application/json": components["schemas"]["BreadcrumbItem"][];
         };
       };
       /** @description Validation Error */
@@ -21114,7 +21120,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -21139,7 +21145,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -21148,7 +21154,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -21162,7 +21168,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'multipart/form-data': components['schemas']['Body_upload_file_api_drive_files_upload_post'];
+        "multipart/form-data": components["schemas"]["Body_upload_file_api_drive_files_upload_post"];
       };
     };
     responses: {
@@ -21172,7 +21178,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['OperationResponse'];
+          "application/json": components["schemas"]["OperationResponse"];
         };
       };
       /** @description Validation Error */
@@ -21181,7 +21187,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -21195,7 +21201,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['CreateFolderRequest'];
+        "application/json": components["schemas"]["CreateFolderRequest"];
       };
     };
     responses: {
@@ -21205,7 +21211,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['OperationResponse'];
+          "application/json": components["schemas"]["OperationResponse"];
         };
       };
       /** @description Validation Error */
@@ -21214,7 +21220,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -21228,7 +21234,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['CreateDocRequest'];
+        "application/json": components["schemas"]["CreateDocRequest"];
       };
     };
     responses: {
@@ -21238,7 +21244,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['OperationResponse'];
+          "application/json": components["schemas"]["OperationResponse"];
         };
       };
       /** @description Validation Error */
@@ -21247,7 +21253,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -21263,7 +21269,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['RenameRequest'];
+        "application/json": components["schemas"]["RenameRequest"];
       };
     };
     responses: {
@@ -21273,7 +21279,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['OperationResponse'];
+          "application/json": components["schemas"]["OperationResponse"];
         };
       };
       /** @description Validation Error */
@@ -21282,7 +21288,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -21298,7 +21304,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['MoveRequest'];
+        "application/json": components["schemas"]["MoveRequest"];
       };
     };
     responses: {
@@ -21308,7 +21314,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['OperationResponse'];
+          "application/json": components["schemas"]["OperationResponse"];
         };
       };
       /** @description Validation Error */
@@ -21317,7 +21323,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -21333,7 +21339,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['CopyRequest'];
+        "application/json": components["schemas"]["CopyRequest"];
       };
     };
     responses: {
@@ -21343,7 +21349,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['OperationResponse'];
+          "application/json": components["schemas"]["OperationResponse"];
         };
       };
       /** @description Validation Error */
@@ -21352,7 +21358,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -21374,7 +21380,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['PermissionItem'][];
+          "application/json": components["schemas"]["PermissionItem"][];
         };
       };
       /** @description Validation Error */
@@ -21383,7 +21389,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -21399,7 +21405,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['AddPermissionRequest'];
+        "application/json": components["schemas"]["AddPermissionRequest"];
       };
     };
     responses: {
@@ -21409,7 +21415,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['PermissionItem'];
+          "application/json": components["schemas"]["PermissionItem"];
         };
       };
       /** @description Validation Error */
@@ -21418,7 +21424,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -21441,7 +21447,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -21450,7 +21456,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -21467,7 +21473,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['UpdatePermissionRequest'];
+        "application/json": components["schemas"]["UpdatePermissionRequest"];
       };
     };
     responses: {
@@ -21477,7 +21483,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['PermissionItem'];
+          "application/json": components["schemas"]["PermissionItem"];
         };
       };
       /** @description Validation Error */
@@ -21486,7 +21492,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -21500,7 +21506,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['SubscribeRequest'];
+        "application/json": components["schemas"]["SubscribeRequest"];
       };
     };
     responses: {
@@ -21510,7 +21516,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['SubscribeResponse'];
+          "application/json": components["schemas"]["SubscribeResponse"];
         };
       };
       /** @description Validation Error */
@@ -21519,7 +21525,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -21533,7 +21539,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['ConfirmRequest'];
+        "application/json": components["schemas"]["ConfirmRequest"];
       };
     };
     responses: {
@@ -21543,7 +21549,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -21552,7 +21558,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -21566,7 +21572,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['UnsubscribeRequest'];
+        "application/json": components["schemas"]["UnsubscribeRequest"];
       };
     };
     responses: {
@@ -21576,7 +21582,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -21585,7 +21591,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -21599,7 +21605,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['PreferencesRequest'];
+        "application/json": components["schemas"]["PreferencesRequest"];
       };
     };
     responses: {
@@ -21609,7 +21615,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -21618,7 +21624,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -21644,7 +21650,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -21653,7 +21659,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -21678,7 +21684,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -21687,7 +21693,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -21701,7 +21707,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['BlogAskRequest'];
+        "application/json": components["schemas"]["BlogAskRequest"];
       };
     };
     responses: {
@@ -21711,7 +21717,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['BlogAskResponse'];
+          "application/json": components["schemas"]["BlogAskResponse"];
         };
       };
       /** @description Validation Error */
@@ -21720,7 +21726,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -21734,7 +21740,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['ComposeRequestValidator'];
+        "application/json": components["schemas"]["ComposeRequestValidator"];
       };
     };
     responses: {
@@ -21744,7 +21750,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ComposeResponse'];
+          "application/json": components["schemas"]["ComposeResponse"];
         };
       };
       /** @description Validation Error */
@@ -21753,7 +21759,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -21773,7 +21779,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -21787,7 +21793,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['PublishRequest'];
+        "application/json": components["schemas"]["PublishRequest"];
       };
     };
     responses: {
@@ -21797,7 +21803,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['PublishResponse'];
+          "application/json": components["schemas"]["PublishResponse"];
         };
       };
       /** @description Validation Error */
@@ -21806,7 +21812,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -21826,7 +21832,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -21859,7 +21865,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['NewsListResponse'];
+          "application/json": components["schemas"]["NewsListResponse"];
         };
       };
       /** @description Validation Error */
@@ -21868,7 +21874,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -21882,7 +21888,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['NewsItemCreate'];
+        "application/json": components["schemas"]["NewsItemCreate"];
       };
     };
     responses: {
@@ -21892,7 +21898,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -21901,7 +21907,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -21921,7 +21927,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -21943,7 +21949,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -21952,7 +21958,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -21966,7 +21972,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['NewsItemCreate'][];
+        "application/json": components["schemas"]["NewsItemCreate"][];
       };
     };
     responses: {
@@ -21976,7 +21982,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -21985,7 +21991,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -22009,7 +22015,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -22018,7 +22024,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -22032,7 +22038,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['SubscriptionCreate'];
+        "application/json": components["schemas"]["SubscriptionCreate"];
       };
     };
     responses: {
@@ -22042,7 +22048,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -22051,7 +22057,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -22073,7 +22079,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -22082,7 +22088,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -22105,7 +22111,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -22114,7 +22120,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -22134,7 +22140,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -22154,7 +22160,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -22174,7 +22180,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -22194,7 +22200,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -22214,7 +22220,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -22230,7 +22236,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': {
+        "application/json": {
           [key: string]: unknown;
         };
       };
@@ -22242,7 +22248,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -22251,7 +22257,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -22273,7 +22279,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -22282,7 +22288,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -22296,7 +22302,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['ScrapingRequest'];
+        "application/json": components["schemas"]["ScrapingRequest"];
       };
     };
     responses: {
@@ -22306,7 +22312,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ScrapingResponse'];
+          "application/json": components["schemas"]["ScrapingResponse"];
         };
       };
       /** @description Validation Error */
@@ -22315,7 +22321,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -22329,7 +22335,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['GenerateRequest'];
+        "application/json": components["schemas"]["GenerateRequest"];
       };
     };
     responses: {
@@ -22339,7 +22345,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['GenerateResponse'];
+          "application/json": components["schemas"]["GenerateResponse"];
         };
       };
       /** @description Validation Error */
@@ -22348,7 +22354,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -22362,7 +22368,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['backend__app__modules__identity__router__LoginRequest'];
+        "application/json": components["schemas"]["backend__app__modules__identity__router__LoginRequest"];
       };
     };
     responses: {
@@ -22372,7 +22378,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['backend__app__modules__identity__router__LoginResponse'];
+          "application/json": components["schemas"]["backend__app__modules__identity__router__LoginResponse"];
         };
       };
       /** @description Validation Error */
@@ -22381,7 +22387,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -22395,7 +22401,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['SearchQuery'];
+        "application/json": components["schemas"]["SearchQuery"];
       };
     };
     responses: {
@@ -22405,7 +22411,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['SearchResponse'];
+          "application/json": components["schemas"]["SearchResponse"];
         };
       };
       /** @description Validation Error */
@@ -22414,7 +22420,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -22434,7 +22440,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -22454,7 +22460,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -22478,7 +22484,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -22489,7 +22495,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -22511,7 +22517,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['VisaTypeListResponse'];
+          "application/json": components["schemas"]["VisaTypeListResponse"];
         };
       };
       /** @description Validation Error */
@@ -22520,7 +22526,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -22534,7 +22540,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['VisaTypeCreate'];
+        "application/json": components["schemas"]["VisaTypeCreate"];
       };
     };
     responses: {
@@ -22544,7 +22550,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['VisaTypeResponse'];
+          "application/json": components["schemas"]["VisaTypeResponse"];
         };
       };
       /** @description Validation Error */
@@ -22553,7 +22559,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -22575,7 +22581,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['VisaTypeResponse'];
+          "application/json": components["schemas"]["VisaTypeResponse"];
         };
       };
       /** @description Validation Error */
@@ -22584,7 +22590,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -22600,7 +22606,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['VisaTypeUpdate'];
+        "application/json": components["schemas"]["VisaTypeUpdate"];
       };
     };
     responses: {
@@ -22610,7 +22616,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['VisaTypeResponse'];
+          "application/json": components["schemas"]["VisaTypeResponse"];
         };
       };
       /** @description Validation Error */
@@ -22619,7 +22625,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -22641,7 +22647,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['VisaTypeResponse'];
+          "application/json": components["schemas"]["VisaTypeResponse"];
         };
       };
       /** @description Validation Error */
@@ -22650,7 +22656,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -22664,7 +22670,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['KnowledgeActivityLog'];
+        "application/json": components["schemas"]["KnowledgeActivityLog"];
       };
     };
     responses: {
@@ -22674,7 +22680,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -22685,7 +22691,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -22705,7 +22711,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['TeamMember'][];
+          "application/json": components["schemas"]["TeamMember"][];
         };
       };
     };
@@ -22719,7 +22725,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['ClockInRequest'];
+        "application/json": components["schemas"]["ClockInRequest"];
       };
     };
     responses: {
@@ -22729,7 +22735,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ClockResponse'];
+          "application/json": components["schemas"]["ClockResponse"];
         };
       };
       /** @description Validation Error */
@@ -22738,7 +22744,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -22752,7 +22758,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['ClockOutRequest'];
+        "application/json": components["schemas"]["ClockOutRequest"];
       };
     };
     responses: {
@@ -22762,7 +22768,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ClockResponse'];
+          "application/json": components["schemas"]["ClockResponse"];
         };
       };
       /** @description Validation Error */
@@ -22771,7 +22777,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -22794,7 +22800,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['UserStatusResponse'];
+          "application/json": components["schemas"]["UserStatusResponse"];
         };
       };
       /** @description Validation Error */
@@ -22803,7 +22809,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -22823,7 +22829,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['TeamMemberStatus'][];
+          "application/json": components["schemas"]["TeamMemberStatus"][];
         };
       };
     };
@@ -22846,7 +22852,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['DailyHours'][];
+          "application/json": components["schemas"]["DailyHours"][];
         };
       };
       /** @description Validation Error */
@@ -22855,7 +22861,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -22878,7 +22884,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['WeeklySummary'][];
+          "application/json": components["schemas"]["WeeklySummary"][];
         };
       };
       /** @description Validation Error */
@@ -22887,7 +22893,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -22910,7 +22916,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['MonthlySummary'][];
+          "application/json": components["schemas"]["MonthlySummary"][];
         };
       };
       /** @description Validation Error */
@@ -22919,7 +22925,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -22946,7 +22952,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -22955,7 +22961,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -22975,7 +22981,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -23000,7 +23006,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -23009,7 +23015,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -23032,7 +23038,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -23041,7 +23047,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -23064,7 +23070,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -23073,7 +23079,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -23098,7 +23104,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -23107,7 +23113,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -23130,7 +23136,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -23139,7 +23145,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -23164,7 +23170,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -23173,7 +23179,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -23196,7 +23202,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -23205,7 +23211,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -23219,7 +23225,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['ImagePrompt'];
+        "application/json": components["schemas"]["ImagePrompt"];
       };
     };
     responses: {
@@ -23229,7 +23235,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -23238,7 +23244,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -23252,7 +23258,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'multipart/form-data': components['schemas']['Body_upload_file_media_upload_post'];
+        "multipart/form-data": components["schemas"]["Body_upload_file_media_upload_post"];
       };
     };
     responses: {
@@ -23262,7 +23268,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -23271,7 +23277,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -23280,14 +23286,14 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
-        'x-api-key'?: string | null;
+        "x-api-key"?: string | null;
       };
       path?: never;
       cookie?: never;
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['VoiceQueryRequest'];
+        "application/json": components["schemas"]["VoiceQueryRequest"];
       };
     };
     responses: {
@@ -23297,7 +23303,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['VoiceQueryResponse'];
+          "application/json": components["schemas"]["VoiceQueryResponse"];
         };
       };
       /** @description Not found */
@@ -23313,7 +23319,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -23327,7 +23333,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['ElevenLabsRequest'];
+        "application/json": components["schemas"]["ElevenLabsRequest"];
       };
     };
     responses: {
@@ -23337,7 +23343,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Not found */
@@ -23353,7 +23359,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -23373,7 +23379,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Not found */
@@ -23394,7 +23400,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['ImageGenerationRequest'];
+        "application/json": components["schemas"]["ImageGenerationRequest"];
       };
     };
     responses: {
@@ -23404,7 +23410,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ImageGenerationResponse'];
+          "application/json": components["schemas"]["ImageGenerationResponse"];
         };
       };
       /** @description Validation Error */
@@ -23413,7 +23419,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -23448,7 +23454,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -23459,7 +23465,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -23474,7 +23480,7 @@ export interface operations {
         /** @description Filter by type */
         interaction_type?: string | null;
         /** @description Filter by direction */
-        direction?: ('inbound' | 'outbound') | null;
+        direction?: ("inbound" | "outbound") | null;
         /** @description Start date (UTC) */
         date_from?: string | null;
         /** @description End date (UTC) */
@@ -23496,7 +23502,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -23507,7 +23513,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -23544,7 +23550,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -23555,7 +23561,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -23575,7 +23581,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -23600,7 +23606,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -23611,7 +23617,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -23634,7 +23640,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -23645,7 +23651,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -23680,7 +23686,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -23691,7 +23697,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -23716,7 +23722,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -23727,7 +23733,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -23756,7 +23762,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -23767,7 +23773,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -23796,7 +23802,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -23807,7 +23813,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -23831,7 +23837,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -23840,7 +23846,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -23860,7 +23866,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -23882,7 +23888,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -23904,7 +23910,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -23926,7 +23932,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: string;
           };
         };
@@ -23948,7 +23954,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };
@@ -23968,7 +23974,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]:
               | string
               | {
@@ -23985,14 +23991,14 @@ export interface operations {
         language?: string | null;
       };
       header?: {
-        'X-API-Key'?: string | null;
+        "X-API-Key"?: string | null;
       };
       path?: never;
       cookie?: never;
     };
     requestBody: {
       content: {
-        'multipart/form-data': components['schemas']['Body_transcribe_audio_api_audio_transcribe_post'];
+        "multipart/form-data": components["schemas"]["Body_transcribe_audio_api_audio_transcribe_post"];
       };
     };
     responses: {
@@ -24002,7 +24008,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -24011,7 +24017,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -24020,14 +24026,14 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
-        'X-API-Key'?: string | null;
+        "X-API-Key"?: string | null;
       };
       path?: never;
       cookie?: never;
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['SpeechRequest'];
+        "application/json": components["schemas"]["SpeechRequest"];
       };
     };
     responses: {
@@ -24037,7 +24043,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -24046,7 +24052,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -24074,7 +24080,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -24083,7 +24089,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -24111,7 +24117,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -24120,7 +24126,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -24136,7 +24142,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['ChatStreamRequest'];
+        "application/json": components["schemas"]["ChatStreamRequest"];
       };
     };
     responses: {
@@ -24146,7 +24152,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -24155,7 +24161,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -24175,7 +24181,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -24197,7 +24203,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': string[];
+          "application/json": string[];
         };
       };
     };
@@ -24221,7 +24227,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -24232,7 +24238,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -24252,7 +24258,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -24278,7 +24284,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             [key: string]: unknown;
           };
         };
@@ -24289,7 +24295,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['HTTPValidationError'];
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -24309,7 +24315,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': unknown;
+          "application/json": unknown;
         };
       };
     };

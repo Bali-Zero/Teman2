@@ -7,12 +7,21 @@
  * - Upload con deduplicazione
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import { logger } from '@/lib/logger';
-import type { FileItem, ConnectionStatus, FileListResponse } from '@/lib/api/drive/drive.types';
-import { useDebounce } from '@/lib/hooks/optimized/useDebounce';
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  useInfiniteQuery,
+} from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { logger } from "@/lib/logger";
+import type {
+  FileItem,
+  ConnectionStatus,
+  FileListResponse,
+} from "@/lib/api/drive/drive.types";
+import { useDebounce } from "@/lib/hooks/optimized/useDebounce";
 
 // ============================================================================
 // CONSTANTS
@@ -37,7 +46,7 @@ const PAGE_SIZE = 100;
 
 export function useDriveStatus() {
   return useQuery({
-    queryKey: ['drive', 'status'],
+    queryKey: ["drive", "status"],
     queryFn: async (): Promise<ConnectionStatus> => {
       return api.drive.getStatus();
     },
@@ -59,13 +68,13 @@ interface DriveFilesPage {
 
 export function useDriveFilesInfinite(
   folderId: string | null,
-  searchQuery: string = '',
-  enabled: boolean = true
+  searchQuery: string = "",
+  enabled: boolean = true,
 ) {
   const debouncedSearch = useDebounce(searchQuery, 300);
 
   return useInfiniteQuery({
-    queryKey: ['drive', 'files', folderId || 'root', debouncedSearch || 'all'],
+    queryKey: ["drive", "files", folderId || "root", debouncedSearch || "all"],
     queryFn: async ({ pageParam }): Promise<DriveFilesPage> => {
       const result = await api.drive.listFiles({
         folder_id: folderId || undefined,
@@ -93,13 +102,19 @@ export function useDriveFilesInfinite(
 
 export function useDriveFiles(
   folderId: string | null,
-  searchQuery: string = '',
-  enabled: boolean = true
+  searchQuery: string = "",
+  enabled: boolean = true,
 ) {
   const debouncedSearch = useDebounce(searchQuery, 300);
 
   return useQuery({
-    queryKey: ['drive', 'files', 'single', folderId || 'root', debouncedSearch || 'all'],
+    queryKey: [
+      "drive",
+      "files",
+      "single",
+      folderId || "root",
+      debouncedSearch || "all",
+    ],
     queryFn: async (): Promise<FileListResponse> => {
       return api.drive.listFiles({
         folder_id: folderId || undefined,
@@ -118,7 +133,7 @@ export function useDriveFiles(
 
 export function useFileMetadata(fileId: string | null) {
   return useQuery({
-    queryKey: ['drive', 'file', fileId, 'metadata'],
+    queryKey: ["drive", "file", fileId, "metadata"],
     queryFn: async (): Promise<FileItem | null> => {
       if (!fileId) return null;
       return api.drive.getFile(fileId);
@@ -144,13 +159,14 @@ export function usePrefetchFolder() {
 
       prefetchTimeout.current = setTimeout(() => {
         queryClient.prefetchQuery({
-          queryKey: ['drive', 'files', 'single', folderId, 'all'],
-          queryFn: async () => api.drive.listFiles({ folder_id: folderId, page_size: 100 }),
+          queryKey: ["drive", "files", "single", folderId, "all"],
+          queryFn: async () =>
+            api.drive.listFiles({ folder_id: folderId, page_size: 100 }),
           staleTime: STALE_TIME.files,
         });
       }, 300);
     },
-    [queryClient]
+    [queryClient],
   );
 
   const cancelPrefetch = useCallback(() => {
@@ -178,7 +194,7 @@ interface UploadState {
   id: string;
   fileName: string;
   progress: number;
-  status: 'pending' | 'uploading' | 'completed' | 'error';
+  status: "pending" | "uploading" | "completed" | "error";
   error?: string;
 }
 
@@ -190,14 +206,18 @@ export function useDriveUpload() {
     async (
       file: File,
       parentId: string,
-      onProgress?: (progress: { loaded: number; total: number; percentage: number }) => void
+      onProgress?: (progress: {
+        loaded: number;
+        total: number;
+        percentage: number;
+      }) => void,
     ) => {
       const uploadId = `${parentId}-${file.name}-${file.size}`;
 
       if (uploads.has(uploadId)) {
-        logger.warn('Upload already in progress, deduplicating', {
-          component: 'useDriveUpload',
-          action: 'deduplicate',
+        logger.warn("Upload already in progress, deduplicating", {
+          component: "useDriveUpload",
+          action: "deduplicate",
           metadata: { fileName: file.name, uploadId },
         });
         return uploads.get(uploadId)!;
@@ -210,35 +230,39 @@ export function useDriveUpload() {
               id: uploadId,
               fileName: file.name,
               progress: 0,
-              status: 'uploading',
-            })
-          )
+              status: "uploading",
+            }),
+          ),
       );
 
       try {
-        const result = await api.drive.uploadFile(file, parentId, (progress) => {
-          setUploads((prev) => {
-            const next = new Map(prev);
-            const upload = next.get(uploadId);
-            if (upload) {
-              upload.progress = progress.percentage;
-            }
-            return next;
-          });
-          onProgress?.(progress);
-        });
+        const result = await api.drive.uploadFile(
+          file,
+          parentId,
+          (progress) => {
+            setUploads((prev) => {
+              const next = new Map(prev);
+              const upload = next.get(uploadId);
+              if (upload) {
+                upload.progress = progress.percentage;
+              }
+              return next;
+            });
+            onProgress?.(progress);
+          },
+        );
 
         setUploads((prev) => {
           const next = new Map(prev);
           const upload = next.get(uploadId);
           if (upload) {
-            upload.status = 'completed';
+            upload.status = "completed";
             upload.progress = 100;
           }
           return next;
         });
 
-        queryClient.invalidateQueries({ queryKey: ['drive', 'files'] });
+        queryClient.invalidateQueries({ queryKey: ["drive", "files"] });
 
         setTimeout(() => {
           setUploads((prev) => {
@@ -250,18 +274,24 @@ export function useDriveUpload() {
 
         return result;
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Upload failed';
-        logger.error('File upload failed', {
-          component: 'useDriveUpload',
-          action: 'upload',
-          metadata: { fileName: file.name, uploadId, parentId, error: errorMessage },
+        const errorMessage =
+          error instanceof Error ? error.message : "Upload failed";
+        logger.error("File upload failed", {
+          component: "useDriveUpload",
+          action: "upload",
+          metadata: {
+            fileName: file.name,
+            uploadId,
+            parentId,
+            error: errorMessage,
+          },
         });
 
         setUploads((prev) => {
           const next = new Map(prev);
           const upload = next.get(uploadId);
           if (upload) {
-            upload.status = 'error';
+            upload.status = "error";
             upload.error = errorMessage;
           }
           return next;
@@ -269,7 +299,7 @@ export function useDriveUpload() {
         throw error;
       }
     },
-    [uploads, queryClient]
+    [uploads, queryClient],
   );
 
   const uploadMultiple = useCallback(
@@ -280,46 +310,56 @@ export function useDriveUpload() {
         onFileComplete?: (file: File, result: any) => void;
         onFileError?: (file: File, error: Error) => void;
         parallel?: number;
-      }
+      },
     ) => {
       const { parallel = 3 } = options || {};
-      const results: Array<{ file: File; success: boolean; result?: any; error?: Error }> = [];
+      const results: Array<{
+        file: File;
+        success: boolean;
+        result?: any;
+        error?: Error;
+      }> = [];
 
       for (let i = 0; i < files.length; i += parallel) {
         const batch = files.slice(i, i + parallel);
         const batchResults = await Promise.allSettled(
           batch.map(async (file) => {
             try {
-              const result = await uploadFile(file, parentId || 'root');
+              const result = await uploadFile(file, parentId || "root");
               options?.onFileComplete?.(file, result);
               return { file, success: true, result };
             } catch (error) {
-              const err = error instanceof Error ? error : new Error(String(error));
+              const err =
+                error instanceof Error ? error : new Error(String(error));
               options?.onFileError?.(file, err);
               return { file, success: false, error: err };
             }
-          })
+          }),
         );
 
         results.push(
           ...batchResults.map((r, idx) =>
-            r.status === 'fulfilled'
+            r.status === "fulfilled"
               ? r.value
-              : { file: batch[idx], success: false, error: new Error(String(r.reason)) }
-          )
+              : {
+                  file: batch[idx],
+                  success: false,
+                  error: new Error(String(r.reason)),
+                },
+          ),
         );
       }
 
       return results;
     },
-    [uploadFile]
+    [uploadFile],
   );
 
   const clearCompleted = useCallback(() => {
     setUploads((prev) => {
       const next = new Map();
       prev.forEach((upload, id) => {
-        if (upload.status !== 'completed') {
+        if (upload.status !== "completed") {
           next.set(id, upload);
         }
       });
@@ -343,20 +383,32 @@ export function useDriveMutationsOptimized() {
   const queryClient = useQueryClient();
 
   const createFolder = useMutation({
-    mutationFn: async ({ name, parentId }: { name: string; parentId: string | null }) => {
-      return api.drive.createFolder({ name, parent_id: parentId || 'root' });
+    mutationFn: async ({
+      name,
+      parentId,
+    }: {
+      name: string;
+      parentId: string | null;
+    }) => {
+      return api.drive.createFolder({ name, parent_id: parentId || "root" });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['drive', 'files'] });
+      queryClient.invalidateQueries({ queryKey: ["drive", "files"] });
     },
   });
 
   const renameFile = useMutation({
-    mutationFn: async ({ fileId, newName }: { fileId: string; newName: string }) => {
+    mutationFn: async ({
+      fileId,
+      newName,
+    }: {
+      fileId: string;
+      newName: string;
+    }) => {
       return api.drive.renameFile(fileId, newName);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['drive', 'files'] });
+      queryClient.invalidateQueries({ queryKey: ["drive", "files"] });
     },
   });
 
@@ -365,7 +417,7 @@ export function useDriveMutationsOptimized() {
       return api.drive.deleteFile(fileId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['drive', 'files'] });
+      queryClient.invalidateQueries({ queryKey: ["drive", "files"] });
     },
   });
 
@@ -380,16 +432,22 @@ export function useDriveMutationsOptimized() {
       return api.drive.moveFiles(fileIds, targetFolderId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['drive', 'files'] });
+      queryClient.invalidateQueries({ queryKey: ["drive", "files"] });
     },
   });
 
   const copyFile = useMutation({
-    mutationFn: async ({ fileId, parentId }: { fileId: string; parentId: string }) => {
+    mutationFn: async ({
+      fileId,
+      parentId,
+    }: {
+      fileId: string;
+      parentId: string;
+    }) => {
       return api.drive.copyFile(fileId, undefined, parentId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['drive', 'files'] });
+      queryClient.invalidateQueries({ queryKey: ["drive", "files"] });
     },
   });
 
@@ -410,7 +468,7 @@ export function useDriveSearch(query: string, enabled: boolean = true) {
   const debouncedQuery = useDebounce(query, 300);
 
   return useQuery({
-    queryKey: ['drive', 'search', debouncedQuery],
+    queryKey: ["drive", "search", debouncedQuery],
     queryFn: async (): Promise<FileItem[]> => {
       if (debouncedQuery.length < 2) return [];
       return api.drive.searchFiles(debouncedQuery, 50);

@@ -1,5 +1,5 @@
-import type { Metadata } from 'next';
-import KBLICodePageClient from './client-page';
+import type { Metadata } from "next";
+import KBLICodePageClient from "./client-page";
 
 /**
  * KBLI Code Landing Page (SEO-optimized)
@@ -31,20 +31,20 @@ export async function generateMetadata({
     description: `Complete guide to KBLI ${code} business classification code. Requirements, licenses, capital, and PMA status for business setup in Indonesia.`,
     keywords: [
       `kbli ${code}`,
-      'kbli indonesia',
-      'business classification',
-      'pt pma',
-      'company setup indonesia',
-      'indonesia business code',
+      "kbli indonesia",
+      "business classification",
+      "pt pma",
+      "company setup indonesia",
+      "indonesia business code",
     ],
     openGraph: {
       title: `KBLI ${code} - Indonesia Business Classification`,
       description: `Complete information about KBLI ${code} business classification code in Indonesia.`,
-      type: 'article',
+      type: "article",
       url: `https://balizero.com/kbli/${code}`,
     },
     twitter: {
-      card: 'summary_large_image',
+      card: "summary_large_image",
       title: `KBLI ${code} - Indonesia Business Classification`,
       description: `Complete information about KBLI ${code} business classification code in Indonesia.`,
     },

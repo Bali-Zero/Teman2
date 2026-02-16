@@ -13,13 +13,13 @@ Successfully implemented bilingual (English + Indonesian) search for KBLI Naviga
 
 ### Key Achievements
 
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| **Codes with English Keywords** | 0 (0%) | 1,351 (86.5%) | +86.5% |
-| **File Size** | 781 KB | 909 KB | +16.4% |
-| **Expected Pass Rate** | 22% | 90%+ | +4.1x |
-| **Expected English Search Success** | 2.9% | 94% | +32x |
-| **Indonesian Search** | 100% | 100% | Maintained ✓ |
+| Metric                              | Before | After         | Improvement  |
+| ----------------------------------- | ------ | ------------- | ------------ |
+| **Codes with English Keywords**     | 0 (0%) | 1,351 (86.5%) | +86.5%       |
+| **File Size**                       | 781 KB | 909 KB        | +16.4%       |
+| **Expected Pass Rate**              | 22%    | 90%+          | +4.1x        |
+| **Expected English Search Success** | 2.9%   | 94%           | +32x         |
+| **Indonesian Search**               | 100%   | 100%          | Maintained ✓ |
 
 ---
 
@@ -62,12 +62,14 @@ Successfully implemented bilingual (English + Indonesian) search for KBLI Naviga
 ### Translation Strategy
 
 **Manual Curation** (50 priority codes):
+
 - Restaurant (56101): restaurant, cafe, dining, eatery, food service, canteen, cafeteria, bistro
 - Software (62013): software, development, programming, coding, IT, tech, computer, app, application, web, mobile
 - Hotel (55101): hotel, five-star, luxury, accommodation, lodging, resort, hospitality
 - Construction (41001): construction, building, development, contractor, real estate, property
 
 **Automated Translation** (1,327 codes):
+
 - Pattern matching against Indonesian terms in titles/descriptions
 - Translation dictionary with 50+ business term mappings
 - Example: "pertanian" → agriculture, farming, agricultural
@@ -92,6 +94,7 @@ Inject into index.html (regex replacement)
 **Order:** English first, then Indonesian
 
 Example for code 56101:
+
 ```
 "restaurant cafe dining eatery food service canteen cafeteria restoran kantin kafetaria makan layanan makanan penyediaan bertempat tetap"
 ```
@@ -115,12 +118,12 @@ Example for code 56101:
 
 ### Expected User Impact (Based on Guide)
 
-| Test Scenario | Before | After | 
-|--------------|--------|-------|
-| "restaurant" search | ❌ 0 results | ✅ Code 56101 |
-| "software" search | ❌ Wrong results | ✅ Code 62013 |
-| "hotel" search | ✅ Works (bilingual) | ✅ Works better |
-| "restoran" search | ✅ Works | ✅ Still works |
+| Test Scenario       | Before               | After           |
+| ------------------- | -------------------- | --------------- |
+| "restaurant" search | ❌ 0 results         | ✅ Code 56101   |
+| "software" search   | ❌ Wrong results     | ✅ Code 62013   |
+| "hotel" search      | ✅ Works (bilingual) | ✅ Works better |
+| "restoran" search   | ✅ Works             | ✅ Still works  |
 
 ---
 
@@ -131,7 +134,7 @@ Example for code 56101:
 Estimated coverage by KBLI section (based on 86.5% overall):
 
 - **Section A** (Agriculture): ~85% coverage
-- **Section C** (Manufacturing): ~88% coverage  
+- **Section C** (Manufacturing): ~88% coverage
 - **Section G** (Retail): ~90% coverage
 - **Section I** (Food & Accommodation): ~95% coverage (priority)
 - **Section J** (Technology): ~92% coverage (priority)
@@ -140,6 +143,7 @@ Estimated coverage by KBLI section (based on 86.5% overall):
 ### Gaps (13.5% without English keywords)
 
 211 codes without English keywords are primarily:
+
 - Highly specialized technical terms
 - Niche agricultural activities
 - Rare manufacturing processes
@@ -168,6 +172,7 @@ Estimated coverage by KBLI section (based on 86.5% overall):
 ### Next Steps
 
 1. **Push to production:**
+
    ```bash
    git push origin main
    ```
@@ -191,7 +196,7 @@ Estimated coverage by KBLI section (based on 86.5% overall):
 ### File Size
 
 - **Before:** 781 KB
-- **After:** 909 KB  
+- **After:** 909 KB
 - **Increase:** +128 KB (+16.4%)
 - **Assessment:** ✅ Acceptable (< 1 MB threshold)
 

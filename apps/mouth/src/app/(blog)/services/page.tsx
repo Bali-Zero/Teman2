@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import * as React from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
-import { motion } from 'framer-motion';
+import * as React from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { motion } from "framer-motion";
 import {
   Plane,
   Building2,
@@ -20,7 +20,7 @@ import {
   ChevronRight,
   Star,
   Quote,
-} from 'lucide-react';
+} from "lucide-react";
 
 /**
  * Services Overview Page - Blog Style
@@ -47,11 +47,13 @@ export default function ServicesPage() {
               Our Services
             </span>
             <h1 className="font-serif text-4xl lg:text-5xl xl:text-6xl text-white leading-[1.1] mb-6">
-              Build Your <span className="text-[#e85c41]">Indonesian Dream</span> with Confidence
+              Build Your{" "}
+              <span className="text-[#e85c41]">Indonesian Dream</span> with
+              Confidence
             </h1>
             <p className="text-lg text-white/70 mb-8 leading-relaxed">
-              From Zero to Infinity. We handle visas, company setup, taxes, and property — so you
-              can focus on what matters most.
+              From Zero to Infinity. We handle visas, company setup, taxes, and
+              property — so you can focus on what matters most.
             </p>
 
             <div className="flex flex-wrap gap-4">
@@ -67,7 +69,12 @@ export default function ServicesPage() {
                 href="/chat"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-lg border border-white/20 text-white font-medium hover:bg-white/10 transition-colors"
               >
-                <Image src="/assets/logo/zantara-lotus.png" alt="" width={60} height={60} />
+                <Image
+                  src="/assets/logo/zantara-lotus.png"
+                  alt=""
+                  width={60}
+                  height={60}
+                />
                 Ask Zantara AI
               </Link>
             </div>
@@ -105,12 +112,17 @@ export default function ServicesPage() {
             </svg>
             <div className="flex items-center gap-1">
               {[...Array(5)].map((_, i) => (
-                <Star key={i} className="w-6 h-6 fill-yellow-400 text-yellow-400" />
+                <Star
+                  key={i}
+                  className="w-6 h-6 fill-yellow-400 text-yellow-400"
+                />
               ))}
             </div>
             <span className="text-4xl font-bold text-white">5.0</span>
             <div className="flex flex-col">
-              <span className="text-white/80 text-sm font-medium">700+ reviews</span>
+              <span className="text-white/80 text-sm font-medium">
+                700+ reviews
+              </span>
               <span className="text-white/50 text-xs">on Google Maps</span>
             </div>
           </a>
@@ -123,9 +135,9 @@ export default function ServicesPage() {
               transition={{
                 x: {
                   repeat: Infinity,
-                  repeatType: 'loop',
+                  repeatType: "loop",
                   duration: 40,
-                  ease: 'linear',
+                  ease: "linear",
                 },
               }}
             >
@@ -133,24 +145,24 @@ export default function ServicesPage() {
                 // Alternating colors: yellow, green, red, blue
                 const colors = [
                   {
-                    border: '2px solid rgba(234, 179, 8, 0.5)',
-                    accent: 'bg-yellow-500/20',
-                    text: 'text-yellow-400',
+                    border: "2px solid rgba(234, 179, 8, 0.5)",
+                    accent: "bg-yellow-500/20",
+                    text: "text-yellow-400",
                   },
                   {
-                    border: '2px solid rgba(34, 197, 94, 0.5)',
-                    accent: 'bg-green-500/20',
-                    text: 'text-green-400',
+                    border: "2px solid rgba(34, 197, 94, 0.5)",
+                    accent: "bg-green-500/20",
+                    text: "text-green-400",
                   },
                   {
-                    border: '2px solid rgba(239, 68, 68, 0.5)',
-                    accent: 'bg-red-500/20',
-                    text: 'text-red-400',
+                    border: "2px solid rgba(239, 68, 68, 0.5)",
+                    accent: "bg-red-500/20",
+                    text: "text-red-400",
                   },
                   {
-                    border: '2px solid rgba(59, 130, 246, 0.5)',
-                    accent: 'bg-blue-500/20',
-                    text: 'text-blue-400',
+                    border: "2px solid rgba(59, 130, 246, 0.5)",
+                    accent: "bg-blue-500/20",
+                    text: "text-blue-400",
                   },
                 ];
                 const colorIndex = index % 4;
@@ -164,7 +176,10 @@ export default function ServicesPage() {
                   >
                     <div className="flex items-center gap-1 mb-3">
                       {[...Array(5)].map((_, i) => (
-                        <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                        <Star
+                          key={i}
+                          className="w-4 h-4 fill-yellow-400 text-yellow-400"
+                        />
                       ))}
                     </div>
                     <p className="text-white/80 text-sm mb-4 line-clamp-3 italic">
@@ -177,7 +192,9 @@ export default function ServicesPage() {
                         {review.name.charAt(0)}
                       </div>
                       <div>
-                        <p className="text-white text-sm font-medium">{review.name}</p>
+                        <p className="text-white text-sm font-medium">
+                          {review.name}
+                        </p>
                         <p className="text-white/40 text-xs">{review.date}</p>
                       </div>
                     </div>
@@ -193,7 +210,9 @@ export default function ServicesPage() {
       <section className="border-b border-white/10">
         <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
           <div className="text-center mb-12">
-            <h2 className="font-serif text-3xl text-white mb-4">Our Services & Pricing</h2>
+            <h2 className="font-serif text-3xl text-white mb-4">
+              Our Services & Pricing
+            </h2>
             <p className="text-white/60 max-w-2xl mx-auto">
               Transparent pricing with no hidden fees. All prices in IDR.
             </p>
@@ -201,14 +220,20 @@ export default function ServicesPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {SERVICES.map((service) => (
-              <Link key={service.slug} href={`/services/${service.slug}`} className="group">
+              <Link
+                key={service.slug}
+                href={`/services/${service.slug}`}
+                className="group"
+              >
                 <div className="h-full rounded-xl border border-white/10 bg-[#0a2540] p-8 hover:border-[#2251ff]/50 transition-all">
                   {/* Header */}
                   <div className="flex items-start gap-4 mb-6">
                     <div
                       className={`w-14 h-14 rounded-xl ${service.bgColor} flex items-center justify-center flex-shrink-0`}
                     >
-                      <service.icon className={`w-7 h-7 ${service.iconColor}`} />
+                      <service.icon
+                        className={`w-7 h-7 ${service.iconColor}`}
+                      />
                     </div>
                     <div>
                       <h3 className="font-serif text-xl text-white mb-1 group-hover:text-[#2251ff] transition-colors">
@@ -224,12 +249,16 @@ export default function ServicesPage() {
                       Starting from
                     </p>
                     <p className="text-2xl font-bold text-white">
-                      {service.startingPrice === 'Contact' ? (
-                        <span className="text-[#2251ff]">Contact for quote</span>
+                      {service.startingPrice === "Contact" ? (
+                        <span className="text-[#2251ff]">
+                          Contact for quote
+                        </span>
                       ) : (
                         <>
                           {service.startingPrice}
-                          <span className="text-white/40 text-sm font-normal ml-2">IDR</span>
+                          <span className="text-white/40 text-sm font-normal ml-2">
+                            IDR
+                          </span>
                         </>
                       )}
                     </p>
@@ -238,7 +267,10 @@ export default function ServicesPage() {
                   {/* Features */}
                   <ul className="space-y-2 mb-6">
                     {service.highlights.map((item, i) => (
-                      <li key={i} className="flex items-center gap-2 text-white/70 text-sm">
+                      <li
+                        key={i}
+                        className="flex items-center gap-2 text-white/70 text-sm"
+                      >
                         <Check className="w-4 h-4 text-[#22c55e]" />
                         {item}
                       </li>
@@ -261,7 +293,9 @@ export default function ServicesPage() {
       <section className="border-b border-white/10">
         <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
           <div className="text-center mb-12">
-            <h2 className="font-serif text-3xl text-white mb-4">How It Works</h2>
+            <h2 className="font-serif text-3xl text-white mb-4">
+              How It Works
+            </h2>
             <p className="text-white/60">Simple, transparent, professional</p>
           </div>
 
@@ -283,9 +317,12 @@ export default function ServicesPage() {
       <section className="border-b border-white/10">
         <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
           <div className="text-center mb-12">
-            <h2 className="font-serif text-3xl text-white mb-4">Meet Our Team</h2>
+            <h2 className="font-serif text-3xl text-white mb-4">
+              Meet Our Team
+            </h2>
             <p className="text-white/60 max-w-2xl mx-auto">
-              A dedicated team of visa specialists, tax consultants, and business advisors.
+              A dedicated team of visa specialists, tax consultants, and
+              business advisors.
             </p>
           </div>
 
@@ -312,8 +349,12 @@ export default function ServicesPage() {
                     </span>
                   </div>
                 )}
-                <p className="text-white text-xs font-medium truncate">{member.name}</p>
-                <p className="text-white/40 text-[10px] truncate">{member.role}</p>
+                <p className="text-white text-xs font-medium truncate">
+                  {member.name}
+                </p>
+                <p className="text-white/40 text-[10px] truncate">
+                  {member.role}
+                </p>
               </div>
             ))}
           </div>
@@ -329,7 +370,9 @@ export default function ServicesPage() {
             />
             <div>
               <p className="text-white font-medium">Zantara AI</p>
-              <p className="text-white/60 text-sm">Your 24/7 intelligent assistant</p>
+              <p className="text-white/60 text-sm">
+                Your 24/7 intelligent assistant
+              </p>
             </div>
             <Link
               href="/chat"
@@ -367,10 +410,12 @@ export default function ServicesPage() {
                   className="rounded-full border-2 border-white/30"
                 />
               </div>
-              <h2 className="font-serif text-3xl lg:text-4xl text-white mb-4">Ready to Start?</h2>
+              <h2 className="font-serif text-3xl lg:text-4xl text-white mb-4">
+                Ready to Start?
+              </h2>
               <p className="text-white/80 text-lg mb-8 leading-relaxed">
-                Get a free consultation with our experts. We'll guide you through the process and
-                give you a clear timeline and quote.
+                Get a free consultation with our experts. We'll guide you
+                through the process and give you a clear timeline and quote.
               </p>
 
               <div className="flex flex-wrap gap-4">
@@ -410,254 +455,254 @@ export default function ServicesPage() {
 // Data
 const GOOGLE_REVIEWS = [
   {
-    name: 'Marco R.',
-    text: 'Incredible service! They handled my PT PMA setup flawlessly. Everything was done in 3 weeks, exactly as promised. Highly recommended for anyone starting a business in Bali.',
-    date: '2 weeks ago',
+    name: "Marco R.",
+    text: "Incredible service! They handled my PT PMA setup flawlessly. Everything was done in 3 weeks, exactly as promised. Highly recommended for anyone starting a business in Bali.",
+    date: "2 weeks ago",
   },
   {
-    name: 'Sarah K.',
-    text: 'Zantara made my KITAS application so easy. They explained every step clearly and were always available on WhatsApp. Got my visa approved without any issues!',
-    date: '1 month ago',
+    name: "Sarah K.",
+    text: "Zantara made my KITAS application so easy. They explained every step clearly and were always available on WhatsApp. Got my visa approved without any issues!",
+    date: "1 month ago",
   },
   {
-    name: 'David M.',
+    name: "David M.",
     text: "Best immigration consultants in Bali. Professional, transparent pricing, and they actually know what they're doing. Saved me from so much stress.",
-    date: '3 weeks ago',
+    date: "3 weeks ago",
   },
   {
-    name: 'Anna L.',
-    text: 'They helped us buy property in Ubud as foreigners. Explained all the legal structures clearly. Very trustworthy team, we felt safe throughout the process.',
-    date: '1 month ago',
+    name: "Anna L.",
+    text: "They helped us buy property in Ubud as foreigners. Explained all the legal structures clearly. Very trustworthy team, we felt safe throughout the process.",
+    date: "1 month ago",
   },
   {
-    name: 'Thomas B.',
-    text: 'Fast and efficient! My investor KITAS was done in record time. The team is super responsive and knows Indonesian bureaucracy inside out.',
-    date: '2 months ago',
+    name: "Thomas B.",
+    text: "Fast and efficient! My investor KITAS was done in record time. The team is super responsive and knows Indonesian bureaucracy inside out.",
+    date: "2 months ago",
   },
   {
-    name: 'Julia W.',
+    name: "Julia W.",
     text: "Finally a company that doesn't overcharge. Fair prices, excellent service. They even helped me set up my tax registration. 5 stars!",
-    date: '1 month ago',
+    date: "1 month ago",
   },
   {
-    name: 'Michael C.',
+    name: "Michael C.",
     text: "I've used many agents in Bali over 10 years. Bali Zero is by far the most professional. They handle everything from visas to company compliance.",
-    date: '3 weeks ago',
+    date: "3 weeks ago",
   },
   {
-    name: 'Emma S.',
-    text: 'The AI assistant Zantara answered all my questions instantly, then the human team took over for the actual process. Perfect combination of tech and personal service.',
-    date: '2 weeks ago',
+    name: "Emma S.",
+    text: "The AI assistant Zantara answered all my questions instantly, then the human team took over for the actual process. Perfect combination of tech and personal service.",
+    date: "2 weeks ago",
   },
 ];
 
 const SERVICES = [
   {
-    name: 'Visa & Immigration',
-    slug: 'visa',
-    tagline: 'Complete visa solutions for living and working in Indonesia',
+    name: "Visa & Immigration",
+    slug: "visa",
+    tagline: "Complete visa solutions for living and working in Indonesia",
     icon: Plane,
-    bgColor: 'bg-rose-500/10',
-    iconColor: 'text-rose-400',
-    startingPrice: '2.300.000',
+    bgColor: "bg-rose-500/10",
+    iconColor: "text-rose-400",
+    startingPrice: "2.300.000",
     highlights: [
-      'Visit Visas (C1, C2 Business)',
-      'KITAS (Working, Freelance, Investor)',
-      'KITAP (Permanent Residence)',
-      'Multiple Entry Visas (D Series)',
+      "Visit Visas (C1, C2 Business)",
+      "KITAS (Working, Freelance, Investor)",
+      "KITAP (Permanent Residence)",
+      "Multiple Entry Visas (D Series)",
     ],
   },
   {
-    name: 'Company Setup & Licenses',
-    slug: 'company',
-    tagline: 'From licenses to structure — launch your business fast',
+    name: "Company Setup & Licenses",
+    slug: "company",
+    tagline: "From licenses to structure — launch your business fast",
     icon: Building2,
-    bgColor: 'bg-orange-500/10',
-    iconColor: 'text-orange-400',
-    startingPrice: '7.000.000',
+    bgColor: "bg-orange-500/10",
+    iconColor: "text-orange-400",
+    startingPrice: "7.000.000",
     highlights: [
-      'PT PMA/PMDN (Foreign Company)',
-      'SLHS (Hygiene Certificate)',
-      'Alcohol License (NPBBKC)',
-      'Company Revision & Changes',
+      "PT PMA/PMDN (Foreign Company)",
+      "SLHS (Hygiene Certificate)",
+      "Alcohol License (NPBBKC)",
+      "Company Revision & Changes",
     ],
   },
   {
-    name: 'Tax Consulting',
-    slug: 'tax',
+    name: "Tax Consulting",
+    slug: "tax",
     tagline: "Navigate Indonesia's tax system with confidence",
     icon: Calculator,
-    bgColor: 'bg-amber-500/10',
-    iconColor: 'text-amber-400',
-    startingPrice: 'Contact',
+    bgColor: "bg-amber-500/10",
+    iconColor: "text-amber-400",
+    startingPrice: "Contact",
     highlights: [
-      'Tax Registration (NPWP)',
-      'Tax Filing & Reporting (SPT)',
-      'Corporate Tax Planning',
-      'Personal Income Tax',
+      "Tax Registration (NPWP)",
+      "Tax Filing & Reporting (SPT)",
+      "Corporate Tax Planning",
+      "Personal Income Tax",
     ],
   },
   {
-    name: 'Real Estate Services',
-    slug: 'property',
-    tagline: 'Secure property with legal clarity and guidance',
+    name: "Real Estate Services",
+    slug: "property",
+    tagline: "Secure property with legal clarity and guidance",
     icon: Home,
-    bgColor: 'bg-emerald-500/10',
-    iconColor: 'text-emerald-400',
-    startingPrice: 'Contact',
+    bgColor: "bg-emerald-500/10",
+    iconColor: "text-emerald-400",
+    startingPrice: "Contact",
     highlights: [
-      'Legal Due Diligence',
-      'Leasehold Agreements (Hak Sewa)',
-      'IMB & Building Permits',
-      'Ownership Structures (PT PMA)',
+      "Legal Due Diligence",
+      "Leasehold Agreements (Hak Sewa)",
+      "IMB & Building Permits",
+      "Ownership Structures (PT PMA)",
     ],
   },
 ];
 
 const PROCESS_STEPS = [
   {
-    title: 'Consultation',
-    description: 'Free initial call to understand your needs',
+    title: "Consultation",
+    description: "Free initial call to understand your needs",
   },
   {
-    title: 'Proposal',
-    description: 'Clear timeline and transparent pricing',
+    title: "Proposal",
+    description: "Clear timeline and transparent pricing",
   },
   {
-    title: 'Execution',
-    description: 'We handle all paperwork and processes',
+    title: "Execution",
+    description: "We handle all paperwork and processes",
   },
   {
-    title: 'Delivery',
-    description: 'Receive your documents and ongoing support',
+    title: "Delivery",
+    description: "Receive your documents and ongoing support",
   },
 ];
 
 const CONTACT_INFO = [
-  { label: 'Office', value: 'Kerobokan, Bali' },
-  { label: 'Hours', value: 'Mon-Fri 9am-6pm' },
-  { label: 'Response', value: 'Within 24 hours' },
-  { label: 'Languages', value: 'EN, ID, IT' },
+  { label: "Office", value: "Kerobokan, Bali" },
+  { label: "Hours", value: "Mon-Fri 9am-6pm" },
+  { label: "Response", value: "Within 24 hours" },
+  { label: "Languages", value: "EN, ID, IT" },
 ];
 
 const TEAM_MEMBERS = [
   {
-    name: 'Zero',
-    initials: 'ZE',
-    role: 'CEO',
-    gradient: 'bg-gradient-to-br from-[#2251ff] to-[#1a41cc]',
-    image: '/static/team/zero.jpg',
+    name: "Zero",
+    initials: "ZE",
+    role: "CEO",
+    gradient: "bg-gradient-to-br from-[#2251ff] to-[#1a41cc]",
+    image: "/static/team/zero.jpg",
   },
   {
-    name: 'Ruslana',
-    initials: 'RS',
-    role: 'Board',
-    gradient: 'bg-gradient-to-br from-[#e85c41] to-[#d14832]',
-    image: '/static/team/ruslana.jpg',
+    name: "Ruslana",
+    initials: "RS",
+    role: "Board",
+    gradient: "bg-gradient-to-br from-[#e85c41] to-[#d14832]",
+    image: "/static/team/ruslana.jpg",
   },
   {
-    name: 'Anna',
-    initials: 'AN',
-    role: 'Advisor',
-    gradient: 'bg-gradient-to-br from-sky-500 to-blue-600',
-    image: '/static/team/anna.jpeg',
+    name: "Anna",
+    initials: "AN",
+    role: "Advisor",
+    gradient: "bg-gradient-to-br from-sky-500 to-blue-600",
+    image: "/static/team/anna.jpeg",
   },
   {
-    name: 'Marta',
-    initials: 'MA',
-    role: 'Advisor',
-    gradient: 'bg-gradient-to-br from-fuchsia-500 to-pink-600',
-    image: '/static/team/marta.jpeg',
+    name: "Marta",
+    initials: "MA",
+    role: "Advisor",
+    gradient: "bg-gradient-to-br from-fuchsia-500 to-pink-600",
+    image: "/static/team/marta.jpeg",
   },
   {
-    name: 'Olena',
-    initials: 'OL',
-    role: 'Advisor',
-    gradient: 'bg-gradient-to-br from-cyan-500 to-teal-600',
-    image: '/static/team/olena.jpeg',
+    name: "Olena",
+    initials: "OL",
+    role: "Advisor",
+    gradient: "bg-gradient-to-br from-cyan-500 to-teal-600",
+    image: "/static/team/olena.jpeg",
   },
   {
-    name: 'Anton',
-    initials: 'AN',
-    role: 'Consultant',
-    gradient: 'bg-gradient-to-br from-emerald-500 to-teal-600',
+    name: "Anton",
+    initials: "AN",
+    role: "Consultant",
+    gradient: "bg-gradient-to-br from-emerald-500 to-teal-600",
   },
   {
-    name: 'Vino',
-    initials: 'VI',
-    role: 'Consultant',
-    gradient: 'bg-gradient-to-br from-violet-500 to-purple-600',
+    name: "Vino",
+    initials: "VI",
+    role: "Consultant",
+    gradient: "bg-gradient-to-br from-violet-500 to-purple-600",
   },
   {
-    name: 'Krisna',
-    initials: 'KR',
-    role: 'Consultant',
-    gradient: 'bg-gradient-to-br from-orange-500 to-amber-600',
+    name: "Krisna",
+    initials: "KR",
+    role: "Consultant",
+    gradient: "bg-gradient-to-br from-orange-500 to-amber-600",
   },
   {
-    name: 'Adit',
-    initials: 'AD',
-    role: 'Crew Lead',
-    gradient: 'bg-gradient-to-br from-cyan-500 to-blue-600',
+    name: "Adit",
+    initials: "AD",
+    role: "Crew Lead",
+    gradient: "bg-gradient-to-br from-cyan-500 to-blue-600",
   },
   {
-    name: 'Ari',
-    initials: 'AR',
-    role: 'Specialist',
-    gradient: 'bg-gradient-to-br from-rose-500 to-pink-600',
+    name: "Ari",
+    initials: "AR",
+    role: "Specialist",
+    gradient: "bg-gradient-to-br from-rose-500 to-pink-600",
   },
   {
-    name: 'Dea',
-    initials: 'DE',
-    role: 'Consultant',
-    gradient: 'bg-gradient-to-br from-indigo-500 to-blue-600',
+    name: "Dea",
+    initials: "DE",
+    role: "Consultant",
+    gradient: "bg-gradient-to-br from-indigo-500 to-blue-600",
   },
   {
-    name: 'Surya',
-    initials: 'SU',
-    role: 'Specialist',
-    gradient: 'bg-gradient-to-br from-amber-500 to-orange-600',
+    name: "Surya",
+    initials: "SU",
+    role: "Specialist",
+    gradient: "bg-gradient-to-br from-amber-500 to-orange-600",
   },
   {
-    name: 'Damar',
-    initials: 'DM',
-    role: 'Consultant',
-    gradient: 'bg-gradient-to-br from-teal-500 to-emerald-600',
+    name: "Damar",
+    initials: "DM",
+    role: "Consultant",
+    gradient: "bg-gradient-to-br from-teal-500 to-emerald-600",
   },
   {
-    name: 'Veronika',
-    initials: 'VE',
-    role: 'Tax Manager',
-    gradient: 'bg-gradient-to-br from-[#2251ff] to-[#1a41cc]',
+    name: "Veronika",
+    initials: "VE",
+    role: "Tax Manager",
+    gradient: "bg-gradient-to-br from-[#2251ff] to-[#1a41cc]",
   },
   {
-    name: 'Angel',
-    initials: 'AG',
-    role: 'Tax Expert',
-    gradient: 'bg-gradient-to-br from-rose-500 to-red-600',
+    name: "Angel",
+    initials: "AG",
+    role: "Tax Expert",
+    gradient: "bg-gradient-to-br from-rose-500 to-red-600",
   },
   {
-    name: 'Kadek',
-    initials: 'KD',
-    role: 'Tax',
-    gradient: 'bg-gradient-to-br from-emerald-500 to-green-600',
+    name: "Kadek",
+    initials: "KD",
+    role: "Tax",
+    gradient: "bg-gradient-to-br from-emerald-500 to-green-600",
   },
   {
-    name: 'Dewa Ayu',
-    initials: 'DA',
-    role: 'Tax',
-    gradient: 'bg-gradient-to-br from-violet-500 to-indigo-600',
+    name: "Dewa Ayu",
+    initials: "DA",
+    role: "Tax",
+    gradient: "bg-gradient-to-br from-violet-500 to-indigo-600",
   },
   {
-    name: 'Faysha',
-    initials: 'FA',
-    role: 'Reception',
-    gradient: 'bg-gradient-to-br from-pink-500 to-rose-600',
+    name: "Faysha",
+    initials: "FA",
+    role: "Reception",
+    gradient: "bg-gradient-to-br from-pink-500 to-rose-600",
   },
   {
-    name: 'Sahira',
-    initials: 'SH',
-    role: 'Marketing',
-    gradient: 'bg-gradient-to-br from-purple-500 to-violet-600',
+    name: "Sahira",
+    initials: "SH",
+    role: "Marketing",
+    gradient: "bg-gradient-to-br from-purple-500 to-violet-600",
   },
 ];

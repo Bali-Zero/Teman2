@@ -1,20 +1,28 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { AppSidebar } from '@/components/workspace/AppSidebar';
-import { PortalBottomNav, PortalHeader, PortalErrorBoundary } from '@/components/portal';
-import { ToastProvider } from '@/components/ui/toast';
-import { api } from '@/lib/api';
-import { portalNavigation } from '@/types/navigation';
+import React, { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { AppSidebar } from "@/components/workspace/AppSidebar";
+import {
+  PortalBottomNav,
+  PortalHeader,
+  PortalErrorBoundary,
+} from "@/components/portal";
+import { ToastProvider } from "@/components/ui/toast";
+import { api } from "@/lib/api";
+import { portalNavigation } from "@/types/navigation";
 
-export default function PortalLayout({ children }: { children: React.ReactNode }) {
+export default function PortalLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState({
-    name: '',
-    email: '',
+    name: "",
+    email: "",
     avatar: undefined as string | undefined,
   });
 
@@ -24,24 +32,26 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       const storedProfile = api.getUserProfile();
       if (storedProfile) {
         const userName =
-          storedProfile.name || (storedProfile.email ? storedProfile.email.split('@')[0] : 'User');
+          storedProfile.name ||
+          (storedProfile.email ? storedProfile.email.split("@")[0] : "User");
         setUser({
           name: userName,
-          email: storedProfile.email || '',
+          email: storedProfile.email || "",
           avatar: storedProfile.avatar,
         });
         return;
       }
 
       const profile = await api.getProfile();
-      const userName = profile.name || (profile.email ? profile.email.split('@')[0] : 'User');
+      const userName =
+        profile.name || (profile.email ? profile.email.split("@")[0] : "User");
       setUser({
         name: userName,
-        email: profile.email || '',
+        email: profile.email || "",
         avatar: profile.avatar,
       });
     } catch (error) {
-      console.error('Failed to load profile', error);
+      console.error("Failed to load profile", error);
     }
   }, []);
 
@@ -51,7 +61,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       const token = api.getToken();
 
       if (!token) {
-        router.push('/portal/login');
+        router.push("/portal/login");
         return;
       }
 
@@ -60,8 +70,8 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
         try {
           await loadUserProfile();
         } catch (error) {
-          if (error instanceof Error && error.message.includes('401')) {
-            router.push('/portal/login');
+          if (error instanceof Error && error.message.includes("401")) {
+            router.push("/portal/login");
             return;
           }
         } finally {
@@ -81,9 +91,9 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
     try {
       await api.logout();
     } catch (error) {
-      console.error('Logout error', error);
+      console.error("Logout error", error);
     } finally {
-      router.push('/portal/login');
+      router.push("/portal/login");
     }
   };
 
@@ -117,8 +127,8 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           <AppSidebar
             user={{
               ...user,
-              role: 'client',
-              team: 'Client Portal',
+              role: "client",
+              team: "Client Portal",
               isOnline: true,
             }}
             navigationConfig={portalNavigation}
@@ -138,8 +148,8 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
               <AppSidebar
                 user={{
                   ...user,
-                  role: 'client',
-                  team: 'Client Portal',
+                  role: "client",
+                  team: "Client Portal",
                   isOnline: true,
                 }}
                 navigationConfig={portalNavigation}
@@ -161,7 +171,9 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
 
           {/* Page Content */}
           <main className="flex-1 p-4 md:p-6 lg:p-8">
-            <PortalErrorBoundary section="Portal">{children}</PortalErrorBoundary>
+            <PortalErrorBoundary section="Portal">
+              {children}
+            </PortalErrorBoundary>
           </main>
         </div>
 

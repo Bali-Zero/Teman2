@@ -11,7 +11,7 @@ export {
   useCreateClient,
   useUpdateClient,
   useCrmStats,
-} from './useCrmClients';
+} from "./useCrmClients";
 
 // Practice hooks
 export {
@@ -23,10 +23,10 @@ export {
   useDeletePractice,
   PRACTICE_STATUSES,
   PRACTICE_PRIORITIES,
-} from './useCrmPractices';
+} from "./useCrmPractices";
 
 // Search hooks
-export { useCrmSearch, useQuickSearch, useGlobalSearch } from './useCrmSearch';
+export { useCrmSearch, useQuickSearch, useGlobalSearch } from "./useCrmSearch";
 
 // CRM Notification hooks
 export {
@@ -40,7 +40,7 @@ export {
   NOTIFICATION_ICONS,
   NOTIFICATION_COLORS,
   type Notification,
-} from './useCrmNotifications';
+} from "./useCrmNotifications";
 
 // Portal hooks
 export {
@@ -58,7 +58,7 @@ export {
   useValidateInviteToken,
   useCompleteRegistration,
   usePortalNotifications,
-} from './usePortal';
+} from "./usePortal";
 
 // Drive optimized hooks
 export {
@@ -70,16 +70,22 @@ export {
   useDriveUpload,
   useDriveMutationsOptimized,
   useDriveSearch,
-} from './useDriveOptimized';
+} from "./useDriveOptimized";
 
 // File selection hook
-export { useFileSelection, useFileKeyboardNavigation } from './useFileSelection';
+export {
+  useFileSelection,
+  useFileKeyboardNavigation,
+} from "./useFileSelection";
 
 // Re-export from optimized hooks
-export { useDebounce, useDebouncedCallback } from '@/lib/hooks/optimized/useDebounce';
+export {
+  useDebounce,
+  useDebouncedCallback,
+} from "@/lib/hooks/optimized/useDebounce";
 
 // Optimized list hooks
-export { useOptimizedList, useInfiniteScroll } from './useOptimizedList';
+export { useOptimizedList, useInfiniteScroll } from "./useOptimizedList";
 
 // React Query hooks
 export {
@@ -90,7 +96,7 @@ export {
   useDeleteClientMutation,
   usePrefetchClients,
   clientKeys,
-} from './useClientsQuery';
+} from "./useClientsQuery";
 
 export {
   useArticlesQuery,
@@ -100,4 +106,4 @@ export {
   usePublishArticleMutation,
   usePrefetchArticles,
   articleKeys,
-} from './useArticlesQuery';
+} from "./useArticlesQuery";

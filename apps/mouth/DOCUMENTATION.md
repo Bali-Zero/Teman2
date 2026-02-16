@@ -312,14 +312,14 @@ NEXT_PUBLIC_BUILD_ID=local
 
 ```typescript
 const nextConfig: NextConfig = {
-  output: 'standalone', // Per Docker deployment
+  output: "standalone", // Per Docker deployment
 
   images: {
     remotePatterns: [
-      { hostname: '*.fly.dev' },
-      { hostname: 'oaidalleapiprodscus.blob.core.windows.net' }, // DALL-E
-      { hostname: 'image.pollinations.ai' }, // Image gen
-      { hostname: 'placehold.co' }, // Placeholders
+      { hostname: "*.fly.dev" },
+      { hostname: "oaidalleapiprodscus.blob.core.windows.net" }, // DALL-E
+      { hostname: "image.pollinations.ai" }, // Image gen
+      { hostname: "placehold.co" }, // Placeholders
     ],
   },
 
@@ -542,15 +542,21 @@ App
 
 ```typescript
 // Importazione standard
-import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem } from '@/components/ui/select';
-import { Table, TableHeader, TableBody, TableRow, TableCell } from '@/components/ui/table';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Toast } from '@/components/ui/toast';
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem } from "@/components/ui/select";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableCell,
+} from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Toast } from "@/components/ui/toast";
 ```
 
 ---
@@ -568,19 +574,22 @@ class ApiClientBase {
 
   constructor(baseUrl?: string) {
     this.baseUrl = baseUrl || process.env.NEXT_PUBLIC_API_URL;
-    this.token = localStorage.getItem('auth_token');
+    this.token = localStorage.getItem("auth_token");
   }
 
-  protected async fetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  protected async fetch<T>(
+    endpoint: string,
+    options?: RequestInit,
+  ): Promise<T> {
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       ...options,
       headers: {
-        'Content-Type': 'application/json',
-        Authorization: this.token ? `Bearer ${this.token}` : '',
-        'X-Correlation-ID': generateCorrelationId(),
+        "Content-Type": "application/json",
+        Authorization: this.token ? `Bearer ${this.token}` : "",
+        "X-Correlation-ID": generateCorrelationId(),
         ...options?.headers,
       },
-      credentials: 'include', // Per cookies
+      credentials: "include", // Per cookies
     });
 
     if (!response.ok) {
@@ -615,20 +624,20 @@ class ApiClientBase {
 // /app/api/[...path]/route.ts
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  const path = (await params).path.join('/');
+  const path = (await params).path.join("/");
   const backendUrl = `${BACKEND_URL}/api/${path}`;
 
   // Forward request to backend
   const response = await fetch(backendUrl, {
-    method: 'GET',
+    method: "GET",
     headers: forwardHeaders(request),
-    credentials: 'include',
+    credentials: "include",
   });
 
   // Handle streaming (SSE)
-  if (response.headers.get('content-type')?.includes('text/event-stream')) {
+  if (response.headers.get("content-type")?.includes("text/event-stream")) {
     return new Response(response.body, {
-      headers: { 'Content-Type': 'text/event-stream' },
+      headers: { "Content-Type": "text/event-stream" },
     });
   }
 
@@ -641,16 +650,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 ```typescript
 // Event types nel stream SSE
 type StreamEvent =
-  | { type: 'status'; data: string }
-  | { type: 'tool_start'; data: { name: string; args: object } }
-  | { type: 'tool_end'; data: { result: string } }
-  | { type: 'reasoning_step'; data: { phase: string; message: string } }
-  | { type: 'sources'; data: Source[] }
-  | { type: 'metadata'; data: MessageMetadata }
-  | { type: 'image'; data: { url: string } }
-  | { type: 'content'; data: string } // Chunk di risposta
-  | { type: 'error'; data: string }
-  | { type: 'done'; data: null };
+  | { type: "status"; data: string }
+  | { type: "tool_start"; data: { name: string; args: object } }
+  | { type: "tool_end"; data: { result: string } }
+  | { type: "reasoning_step"; data: { phase: string; message: string } }
+  | { type: "sources"; data: Source[] }
+  | { type: "metadata"; data: MessageMetadata }
+  | { type: "image"; data: { url: string } }
+  | { type: "content"; data: string } // Chunk di risposta
+  | { type: "error"; data: string }
+  | { type: "done"; data: null };
 ```
 
 ---
@@ -661,10 +670,12 @@ type StreamEvent =
 
 ```typescript
 // useChat - Main chat logic
-const { input, setInput, messages, isLoading, handleSend, generateSessionId } = useChat();
+const { input, setInput, messages, isLoading, handleSend, generateSessionId } =
+  useChat();
 
 // useChatMessages - Message state
-const { messages, setMessages, addMessage, updateMessage, appendContent } = useChatMessages();
+const { messages, setMessages, addMessage, updateMessage, appendContent } =
+  useChatMessages();
 
 // useChatStreaming - Stream handling
 const { isStreaming, currentSteps, sendStreamingMessage } = useChatStreaming();
@@ -716,36 +727,40 @@ const { send, subscribe } = useWebSocketContext();
 
 ```mdx
 ---
-id: 'unique-id'
-slug: 'article-slug'
-title: 'Article Title'
-subtitle: 'Optional Subtitle'
-excerpt: '200 character summary...'
-coverImage: '/images/blog/category/slug.jpg'
-coverImageAlt: 'Image description'
-category: 'immigration'
-tags: ['visa', 'KITAS', 'work-permit']
+id: "unique-id"
+slug: "article-slug"
+title: "Article Title"
+subtitle: "Optional Subtitle"
+excerpt: "200 character summary..."
+coverImage: "/images/blog/category/slug.jpg"
+coverImageAlt: "Image description"
+category: "immigration"
+tags: ["visa", "KITAS", "work-permit"]
 author:
-  id: 'zantara-ai'
-  name: 'Zantara AI'
-  avatar: '/images/zantara-avatar.png'
-  role: 'AI Research Assistant'
+  id: "zantara-ai"
+  name: "Zantara AI"
+  avatar: "/images/zantara-avatar.png"
+  role: "AI Research Assistant"
   isAI: true
-publishedAt: '2025-01-01T00:00:00Z'
-updatedAt: '2025-01-01T00:00:00Z'
-status: 'published'
+publishedAt: "2025-01-01T00:00:00Z"
+updatedAt: "2025-01-01T00:00:00Z"
+status: "published"
 featured: true
 trending: false
 readingTime: 12
 viewCount: 1500
 aiGenerated: true
 aiConfidenceScore: 0.92
-seoTitle: 'SEO Title (60 chars max)'
-seoDescription: 'SEO Description (160 chars max)'
-locale: 'en'
+seoTitle: "SEO Title (60 chars max)"
+seoDescription: "SEO Description (160 chars max)"
+locale: "en"
 ---
 
-import { InfoCard, DecisionTree, Calculator } from '@/components/blog/interactive';
+import {
+  InfoCard,
+  DecisionTree,
+  Calculator,
+} from "@/components/blog/interactive";
 
 # Main Title
 
@@ -772,7 +787,7 @@ Regular markdown content with **bold** and _italic_.
 
 <Calculator
   title="Cost Calculator"
-  fields={[{ name: 'amount', label: 'Amount', type: 'number' }]}
+  fields={[{ name: "amount", label: "Amount", type: "number" }]}
   formula="amount * 1.1"
 />
 ```
@@ -852,9 +867,9 @@ MDX File → gray-matter (frontmatter) → next-mdx-remote/serialize → MDXCont
 
 ```css
 /* Fonts */
---font-sans: 'Geist', system-ui, sans-serif;
---font-mono: 'Geist Mono', monospace;
---font-serif: 'Georgia', serif; /* Per headings blog */
+--font-sans: "Geist", system-ui, sans-serif;
+--font-mono: "Geist Mono", monospace;
+--font-serif: "Georgia", serif; /* Per headings blog */
 
 /* Sizes */
 --text-xs: 0.75rem; /* 12px */
@@ -886,26 +901,26 @@ MDX File → gray-matter (frontmatter) → next-mdx-remote/serialize → MDXCont
 ```typescript
 // Button variants (CVA pattern)
 const buttonVariants = cva(
-  'inline-flex items-center justify-center rounded-lg font-medium transition-colors',
+  "inline-flex items-center justify-center rounded-lg font-medium transition-colors",
   {
     variants: {
       variant: {
-        default: 'bg-accent text-white hover:bg-accent-hover',
-        secondary: 'bg-white/10 text-white hover:bg-white/20',
-        ghost: 'hover:bg-white/5',
-        destructive: 'bg-error text-white hover:bg-error/90',
+        default: "bg-accent text-white hover:bg-accent-hover",
+        secondary: "bg-white/10 text-white hover:bg-white/20",
+        ghost: "hover:bg-white/5",
+        destructive: "bg-error text-white hover:bg-error/90",
       },
       size: {
-        sm: 'h-8 px-3 text-sm',
-        md: 'h-10 px-4',
-        lg: 'h-12 px-6 text-lg',
+        sm: "h-8 px-3 text-sm",
+        md: "h-10 px-4",
+        lg: "h-12 px-6 text-lg",
       },
     },
     defaultVariants: {
-      variant: 'default',
-      size: 'md',
+      variant: "default",
+      size: "md",
     },
-  }
+  },
 );
 ```
 
@@ -1038,16 +1053,16 @@ const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prom
 ```typescript
 // Middleware pattern (in page components)
 useEffect(() => {
-  const token = localStorage.getItem('auth_token');
+  const token = localStorage.getItem("auth_token");
   if (!token) {
-    router.push('/login');
+    router.push("/login");
   }
 }, []);
 
 // Server-side (API routes)
-const token = request.cookies.get('nz_access_token');
+const token = request.cookies.get("nz_access_token");
 if (!token) {
-  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 }
 ```
 
@@ -1055,10 +1070,10 @@ if (!token) {
 
 ```typescript
 // Double-submit pattern
-const csrfToken = getCookie('nz_csrf_token');
-fetch('/api/...', {
+const csrfToken = getCookie("nz_csrf_token");
+fetch("/api/...", {
   headers: {
-    'X-CSRF-Token': csrfToken,
+    "X-CSRF-Token": csrfToken,
   },
 });
 ```
@@ -1083,12 +1098,12 @@ Referrer-Policy: strict-origin-when-cross-origin
 // vitest.config.ts
 export default defineConfig({
   test: {
-    environment: 'jsdom',
+    environment: "jsdom",
     globals: true,
-    setupFiles: ['./src/test/setup.tsx'],
+    setupFiles: ["./src/test/setup.tsx"],
     coverage: {
-      provider: 'v8',
-      reporter: ['text', 'html'],
+      provider: "v8",
+      reporter: ["text", "html"],
     },
   },
 });
@@ -1229,13 +1244,13 @@ Use Vercel dashboard to rollback to previous deployments:
 
 ```typescript
 // Sentry Performance
-Sentry.startTransaction({ name: 'chat-message' });
+Sentry.startTransaction({ name: "chat-message" });
 
 // Custom metrics
-performance.mark('chat-start');
+performance.mark("chat-start");
 // ... operation
-performance.mark('chat-end');
-performance.measure('chat-duration', 'chat-start', 'chat-end');
+performance.mark("chat-end");
+performance.measure("chat-duration", "chat-start", "chat-end");
 ```
 
 ---
@@ -1307,25 +1322,25 @@ vercel deploy --prod           # Deploy to Vercel
 
 ```typescript
 // Components
-import { Button } from '@/components/ui/button';
-import { ChatInputBar } from '@/components/chat/ChatInputBar';
-import { ArticleCard } from '@/components/blog/ArticleCard';
+import { Button } from "@/components/ui/button";
+import { ChatInputBar } from "@/components/chat/ChatInputBar";
+import { ArticleCard } from "@/components/blog/ArticleCard";
 
 // Hooks
-import { useChat } from '@/hooks/useChat';
-import { useConversations } from '@/hooks/useConversations';
+import { useChat } from "@/hooks/useChat";
+import { useConversations } from "@/hooks/useConversations";
 
 // API
-import { ChatApi } from '@/lib/api/chat';
-import { ApiClientBase } from '@/lib/api/client';
+import { ChatApi } from "@/lib/api/chat";
+import { ApiClientBase } from "@/lib/api/client";
 
 // Types
-import type { Message, Source } from '@/types';
-import type { Article, ArticleCategory } from '@/lib/blog/types';
+import type { Message, Source } from "@/types";
+import type { Article, ArticleCategory } from "@/lib/blog/types";
 
 // Utils
-import { cn } from '@/lib/utils';
-import { TIMEOUTS, PAGINATION } from '@/constants/config';
+import { cn } from "@/lib/utils";
+import { TIMEOUTS, PAGINATION } from "@/constants/config";
 ```
 
 ### File Naming Conventions

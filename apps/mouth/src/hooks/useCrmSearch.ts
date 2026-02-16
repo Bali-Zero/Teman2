@@ -4,11 +4,11 @@
  * Ricerca clienti con debounce e suggerimenti
  */
 
-import { useState, useCallback, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import { useDebounce } from '@/lib/hooks/optimized/useDebounce';
-import type { Client, SearchResult } from '@/lib/api/crm/crm.types';
+import { useState, useCallback, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { useDebounce } from "@/lib/hooks/optimized/useDebounce";
+import type { Client, SearchResult } from "@/lib/api/crm/crm.types";
 
 interface UseCrmSearchOptions {
   debounceMs?: number;
@@ -34,14 +34,19 @@ interface SearchResponse {
  * Hook per ricerca clienti con debounce
  */
 export function useCrmSearch(options: UseCrmSearchOptions = {}) {
-  const { debounceMs = 300, minChars = 2, limit = 20, enabled = true } = options;
+  const {
+    debounceMs = 300,
+    minChars = 2,
+    limit = 20,
+    enabled = true,
+  } = options;
 
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<SearchFilters>({});
   const debouncedQuery = useDebounce(query, debounceMs);
 
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['crm', 'search', debouncedQuery, filters, limit],
+    queryKey: ["crm", "search", debouncedQuery, filters, limit],
     queryFn: async (): Promise<SearchResponse> => {
       if (debouncedQuery.length < minChars && !Object.keys(filters).length) {
         return { clients: [], total: 0, suggestions: [] };
@@ -56,7 +61,9 @@ export function useCrmSearch(options: UseCrmSearchOptions = {}) {
       // Generate suggestions from client names
       const suggestions = clients
         .map((c: Client) => c.full_name)
-        .filter((name: string) => name.toLowerCase().includes(debouncedQuery.toLowerCase()))
+        .filter((name: string) =>
+          name.toLowerCase().includes(debouncedQuery.toLowerCase()),
+        )
         .slice(0, 5);
 
       return {
@@ -65,7 +72,9 @@ export function useCrmSearch(options: UseCrmSearchOptions = {}) {
         suggestions,
       };
     },
-    enabled: enabled && (debouncedQuery.length >= minChars || Object.keys(filters).length > 0),
+    enabled:
+      enabled &&
+      (debouncedQuery.length >= minChars || Object.keys(filters).length > 0),
     staleTime: 30 * 1000, // 30 seconds
   });
 
@@ -82,7 +91,7 @@ export function useCrmSearch(options: UseCrmSearchOptions = {}) {
   }, []);
 
   const clearSearch = useCallback(() => {
-    setQuery('');
+    setQuery("");
     setFilters({});
   }, []);
 
@@ -170,11 +179,11 @@ export function useQuickSearch(options: { limit?: number } = {}) {
  */
 export function useGlobalSearch(options: { limit?: number } = {}) {
   const { limit = 20 } = options;
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
   const debouncedQuery = useDebounce(query, 300);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['crm', 'global-search', debouncedQuery],
+    queryKey: ["crm", "global-search", debouncedQuery],
     queryFn: async (): Promise<SearchResult[]> => {
       if (debouncedQuery.length < 2) return [];
 
@@ -188,7 +197,7 @@ export function useGlobalSearch(options: { limit?: number } = {}) {
       return clients.map(
         (client: Client): SearchResult => ({
           id: client.id,
-          type: 'client',
+          type: "client",
           title: client.full_name,
           subtitle: client.email || client.phone || undefined,
           status: client.status,
@@ -197,7 +206,7 @@ export function useGlobalSearch(options: { limit?: number } = {}) {
             nationality: client.nationality,
             assignedTo: client.assigned_to,
           },
-        })
+        }),
       );
     },
     enabled: debouncedQuery.length >= 2,

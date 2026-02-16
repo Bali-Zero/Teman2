@@ -1,9 +1,15 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Link from 'next/link';
-import { ChevronRight, MessageCircle, Bot, AlertCircle, Trash2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import React from "react";
+import Link from "next/link";
+import {
+  ChevronRight,
+  MessageCircle,
+  Bot,
+  AlertCircle,
+  Trash2,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export interface WhatsAppMessage {
   id: string;
@@ -23,7 +29,11 @@ interface WhatsAppPreviewProps {
   onDelete?: (id: string) => void;
 }
 
-export function WhatsAppPreview({ messages, isLoading, onDelete }: WhatsAppPreviewProps) {
+export function WhatsAppPreview({
+  messages,
+  isLoading,
+  onDelete,
+}: WhatsAppPreviewProps) {
   if (isLoading) {
     return (
       <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-5">
@@ -57,7 +67,9 @@ export function WhatsAppPreview({ messages, isLoading, onDelete }: WhatsAppPrevi
     <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-5">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <h2 className="text-base font-semibold text-[var(--foreground)]">Recent WhatsApp</h2>
+          <h2 className="text-base font-semibold text-[var(--foreground)]">
+            Recent WhatsApp
+          </h2>
           {unreadCount > 0 && (
             <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-[var(--accent)] text-white">
               {unreadCount}
@@ -77,17 +89,19 @@ export function WhatsAppPreview({ messages, isLoading, onDelete }: WhatsAppPrevi
         {messages.length === 0 ? (
           <div className="text-center py-8">
             <MessageCircle className="w-8 h-8 mx-auto text-[var(--foreground-muted)] mb-2 opacity-50" />
-            <p className="text-sm text-[var(--foreground-muted)]">No recent messages</p>
+            <p className="text-sm text-[var(--foreground-muted)]">
+              No recent messages
+            </p>
           </div>
         ) : (
           messages.map((msg) => (
             <div
               key={msg.id}
               className={cn(
-                'block p-3 rounded-lg border transition-all relative group',
+                "block p-3 rounded-lg border transition-all relative group",
                 msg.isRead
-                  ? 'border-[var(--border)] hover:border-[var(--border-hover)]'
-                  : 'border-[var(--accent)]/30 bg-[var(--accent)]/5 hover:bg-[var(--accent)]/10'
+                  ? "border-[var(--border)] hover:border-[var(--border-hover)]"
+                  : "border-[var(--accent)]/30 bg-[var(--accent)]/5 hover:bg-[var(--accent)]/10",
               )}
             >
               <Link href="/whatsapp" className="block">
@@ -95,8 +109,10 @@ export function WhatsAppPreview({ messages, isLoading, onDelete }: WhatsAppPrevi
                   <div className="relative mt-0.5">
                     <span
                       className={cn(
-                        'flex w-2 h-2 rounded-full',
-                        msg.isRead ? 'bg-[var(--foreground-muted)]' : 'bg-[var(--success)]'
+                        "flex w-2 h-2 rounded-full",
+                        msg.isRead
+                          ? "bg-[var(--foreground-muted)]"
+                          : "bg-[var(--success)]",
                       )}
                     />
                   </div>

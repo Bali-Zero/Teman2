@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Plug,
   MessageCircle,
@@ -14,10 +14,10 @@ import {
   Settings,
   ExternalLink,
   Loader2,
-} from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { api } from '@/lib/api';
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
 
 interface Integration {
   id: string;
@@ -25,7 +25,7 @@ interface Integration {
   description: string;
   icon: typeof MessageCircle;
   iconColor: string;
-  status: 'connected' | 'disconnected' | 'error';
+  status: "connected" | "disconnected" | "error";
   lastSync?: string;
   configUrl?: string;
 }
@@ -35,47 +35,47 @@ export default function IntegrationsPage() {
   const [connecting, setConnecting] = useState<string | null>(null);
   const [integrations, setIntegrations] = useState<Integration[]>([
     {
-      id: 'whatsapp',
-      name: 'WhatsApp Business',
-      description: 'Receive and send WhatsApp messages from clients',
+      id: "whatsapp",
+      name: "WhatsApp Business",
+      description: "Receive and send WhatsApp messages from clients",
       icon: MessageCircle,
-      iconColor: '#25D366',
-      status: 'connected',
-      lastSync: '5 minutes ago',
+      iconColor: "#25D366",
+      status: "connected",
+      lastSync: "5 minutes ago",
     },
     {
-      id: 'zoho',
-      name: 'Zoho Mail',
-      description: 'Email integration with Zoho Mail',
+      id: "zoho",
+      name: "Zoho Mail",
+      description: "Email integration with Zoho Mail",
       icon: Mail,
-      iconColor: '#E42527',
-      status: 'connected',
-      lastSync: '10 minutes ago',
+      iconColor: "#E42527",
+      status: "connected",
+      lastSync: "10 minutes ago",
     },
     {
-      id: 'google_drive',
-      name: 'Google Drive',
-      description: 'Store and access documents from Google Drive',
+      id: "google_drive",
+      name: "Google Drive",
+      description: "Store and access documents from Google Drive",
       icon: Cloud,
-      iconColor: '#4285F4',
-      status: 'disconnected',
+      iconColor: "#4285F4",
+      status: "disconnected",
     },
     {
-      id: 'qdrant',
-      name: 'Qdrant Vector DB',
-      description: 'Vector database for AI knowledge storage',
+      id: "qdrant",
+      name: "Qdrant Vector DB",
+      description: "Vector database for AI knowledge storage",
       icon: Database,
-      iconColor: '#7C3AED',
-      status: 'connected',
-      lastSync: 'Just now',
+      iconColor: "#7C3AED",
+      status: "connected",
+      lastSync: "Just now",
     },
     {
-      id: 'google_calendar',
-      name: 'Google Calendar',
-      description: 'Sync appointments and deadlines',
+      id: "google_calendar",
+      name: "Google Calendar",
+      description: "Sync appointments and deadlines",
       icon: Calendar,
-      iconColor: '#4285F4',
-      status: 'disconnected',
+      iconColor: "#4285F4",
+      status: "disconnected",
     },
   ]);
 
@@ -86,48 +86,52 @@ export default function IntegrationsPage() {
         const status = await api.drive.getStatus();
         setIntegrations((prev) =>
           prev.map((i) =>
-            i.id === 'google_drive'
+            i.id === "google_drive"
               ? {
                   ...i,
-                  status: status.connected ? 'connected' : 'disconnected',
-                  lastSync: status.connected ? 'Just now' : undefined,
+                  status: status.connected ? "connected" : "disconnected",
+                  lastSync: status.connected ? "Just now" : undefined,
                 }
-              : i
-          )
+              : i,
+          ),
         );
       } catch (error) {
-        console.error('Failed to check Google Drive status:', error);
+        console.error("Failed to check Google Drive status:", error);
       }
     };
     checkGoogleDriveStatus();
 
     // Check for OAuth callback success
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('success') === 'google_drive_connected') {
+    if (urlParams.get("success") === "google_drive_connected") {
       setIntegrations((prev) =>
         prev.map((i) =>
-          i.id === 'google_drive' ? { ...i, status: 'connected', lastSync: 'Just now' } : i
-        )
+          i.id === "google_drive"
+            ? { ...i, status: "connected", lastSync: "Just now" }
+            : i,
+        ),
       );
       // Clean URL
-      window.history.replaceState({}, document.title, '/settings/integrations');
+      window.history.replaceState({}, document.title, "/settings/integrations");
     }
   }, []);
 
   const toggleConnection = async (id: string) => {
-    if (id === 'google_drive') {
+    if (id === "google_drive") {
       const integration = integrations.find((i) => i.id === id);
-      if (integration?.status === 'connected') {
+      if (integration?.status === "connected") {
         // Disconnect
         try {
           await api.drive.disconnect();
           setIntegrations((prev) =>
             prev.map((i) =>
-              i.id === id ? { ...i, status: 'disconnected', lastSync: undefined } : i
-            )
+              i.id === id
+                ? { ...i, status: "disconnected", lastSync: undefined }
+                : i,
+            ),
           );
         } catch (error) {
-          console.error('Failed to disconnect Google Drive:', error);
+          console.error("Failed to disconnect Google Drive:", error);
         }
       } else {
         // Connect - redirect to OAuth
@@ -136,7 +140,7 @@ export default function IntegrationsPage() {
           const { auth_url } = await api.drive.getAuthUrl();
           window.location.href = auth_url;
         } catch (error) {
-          console.error('Failed to get auth URL:', error);
+          console.error("Failed to get auth URL:", error);
           setConnecting(null);
         }
       }
@@ -149,32 +153,32 @@ export default function IntegrationsPage() {
         if (i.id === id) {
           return {
             ...i,
-            status: i.status === 'connected' ? 'disconnected' : 'connected',
-            lastSync: i.status === 'disconnected' ? 'Just now' : undefined,
+            status: i.status === "connected" ? "disconnected" : "connected",
+            lastSync: i.status === "disconnected" ? "Just now" : undefined,
           };
         }
         return i;
-      })
+      }),
     );
   };
 
-  const getStatusBadge = (status: Integration['status']) => {
+  const getStatusBadge = (status: Integration["status"]) => {
     switch (status) {
-      case 'connected':
+      case "connected":
         return (
           <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400">
             <CheckCircle2 className="w-3 h-3" />
             Connected
           </span>
         );
-      case 'disconnected':
+      case "disconnected":
         return (
           <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-[var(--background)] text-[var(--foreground-muted)]">
             <XCircle className="w-3 h-3" />
             Disconnected
           </span>
         );
-      case 'error':
+      case "error":
         return (
           <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400">
             <XCircle className="w-3 h-3" />
@@ -188,7 +192,11 @@ export default function IntegrationsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => router.push('/settings')}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push("/settings")}
+        >
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div>
@@ -205,19 +213,23 @@ export default function IntegrationsPage() {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-4">
-          <p className="text-sm text-[var(--foreground-muted)]">Total Integrations</p>
-          <p className="text-2xl font-bold text-[var(--foreground)]">{integrations.length}</p>
+          <p className="text-sm text-[var(--foreground-muted)]">
+            Total Integrations
+          </p>
+          <p className="text-2xl font-bold text-[var(--foreground)]">
+            {integrations.length}
+          </p>
         </div>
         <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-4">
           <p className="text-sm text-[var(--foreground-muted)]">Active</p>
           <p className="text-2xl font-bold text-green-400">
-            {integrations.filter((i) => i.status === 'connected').length}
+            {integrations.filter((i) => i.status === "connected").length}
           </p>
         </div>
         <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-4">
           <p className="text-sm text-[var(--foreground-muted)]">Inactive</p>
           <p className="text-2xl font-bold text-[var(--foreground-muted)]">
-            {integrations.filter((i) => i.status === 'disconnected').length}
+            {integrations.filter((i) => i.status === "disconnected").length}
           </p>
         </div>
       </div>
@@ -237,11 +249,16 @@ export default function IntegrationsPage() {
                     className="w-12 h-12 rounded-lg flex items-center justify-center"
                     style={{ backgroundColor: `${integration.iconColor}20` }}
                   >
-                    <Icon className="w-6 h-6" style={{ color: integration.iconColor }} />
+                    <Icon
+                      className="w-6 h-6"
+                      style={{ color: integration.iconColor }}
+                    />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="font-medium text-[var(--foreground)]">{integration.name}</h3>
+                      <h3 className="font-medium text-[var(--foreground)]">
+                        {integration.name}
+                      </h3>
                       {getStatusBadge(integration.status)}
                     </div>
                     <p className="text-sm text-[var(--foreground-muted)]">
@@ -255,13 +272,15 @@ export default function IntegrationsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {integration.status === 'connected' && (
+                  {integration.status === "connected" && (
                     <Button variant="ghost" size="sm">
                       <Settings className="w-4 h-4" />
                     </Button>
                   )}
                   <Button
-                    variant={integration.status === 'connected' ? 'outline' : 'default'}
+                    variant={
+                      integration.status === "connected" ? "outline" : "default"
+                    }
                     size="sm"
                     onClick={() => toggleConnection(integration.id)}
                     disabled={connecting === integration.id}
@@ -271,10 +290,10 @@ export default function IntegrationsPage() {
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                         Connecting...
                       </>
-                    ) : integration.status === 'connected' ? (
-                      'Disconnect'
+                    ) : integration.status === "connected" ? (
+                      "Disconnect"
                     ) : (
-                      'Connect'
+                      "Connect"
                     )}
                   </Button>
                 </div>
@@ -287,7 +306,9 @@ export default function IntegrationsPage() {
       {/* Add More Integrations */}
       <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--background-secondary)]/50 p-6 text-center">
         <Plug className="w-10 h-10 mx-auto text-[var(--foreground-muted)] mb-3 opacity-50" />
-        <h3 className="font-medium text-[var(--foreground)] mb-2">Need more integrations?</h3>
+        <h3 className="font-medium text-[var(--foreground)] mb-2">
+          Need more integrations?
+        </h3>
         <p className="text-sm text-[var(--foreground-muted)] mb-4">
           Contact us to request new integrations for your workflow
         </p>
@@ -299,14 +320,18 @@ export default function IntegrationsPage() {
 
       {/* Webhook Section */}
       <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-6">
-        <h3 className="font-semibold text-[var(--foreground)] mb-4">Webhooks</h3>
+        <h3 className="font-semibold text-[var(--foreground)] mb-4">
+          Webhooks
+        </h3>
         <p className="text-sm text-[var(--foreground-muted)] mb-4">
           Receive real-time notifications when events happen in Zantara
         </p>
         <div className="space-y-2">
           <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--background)]">
             <div>
-              <p className="font-medium text-[var(--foreground)]">New Client Webhook</p>
+              <p className="font-medium text-[var(--foreground)]">
+                New Client Webhook
+              </p>
               <p className="text-xs text-[var(--foreground-muted)]">
                 Triggered when a new client is created
               </p>
@@ -317,7 +342,9 @@ export default function IntegrationsPage() {
           </div>
           <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--background)]">
             <div>
-              <p className="font-medium text-[var(--foreground)]">Case Status Webhook</p>
+              <p className="font-medium text-[var(--foreground)]">
+                Case Status Webhook
+              </p>
               <p className="text-xs text-[var(--foreground-muted)]">
                 Triggered when case status changes
               </p>

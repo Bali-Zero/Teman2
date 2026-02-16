@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { Component, ReactNode } from 'react';
-import { motion } from 'framer-motion';
-import { AlertTriangle, RefreshCw, Home, Bug } from 'lucide-react';
-import { error as logError } from '@/lib/utils/console';
-import { Button } from './button';
+import { Component, ReactNode } from "react";
+import { motion } from "framer-motion";
+import { AlertTriangle, RefreshCw, Home, Bug } from "lucide-react";
+import { error as logError } from "@/lib/utils/console";
+import { Button } from "./button";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -23,7 +23,10 @@ interface ErrorBoundaryState {
  * Error Boundary component with retry capability and detailed error display.
  * Catches JavaScript errors anywhere in child component tree.
  */
-export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+export class ErrorBoundary extends Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = {
@@ -42,8 +45,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     this.props.onError?.(error, errorInfo);
 
     // Log to console in development
-    if (process.env.NODE_ENV === 'development') {
-      logError('ErrorBoundary caught an error:', error, errorInfo);
+    if (process.env.NODE_ENV === "development") {
+      logError("ErrorBoundary caught an error:", error, errorInfo);
     }
   }
 
@@ -52,8 +55,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   };
 
   handleGoHome = () => {
-    if (typeof window !== 'undefined') {
-      window.location.href = '/';
+    if (typeof window !== "undefined") {
+      window.location.href = "/";
     }
   };
 
@@ -94,7 +97,7 @@ function ErrorFallback({
   errorInfo,
   onRetry,
   onGoHome,
-  showDetails = process.env.NODE_ENV === 'development',
+  showDetails = process.env.NODE_ENV === "development",
 }: ErrorFallbackProps) {
   return (
     <div className="min-h-[400px] flex items-center justify-center p-6">
@@ -117,7 +120,8 @@ function ErrorFallback({
 
         {/* Error Description */}
         <p className="text-sm text-[var(--foreground-muted)] mb-6">
-          We encountered an unexpected error. Please try again or return to the home page.
+          We encountered an unexpected error. Please try again or return to the
+          home page.
         </p>
 
         {/* Error Details (Development) */}
@@ -142,7 +146,11 @@ function ErrorFallback({
 
         {/* Action Buttons */}
         <div className="flex gap-3 justify-center">
-          <Button onClick={onRetry} className="gap-2 focus-ring" aria-label="Try again">
+          <Button
+            onClick={onRetry}
+            className="gap-2 focus-ring"
+            aria-label="Try again"
+          >
             <RefreshCw size={16} />
             Try Again
           </Button>
@@ -166,7 +174,7 @@ function ErrorFallback({
  */
 export function withErrorBoundary<P extends object>(
   Component: React.ComponentType<P>,
-  errorBoundaryProps?: Omit<ErrorBoundaryProps, 'children'>
+  errorBoundaryProps?: Omit<ErrorBoundaryProps, "children">,
 ) {
   const WrappedComponent = (props: P) => (
     <ErrorBoundary {...errorBoundaryProps}>
@@ -174,7 +182,7 @@ export function withErrorBoundary<P extends object>(
     </ErrorBoundary>
   );
 
-  WrappedComponent.displayName = `withErrorBoundary(${Component.displayName || Component.name || 'Component'})`;
+  WrappedComponent.displayName = `withErrorBoundary(${Component.displayName || Component.name || "Component"})`;
 
   return WrappedComponent;
 }

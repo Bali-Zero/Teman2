@@ -62,21 +62,21 @@ Ogni azione è loggata con context strutturato:
 
 ```typescript
 // Success logging
-logger.info('Dashboard loaded successfully', {
-  component: 'DashboardPage',
-  action: 'loadDashboardData',
+logger.info("Dashboard loaded successfully", {
+  component: "DashboardPage",
+  action: "loadDashboardData",
   user: email,
   metadata: { loadTime, systemStatus },
 });
 
 // Error logging per ogni API
 logger.error(
-  'Failed to load practice stats',
+  "Failed to load practice stats",
   {
-    component: 'DashboardPage',
-    action: 'loadDashboardData',
+    component: "DashboardPage",
+    action: "loadDashboardData",
   },
-  error
+  error,
 );
 ```
 
@@ -110,7 +110,7 @@ logger.error(
 2. **Button Clicks**
 
    ```typescript
-   dashboardMetrics.trackButtonClick('Active Cases', '/cases', userId);
+   dashboardMetrics.trackButtonClick("Active Cases", "/cases", userId);
    ```
 
 3. **API Calls**
@@ -127,8 +127,11 @@ logger.error(
 
 5. **Performance**
    ```typescript
-   dashboardMetrics.startPerformanceMark('dashboard_load');
-   const loadTime = dashboardMetrics.endPerformanceMark('dashboard_load', userId);
+   dashboardMetrics.startPerformanceMark("dashboard_load");
+   const loadTime = dashboardMetrics.endPerformanceMark(
+     "dashboard_load",
+     userId,
+   );
    ```
 
 **Performance Summary Disponibile:**
@@ -295,7 +298,7 @@ npm run test:e2e -- dashboard
 ### **Accesso Metriche**
 
 ```typescript
-import { dashboardMetrics } from '@/lib/metrics/dashboard-metrics';
+import { dashboardMetrics } from "@/lib/metrics/dashboard-metrics";
 
 // Get performance summary
 const perf = dashboardMetrics.getPerformanceSummary();

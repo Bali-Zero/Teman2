@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import React from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
 import {
   Home,
   MessageSquare,
@@ -23,9 +23,14 @@ import {
   FileText,
   Cloud,
   Calendar,
-} from 'lucide-react';
-import { navigation, portalNavigation, NavSection, NavItem } from '@/types/navigation';
-import { cn } from '@/lib/utils';
+} from "lucide-react";
+import {
+  navigation,
+  portalNavigation,
+  NavSection,
+  NavItem,
+} from "@/types/navigation";
+import { cn } from "@/lib/utils";
 
 // Icon mapping
 const iconMap: Record<string, React.ElementType> = {
@@ -50,29 +55,29 @@ const iconMap: Record<string, React.ElementType> = {
 // Color configuration for nav items
 // cssClass: for inactive state with hover, activeColor: for active state
 const navColors: Record<string, { cssClass: string; activeColor: string }> = {
-  '/dashboard': { cssClass: 'nav-icon-blue', activeColor: '#60A5FA' },
-  '/intelligence': { cssClass: 'nav-icon-orange', activeColor: '#FB923C' },
-  '/chat': { cssClass: 'nav-icon-purple', activeColor: '#A78BFA' },
-  '/dream': { cssClass: 'nav-icon-indigo', activeColor: '#818CF8' },
-  '/omnichannel': { cssClass: 'nav-icon-emerald', activeColor: '#34D399' },
-  '/whatsapp': { cssClass: 'nav-icon-emerald', activeColor: '#34D399' },
-  '/email': { cssClass: 'nav-icon-sky', activeColor: '#38BDF8' },
-  '/clients': { cssClass: 'nav-icon-teal', activeColor: '#2DD4BF' },
-  '/process': { cssClass: 'nav-icon-amber', activeColor: '#FBBF24' },
-  '/documents': { cssClass: 'nav-icon-yellow', activeColor: '#FACC15' },
-  '/knowledge': { cssClass: 'nav-icon-violet', activeColor: '#C084FC' },
-  '/team': { cssClass: 'nav-icon-cyan', activeColor: '#22D3EE' },
-  '/calendar': { cssClass: 'nav-icon-rose', activeColor: '#FB7185' },
-  '/analytics': { cssClass: 'nav-icon-pink', activeColor: '#F472B6' },
-  '/settings': { cssClass: 'nav-icon-gray', activeColor: '#9CA3AF' },
+  "/dashboard": { cssClass: "nav-icon-blue", activeColor: "#60A5FA" },
+  "/intelligence": { cssClass: "nav-icon-orange", activeColor: "#FB923C" },
+  "/chat": { cssClass: "nav-icon-purple", activeColor: "#A78BFA" },
+  "/dream": { cssClass: "nav-icon-indigo", activeColor: "#818CF8" },
+  "/omnichannel": { cssClass: "nav-icon-emerald", activeColor: "#34D399" },
+  "/whatsapp": { cssClass: "nav-icon-emerald", activeColor: "#34D399" },
+  "/email": { cssClass: "nav-icon-sky", activeColor: "#38BDF8" },
+  "/clients": { cssClass: "nav-icon-teal", activeColor: "#2DD4BF" },
+  "/process": { cssClass: "nav-icon-amber", activeColor: "#FBBF24" },
+  "/documents": { cssClass: "nav-icon-yellow", activeColor: "#FACC15" },
+  "/knowledge": { cssClass: "nav-icon-violet", activeColor: "#C084FC" },
+  "/team": { cssClass: "nav-icon-cyan", activeColor: "#22D3EE" },
+  "/calendar": { cssClass: "nav-icon-rose", activeColor: "#FB7185" },
+  "/analytics": { cssClass: "nav-icon-pink", activeColor: "#F472B6" },
+  "/settings": { cssClass: "nav-icon-gray", activeColor: "#9CA3AF" },
   // Portal routes
-  '/portal': { cssClass: 'nav-icon-blue', activeColor: '#60A5FA' },
-  '/portal/vault': { cssClass: 'nav-icon-purple', activeColor: '#A78BFA' },
-  '/portal/messages': { cssClass: 'nav-icon-emerald', activeColor: '#34D399' },
-  '/portal/visa': { cssClass: 'nav-icon-amber', activeColor: '#FBBF24' },
-  '/portal/taxes': { cssClass: 'nav-icon-red', activeColor: '#F87171' },
-  '/portal/profile': { cssClass: 'nav-icon-cyan', activeColor: '#22D3EE' },
-  '/portal/settings': { cssClass: 'nav-icon-gray', activeColor: '#9CA3AF' },
+  "/portal": { cssClass: "nav-icon-blue", activeColor: "#60A5FA" },
+  "/portal/vault": { cssClass: "nav-icon-purple", activeColor: "#A78BFA" },
+  "/portal/messages": { cssClass: "nav-icon-emerald", activeColor: "#34D399" },
+  "/portal/visa": { cssClass: "nav-icon-amber", activeColor: "#FBBF24" },
+  "/portal/taxes": { cssClass: "nav-icon-red", activeColor: "#F87171" },
+  "/portal/profile": { cssClass: "nav-icon-cyan", activeColor: "#22D3EE" },
+  "/portal/settings": { cssClass: "nav-icon-gray", activeColor: "#9CA3AF" },
 };
 
 interface AppSidebarProps {
@@ -102,7 +107,7 @@ export function AppSidebar({
   const nav = navigationConfig || navigation;
 
   const isActive = (href: string) => {
-    if (href === '/dashboard' || href === '/portal') {
+    if (href === "/dashboard" || href === "/portal") {
       return pathname === href;
     }
     return pathname.startsWith(href);
@@ -112,17 +117,24 @@ export function AppSidebar({
     const Icon = iconMap[item.icon] || Home;
     const active = isActive(item.href);
     const badge =
-      item.href === '/whatsapp' || item.href === '/omnichannel' ? unreadWhatsApp : item.badge;
-    const colors = navColors[item.href] || { cssClass: 'nav-icon-gray', activeColor: '#9CA3AF' };
+      item.href === "/whatsapp" || item.href === "/omnichannel"
+        ? unreadWhatsApp
+        : item.badge;
+    const colors = navColors[item.href] || {
+      cssClass: "nav-icon-gray",
+      activeColor: "#9CA3AF",
+    };
 
     return (
       <Link
         key={item.href}
         href={item.href}
         className={cn(
-          'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200',
-          'text-sm font-medium group',
-          active ? 'bg-white/5 border border-white/10' : 'text-[#9AA0AE] hover:bg-white/5'
+          "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
+          "text-sm font-medium group",
+          active
+            ? "bg-white/5 border border-white/10"
+            : "text-[#9AA0AE] hover:bg-white/5",
         )}
         style={{
           color: active ? colors.activeColor : undefined,
@@ -130,11 +142,14 @@ export function AppSidebar({
         }}
       >
         <Icon
-          className={cn('w-5 h-5', !active && colors.cssClass)}
+          className={cn("w-5 h-5", !active && colors.cssClass)}
           style={active ? { color: colors.activeColor } : undefined}
         />
         <span
-          className={cn('flex-1 transition-colors', !active && 'group-hover:text-[#E6E7EB]')}
+          className={cn(
+            "flex-1 transition-colors",
+            !active && "group-hover:text-[#E6E7EB]",
+          )}
           style={{ color: active ? colors.activeColor : undefined }}
         >
           {item.title}
@@ -144,7 +159,7 @@ export function AppSidebar({
             className="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-semibold rounded-full text-[#0B0E13]"
             style={{ backgroundColor: colors.activeColor }}
           >
-            {badge > 99 ? '99+' : badge}
+            {badge > 99 ? "99+" : badge}
           </span>
         )}
       </Link>
@@ -177,7 +192,9 @@ export function AppSidebar({
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">{nav.map(renderNavSection)}</nav>
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+        {nav.map(renderNavSection)}
+      </nav>
 
       {/* User Profile Footer */}
       <div className="p-3 border-t border-[rgba(255,255,255,0.04)] bg-transparent">
@@ -186,7 +203,12 @@ export function AppSidebar({
           <div className="relative">
             <div className="w-10 h-10 rounded-full bg-[#1A1D24] flex items-center justify-center overflow-hidden border border-[rgba(255,255,255,0.04)]">
               {user.avatar ? (
-                <Image src={user.avatar} alt={user.name} fill className="object-cover" />
+                <Image
+                  src={user.avatar}
+                  alt={user.name}
+                  fill
+                  className="object-cover"
+                />
               ) : (
                 <UserCircle className="w-6 h-6 text-[#9AA0AE]" />
               )}
@@ -195,8 +217,8 @@ export function AppSidebar({
             {!isPortal && (
               <span
                 className={cn(
-                  'absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#0B0E13]',
-                  user.isOnline ? 'bg-[#4FD1C5]' : 'bg-[#9AA0AE]'
+                  "absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#0B0E13]",
+                  user.isOnline ? "bg-[#4FD1C5]" : "bg-[#9AA0AE]",
                 )}
               />
             )}
@@ -207,9 +229,11 @@ export function AppSidebar({
 
           {/* User Info */}
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-[#E6E7EB] truncate">{user.name}</p>
+            <p className="text-sm font-medium text-[#E6E7EB] truncate">
+              {user.name}
+            </p>
             <p className="text-xs text-[#9AA0AE] truncate">
-              {isPortal ? 'Client Portal' : user.team || 'Team'}
+              {isPortal ? "Client Portal" : user.team || "Team"}
             </p>
           </div>
 
@@ -218,13 +242,17 @@ export function AppSidebar({
             <div className="flex flex-col items-end text-right">
               <span
                 className={cn(
-                  'text-xs font-medium',
-                  user.isOnline ? 'text-[#4FD1C5]' : 'text-[#9AA0AE]'
+                  "text-xs font-medium",
+                  user.isOnline ? "text-[#4FD1C5]" : "text-[#9AA0AE]",
                 )}
               >
-                {user.isOnline ? 'Online' : 'Offline'}
+                {user.isOnline ? "Online" : "Offline"}
               </span>
-              {user.hoursToday && <span className="text-xs text-[#9AA0AE]">{user.hoursToday}</span>}
+              {user.hoursToday && (
+                <span className="text-xs text-[#9AA0AE]">
+                  {user.hoursToday}
+                </span>
+              )}
             </div>
           )}
         </div>

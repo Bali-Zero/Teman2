@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useCallback } from 'react';
-import { X, Sparkles } from 'lucide-react';
+import { useState, useCallback } from "react";
+import { X, Sparkles } from "lucide-react";
 
 export interface ImageGenModalProps {
   isOpen: boolean;
@@ -12,23 +12,27 @@ export interface ImageGenModalProps {
 /**
  * Image generation modal component
  */
-export function ImageGenModal({ isOpen, onClose, onSubmit }: ImageGenModalProps) {
-  const [prompt, setPrompt] = useState('');
+export function ImageGenModal({
+  isOpen,
+  onClose,
+  onSubmit,
+}: ImageGenModalProps) {
+  const [prompt, setPrompt] = useState("");
 
   const handleSubmit = useCallback(() => {
     if (!prompt.trim()) return;
     onSubmit(prompt.trim());
-    setPrompt('');
+    setPrompt("");
   }, [prompt, onSubmit]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
+      if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         handleSubmit();
       }
     },
-    [handleSubmit]
+    [handleSubmit],
   );
 
   if (!isOpen) return null;
@@ -46,7 +50,10 @@ export function ImageGenModal({ isOpen, onClose, onSubmit }: ImageGenModalProps)
               <p className="text-xs text-gray-400">Descrivi cosa vuoi creare</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+          >
             <X className="w-5 h-5 text-gray-400" />
           </button>
         </div>

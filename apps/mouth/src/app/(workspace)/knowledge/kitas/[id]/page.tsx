@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import React, { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
 import {
   ArrowLeft,
   Clock,
@@ -26,10 +26,10 @@ import {
   Ban,
   Activity,
   Gift,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { api } from '@/lib/api';
-import type { VisaType } from '@/lib/api/knowledge/visa.types';
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
+import type { VisaType } from "@/lib/api/knowledge/visa.types";
 
 // =============================================================================
 // Helper Functions
@@ -37,50 +37,50 @@ import type { VisaType } from '@/lib/api/knowledge/visa.types';
 
 function getDifficultyColor(difficulty: string | undefined): string {
   switch (difficulty) {
-    case 'very_low':
-      return 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30';
-    case 'low':
-      return 'text-green-400 bg-green-400/10 border-green-400/30';
-    case 'medium':
-      return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30';
-    case 'high':
-      return 'text-orange-400 bg-orange-400/10 border-orange-400/30';
-    case 'very_high':
-      return 'text-red-400 bg-red-400/10 border-red-400/30';
+    case "very_low":
+      return "text-emerald-400 bg-emerald-400/10 border-emerald-400/30";
+    case "low":
+      return "text-green-400 bg-green-400/10 border-green-400/30";
+    case "medium":
+      return "text-yellow-400 bg-yellow-400/10 border-yellow-400/30";
+    case "high":
+      return "text-orange-400 bg-orange-400/10 border-orange-400/30";
+    case "very_high":
+      return "text-red-400 bg-red-400/10 border-red-400/30";
     default:
-      return 'text-gray-400 bg-gray-400/10 border-gray-400/30';
+      return "text-gray-400 bg-gray-400/10 border-gray-400/30";
   }
 }
 
 function getDifficultyLabel(difficulty: string | undefined): string {
   switch (difficulty) {
-    case 'very_low':
-      return 'Very Easy';
-    case 'low':
-      return 'Easy';
-    case 'medium':
-      return 'Medium';
-    case 'high':
-      return 'Difficult';
-    case 'very_high':
-      return 'Very Difficult';
+    case "very_low":
+      return "Very Easy";
+    case "low":
+      return "Easy";
+    case "medium":
+      return "Medium";
+    case "high":
+      return "Difficult";
+    case "very_high":
+      return "Very Difficult";
     default:
-      return 'Unknown';
+      return "Unknown";
   }
 }
 
 function getCategoryColor(category: string): string {
   switch (category) {
-    case 'KITAS':
-      return 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30';
-    case 'KITAP':
-      return 'bg-amber-500/20 text-amber-300 border-amber-500/30';
-    case 'Tourist':
-      return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
-    case 'Business':
-      return 'bg-blue-500/20 text-blue-300 border-blue-500/30';
+    case "KITAS":
+      return "bg-indigo-500/20 text-indigo-300 border-indigo-500/30";
+    case "KITAP":
+      return "bg-amber-500/20 text-amber-300 border-amber-500/30";
+    case "Tourist":
+      return "bg-emerald-500/20 text-emerald-300 border-emerald-500/30";
+    case "Business":
+      return "bg-blue-500/20 text-blue-300 border-blue-500/30";
     default:
-      return 'bg-gray-500/20 text-gray-300 border-gray-500/30';
+      return "bg-gray-500/20 text-gray-300 border-gray-500/30";
   }
 }
 
@@ -99,10 +99,14 @@ function Section({ title, icon, iconBg, children }: SectionProps) {
   return (
     <div className="rounded-2xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden">
       <div className="p-4 border-b border-[var(--border)] flex items-center gap-3">
-        <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center`}>
+        <div
+          className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center`}
+        >
           {icon}
         </div>
-        <h2 className="text-lg font-semibold text-[var(--foreground)]">{title}</h2>
+        <h2 className="text-lg font-semibold text-[var(--foreground)]">
+          {title}
+        </h2>
       </div>
       <div className="p-5">{children}</div>
     </div>
@@ -126,9 +130,15 @@ function ListItem({ text, icon, iconColor, index }: ListItemProps) {
       <div
         className={`w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${iconColor}`}
       >
-        {index !== undefined ? <span className="text-xs font-bold">{index}</span> : icon}
+        {index !== undefined ? (
+          <span className="text-xs font-bold">{index}</span>
+        ) : (
+          icon
+        )}
       </div>
-      <span className="text-sm text-[var(--foreground-secondary)] leading-relaxed">{text}</span>
+      <span className="text-sm text-[var(--foreground-secondary)] leading-relaxed">
+        {text}
+      </span>
     </div>
   );
 }
@@ -156,8 +166,14 @@ function InfoCard({ label, value, icon, iconBg, subValue }: InfoCardProps) {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-xs text-[var(--foreground-muted)] mb-1">{label}</p>
-          <p className="text-base font-semibold text-[var(--foreground)] truncate">{value}</p>
-          {subValue && <p className="text-xs text-[var(--foreground-muted)] mt-1">{subValue}</p>}
+          <p className="text-base font-semibold text-[var(--foreground)] truncate">
+            {value}
+          </p>
+          {subValue && (
+            <p className="text-xs text-[var(--foreground-muted)] mt-1">
+              {subValue}
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -190,10 +206,10 @@ export default function VisaDetailPage() {
       setVisa(response);
       setError(null);
       // Track KB view
-      api.kbActivity.logView('visa', visaId, response.name, response.category);
+      api.kbActivity.logView("visa", visaId, response.name, response.category);
     } catch (err) {
-      console.error('Failed to load visa:', err);
-      setError('Visa not found or failed to load.');
+      console.error("Failed to load visa:", err);
+      setError("Visa not found or failed to load.");
     } finally {
       setIsLoading(false);
     }
@@ -213,7 +229,7 @@ export default function VisaDetailPage() {
     } else {
       // Fallback: copy to clipboard
       navigator.clipboard.writeText(window.location.href);
-      alert('Link copied to clipboard!');
+      alert("Link copied to clipboard!");
     }
   };
 
@@ -240,11 +256,13 @@ export default function VisaDetailPage() {
     return (
       <div className="p-12 rounded-2xl bg-[var(--background-secondary)] border border-[var(--border)] text-center">
         <AlertTriangle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-        <h2 className="text-xl font-semibold text-[var(--foreground)] mb-2">Visa Not Found</h2>
+        <h2 className="text-xl font-semibold text-[var(--foreground)] mb-2">
+          Visa Not Found
+        </h2>
         <p className="text-[var(--foreground-muted)] mb-6">
-          {error || 'The requested visa could not be found.'}
+          {error || "The requested visa could not be found."}
         </p>
-        <Button onClick={() => router.push('/knowledge/kitas')}>
+        <Button onClick={() => router.push("/knowledge/kitas")}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Visa List
         </Button>
@@ -260,7 +278,7 @@ export default function VisaDetailPage() {
     <div className="space-y-8 max-w-5xl mx-auto">
       {/* Back Button */}
       <button
-        onClick={() => router.push('/knowledge/kitas')}
+        onClick={() => router.push("/knowledge/kitas")}
         className="flex items-center gap-2 text-sm text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
@@ -312,20 +330,22 @@ export default function VisaDetailPage() {
           <h1 className="text-3xl md:text-4xl font-bold text-[var(--foreground)] mb-2">
             {visa.name}
           </h1>
-          <p className="text-lg text-[var(--foreground-muted)] font-mono mb-6">Code: {visa.code}</p>
+          <p className="text-lg text-[var(--foreground-muted)] font-mono mb-6">
+            Code: {visa.code}
+          </p>
 
           {/* Quick Info Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <InfoCard
               label="Duration"
-              value={visa.duration || 'Varies'}
+              value={visa.duration || "Varies"}
               icon={<Clock className="w-5 h-5 text-[var(--accent)]" />}
               iconBg="bg-[var(--accent)]/10"
               subValue={visa.extensions || undefined}
             />
             <InfoCard
               label="Processing Time"
-              value={visa.processing_time_normal || 'Varies'}
+              value={visa.processing_time_normal || "Varies"}
               icon={<Timer className="w-5 h-5 text-blue-400" />}
               iconBg="bg-blue-500/10"
               subValue={
@@ -336,14 +356,18 @@ export default function VisaDetailPage() {
             />
             <InfoCard
               label="Bali Zero Price"
-              value={visa.cost_visa || 'Contact us'}
+              value={visa.cost_visa || "Contact us"}
               icon={<Wallet className="w-5 h-5 text-emerald-400" />}
               iconBg="bg-emerald-500/10"
-              subValue={visa.cost_extension ? `Extension: ${visa.cost_extension}` : undefined}
+              subValue={
+                visa.cost_extension
+                  ? `Extension: ${visa.cost_extension}`
+                  : undefined
+              }
             />
             <InfoCard
               label="Maximum Stay"
-              value={visa.total_stay || 'Varies'}
+              value={visa.total_stay || "Varies"}
               icon={<Calendar className="w-5 h-5 text-purple-400" />}
               iconBg="bg-purple-500/10"
             />
@@ -352,7 +376,7 @@ export default function VisaDetailPage() {
           {/* Actions */}
           <div className="flex items-center gap-3 mt-6 pt-6 border-t border-[var(--border)]">
             <Button
-              onClick={() => router.push('/chat')}
+              onClick={() => router.push("/chat")}
               className="gap-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white"
             >
               <Sparkles className="w-4 h-4" />
@@ -371,10 +395,15 @@ export default function VisaDetailPage() {
                 variant="outline"
                 onClick={() => {
                   // Track KB download
-                  api.kbActivity.logDownload('visa', visaId, visa.name, visa.category);
-                  const link = document.createElement('a');
-                  link.href = visa.metadata?.pdf_url || '';
-                  link.download = `${visa.code}_${visa.name.replace(/\s+/g, '_')}.pdf`;
+                  api.kbActivity.logDownload(
+                    "visa",
+                    visaId,
+                    visa.name,
+                    visa.category,
+                  );
+                  const link = document.createElement("a");
+                  link.href = visa.metadata?.pdf_url || "";
+                  link.download = `${visa.code}_${visa.name.replace(/\s+/g, "_")}.pdf`;
                   document.body.appendChild(link);
                   link.click();
                   document.body.removeChild(link);
@@ -479,7 +508,7 @@ export default function VisaDetailPage() {
             {visa.process_steps.map((step, idx) => (
               <ListItem
                 key={idx}
-                text={step.replace(/^\d+\.\s*/, '')}
+                text={step.replace(/^\d+\.\s*/, "")}
                 icon={<span className="text-xs font-bold">{idx + 1}</span>}
                 iconColor="bg-purple-500/20 text-purple-400"
                 index={idx + 1}
@@ -523,9 +552,13 @@ export default function VisaDetailPage() {
                 className="p-4 rounded-xl bg-[var(--background)]/50 border border-[var(--border)]"
               >
                 <p className="text-xs text-[var(--foreground-muted)] mb-1">
-                  {key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                  {key
+                    .replace(/_/g, " ")
+                    .replace(/\b\w/g, (l) => l.toUpperCase())}
                 </p>
-                <p className="text-lg font-semibold text-[var(--foreground)]">{value}</p>
+                <p className="text-lg font-semibold text-[var(--foreground)]">
+                  {value}
+                </p>
               </div>
             ))}
           </div>
@@ -540,15 +573,16 @@ export default function VisaDetailPage() {
               Ready to Apply for {visa.name}?
             </h3>
             <p className="text-[var(--foreground-secondary)]">
-              Let Bali Zero handle your visa application. 98% success rate, transparent pricing.
+              Let Bali Zero handle your visa application. 98% success rate,
+              transparent pricing.
             </p>
           </div>
           <Button
             onClick={() =>
               window.open(
-                'https://wa.me/6285904369574?text=Hi%20Bali%20Zero%2C%20I%20want%20to%20apply%20for%20' +
+                "https://wa.me/6285904369574?text=Hi%20Bali%20Zero%2C%20I%20want%20to%20apply%20for%20" +
                   encodeURIComponent(visa.name),
-                '_blank'
+                "_blank",
               )
             }
             className="gap-2 bg-[#25D366] hover:bg-[#20BD5A] text-white font-semibold px-6"
@@ -564,11 +598,11 @@ export default function VisaDetailPage() {
       {/* Last Updated */}
       {visa.last_updated && (
         <p className="text-xs text-[var(--foreground-muted)] text-center">
-          Last updated:{' '}
-          {new Date(visa.last_updated).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
+          Last updated:{" "}
+          {new Date(visa.last_updated).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
           })}
         </p>
       )}

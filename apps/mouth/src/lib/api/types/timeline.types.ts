@@ -1,6 +1,11 @@
-export type TimelineScope = 'portal' | 'workspace';
+export type TimelineScope = "portal" | "workspace";
 
-export type TimelineEntryType = 'message' | 'document' | 'practice' | 'deadline' | 'interaction';
+export type TimelineEntryType =
+  | "message"
+  | "document"
+  | "practice"
+  | "deadline"
+  | "interaction";
 
 export interface TimelineEntityRef {
   clientId?: number;

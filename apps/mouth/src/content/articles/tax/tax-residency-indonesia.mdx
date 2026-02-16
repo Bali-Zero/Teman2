@@ -77,8 +77,8 @@ import {
   ComparisonTable,
   InfoCard,
   Calculator,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Tax Residency in Indonesia: When Do You Become a Tax Resident? 2026
 
@@ -96,23 +96,23 @@ Indonesia uses two main tests for tax residency:
       name: "183-Day Rule",
       subtitle: "Physical presence",
       values: {
-        "Test": "Present 183+ days in any 12-month period",
-        "Period": "Rolling 12 months (not calendar year)",
+        Test: "Present 183+ days in any 12-month period",
+        Period: "Rolling 12 months (not calendar year)",
         "Automatic?": "Yes - triggers residency",
-        "Most Common": "Yes"
+        "Most Common": "Yes",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "Intention Test",
       subtitle: "Plan to reside",
       values: {
-        "Test": "Intend to stay in Indonesia",
-        "Period": "From date of intention",
+        Test: "Intend to stay in Indonesia",
+        Period: "From date of intention",
         "Automatic?": "Subjective - based on circumstances",
-        "Most Common": "No - supplementary"
-      }
-    }
+        "Most Common": "No - supplementary",
+      },
+    },
   ]}
 />
 
@@ -126,12 +126,13 @@ Indonesia uses two main tests for tax residency:
   nodes={[
     {
       id: "start",
-      question: "How many days have you been in Indonesia in the past 12 months?",
+      question:
+        "How many days have you been in Indonesia in the past 12 months?",
       options: [
         { label: "Under 90 days", nextNodeId: "result-non-resident" },
         { label: "90-182 days", nextNodeId: "intention-check" },
-        { label: "183+ days", nextNodeId: "result-resident" }
-      ]
+        { label: "183+ days", nextNodeId: "result-resident" },
+      ],
     },
     {
       id: "intention-check",
@@ -140,8 +141,8 @@ Indonesia uses two main tests for tax residency:
       options: [
         { label: "Yes, planning to live here", nextNodeId: "ties-check" },
         { label: "No, temporary stay", nextNodeId: "result-non-resident" },
-        { label: "Unsure", nextNodeId: "result-borderline" }
-      ]
+        { label: "Unsure", nextNodeId: "result-borderline" },
+      ],
     },
     {
       id: "ties-check",
@@ -149,41 +150,62 @@ Indonesia uses two main tests for tax residency:
       helpText: "Family living here, own property, primary business",
       options: [
         { label: "Yes, strong ties", nextNodeId: "result-likely-resident" },
-        { label: "Not really", nextNodeId: "result-non-resident" }
-      ]
+        { label: "Not really", nextNodeId: "result-non-resident" },
+      ],
     },
     {
       id: "result-resident",
       isResult: true,
       title: "Tax Resident",
       description: "You are an Indonesian tax resident",
-      recommendation: "With 183+ days in Indonesia, you are a tax resident. Indonesia can tax your worldwide income. You must register for NPWP and file annual SPT.",
-      nextSteps: ["Register for NPWP", "File annual SPT by March 31", "Report all income sources", "Claim foreign tax credits"]
+      recommendation:
+        "With 183+ days in Indonesia, you are a tax resident. Indonesia can tax your worldwide income. You must register for NPWP and file annual SPT.",
+      nextSteps: [
+        "Register for NPWP",
+        "File annual SPT by March 31",
+        "Report all income sources",
+        "Claim foreign tax credits",
+      ],
     },
     {
       id: "result-likely-resident",
       isResult: true,
       title: "Likely Tax Resident",
       description: "You may be considered a tax resident",
-      recommendation: "Strong ties + intention to stay can make you a resident even under 183 days. Consult a tax professional to confirm your status.",
-      nextSteps: ["Consult tax advisor", "Consider voluntary registration", "Document your situation"]
+      recommendation:
+        "Strong ties + intention to stay can make you a resident even under 183 days. Consult a tax professional to confirm your status.",
+      nextSteps: [
+        "Consult tax advisor",
+        "Consider voluntary registration",
+        "Document your situation",
+      ],
     },
     {
       id: "result-non-resident",
       isResult: true,
       title: "Non-Resident",
       description: "You are not an Indonesian tax resident",
-      recommendation: "As a non-resident, only Indonesian-source income is taxable (at 20% withholding usually). You don't need NPWP unless earning Indonesian income.",
-      nextSteps: ["Track your days carefully", "Declare Indonesian income at home", "Check if approaching 183 days"]
+      recommendation:
+        "As a non-resident, only Indonesian-source income is taxable (at 20% withholding usually). You don't need NPWP unless earning Indonesian income.",
+      nextSteps: [
+        "Track your days carefully",
+        "Declare Indonesian income at home",
+        "Check if approaching 183 days",
+      ],
     },
     {
       id: "result-borderline",
       isResult: true,
       title: "Borderline Case",
       description: "Your status needs professional review",
-      recommendation: "90-182 days with unclear intentions is a gray area. Get professional advice to clarify your status and plan accordingly.",
-      nextSteps: ["Consult tax professional", "Document your situation", "Consider planning around thresholds"]
-    }
+      recommendation:
+        "90-182 days with unclear intentions is a gray area. Get professional advice to clarify your status and plan accordingly.",
+      nextSteps: [
+        "Consult tax professional",
+        "Document your situation",
+        "Consider planning around thresholds",
+      ],
+    },
   ]}
 />
 
@@ -198,6 +220,7 @@ Indonesia uses two main tests for tax residency:
 - **Days don't need to be consecutive**
 
 Example: If you arrive Oct 1, 2024 and spend 183+ days in Indonesia by Sep 30, 2026, you become a tax resident.
+
 </InfoCard>
 
 ### Day Counting Example
@@ -247,7 +270,8 @@ Example: If you arrive Oct 1, 2024 and spend 183+ days in Indonesia by Sep 30, 2
       currency: "days",
       note
     };
-  }}
+
+}}
 />
 
 ---
@@ -255,12 +279,14 @@ Example: If you arrive Oct 1, 2024 and spend 183+ days in Indonesia by Sep 30, 2
 ## What Tax Residency Means
 
 ### Tax Residents Must:
+
 - Pay tax on **worldwide income**
 - Register for **NPWP**
 - File **annual SPT** (tax return)
 - Can claim **foreign tax credits**
 
 ### Non-Residents:
+
 - Pay tax only on **Indonesian-source income**
 - **20% withholding** (unless treaty reduces)
 - **No filing required**
@@ -277,7 +303,7 @@ Example: If you arrive Oct 1, 2024 and spend 183+ days in Indonesia by Sep 30, 2
     "What if I'm resident in two countries?",
     "Does tourist visa affect residency?",
     "When does my residency start?",
-    "Can I avoid becoming resident?"
+    "Can I avoid becoming resident?",
   ]}
 />
 

@@ -16,21 +16,21 @@ export interface WebSocketMessageBase {
  * Message type discriminator
  */
 export type WebSocketMessageType =
-  | 'dashboard_update'
-  | 'user_presence'
-  | 'case_update'
-  | 'email_update'
-  | 'system_alert'
-  | 'heartbeat'
-  | 'connection_status';
+  | "dashboard_update"
+  | "user_presence"
+  | "case_update"
+  | "email_update"
+  | "system_alert"
+  | "heartbeat"
+  | "connection_status";
 
 /**
  * Dashboard update message data
  */
 export interface DashboardUpdateData {
   userId: string;
-  action: 'view' | 'edit' | 'delete' | 'create';
-  resource: 'case' | 'email' | 'client' | 'document';
+  action: "view" | "edit" | "delete" | "create";
+  resource: "case" | "email" | "client" | "document";
   resourceId: string;
   changes?: Record<string, unknown>;
 }
@@ -39,7 +39,7 @@ export interface DashboardUpdateData {
  * User presence message data
  */
 export interface UserPresenceData {
-  status: 'online' | 'offline' | 'away';
+  status: "online" | "offline" | "away";
   currentView: string;
   timestamp: string;
 }
@@ -66,7 +66,7 @@ export interface EmailUpdateData {
  * System alert message data
  */
 export interface SystemAlertData {
-  level: 'info' | 'warning' | 'error' | 'success';
+  level: "info" | "warning" | "error" | "success";
   message: string;
   title?: string;
   actionUrl?: string;
@@ -105,19 +105,19 @@ export interface WebSocketMessage<
   T extends WebSocketMessageType = WebSocketMessageType,
 > extends WebSocketMessageBase {
   type: T;
-  data: T extends 'dashboard_update'
+  data: T extends "dashboard_update"
     ? DashboardUpdateData
-    : T extends 'user_presence'
+    : T extends "user_presence"
       ? UserPresenceData
-      : T extends 'case_update'
+      : T extends "case_update"
         ? CaseUpdateData
-        : T extends 'email_update'
+        : T extends "email_update"
           ? EmailUpdateData
-          : T extends 'system_alert'
+          : T extends "system_alert"
             ? SystemAlertData
-            : T extends 'heartbeat'
+            : T extends "heartbeat"
               ? HeartbeatData
-              : T extends 'connection_status'
+              : T extends "connection_status"
                 ? ConnectionStatusData
                 : never;
 }
@@ -126,17 +126,17 @@ export interface WebSocketMessage<
  * Type guard for WebSocket message type
  */
 export function isWebSocketMessage(value: unknown): value is WebSocketMessage {
-  if (typeof value !== 'object' || value === null) {
+  if (typeof value !== "object" || value === null) {
     return false;
   }
 
   const msg = value as Record<string, unknown>;
   return (
-    typeof msg.type === 'string' &&
-    typeof msg.timestamp === 'string' &&
-    typeof msg.userId === 'string' &&
-    typeof msg.userName === 'string' &&
-    'data' in msg
+    typeof msg.type === "string" &&
+    typeof msg.timestamp === "string" &&
+    typeof msg.userId === "string" &&
+    typeof msg.userName === "string" &&
+    "data" in msg
   );
 }
 
@@ -145,7 +145,7 @@ export function isWebSocketMessage(value: unknown): value is WebSocketMessage {
  */
 export function isMessageType<T extends WebSocketMessageType>(
   message: WebSocketMessage,
-  type: T
+  type: T,
 ): message is WebSocketMessage<T> {
   return message.type === type;
 }

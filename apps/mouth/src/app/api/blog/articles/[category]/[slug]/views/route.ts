@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { logger } from '@/lib/logger';
-import { toError } from '@/lib/types/common';
+import { NextRequest, NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
+import { toError } from "@/lib/types/common";
 
-const ZANTARA_API = process.env.ZANTARA_API_URL || 'http://localhost:8080';
+const ZANTARA_API = process.env.ZANTARA_API_URL || "http://localhost:8080";
 
 interface RouteParams {
   params: Promise<{
@@ -20,39 +20,42 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const { category, slug } = await params;
 
     // Get visitor info from headers
-    const userAgent = request.headers.get('user-agent') || '';
-    const referer = request.headers.get('referer') || '';
-    const forwarded = request.headers.get('x-forwarded-for');
-    const ip = forwarded ? forwarded.split(',')[0].trim() : 'unknown';
+    const userAgent = request.headers.get("user-agent") || "";
+    const referer = request.headers.get("referer") || "";
+    const forwarded = request.headers.get("x-forwarded-for");
+    const ip = forwarded ? forwarded.split(",")[0].trim() : "unknown";
 
     // Call backend to track view
-    const response = await fetch(`${ZANTARA_API}/api/blog/articles/${category}/${slug}/views`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+    const response = await fetch(
+      `${ZANTARA_API}/api/blog/articles/${category}/${slug}/views`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userAgent,
+          referer,
+          ip: hashIP(ip), // Hash for privacy
+          timestamp: new Date().toISOString(),
+        }),
       },
-      body: JSON.stringify({
-        userAgent,
-        referer,
-        ip: hashIP(ip), // Hash for privacy
-        timestamp: new Date().toISOString(),
-      }),
-    });
+    );
 
     if (!response.ok) {
       // Silent fail for view tracking
       logger.error(`Failed to track view: ${response.status}`, {
-        component: 'BlogViews',
-        action: 'track',
+        component: "BlogViews",
+        action: "track",
       });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
     logger.error(
-      'View tracking error',
-      { component: 'BlogViews', action: 'track' },
-      toError(error)
+      "View tracking error",
+      { component: "BlogViews", action: "track" },
+      toError(error),
     );
     // Silent fail - don't disrupt user experience
     return NextResponse.json({ success: true });
@@ -67,12 +70,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { category, slug } = await params;
 
-    const response = await fetch(`${ZANTARA_API}/api/blog/articles/${category}/${slug}/views`, {
-      headers: {
-        'Content-Type': 'application/json',
+    const response = await fetch(
+      `${ZANTARA_API}/api/blog/articles/${category}/${slug}/views`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        next: { revalidate: 60 }, // Cache for 1 minute
       },
-      next: { revalidate: 60 }, // Cache for 1 minute
-    });
+    );
 
     if (!response.ok) {
       return NextResponse.json({ views: 0 });
@@ -82,9 +88,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json(data);
   } catch (error) {
     logger.error(
-      'Failed to fetch view count',
-      { component: 'BlogViews', action: 'fetch' },
-      toError(error)
+      "Failed to fetch view count",
+      { component: "BlogViews", action: "fetch" },
+      toError(error),
     );
     return NextResponse.json({ views: 0 });
   }

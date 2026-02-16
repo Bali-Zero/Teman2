@@ -2,8 +2,8 @@
  * Dashboard API client for the new aggregated endpoint
  */
 
-import { api } from '@/lib/api';
-import type { TimelineResponse } from '@/lib/api/types/timeline.types';
+import { api } from "@/lib/api";
+import type { TimelineResponse } from "@/lib/api/types/timeline.types";
 
 export interface DashboardStats {
   activeCases: number;
@@ -27,7 +27,12 @@ export interface DashboardData {
       id: number;
       title: string;
       client: string;
-      status: 'inquiry' | 'completed' | 'in_progress' | 'quotation' | 'documents';
+      status:
+        | "inquiry"
+        | "completed"
+        | "in_progress"
+        | "quotation"
+        | "documents";
       daysRemaining?: number;
     }>;
     interactions: Array<{
@@ -44,7 +49,7 @@ export interface DashboardData {
       unread_count: number;
     };
   };
-  system_status: 'healthy' | 'degraded';
+  system_status: "healthy" | "degraded";
   last_updated: number;
   // Admin-only fields
   revenue?: {
@@ -60,10 +65,12 @@ export const dashboardApi = {
    * Get aggregated dashboard data in a single call
    */
   async getDashboardSummary(): Promise<DashboardData> {
-    return api.request<DashboardData>('/api/dashboard/summary');
+    return api.request<DashboardData>("/api/dashboard/summary");
   },
 
   async getTimeline(limit: number = 50): Promise<TimelineResponse> {
-    return api.request<TimelineResponse>(`/api/dashboard/timeline?limit=${limit}`);
+    return api.request<TimelineResponse>(
+      `/api/dashboard/timeline?limit=${limit}`,
+    );
   },
 };

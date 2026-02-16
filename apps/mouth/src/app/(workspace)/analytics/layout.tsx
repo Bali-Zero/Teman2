@@ -1,25 +1,29 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { api } from '@/lib/api';
-import { ShieldAlert, Loader2, Lock } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { api } from "@/lib/api";
+import { ShieldAlert, Loader2, Lock } from "lucide-react";
 
 // Only the founder can access analytics
-const FOUNDER_EMAIL = 'zero@balizero.com';
+const FOUNDER_EMAIL = "zero@balizero.com";
 
-export default function AnalyticsLayout({ children }: { children: React.ReactNode }) {
+export default function AnalyticsLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const router = useRouter();
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [userEmail, setUserEmail] = useState<string>('');
+  const [userEmail, setUserEmail] = useState<string>("");
 
   useEffect(() => {
     const checkAccess = async () => {
       try {
         const profile = await api.getProfile();
         if (!profile?.email) {
-          router.push('/login');
+          router.push("/login");
           return;
         }
         setUserEmail(profile.email);
@@ -31,7 +35,7 @@ export default function AnalyticsLayout({ children }: { children: React.ReactNod
         }
       } catch {
         // Not authenticated - redirect to login
-        router.push('/login');
+        router.push("/login");
         return;
       } finally {
         setIsLoading(false);
@@ -64,26 +68,30 @@ export default function AnalyticsLayout({ children }: { children: React.ReactNod
           </div>
 
           <div className="space-y-2">
-            <h1 className="text-2xl font-bold text-[var(--foreground)]">Access Denied</h1>
+            <h1 className="text-2xl font-bold text-[var(--foreground)]">
+              Access Denied
+            </h1>
             <p className="text-[var(--foreground-muted)]">
               The Analytics Dashboard is restricted to the Founder only.
             </p>
           </div>
 
           <div className="p-4 rounded-xl bg-[var(--background-elevated)] border border-[var(--border)] w-full">
-            <p className="text-xs text-[var(--foreground-muted)] mb-1">Logged in as:</p>
+            <p className="text-xs text-[var(--foreground-muted)] mb-1">
+              Logged in as:
+            </p>
             <p className="font-medium text-[var(--foreground)]">{userEmail}</p>
           </div>
 
           <div className="flex gap-3 w-full">
             <button
-              onClick={() => router.push('/dashboard')}
+              onClick={() => router.push("/dashboard")}
               className="flex-1 px-4 py-2.5 rounded-lg bg-[var(--accent)] text-white font-medium hover:opacity-90 transition-opacity"
             >
               Go to Dashboard
             </button>
             <button
-              onClick={() => router.push('/chat')}
+              onClick={() => router.push("/chat")}
               className="flex-1 px-4 py-2.5 rounded-lg border border-[var(--border)] text-[var(--foreground)] font-medium hover:bg-[var(--background-elevated)] transition-colors"
             >
               Open Chat

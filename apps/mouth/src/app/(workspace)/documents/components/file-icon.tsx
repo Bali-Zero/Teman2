@@ -11,8 +11,8 @@ import {
   Scale,
   Settings,
   Building2,
-} from 'lucide-react';
-import type { FileItem } from '@/lib/api/drive/drive.types';
+} from "lucide-react";
+import type { FileItem } from "@/lib/api/drive/drive.types";
 
 // Department color mapping - matches the organization structure
 export const DEPARTMENT_COLORS: Record<
@@ -20,40 +20,40 @@ export const DEPARTMENT_COLORS: Record<
   { primary: string; secondary: string; icon: typeof Users; label: string }
 > = {
   BOARD: {
-    primary: '#8B5CF6', // Violet
-    secondary: '#A78BFA',
+    primary: "#8B5CF6", // Violet
+    secondary: "#A78BFA",
     icon: Building2,
-    label: 'Board',
+    label: "Board",
   },
   CRM: {
-    primary: '#3B82F6', // Blue
-    secondary: '#60A5FA',
+    primary: "#3B82F6", // Blue
+    secondary: "#60A5FA",
     icon: Users,
-    label: 'CRM',
+    label: "CRM",
   },
   MARKETING: {
-    primary: '#EC4899', // Pink
-    secondary: '#F472B6',
+    primary: "#EC4899", // Pink
+    secondary: "#F472B6",
     icon: TrendingUp,
-    label: 'Marketing',
+    label: "Marketing",
   },
   PERATURAN: {
-    primary: '#10B981', // Emerald
-    secondary: '#34D399',
+    primary: "#10B981", // Emerald
+    secondary: "#34D399",
     icon: Scale,
-    label: 'Peraturan',
+    label: "Peraturan",
   },
-  'SETUP TEAM': {
-    primary: '#F59E0B', // Amber
-    secondary: '#FBBF24',
+  "SETUP TEAM": {
+    primary: "#F59E0B", // Amber
+    secondary: "#FBBF24",
     icon: Settings,
-    label: 'Setup Team',
+    label: "Setup Team",
   },
-  'TAX DEPARTMENT': {
-    primary: '#EF4444', // Red
-    secondary: '#F87171',
+  "TAX DEPARTMENT": {
+    primary: "#EF4444", // Red
+    secondary: "#F87171",
     icon: Briefcase,
-    label: 'Tax Department',
+    label: "Tax Department",
   },
 };
 
@@ -78,8 +78,8 @@ interface DepartmentFolderProps {
 
 export function DepartmentFolder({
   className,
-  primaryColor = '#F59E0B',
-  secondaryColor = '#FBBF24',
+  primaryColor = "#F59E0B",
+  secondaryColor = "#FBBF24",
   DepartmentIcon,
 }: DepartmentFolderProps) {
   return (
@@ -96,7 +96,7 @@ export function DepartmentFolder({
         {/* Back panel with gradient */}
         <defs>
           <linearGradient
-            id={`folder-grad-${primaryColor.replace('#', '')}`}
+            id={`folder-grad-${primaryColor.replace("#", "")}`}
             x1="0%"
             y1="0%"
             x2="100%"
@@ -105,7 +105,13 @@ export function DepartmentFolder({
             <stop offset="0%" stopColor={secondaryColor} />
             <stop offset="100%" stopColor={primaryColor} />
           </linearGradient>
-          <filter id="folder-shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <filter
+            id="folder-shadow"
+            x="-20%"
+            y="-20%"
+            width="140%"
+            height="140%"
+          >
             <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.2" />
           </filter>
         </defs>
@@ -120,7 +126,7 @@ export function DepartmentFolder({
         {/* Front panel with gradient */}
         <path
           d="M6 22C6 19.7909 7.79086 18 10 18H54C56.2091 18 58 19.7909 58 22V50C58 52.2091 56.2091 54 54 54H10C7.79086 54 6 52.2091 6 50V22Z"
-          fill={`url(#folder-grad-${primaryColor.replace('#', '')})`}
+          fill={`url(#folder-grad-${primaryColor.replace("#", "")})`}
         />
 
         {/* Top shine */}
@@ -131,13 +137,21 @@ export function DepartmentFolder({
         />
 
         {/* Inner line detail */}
-        <path d="M10 26H54" stroke={primaryColor} strokeWidth="1" opacity="0.3" />
+        <path
+          d="M10 26H54"
+          stroke={primaryColor}
+          strokeWidth="1"
+          opacity="0.3"
+        />
       </svg>
 
       {/* Department icon overlay */}
       {DepartmentIcon && (
         <div className="absolute inset-0 flex items-center justify-center pt-2">
-          <DepartmentIcon className="w-1/3 h-1/3 text-white/90 drop-shadow-sm" strokeWidth={1.5} />
+          <DepartmentIcon
+            className="w-1/3 h-1/3 text-white/90 drop-shadow-sm"
+            strokeWidth={1.5}
+          />
         </div>
       )}
     </div>
@@ -147,10 +161,21 @@ export function DepartmentFolder({
 // Modern elegant folder icon - Soft amber/gold gradient
 function ModernFolder({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 56 56" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg
+      viewBox="0 0 56 56"
+      className={className}
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
       <defs>
         {/* Elegant amber gradient */}
-        <linearGradient id="folder-front-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <linearGradient
+          id="folder-front-grad"
+          x1="0%"
+          y1="0%"
+          x2="0%"
+          y2="100%"
+        >
           <stop offset="0%" stopColor="#FCD34D" />
           <stop offset="100%" stopColor="#F59E0B" />
         </linearGradient>
@@ -160,13 +185,28 @@ function ModernFolder({ className }: { className?: string }) {
           <stop offset="100%" stopColor="#B45309" />
         </linearGradient>
         {/* Subtle shadow */}
-        <filter id="folder-shadow-3d" x="-10%" y="-5%" width="120%" height="130%">
-          <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#92400E" floodOpacity="0.15" />
+        <filter
+          id="folder-shadow-3d"
+          x="-10%"
+          y="-5%"
+          width="120%"
+          height="130%"
+        >
+          <feDropShadow
+            dx="0"
+            dy="2"
+            stdDeviation="2"
+            floodColor="#92400E"
+            floodOpacity="0.15"
+          />
         </filter>
       </defs>
 
       {/* Back tab */}
-      <path d="M10 14C10 12.8954 10.8954 12 12 12H20L24 16H10V14Z" fill="url(#folder-back-grad)" />
+      <path
+        d="M10 14C10 12.8954 10.8954 12 12 12H20L24 16H10V14Z"
+        fill="url(#folder-back-grad)"
+      />
 
       {/* Main folder body */}
       <path
@@ -183,7 +223,12 @@ function ModernFolder({ className }: { className?: string }) {
       />
 
       {/* Subtle inner line */}
-      <path d="M12 22H44" stroke="#D97706" strokeOpacity="0.2" strokeWidth="0.5" />
+      <path
+        d="M12 22H44"
+        stroke="#D97706"
+        strokeOpacity="0.2"
+        strokeWidth="0.5"
+      />
     </svg>
   );
 }
@@ -193,13 +238,18 @@ interface ModernFileIconProps {
   Icon: typeof File;
   bgColor: string;
   iconColor: string;
-  size: 'sm' | 'lg';
+  size: "sm" | "lg";
 }
 
-function ModernFileIcon({ Icon, bgColor, iconColor, size }: ModernFileIconProps) {
-  const containerSize = size === 'sm' ? 'h-6 w-6' : 'h-14 w-14';
-  const iconSize = size === 'sm' ? 'h-3 w-3' : 'h-7 w-7';
-  const borderRadius = size === 'sm' ? 'rounded-md' : 'rounded-xl';
+function ModernFileIcon({
+  Icon,
+  bgColor,
+  iconColor,
+  size,
+}: ModernFileIconProps) {
+  const containerSize = size === "sm" ? "h-6 w-6" : "h-14 w-14";
+  const iconSize = size === "sm" ? "h-3 w-3" : "h-7 w-7";
+  const borderRadius = size === "sm" ? "rounded-md" : "rounded-xl";
 
   return (
     <div
@@ -210,14 +260,18 @@ function ModernFileIcon({ Icon, bgColor, iconColor, size }: ModernFileIconProps)
         border: `1px solid ${bgColor}30`,
       }}
     >
-      <Icon className={iconSize} style={{ color: iconColor }} strokeWidth={1.5} />
+      <Icon
+        className={iconSize}
+        style={{ color: iconColor }}
+        strokeWidth={1.5}
+      />
     </div>
   );
 }
 
 // Modern PDF icon with document styling
-function ModernPDFIcon({ size }: { size: 'sm' | 'lg' }) {
-  const containerSize = size === 'sm' ? 'h-6 w-6' : 'h-14 w-14';
+function ModernPDFIcon({ size }: { size: "sm" | "lg" }) {
+  const containerSize = size === "sm" ? "h-6 w-6" : "h-14 w-14";
 
   return (
     <div className={`${containerSize} relative`}>
@@ -228,7 +282,13 @@ function ModernPDFIcon({ size }: { size: 'sm' | 'lg' }) {
             <stop offset="100%" stopColor="#DC2626" />
           </linearGradient>
           <filter id="pdf-shadow" x="-20%" y="-10%" width="140%" height="150%">
-            <feDropShadow dx="0" dy="3" stdDeviation="3" floodColor="#DC2626" floodOpacity="0.2" />
+            <feDropShadow
+              dx="0"
+              dy="3"
+              stdDeviation="3"
+              floodColor="#DC2626"
+              floodOpacity="0.2"
+            />
           </filter>
         </defs>
         {/* Document body */}
@@ -238,9 +298,16 @@ function ModernPDFIcon({ size }: { size: 'sm' | 'lg' }) {
           filter="url(#pdf-shadow)"
         />
         {/* Folded corner */}
-        <path d="M32 4V14C32 15.1046 32.8954 16 34 16H44L32 4Z" fill="#FCA5A5" />
+        <path
+          d="M32 4V14C32 15.1046 32.8954 16 34 16H44L32 4Z"
+          fill="#FCA5A5"
+        />
         {/* Glass shine */}
-        <path d="M14 6C14 4.89543 14.8954 4 16 4H32L14 22V6Z" fill="white" opacity="0.15" />
+        <path
+          d="M14 6C14 4.89543 14.8954 4 16 4H32L14 22V6Z"
+          fill="white"
+          opacity="0.15"
+        />
         {/* PDF text */}
         <text
           x="28"
@@ -258,11 +325,11 @@ function ModernPDFIcon({ size }: { size: 'sm' | 'lg' }) {
   );
 }
 
-export function getFileIcon(file: FileItem, size: 'sm' | 'lg' = 'lg') {
-  const mimeType = file.mime_type || '';
+export function getFileIcon(file: FileItem, size: "sm" | "lg" = "lg") {
+  const mimeType = file.mime_type || "";
 
   if (file.is_folder) {
-    const sizeClass = size === 'sm' ? 'h-6 w-6' : 'h-14 w-14';
+    const sizeClass = size === "sm" ? "h-6 w-6" : "h-14 w-14";
     // Check if it's a department folder
     const deptInfo = getDepartmentInfo(file.name);
     if (deptInfo) {
@@ -279,28 +346,79 @@ export function getFileIcon(file: FileItem, size: 'sm' | 'lg' = 'lg') {
   }
 
   // File type icons with modern glassmorphism style
-  if (mimeType.includes('pdf')) {
+  if (mimeType.includes("pdf")) {
     return <ModernPDFIcon size={size} />;
   }
-  if (mimeType.includes('image')) {
-    return <ModernFileIcon Icon={Image} bgColor="#EC4899" iconColor="#DB2777" size={size} />;
-  }
-  if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) {
+  if (mimeType.includes("image")) {
     return (
-      <ModernFileIcon Icon={FileSpreadsheet} bgColor="#10B981" iconColor="#059669" size={size} />
+      <ModernFileIcon
+        Icon={Image}
+        bgColor="#EC4899"
+        iconColor="#DB2777"
+        size={size}
+      />
     );
   }
-  if (mimeType.includes('presentation')) {
-    return <ModernFileIcon Icon={Presentation} bgColor="#F59E0B" iconColor="#D97706" size={size} />;
+  if (mimeType.includes("spreadsheet") || mimeType.includes("excel")) {
+    return (
+      <ModernFileIcon
+        Icon={FileSpreadsheet}
+        bgColor="#10B981"
+        iconColor="#059669"
+        size={size}
+      />
+    );
   }
-  if (mimeType.includes('document') || mimeType.includes('word')) {
-    return <ModernFileIcon Icon={FileText} bgColor="#3B82F6" iconColor="#2563EB" size={size} />;
+  if (mimeType.includes("presentation")) {
+    return (
+      <ModernFileIcon
+        Icon={Presentation}
+        bgColor="#F59E0B"
+        iconColor="#D97706"
+        size={size}
+      />
+    );
   }
-  if (mimeType.includes('code') || mimeType.includes('javascript') || mimeType.includes('json')) {
-    return <ModernFileIcon Icon={FileCode} bgColor="#8B5CF6" iconColor="#7C3AED" size={size} />;
+  if (mimeType.includes("document") || mimeType.includes("word")) {
+    return (
+      <ModernFileIcon
+        Icon={FileText}
+        bgColor="#3B82F6"
+        iconColor="#2563EB"
+        size={size}
+      />
+    );
   }
-  if (mimeType.includes('text')) {
-    return <ModernFileIcon Icon={FileText} bgColor="#6B7280" iconColor="#4B5563" size={size} />;
+  if (
+    mimeType.includes("code") ||
+    mimeType.includes("javascript") ||
+    mimeType.includes("json")
+  ) {
+    return (
+      <ModernFileIcon
+        Icon={FileCode}
+        bgColor="#8B5CF6"
+        iconColor="#7C3AED"
+        size={size}
+      />
+    );
   }
-  return <ModernFileIcon Icon={File} bgColor="#9CA3AF" iconColor="#6B7280" size={size} />;
+  if (mimeType.includes("text")) {
+    return (
+      <ModernFileIcon
+        Icon={FileText}
+        bgColor="#6B7280"
+        iconColor="#4B5563"
+        size={size}
+      />
+    );
+  }
+  return (
+    <ModernFileIcon
+      Icon={File}
+      bgColor="#9CA3AF"
+      iconColor="#6B7280"
+      size={size}
+    />
+  );
 }

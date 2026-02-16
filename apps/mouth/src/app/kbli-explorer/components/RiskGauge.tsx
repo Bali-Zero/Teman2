@@ -1,32 +1,32 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { motion } from 'framer-motion';
+import React from "react";
+import { motion } from "framer-motion";
 
-type RiskLevel = 'low' | 'medium-low' | 'medium' | 'medium-high' | 'high';
+type RiskLevel = "low" | "medium-low" | "medium" | "medium-high" | "high";
 
 const NEEDLE_ANGLES: Record<RiskLevel, number> = {
   low: 25,
-  'medium-low': 55,
+  "medium-low": 55,
   medium: 90,
-  'medium-high': 125,
+  "medium-high": 125,
   high: 155,
 };
 
 const RISK_LABELS: Record<RiskLevel, string> = {
-  low: 'Low Risk',
-  'medium-low': 'Medium-Low',
-  medium: 'Medium Risk',
-  'medium-high': 'Medium-High',
-  high: 'High Risk',
+  low: "Low Risk",
+  "medium-low": "Medium-Low",
+  medium: "Medium Risk",
+  "medium-high": "Medium-High",
+  high: "High Risk",
 };
 
 const RISK_COLORS: Record<RiskLevel, string> = {
-  low: '#34d399',
-  'medium-low': '#6ee7b7',
-  medium: '#fbbf24',
-  'medium-high': '#f97316',
-  high: '#ef4444',
+  low: "#34d399",
+  "medium-low": "#6ee7b7",
+  medium: "#fbbf24",
+  "medium-high": "#f97316",
+  high: "#ef4444",
 };
 
 const WIDTH = 160;
@@ -37,7 +37,13 @@ const RADIUS = 65;
 const STROKE = 8;
 
 // Build the arc path for the semi-circle (180 degrees, from left to right)
-function describeArc(cx: number, cy: number, r: number, startAngle: number, endAngle: number) {
+function describeArc(
+  cx: number,
+  cy: number,
+  r: number,
+  startAngle: number,
+  endAngle: number,
+) {
   const rad = (a: number) => ((a - 90) * Math.PI) / 180;
   const x1 = cx + r * Math.cos(rad(startAngle));
   const y1 = cy + r * Math.sin(rad(startAngle));
@@ -98,14 +104,22 @@ export default function RiskGauge({ level }: { level: RiskLevel }) {
           strokeLinecap="round"
           initial={{ x2: CX, y2: CY - needleLength }}
           animate={{ x2: nx, y2: ny }}
-          transition={{ type: 'spring', stiffness: 80, damping: 12, delay: 0.3 }}
+          transition={{
+            type: "spring",
+            stiffness: 80,
+            damping: 12,
+            delay: 0.3,
+          }}
         />
 
         {/* Center dot */}
         <circle cx={CX} cy={CY} r={4} fill={color} />
         <circle cx={CX} cy={CY} r={2} fill="#050507" />
       </svg>
-      <span className="text-[10px] uppercase tracking-widest mt-1" style={{ color }}>
+      <span
+        className="text-[10px] uppercase tracking-widest mt-1"
+        style={{ color }}
+      >
         {label}
       </span>
     </div>

@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState, useCallback } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { Home, FolderOpen, MessageCircle, User } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { api } from '@/lib/api';
+import React, { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Home, FolderOpen, MessageCircle, User } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
 
 const POLL_INTERVAL = 30000; // 30 seconds
 
@@ -19,7 +19,7 @@ export function PortalBottomNav() {
       setUnreadCount(data.unreadCount);
     } catch (err) {
       // Silently fail - not critical for nav
-      console.error('Failed to fetch unread count', err);
+      console.error("Failed to fetch unread count", err);
     }
   }, []);
 
@@ -36,16 +36,21 @@ export function PortalBottomNav() {
 
   // Refetch when navigating away from chat
   useEffect(() => {
-    if (pathname !== '/portal/chat') {
+    if (pathname !== "/portal/chat") {
       fetchUnreadCount();
     }
   }, [pathname, fetchUnreadCount]);
 
   const tabs = [
-    { name: 'Home', href: '/portal', icon: Home },
-    { name: 'Vault', href: '/portal/vault', icon: FolderOpen },
-    { name: 'Chat', href: '/portal/chat', icon: MessageCircle, badge: unreadCount },
-    { name: 'Profile', href: '/portal/profile', icon: User },
+    { name: "Home", href: "/portal", icon: Home },
+    { name: "Vault", href: "/portal/vault", icon: FolderOpen },
+    {
+      name: "Chat",
+      href: "/portal/chat",
+      icon: MessageCircle,
+      badge: unreadCount,
+    },
+    { name: "Profile", href: "/portal/profile", icon: User },
   ];
 
   // Only show on mobile
@@ -61,17 +66,17 @@ export function PortalBottomNav() {
               key={tab.name}
               href={tab.href}
               className={cn(
-                'flex flex-col items-center justify-center gap-1 w-full h-full transition-colors relative',
+                "flex flex-col items-center justify-center gap-1 w-full h-full transition-colors relative",
                 isActive
-                  ? 'text-[var(--accent)] font-medium'
-                  : 'text-[#9AA0AE] hover:text-[#E6E7EB]'
+                  ? "text-[var(--accent)] font-medium"
+                  : "text-[#9AA0AE] hover:text-[#E6E7EB]",
               )}
             >
               <div className="relative">
                 <Icon className="w-5 h-5" />
                 {showBadge && (
                   <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold">
-                    {tab.badge > 99 ? '99+' : tab.badge}
+                    {tab.badge > 99 ? "99+" : tab.badge}
                   </span>
                 )}
               </div>

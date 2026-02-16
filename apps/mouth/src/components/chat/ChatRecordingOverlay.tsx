@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 export interface ChatRecordingOverlayProps {
   isRecording: boolean;
@@ -8,10 +8,13 @@ export interface ChatRecordingOverlayProps {
 function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
-export function ChatRecordingOverlay({ isRecording, recordingTime }: ChatRecordingOverlayProps) {
+export function ChatRecordingOverlay({
+  isRecording,
+  recordingTime,
+}: ChatRecordingOverlayProps) {
   if (!isRecording) {
     return null;
   }

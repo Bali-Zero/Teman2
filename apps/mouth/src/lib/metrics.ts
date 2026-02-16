@@ -23,7 +23,7 @@ class MetricsCollector {
 
   constructor() {
     // Auto-flush metrics every 30 seconds
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       this.flushInterval = window.setInterval(() => {
         this.flush();
       }, 30000);
@@ -101,23 +101,23 @@ class MetricsCollector {
 
     try {
       // Send to backend metrics endpoint
-      const { api } = await import('./api');
+      const { api } = await import("./api");
       const token = api.getToken();
       const csrfToken = api.getCsrfToken();
 
       if (!token) return;
 
       const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       };
 
       if (csrfToken) {
-        headers['X-CSRF-Token'] = csrfToken;
+        headers["X-CSRF-Token"] = csrfToken;
       }
 
-      await fetch('/api/metrics/frontend', {
-        method: 'POST',
+      await fetch("/api/metrics/frontend", {
+        method: "POST",
         headers,
         body: JSON.stringify({ metrics: metricsToSend }),
       });
@@ -145,79 +145,89 @@ export const metrics = new MetricsCollector();
 // Chat-specific metrics helpers
 export const chatMetrics = {
   messageSent: (hasImages: boolean, imageCount: number) => {
-    metrics.increment('chat_message_sent_total', {
-      has_images: hasImages ? 'true' : 'false',
+    metrics.increment("chat_message_sent_total", {
+      has_images: hasImages ? "true" : "false",
       image_count: imageCount,
     });
   },
 
   messageReceived: (responseLength: number, executionTime: number) => {
-    metrics.increment('chat_message_received_total');
-    metrics.histogram('chat_message_execution_time', executionTime);
-    metrics.gauge('chat_message_response_length', responseLength);
+    metrics.increment("chat_message_received_total");
+    metrics.histogram("chat_message_execution_time", executionTime);
+    metrics.gauge("chat_message_response_length", responseLength);
   },
 
   ttsStarted: (messageId: string) => {
-    metrics.increment('chat_tts_started_total', { message_id: messageId });
+    metrics.increment("chat_tts_started_total", { message_id: messageId });
   },
 
   ttsCompleted: (messageId: string, duration: number) => {
-    metrics.increment('chat_tts_completed_total', { message_id: messageId });
-    metrics.histogram('chat_tts_duration', duration);
+    metrics.increment("chat_tts_completed_total", { message_id: messageId });
+    metrics.histogram("chat_tts_duration", duration);
   },
 
   ttsError: (messageId: string, errorType: string) => {
-    metrics.increment('chat_tts_errors_total', {
+    metrics.increment("chat_tts_errors_total", {
       message_id: messageId,
       error_type: errorType,
     });
   },
 
   imageAttached: (imageCount: number, totalSize: number) => {
-    metrics.increment('chat_image_attached_total', { image_count: imageCount });
-    metrics.gauge('chat_image_total_size_bytes', totalSize);
+    metrics.increment("chat_image_attached_total", { image_count: imageCount });
+    metrics.gauge("chat_image_total_size_bytes", totalSize);
   },
 
-  audioTranscribed: (blobSize: number, textLength: number, duration: number) => {
-    metrics.increment('chat_audio_transcribed_total');
-    metrics.histogram('chat_audio_transcription_duration', duration);
-    metrics.gauge('chat_audio_blob_size_bytes', blobSize);
-    metrics.gauge('chat_audio_transcription_length', textLength);
+  audioTranscribed: (
+    blobSize: number,
+    textLength: number,
+    duration: number,
+  ) => {
+    metrics.increment("chat_audio_transcribed_total");
+    metrics.histogram("chat_audio_transcription_duration", duration);
+    metrics.gauge("chat_audio_blob_size_bytes", blobSize);
+    metrics.gauge("chat_audio_transcription_length", textLength);
   },
 
   sidebarOpened: () => {
-    metrics.increment('chat_sidebar_opened_total');
+    metrics.increment("chat_sidebar_opened_total");
   },
 
   sidebarClosed: () => {
-    metrics.increment('chat_sidebar_closed_total');
+    metrics.increment("chat_sidebar_closed_total");
   },
 
   conversationLoaded: (conversationId: number, messageCount: number) => {
-    metrics.increment('chat_conversation_loaded_total', {
+    metrics.increment("chat_conversation_loaded_total", {
       conversation_id: String(conversationId),
     });
-    metrics.gauge('chat_conversation_message_count', messageCount, {
+    metrics.gauge("chat_conversation_message_count", messageCount, {
       conversation_id: String(conversationId),
     });
   },
 
   conversationSaved: (sessionId: string, messageCount: number) => {
-    metrics.increment('chat_conversation_saved_total', { session_id: sessionId });
-    metrics.gauge('chat_conversation_saved_message_count', messageCount);
+    metrics.increment("chat_conversation_saved_total", {
+      session_id: sessionId,
+    });
+    metrics.gauge("chat_conversation_saved_message_count", messageCount);
   },
 
   streamingStarted: (sessionId: string) => {
-    metrics.increment('chat_streaming_started_total', { session_id: sessionId });
+    metrics.increment("chat_streaming_started_total", {
+      session_id: sessionId,
+    });
   },
 
   streamingCompleted: (sessionId: string, duration: number) => {
-    metrics.increment('chat_streaming_completed_total', { session_id: sessionId });
-    metrics.histogram('chat_streaming_duration', duration);
+    metrics.increment("chat_streaming_completed_total", {
+      session_id: sessionId,
+    });
+    metrics.histogram("chat_streaming_duration", duration);
   },
 
   streamingError: (sessionId: string, errorType: string) => {
-    metrics.increment('chat_streaming_errors_total', {
+    metrics.increment("chat_streaming_errors_total", {
       session_id: sessionId,
       error_type: errorType,
     });
@@ -225,8 +235,8 @@ export const chatMetrics = {
 };
 
 // Cleanup on page unload
-if (typeof window !== 'undefined') {
-  window.addEventListener('beforeunload', () => {
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeunload", () => {
     metrics.flush();
   });
 }

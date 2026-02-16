@@ -1,4 +1,4 @@
-import type { IApiClient } from '../types/api-client.types';
+import type { IApiClient } from "../types/api-client.types";
 
 /**
  * Audio Services API methods
@@ -6,21 +6,24 @@ import type { IApiClient } from '../types/api-client.types';
 export class AudioApi {
   constructor(private client: IApiClient) {}
 
-  async transcribeAudio(audioBlob: Blob, mimeType: string = 'audio/webm'): Promise<string> {
+  async transcribeAudio(
+    audioBlob: Blob,
+    mimeType: string = "audio/webm",
+  ): Promise<string> {
     const formData = new FormData();
 
     // Determine extension based on mimeType
-    let extension = 'webm';
-    if (mimeType.includes('mp4')) {
-      extension = 'mp4';
-    } else if (mimeType.includes('wav')) {
-      extension = 'wav';
-    } else if (mimeType.includes('mpeg') || mimeType.includes('mp3')) {
-      extension = 'mp3';
+    let extension = "webm";
+    if (mimeType.includes("mp4")) {
+      extension = "mp4";
+    } else if (mimeType.includes("wav")) {
+      extension = "wav";
+    } else if (mimeType.includes("mpeg") || mimeType.includes("mp3")) {
+      extension = "mp3";
     }
 
     // OpenAI API often requires a filename with an extension for MIME type detection
-    formData.append('file', audioBlob, `recording.${extension}`);
+    formData.append("file", audioBlob, `recording.${extension}`);
 
     // We use fetch directly here to handle FormData properly without stringifying
     const baseUrl = this.client.getBaseUrl();
@@ -28,19 +31,19 @@ export class AudioApi {
     const csrf = this.client.getCsrfToken();
 
     const response = await fetch(`${baseUrl}/api/audio/transcribe`, {
-      method: 'POST',
+      method: "POST",
       headers: {
         // Content-Type is set automatically by fetch when using FormData
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
+        ...(csrf ? { "X-CSRF-Token": csrf } : {}),
       },
       body: formData,
-      credentials: 'include',
+      credentials: "include",
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || 'Transcription failed');
+      throw new Error(errorData.detail || "Transcription failed");
     }
 
     const data = await response.json();
@@ -49,25 +52,25 @@ export class AudioApi {
 
   async generateSpeech(
     text: string,
-    voice: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer' = 'alloy'
+    voice: "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer" = "alloy",
   ): Promise<Blob> {
     const baseUrl = this.client.getBaseUrl();
     const token = this.client.getToken();
     const csrf = this.client.getCsrfToken();
 
     const response = await fetch(`${baseUrl}/api/audio/speech`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
+        ...(csrf ? { "X-CSRF-Token": csrf } : {}),
       },
       body: JSON.stringify({ text, voice }),
-      credentials: 'include',
+      credentials: "include",
     });
 
     if (!response.ok) {
-      throw new Error('Speech generation failed');
+      throw new Error("Speech generation failed");
     }
     return response.blob();
   }

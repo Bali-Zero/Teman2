@@ -3,10 +3,10 @@
  * Handles manual article creation with Bali Zero style enrichment
  */
 
-import { ApiClientBase } from './client';
+import { ApiClientBase } from "./client";
 
 // Use the base API URL from environment or default
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 const apiClient = new ApiClientBase(API_BASE_URL);
 
 // --- Types ---
@@ -76,7 +76,7 @@ export interface PublishRequest {
   article: EnrichedArticle;
   cover_image_base64?: string;
   cover_image_filename?: string;
-  position: 'main_featured' | 'secondary' | 'normal';
+  position: "main_featured" | "secondary" | "normal";
   slug?: string;
 }
 
@@ -106,12 +106,12 @@ export const articlesApi = {
    */
   async compose(request: ComposeRequest): Promise<ComposeResponse> {
     const response = await apiClient.request<ComposeResponse>(
-      '/api/articles/compose',
+      "/api/articles/compose",
       {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify(request),
       },
-      120000 // 2 minutes timeout for Claude API processing
+      120000, // 2 minutes timeout for Claude API processing
     );
     return response;
   },
@@ -120,9 +120,12 @@ export const articlesApi = {
    * Check if article composer is configured
    */
   async getStatus(): Promise<ComposerStatus> {
-    const response = await apiClient.request<ComposerStatus>('/api/articles/compose/status', {
-      method: 'GET',
-    });
+    const response = await apiClient.request<ComposerStatus>(
+      "/api/articles/compose/status",
+      {
+        method: "GET",
+      },
+    );
     return response;
   },
 
@@ -131,12 +134,12 @@ export const articlesApi = {
    */
   async publish(request: PublishRequest): Promise<PublishResponse> {
     const response = await apiClient.request<PublishResponse>(
-      '/api/articles/publish',
+      "/api/articles/publish",
       {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify(request),
       },
-      120000 // 2 minutes timeout for GitHub commit and image upload
+      120000, // 2 minutes timeout for GitHub commit and image upload
     );
     return response;
   },
@@ -145,9 +148,12 @@ export const articlesApi = {
    * Check if article publishing is configured
    */
   async getPublishStatus(): Promise<PublishStatus> {
-    const response = await apiClient.request<PublishStatus>('/api/articles/publish/status', {
-      method: 'GET',
-    });
+    const response = await apiClient.request<PublishStatus>(
+      "/api/articles/publish/status",
+      {
+        method: "GET",
+      },
+    );
     return response;
   },
 };

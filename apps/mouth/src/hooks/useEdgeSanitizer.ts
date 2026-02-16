@@ -1,5 +1,5 @@
-import { useCallback } from 'react';
-import { logger } from '@/lib/logger';
+import { useCallback } from "react";
+import { logger } from "@/lib/logger";
 
 interface UseEdgeSanitizerReturn {
   sanitize: (text: string) => Promise<string>;
@@ -16,7 +16,7 @@ interface UseEdgeSanitizerReturn {
  */
 export const useEdgeSanitizer = (): UseEdgeSanitizerReturn => {
   const sanitize = useCallback(async (text: string): Promise<string> => {
-    if (!text) return '';
+    if (!text) return "";
 
     // Regex-based Redaction (Deterministic)
     // Fast client-side PII detection without AI dependencies
@@ -31,15 +31,16 @@ export const useEdgeSanitizer = (): UseEdgeSanitizerReturn => {
     const idPhoneRegex = /\b(\+62|62|0)8[1-9][0-9]{7,11}\b/g;
 
     // Tax ID / NPWP pattern (Indonesian)
-    const npwpRegex = /\b\d{2}[\s.]?\d{3}[\s.]?\d{3}[\s.]?\d{1}[\s-]?\d{3}[\s.]?\d{3}\b/g;
+    const npwpRegex =
+      /\b\d{2}[\s.]?\d{3}[\s.]?\d{3}[\s.]?\d{1}[\s-]?\d{3}[\s.]?\d{3}\b/g;
 
     const sanitized = text
-      .replace(emailRegex, '[EMAIL]')
-      .replace(idPhoneRegex, '[PHONE]')
-      .replace(phoneRegex, '[PHONE]')
-      .replace(npwpRegex, '[NPWP]');
+      .replace(emailRegex, "[EMAIL]")
+      .replace(idPhoneRegex, "[PHONE]")
+      .replace(phoneRegex, "[PHONE]")
+      .replace(npwpRegex, "[NPWP]");
 
-    logger.debug('Text sanitized');
+    logger.debug("Text sanitized");
 
     return sanitized;
   }, []);
@@ -47,6 +48,6 @@ export const useEdgeSanitizer = (): UseEdgeSanitizerReturn => {
   return {
     sanitize,
     isReady: true, // Always ready - uses regex only
-    status: 'ready',
+    status: "ready",
   };
 };

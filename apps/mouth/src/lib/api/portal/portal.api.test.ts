@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { PortalApi } from './portal.api';
-import type { ApiClientBase } from '../client';
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { PortalApi } from "./portal.api";
+import type { ApiClientBase } from "../client";
 import type {
   PortalDashboard,
   VisaInfo,
@@ -14,26 +14,28 @@ import type {
   PortalProfile,
   InviteValidationResponse,
   CompleteRegistrationRequest,
-} from './portal.types';
+} from "./portal.types";
 
 // ============================================================================
 // Mock Data Factory - aligned with portal.types.ts
 // ============================================================================
 
-const createMockDashboard = (overrides?: Partial<PortalDashboard>): PortalDashboard => ({
+const createMockDashboard = (
+  overrides?: Partial<PortalDashboard>,
+): PortalDashboard => ({
   visa: {
-    status: 'active',
-    type: 'KITAS',
-    expiryDate: '2025-12-31',
+    status: "active",
+    type: "KITAS",
+    expiryDate: "2025-12-31",
     daysRemaining: 365,
   },
   company: {
-    status: 'active',
-    primaryCompanyName: 'Test Co',
+    status: "active",
+    primaryCompanyName: "Test Co",
     totalCompanies: 1,
   },
   taxes: {
-    status: 'compliant',
+    status: "compliant",
     nextDeadline: null,
     daysToDeadline: null,
   },
@@ -48,50 +50,56 @@ const createMockDashboard = (overrides?: Partial<PortalDashboard>): PortalDashbo
   ...overrides,
 });
 
-const createMockProfile = (overrides?: Partial<PortalProfile>): PortalProfile => ({
+const createMockProfile = (
+  overrides?: Partial<PortalProfile>,
+): PortalProfile => ({
   id: 1,
-  fullName: 'Test User',
-  email: 'test@example.com',
-  phone: '+62812345678',
-  whatsapp: '+62812345678',
-  nationality: 'US',
-  passportNumber: 'ABC123456',
-  address: '123 Test Street',
-  memberSince: '2024-01-01',
+  fullName: "Test User",
+  email: "test@example.com",
+  phone: "+62812345678",
+  whatsapp: "+62812345678",
+  nationality: "US",
+  passportNumber: "ABC123456",
+  address: "123 Test Street",
+  memberSince: "2024-01-01",
   ...overrides,
 });
 
 const createMockVisaInfo = (overrides?: Partial<VisaInfo>): VisaInfo => ({
   current: {
-    type: 'KITAS',
-    status: 'active',
-    issueDate: '2024-01-01',
-    expiryDate: '2025-12-31',
+    type: "KITAS",
+    status: "active",
+    issueDate: "2024-01-01",
+    expiryDate: "2025-12-31",
     daysRemaining: 365,
-    permitNumber: 'PERMIT-001',
-    sponsor: 'PT Test Company',
+    permitNumber: "PERMIT-001",
+    sponsor: "PT Test Company",
   },
   history: [],
   documents: [],
   ...overrides,
 });
 
-const createMockCompany = (overrides?: Partial<PortalCompany>): PortalCompany => ({
+const createMockCompany = (
+  overrides?: Partial<PortalCompany>,
+): PortalCompany => ({
   id: 1,
-  name: 'Test Company',
-  type: 'PT',
-  status: 'active',
+  name: "Test Company",
+  type: "PT",
+  status: "active",
   isPrimary: true,
-  address: '123 Business Street',
-  directors: ['John Doe'],
+  address: "123 Business Street",
+  directors: ["John Doe"],
   licenses: [],
   compliance: [],
   ...overrides,
 });
 
-const createMockTaxOverview = (overrides?: Partial<TaxOverview>): TaxOverview => ({
+const createMockTaxOverview = (
+  overrides?: Partial<TaxOverview>,
+): TaxOverview => ({
   summary: {
-    status: 'compliant',
+    status: "compliant",
     totalDue: 0,
     nextDeadline: null,
     daysToDeadline: null,
@@ -101,33 +109,39 @@ const createMockTaxOverview = (overrides?: Partial<TaxOverview>): TaxOverview =>
   ...overrides,
 });
 
-const createMockDocument = (overrides?: Partial<PortalDocument>): PortalDocument => ({
-  id: 'doc-001',
-  name: 'test.pdf',
-  type: 'passport',
-  category: 'personal',
-  status: 'verified',
+const createMockDocument = (
+  overrides?: Partial<PortalDocument>,
+): PortalDocument => ({
+  id: "doc-001",
+  name: "test.pdf",
+  type: "passport",
+  category: "personal",
+  status: "verified",
   uploadDate: new Date().toISOString(),
-  size: '1.2 MB',
-  downloadUrl: '/documents/doc-001',
+  size: "1.2 MB",
+  downloadUrl: "/documents/doc-001",
   ...overrides,
 });
 
-const createMockMessage = (overrides?: Partial<PortalMessage>): PortalMessage => ({
-  id: 'msg-001',
-  content: 'Test message',
-  direction: 'client_to_team',
-  sentBy: 'Test User',
-  subject: 'Test Subject',
+const createMockMessage = (
+  overrides?: Partial<PortalMessage>,
+): PortalMessage => ({
+  id: "msg-001",
+  content: "Test message",
+  direction: "client_to_team",
+  sentBy: "Test User",
+  subject: "Test Subject",
   createdAt: new Date().toISOString(),
   ...overrides,
 });
 
-const createMockPreferences = (overrides?: Partial<PortalPreferences>): PortalPreferences => ({
+const createMockPreferences = (
+  overrides?: Partial<PortalPreferences>,
+): PortalPreferences => ({
   emailNotifications: true,
   whatsappNotifications: false,
-  language: 'en',
-  timezone: 'Asia/Jakarta',
+  language: "en",
+  timezone: "Asia/Jakarta",
   ...overrides,
 });
 
@@ -143,7 +157,7 @@ const createMockClient = (): ApiClientBase => {
 // Tests
 // ============================================================================
 
-describe('PortalApi', () => {
+describe("PortalApi", () => {
   let portalApi: PortalApi;
   let mockClient: ApiClientBase;
   let mockRequest: ReturnType<typeof vi.fn>;
@@ -163,21 +177,23 @@ describe('PortalApi', () => {
   // Dashboard Tests
   // ============================================================================
 
-  describe('getDashboard', () => {
-    it('should fetch dashboard data successfully', async () => {
+  describe("getDashboard", () => {
+    it("should fetch dashboard data successfully", async () => {
       const mockDashboard = createMockDashboard();
       mockRequest.mockResolvedValue({ data: mockDashboard });
 
       const result = await portalApi.getDashboard();
 
-      expect(mockRequest).toHaveBeenCalledWith('/api/portal/dashboard', { method: 'GET' });
+      expect(mockRequest).toHaveBeenCalledWith("/api/portal/dashboard", {
+        method: "GET",
+      });
       expect(result).toEqual(mockDashboard);
     });
 
-    it('should handle API errors gracefully', async () => {
-      mockRequest.mockRejectedValue(new Error('API Error'));
+    it("should handle API errors gracefully", async () => {
+      mockRequest.mockRejectedValue(new Error("API Error"));
 
-      await expect(portalApi.getDashboard()).rejects.toThrow('API Error');
+      await expect(portalApi.getDashboard()).rejects.toThrow("API Error");
     });
   });
 
@@ -185,14 +201,16 @@ describe('PortalApi', () => {
   // Profile Tests
   // ============================================================================
 
-  describe('getProfile', () => {
-    it('should fetch profile data successfully', async () => {
+  describe("getProfile", () => {
+    it("should fetch profile data successfully", async () => {
       const mockProfile = createMockProfile();
       mockRequest.mockResolvedValue({ data: mockProfile });
 
       const result = await portalApi.getProfile();
 
-      expect(mockRequest).toHaveBeenCalledWith('/api/portal/profile', { method: 'GET' });
+      expect(mockRequest).toHaveBeenCalledWith("/api/portal/profile", {
+        method: "GET",
+      });
       expect(result).toEqual(mockProfile);
     });
   });
@@ -201,14 +219,16 @@ describe('PortalApi', () => {
   // Visa Tests
   // ============================================================================
 
-  describe('getVisaStatus', () => {
-    it('should fetch visa status successfully', async () => {
+  describe("getVisaStatus", () => {
+    it("should fetch visa status successfully", async () => {
       const mockVisa = createMockVisaInfo();
       mockRequest.mockResolvedValue({ data: mockVisa });
 
       const result = await portalApi.getVisaStatus();
 
-      expect(mockRequest).toHaveBeenCalledWith('/api/portal/visa', { method: 'GET' });
+      expect(mockRequest).toHaveBeenCalledWith("/api/portal/visa", {
+        method: "GET",
+      });
       expect(result).toEqual(mockVisa);
     });
   });
@@ -217,37 +237,43 @@ describe('PortalApi', () => {
   // Companies Tests
   // ============================================================================
 
-  describe('getCompanies', () => {
-    it('should fetch companies list successfully', async () => {
+  describe("getCompanies", () => {
+    it("should fetch companies list successfully", async () => {
       const mockCompanies: PortalCompany[] = [createMockCompany()];
       mockRequest.mockResolvedValue({ data: mockCompanies });
 
       const result = await portalApi.getCompanies();
 
-      expect(mockRequest).toHaveBeenCalledWith('/api/portal/companies', { method: 'GET' });
+      expect(mockRequest).toHaveBeenCalledWith("/api/portal/companies", {
+        method: "GET",
+      });
       expect(result).toEqual(mockCompanies);
     });
   });
 
-  describe('getCompanyDetail', () => {
-    it('should fetch company detail successfully', async () => {
+  describe("getCompanyDetail", () => {
+    it("should fetch company detail successfully", async () => {
       const mockCompany = createMockCompany();
       mockRequest.mockResolvedValue({ data: mockCompany });
 
       const result = await portalApi.getCompanyDetail(1);
 
-      expect(mockRequest).toHaveBeenCalledWith('/api/portal/company/1', { method: 'GET' });
+      expect(mockRequest).toHaveBeenCalledWith("/api/portal/company/1", {
+        method: "GET",
+      });
       expect(result).toEqual(mockCompany);
     });
   });
 
-  describe('setPrimaryCompany', () => {
-    it('should set primary company successfully', async () => {
+  describe("setPrimaryCompany", () => {
+    it("should set primary company successfully", async () => {
       mockRequest.mockResolvedValue({ data: undefined });
 
       await portalApi.setPrimaryCompany(1);
 
-      expect(mockRequest).toHaveBeenCalledWith('/api/portal/company/1/select', { method: 'POST' });
+      expect(mockRequest).toHaveBeenCalledWith("/api/portal/company/1/select", {
+        method: "POST",
+      });
     });
   });
 
@@ -255,14 +281,16 @@ describe('PortalApi', () => {
   // Taxes Tests
   // ============================================================================
 
-  describe('getTaxOverview', () => {
-    it('should fetch tax overview successfully', async () => {
+  describe("getTaxOverview", () => {
+    it("should fetch tax overview successfully", async () => {
       const mockTaxes = createMockTaxOverview();
       mockRequest.mockResolvedValue({ data: mockTaxes });
 
       const result = await portalApi.getTaxOverview();
 
-      expect(mockRequest).toHaveBeenCalledWith('/api/portal/taxes', { method: 'GET' });
+      expect(mockRequest).toHaveBeenCalledWith("/api/portal/taxes", {
+        method: "GET",
+      });
       expect(result).toEqual(mockTaxes);
     });
   });
@@ -271,64 +299,69 @@ describe('PortalApi', () => {
   // Documents Tests
   // ============================================================================
 
-  describe('getDocuments', () => {
-    it('should fetch all documents when no type specified', async () => {
+  describe("getDocuments", () => {
+    it("should fetch all documents when no type specified", async () => {
       const mockDocuments: PortalDocument[] = [];
       mockRequest.mockResolvedValue({ data: mockDocuments });
 
       await portalApi.getDocuments();
 
-      expect(mockRequest).toHaveBeenCalledWith('/api/portal/documents', { method: 'GET' });
-    });
-
-    it('should fetch documents filtered by type', async () => {
-      const mockDocuments: PortalDocument[] = [];
-      mockRequest.mockResolvedValue({ data: mockDocuments });
-
-      await portalApi.getDocuments('passport');
-
-      expect(mockRequest).toHaveBeenCalledWith('/api/portal/documents?document_type=passport', {
-        method: 'GET',
+      expect(mockRequest).toHaveBeenCalledWith("/api/portal/documents", {
+        method: "GET",
       });
     });
 
-    it('should URL encode document type correctly', async () => {
+    it("should fetch documents filtered by type", async () => {
       const mockDocuments: PortalDocument[] = [];
       mockRequest.mockResolvedValue({ data: mockDocuments });
 
-      await portalApi.getDocuments('passport copy');
+      await portalApi.getDocuments("passport");
 
       expect(mockRequest).toHaveBeenCalledWith(
-        '/api/portal/documents?document_type=passport%20copy',
-        { method: 'GET' }
+        "/api/portal/documents?document_type=passport",
+        {
+          method: "GET",
+        },
+      );
+    });
+
+    it("should URL encode document type correctly", async () => {
+      const mockDocuments: PortalDocument[] = [];
+      mockRequest.mockResolvedValue({ data: mockDocuments });
+
+      await portalApi.getDocuments("passport copy");
+
+      expect(mockRequest).toHaveBeenCalledWith(
+        "/api/portal/documents?document_type=passport%20copy",
+        { method: "GET" },
       );
     });
   });
 
-  describe('uploadDocument', () => {
-    it('should upload document successfully', async () => {
-      const file = new File(['test'], 'test.pdf', { type: 'application/pdf' });
+  describe("uploadDocument", () => {
+    it("should upload document successfully", async () => {
+      const file = new File(["test"], "test.pdf", { type: "application/pdf" });
       const mockDocument = createMockDocument();
       mockRequest.mockResolvedValue({ data: mockDocument });
 
-      const result = await portalApi.uploadDocument(file, 'passport');
+      const result = await portalApi.uploadDocument(file, "passport");
 
-      expect(mockRequest).toHaveBeenCalledWith('/api/portal/documents/upload', {
-        method: 'POST',
+      expect(mockRequest).toHaveBeenCalledWith("/api/portal/documents/upload", {
+        method: "POST",
         body: expect.any(FormData),
       });
       expect(result).toEqual(mockDocument);
     });
 
-    it('should upload document with practice ID', async () => {
-      const file = new File(['test'], 'test.pdf', { type: 'application/pdf' });
+    it("should upload document with practice ID", async () => {
+      const file = new File(["test"], "test.pdf", { type: "application/pdf" });
       const mockDocument = createMockDocument();
       mockRequest.mockResolvedValue({ data: mockDocument });
 
-      await portalApi.uploadDocument(file, 'passport', 123);
+      await portalApi.uploadDocument(file, "passport", 123);
 
-      expect(mockRequest).toHaveBeenCalledWith('/api/portal/documents/upload', {
-        method: 'POST',
+      expect(mockRequest).toHaveBeenCalledWith("/api/portal/documents/upload", {
+        method: "POST",
         body: expect.any(FormData),
       });
     });
@@ -338,8 +371,8 @@ describe('PortalApi', () => {
   // Messages Tests
   // ============================================================================
 
-  describe('getMessages', () => {
-    it('should fetch messages with default pagination', async () => {
+  describe("getMessages", () => {
+    it("should fetch messages with default pagination", async () => {
       const mockMessages: MessagesResponse = {
         messages: [],
         total: 0,
@@ -349,13 +382,16 @@ describe('PortalApi', () => {
 
       const result = await portalApi.getMessages();
 
-      expect(mockRequest).toHaveBeenCalledWith('/api/portal/messages?limit=50&offset=0', {
-        method: 'GET',
-      });
+      expect(mockRequest).toHaveBeenCalledWith(
+        "/api/portal/messages?limit=50&offset=0",
+        {
+          method: "GET",
+        },
+      );
       expect(result).toEqual(mockMessages);
     });
 
-    it('should fetch messages with custom pagination', async () => {
+    it("should fetch messages with custom pagination", async () => {
       const mockMessages: MessagesResponse = {
         messages: [],
         total: 0,
@@ -365,17 +401,20 @@ describe('PortalApi', () => {
 
       await portalApi.getMessages(20, 10);
 
-      expect(mockRequest).toHaveBeenCalledWith('/api/portal/messages?limit=20&offset=10', {
-        method: 'GET',
-      });
+      expect(mockRequest).toHaveBeenCalledWith(
+        "/api/portal/messages?limit=20&offset=10",
+        {
+          method: "GET",
+        },
+      );
     });
   });
 
-  describe('sendMessage', () => {
-    it('should send message successfully', async () => {
+  describe("sendMessage", () => {
+    it("should send message successfully", async () => {
       const request: SendMessageRequest = {
-        content: 'Test message',
-        subject: 'Test Subject',
+        content: "Test message",
+        subject: "Test Subject",
         practiceId: 1,
       };
 
@@ -384,22 +423,22 @@ describe('PortalApi', () => {
 
       const result = await portalApi.sendMessage(request);
 
-      expect(mockRequest).toHaveBeenCalledWith('/api/portal/messages', {
-        method: 'POST',
+      expect(mockRequest).toHaveBeenCalledWith("/api/portal/messages", {
+        method: "POST",
         body: JSON.stringify(request),
       });
       expect(result).toEqual(mockMessage);
     });
   });
 
-  describe('markMessageRead', () => {
-    it('should mark message as read successfully', async () => {
+  describe("markMessageRead", () => {
+    it("should mark message as read successfully", async () => {
       mockRequest.mockResolvedValue({ data: undefined });
 
       await portalApi.markMessageRead(1);
 
-      expect(mockRequest).toHaveBeenCalledWith('/api/portal/messages/1/read', {
-        method: 'POST',
+      expect(mockRequest).toHaveBeenCalledWith("/api/portal/messages/1/read", {
+        method: "POST",
       });
     });
   });
@@ -408,31 +447,35 @@ describe('PortalApi', () => {
   // Settings Tests
   // ============================================================================
 
-  describe('getPreferences', () => {
-    it('should fetch preferences successfully', async () => {
+  describe("getPreferences", () => {
+    it("should fetch preferences successfully", async () => {
       const mockPreferences = createMockPreferences();
       mockRequest.mockResolvedValue({ data: mockPreferences });
 
       const result = await portalApi.getPreferences();
 
-      expect(mockRequest).toHaveBeenCalledWith('/api/portal/settings', { method: 'GET' });
+      expect(mockRequest).toHaveBeenCalledWith("/api/portal/settings", {
+        method: "GET",
+      });
       expect(result).toEqual(mockPreferences);
     });
   });
 
-  describe('updatePreferences', () => {
-    it('should update preferences successfully', async () => {
+  describe("updatePreferences", () => {
+    it("should update preferences successfully", async () => {
       const updates: Partial<PortalPreferences> = {
         emailNotifications: false,
       };
 
-      const mockPreferences = createMockPreferences({ emailNotifications: false });
+      const mockPreferences = createMockPreferences({
+        emailNotifications: false,
+      });
       mockRequest.mockResolvedValue({ data: mockPreferences });
 
       const result = await portalApi.updatePreferences(updates);
 
-      expect(mockRequest).toHaveBeenCalledWith('/api/portal/settings', {
-        method: 'PATCH',
+      expect(mockRequest).toHaveBeenCalledWith("/api/portal/settings", {
+        method: "PATCH",
         body: JSON.stringify(updates),
       });
       expect(result).toEqual(mockPreferences);
@@ -443,54 +486,57 @@ describe('PortalApi', () => {
   // Invitation Flow Tests (Public endpoints)
   // ============================================================================
 
-  describe('validateInviteToken', () => {
-    it('should validate invite token successfully', async () => {
+  describe("validateInviteToken", () => {
+    it("should validate invite token successfully", async () => {
       const mockResponse: InviteValidationResponse = {
         valid: true,
-        clientName: 'Test Client',
-        email: 'test@example.com',
-        message: 'Valid token',
+        clientName: "Test Client",
+        email: "test@example.com",
+        message: "Valid token",
       };
       mockRequest.mockResolvedValue(mockResponse);
 
-      const result = await portalApi.validateInviteToken('test-token');
+      const result = await portalApi.validateInviteToken("test-token");
 
-      expect(mockRequest).toHaveBeenCalledWith('/api/portal/invite/validate/test-token', {
-        method: 'GET',
-      });
+      expect(mockRequest).toHaveBeenCalledWith(
+        "/api/portal/invite/validate/test-token",
+        {
+          method: "GET",
+        },
+      );
       expect(result).toEqual(mockResponse);
     });
 
-    it('should handle invalid token', async () => {
+    it("should handle invalid token", async () => {
       const mockResponse: InviteValidationResponse = {
         valid: false,
-        message: 'Invalid or expired token',
+        message: "Invalid or expired token",
       };
       mockRequest.mockResolvedValue(mockResponse);
 
-      const result = await portalApi.validateInviteToken('invalid-token');
+      const result = await portalApi.validateInviteToken("invalid-token");
 
       expect(result.valid).toBe(false);
     });
   });
 
-  describe('completeRegistration', () => {
-    it('should complete registration successfully', async () => {
+  describe("completeRegistration", () => {
+    it("should complete registration successfully", async () => {
       const request: CompleteRegistrationRequest = {
-        token: 'test-token',
-        pin: '1234',
+        token: "test-token",
+        pin: "1234",
       };
 
       const mockResponse = {
         success: true,
-        message: 'Registration completed',
+        message: "Registration completed",
       };
       mockRequest.mockResolvedValue(mockResponse);
 
       const result = await portalApi.completeRegistration(request);
 
-      expect(mockRequest).toHaveBeenCalledWith('/api/portal/invite/complete', {
-        method: 'POST',
+      expect(mockRequest).toHaveBeenCalledWith("/api/portal/invite/complete", {
+        method: "POST",
         body: JSON.stringify(request),
       });
       expect(result).toEqual(mockResponse);

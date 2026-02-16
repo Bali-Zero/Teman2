@@ -136,11 +136,11 @@ const sendMessage = async () => {
 
 ```tsx
 // Server Action with automatic auth
-'use server';
+"use server";
 
 export async function sendMessage(messages, sessionId) {
   const cookieStore = await cookies();
-  const token = cookieStore.get('nz_access_token')?.value;
+  const token = cookieStore.get("nz_access_token")?.value;
 
   // Secure server-side call
   const response = await fetch(BACKEND_URL, {
@@ -164,18 +164,18 @@ export async function sendMessage(messages, sessionId) {
 ```tsx
 const reader = response.body?.getReader();
 const decoder = new TextDecoder();
-let buffer = '';
+let buffer = "";
 
 while (true) {
   const { done, value } = await reader.read();
   if (done) break;
 
   buffer += decoder.decode(value, { stream: true });
-  const lines = buffer.split('\n');
-  buffer = lines.pop() || '';
+  const lines = buffer.split("\n");
+  buffer = lines.pop() || "";
 
   for (const line of lines) {
-    if (!line.startsWith('data: ')) continue;
+    if (!line.startsWith("data: ")) continue;
     // More parsing...
   }
 }
@@ -184,7 +184,7 @@ while (true) {
 **After (AI SDK RSC):**
 
 ```tsx
-import { readStreamableValue } from 'ai/rsc';
+import { readStreamableValue } from "ai/rsc";
 
 for await (const chunk of readStreamableValue(messageStream)) {
   updateContent(chunk);
@@ -218,7 +218,11 @@ async function ChatLayout({ children }) {
   const conversations = await loadConversations();
   const clockStatus = await getClockStatus();
 
-  return <ChatProvider initialData={{ conversations, clockStatus }}>{children}</ChatProvider>;
+  return (
+    <ChatProvider initialData={{ conversations, clockStatus }}>
+      {children}
+    </ChatProvider>
+  );
 }
 ```
 
@@ -320,7 +324,7 @@ During implementation, we discovered AI SDK v6 removed the `ai/rsc` module. Inst
 return new ReadableStream<StreamEvent>({
   async start(controller) {
     // Process SSE and enqueue typed events
-    controller.enqueue({ type: 'token', data: content });
+    controller.enqueue({ type: "token", data: content });
   },
 });
 

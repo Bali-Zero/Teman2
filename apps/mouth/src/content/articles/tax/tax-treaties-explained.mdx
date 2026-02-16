@@ -76,8 +76,8 @@ import {
   ComparisonTable,
   InfoCard,
   Checklist,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Tax Treaties: Avoiding Double Taxation in Indonesia 2026
 
@@ -102,36 +102,71 @@ Tax treaties provide:
   items={[
     {
       name: "Australia",
-      values: { "Dividends": "15%", "Interest": "10%", "Royalties": "10-15%", "Services": "0%*" }
+      values: {
+        Dividends: "15%",
+        Interest: "10%",
+        Royalties: "10-15%",
+        Services: "0%*",
+      },
     },
     {
       name: "United States",
-      values: { "Dividends": "10-15%", "Interest": "10%", "Royalties": "10%", "Services": "0%*" }
+      values: {
+        Dividends: "10-15%",
+        Interest: "10%",
+        Royalties: "10%",
+        Services: "0%*",
+      },
     },
     {
       name: "United Kingdom",
-      values: { "Dividends": "10-15%", "Interest": "10%", "Royalties": "10-15%", "Services": "0%*" }
+      values: {
+        Dividends: "10-15%",
+        Interest: "10%",
+        Royalties: "10-15%",
+        Services: "0%*",
+      },
     },
     {
       name: "Singapore",
-      values: { "Dividends": "10-15%", "Interest": "10%", "Royalties": "10%", "Services": "0%*" }
+      values: {
+        Dividends: "10-15%",
+        Interest: "10%",
+        Royalties: "10%",
+        Services: "0%*",
+      },
     },
     {
       name: "Japan",
-      values: { "Dividends": "10-15%", "Interest": "10%", "Royalties": "10%", "Services": "0%*" }
+      values: {
+        Dividends: "10-15%",
+        Interest: "10%",
+        Royalties: "10%",
+        Services: "0%*",
+      },
     },
     {
       name: "Germany",
-      values: { "Dividends": "10-15%", "Interest": "10%", "Royalties": "10-15%", "Services": "0%*" }
+      values: {
+        Dividends: "10-15%",
+        Interest: "10%",
+        Royalties: "10-15%",
+        Services: "0%*",
+      },
     },
     {
       name: "Netherlands",
-      values: { "Dividends": "10-15%", "Interest": "10%", "Royalties": "10%", "Services": "0%*" }
-    }
+      values: {
+        Dividends: "10-15%",
+        Interest: "10%",
+        Royalties: "10%",
+        Services: "0%*",
+      },
+    },
   ]}
 />
 
-*Services 0% means services don't create permanent establishment if short-term
+\*Services 0% means services don't create permanent establishment if short-term
 
 ---
 
@@ -147,33 +182,33 @@ Tax treaties provide:
       label: "SKD (Certificate of Domicile)",
       description: "From your home country tax authority",
       required: true,
-      category: "documents"
+      category: "documents",
     },
     {
       id: "dgt",
       label: "DGT Form (Indonesia)",
       description: "Indonesian form claiming treaty benefits",
       required: true,
-      category: "documents"
+      category: "documents",
     },
     {
       id: "beneficial",
       label: "Beneficial owner declaration",
       description: "Prove you're the true recipient",
       required: true,
-      category: "documents"
+      category: "documents",
     },
     {
       id: "timing",
       label: "Submit before payment",
       description: "Give to Indonesian payer before receiving income",
       required: true,
-      category: "process"
-    }
+      category: "process",
+    },
   ]}
   categories={[
     { id: "documents", label: "Documents", color: "blue" },
-    { id: "process", label: "Process", color: "green" }
+    { id: "process", label: "Process", color: "green" },
   ]}
   showProgress={true}
 />
@@ -189,6 +224,7 @@ Tax treaties provide:
 4. **Payer withholds** at treaty rate instead of 20%
 
 If you don't provide documents, the payer must withhold at 20%. You may be able to claim a refund later, but it's complicated.
+
 </InfoCard>
 
 ---
@@ -198,6 +234,7 @@ If you don't provide documents, the payer must withhold at 20%. You may be able 
 Indonesia has treaties with 70+ countries including:
 
 ### Full Treaty Partners
+
 - All major EU countries
 - USA, Canada, Australia, New Zealand
 - Japan, South Korea, China
@@ -207,7 +244,8 @@ Indonesia has treaties with 70+ countries including:
 - South Africa, Egypt, Morocco
 
 <InfoCard variant="tip" title="Check Your Country">
-Search "Indonesia tax treaty [your country]" or check the DJP website for the full list and specific rates.
+  Search "Indonesia tax treaty [your country]" or check the DJP website for the
+  full list and specific rates.
 </InfoCard>
 
 ---
@@ -234,7 +272,7 @@ If you're an Indonesian tax resident with foreign income:
     "How do I get an SKD?",
     "What if I'm resident in two countries?",
     "Can I claim refund if too much withheld?",
-    "Does my country have a treaty?"
+    "Does my country have a treaty?",
   ]}
 />
 

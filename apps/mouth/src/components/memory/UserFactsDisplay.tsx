@@ -3,12 +3,12 @@
  * Shows user profile facts with add/remove capabilities
  */
 
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Plus, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { useState } from "react";
+import { Plus, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export interface UserFactsDisplayProps {
   facts: string[];
@@ -25,7 +25,7 @@ export function UserFactsDisplay({
   onRemoveFact,
   readonly = false,
 }: UserFactsDisplayProps) {
-  const [newFact, setNewFact] = useState('');
+  const [newFact, setNewFact] = useState("");
   const [isAdding, setIsAdding] = useState(false);
 
   const handleAdd = async () => {
@@ -38,9 +38,9 @@ export function UserFactsDisplay({
     setIsAdding(true);
     try {
       await onAddFact(newFact.trim());
-      setNewFact('');
+      setNewFact("");
     } catch (error) {
-      console.error('Failed to add fact:', error);
+      console.error("Failed to add fact:", error);
     } finally {
       setIsAdding(false);
     }
@@ -51,7 +51,7 @@ export function UserFactsDisplay({
     try {
       await onRemoveFact(index);
     } catch (error) {
-      console.error('Failed to remove fact:', error);
+      console.error("Failed to remove fact:", error);
     }
   };
 
@@ -66,10 +66,15 @@ export function UserFactsDisplay({
 
       <div className="space-y-2">
         {facts.length === 0 ? (
-          <p className="text-sm text-muted-foreground italic">No facts stored yet</p>
+          <p className="text-sm text-muted-foreground italic">
+            No facts stored yet
+          </p>
         ) : (
           facts.map((fact, index) => (
-            <div key={index} className="flex items-start gap-2 p-3 bg-muted rounded-lg">
+            <div
+              key={index}
+              className="flex items-start gap-2 p-3 bg-muted rounded-lg"
+            >
               <span className="flex-1 text-sm">{fact}</span>
               {!readonly && onRemoveFact && (
                 <button
@@ -91,7 +96,7 @@ export function UserFactsDisplay({
             value={newFact}
             onChange={(e) => setNewFact(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
+              if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 handleAdd();
               }

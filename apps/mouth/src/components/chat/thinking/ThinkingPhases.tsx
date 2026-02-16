@@ -1,7 +1,14 @@
-'use client';
+"use client";
 
-import { motion } from 'framer-motion';
-import { BookOpen, Scale, Sparkles, CheckCircle2, Lightbulb, ShieldAlert } from 'lucide-react';
+import { motion } from "framer-motion";
+import {
+  BookOpen,
+  Scale,
+  Sparkles,
+  CheckCircle2,
+  Lightbulb,
+  ShieldAlert,
+} from "lucide-react";
 
 interface ThinkingPhasesProps {
   currentPhaseName: string | null;
@@ -17,9 +24,9 @@ export function ThinkingPhases({
   if (!currentPhaseName) return null;
 
   const phases = [
-    { id: 'giant', label: 'Giant', icon: <BookOpen className="w-3 h-3" /> },
-    { id: 'cell', label: 'Cell', icon: <Scale className="w-3 h-3" /> },
-    { id: 'zantara', label: 'Zantara', icon: <Sparkles className="w-3 h-3" /> },
+    { id: "giant", label: "Giant", icon: <BookOpen className="w-3 h-3" /> },
+    { id: "cell", label: "Cell", icon: <Scale className="w-3 h-3" /> },
+    { id: "zantara", label: "Zantara", icon: <Sparkles className="w-3 h-3" /> },
   ];
 
   const currentIndex = phases.findIndex((p) => p.id === currentPhaseName);
@@ -37,26 +44,30 @@ export function ThinkingPhases({
                 initial={false}
                 animate={{
                   backgroundColor: isActive
-                    ? 'rgba(var(--accent-rgb), 0.2)'
+                    ? "rgba(var(--accent-rgb), 0.2)"
                     : isCompleted
-                      ? 'rgba(var(--success-rgb), 0.2)'
-                      : 'rgba(var(--foreground-rgb), 0.05)',
+                      ? "rgba(var(--success-rgb), 0.2)"
+                      : "rgba(var(--foreground-rgb), 0.05)",
                   borderColor: isActive
-                    ? 'var(--accent)'
+                    ? "var(--accent)"
                     : isCompleted
-                      ? 'var(--success)'
-                      : 'transparent',
+                      ? "var(--success)"
+                      : "transparent",
                   scale: isActive ? 1.1 : 1,
                 }}
                 className={`
                   w-8 h-8 rounded-full flex items-center justify-center border-2 transition-colors bg-[var(--background)]
-                  ${isActive ? 'text-[var(--accent)]' : isCompleted ? 'text-[var(--success)]' : 'text-[var(--foreground-muted)]'}
+                  ${isActive ? "text-[var(--accent)]" : isCompleted ? "text-[var(--success)]" : "text-[var(--foreground-muted)]"}
                 `}
               >
-                {isCompleted ? <CheckCircle2 className="w-4 h-4" /> : phase.icon}
+                {isCompleted ? (
+                  <CheckCircle2 className="w-4 h-4" />
+                ) : (
+                  phase.icon
+                )}
               </motion.div>
               <span
-                className={`text-[10px] font-medium ${isActive ? 'text-[var(--accent)]' : 'text-[var(--foreground-muted)]'}`}
+                className={`text-[10px] font-medium ${isActive ? "text-[var(--accent)]" : "text-[var(--foreground-muted)]"}`}
               >
                 {phase.label}
               </span>
@@ -67,7 +78,7 @@ export function ThinkingPhases({
         <div className="absolute left-4 right-4 top-4 h-0.5 bg-[var(--border)] -z-10">
           <motion.div
             className="h-full bg-[var(--accent)]"
-            initial={{ width: '0%' }}
+            initial={{ width: "0%" }}
             animate={{ width: `${(currentIndex / 2) * 100}%` }}
             transition={{ duration: 0.5 }}
           />
@@ -103,19 +114,21 @@ function ReasoningDetails({
     key_points?: unknown[];
     corrections?: unknown[];
   };
-  const isGiant = latestReasoningData?.phase === 'giant';
-  const isCell = latestReasoningData?.phase === 'cell';
+  const isGiant = latestReasoningData?.phase === "giant";
+  const isCell = latestReasoningData?.phase === "cell";
 
   return (
     <motion.div
       initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: 'auto' }}
+      animate={{ opacity: 1, height: "auto" }}
       className="mt-3 bg-[var(--background)]/50 rounded-lg p-2 text-xs border border-[var(--border)]"
     >
       {isGiant && details.key_points && Array.isArray(details.key_points) && (
         <div className="flex items-center gap-2 text-[var(--accent)]">
           <Lightbulb className="w-3 h-3" />
-          <span>Identified {details.key_points.length} key strategic points</span>
+          <span>
+            Identified {details.key_points.length} key strategic points
+          </span>
         </div>
       )}
       {isCell && details.corrections && Array.isArray(details.corrections) && (

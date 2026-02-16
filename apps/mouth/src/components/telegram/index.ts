@@ -1,2 +1,2 @@
-export { TelegramList } from './TelegramList';
-export { TelegramViewer } from './TelegramViewer';
+export { TelegramList } from "./TelegramList";
+export { TelegramViewer } from "./TelegramViewer";

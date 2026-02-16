@@ -7,7 +7,7 @@
  * - Stale-while-revalidate pattern
  */
 
-import { error } from '@/lib/utils/console';
+import { error } from "@/lib/utils/console";
 
 interface CacheEntry<T> {
   data: T;
@@ -163,4 +163,4 @@ export function useCachedQuery<T>({
 }
 
 // Import React for hook
-import React from 'react';
+import React from "react";

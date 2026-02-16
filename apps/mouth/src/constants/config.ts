@@ -128,10 +128,10 @@ export const UI = {
   MAX_TEXTAREA_HEIGHT: 120,
 
   /** Modal max width */
-  MODAL_MAX_WIDTH: '980px',
+  MODAL_MAX_WIDTH: "980px",
 
   /** Modal content max height */
-  MODAL_CONTENT_MAX_HEIGHT: '60vh',
+  MODAL_CONTENT_MAX_HEIGHT: "60vh",
 } as const;
 
 // ============================================================================
@@ -216,4 +216,5 @@ export const API_CONFIG = {
 // TYPE EXPORTS
 // ============================================================================
 
-export type SearchLimitOption = (typeof PAGINATION.SEARCH_LIMIT_OPTIONS)[number];
+export type SearchLimitOption =
+  (typeof PAGINATION.SEARCH_LIMIT_OPTIONS)[number];

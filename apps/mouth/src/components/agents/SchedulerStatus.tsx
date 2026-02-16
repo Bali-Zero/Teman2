@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { Clock } from 'lucide-react';
+import { Clock } from "lucide-react";
 
 interface SchedulerStatusProps {
   status:
@@ -27,7 +27,7 @@ export function SchedulerStatus({ status }: SchedulerStatusProps) {
         Scheduler
       </div>
       <div className="mt-2 text-sm text-[var(--foreground-muted)]">
-        {typeof status === 'string' ? status : 'Scheduler status available'}
+        {typeof status === "string" ? status : "Scheduler status available"}
       </div>
     </div>
   );

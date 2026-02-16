@@ -1,28 +1,28 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { intelligenceApi, StagingItem } from '@/lib/api/intelligence.api';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { useState } from "react";
+import { intelligenceApi, StagingItem } from "@/lib/api/intelligence.api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { useToast } from '@/components/ui/toast';
-import { Loader2, Edit } from 'lucide-react';
-import { logger } from '@/lib/logger';
-import { AutoResizeTextarea } from '@/components/ui/auto-resize-textarea';
+} from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/toast";
+import { Loader2, Edit } from "lucide-react";
+import { logger } from "@/lib/logger";
+import { AutoResizeTextarea } from "@/components/ui/auto-resize-textarea";
 
 interface ArticleEditorProps {
   item: StagingItem;
@@ -31,16 +31,21 @@ interface ArticleEditorProps {
   onSaved: () => void;
 }
 
-export function ArticleEditor({ item, open, onOpenChange, onSaved }: ArticleEditorProps) {
+export function ArticleEditor({
+  item,
+  open,
+  onOpenChange,
+  onSaved,
+}: ArticleEditorProps) {
   const [title, setTitle] = useState(item.title);
-  const [content, setContent] = useState(item.content || '');
-  const [category, setCategory] = useState(item.category || 'news');
+  const [content, setContent] = useState(item.content || "");
+  const [category, setCategory] = useState(item.category || "news");
   const [saving, setSaving] = useState(false);
   const toast = useToast();
 
   const handleSave = async () => {
     if (!title.trim()) {
-      toast.error('Error', 'Title is required');
+      toast.error("Error", "Title is required");
       return;
     }
 
@@ -51,19 +56,19 @@ export function ArticleEditor({ item, open, onOpenChange, onSaved }: ArticleEdit
         content: content.trim(),
         category,
       });
-      toast.success('Saved!', 'Article updated successfully');
+      toast.success("Saved!", "Article updated successfully");
       onSaved();
       onOpenChange(false);
     } catch (error) {
-      toast.error('Error', 'Failed to update article');
+      toast.error("Error", "Failed to update article");
       logger.error(
-        'Failed to edit article',
+        "Failed to edit article",
         {
-          component: 'ArticleEditor',
-          action: 'edit_article',
+          component: "ArticleEditor",
+          action: "edit_article",
           itemId: item.id,
         },
-        error as Error
+        error as Error,
       );
     } finally {
       setSaving(false);
@@ -78,7 +83,9 @@ export function ArticleEditor({ item, open, onOpenChange, onSaved }: ArticleEdit
             <Edit className="h-5 w-5" />
             Edit Article
           </DialogTitle>
-          <DialogDescription>Modify article title, content, and category</DialogDescription>
+          <DialogDescription>
+            Modify article title, content, and category
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 mt-4">
@@ -124,10 +131,18 @@ export function ArticleEditor({ item, open, onOpenChange, onSaved }: ArticleEdit
         </div>
 
         <div className="flex gap-2 mt-6">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={saving}
+          >
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={saving || !title.trim()} className="gap-2">
+          <Button
+            onClick={handleSave}
+            disabled={saving || !title.trim()}
+            className="gap-2"
+          >
             {saving ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />

@@ -62,7 +62,7 @@ export interface CreateFolderRequest {
 export interface CreateDocRequest {
   name: string;
   parent_id: string;
-  doc_type: 'document' | 'spreadsheet' | 'presentation';
+  doc_type: "document" | "spreadsheet" | "presentation";
 }
 
 export interface RenameRequest {
@@ -94,7 +94,7 @@ export interface BulkOperationResponse {
   }>;
 }
 
-export type DocType = 'document' | 'spreadsheet' | 'presentation';
+export type DocType = "document" | "spreadsheet" | "presentation";
 
 export interface UploadFile {
   file: File;
@@ -104,14 +104,14 @@ export interface UploadFile {
 
 // ============== Permission Types (Board only) ==============
 
-export type PermissionRole = 'owner' | 'writer' | 'commenter' | 'reader';
+export type PermissionRole = "owner" | "writer" | "commenter" | "reader";
 
 export interface PermissionItem {
   id: string;
   email: string;
   name: string;
   role: PermissionRole;
-  type: 'user' | 'group' | 'domain' | 'anyone';
+  type: "user" | "group" | "domain" | "anyone";
 }
 
 export interface AddPermissionRequest {

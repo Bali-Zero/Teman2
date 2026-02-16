@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   FolderOpen,
   Folder,
@@ -15,11 +15,11 @@ import {
   X,
   Upload,
   RefreshCw,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
-import { api } from '@/lib/api';
-import { logger } from '@/lib/logger';
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { api } from "@/lib/api";
+import { logger } from "@/lib/logger";
 
 interface FolderInfo {
   id: string;
@@ -39,17 +39,42 @@ interface DriveFolderStructureProps {
 }
 
 const STANDARD_FOLDERS = [
-  { name: '00_Profile', label: 'Profile', icon: '👤', color: 'bg-blue-500/20 text-blue-400' },
   {
-    name: '01_Immigration',
-    label: 'Immigration',
-    icon: '🛂',
-    color: 'bg-green-500/20 text-green-400',
+    name: "00_Profile",
+    label: "Profile",
+    icon: "👤",
+    color: "bg-blue-500/20 text-blue-400",
   },
-  { name: '02_Company', label: 'Company', icon: '🏢', color: 'bg-purple-500/20 text-purple-400' },
-  { name: '03_Tax', label: 'Tax', icon: '💰', color: 'bg-yellow-500/20 text-yellow-400' },
-  { name: '04_Family', label: 'Family', icon: '👨‍👩‍👧‍👦', color: 'bg-pink-500/20 text-pink-400' },
-  { name: '99_Misc', label: 'Misc', icon: '📁', color: 'bg-gray-500/20 text-gray-400' },
+  {
+    name: "01_Immigration",
+    label: "Immigration",
+    icon: "🛂",
+    color: "bg-green-500/20 text-green-400",
+  },
+  {
+    name: "02_Company",
+    label: "Company",
+    icon: "🏢",
+    color: "bg-purple-500/20 text-purple-400",
+  },
+  {
+    name: "03_Tax",
+    label: "Tax",
+    icon: "💰",
+    color: "bg-yellow-500/20 text-yellow-400",
+  },
+  {
+    name: "04_Family",
+    label: "Family",
+    icon: "👨‍👩‍👧‍👦",
+    color: "bg-pink-500/20 text-pink-400",
+  },
+  {
+    name: "99_Misc",
+    label: "Misc",
+    icon: "📁",
+    color: "bg-gray-500/20 text-gray-400",
+  },
 ];
 
 export function DriveFolderStructure({
@@ -73,7 +98,7 @@ export function DriveFolderStructure({
     last_synced: string;
   } | null>(null);
   const [showLinkModal, setShowLinkModal] = useState(false);
-  const [linkFolderId, setLinkFolderId] = useState('');
+  const [linkFolderId, setLinkFolderId] = useState("");
 
   // Check existing folder on mount
   useEffect(() => {
@@ -96,7 +121,7 @@ export function DriveFolderStructure({
         structure.folders.forEach((folder: any) => {
           foldersMap[folder.name] = {
             id: folder.id,
-            url: '', // Not used - no external links
+            url: "", // Not used - no external links
             name: folder.name,
             file_count: folder.file_count,
             total_size_bytes: folder.total_size_bytes,
@@ -105,7 +130,7 @@ export function DriveFolderStructure({
 
         setFolderInfo({
           root_folder_id: structure.root_folder_id,
-          root_folder_url: '', // Not used - no external links
+          root_folder_url: "", // Not used - no external links
           folders: foldersMap,
         });
 
@@ -118,11 +143,11 @@ export function DriveFolderStructure({
             last_synced: statsData.last_synced,
           });
         } catch (error) {
-          logger.error('Failed to load stats:', {}, error as Error);
+          logger.error("Failed to load stats:", {}, error as Error);
         }
       }
     } catch (error) {
-      logger.error('Failed to check folder status:', {}, error as Error);
+      logger.error("Failed to check folder status:", {}, error as Error);
     } finally {
       setIsChecking(false);
     }
@@ -153,11 +178,13 @@ export function DriveFolderStructure({
         folders: foldersMap,
       });
 
-      toast.success('Folder structure created successfully');
+      toast.success("Folder structure created successfully");
       onFolderCreated?.(data.root_folder_id);
     } catch (error: unknown) {
       const errorMessage =
-        error instanceof Error ? error.message : 'Failed to create folder structure';
+        error instanceof Error
+          ? error.message
+          : "Failed to create folder structure";
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
@@ -166,15 +193,15 @@ export function DriveFolderStructure({
 
   const handleLinkFolder = async () => {
     if (!linkFolderId.trim()) {
-      toast.error('Please enter a folder ID');
+      toast.error("Please enter a folder ID");
       return;
     }
 
     setIsLoading(true);
     try {
       // Extract folder ID from URL if full URL provided
-      const folderId = linkFolderId.includes('folders/')
-        ? linkFolderId.split('folders/')[1].split('/')[0].split('?')[0]
+      const folderId = linkFolderId.includes("folders/")
+        ? linkFolderId.split("folders/")[1].split("/")[0].split("?")[0]
         : linkFolderId.trim();
 
       // Update client with folder ID
@@ -184,7 +211,7 @@ export function DriveFolderStructure({
         {
           google_drive_folder_id: folderId,
         },
-        user?.email || 'system'
+        user?.email || "system",
       );
 
       setFolderInfo({
@@ -193,12 +220,13 @@ export function DriveFolderStructure({
         folders: {},
       });
 
-      toast.success('Folder linked successfully');
+      toast.success("Folder linked successfully");
       setShowLinkModal(false);
-      setLinkFolderId('');
+      setLinkFolderId("");
       onFolderLinked?.(folderId);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to link folder';
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to link folder";
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
@@ -238,7 +266,9 @@ export function DriveFolderStructure({
         </div>
 
         <div className="mb-4 p-4 rounded-lg bg-[var(--background)] border border-[var(--border)]">
-          <p className="text-sm font-medium text-[var(--foreground)] mb-2">Standard Structure:</p>
+          <p className="text-sm font-medium text-[var(--foreground)] mb-2">
+            Standard Structure:
+          </p>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
             {STANDARD_FOLDERS.map((folder) => (
               <div
@@ -253,7 +283,11 @@ export function DriveFolderStructure({
         </div>
 
         <div className="flex gap-2">
-          <Button onClick={handleCreateFolder} disabled={isLoading} className="gap-2">
+          <Button
+            onClick={handleCreateFolder}
+            disabled={isLoading}
+            className="gap-2"
+          >
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -266,7 +300,11 @@ export function DriveFolderStructure({
               </>
             )}
           </Button>
-          <Button variant="outline" onClick={() => setShowLinkModal(true)} className="gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowLinkModal(true)}
+            className="gap-2"
+          >
             <LinkIcon className="w-4 h-4" />
             Link Existing Folder
           </Button>
@@ -283,7 +321,7 @@ export function DriveFolderStructure({
                 <button
                   onClick={() => {
                     setShowLinkModal(false);
-                    setLinkFolderId('');
+                    setLinkFolderId("");
                   }}
                   className="text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
                 >
@@ -305,13 +343,13 @@ export function DriveFolderStructure({
                   variant="outline"
                   onClick={() => {
                     setShowLinkModal(false);
-                    setLinkFolderId('');
+                    setLinkFolderId("");
                   }}
                 >
                   Cancel
                 </Button>
                 <Button onClick={handleLinkFolder} disabled={isLoading}>
-                  {isLoading ? 'Linking...' : 'Link Folder'}
+                  {isLoading ? "Linking..." : "Link Folder"}
                 </Button>
               </div>
             </div>
@@ -328,12 +366,14 @@ export function DriveFolderStructure({
         <div>
           <div className="flex items-center gap-2 mb-1">
             <CheckCircle2 className="w-5 h-5 text-green-500" />
-            <h3 className="text-lg font-semibold text-[var(--foreground)]">Google Drive Folder</h3>
+            <h3 className="text-lg font-semibold text-[var(--foreground)]">
+              Google Drive Folder
+            </h3>
           </div>
           {stats && (
             <p className="text-sm text-[var(--foreground-muted)]">
-              {stats.total_files} files • {stats.total_size_mb.toFixed(1)} MB • Last sync:{' '}
-              {new Date(stats.last_synced).toLocaleTimeString()}
+              {stats.total_files} files • {stats.total_size_mb.toFixed(1)} MB •
+              Last sync: {new Date(stats.last_synced).toLocaleTimeString()}
             </p>
           )}
           {!stats && (
@@ -351,7 +391,7 @@ export function DriveFolderStructure({
           const fileCount = folderData?.file_count ?? 0;
           const sizeMB = folderData?.total_size_bytes
             ? (folderData.total_size_bytes / 1024 / 1024).toFixed(1)
-            : '0';
+            : "0";
 
           return (
             <div
@@ -365,12 +405,16 @@ export function DriveFolderStructure({
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <Folder className="w-4 h-4 text-[var(--foreground-muted)]" />
-                    <span className="font-medium text-[var(--foreground)]">{folder.label}</span>
-                    <span className="text-xs text-[var(--foreground-muted)]">({folder.name})</span>
+                    <span className="font-medium text-[var(--foreground)]">
+                      {folder.label}
+                    </span>
+                    <span className="text-xs text-[var(--foreground-muted)]">
+                      ({folder.name})
+                    </span>
                   </div>
                   {fileCount > 0 && (
                     <div className="text-xs text-[var(--foreground-muted)] mt-1">
-                      {fileCount} file{fileCount !== 1 ? 's' : ''} • {sizeMB} MB
+                      {fileCount} file{fileCount !== 1 ? "s" : ""} • {sizeMB} MB
                     </div>
                   )}
                 </div>
@@ -391,7 +435,12 @@ export function DriveFolderStructure({
       </div>
 
       <div className="mt-4 pt-4 border-t border-[var(--border)] flex gap-2">
-        <Button variant="outline" size="sm" onClick={checkFolderStatus} className="gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={checkFolderStatus}
+          className="gap-2"
+        >
           <RefreshCw className="w-4 h-4" />
           Refresh
         </Button>
@@ -400,7 +449,7 @@ export function DriveFolderStructure({
           size="sm"
           onClick={() => {
             // Open upload modal (will be implemented)
-            toast.info('Upload feature coming soon');
+            toast.info("Upload feature coming soon");
           }}
           className="gap-2"
         >

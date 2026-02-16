@@ -5,11 +5,11 @@
 
 import { WhatsAppConversation } from "@/lib/api/whatsapp/whatsapp.types";
 
-export type ChannelType = 'whatsapp' | 'telegram' | 'instagram' | 'email';
+export type ChannelType = "whatsapp" | "telegram" | "instagram" | "email";
 
-export type ConversationStatus = 'new' | 'open' | 'pending' | 'closed';
+export type ConversationStatus = "new" | "open" | "pending" | "closed";
 
-export type LeadPriority = 'low' | 'medium' | 'high' | 'urgent';
+export type LeadPriority = "low" | "medium" | "high" | "urgent";
 
 export interface EnrichedConversation {
   id: number;
@@ -27,14 +27,14 @@ export interface EnrichedConversation {
     dealValue?: string;
     company?: string;
     lastInteraction?: string;
-    sentiment?: 'positive' | 'neutral' | 'negative';
+    sentiment?: "positive" | "neutral" | "negative";
   };
 }
 
 export interface Message {
   id: string;
   text: string;
-  sender: 'user' | 'agent' | 'system' | 'ai';
+  sender: "user" | "agent" | "system" | "ai";
   timestamp: string;
   isInternalNote?: boolean; // True if it's a team note
   attachments?: string[];

@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { cn } from '@/lib/utils';
+import React from "react";
+import { cn } from "@/lib/utils";
 
 interface ShimmerButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode;
@@ -22,23 +22,23 @@ interface ShimmerButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
  */
 export function ShimmerButton({
   children,
-  shimmerColor = '#6366f1',
-  shimmerSize = '0.1em',
-  borderRadius = '12px',
-  shimmerDuration = '2s',
-  background = 'linear-gradient(110deg, #1a1a1a, 45%, #2a2a2a, 55%, #1a1a1a)',
+  shimmerColor = "#6366f1",
+  shimmerSize = "0.1em",
+  borderRadius = "12px",
+  shimmerDuration = "2s",
+  background = "linear-gradient(110deg, #1a1a1a, 45%, #2a2a2a, 55%, #1a1a1a)",
   className,
   ...props
 }: ShimmerButtonProps) {
   return (
     <button
       className={cn(
-        'group relative inline-flex items-center justify-center overflow-hidden',
-        'px-6 py-3 font-medium text-[var(--foreground)]',
-        'transition-all duration-300 ease-out',
-        'hover:scale-[1.02] active:scale-[0.98]',
-        'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100',
-        className
+        "group relative inline-flex items-center justify-center overflow-hidden",
+        "px-6 py-3 font-medium text-[var(--foreground)]",
+        "transition-all duration-300 ease-out",
+        "hover:scale-[1.02] active:scale-[0.98]",
+        "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100",
+        className,
       )}
       style={{
         borderRadius,
@@ -47,7 +47,10 @@ export function ShimmerButton({
       {...props}
     >
       {/* Shimmer effect */}
-      <span className="absolute inset-0 overflow-hidden" style={{ borderRadius }}>
+      <span
+        className="absolute inset-0 overflow-hidden"
+        style={{ borderRadius }}
+      >
         <span
           className="absolute inset-0 -translate-x-full animate-shimmer"
           style={{

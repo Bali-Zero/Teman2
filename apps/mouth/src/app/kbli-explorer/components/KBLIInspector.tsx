@@ -1,49 +1,64 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { motion } from 'framer-motion';
-import { Search, Loader2, X, FileText, Scale, Activity } from 'lucide-react';
-import type { KBLIDetail } from '@/lib/api/kbli.api';
+import React from "react";
+import { motion } from "framer-motion";
+import { Search, Loader2, X, FileText, Scale, Activity } from "lucide-react";
+import type { KBLIDetail } from "@/lib/api/kbli.api";
 
 // =============================================================================
 // HELPERS
 // =============================================================================
 
-export function getPmaBadge(status: string): { label: string; className: string } {
-  const s = (status || '').toUpperCase();
-  if (s === 'TERBUKA')
-    return { label: 'Open to Foreign Investment', className: 'badge badge-success' };
-  if (s === 'TERBATAS')
-    return { label: 'Restricted - Conditions Apply', className: 'badge badge-warning' };
-  if (s === 'TERTUTUP')
-    return { label: 'Closed to Foreign Investment', className: 'badge badge-error' };
-  return { label: 'Status Unknown', className: 'badge badge-neutral' };
+export function getPmaBadge(status: string): {
+  label: string;
+  className: string;
+} {
+  const s = (status || "").toUpperCase();
+  if (s === "TERBUKA")
+    return {
+      label: "Open to Foreign Investment",
+      className: "badge badge-success",
+    };
+  if (s === "TERBATAS")
+    return {
+      label: "Restricted - Conditions Apply",
+      className: "badge badge-warning",
+    };
+  if (s === "TERTUTUP")
+    return {
+      label: "Closed to Foreign Investment",
+      className: "badge badge-error",
+    };
+  return { label: "Status Unknown", className: "badge badge-neutral" };
 }
 
-export function getRiskBadge(risk: string): { label: string; className: string } {
-  const r = (risk || '').toLowerCase();
-  if (r.includes('tinggi') && r.includes('menengah'))
-    return { label: 'Medium-High Risk', className: 'badge badge-warning' };
-  if (r.includes('tinggi') || r === 'high')
-    return { label: 'High Risk', className: 'badge badge-error' };
-  if (r.includes('menengah') && r.includes('rendah'))
-    return { label: 'Medium-Low Risk', className: 'badge badge-cyan' };
-  if (r.includes('menengah') || r === 'medium')
-    return { label: 'Medium Risk', className: 'badge badge-warning' };
-  if (r.includes('rendah') || r === 'low')
-    return { label: 'Low Risk', className: 'badge badge-info' };
-  return { label: risk || 'Unknown', className: 'badge badge-neutral' };
+export function getRiskBadge(risk: string): {
+  label: string;
+  className: string;
+} {
+  const r = (risk || "").toLowerCase();
+  if (r.includes("tinggi") && r.includes("menengah"))
+    return { label: "Medium-High Risk", className: "badge badge-warning" };
+  if (r.includes("tinggi") || r === "high")
+    return { label: "High Risk", className: "badge badge-error" };
+  if (r.includes("menengah") && r.includes("rendah"))
+    return { label: "Medium-Low Risk", className: "badge badge-cyan" };
+  if (r.includes("menengah") || r === "medium")
+    return { label: "Medium Risk", className: "badge badge-warning" };
+  if (r.includes("rendah") || r === "low")
+    return { label: "Low Risk", className: "badge badge-info" };
+  return { label: risk || "Unknown", className: "badge badge-neutral" };
 }
 
 export function getRiskLevel(
-  risk: string
-): 'low' | 'medium-low' | 'medium' | 'medium-high' | 'high' {
-  const r = (risk || '').toLowerCase();
-  if (r.includes('tinggi') && r.includes('menengah')) return 'medium-high';
-  if (r.includes('tinggi') || r === 'high') return 'high';
-  if (r.includes('menengah') && r.includes('rendah')) return 'medium-low';
-  if (r.includes('menengah') || r === 'medium') return 'medium';
-  return 'low';
+  risk: string,
+): "low" | "medium-low" | "medium" | "medium-high" | "high" {
+  const r = (risk || "").toLowerCase();
+  if (r.includes("tinggi") && r.includes("menengah")) return "medium-high";
+  if (r.includes("tinggi") || r === "high") return "high";
+  if (r.includes("menengah") && r.includes("rendah")) return "medium-low";
+  if (r.includes("menengah") || r === "medium") return "medium";
+  return "low";
 }
 
 // =============================================================================
@@ -65,7 +80,9 @@ const KBLIInspector = ({
     return (
       <div className="h-full flex flex-col items-center justify-center text-[#D4B483]">
         <Loader2 size={32} className="animate-spin mb-4" />
-        <p className="text-xs uppercase tracking-widest opacity-50">Loading details...</p>
+        <p className="text-xs uppercase tracking-widest opacity-50">
+          Loading details...
+        </p>
       </div>
     );
   }
@@ -78,7 +95,8 @@ const KBLIInspector = ({
           Click on any result to see full details
         </p>
         <p className="text-xs text-[#444]">
-          Licenses, restrictions, risk level and related business codes will appear here
+          Licenses, restrictions, risk level and related business codes will
+          appear here
         </p>
       </div>
     );
@@ -129,11 +147,11 @@ const KBLIInspector = ({
             <div
               className="absolute top-0 left-0 h-full bg-[#D4B483] shadow-[0_0_10px_rgba(212,180,131,0.3)] transition-all duration-1000"
               style={{
-                width: data.risk_profile.toLowerCase().includes('tinggi')
-                  ? '90%'
-                  : data.risk_profile.toLowerCase().includes('menengah')
-                    ? '50%'
-                    : '20%',
+                width: data.risk_profile.toLowerCase().includes("tinggi")
+                  ? "90%"
+                  : data.risk_profile.toLowerCase().includes("menengah")
+                    ? "50%"
+                    : "20%",
               }}
             />
           </div>
@@ -171,18 +189,27 @@ const KBLIInspector = ({
                   </div>
                   <div className="flex flex-col gap-1 text-xs text-[#666]">
                     <span>
-                      Business Size: <span className="text-[#999]">{lic.scale.join(', ')}</span>
+                      Business Size:{" "}
+                      <span className="text-[#999]">
+                        {lic.scale.join(", ")}
+                      </span>
                     </span>
                     <span>
-                      Risk Level: <span className="text-[#999]">{lic.risk_level}</span>
+                      Risk Level:{" "}
+                      <span className="text-[#999]">{lic.risk_level}</span>
                     </span>
                   </div>
                   {lic.requirements.length > 0 && (
                     <div className="mt-3 pt-3 border-t border-white/5">
-                      <p className="text-[10px] text-[#444] uppercase mb-2">What you need to do:</p>
+                      <p className="text-[10px] text-[#444] uppercase mb-2">
+                        What you need to do:
+                      </p>
                       <ul className="space-y-1">
                         {lic.requirements.slice(0, 3).map((req, ridx) => (
-                          <li key={ridx} className="text-[11px] text-[#888] leading-tight">
+                          <li
+                            key={ridx}
+                            className="text-[11px] text-[#888] leading-tight"
+                          >
                             &bull; {req}
                           </li>
                         ))}

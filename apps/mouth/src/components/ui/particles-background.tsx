@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
-import Particles, { initParticlesEngine } from '@tsparticles/react';
-import { loadSlim } from '@tsparticles/slim';
-import type { ISourceOptions } from '@tsparticles/engine';
+import React, { useEffect, useMemo, useState } from "react";
+import Particles, { initParticlesEngine } from "@tsparticles/react";
+import { loadSlim } from "@tsparticles/slim";
+import type { ISourceOptions } from "@tsparticles/engine";
 
 interface ParticlesBackgroundProps {
   className?: string;
-  variant?: 'default' | 'connections' | 'snow' | 'stars';
+  variant?: "default" | "connections" | "snow" | "stars";
   color?: string;
   quantity?: number;
 }
@@ -27,9 +27,9 @@ interface ParticlesBackgroundProps {
  * );
  */
 export function ParticlesBackground({
-  className = '',
-  variant = 'default',
-  color = '#6366f1',
+  className = "",
+  variant = "default",
+  color = "#6366f1",
   quantity = 50,
 }: ParticlesBackgroundProps) {
   const [init, setInit] = useState(false);
@@ -47,7 +47,7 @@ export function ParticlesBackground({
       fullScreen: false,
       background: {
         color: {
-          value: 'transparent',
+          value: "transparent",
         },
       },
       fpsLimit: 60,
@@ -58,11 +58,11 @@ export function ParticlesBackground({
         move: {
           enable: true,
           speed: 1,
-          direction: 'none',
+          direction: "none",
           random: true,
           straight: false,
           outModes: {
-            default: 'out',
+            default: "out",
           },
         },
         number: {
@@ -87,7 +87,7 @@ export function ParticlesBackground({
     };
 
     // Variant-specific options
-    if (variant === 'connections') {
+    if (variant === "connections") {
       baseOptions.particles!.links = {
         enable: true,
         distance: 150,
@@ -99,7 +99,7 @@ export function ParticlesBackground({
         events: {
           onHover: {
             enable: true,
-            mode: 'grab',
+            mode: "grab",
           },
         },
         modes: {
@@ -113,13 +113,13 @@ export function ParticlesBackground({
       };
     }
 
-    if (variant === 'snow') {
+    if (variant === "snow") {
       baseOptions.particles!.move = {
         enable: true,
         speed: 2,
-        direction: 'bottom',
+        direction: "bottom",
         straight: false,
-        outModes: { default: 'out' },
+        outModes: { default: "out" },
       };
       baseOptions.particles!.wobble = {
         enable: true,
@@ -128,7 +128,7 @@ export function ParticlesBackground({
       };
     }
 
-    if (variant === 'stars') {
+    if (variant === "stars") {
       baseOptions.particles!.twinkle = {
         particles: {
           enable: true,

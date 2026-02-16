@@ -8,17 +8,17 @@
  * - Nuovi clienti
  */
 
-import { useCallback, useEffect, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import type { ExpiryAlert, Practice } from '@/lib/api/crm/crm.types';
+import { useCallback, useEffect, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import type { ExpiryAlert, Practice } from "@/lib/api/crm/crm.types";
 
 interface Notification {
   id: string;
-  type: 'expiry' | 'overdue' | 'new_client' | 'status_change';
+  type: "expiry" | "overdue" | "new_client" | "status_change";
   title: string;
   message: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  severity: "low" | "medium" | "high" | "critical";
   createdAt: string;
   read: boolean;
   actionUrl?: string;
@@ -32,17 +32,17 @@ interface UseCrmNotificationsOptions {
 }
 
 const NOTIFICATION_ICONS = {
-  expiry: 'Calendar',
-  overdue: 'AlertTriangle',
-  new_client: 'UserPlus',
-  status_change: 'RefreshCw',
+  expiry: "Calendar",
+  overdue: "AlertTriangle",
+  new_client: "UserPlus",
+  status_change: "RefreshCw",
 } as const;
 
 const NOTIFICATION_COLORS = {
-  low: 'blue',
-  medium: 'yellow',
-  high: 'orange',
-  critical: 'red',
+  low: "blue",
+  medium: "yellow",
+  high: "orange",
+  critical: "red",
 } as const;
 
 /**
@@ -60,7 +60,7 @@ export function useCrmNotifications(options: UseCrmNotificationsOptions = {}) {
 
   // Use expiry alerts as notifications
   const query = useQuery({
-    queryKey: ['crm', 'notifications', 'expiry', { unreadOnly }],
+    queryKey: ["crm", "notifications", "expiry", { unreadOnly }],
     queryFn: async (): Promise<Notification[]> => {
       const alerts = await api.crm.getExpiryAlerts({ limit: 50 });
 
@@ -68,20 +68,20 @@ export function useCrmNotifications(options: UseCrmNotificationsOptions = {}) {
       return alerts.map(
         (alert: ExpiryAlert): Notification => ({
           id: `expiry-${alert.entity_id}-${alert.document_type}`,
-          type: 'expiry',
+          type: "expiry",
           title: `${alert.entity_name} - ${alert.document_type}`,
           message:
             alert.days_until_expiry <= 0
               ? `Expired on ${alert.expiry_date}`
               : `Expires in ${alert.days_until_expiry} days`,
           severity:
-            alert.alert_color === 'expired'
-              ? 'critical'
-              : alert.alert_color === 'red'
-                ? 'high'
-                : alert.alert_color === 'yellow'
-                  ? 'medium'
-                  : 'low',
+            alert.alert_color === "expired"
+              ? "critical"
+              : alert.alert_color === "red"
+                ? "high"
+                : alert.alert_color === "yellow"
+                  ? "medium"
+                  : "low",
           createdAt: new Date().toISOString(),
           read: false,
           actionUrl: `/clients/${alert.client_id}`,
@@ -90,7 +90,7 @@ export function useCrmNotifications(options: UseCrmNotificationsOptions = {}) {
             entityId: alert.entity_id,
             daysUntilExpiry: alert.days_until_expiry,
           },
-        })
+        }),
       );
     },
     refetchInterval: autoRefresh ? refreshInterval : false,
@@ -129,12 +129,12 @@ export function useCrmNotifications(options: UseCrmNotificationsOptions = {}) {
  * Hook per alert scadenze
  */
 export function useExpiryAlerts(params?: {
-  alertColor?: 'expired' | 'red' | 'yellow';
+  alertColor?: "expired" | "red" | "yellow";
   assignedTo?: string;
   limit?: number;
 }) {
   return useQuery({
-    queryKey: ['crm', 'alerts', 'expiry', params],
+    queryKey: ["crm", "alerts", "expiry", params],
     queryFn: async (): Promise<ExpiryAlert[]> => {
       return api.crm.getExpiryAlerts(params);
     },
@@ -147,7 +147,7 @@ export function useExpiryAlerts(params?: {
  */
 export function useExpiryAlertsSummary() {
   return useQuery({
-    queryKey: ['crm', 'alerts', 'expiry-summary'],
+    queryKey: ["crm", "alerts", "expiry-summary"],
     queryFn: async () => {
       return api.crm.getExpiryAlertsSummary();
     },
@@ -160,23 +160,23 @@ export function useExpiryAlertsSummary() {
  */
 export function useUpcomingRenewals(days: number = 90) {
   return useQuery({
-    queryKey: ['crm', 'alerts', 'renewals', days],
+    queryKey: ["crm", "alerts", "renewals", days],
     queryFn: async (): Promise<Practice[]> => {
       const renewals = await api.crm.getUpcomingRenewals(days);
       // Map renewals to practices (they share many fields)
       return renewals.map(
         (r: any) =>
           ({
-            id: r.practice_id,  // Use practice_id, not alert id
+            id: r.practice_id, // Use practice_id, not alert id
             client_id: r.client_id,
             status: r.status,
             expiry_date: r.target_date,
             practice_type_code: r.alert_type,
             created_at: r.alert_date,
             updated_at: r.alert_date,
-            priority: 'high',
-            payment_status: 'pending',
-          }) as Practice
+            priority: "high",
+            payment_status: "pending",
+          }) as Practice,
       );
     },
     staleTime: 5 * 60 * 1000,
@@ -188,7 +188,7 @@ export function useUpcomingRenewals(days: number = 90) {
  */
 export function useDashboardStats() {
   return useQuery({
-    queryKey: ['crm', 'dashboard'],
+    queryKey: ["crm", "dashboard"],
     queryFn: async () => {
       const [practiceStats, revenueGrowth, expirySummary] = await Promise.all([
         api.crm.getPracticeStats(),
@@ -202,7 +202,9 @@ export function useDashboardStats() {
         activePractices: practiceStats.active_practices,
         overduePractices: 0, // Not available in current API
         expiryAlerts:
-          expirySummary.counts.red + expirySummary.counts.yellow + expirySummary.counts.expired,
+          expirySummary.counts.red +
+          expirySummary.counts.yellow +
+          expirySummary.counts.expired,
         revenue: {
           total: practiceStats.revenue.total_revenue,
           paid: practiceStats.revenue.paid_revenue,
@@ -223,18 +225,18 @@ export function useDashboardStats() {
  */
 export function useRecentActivity(limit: number = 10) {
   return useQuery({
-    queryKey: ['crm', 'activity', limit],
+    queryKey: ["crm", "activity", limit],
     queryFn: async () => {
       const interactions = await api.crm.getInteractions({ limit });
 
       return interactions.map((interaction: any) => ({
         id: `interaction-${interaction.id}`,
         type:
-          interaction.interaction_type === 'chat'
-            ? 'note_added'
-            : interaction.interaction_type === 'email'
-              ? 'document_uploaded'
-              : 'status_changed',
+          interaction.interaction_type === "chat"
+            ? "note_added"
+            : interaction.interaction_type === "email"
+              ? "document_uploaded"
+              : "status_changed",
         description:
           interaction.summary ||
           interaction.subject ||
@@ -253,11 +255,12 @@ export function useRecentActivity(limit: number = 10) {
  * Hook per notifiche browser (push notifications)
  */
 export function useBrowserNotifications() {
-  const [permission, setPermission] = useState<NotificationPermission>('default');
+  const [permission, setPermission] =
+    useState<NotificationPermission>("default");
   const [supported, setSupported] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
+    if (typeof window !== "undefined" && "Notification" in window) {
       setSupported(true);
       setPermission(Notification.permission);
     }
@@ -268,21 +271,21 @@ export function useBrowserNotifications() {
 
     const result = await Notification.requestPermission();
     setPermission(result);
-    return result === 'granted';
+    return result === "granted";
   }, [supported]);
 
   const showNotification = useCallback(
     (title: string, options?: NotificationOptions) => {
-      if (supported && permission === 'granted') {
+      if (supported && permission === "granted") {
         return new Notification(title, {
-          icon: '/favicon.ico',
-          badge: '/favicon.ico',
+          icon: "/favicon.ico",
+          badge: "/favicon.ico",
           ...options,
         });
       }
       return null;
     },
-    [supported, permission]
+    [supported, permission],
   );
 
   return {
@@ -290,8 +293,8 @@ export function useBrowserNotifications() {
     permission,
     requestPermission,
     showNotification,
-    isGranted: permission === 'granted',
-    isDenied: permission === 'denied',
+    isGranted: permission === "granted",
+    isDenied: permission === "denied",
   };
 }
 

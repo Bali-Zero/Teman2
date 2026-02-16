@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * PortalNotifications Component
@@ -6,8 +6,8 @@
  * Visualizza notifiche e alert del portale clienti
  */
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Bell,
   AlertTriangle,
@@ -18,14 +18,18 @@ import {
   X,
   ChevronRight,
   ExternalLink,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { usePortalNotifications } from '@/hooks/usePortal';
-import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { usePortalNotifications } from "@/hooks/usePortal";
+import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface PortalNotificationsProps {
-  variant?: 'popover' | 'sidebar' | 'inline';
+  variant?: "popover" | "sidebar" | "inline";
   maxItems?: number;
 }
 
@@ -39,22 +43,22 @@ const ICONS = {
 
 const SEVERITY_STYLES = {
   info: {
-    bg: 'bg-blue-500/10',
-    border: 'border-blue-500/20',
-    text: 'text-blue-400',
-    icon: 'text-blue-400',
+    bg: "bg-blue-500/10",
+    border: "border-blue-500/20",
+    text: "text-blue-400",
+    icon: "text-blue-400",
   },
   warning: {
-    bg: 'bg-yellow-500/10',
-    border: 'border-yellow-500/20',
-    text: 'text-yellow-400',
-    icon: 'text-yellow-400',
+    bg: "bg-yellow-500/10",
+    border: "border-yellow-500/20",
+    text: "text-yellow-400",
+    icon: "text-yellow-400",
   },
   critical: {
-    bg: 'bg-red-500/10',
-    border: 'border-red-500/20',
-    text: 'text-red-400',
-    icon: 'text-red-400',
+    bg: "bg-red-500/10",
+    border: "border-red-500/20",
+    text: "text-red-400",
+    icon: "text-red-400",
   },
 };
 
@@ -67,7 +71,7 @@ function NotificationItem({
     type: string;
     title: string;
     message: string;
-    severity: 'info' | 'warning' | 'critical';
+    severity: "info" | "warning" | "critical";
     href?: string;
     createdAt: string;
   };
@@ -86,21 +90,25 @@ function NotificationItem({
   return (
     <div
       className={cn(
-        'relative p-3 rounded-lg border transition-colors',
+        "relative p-3 rounded-lg border transition-colors",
         styles.bg,
         styles.border,
-        notification.href && 'cursor-pointer hover:bg-opacity-20',
-        'group'
+        notification.href && "cursor-pointer hover:bg-opacity-20",
+        "group",
       )}
       onClick={handleClick}
     >
       <div className="flex gap-3">
-        <div className={cn('mt-0.5', styles.icon)}>
+        <div className={cn("mt-0.5", styles.icon)}>
           <Icon className="w-5 h-5" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className={cn('font-medium text-sm', styles.text)}>{notification.title}</p>
-          <p className="text-sm text-gray-400 mt-0.5 line-clamp-2">{notification.message}</p>
+          <p className={cn("font-medium text-sm", styles.text)}>
+            {notification.title}
+          </p>
+          <p className="text-sm text-gray-400 mt-0.5 line-clamp-2">
+            {notification.message}
+          </p>
         </div>
         {notification.href && (
           <ChevronRight className="w-4 h-4 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -126,10 +134,13 @@ function NotificationItem({
  */
 export function PortalNotificationsPopover() {
   const [open, setOpen] = useState(false);
-  const { notifications, unreadCount, criticalCount } = usePortalNotifications();
+  const { notifications, unreadCount, criticalCount } =
+    usePortalNotifications();
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
-  const visibleNotifications = notifications.filter((n) => !dismissed.has(n.id)).slice(0, 5);
+  const visibleNotifications = notifications
+    .filter((n) => !dismissed.has(n.id))
+    .slice(0, 5);
 
   const handleDismiss = (id: string) => {
     setDismissed((prev) => new Set(prev).add(id));
@@ -143,19 +154,26 @@ export function PortalNotificationsPopover() {
           {unreadCount > 0 && (
             <span
               className={cn(
-                'absolute top-1 right-1 w-4 h-4 text-[10px] font-medium rounded-full flex items-center justify-center',
-                criticalCount > 0 ? 'bg-red-500 text-white' : 'bg-[var(--accent)] text-white'
+                "absolute top-1 right-1 w-4 h-4 text-[10px] font-medium rounded-full flex items-center justify-center",
+                criticalCount > 0
+                  ? "bg-red-500 text-white"
+                  : "bg-[var(--accent)] text-white",
               )}
             >
-              {unreadCount > 9 ? '9+' : unreadCount}
+              {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0 bg-[#1a1a1a] border-gray-800" align="end">
+      <PopoverContent
+        className="w-80 p-0 bg-[#1a1a1a] border-gray-800"
+        align="end"
+      >
         <div className="p-3 border-b border-gray-800">
           <div className="flex items-center justify-between">
-            <h3 className="font-medium text-[var(--foreground)]">Notifications</h3>
+            <h3 className="font-medium text-[var(--foreground)]">
+              Notifications
+            </h3>
             {criticalCount > 0 && (
               <span className="text-xs px-2 py-0.5 bg-red-500/20 text-red-400 rounded-full">
                 {criticalCount} urgent
@@ -203,8 +221,13 @@ export function PortalNotificationsPopover() {
 /**
  * Inline notifications list
  */
-export function PortalNotificationsList({ maxItems = 5 }: { maxItems?: number }) {
-  const { notifications, criticalCount, warningCount } = usePortalNotifications();
+export function PortalNotificationsList({
+  maxItems = 5,
+}: {
+  maxItems?: number;
+}) {
+  const { notifications, criticalCount, warningCount } =
+    usePortalNotifications();
 
   if (notifications.length === 0) {
     return (
@@ -258,15 +281,15 @@ export function PortalNotificationBadge({ onClick }: { onClick?: () => void }) {
     <button
       onClick={onClick}
       className={cn(
-        'fixed bottom-20 right-4 md:hidden z-50',
-        'w-12 h-12 rounded-full shadow-lg flex items-center justify-center',
-        'transition-transform hover:scale-105',
-        criticalCount > 0 ? 'bg-red-500' : 'bg-[var(--accent)]'
+        "fixed bottom-20 right-4 md:hidden z-50",
+        "w-12 h-12 rounded-full shadow-lg flex items-center justify-center",
+        "transition-transform hover:scale-105",
+        criticalCount > 0 ? "bg-red-500" : "bg-[var(--accent)]",
       )}
     >
       <Bell className="w-5 h-5 text-white" />
       <span className="absolute -top-1 -right-1 w-5 h-5 bg-white text-black text-xs font-bold rounded-full flex items-center justify-center">
-        {unreadCount > 9 ? '9+' : unreadCount}
+        {unreadCount > 9 ? "9+" : unreadCount}
       </span>
     </button>
   );

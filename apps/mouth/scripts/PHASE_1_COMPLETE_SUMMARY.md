@@ -13,19 +13,20 @@ Successfully implemented bilingual search for KBLI Navigator by adding English k
 
 ### Key Results
 
-| Metric | Achievement |
-|--------|-------------|
-| **Coverage** | 86.5% (1,351/1,562 codes) |
-| **File Size** | 909 KB (up from 781 KB, +16.4%) |
-| **Expected Pass Rate** | 22% → 90%+ (4.1x improvement) |
-| **English Search** | 2.9% → 94% (32x improvement) |
-| **Indonesian Search** | 100% maintained ✓ |
+| Metric                 | Achievement                     |
+| ---------------------- | ------------------------------- |
+| **Coverage**           | 86.5% (1,351/1,562 codes)       |
+| **File Size**          | 909 KB (up from 781 KB, +16.4%) |
+| **Expected Pass Rate** | 22% → 90%+ (4.1x improvement)   |
+| **English Search**     | 2.9% → 94% (32x improvement)    |
+| **Indonesian Search**  | 100% maintained ✓               |
 
 ---
 
 ## What Was Done
 
 ### 1. Created English Keywords Mapping
+
 - **File:** `apps/mouth/scripts/kbli_english_keywords.json`
 - **Content:** 1,377 KBLI codes with English keywords
 - **Method:**
@@ -34,11 +35,13 @@ Successfully implemented bilingual search for KBLI Navigator by adding English k
   - Translation dictionary covers food, tech, construction, retail, healthcare, education, transportation, etc.
 
 ### 2. Created Data Generation Scripts
+
 - **`generate_kbli_data.js`** - Main generator (extracts Indonesian + merges English)
 - **`auto_generate_english_keywords.js`** - Auto-translates using pattern matching
 - **`update_index_html.js`** - Injects K array into index.html with backup
 
 ### 3. Updated KBLI Navigator
+
 - **File:** `apps/mouth/public/kbli-navigator/index.html`
 - **Change:** K array updated with bilingual keywords
 - **Format:** English keywords first, then Indonesian (space-separated, lowercase)
@@ -66,29 +69,32 @@ feat(kbli): add English keywords to 1,377 KBLI codes - Phase 1
 
 ## Sample Keywords
 
-| Code | Title | English Keywords | Indonesian Keywords |
-|------|-------|------------------|---------------------|
-| 56101 | Restaurant | restaurant, cafe, dining, eatery, food service, canteen, cafeteria | restoran, kantin, kafetaria, makan, layanan |
+| Code  | Title                | English Keywords                                                                 | Indonesian Keywords                              |
+| ----- | -------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------ |
+| 56101 | Restaurant           | restaurant, cafe, dining, eatery, food service, canteen, cafeteria               | restoran, kantin, kafetaria, makan, layanan      |
 | 62013 | Software Development | software, development, programming, coding, IT, tech, computer, app, application | pemrograman, komputer, perangkat lunak, aplikasi |
-| 55101 | Hotel | hotel, five-star, luxury, accommodation, lodging, resort | hotel, akomodasi, menginap, fasilitas |
-| 41001 | Construction | construction, building, development, contractor, real estate, property | pembangunan, gedung, bangunan, konstruksi |
+| 55101 | Hotel                | hotel, five-star, luxury, accommodation, lodging, resort                         | hotel, akomodasi, menginap, fasilitas            |
+| 41001 | Construction         | construction, building, development, contractor, real estate, property           | pembangunan, gedung, bangunan, konstruksi        |
 
 ---
 
 ## Testing & Verification
 
 ### Automated
+
 ✅ Script execution successful (no errors)
 ✅ File size verification (781KB → 909KB, +16.4%)
 ✅ 1,351 codes confirmed with English keywords
 ✅ Backup created automatically
 
 ### Manual
+
 ✅ "restaurant" keyword found in index.html
 ✅ "software" keyword found in index.html
 ✅ File structure intact
 
 ### Production
+
 🚀 **Deployed to:** https://zantara.balizero.com/kbli-navigator
 ⏳ **Vercel auto-deployment:** In progress (2-3 minutes)
 
@@ -100,9 +106,10 @@ feat(kbli): add English keywords to 1,377 KBLI codes - Phase 1
 
 1. **Wait for Vercel deployment** (2-3 minutes)
 2. **Test production:**
+
    ```
    https://zantara.balizero.com/kbli-navigator
-   
+
    Try searches:
    - "restaurant" → Should find code 56101
    - "software" → Should find code 62013
@@ -145,12 +152,12 @@ feat(kbli): add English keywords to 1,377 KBLI codes - Phase 1
 
 ## Performance Expectations
 
-| Metric | Expected | Actual (to verify) |
-|--------|----------|-------------------|
-| Search speed | < 50ms | ? |
-| Page load | < 2s | ? |
-| Memory usage | < 50 MB | ? |
-| Error rate | 0% | ? |
+| Metric       | Expected | Actual (to verify) |
+| ------------ | -------- | ------------------ |
+| Search speed | < 50ms   | ?                  |
+| Page load    | < 2s     | ?                  |
+| Memory usage | < 50 MB  | ?                  |
+| Error rate   | 0%       | ?                  |
 
 ---
 

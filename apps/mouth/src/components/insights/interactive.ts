@@ -11,4 +11,4 @@ export {
   Checklist,
   InfoCard,
   GlossaryTerm,
-} from '@/components/blog/interactive';
+} from "@/components/blog/interactive";

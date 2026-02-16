@@ -8,9 +8,9 @@
  * - Priority loading for above-fold images
  */
 
-import React from 'react';
-import Image from 'next/image';
-import { cn } from '@/lib/utils';
+import React from "react";
+import Image from "next/image";
+import { cn } from "@/lib/utils";
 
 interface OptimizedImageProps {
   src: string;
@@ -24,7 +24,7 @@ interface OptimizedImageProps {
   blurDataURL?: string;
   sizes?: string;
   quality?: number;
-  objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
+  objectFit?: "cover" | "contain" | "fill" | "none" | "scale-down";
   onLoad?: () => void;
   onError?: () => void;
 }
@@ -49,19 +49,27 @@ export function OptimizedImage({
   className,
   containerClassName,
   blurDataURL,
-  sizes = '(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw',
+  sizes = "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw",
   quality = 85,
-  objectFit = 'cover',
+  objectFit = "cover",
   onLoad,
   onError,
 }: OptimizedImageProps) {
   // Generate low-quality blur placeholder if not provided
-  const placeholder = blurDataURL ? 'blur' : 'empty';
+  const placeholder = blurDataURL ? "blur" : "empty";
 
   return (
     <div
-      className={cn('relative overflow-hidden', fill ? 'absolute inset-0' : '', containerClassName)}
-      style={!fill && width && height ? { aspectRatio: `${width}/${height}` } : undefined}
+      className={cn(
+        "relative overflow-hidden",
+        fill ? "absolute inset-0" : "",
+        containerClassName,
+      )}
+      style={
+        !fill && width && height
+          ? { aspectRatio: `${width}/${height}` }
+          : undefined
+      }
     >
       <Image
         src={src}
@@ -70,19 +78,19 @@ export function OptimizedImage({
         width={!fill ? width : undefined}
         height={!fill ? height : undefined}
         priority={priority}
-        loading={priority ? 'eager' : 'lazy'}
+        loading={priority ? "eager" : "lazy"}
         quality={quality}
         placeholder={placeholder}
         blurDataURL={blurDataURL}
         sizes={sizes}
         className={cn(
-          'transition-opacity duration-300',
-          objectFit === 'cover' && 'object-cover',
-          objectFit === 'contain' && 'object-contain',
-          objectFit === 'fill' && 'object-fill',
-          objectFit === 'none' && 'object-none',
-          objectFit === 'scale-down' && 'object-scale-down',
-          className
+          "transition-opacity duration-300",
+          objectFit === "cover" && "object-cover",
+          objectFit === "contain" && "object-contain",
+          objectFit === "fill" && "object-fill",
+          objectFit === "none" && "object-none",
+          objectFit === "scale-down" && "object-scale-down",
+          className,
         )}
         onLoad={onLoad}
         onError={onError}
@@ -91,7 +99,10 @@ export function OptimizedImage({
   );
 }
 
-interface ResponsiveImageProps extends Omit<OptimizedImageProps, 'width' | 'height'> {
+interface ResponsiveImageProps extends Omit<
+  OptimizedImageProps,
+  "width" | "height"
+> {
   aspectRatio?: string;
   maxWidth?: number;
 }
@@ -101,14 +112,17 @@ interface ResponsiveImageProps extends Omit<OptimizedImageProps, 'width' | 'heig
  * Maintains aspect ratio while being responsive
  */
 export function ResponsiveImage({
-  aspectRatio = '16/9',
+  aspectRatio = "16/9",
   maxWidth = 1200,
   className,
   containerClassName,
   ...props
 }: ResponsiveImageProps) {
   return (
-    <div className={cn('w-full', containerClassName)} style={{ maxWidth, aspectRatio }}>
+    <div
+      className={cn("w-full", containerClassName)}
+      style={{ maxWidth, aspectRatio }}
+    >
       <OptimizedImage
         {...props}
         fill
@@ -122,7 +136,7 @@ export function ResponsiveImage({
 interface AvatarProps {
   src?: string | null;
   alt: string;
-  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+  size?: "xs" | "sm" | "md" | "lg" | "xl";
   fallback?: string;
   className?: string;
 }
@@ -139,7 +153,13 @@ const sizeMap = {
  * Optimized Avatar Component
  * Perfect for user lists, team pages, etc.
  */
-export function OptimizedAvatar({ src, alt, size = 'md', fallback, className }: AvatarProps) {
+export function OptimizedAvatar({
+  src,
+  alt,
+  size = "md",
+  fallback,
+  className,
+}: AvatarProps) {
   const sizePx = sizeMap[size];
   const initials = fallback || alt.slice(0, 2).toUpperCase();
 
@@ -147,8 +167,8 @@ export function OptimizedAvatar({ src, alt, size = 'md', fallback, className }: 
     return (
       <div
         className={cn(
-          'flex items-center justify-center rounded-full bg-primary text-primary-foreground font-medium',
-          className
+          "flex items-center justify-center rounded-full bg-primary text-primary-foreground font-medium",
+          className,
         )}
         style={{ width: sizePx, height: sizePx, fontSize: sizePx * 0.4 }}
       >
@@ -163,8 +183,8 @@ export function OptimizedAvatar({ src, alt, size = 'md', fallback, className }: 
       alt={alt}
       width={sizePx}
       height={sizePx}
-      className={cn('rounded-full object-cover', className)}
-      containerClassName={cn('rounded-full overflow-hidden', className)}
+      className={cn("rounded-full object-cover", className)}
+      containerClassName={cn("rounded-full overflow-hidden", className)}
     />
   );
 }
@@ -181,7 +201,12 @@ interface IconSpriteProps {
  */
 export function IconSprite({ name, size = 24, className }: IconSpriteProps) {
   return (
-    <svg width={size} height={size} className={cn('fill-current', className)} aria-hidden="true">
+    <svg
+      width={size}
+      height={size}
+      className={cn("fill-current", className)}
+      aria-hidden="true"
+    >
       <use href={`/icons/sprite.svg#${name}`} />
     </svg>
   );
@@ -189,12 +214,12 @@ export function IconSprite({ name, size = 24, className }: IconSpriteProps) {
 
 // Preload critical images
 export const preloadCriticalImages = (imageUrls: string[]) => {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
 
   imageUrls.forEach((url) => {
-    const link = document.createElement('link');
-    link.rel = 'preload';
-    link.as = 'image';
+    const link = document.createElement("link");
+    link.rel = "preload";
+    link.as = "image";
     link.href = url;
     document.head.appendChild(link);
   });
@@ -212,7 +237,7 @@ export const imageUtils = {
         <rect width="100%" height="100%" fill="#e5e7eb"/>
       </svg>
     `;
-    return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+    return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
   },
 
   /**
@@ -220,15 +245,17 @@ export const imageUtils = {
    */
   getOptimalSize: (viewportWidth: number): number => {
     const sizes = [640, 750, 828, 1080, 1200, 1920, 2048];
-    return sizes.find((size) => size >= viewportWidth) || sizes[sizes.length - 1];
+    return (
+      sizes.find((size) => size >= viewportWidth) || sizes[sizes.length - 1]
+    );
   },
 
   /**
    * Convert image to WebP format hint
    */
   getWebPUrl: (url: string): string => {
-    if (url.endsWith('.webp')) return url;
-    if (url.includes('?')) return `${url}&format=webp`;
+    if (url.endsWith(".webp")) return url;
+    if (url.includes("?")) return `${url}&format=webp`;
     return `${url}?format=webp`;
   },
 };

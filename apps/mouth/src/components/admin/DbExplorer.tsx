@@ -1,15 +1,15 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { api } from '@/lib/api';
-import { TableDataResponse } from '@/lib/api/admin/admin.types';
+import { useState, useEffect } from "react";
+import { api } from "@/lib/api";
+import { TableDataResponse } from "@/lib/api/admin/admin.types";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -17,13 +17,13 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { RefreshCw, Database, ChevronLeft, ChevronRight } from 'lucide-react';
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { RefreshCw, Database, ChevronLeft, ChevronRight } from "lucide-react";
 
 export function DbExplorer() {
   const [tables, setTables] = useState<string[]>([]);
-  const [selectedTable, setSelectedTable] = useState<string>('');
+  const [selectedTable, setSelectedTable] = useState<string>("");
   const [tableData, setTableData] = useState<TableDataResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [page, setPage] = useState(0);
@@ -41,7 +41,7 @@ export function DbExplorer() {
         // Don't auto-select, let user choose
       }
     } catch (err) {
-      console.error('Failed to load tables', err);
+      console.error("Failed to load tables", err);
     }
   };
 
@@ -53,7 +53,7 @@ export function DbExplorer() {
       setTableData(data);
       setPage(newPage);
     } catch (err) {
-      console.error('Failed to load data', err);
+      console.error("Failed to load data", err);
     } finally {
       setIsLoading(false);
     }
@@ -94,7 +94,7 @@ export function DbExplorer() {
           className="ml-auto"
           disabled={!selectedTable || isLoading}
         >
-          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
         </Button>
       </div>
 
@@ -103,8 +103,9 @@ export function DbExplorer() {
         <div className="border border-white/10 rounded-lg overflow-hidden bg-black/20">
           <div className="p-2 bg-white/5 border-b border-white/10 flex justify-between items-center text-xs text-muted-foreground">
             <span>
-              Rows {page * PAGE_SIZE + 1}-{Math.min((page + 1) * PAGE_SIZE, tableData.total_rows)}{' '}
-              of {tableData.total_rows}
+              Rows {page * PAGE_SIZE + 1}-
+              {Math.min((page + 1) * PAGE_SIZE, tableData.total_rows)} of{" "}
+              {tableData.total_rows}
             </span>
             <div className="flex gap-2">
               <Button
@@ -119,7 +120,9 @@ export function DbExplorer() {
                 variant="ghost"
                 size="sm"
                 onClick={() => loadData(selectedTable, page + 1)}
-                disabled={(page + 1) * PAGE_SIZE >= tableData.total_rows || isLoading}
+                disabled={
+                  (page + 1) * PAGE_SIZE >= tableData.total_rows || isLoading
+                }
               >
                 <ChevronRight className="w-4 h-4" />
               </Button>
@@ -152,7 +155,10 @@ export function DbExplorer() {
                   </TableRow>
                 ) : (
                   tableData.rows.map((row, i) => (
-                    <TableRow key={i} className="hover:bg-white/5 border-white/5">
+                    <TableRow
+                      key={i}
+                      className="hover:bg-white/5 border-white/5"
+                    >
                       {tableData.columns.map((col) => {
                         const val = row[col];
                         return (

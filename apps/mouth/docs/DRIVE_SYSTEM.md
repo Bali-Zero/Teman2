@@ -107,8 +107,8 @@ Sidebar di navigazione stile Google Drive.
 
 ```typescript
 interface DriveSidebarProps {
-  activeView: 'my-drive' | 'recent' | 'starred' | 'trash';
-  onViewChange: (view: 'my-drive' | 'recent' | 'starred' | 'trash') => void;
+  activeView: "my-drive" | "recent" | "starred" | "trash";
+  onViewChange: (view: "my-drive" | "recent" | "starred" | "trash") => void;
   onNewClick: (e: React.MouseEvent) => void;
   onUploadClick: () => void;
   storageUsed?: number;
@@ -195,7 +195,7 @@ Vista lista tabellare.
 Query per recuperare file di una cartella.
 
 ```typescript
-function useDriveFiles(folderId: string | null, searchQuery: string = '');
+function useDriveFiles(folderId: string | null, searchQuery: string = "");
 ```
 
 **Features:**

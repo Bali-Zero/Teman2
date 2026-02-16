@@ -3,23 +3,27 @@
 ## 📦 Optimization Components
 
 ### React.memo Components
+
 Use these for frequently rendered lists to prevent unnecessary re-renders:
 
 ```tsx
-import { MemoCard, MemoListItem, MemoBadge } from '@/components/optimization';
+import { MemoCard, MemoListItem, MemoBadge } from "@/components/optimization";
 
 // In a list - prevents all items from re-rendering
-{items.map(item => (
-  <MemoListItem 
-    key={item.id}
-    id={item.id}
-    title={item.title}
-    onClick={handleClick}
-  />
-))}
+{
+  items.map((item) => (
+    <MemoListItem
+      key={item.id}
+      id={item.id}
+      title={item.title}
+      onClick={handleClick}
+    />
+  ));
+}
 ```
 
 ### Lazy Loading
+
 Load heavy components only when needed:
 
 ```tsx
@@ -35,6 +39,7 @@ import { LazyChart, LazyPage } from '@/components/optimization';
 ```
 
 ### Image Optimization
+
 Use OptimizedImage for all images:
 
 ```tsx
@@ -66,6 +71,7 @@ import { OptimizedImage, ResponsiveImage, OptimizedAvatar } from '@/components/o
 ```
 
 ### Accessibility
+
 Built-in accessible components:
 
 ```tsx
@@ -96,21 +102,22 @@ import { SkipLink, FormField, AccessibleButton } from '@/components/optimization
 ```
 
 ### API Caching
+
 Automatic caching for API calls:
 
 ```tsx
-import { useCachedQuery, fetchWithCache } from '@/components/optimization';
+import { useCachedQuery, fetchWithCache } from "@/components/optimization";
 
 // In components - automatic caching
 const { data, error, isLoading, refetch } = useCachedQuery({
-  key: 'user-profile',
-  fetcher: () => fetch('/api/user').then(r => r.json()),
+  key: "user-profile",
+  fetcher: () => fetch("/api/user").then((r) => r.json()),
   ttl: 60000, // 1 minute cache
 });
 
 // Direct usage
 const data = await fetchWithCache({
-  key: 'settings',
+  key: "settings",
   fetcher: () => fetchSettings(),
   ttl: 300000, // 5 minutes
   staleWhileRevalidate: true,
@@ -120,35 +127,42 @@ const data = await fetchWithCache({
 ## 🚀 Performance Tips
 
 ### 1. Use React.memo for List Items
+
 Always wrap list items with React.memo to prevent cascade re-renders.
 
 ### 2. Lazy Load Heavy Components
+
 Charts, editors, and complex UIs should be lazy loaded.
 
 ### 3. Optimize Images
+
 - Use WebP/AVIF formats
 - Provide width/height to prevent CLS
 - Use `priority` for above-fold images
 - Lazy load below-fold images
 
 ### 4. Cache API Responses
+
 Use `useCachedQuery` for data that doesn't change frequently.
 
 ### 5. Code Splitting
+
 The app uses Next.js automatic code splitting. For manual splitting:
 
 ```tsx
-const HeavyComponent = React.lazy(() => import('./HeavyComponent'));
+const HeavyComponent = React.lazy(() => import("./HeavyComponent"));
 ```
 
 ## 📊 Monitoring
 
 ### Bundle Analysis
+
 ```bash
 ANALYZE=true npm run build
 ```
 
 ### Cache Metrics
+
 ```bash
 # In browser console
 __API_CACHE__.getStats()

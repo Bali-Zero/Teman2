@@ -77,8 +77,8 @@ import {
   Checklist,
   InfoCard,
   ConfidenceMeter,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Property Investment in Indonesia 2026: Complete Guide for Foreigners
 
@@ -93,7 +93,9 @@ Property investment in Indonesia is attractive but complex for foreigners. Under
 ## The Basic Rule
 
 <InfoCard variant="warning" title="Foreigners Cannot Own Land">
-Indonesian law (UUPA 1960) prohibits foreigners from owning land outright with **Hak Milik** (freehold title). However, there are legal alternatives that provide varying degrees of ownership and control.
+  Indonesian law (UUPA 1960) prohibits foreigners from owning land outright with
+  **Hak Milik** (freehold title). However, there are legal alternatives that
+  provide varying degrees of ownership and control.
 </InfoCard>
 
 ---
@@ -110,60 +112,65 @@ Indonesian law (UUPA 1960) prohibits foreigners from owning land outright with *
       options: [
         { label: "Land with building (house/villa)", next: "land" },
         { label: "Apartment/condominium", next: "apartment" },
-        { label: "Commercial property", next: "commercial" }
-      ]
+        { label: "Commercial property", next: "commercial" },
+      ],
     },
     {
       id: "land",
       question: "How do you want to structure ownership?",
       options: [
         { label: "Personal name", next: "personal-land" },
-        { label: "Through company", next: "company-land" }
-      ]
+        { label: "Through company", next: "company-land" },
+      ],
     },
     {
       id: "apartment",
       question: "What type of apartment?",
       options: [
         { label: "Strata title (HGB Strata)", next: "strata" },
-        { label: "Leasehold apartment", next: "lease-apt" }
-      ]
+        { label: "Leasehold apartment", next: "lease-apt" },
+      ],
     },
     {
       id: "commercial",
       result: {
         title: "PT PMA Commercial Property",
-        description: "Commercial property typically acquired through PT PMA with HGB (Building Rights). Can include offices, retail, hotels, factories."
-      }
+        description:
+          "Commercial property typically acquired through PT PMA with HGB (Building Rights). Can include offices, retail, hotels, factories.",
+      },
     },
     {
       id: "personal-land",
       result: {
         title: "Hak Pakai (Right to Use)",
-        description: "Foreigners with valid residence permit (KITAS/KITAP) can hold Hak Pakai title for residential property. Maximum 30 years, extendable to 80 years total."
-      }
+        description:
+          "Foreigners with valid residence permit (KITAS/KITAP) can hold Hak Pakai title for residential property. Maximum 30 years, extendable to 80 years total.",
+      },
     },
     {
       id: "company-land",
       result: {
         title: "PT PMA + HGB",
-        description: "Your company (PT PMA) can hold HGB (Building Rights) for 30 years, extendable to 80 years. Good for investment properties, but higher setup costs."
-      }
+        description:
+          "Your company (PT PMA) can hold HGB (Building Rights) for 30 years, extendable to 80 years. Good for investment properties, but higher setup costs.",
+      },
     },
     {
       id: "strata",
       result: {
         title: "Hak Milik Satuan Rumah Susun",
-        description: "Foreigners with KITAS/KITAP can own strata title apartments in designated buildings. Full ownership of the unit, shared ownership of common areas."
-      }
+        description:
+          "Foreigners with KITAS/KITAP can own strata title apartments in designated buildings. Full ownership of the unit, shared ownership of common areas.",
+      },
     },
     {
       id: "lease-apt",
       result: {
         title: "Leasehold Apartment",
-        description: "No KITAS required. Lease agreement gives you exclusive use rights for the lease term. No ownership transfer, but simpler to arrange."
-      }
-    }
+        description:
+          "No KITAS required. Lease agreement gives you exclusive use rights for the lease term. No ownership transfer, but simpler to arrange.",
+      },
+    },
   ]}
 />
 
@@ -179,43 +186,43 @@ Indonesian law (UUPA 1960) prohibits foreigners from owning land outright with *
       name: "Hak Milik",
       subtitle: "Freehold - Indonesians only",
       values: {
-        "Foreigners": "Not allowed",
-        "Duration": "Perpetual",
-        "Transfer": "Full sale",
-        "Inheritance": "Yes"
-      }
+        Foreigners: "Not allowed",
+        Duration: "Perpetual",
+        Transfer: "Full sale",
+        Inheritance: "Yes",
+      },
     },
     {
       name: "Hak Pakai",
       subtitle: "Right to Use",
       values: {
-        "Foreigners": "Yes (with KITAS/KITAP)",
-        "Duration": "30+20+30 years",
-        "Transfer": "Limited",
-        "Inheritance": "Yes (if heir eligible)"
+        Foreigners: "Yes (with KITAS/KITAP)",
+        Duration: "30+20+30 years",
+        Transfer: "Limited",
+        Inheritance: "Yes (if heir eligible)",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "HGB",
       subtitle: "Building Rights",
       values: {
-        "Foreigners": "Via PT PMA",
-        "Duration": "30+20+30 years",
-        "Transfer": "Company sale",
-        "Inheritance": "Via company shares"
-      }
+        Foreigners: "Via PT PMA",
+        Duration: "30+20+30 years",
+        Transfer: "Company sale",
+        Inheritance: "Via company shares",
+      },
     },
     {
       name: "Leasehold",
       subtitle: "Lease agreement",
       values: {
-        "Foreigners": "Yes (no KITAS needed)",
-        "Duration": "Negotiated (10-99 years)",
-        "Transfer": "Per agreement",
-        "Inheritance": "Per agreement"
-      }
-    }
+        Foreigners: "Yes (no KITAS needed)",
+        Duration: "Negotiated (10-99 years)",
+        Transfer: "Per agreement",
+        Inheritance: "Per agreement",
+      },
+    },
   ]}
 />
 
@@ -226,24 +233,28 @@ Indonesian law (UUPA 1960) prohibits foreigners from owning land outright with *
 The most direct way for foreigners to own residential property:
 
 ### Requirements
+
 - Valid KITAS or KITAP
 - Property in designated areas
 - Residential use only
 - Minimum value requirements in some areas
 
 ### Duration
+
 - **Initial**: 30 years
 - **First extension**: 20 years
 - **Second extension**: 30 years
 - **Total**: 80 years maximum
 
 <InfoCard variant="note" title="Extension Not Automatic">
-Extensions must be applied for before expiry. There's no guarantee of extension - it depends on continued eligibility and compliance.
+  Extensions must be applied for before expiry. There's no guarantee of
+  extension - it depends on continued eligibility and compliance.
 </InfoCard>
 
 ### What Happens When You Leave?
 
 If your KITAS/KITAP expires:
+
 1. Must transfer property within 1 year
 2. Sell to eligible buyer
 3. Convert to Indonesian spouse (if applicable)
@@ -256,6 +267,7 @@ If your KITAS/KITAP expires:
 Using a company to hold property:
 
 ### Advantages
+
 - Can own multiple properties
 - Commercial and residential possible
 - Easier to transfer (sell company shares)
@@ -263,6 +275,7 @@ Using a company to hold property:
 - Can generate rental income as business
 
 ### Disadvantages
+
 - Company setup costs (IDR 100M+)
 - Annual compliance (tax, reporting)
 - Property tax + corporate tax
@@ -270,6 +283,7 @@ Using a company to hold property:
 - More complex structure
 
 ### Best For
+
 - Multiple properties
 - Investment/rental focus
 - Commercial properties
@@ -282,12 +296,14 @@ Using a company to hold property:
 The simplest option for foreigners:
 
 ### How Leasehold Works
+
 1. Indonesian owner retains title (Hak Milik)
 2. You get exclusive use rights
 3. Lease registered with land office
 4. Duration: typically 25-30 years
 
 ### Lease Terms to Negotiate
+
 - **Duration**: Longer is better
 - **Extension**: Pre-agreed renewal terms
 - **Building rights**: Can you build/renovate?
@@ -295,11 +311,9 @@ The simplest option for foreigners:
 - **Inheritance**: What happens if you die?
 
 <InfoCard variant="warning" title="Leasehold Risks">
-- You don't own the land
-- Landowner disputes possible
-- Extension not guaranteed
-- Value decreases as lease shortens
-- Banks may not accept as collateral
+  - You don't own the land - Landowner disputes possible - Extension not
+  guaranteed - Value decreases as lease shortens - Banks may not accept as
+  collateral
 </InfoCard>
 
 ---
@@ -316,63 +330,63 @@ The simplest option for foreigners:
       label: "Verify land title (Sertifikat)",
       description: "Check at BPN (Land Office)",
       required: true,
-      category: "legal"
+      category: "legal",
     },
     {
       id: "ownership",
       label: "Confirm seller is owner",
       description: "Name matches certificate",
       required: true,
-      category: "legal"
+      category: "legal",
     },
     {
       id: "encumbrance",
       label: "Check for encumbrances",
       description: "Mortgages, disputes, claims",
       required: true,
-      category: "legal"
+      category: "legal",
     },
     {
       id: "zoning",
       label: "Verify zoning/land use",
       description: "Matches your intended use",
       required: true,
-      category: "planning"
+      category: "planning",
     },
     {
       id: "building",
       label: "Check building permits",
       description: "IMB/PBG for existing structures",
       required: true,
-      category: "planning"
+      category: "planning",
     },
     {
       id: "tax",
       label: "Confirm taxes paid",
       description: "PBB (land tax) current",
       required: true,
-      category: "tax"
+      category: "tax",
     },
     {
       id: "survey",
       label: "Physical survey",
       description: "Boundaries match certificate",
       required: true,
-      category: "physical"
+      category: "physical",
     },
     {
       id: "access",
       label: "Access rights",
       description: "Road access, easements",
       required: true,
-      category: "physical"
-    }
+      category: "physical",
+    },
   ]}
   categories={[
     { id: "legal", label: "Legal", color: "blue" },
     { id: "planning", label: "Planning", color: "green" },
     { id: "tax", label: "Tax", color: "amber" },
-    { id: "physical", label: "Physical", color: "purple" }
+    { id: "physical", label: "Physical", color: "purple" },
   ]}
   showProgress={true}
 />
@@ -383,37 +397,40 @@ The simplest option for foreigners:
 
 ### Acquisition Costs
 
-| Cost | Rate | Paid By |
-|------|------|---------|
-| BPHTB (Transfer tax) | 5% of taxable value | Buyer |
-| PPh (Seller income tax) | 2.5% of transaction | Seller |
-| Notary fees | 0.5-1% | Usually buyer |
-| Land office registration | ~IDR 1M | Buyer |
+| Cost                     | Rate                | Paid By       |
+| ------------------------ | ------------------- | ------------- |
+| BPHTB (Transfer tax)     | 5% of taxable value | Buyer         |
+| PPh (Seller income tax)  | 2.5% of transaction | Seller        |
+| Notary fees              | 0.5-1%              | Usually buyer |
+| Land office registration | ~IDR 1M             | Buyer         |
 
 ### Ongoing Costs
 
-| Tax | Rate | Frequency |
-|-----|------|-----------|
-| PBB (Land/building tax) | 0.1-0.3% | Annual |
-| Rental income tax | 10% of rent | If renting |
+| Tax                     | Rate        | Frequency  |
+| ----------------------- | ----------- | ---------- |
+| PBB (Land/building tax) | 0.1-0.3%    | Annual     |
+| Rental income tax       | 10% of rent | If renting |
 
 ---
 
 ## Popular Locations
 
 ### Bali
+
 - High demand, premium prices
 - Strong rental market
 - Leasehold dominant
 - Tourist area restrictions
 
 ### Jakarta
+
 - Apartments more accessible
 - Strong strata title market
 - Business focus
 - Better infrastructure
 
 ### Other Areas
+
 - Lombok (emerging)
 - Surabaya (commercial)
 - Bandung (residential)
@@ -424,12 +441,11 @@ The simplest option for foreigners:
 ## Common Mistakes to Avoid
 
 <InfoCard variant="error" title="Dangerous Mistakes">
-1. **Nominee arrangements** - Using Indonesian name to hold title is ILLEGAL
-2. **Underpaying taxes** - Reporting lower price creates problems
-3. **Skipping due diligence** - Title issues common
-4. **Verbal agreements** - Everything must be in writing
-5. **Ignoring expiry** - Failing to extend rights in time
-6. **No legal review** - Always use property lawyer
+  1. **Nominee arrangements** - Using Indonesian name to hold title is ILLEGAL
+  2. **Underpaying taxes** - Reporting lower price creates problems 3.
+  **Skipping due diligence** - Title issues common 4. **Verbal agreements** -
+  Everything must be in writing 5. **Ignoring expiry** - Failing to extend
+  rights in time 6. **No legal review** - Always use property lawyer
 </InfoCard>
 
 ---
@@ -443,7 +459,7 @@ The simplest option for foreigners:
     "Can I get a mortgage as a foreigner?",
     "What about buying through an Indonesian spouse?",
     "Is property a good investment in Bali?",
-    "How do I sell my property later?"
+    "How do I sell my property later?",
   ]}
 />
 

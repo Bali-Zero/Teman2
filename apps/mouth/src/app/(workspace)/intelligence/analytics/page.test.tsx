@@ -1,13 +1,16 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import IntelligenceAnalyticsPage from './page';
-import { intelligenceApi, IntelligenceAnalytics } from '@/lib/api/intelligence.api';
-import { logger } from '@/lib/logger';
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import IntelligenceAnalyticsPage from "./page";
+import {
+  intelligenceApi,
+  IntelligenceAnalytics,
+} from "@/lib/api/intelligence.api";
+import { logger } from "@/lib/logger";
 
-vi.mock('@/lib/api/intelligence.api');
-vi.mock('@/lib/logger');
-vi.mock('@/components/ui/toast', () => ({
+vi.mock("@/lib/api/intelligence.api");
+vi.mock("@/lib/logger");
+vi.mock("@/components/ui/toast", () => ({
   useToast: () => ({
     success: vi.fn(),
     error: vi.fn(),
@@ -25,9 +28,27 @@ const mockAnalytics: IntelligenceAnalytics = {
     rejection_rate: 20.0,
   },
   daily_trends: [
-    { date: '2025-01-01', processed: 5, approved: 4, rejected: 1, published: 2 },
-    { date: '2025-01-02', processed: 8, approved: 6, rejected: 2, published: 3 },
-    { date: '2025-01-03', processed: 3, approved: 3, rejected: 0, published: 1 },
+    {
+      date: "2025-01-01",
+      processed: 5,
+      approved: 4,
+      rejected: 1,
+      published: 2,
+    },
+    {
+      date: "2025-01-02",
+      processed: 8,
+      approved: 6,
+      rejected: 2,
+      published: 3,
+    },
+    {
+      date: "2025-01-03",
+      processed: 3,
+      approved: 3,
+      rejected: 0,
+      published: 1,
+    },
   ],
   type_breakdown: {
     visa: { processed: 100, approved: 80, rejected: 20 },
@@ -39,7 +60,7 @@ const mockAnalytics: IntelligenceAnalytics = {
   },
 };
 
-describe('IntelligenceAnalyticsPage', () => {
+describe("IntelligenceAnalyticsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(intelligenceApi.getAnalytics).mockResolvedValue(mockAnalytics);
@@ -49,35 +70,43 @@ describe('IntelligenceAnalyticsPage', () => {
     vi.restoreAllMocks();
   });
 
-  it('should log component mount', async () => {
+  it("should log component mount", async () => {
     render(<IntelligenceAnalyticsPage />);
 
     await waitFor(() => {
-      expect(logger.componentMount).toHaveBeenCalledWith('IntelligenceAnalyticsPage');
+      expect(logger.componentMount).toHaveBeenCalledWith(
+        "IntelligenceAnalyticsPage",
+      );
     });
   });
 
-  it('should log component unmount', async () => {
+  it("should log component unmount", async () => {
     const { unmount } = render(<IntelligenceAnalyticsPage />);
 
     await waitFor(() => {
-      expect(screen.queryByText('Loading Analytics...')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Loading Analytics..."),
+      ).not.toBeInTheDocument();
     });
 
     unmount();
 
-    expect(logger.componentUnmount).toHaveBeenCalledWith('IntelligenceAnalyticsPage');
+    expect(logger.componentUnmount).toHaveBeenCalledWith(
+      "IntelligenceAnalyticsPage",
+    );
   });
 
-  it('should show loading state initially', () => {
-    vi.mocked(intelligenceApi.getAnalytics).mockImplementation(() => new Promise(() => {}));
+  it("should show loading state initially", () => {
+    vi.mocked(intelligenceApi.getAnalytics).mockImplementation(
+      () => new Promise(() => {}),
+    );
 
     render(<IntelligenceAnalyticsPage />);
 
-    expect(screen.getByText('Loading Analytics...')).toBeInTheDocument();
+    expect(screen.getByText("Loading Analytics...")).toBeInTheDocument();
   });
 
-  it('should fetch analytics on mount', async () => {
+  it("should fetch analytics on mount", async () => {
     render(<IntelligenceAnalyticsPage />);
 
     await waitFor(() => {
@@ -85,24 +114,24 @@ describe('IntelligenceAnalyticsPage', () => {
     });
   });
 
-  it('should display summary cards', async () => {
+  it("should display summary cards", async () => {
     render(<IntelligenceAnalyticsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('150')).toBeInTheDocument(); // Total Processed
+      expect(screen.getByText("150")).toBeInTheDocument(); // Total Processed
       // Percentages render without trailing zeros (80.0 -> 80%)
-      expect(screen.getByText('80%')).toBeInTheDocument(); // Approval Rate
-      expect(screen.getByText('20%')).toBeInTheDocument(); // Rejection Rate
+      expect(screen.getByText("80%")).toBeInTheDocument(); // Approval Rate
+      expect(screen.getByText("20%")).toBeInTheDocument(); // Rejection Rate
       // '45' appears in multiple places (summary + news breakdown), use getAllByText
-      expect(screen.getAllByText('45').length).toBeGreaterThan(0); // Published
+      expect(screen.getAllByText("45").length).toBeGreaterThan(0); // Published
     });
   });
 
-  it('should display daily trends chart', async () => {
+  it("should display daily trends chart", async () => {
     render(<IntelligenceAnalyticsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Daily Trends')).toBeInTheDocument();
+      expect(screen.getByText("Daily Trends")).toBeInTheDocument();
     });
 
     // Check that dates are displayed
@@ -110,28 +139,28 @@ describe('IntelligenceAnalyticsPage', () => {
     expect(dates.length).toBeGreaterThan(0);
   });
 
-  it('should display type breakdown', async () => {
+  it("should display type breakdown", async () => {
     render(<IntelligenceAnalyticsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Visa Oracle Breakdown')).toBeInTheDocument();
-      expect(screen.getByText('News Room Breakdown')).toBeInTheDocument();
+      expect(screen.getByText("Visa Oracle Breakdown")).toBeInTheDocument();
+      expect(screen.getByText("News Room Breakdown")).toBeInTheDocument();
     });
 
     // Check Visa breakdown - numbers may appear multiple times, use getAllByText
-    expect(screen.getAllByText('100').length).toBeGreaterThan(0); // Visa processed
-    expect(screen.getAllByText('80').length).toBeGreaterThan(0); // Visa approved
+    expect(screen.getAllByText("100").length).toBeGreaterThan(0); // Visa processed
+    expect(screen.getAllByText("80").length).toBeGreaterThan(0); // Visa approved
 
     // Check News breakdown - numbers may appear multiple times
-    expect(screen.getAllByText('50').length).toBeGreaterThan(0); // News processed
-    expect(screen.getAllByText('45').length).toBeGreaterThan(0); // News published
+    expect(screen.getAllByText("50").length).toBeGreaterThan(0); // News processed
+    expect(screen.getAllByText("45").length).toBeGreaterThan(0); // News published
   });
 
-  it('should change period when period selector changes', async () => {
+  it("should change period when period selector changes", async () => {
     render(<IntelligenceAnalyticsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('150')).toBeInTheDocument();
+      expect(screen.getByText("150")).toBeInTheDocument();
     });
 
     // Note: Select component interaction requires more complex setup
@@ -141,39 +170,39 @@ describe('IntelligenceAnalyticsPage', () => {
     expect(intelligenceApi.getAnalytics).toHaveBeenCalledWith(30);
   });
 
-  it('should refresh analytics when refresh button is clicked', async () => {
+  it("should refresh analytics when refresh button is clicked", async () => {
     render(<IntelligenceAnalyticsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('150')).toBeInTheDocument();
+      expect(screen.getByText("150")).toBeInTheDocument();
     });
 
-    const refreshButton = screen.getByText('Refresh');
+    const refreshButton = screen.getByText("Refresh");
     await userEvent.click(refreshButton);
 
     expect(intelligenceApi.getAnalytics).toHaveBeenCalledTimes(2);
   });
 
-  it('should handle errors gracefully', async () => {
-    const mockError = new Error('Failed to load analytics');
+  it("should handle errors gracefully", async () => {
+    const mockError = new Error("Failed to load analytics");
     vi.mocked(intelligenceApi.getAnalytics).mockRejectedValueOnce(mockError);
 
     render(<IntelligenceAnalyticsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Analytics Unavailable')).toBeInTheDocument();
-      expect(screen.getByText('Retry')).toBeInTheDocument();
+      expect(screen.getByText("Analytics Unavailable")).toBeInTheDocument();
+      expect(screen.getByText("Retry")).toBeInTheDocument();
     });
 
     expect(logger.error).toHaveBeenCalledWith(
-      'Failed to load analytics',
+      "Failed to load analytics",
       expect.any(Object),
-      mockError
+      mockError,
     );
   });
 
-  it('should retry loading analytics when Retry button is clicked', async () => {
-    const mockError = new Error('Failed to load analytics');
+  it("should retry loading analytics when Retry button is clicked", async () => {
+    const mockError = new Error("Failed to load analytics");
     vi.mocked(intelligenceApi.getAnalytics)
       .mockRejectedValueOnce(mockError)
       .mockResolvedValueOnce(mockAnalytics);
@@ -181,31 +210,31 @@ describe('IntelligenceAnalyticsPage', () => {
     render(<IntelligenceAnalyticsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Analytics Unavailable')).toBeInTheDocument();
+      expect(screen.getByText("Analytics Unavailable")).toBeInTheDocument();
     });
 
-    const retryButton = screen.getByText('Retry');
+    const retryButton = screen.getByText("Retry");
     await userEvent.click(retryButton);
 
     await waitFor(() => {
-      expect(screen.getByText('150')).toBeInTheDocument();
+      expect(screen.getByText("150")).toBeInTheDocument();
     });
 
     expect(intelligenceApi.getAnalytics).toHaveBeenCalledTimes(2);
   });
 
-  it('should log success when analytics load successfully', async () => {
+  it("should log success when analytics load successfully", async () => {
     render(<IntelligenceAnalyticsPage />);
 
     await waitFor(() => {
       expect(logger.info).toHaveBeenCalledWith(
-        'Analytics loaded successfully',
+        "Analytics loaded successfully",
         expect.objectContaining({
           metadata: expect.objectContaining({
             total_processed: 150,
             approval_rate: 80.0,
           }),
-        })
+        }),
       );
     });
   });

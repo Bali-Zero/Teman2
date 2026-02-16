@@ -524,7 +524,7 @@ Il proxy catch-all redirige TUTTO al backend
 // Frontend cattura errori HTTP
 if (response.status === 401) {
   // Redirect to login
-  window.location.replace('/login');
+  window.location.replace("/login");
 }
 
 if (response.status === 422) {
@@ -539,7 +539,7 @@ if (response.status === 422) {
 // NON settare Content-Type per FormData
 // Il browser lo setta automaticamente con boundary
 const formData = new FormData();
-formData.append('file', file);
+formData.append("file", file);
 // Content-Type header viene RIMOSSO dal client
 ```
 

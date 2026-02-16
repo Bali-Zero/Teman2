@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { AuthApi } from './auth.api';
-import { ApiClientBase } from '../client';
-import type { BackendLoginResponse } from './auth.types';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { AuthApi } from "./auth.api";
+import { ApiClientBase } from "../client";
+import type { BackendLoginResponse } from "./auth.types";
 
-describe('AuthApi', () => {
+describe("AuthApi", () => {
   let authApi: AuthApi;
   let mockClient: ApiClientBase;
   let mockRequest: ReturnType<typeof vi.fn>;
@@ -20,255 +20,265 @@ describe('AuthApi', () => {
     authApi = new AuthApi(mockClient);
   });
 
-  describe('login', () => {
-    it('should login successfully and set token/profile', async () => {
+  describe("login", () => {
+    it("should login successfully and set token/profile", async () => {
       const mockResponse: BackendLoginResponse = {
         success: true,
-        message: 'Login successful',
+        message: "Login successful",
         data: {
-          token: 'test-token',
-          token_type: 'Bearer',
+          token: "test-token",
+          token_type: "Bearer",
           expiresIn: 3600,
           user: {
-            id: '123',
-            email: 'test@example.com',
-            name: 'Test User',
-            role: 'user',
+            id: "123",
+            email: "test@example.com",
+            name: "Test User",
+            role: "user",
           },
-          csrfToken: 'csrf-token',
+          csrfToken: "csrf-token",
         },
       };
 
       mockRequest.mockResolvedValueOnce(mockResponse);
 
-      const result = await authApi.login('test@example.com', '1234');
+      const result = await authApi.login("test@example.com", "1234");
 
-      expect(mockRequest).toHaveBeenCalledWith('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email: 'test@example.com', pin: '1234' }),
+      expect(mockRequest).toHaveBeenCalledWith("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email: "test@example.com", pin: "1234" }),
       });
-      expect(mockClient.setCsrfToken).toHaveBeenCalledWith('csrf-token');
-      expect(mockClient.setToken).toHaveBeenCalledWith('test-token');
-      expect(mockClient.setUserProfile).toHaveBeenCalledWith(mockResponse.data.user);
+      expect(mockClient.setCsrfToken).toHaveBeenCalledWith("csrf-token");
+      expect(mockClient.setToken).toHaveBeenCalledWith("test-token");
+      expect(mockClient.setUserProfile).toHaveBeenCalledWith(
+        mockResponse.data.user,
+      );
       expect(result).toEqual({
-        access_token: 'test-token',
-        token_type: 'Bearer',
+        access_token: "test-token",
+        token_type: "Bearer",
         user: mockResponse.data.user,
       });
     });
 
-    it('should throw error on failed login', async () => {
+    it("should throw error on failed login", async () => {
       const mockResponse: BackendLoginResponse = {
         success: false,
-        message: 'Invalid credentials',
+        message: "Invalid credentials",
         data: undefined as any,
       };
 
       mockRequest.mockResolvedValueOnce(mockResponse);
 
-      await expect(authApi.login('test@example.com', 'wrong')).rejects.toThrow(
-        'Invalid credentials'
+      await expect(authApi.login("test@example.com", "wrong")).rejects.toThrow(
+        "Invalid credentials",
       );
     });
 
-    it('should handle login without CSRF token', async () => {
+    it("should handle login without CSRF token", async () => {
       const mockResponse: BackendLoginResponse = {
         success: true,
-        message: 'Login successful',
+        message: "Login successful",
         data: {
-          token: 'test-token',
-          token_type: 'Bearer',
+          token: "test-token",
+          token_type: "Bearer",
           expiresIn: 3600,
           user: {
-            id: '123',
-            email: 'test@example.com',
-            name: 'Test User',
-            role: 'user',
+            id: "123",
+            email: "test@example.com",
+            name: "Test User",
+            role: "user",
           },
         },
       };
 
       mockRequest.mockResolvedValueOnce(mockResponse);
 
-      await authApi.login('test@example.com', '1234');
+      await authApi.login("test@example.com", "1234");
 
       expect(mockClient.setCsrfToken).not.toHaveBeenCalled();
     });
   });
 
-  describe('logout', () => {
-    it('should logout and clear token', async () => {
+  describe("logout", () => {
+    it("should logout and clear token", async () => {
       mockRequest.mockResolvedValueOnce({});
 
       await authApi.logout();
 
-      expect(mockRequest).toHaveBeenCalledWith('/api/auth/logout', {
-        method: 'POST',
+      expect(mockRequest).toHaveBeenCalledWith("/api/auth/logout", {
+        method: "POST",
       });
       expect(mockClient.clearToken).toHaveBeenCalled();
     });
 
-    it('should clear token even if logout request fails', async () => {
-      mockRequest.mockRejectedValueOnce(new Error('Network error'));
+    it("should clear token even if logout request fails", async () => {
+      mockRequest.mockRejectedValueOnce(new Error("Network error"));
 
-      await expect(authApi.logout()).rejects.toThrow('Network error');
+      await expect(authApi.logout()).rejects.toThrow("Network error");
       expect(mockClient.clearToken).toHaveBeenCalled();
     });
   });
 
-  describe('getProfile', () => {
-    it('should get and set user profile', async () => {
+  describe("getProfile", () => {
+    it("should get and set user profile", async () => {
       const profile = {
-        id: '123',
-        email: 'test@example.com',
-        name: 'Test User',
-        role: 'user',
+        id: "123",
+        email: "test@example.com",
+        name: "Test User",
+        role: "user",
       };
 
       mockRequest.mockResolvedValueOnce(profile);
 
       const result = await authApi.getProfile();
 
-      expect(mockRequest).toHaveBeenCalledWith('/api/auth/profile');
+      expect(mockRequest).toHaveBeenCalledWith("/api/auth/profile");
       expect(mockClient.setUserProfile).toHaveBeenCalledWith(profile);
       expect(result).toEqual(profile);
     });
 
-    it('should handle profile fetch error', async () => {
-      mockRequest.mockRejectedValueOnce(new Error('Unauthorized'));
+    it("should handle profile fetch error", async () => {
+      mockRequest.mockRejectedValueOnce(new Error("Unauthorized"));
 
-      await expect(authApi.getProfile()).rejects.toThrow('Unauthorized');
+      await expect(authApi.getProfile()).rejects.toThrow("Unauthorized");
     });
   });
 
-  describe('refresh token', () => {
-    it('should handle token refresh via cookie', async () => {
+  describe("refresh token", () => {
+    it("should handle token refresh via cookie", async () => {
       const mockResponse: BackendLoginResponse = {
         success: true,
-        message: 'Token refreshed',
+        message: "Token refreshed",
         data: {
-          token: 'new-token',
-          token_type: 'Bearer',
+          token: "new-token",
+          token_type: "Bearer",
           expiresIn: 3600,
           user: {
-            id: '123',
-            email: 'test@example.com',
-            name: 'Test User',
-            role: 'user',
+            id: "123",
+            email: "test@example.com",
+            name: "Test User",
+            role: "user",
           },
         },
       };
 
       mockRequest.mockResolvedValueOnce(mockResponse);
 
-      const result = await authApi.login('test@example.com', '1234');
+      const result = await authApi.login("test@example.com", "1234");
 
-      expect(result.access_token).toBe('new-token');
+      expect(result.access_token).toBe("new-token");
     });
   });
 
-  describe('network errors', () => {
-    it('should handle network timeout on login', async () => {
-      mockRequest.mockRejectedValueOnce(new Error('Network timeout'));
+  describe("network errors", () => {
+    it("should handle network timeout on login", async () => {
+      mockRequest.mockRejectedValueOnce(new Error("Network timeout"));
 
-      await expect(authApi.login('test@example.com', '1234')).rejects.toThrow('Network timeout');
-    });
-
-    it('should handle server error on login', async () => {
-      mockRequest.mockRejectedValueOnce(new Error('500 Internal Server Error'));
-
-      await expect(authApi.login('test@example.com', '1234')).rejects.toThrow(
-        '500 Internal Server Error'
+      await expect(authApi.login("test@example.com", "1234")).rejects.toThrow(
+        "Network timeout",
       );
     });
 
-    it('should handle malformed response', async () => {
+    it("should handle server error on login", async () => {
+      mockRequest.mockRejectedValueOnce(new Error("500 Internal Server Error"));
+
+      await expect(authApi.login("test@example.com", "1234")).rejects.toThrow(
+        "500 Internal Server Error",
+      );
+    });
+
+    it("should handle malformed response", async () => {
       mockRequest.mockResolvedValueOnce({
         success: true,
-        message: 'OK',
+        message: "OK",
         data: null,
       });
 
-      await expect(authApi.login('test@example.com', '1234')).rejects.toThrow('OK');
+      await expect(authApi.login("test@example.com", "1234")).rejects.toThrow(
+        "OK",
+      );
     });
   });
 
-  describe('CSRF token handling', () => {
-    it('should set CSRF token when provided', async () => {
+  describe("CSRF token handling", () => {
+    it("should set CSRF token when provided", async () => {
       const mockResponse: BackendLoginResponse = {
         success: true,
-        message: 'Login successful',
+        message: "Login successful",
         data: {
-          token: 'test-token',
-          token_type: 'Bearer',
+          token: "test-token",
+          token_type: "Bearer",
           expiresIn: 3600,
           user: {
-            id: '123',
-            email: 'test@example.com',
-            name: 'Test User',
-            role: 'user',
+            id: "123",
+            email: "test@example.com",
+            name: "Test User",
+            role: "user",
           },
-          csrfToken: 'csrf-123',
+          csrfToken: "csrf-123",
         },
       };
 
       mockRequest.mockResolvedValueOnce(mockResponse);
 
-      await authApi.login('test@example.com', '1234');
+      await authApi.login("test@example.com", "1234");
 
-      expect(mockClient.setCsrfToken).toHaveBeenCalledWith('csrf-123');
+      expect(mockClient.setCsrfToken).toHaveBeenCalledWith("csrf-123");
     });
 
-    it('should not fail when CSRF token is missing', async () => {
+    it("should not fail when CSRF token is missing", async () => {
       const mockResponse: BackendLoginResponse = {
         success: true,
-        message: 'Login successful',
+        message: "Login successful",
         data: {
-          token: 'test-token',
-          token_type: 'Bearer',
+          token: "test-token",
+          token_type: "Bearer",
           expiresIn: 3600,
           user: {
-            id: '123',
-            email: 'test@example.com',
-            name: 'Test User',
-            role: 'user',
+            id: "123",
+            email: "test@example.com",
+            name: "Test User",
+            role: "user",
           },
         },
       };
 
       mockRequest.mockResolvedValueOnce(mockResponse);
 
-      const result = await authApi.login('test@example.com', '1234');
+      const result = await authApi.login("test@example.com", "1234");
 
-      expect(result.access_token).toBe('test-token');
+      expect(result.access_token).toBe("test-token");
       expect(mockClient.setCsrfToken).not.toHaveBeenCalled();
     });
   });
 
-  describe('edge cases', () => {
-    it('should handle empty email', async () => {
-      mockRequest.mockRejectedValueOnce(new Error('Email is required'));
+  describe("edge cases", () => {
+    it("should handle empty email", async () => {
+      mockRequest.mockRejectedValueOnce(new Error("Email is required"));
 
-      await expect(authApi.login('', '1234')).rejects.toThrow('Email is required');
+      await expect(authApi.login("", "1234")).rejects.toThrow(
+        "Email is required",
+      );
     });
 
-    it('should handle empty PIN', async () => {
-      mockRequest.mockRejectedValueOnce(new Error('PIN is required'));
+    it("should handle empty PIN", async () => {
+      mockRequest.mockRejectedValueOnce(new Error("PIN is required"));
 
-      await expect(authApi.login('test@example.com', '')).rejects.toThrow('PIN is required');
+      await expect(authApi.login("test@example.com", "")).rejects.toThrow(
+        "PIN is required",
+      );
     });
 
-    it('should handle account locked error', async () => {
+    it("should handle account locked error", async () => {
       const mockResponse: BackendLoginResponse = {
         success: false,
-        message: 'Account locked due to too many failed attempts',
+        message: "Account locked due to too many failed attempts",
         data: undefined as any,
       };
 
       mockRequest.mockResolvedValueOnce(mockResponse);
 
-      await expect(authApi.login('test@example.com', '1234')).rejects.toThrow(
-        'Account locked due to too many failed attempts'
+      await expect(authApi.login("test@example.com", "1234")).rejects.toThrow(
+        "Account locked due to too many failed attempts",
       );
     });
   });

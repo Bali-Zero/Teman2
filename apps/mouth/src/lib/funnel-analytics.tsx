@@ -3,9 +3,9 @@
  * Tracks user journey through dashboard and business processes
  */
 
-import React from 'react';
-import { debug } from '@/lib/utils/console';
-import type { FunnelAnalyticsReturn } from './types/funnel-analytics.types';
+import React from "react";
+import { debug } from "@/lib/utils/console";
+import type { FunnelAnalyticsReturn } from "./types/funnel-analytics.types";
 
 interface FunnelStep {
   id: string;
@@ -72,36 +72,36 @@ class FunnelAnalyticsService {
   // Initialize business process funnels
   private initializeFunnels(): void {
     // Case Management Funnel
-    this.funnels.set('case_management', [
+    this.funnels.set("case_management", [
       {
-        id: 'case_creation',
-        name: 'Create New Case',
+        id: "case_creation",
+        name: "Create New Case",
         steps: [
           {
-            id: 'select_case_type',
-            name: 'Select Case Type',
-            description: 'Choose visa type or service',
+            id: "select_case_type",
+            name: "Select Case Type",
+            description: "Choose visa type or service",
             required: true,
             estimatedTime: 30,
           },
           {
-            id: 'fill_basic_info',
-            name: 'Basic Information',
-            description: 'Client and case details',
+            id: "fill_basic_info",
+            name: "Basic Information",
+            description: "Client and case details",
             required: true,
             estimatedTime: 120,
           },
           {
-            id: 'upload_documents',
-            name: 'Upload Documents',
-            description: 'Required paperwork',
+            id: "upload_documents",
+            name: "Upload Documents",
+            description: "Required paperwork",
             required: true,
             estimatedTime: 180,
           },
           {
-            id: 'review_submit',
-            name: 'Review & Submit',
-            description: 'Final review',
+            id: "review_submit",
+            name: "Review & Submit",
+            description: "Final review",
             required: true,
             estimatedTime: 60,
           },
@@ -110,34 +110,34 @@ class FunnelAnalyticsService {
         dropOffRate: 0,
       },
       {
-        id: 'case_processing',
-        name: 'Process Case',
+        id: "case_processing",
+        name: "Process Case",
         steps: [
           {
-            id: 'initial_review',
-            name: 'Initial Review',
-            description: 'Document verification',
+            id: "initial_review",
+            name: "Initial Review",
+            description: "Document verification",
             required: true,
             estimatedTime: 300,
           },
           {
-            id: 'government_submission',
-            name: 'Submit to Government',
-            description: 'Official submission',
+            id: "government_submission",
+            name: "Submit to Government",
+            description: "Official submission",
             required: true,
             estimatedTime: 600,
           },
           {
-            id: 'follow_up',
-            name: 'Follow Up',
-            description: 'Track progress',
+            id: "follow_up",
+            name: "Follow Up",
+            description: "Track progress",
             required: false,
             estimatedTime: 180,
           },
           {
-            id: 'completion',
-            name: 'Case Completion',
-            description: 'Final approval',
+            id: "completion",
+            name: "Case Completion",
+            description: "Final approval",
             required: true,
             estimatedTime: 120,
           },
@@ -148,36 +148,36 @@ class FunnelAnalyticsService {
     ]);
 
     // Client Onboarding Funnel
-    this.funnels.set('client_onboarding', [
+    this.funnels.set("client_onboarding", [
       {
-        id: 'registration',
-        name: 'Client Registration',
+        id: "registration",
+        name: "Client Registration",
         steps: [
           {
-            id: 'create_account',
-            name: 'Create Account',
-            description: 'Basic registration',
+            id: "create_account",
+            name: "Create Account",
+            description: "Basic registration",
             required: true,
             estimatedTime: 60,
           },
           {
-            id: 'verify_email',
-            name: 'Verify Email',
-            description: 'Email confirmation',
+            id: "verify_email",
+            name: "Verify Email",
+            description: "Email confirmation",
             required: true,
             estimatedTime: 30,
           },
           {
-            id: 'complete_profile',
-            name: 'Complete Profile',
-            description: 'Personal details',
+            id: "complete_profile",
+            name: "Complete Profile",
+            description: "Personal details",
             required: true,
             estimatedTime: 180,
           },
           {
-            id: 'select_services',
-            name: 'Select Services',
-            description: 'Choose needed services',
+            id: "select_services",
+            name: "Select Services",
+            description: "Choose needed services",
             required: true,
             estimatedTime: 120,
           },
@@ -186,27 +186,27 @@ class FunnelAnalyticsService {
         dropOffRate: 0,
       },
       {
-        id: 'first_case',
-        name: 'First Case Setup',
+        id: "first_case",
+        name: "First Case Setup",
         steps: [
           {
-            id: 'consultation',
-            name: 'Initial Consultation',
-            description: 'Discovery call',
+            id: "consultation",
+            name: "Initial Consultation",
+            description: "Discovery call",
             required: true,
             estimatedTime: 1800,
           },
           {
-            id: 'document_collection',
-            name: 'Document Collection',
-            description: 'Gather paperwork',
+            id: "document_collection",
+            name: "Document Collection",
+            description: "Gather paperwork",
             required: true,
             estimatedTime: 3600,
           },
           {
-            id: 'case_start',
-            name: 'Start Case',
-            description: 'Begin processing',
+            id: "case_start",
+            name: "Start Case",
+            description: "Begin processing",
             required: true,
             estimatedTime: 300,
           },
@@ -217,29 +217,29 @@ class FunnelAnalyticsService {
     ]);
 
     // Email Management Funnel
-    this.funnels.set('email_management', [
+    this.funnels.set("email_management", [
       {
-        id: 'email_setup',
-        name: 'Email Setup',
+        id: "email_setup",
+        name: "Email Setup",
         steps: [
           {
-            id: 'connect_account',
-            name: 'Connect Email Account',
-            description: 'Zoho integration',
+            id: "connect_account",
+            name: "Connect Email Account",
+            description: "Zoho integration",
             required: true,
             estimatedTime: 120,
           },
           {
-            id: 'sync_emails',
-            name: 'Sync Emails',
-            description: 'Initial sync',
+            id: "sync_emails",
+            name: "Sync Emails",
+            description: "Initial sync",
             required: true,
             estimatedTime: 300,
           },
           {
-            id: 'configure_filters',
-            name: 'Configure Filters',
-            description: 'Email rules',
+            id: "configure_filters",
+            name: "Configure Filters",
+            description: "Email rules",
             required: false,
             estimatedTime: 180,
           },
@@ -248,27 +248,27 @@ class FunnelAnalyticsService {
         dropOffRate: 0,
       },
       {
-        id: 'email_processing',
-        name: 'Email Processing',
+        id: "email_processing",
+        name: "Email Processing",
         steps: [
           {
-            id: 'review_inbox',
-            name: 'Review Inbox',
-            description: 'Check new emails',
+            id: "review_inbox",
+            name: "Review Inbox",
+            description: "Check new emails",
             required: true,
             estimatedTime: 60,
           },
           {
-            id: 'categorize',
-            name: 'Categorize Emails',
-            description: 'Sort and tag',
+            id: "categorize",
+            name: "Categorize Emails",
+            description: "Sort and tag",
             required: true,
             estimatedTime: 180,
           },
           {
-            id: 'respond_action',
-            name: 'Respond or Action',
-            description: 'Handle emails',
+            id: "respond_action",
+            name: "Respond or Action",
+            description: "Handle emails",
             required: true,
             estimatedTime: 300,
           },
@@ -301,7 +301,7 @@ class FunnelAnalyticsService {
 
     this.userProgress.set(`${userId}_${funnelId}`, progress);
     this.initializeAnalytics(funnelId);
-    this.trackFunnelEvent(userId, funnelId, 'funnel_started', {
+    this.trackFunnelEvent(userId, funnelId, "funnel_started", {
       stage: firstStage.id,
       step: firstStep.id,
     });
@@ -313,7 +313,7 @@ class FunnelAnalyticsService {
     funnelId: string,
     stepId: string,
     success: boolean = true,
-    error?: string
+    error?: string,
   ): void {
     const progressKey = `${userId}_${funnelId}`;
     const progress = this.userProgress.get(progressKey);
@@ -340,13 +340,18 @@ class FunnelAnalyticsService {
     this.updateStepAnalytics(funnelId, stepId, success, stepTime, error);
 
     // Track event
-    this.trackFunnelEvent(userId, funnelId, success ? 'step_completed' : 'step_failed', {
-      stepId,
-      stepName: step.name,
-      stageId: progress.currentStage,
-      time: stepTime,
-      error,
-    });
+    this.trackFunnelEvent(
+      userId,
+      funnelId,
+      success ? "step_completed" : "step_failed",
+      {
+        stepId,
+        stepName: step.name,
+        stageId: progress.currentStage,
+        time: stepTime,
+        error,
+      },
+    );
 
     // Move to next step or stage
     if (success) {
@@ -363,11 +368,15 @@ class FunnelAnalyticsService {
     const funnel = this.funnels.get(funnelId);
     if (!funnel) return;
 
-    const currentStageIndex = funnel.findIndex((s) => s.id === progress.currentStage);
+    const currentStageIndex = funnel.findIndex(
+      (s) => s.id === progress.currentStage,
+    );
     if (currentStageIndex === -1) return;
 
     const currentStage = funnel[currentStageIndex];
-    const currentStepIndex = currentStage.steps.findIndex((s) => s.id === progress.currentStep);
+    const currentStepIndex = currentStage.steps.findIndex(
+      (s) => s.id === progress.currentStep,
+    );
 
     // Move to next step in current stage
     if (currentStepIndex < currentStage.steps.length - 1) {
@@ -383,7 +392,7 @@ class FunnelAnalyticsService {
     else {
       progress.completed = true;
       progress.totalTime = this.calculateTotalTime(progress);
-      this.trackFunnelEvent(userId, funnelId, 'funnel_completed', {
+      this.trackFunnelEvent(userId, funnelId, "funnel_completed", {
         totalTime: progress.totalTime,
       });
     }
@@ -409,7 +418,8 @@ class FunnelAnalyticsService {
     const rates = new Map<string, number>();
 
     analytics.stageAnalytics.forEach((stageData, stageId) => {
-      const rate = stageData.entered > 0 ? stageData.completed / stageData.entered : 0;
+      const rate =
+        stageData.entered > 0 ? stageData.completed / stageData.entered : 0;
       rates.set(stageId, rate);
     });
 
@@ -418,16 +428,22 @@ class FunnelAnalyticsService {
 
   // Get drop-off points
   getDropOffPoints(
-    funnelId: string
+    funnelId: string,
   ): Array<{ stepId: string; dropOffRate: number; totalUsers: number }> {
     const analytics = this.analytics.get(funnelId);
     if (!analytics) return [];
 
-    const dropOffs: Array<{ stepId: string; dropOffRate: number; totalUsers: number }> = [];
+    const dropOffs: Array<{
+      stepId: string;
+      dropOffRate: number;
+      totalUsers: number;
+    }> = [];
 
     analytics.stepAnalytics.forEach((stepData, stepId) => {
       const dropOffRate =
-        stepData.attempts > 0 ? (stepData.attempts - stepData.completions) / stepData.attempts : 0;
+        stepData.attempts > 0
+          ? (stepData.attempts - stepData.completions) / stepData.attempts
+          : 0;
       dropOffs.push({
         stepId,
         dropOffRate,
@@ -443,11 +459,11 @@ class FunnelAnalyticsService {
     userId: string,
     funnelId: string,
     event: string,
-    properties: Record<string, any>
+    properties: Record<string, any>,
   ): void {
     // Send to analytics service
-    if (typeof window !== 'undefined' && window.gtag) {
-      window.gtag('event', event, {
+    if (typeof window !== "undefined" && window.gtag) {
+      window.gtag("event", event, {
         funnel_id: funnelId,
         user_id: userId,
         ...properties,
@@ -477,7 +493,7 @@ class FunnelAnalyticsService {
     stepId: string,
     success: boolean,
     time: number,
-    error?: string
+    error?: string,
   ): void {
     const analytics = this.analytics.get(funnelId);
     if (!analytics) return;
@@ -504,11 +520,15 @@ class FunnelAnalyticsService {
 
     // Update average time
     stepData.averageTime =
-      (stepData.averageTime * (stepData.attempts - 1) + time) / stepData.attempts;
+      (stepData.averageTime * (stepData.attempts - 1) + time) /
+      stepData.attempts;
   }
 
   // Calculate step time
-  private calculateStepTime(progress: UserFunnelProgress, stepId: string): number {
+  private calculateStepTime(
+    progress: UserFunnelProgress,
+    stepId: string,
+  ): number {
     // Simplified time calculation
     return Math.floor(Math.random() * 300) + 30; // 30-330 seconds
   }
@@ -552,34 +572,41 @@ export const funnelAnalytics = new FunnelAnalyticsService();
 
 // React hook for funnel analytics
 export function useFunnelAnalytics() {
-  const [userProgress, setUserProgress] = React.useState<Map<string, UserFunnelProgress>>(
-    new Map()
-  );
-  const [analytics, setAnalytics] = React.useState<Map<string, FunnelAnalytics>>(new Map());
+  const [userProgress, setUserProgress] = React.useState<
+    Map<string, UserFunnelProgress>
+  >(new Map());
+  const [analytics, setAnalytics] = React.useState<
+    Map<string, FunnelAnalytics>
+  >(new Map());
 
   return {
     startFunnel: funnelAnalytics.startFunnel.bind(funnelAnalytics),
     completeStep: funnelAnalytics.completeStep.bind(funnelAnalytics),
     getUserProgress: funnelAnalytics.getUserProgress.bind(funnelAnalytics),
-    getFunnelAnalytics: funnelAnalytics.getFunnelAnalytics.bind(funnelAnalytics),
-    getConversionRates: funnelAnalytics.getConversionRates.bind(funnelAnalytics),
+    getFunnelAnalytics:
+      funnelAnalytics.getFunnelAnalytics.bind(funnelAnalytics),
+    getConversionRates:
+      funnelAnalytics.getConversionRates.bind(funnelAnalytics),
     getDropOffPoints: funnelAnalytics.getDropOffPoints.bind(funnelAnalytics),
     getCompletionRate: funnelAnalytics.getCompletionRate.bind(funnelAnalytics),
-    getAverageCompletionTime: funnelAnalytics.getAverageCompletionTime.bind(funnelAnalytics),
+    getAverageCompletionTime:
+      funnelAnalytics.getAverageCompletionTime.bind(funnelAnalytics),
   };
 }
 
 // Higher-order component for funnel tracking
 export function withFunnelTracking<P extends object>(
-  Component: React.ComponentType<P & { funnel?: ReturnType<typeof useFunnelAnalytics> }>,
-  funnelId: string
+  Component: React.ComponentType<
+    P & { funnel?: ReturnType<typeof useFunnelAnalytics> }
+  >,
+  funnelId: string,
 ) {
   const WrappedComponent = (props: P) => {
     const funnel = useFunnelAnalytics();
 
     React.useEffect(() => {
       // Auto-start funnel for authenticated users
-      const userId = localStorage.getItem('userId');
+      const userId = localStorage.getItem("userId");
       if (userId) {
         funnel.startFunnel(userId, funnelId);
       }

@@ -39,8 +39,8 @@ class ABTestingService {
     });
 
     // Load saved variant assignments from localStorage
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('ab_test_variants');
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("ab_test_variants");
       if (saved) {
         this.assignedVariants = new Map(JSON.parse(saved));
       }
@@ -76,8 +76,8 @@ class ABTestingService {
       this.saveAssignments();
 
       // Track experiment view
-      if (typeof window !== 'undefined' && window.gtag) {
-        window.gtag('event', 'experiment_view', {
+      if (typeof window !== "undefined" && window.gtag) {
+        window.gtag("event", "experiment_view", {
           experiment_name: experimentName,
           variant: variant,
         });
@@ -88,7 +88,10 @@ class ABTestingService {
   }
 
   // Get the configuration for a specific variant
-  getVariantConfig(experimentName: string, variantId?: string): Record<string, any> {
+  getVariantConfig(
+    experimentName: string,
+    variantId?: string,
+  ): Record<string, any> {
     const variant = variantId || this.getVariant(experimentName);
     if (!variant) return {};
 
@@ -121,10 +124,15 @@ class ABTestingService {
 
   // Assign a variant to a user based on weights
   private assignVariant(experiment: Experiment): string | null {
-    const totalWeight = experiment.variants.reduce((sum, v) => sum + v.weight, 0);
+    const totalWeight = experiment.variants.reduce(
+      (sum, v) => sum + v.weight,
+      0,
+    );
     if (totalWeight === 0) return null;
 
-    const hash = this.hashString(this.userId + experiment.name + Date.now().toString());
+    const hash = this.hashString(
+      this.userId + experiment.name + Date.now().toString(),
+    );
     const normalizedHash = hash / 0xffffffff;
     const randomValue = normalizedHash * totalWeight;
 
@@ -152,10 +160,10 @@ class ABTestingService {
 
   // Save assignments to localStorage
   private saveAssignments() {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       localStorage.setItem(
-        'ab_test_variants',
-        JSON.stringify(Array.from(this.assignedVariants.entries()))
+        "ab_test_variants",
+        JSON.stringify(Array.from(this.assignedVariants.entries())),
       );
     }
   }
@@ -165,8 +173,8 @@ class ABTestingService {
     const variant = this.getVariant(experimentName);
     if (!variant) return;
 
-    if (typeof window !== 'undefined' && window.gtag) {
-      window.gtag('event', 'conversion', {
+    if (typeof window !== "undefined" && window.gtag) {
+      window.gtag("event", "conversion", {
         experiment_name: experimentName,
         variant: variant,
         goal: goal,
@@ -194,35 +202,35 @@ class ABTestingService {
 const DEFAULT_EXPERIMENTS: ExperimentConfig = {
   experiments: [
     {
-      name: 'dashboard_layout',
+      name: "dashboard_layout",
       trafficAllocation: 1.0, // 100% of users
       variants: [
         {
-          id: 'control',
-          name: 'Current Layout',
+          id: "control",
+          name: "Current Layout",
           weight: 0.5,
           config: {
-            widgetLayout: 'grid',
+            widgetLayout: "grid",
             showEmailStats: true,
             compactMode: false,
           },
         },
         {
-          id: 'compact',
-          name: 'Compact Layout',
+          id: "compact",
+          name: "Compact Layout",
           weight: 0.25,
           config: {
-            widgetLayout: 'compact',
+            widgetLayout: "compact",
             showEmailStats: true,
             compactMode: true,
           },
         },
         {
-          id: 'minimal',
-          name: 'Minimal Layout',
+          id: "minimal",
+          name: "Minimal Layout",
           weight: 0.25,
           config: {
-            widgetLayout: 'minimal',
+            widgetLayout: "minimal",
             showEmailStats: false,
             compactMode: true,
           },
@@ -230,49 +238,49 @@ const DEFAULT_EXPERIMENTS: ExperimentConfig = {
       ],
     },
     {
-      name: 'email_integration',
+      name: "email_integration",
       trafficAllocation: 0.5, // 50% of users
       variants: [
         {
-          id: 'enabled',
-          name: 'Email Enabled',
+          id: "enabled",
+          name: "Email Enabled",
           weight: 0.7,
           config: {
             showEmailWidget: true,
             emailNotifications: true,
-            emailActions: ['delete', 'read', 'reply'],
+            emailActions: ["delete", "read", "reply"],
           },
         },
         {
-          id: 'limited',
-          name: 'Limited Email',
+          id: "limited",
+          name: "Limited Email",
           weight: 0.3,
           config: {
             showEmailWidget: true,
             emailNotifications: false,
-            emailActions: ['delete', 'read'],
+            emailActions: ["delete", "read"],
           },
         },
       ],
     },
     {
-      name: 'widget_order',
+      name: "widget_order",
       trafficAllocation: 0.3, // 30% of users
       variants: [
         {
-          id: 'default',
-          name: 'Default Order',
+          id: "default",
+          name: "Default Order",
           weight: 0.6,
           config: {
-            order: ['stats', 'practices', 'interactions', 'email'],
+            order: ["stats", "practices", "interactions", "email"],
           },
         },
         {
-          id: 'email_first',
-          name: 'Email First',
+          id: "email_first",
+          name: "Email First",
           weight: 0.4,
           config: {
-            order: ['email', 'stats', 'practices', 'interactions'],
+            order: ["email", "stats", "practices", "interactions"],
           },
         },
       ],
@@ -294,11 +302,11 @@ export function useABTesting() {
 }
 
 // Higher-order component for A/B testing
-import React from 'react';
+import React from "react";
 
 export function withABTesting<P extends object>(
   Component: React.ComponentType<P & { abTestConfig?: Record<string, any> }>,
-  experimentName: string
+  experimentName: string,
 ) {
   const WrappedComponent = (props: P) => {
     const { getVariantConfig } = useABTesting();
@@ -312,7 +320,10 @@ export function withABTesting<P extends object>(
 }
 
 // Initialize A/B testing
-export function initializeABTesting(userId: string, customConfig?: ExperimentConfig) {
+export function initializeABTesting(
+  userId: string,
+  customConfig?: ExperimentConfig,
+) {
   const config = customConfig || DEFAULT_EXPERIMENTS;
   abTesting.initialize(config, userId);
 }

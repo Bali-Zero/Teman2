@@ -1,8 +1,15 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Link from 'next/link';
-import { FolderKanban, AlertTriangle, MessageCircle, Clock, Mail, BarChart3 } from 'lucide-react';
+import React from "react";
+import Link from "next/link";
+import {
+  FolderKanban,
+  AlertTriangle,
+  MessageCircle,
+  Clock,
+  Mail,
+  BarChart3,
+} from "lucide-react";
 import {
   StatsCard,
   PratichePreview,
@@ -12,22 +19,25 @@ import {
   AutoCRMWidget,
   FeaturedArticlesWidget,
   HomepagePreviewWidget,
-} from '@/components/dashboard';
-import type { PraticaPreview, WhatsAppMessage } from '@/components/dashboard';
-import { DashboardErrorBoundary } from '@/components/ErrorBoundary';
-import { useDashboardData } from '@/hooks/useDashboardData';
-import { useQuery } from '@tanstack/react-query';
-import { dashboardApi } from '@/lib/api/dashboard/dashboard.api';
-import { useEnhancedAnalytics, enhancedAnalytics } from '@/lib/enhanced-analytics';
-import { useABTesting, initializeABTesting } from '@/lib/ab-testing';
-import { useRealtime } from '@/lib/realtime';
-import { useMobileOptimization } from '@/lib/mobile-optimization';
-import { useFunnelAnalytics } from '@/lib/funnel-analytics';
-import { useAIInsights } from '@/lib/ai-insights';
-import { api } from '@/lib/api';
-import { logger } from '@/lib/logger';
-import { dashboardMetrics } from '@/lib/metrics/dashboard-metrics';
-import type { Practice } from '@/lib/api/crm/crm.types';
+} from "@/components/dashboard";
+import type { PraticaPreview, WhatsAppMessage } from "@/components/dashboard";
+import { DashboardErrorBoundary } from "@/components/ErrorBoundary";
+import { useDashboardData } from "@/hooks/useDashboardData";
+import { useQuery } from "@tanstack/react-query";
+import { dashboardApi } from "@/lib/api/dashboard/dashboard.api";
+import {
+  useEnhancedAnalytics,
+  enhancedAnalytics,
+} from "@/lib/enhanced-analytics";
+import { useABTesting, initializeABTesting } from "@/lib/ab-testing";
+import { useRealtime } from "@/lib/realtime";
+import { useMobileOptimization } from "@/lib/mobile-optimization";
+import { useFunnelAnalytics } from "@/lib/funnel-analytics";
+import { useAIInsights } from "@/lib/ai-insights";
+import { api } from "@/lib/api";
+import { logger } from "@/lib/logger";
+import { dashboardMetrics } from "@/lib/metrics/dashboard-metrics";
+import type { Practice } from "@/lib/api/crm/crm.types";
 
 export default function DashboardPage() {
   const {
@@ -70,7 +80,7 @@ export default function DashboardPage() {
 
   // Start performance mark on mount
   React.useEffect(() => {
-    dashboardMetrics.startPerformanceMark('dashboard_load');
+    dashboardMetrics.startPerformanceMark("dashboard_load");
   }, []);
 
   // Initialize all advanced features
@@ -78,7 +88,7 @@ export default function DashboardPage() {
     if (user?.email && !isLoading) {
       // Initialize enhanced analytics
       enhancedAnalytics.initialize(user.email, {
-        role: user.role || 'Member',
+        role: user.role || "Member",
         email: user.email,
         isAdmin: user.is_admin || false,
       });
@@ -90,7 +100,7 @@ export default function DashboardPage() {
       realtime.connect(user.email, user.email);
 
       // Initialize funnel analytics
-      funnel.startFunnel(user.email, 'dashboard_engagement');
+      funnel.startFunnel(user.email, "dashboard_engagement");
 
       // Generate AI insights
       ai.generateInsights({
@@ -105,12 +115,12 @@ export default function DashboardPage() {
       // Track active experiments
       const activeExperiments = getActiveExperiments();
       activeExperiments.forEach(({ name, variant }) => {
-        trackUserInteraction('experiment_view', `${name}_${variant}`);
+        trackUserInteraction("experiment_view", `${name}_${variant}`);
       });
 
       // Track mobile optimization
       if (mobile.isMobile) {
-        trackUserInteraction('mobile_access', 'dashboard', mobile.breakpoint);
+        trackUserInteraction("mobile_access", "dashboard", mobile.breakpoint);
       }
     }
   }, [user?.email, isLoading]);
@@ -127,14 +137,17 @@ export default function DashboardPage() {
   }, [isLoading, isError]);
 
   // Get A/B test configurations
-  const layoutConfig = getVariantConfig('dashboard_layout');
-  const emailConfig = getVariantConfig('email_integration');
-  const widgetOrder = getVariantConfig('widget_order');
+  const layoutConfig = getVariantConfig("dashboard_layout");
+  const emailConfig = getVariantConfig("email_integration");
+  const widgetOrder = getVariantConfig("widget_order");
 
   // Track errors
   React.useEffect(() => {
     if (error) {
-      trackError(error instanceof Error ? error : new Error(String(error)), 'dashboard_load');
+      trackError(
+        error instanceof Error ? error : new Error(String(error)),
+        "dashboard_load",
+      );
     }
   }, [error]);
 
@@ -142,12 +155,15 @@ export default function DashboardPage() {
   const hasLoggedSuccess = React.useRef(false);
   React.useEffect(() => {
     if (!isLoading && user?.email && !hasLoggedSuccess.current) {
-      const loadTime = dashboardMetrics.endPerformanceMark('dashboard_load', user.email);
+      const loadTime = dashboardMetrics.endPerformanceMark(
+        "dashboard_load",
+        user.email,
+      );
       dashboardMetrics.trackPageView(user.email);
 
-      logger.info('Dashboard loaded successfully', {
-        component: 'DashboardPage',
-        action: 'loadDashboardData',
+      logger.info("Dashboard loaded successfully", {
+        component: "DashboardPage",
+        action: "loadDashboardData",
         user: user.email,
         metadata: { loadTime, systemStatus },
       });
@@ -211,7 +227,8 @@ export default function DashboardPage() {
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
             <div className="flex-1">
               <p className="text-sm text-green-500">
-                🟢 Real-time collaboration active • {realtime.onlineUsersCount} users online
+                🟢 Real-time collaboration active • {realtime.onlineUsersCount}{" "}
+                users online
               </p>
             </div>
           </div>
@@ -221,7 +238,7 @@ export default function DashboardPage() {
         {mobile.isMobile && (
           <div className="rounded-lg border border-purple-500/20 bg-purple-500/10 p-3">
             <p className="text-sm text-purple-500">
-              📱 Mobile optimized • {mobile.getNavigationStyle()} navigation •{' '}
+              📱 Mobile optimized • {mobile.getNavigationStyle()} navigation •{" "}
               {mobile.getInteractionMode()} interactions
             </p>
           </div>
@@ -253,7 +270,7 @@ export default function DashboardPage() {
                 <div className="rounded-xl border-2 border-sky-500/40 bg-sky-500/10 p-1">
                   <AiPulseWidget
                     systemAppStatus={systemStatus}
-                    oracleStatus={isHealthy ? 'active' : 'inactive'}
+                    oracleStatus={isHealthy ? "active" : "inactive"}
                   />
                 </div>
               </div>
@@ -263,7 +280,12 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {revenue && <FinancialRealityWidget revenue={revenue} growth={revenueGrowth || 0} />}
+            {revenue && (
+              <FinancialRealityWidget
+                revenue={revenue}
+                growth={revenueGrowth || 0}
+              />
+            )}
           </>
         )}
 
@@ -276,7 +298,9 @@ export default function DashboardPage() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-          <div onClick={() => trackWidgetInteraction('stats_card', 'active_cases')}>
+          <div
+            onClick={() => trackWidgetInteraction("stats_card", "active_cases")}
+          >
             <StatsCard
               title="Active Cases"
               value={stats.activeCases}
@@ -285,27 +309,37 @@ export default function DashboardPage() {
               accentColor="amber"
             />
           </div>
-          <div onClick={() => trackWidgetInteraction('stats_card', 'critical_deadlines')}>
+          <div
+            onClick={() =>
+              trackWidgetInteraction("stats_card", "critical_deadlines")
+            }
+          >
             <StatsCard
               title="Critical Deadlines"
               value={stats.criticalDeadlines}
               icon={AlertTriangle}
               href="/process"
-              variant={stats.criticalDeadlines > 0 ? 'warning' : 'default'}
+              variant={stats.criticalDeadlines > 0 ? "warning" : "default"}
               accentColor="purple"
             />
           </div>
-          <div onClick={() => trackWidgetInteraction('stats_card', 'unread_signals')}>
+          <div
+            onClick={() =>
+              trackWidgetInteraction("stats_card", "unread_signals")
+            }
+          >
             <StatsCard
               title="Unread Signals"
               value={totalUnread}
               icon={MessageCircle}
               href="/whatsapp"
-              variant={totalUnread > 0 ? 'danger' : 'default'}
+              variant={totalUnread > 0 ? "danger" : "default"}
               accentColor="emerald"
             />
           </div>
-          <div onClick={() => trackWidgetInteraction('stats_card', 'session_time')}>
+          <div
+            onClick={() => trackWidgetInteraction("stats_card", "session_time")}
+          >
             <StatsCard
               title="Session Time"
               value={stats.hoursWorked}
@@ -321,8 +355,8 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 gap-6">
             <div
               onClick={() => {
-                trackWidgetInteraction('email_stats', 'unread_emails');
-                trackEmailAction('read', emailStats.unread_count);
+                trackWidgetInteraction("email_stats", "unread_emails");
+                trackEmailAction("read", emailStats.unread_count);
               }}
             >
               <StatsCard
@@ -330,7 +364,7 @@ export default function DashboardPage() {
                 value={emailStats.unread_count}
                 icon={Mail}
                 href="/email"
-                variant={emailStats.unread_count > 0 ? 'danger' : 'default'}
+                variant={emailStats.unread_count > 0 ? "danger" : "default"}
                 accentColor="blue"
               />
             </div>
@@ -343,12 +377,15 @@ export default function DashboardPage() {
             pratiche={practices.map(
               (p): PraticaPreview => ({
                 id: p.id,
-                title: p.title || 'Unknown',
-                client: p.client || 'Unknown Client',
+                title: p.title || "Unknown",
+                client: p.client || "Unknown Client",
                 status: p.status,
                 daysRemaining: p.daysRemaining,
-                completedAt: p.status === 'completed' ? new Date().toLocaleDateString() : undefined,
-              })
+                completedAt:
+                  p.status === "completed"
+                    ? new Date().toLocaleDateString()
+                    : undefined,
+              }),
             )}
             isLoading={isLoading}
           />
@@ -357,39 +394,48 @@ export default function DashboardPage() {
             isLoading={isLoading}
             onDelete={async (id) => {
               try {
-                trackWidgetInteraction('whatsapp_preview', `message_${id}`);
-                await api.crm.deleteInteraction(Number.parseInt(id, 10), user?.email || '');
-                trackUserInteraction('delete_message', 'whatsapp', id);
+                trackWidgetInteraction("whatsapp_preview", `message_${id}`);
+                await api.crm.deleteInteraction(
+                  Number.parseInt(id, 10),
+                  user?.email || "",
+                );
+                trackUserInteraction("delete_message", "whatsapp", id);
                 // Track funnel step completion
                 if (user?.email)
-                  funnel.completeStep(user.email, 'dashboard_engagement', 'delete_message', true);
+                  funnel.completeStep(
+                    user.email,
+                    "dashboard_engagement",
+                    "delete_message",
+                    true,
+                  );
                 // Send real-time update
-                realtime.sendDashboardUpdate('delete', 'case', id);
-                // TODO: Add queryClient.invalidateQueries({ queryKey: ['dashboard'] }) 
+                realtime.sendDashboardUpdate("delete", "case", id);
+                // TODO: Add queryClient.invalidateQueries({ queryKey: ['dashboard'] })
                 // after successful delete to refresh the interactions list
               } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : String(error);
+                const errorMessage =
+                  error instanceof Error ? error.message : String(error);
                 trackError(
                   error instanceof Error ? error : new Error(String(error)),
-                  'delete_interaction'
+                  "delete_interaction",
                 );
                 if (user?.email)
                   funnel.completeStep(
                     user.email,
-                    'dashboard_engagement',
-                    'delete_message',
+                    "dashboard_engagement",
+                    "delete_message",
                     false,
-                    errorMessage
+                    errorMessage,
                   );
                 logger.error(
-                  'Failed to delete interaction',
+                  "Failed to delete interaction",
                   {
-                    component: 'DashboardPage',
-                    action: 'deleteInteraction',
-                    user: user?.email || 'unknown',
+                    component: "DashboardPage",
+                    action: "deleteInteraction",
+                    user: user?.email || "unknown",
                     metadata: { interactionId: id },
                   },
-                  error instanceof Error ? error : new Error(String(error))
+                  error instanceof Error ? error : new Error(String(error)),
                 );
               }
             }}

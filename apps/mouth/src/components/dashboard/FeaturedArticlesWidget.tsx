@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import Image from 'next/image';
-import { ArrowRight } from 'lucide-react';
-import { api } from '@/lib/api';
-import { logger } from '@/lib/logger';
+import React, { useEffect, useState } from "react";
+import Image from "next/image";
+import { ArrowRight } from "lucide-react";
+import { api } from "@/lib/api";
+import { logger } from "@/lib/logger";
 
 interface FeaturedArticle {
   id: string;
@@ -19,56 +19,60 @@ interface FeaturedArticle {
 // Fallback articles (used if API fails)
 const fallbackArticles: FeaturedArticle[] = [
   {
-    id: '1',
-    title: "Suwung Landfill Closure: The Waste Crisis Hitting Bali's Tourist Zones",
-    category: 'LIFESTYLE',
-    categoryColor: 'text-red-400',
-    imageUrl: '/static/news/suwung-landfill.jpg',
-    href: 'https://balizero.com/lifestyle/suwung-landfill-crisis',
+    id: "1",
+    title:
+      "Suwung Landfill Closure: The Waste Crisis Hitting Bali's Tourist Zones",
+    category: "LIFESTYLE",
+    categoryColor: "text-red-400",
+    imageUrl: "/static/news/suwung-landfill.jpg",
+    href: "https://balizero.com/lifestyle/suwung-landfill-crisis",
   },
   {
-    id: '2',
-    title: 'Property Alert: Green Zone Crackdown and the End of Easy Villa Permits',
-    category: 'PROPERTY',
-    categoryColor: 'text-amber-400',
-    imageUrl: '/static/news/property-green-zone.jpg',
-    href: 'https://balizero.com/property/property-green-zone-alert',
+    id: "2",
+    title:
+      "Property Alert: Green Zone Crackdown and the End of Easy Villa Permits",
+    category: "PROPERTY",
+    categoryColor: "text-amber-400",
+    imageUrl: "/static/news/property-green-zone.jpg",
+    href: "https://balizero.com/property/property-green-zone-alert",
   },
   {
-    id: '3',
-    title: 'Dengue Alert 2026: 636 Cases and Rising — What Expats Need to Know',
-    category: 'LIFESTYLE',
-    categoryColor: 'text-red-400',
-    imageUrl: '/static/news/dengue-alert.jpg',
-    href: 'https://balizero.com/lifestyle/dengue-alert-2026',
+    id: "3",
+    title: "Dengue Alert 2026: 636 Cases and Rising — What Expats Need to Know",
+    category: "LIFESTYLE",
+    categoryColor: "text-red-400",
+    imageUrl: "/static/news/dengue-alert.jpg",
+    href: "https://balizero.com/lifestyle/dengue-alert-2026",
   },
   {
-    id: '4',
-    title: 'The 40-75% Tax Shock: What Pajak Hiburan Means for Beach Clubs and Nightlife',
-    category: 'TAX & LEGAL',
-    categoryColor: 'text-cyan-400',
-    imageUrl: '/static/news/pajak-hiburan.jpg',
-    href: 'https://balizero.com/tax-legal/pajak-hiburan-tax-shock',
+    id: "4",
+    title:
+      "The 40-75% Tax Shock: What Pajak Hiburan Means for Beach Clubs and Nightlife",
+    category: "TAX & LEGAL",
+    categoryColor: "text-cyan-400",
+    imageUrl: "/static/news/pajak-hiburan.jpg",
+    href: "https://balizero.com/tax-legal/pajak-hiburan-tax-shock",
   },
   {
-    id: '5',
-    title: 'The Constitutional Clash: Can Bali Legally Demand Your Bank Statements?',
-    category: 'IMMIGRATION',
-    categoryColor: 'text-blue-400',
-    imageUrl: '/static/news/constitutional-clash-koster.jpg',
-    href: 'https://balizero.com/immigration/constitutional-clash-bank-statements',
+    id: "5",
+    title:
+      "The Constitutional Clash: Can Bali Legally Demand Your Bank Statements?",
+    category: "IMMIGRATION",
+    categoryColor: "text-blue-400",
+    imageUrl: "/static/news/constitutional-clash-koster.jpg",
+    href: "https://balizero.com/immigration/constitutional-clash-bank-statements",
     isFeatured: true,
   },
 ];
 
 function ArticleCard({
   article,
-  className = '',
-  size = 'normal',
+  className = "",
+  size = "normal",
 }: {
   article: FeaturedArticle;
   className?: string;
-  size?: 'normal' | 'large';
+  size?: "normal" | "large";
 }) {
   return (
     <a
@@ -89,7 +93,7 @@ function ArticleCard({
       </div>
 
       <div
-        className={`relative flex flex-col justify-end p-4 ${size === 'large' ? 'min-h-[400px] md:min-h-full' : 'min-h-[200px]'}`}
+        className={`relative flex flex-col justify-end p-4 ${size === "large" ? "min-h-[400px] md:min-h-full" : "min-h-[200px]"}`}
       >
         <span
           className={`text-xs font-semibold uppercase tracking-wider ${article.categoryColor} mb-2`}
@@ -98,7 +102,7 @@ function ArticleCard({
         </span>
         <h3
           className={`font-semibold text-white leading-tight group-hover:text-[var(--accent)] transition-colors ${
-            size === 'large' ? 'text-xl md:text-2xl' : 'text-sm md:text-base'
+            size === "large" ? "text-xl md:text-2xl" : "text-sm md:text-base"
           }`}
         >
           {article.title}
@@ -121,23 +125,23 @@ export function FeaturedArticlesWidget() {
 
   useEffect(() => {
     let mounted = true;
-    
+
     const fetchArticles = async () => {
       try {
         const response = await api.get<{ articles: FeaturedArticle[] }>(
-          '/api/dashboard/featured-articles'
+          "/api/dashboard/featured-articles",
         );
         if (mounted && response.articles && response.articles.length > 0) {
           setArticles(response.articles);
         }
       } catch (error) {
         logger.warn(
-          'Failed to fetch featured articles, using fallback',
+          "Failed to fetch featured articles, using fallback",
           {
-            component: 'FeaturedArticlesWidget',
-            action: 'fetchArticles',
+            component: "FeaturedArticlesWidget",
+            action: "fetchArticles",
           },
-          error instanceof Error ? error : new Error(String(error))
+          error instanceof Error ? error : new Error(String(error)),
         );
         // Use fallback articles
       } finally {
@@ -148,22 +152,25 @@ export function FeaturedArticlesWidget() {
     };
 
     fetchArticles();
-    
+
     return () => {
       mounted = false;
     };
-  }, [])
+  }, []);
 
   return (
     <div className="rounded-xl border border-[#FFB347]/60 bg-[#FFB347]/25 p-6 overflow-hidden">
       {/* Header */}
       <div className="mb-6">
-        <h2 className="text-2xl md:text-3xl font-bold text-white">Decode Indonesia.</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-white">
+          Decode Indonesia.
+        </h2>
         <h2 className="text-2xl md:text-3xl font-bold">
-          <span className="text-red-500">Thrive</span> <span className="text-white">here</span>
+          <span className="text-red-500">Thrive</span>{" "}
+          <span className="text-white">here</span>
         </h2>
         <p className="text-gray-400 mt-2 text-sm md:text-base">
-          Legal, immigration, fiscal & business intelligence for Indonesia.{' '}
+          Legal, immigration, fiscal & business intelligence for Indonesia.{" "}
           <a
             href="https://balizero.com"
             target="_blank"
@@ -179,26 +186,43 @@ export function FeaturedArticlesWidget() {
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="animate-pulse bg-white/10 rounded-xl h-64" />
+            <div
+              key={i}
+              className="animate-pulse bg-white/10 rounded-xl h-64"
+            />
           ))}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Left Column - 2 stacked articles */}
           <div className="flex flex-col gap-4">
-            {articles[0] && <ArticleCard article={articles[0]} className="flex-1" />}
-            {articles[1] && <ArticleCard article={articles[1]} className="flex-1" />}
+            {articles[0] && (
+              <ArticleCard article={articles[0]} className="flex-1" />
+            )}
+            {articles[1] && (
+              <ArticleCard article={articles[1]} className="flex-1" />
+            )}
           </div>
 
           {/* Middle Column - 2 stacked articles */}
           <div className="flex flex-col gap-4">
-            {articles[2] && <ArticleCard article={articles[2]} className="flex-1" />}
-            {articles[3] && <ArticleCard article={articles[3]} className="flex-1" />}
+            {articles[2] && (
+              <ArticleCard article={articles[2]} className="flex-1" />
+            )}
+            {articles[3] && (
+              <ArticleCard article={articles[3]} className="flex-1" />
+            )}
           </div>
 
           {/* Right Column - 1 tall featured article */}
           <div className="flex flex-col">
-            {articles[4] && <ArticleCard article={articles[4]} className="flex-1" size="large" />}
+            {articles[4] && (
+              <ArticleCard
+                article={articles[4]}
+                className="flex-1"
+                size="large"
+              />
+            )}
           </div>
         </div>
       )}

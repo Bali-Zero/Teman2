@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Search, Activity, Building2, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  Search,
+  Activity,
+  Building2,
+  Sparkles,
+} from "lucide-react";
 
 export default function KBLINavigatorSection() {
   return (

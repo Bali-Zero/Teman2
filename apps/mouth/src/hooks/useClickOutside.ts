@@ -1,4 +1,4 @@
-import { useEffect, RefObject } from 'react';
+import { useEffect, RefObject } from "react";
 
 /**
  * Hook to detect clicks outside of a referenced element
@@ -18,7 +18,7 @@ import { useEffect, RefObject } from 'react';
 export function useClickOutside<T extends HTMLElement = HTMLElement>(
   ref: RefObject<T | null>,
   handler: (event: MouseEvent) => void,
-  enabled: boolean = true
+  enabled: boolean = true,
 ): void {
   useEffect(() => {
     if (!enabled) return;
@@ -29,8 +29,8 @@ export function useClickOutside<T extends HTMLElement = HTMLElement>(
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [ref, handler, enabled]);
 }
 
@@ -59,21 +59,21 @@ export function useClickOutside<T extends HTMLElement = HTMLElement>(
 export function useClickOutsideMultiple<T extends HTMLElement = HTMLElement>(
   refs: RefObject<T | null>[],
   handler: (event: MouseEvent) => void,
-  enabled: boolean = true
+  enabled: boolean = true,
 ): void {
   useEffect(() => {
     if (!enabled) return;
 
     const handleClickOutside = (event: MouseEvent) => {
       const isOutsideAll = refs.every(
-        (ref) => ref.current && !ref.current.contains(event.target as Node)
+        (ref) => ref.current && !ref.current.contains(event.target as Node),
       );
       if (isOutsideAll) {
         handler(event);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [refs, handler, enabled]);
 }

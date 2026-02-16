@@ -1,14 +1,14 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
-import { api } from '@/lib/api';
-import { WEBSOCKET } from '@/constants';
-import { logger } from '@/lib/logger';
-import { toError } from '@/lib/types/common';
+import { useEffect, useRef, useCallback, useState } from "react";
+import { api } from "@/lib/api";
+import { WEBSOCKET } from "@/constants";
+import { logger } from "@/lib/logger";
+import { toError } from "@/lib/types/common";
 
 type MessageHandler = (data: WebSocketMessage) => void;
 
 function normalizeWsBaseUrl(url: string): string {
   // Accept either wss://host or wss://host/ws and normalize to wss://host
-  return url.replace(/\/+$/, '').replace(/\/ws$/, '');
+  return url.replace(/\/+$/, "").replace(/\/ws$/, "");
 }
 
 /**
@@ -77,7 +77,10 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   const connect = useCallback(() => {
     const token = api.getToken();
     if (!token) {
-      logger.warn('No auth token for WebSocket', { component: 'AUTO', action: 'warn' });
+      logger.warn("No auth token for WebSocket", {
+        component: "AUTO",
+        action: "warn",
+      });
       return;
     }
 
@@ -87,12 +90,18 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
 
     setIsConnecting(true);
 
-    const apiWsUrl = typeof api.getWebSocketUrl === 'function' ? api.getWebSocketUrl() : undefined;
+    const apiWsUrl =
+      typeof api.getWebSocketUrl === "function"
+        ? api.getWebSocketUrl()
+        : undefined;
     const wsUrlCandidate =
       process.env.NEXT_PUBLIC_WS_URL ||
       apiWsUrl ||
-      process.env.NEXT_PUBLIC_API_URL?.replace('https://', 'wss://').replace('http://', 'ws://') ||
-      'wss://nuzantara-rag.fly.dev';
+      process.env.NEXT_PUBLIC_API_URL?.replace("https://", "wss://").replace(
+        "http://",
+        "ws://",
+      ) ||
+      "wss://nuzantara-rag.fly.dev";
     const wsBaseUrl = normalizeWsBaseUrl(wsUrlCandidate);
 
     // SECURITY: Use subprotocol instead of query param to prevent token exposure in logs/URLs
@@ -110,7 +119,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       clearPingInterval();
       pingIntervalRef.current = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'ping' }));
+          ws.send(JSON.stringify({ type: "ping" }));
         }
       }, WEBSOCKET.PING_INTERVAL);
     };
@@ -121,18 +130,18 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         onMessage?.(data);
       } catch (e) {
         logger.error(
-          'Failed to parse WebSocket message',
-          { component: 'WebSocket', action: 'parseMessage' },
-          toError(e)
+          "Failed to parse WebSocket message",
+          { component: "WebSocket", action: "parseMessage" },
+          toError(e),
         );
       }
     };
 
     ws.onerror = (error) => {
       logger.error(
-        'WebSocket error',
-        { component: 'WebSocket', action: 'connection' },
-        toError(error)
+        "WebSocket error",
+        { component: "WebSocket", action: "connection" },
+        toError(error),
       );
       setIsConnecting(false);
       onError?.(error);
@@ -145,7 +154,10 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       onDisconnect?.();
 
       // Attempt reconnect only if mounted
-      if (isMountedRef.current && reconnectAttemptsRef.current < maxReconnectAttempts) {
+      if (
+        isMountedRef.current &&
+        reconnectAttemptsRef.current < maxReconnectAttempts
+      ) {
         reconnectAttemptsRef.current++;
         // Use ref to call the latest connect function
         reconnectTimeoutRef.current = setTimeout(() => {
@@ -189,7 +201,10 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       wsRef.current.send(JSON.stringify(data));
       return true;
     }
-    logger.warn('WebSocket not connected', { component: 'AUTO', action: 'warn' });
+    logger.warn("WebSocket not connected", {
+      component: "AUTO",
+      action: "warn",
+    });
     return false;
   }, []);
 

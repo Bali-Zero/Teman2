@@ -1,25 +1,29 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react';
-import { api } from '@/lib/api';
-import { logger } from '@/lib/logger';
-import { toError } from '@/lib/types/common';
+import React, { useState, useEffect, useCallback, Suspense, lazy } from "react";
+import { api } from "@/lib/api";
+import { logger } from "@/lib/logger";
+import { toError } from "@/lib/types/common";
 import {
   ZohoConnectBanner,
   FolderSidebar,
   EmailList,
   type ComposeData,
-} from '@/components/email';
+} from "@/components/email";
 import type {
   ZohoConnectionStatus,
   EmailFolder,
   EmailSummary,
   EmailDetail,
-} from '@/lib/api/email/email.types';
+} from "@/lib/api/email/email.types";
 
 // Lazy load heavy components
-const EmailViewer = lazy(() => import('@/components/email').then(m => ({ default: m.EmailViewer })));
-const EmailCompose = lazy(() => import('@/components/email').then(m => ({ default: m.EmailCompose })));
+const EmailViewer = lazy(() =>
+  import("@/components/email").then((m) => ({ default: m.EmailViewer })),
+);
+const EmailCompose = lazy(() =>
+  import("@/components/email").then((m) => ({ default: m.EmailCompose })),
+);
 
 // Skeleton for loading state
 const ViewerSkeleton = () => (
@@ -52,86 +56,94 @@ const ComposeSkeleton = () => (
 
 // Helper function to convert HTML to plain text (handles Zoho email HTML with embedded styles)
 function htmlToPlainText(html: string): string {
-  if (!html) return '';
+  if (!html) return "";
 
   // Pre-process: Remove CSS blocks that might not be in proper style tags
   // Zoho emails often have CSS with unique selectors like div.zm_xxxxx
   let cleanedHtml = html
     // Remove inline style blocks with Zoho patterns
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
     // Remove any text that looks like CSS rules (Zoho specific patterns)
-    .replace(/div\.zm_[\w]+_parse_[\w]+[^{]*\{[^}]*\}/g, '')
+    .replace(/div\.zm_[\w]+_parse_[\w]+[^{]*\{[^}]*\}/g, "")
     // Remove CSS rule declarations that leaked as text
-    .replace(/[\w.-]+\s*\{[^}]*\}/g, '');
+    .replace(/[\w.-]+\s*\{[^}]*\}/g, "");
 
   // Create a temporary element to parse HTML
-  const temp = document.createElement('div');
+  const temp = document.createElement("div");
   temp.innerHTML = cleanedHtml;
 
   // Remove style tags (prevents CSS rules from appearing in text)
-  const styleTags = temp.querySelectorAll('style');
+  const styleTags = temp.querySelectorAll("style");
   styleTags.forEach((tag) => tag.remove());
 
   // Remove script tags (safety)
-  const scriptTags = temp.querySelectorAll('script');
+  const scriptTags = temp.querySelectorAll("script");
   scriptTags.forEach((tag) => tag.remove());
 
   // Remove head tag if present
-  const headTags = temp.querySelectorAll('head');
+  const headTags = temp.querySelectorAll("head");
   headTags.forEach((tag) => tag.remove());
 
   // Convert <br> to newlines before extracting text
-  const brTags = temp.querySelectorAll('br');
-  brTags.forEach((tag) => tag.replaceWith('\n'));
+  const brTags = temp.querySelectorAll("br");
+  brTags.forEach((tag) => tag.replaceWith("\n"));
 
   // Convert block elements to ensure newlines
-  const blockElements = temp.querySelectorAll('p, div, h1, h2, h3, h4, h5, h6, li, tr');
+  const blockElements = temp.querySelectorAll(
+    "p, div, h1, h2, h3, h4, h5, h6, li, tr",
+  );
   blockElements.forEach((el) => {
     if (el.textContent?.trim()) {
-      el.insertAdjacentText('afterend', '\n');
+      el.insertAdjacentText("afterend", "\n");
     }
   });
 
   // Get text content
-  let text = temp.textContent || temp.innerText || '';
+  let text = temp.textContent || temp.innerText || "";
 
   // Post-process: Remove any remaining CSS-like patterns that leaked through
   text = text
     // Remove Zoho CSS selector patterns (div.zm_xxx, span.zm_xxx, etc.)
-    .replace(/(?:div|span|td|tr|a|p|html|body)\.zm_[\w]+[\w\s,.-]*(?:\{[^}]*\})?/gi, '')
+    .replace(
+      /(?:div|span|td|tr|a|p|html|body)\.zm_[\w]+[\w\s,.-]*(?:\{[^}]*\})?/gi,
+      "",
+    )
     // Remove CSS property declarations that leaked (property: value !important; patterns)
     .replace(/[\w-]+:\s*[^;{}\n]+\s*!?important?\s*;?/gi, (match) => {
       // Only remove if it looks like CSS (has common CSS properties)
       const cssProps = [
-        'border',
-        'margin',
-        'padding',
-        'color',
-        'font',
-        'text',
-        'display',
-        'background',
-        'width',
-        'height',
-        'outline',
+        "border",
+        "margin",
+        "padding",
+        "color",
+        "font",
+        "text",
+        "display",
+        "background",
+        "width",
+        "height",
+        "outline",
       ];
       if (cssProps.some((prop) => match.toLowerCase().startsWith(prop))) {
-        return '';
+        return "";
       }
       return match;
     })
     // Remove standalone CSS-like class selectors
-    .replace(/^[>\s]*[.#]?[\w-]+\s*,?\s*$/gm, '');
+    .replace(/^[>\s]*[.#]?[\w-]+\s*,?\s*$/gm, "");
 
   // Clean up whitespace
   text = text
-    .replace(/\t/g, ' ') // Replace tabs with spaces
-    .replace(/ {2,}/g, ' ') // Collapse multiple spaces
-    .replace(/\n{3,}/g, '\n\n') // Normalize multiple newlines
-    .replace(/^\s+|\s+$/gm, '') // Trim each line
-    .split('\n')
-    .filter((line, i, arr) => line.trim() || (arr[i - 1]?.trim() && arr[i + 1]?.trim())) // Remove consecutive empty lines
-    .join('\n');
+    .replace(/\t/g, " ") // Replace tabs with spaces
+    .replace(/ {2,}/g, " ") // Collapse multiple spaces
+    .replace(/\n{3,}/g, "\n\n") // Normalize multiple newlines
+    .replace(/^\s+|\s+$/gm, "") // Trim each line
+    .split("\n")
+    .filter(
+      (line, i, arr) =>
+        line.trim() || (arr[i - 1]?.trim() && arr[i + 1]?.trim()),
+    ) // Remove consecutive empty lines
+    .join("\n");
 
   return text.trim();
 }
@@ -139,7 +151,7 @@ function htmlToPlainText(html: string): string {
 // Helper function to format date safely
 // Handles both ISO strings and Zoho timestamps (milliseconds)
 function formatDateSafe(dateStr: string | undefined): string {
-  if (!dateStr) return 'Unknown date';
+  if (!dateStr) return "Unknown date";
   try {
     // Handle timestamp (milliseconds) from Zoho API or ISO string
     const timestamp = Number(dateStr);
@@ -148,24 +160,25 @@ function formatDateSafe(dateStr: string | undefined): string {
         ? new Date(timestamp) // Timestamp in milliseconds
         : new Date(dateStr); // ISO string
 
-    if (isNaN(date.getTime())) return 'Unknown date';
+    if (isNaN(date.getTime())) return "Unknown date";
 
-    return date.toLocaleString('it-IT', {
-      weekday: 'short',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+    return date.toLocaleString("it-IT", {
+      weekday: "short",
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   } catch {
-    return 'Unknown date';
+    return "Unknown date";
   }
 }
 
 export default function EmailPage() {
   // Connection state
-  const [connectionStatus, setConnectionStatus] = useState<ZohoConnectionStatus | null>(null);
+  const [connectionStatus, setConnectionStatus] =
+    useState<ZohoConnectionStatus | null>(null);
   const [isCheckingConnection, setIsCheckingConnection] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
 
@@ -181,15 +194,19 @@ export default function EmailPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isEmailsLoading, setIsEmailsLoading] = useState(false);
   const [isEmailDetailLoading, setIsEmailDetailLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [hasMore, setHasMore] = useState(false);
   const [totalEmails, setTotalEmails] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
 
   // Compose state
   const [isComposeOpen, setIsComposeOpen] = useState(false);
-  const [composeMode, setComposeMode] = useState<'new' | 'reply' | 'replyAll' | 'forward'>('new');
-  const [composeInitialData, setComposeInitialData] = useState<Partial<ComposeData>>({});
+  const [composeMode, setComposeMode] = useState<
+    "new" | "reply" | "replyAll" | "forward"
+  >("new");
+  const [composeInitialData, setComposeInitialData] = useState<
+    Partial<ComposeData>
+  >({});
   const [isSending, setIsSending] = useState(false);
 
   // Check connection status
@@ -204,11 +221,16 @@ export default function EmailPage() {
       }
     } catch (error) {
       logger.error(
-        'Failed to check connection',
-        { component: 'Email', action: 'checkConnection' },
-        toError(error)
+        "Failed to check connection",
+        { component: "Email", action: "checkConnection" },
+        toError(error),
       );
-      setConnectionStatus({ connected: false, email: null, account_id: null, expires_at: null });
+      setConnectionStatus({
+        connected: false,
+        email: null,
+        account_id: null,
+        expires_at: null,
+      });
     } finally {
       setIsCheckingConnection(false);
     }
@@ -222,15 +244,15 @@ export default function EmailPage() {
       setFolders(response.folders);
 
       // Select inbox by default
-      const inbox = response.folders.find((f) => f.folder_type === 'inbox');
+      const inbox = response.folders.find((f) => f.folder_type === "inbox");
       if (inbox && !selectedFolderId) {
         setSelectedFolderId(inbox.folder_id);
       }
     } catch (error) {
       logger.error(
-        'Failed to load folders',
-        { component: 'Email', action: 'loadFolders' },
-        toError(error)
+        "Failed to load folders",
+        { component: "Email", action: "loadFolders" },
+        toError(error),
       );
     } finally {
       setIsFoldersLoading(false);
@@ -238,29 +260,32 @@ export default function EmailPage() {
   };
 
   // Load emails
-  const loadEmails = useCallback(async (folderId: string, search?: string, page: number = 1) => {
-    setIsEmailsLoading(true);
-    try {
-      const offset = (page - 1) * 50;
-      const response = await api.email.listEmails({
-        folder_id: folderId,
-        query: search,
-        limit: 50,
-        offset: offset,
-      });
-      setEmails(response.emails);
-      setHasMore(response.has_more);
-      setTotalEmails(response.total);
-    } catch (error) {
-      logger.error(
-        'Failed to load emails',
-        { component: 'Email', action: 'loadEmails' },
-        toError(error)
-      );
-    } finally {
-      setIsEmailsLoading(false);
-    }
-  }, []);
+  const loadEmails = useCallback(
+    async (folderId: string, search?: string, page: number = 1) => {
+      setIsEmailsLoading(true);
+      try {
+        const offset = (page - 1) * 50;
+        const response = await api.email.listEmails({
+          folder_id: folderId,
+          query: search,
+          limit: 50,
+          offset: offset,
+        });
+        setEmails(response.emails);
+        setHasMore(response.has_more);
+        setTotalEmails(response.total);
+      } catch (error) {
+        logger.error(
+          "Failed to load emails",
+          { component: "Email", action: "loadEmails" },
+          toError(error),
+        );
+      } finally {
+        setIsEmailsLoading(false);
+      }
+    },
+    [],
+  );
 
   // Load email detail
   const loadEmailDetail = async (messageId: string, folderId?: string) => {
@@ -273,14 +298,16 @@ export default function EmailPage() {
       if (!email.is_read) {
         await api.email.markRead({ message_ids: [messageId], is_read: true });
         setEmails((prev) =>
-          prev.map((e) => (e.message_id === messageId ? { ...e, is_read: true } : e))
+          prev.map((e) =>
+            e.message_id === messageId ? { ...e, is_read: true } : e,
+          ),
         );
       }
     } catch (error) {
       logger.error(
-        'Failed to load email',
-        { component: 'Email', action: 'loadEmail' },
-        toError(error)
+        "Failed to load email",
+        { component: "Email", action: "loadEmail" },
+        toError(error),
       );
     } finally {
       setIsEmailDetailLoading(false);
@@ -296,9 +323,9 @@ export default function EmailPage() {
       window.location.href = auth_url;
     } catch (error) {
       logger.error(
-        'Failed to get auth URL',
-        { component: 'Email', action: 'getAuthUrl' },
-        toError(error)
+        "Failed to get auth URL",
+        { component: "Email", action: "getAuthUrl" },
+        toError(error),
       );
       setIsConnecting(false);
     }
@@ -306,19 +333,25 @@ export default function EmailPage() {
 
   // Handle disconnect
   const handleDisconnect = async () => {
-    if (!confirm('Are you sure you want to disconnect your Zoho Mail account?')) return;
+    if (!confirm("Are you sure you want to disconnect your Zoho Mail account?"))
+      return;
 
     try {
       await api.email.disconnect();
-      setConnectionStatus({ connected: false, email: null, account_id: null, expires_at: null });
+      setConnectionStatus({
+        connected: false,
+        email: null,
+        account_id: null,
+        expires_at: null,
+      });
       setFolders([]);
       setEmails([]);
       setSelectedEmail(null);
     } catch (error) {
       logger.error(
-        'Failed to disconnect',
-        { component: 'Email', action: 'disconnect' },
-        toError(error)
+        "Failed to disconnect",
+        { component: "Email", action: "disconnect" },
+        toError(error),
       );
     }
   };
@@ -329,7 +362,7 @@ export default function EmailPage() {
     setSelectedEmailId(null);
     setSelectedEmail(null);
     setSelectedIds(new Set());
-    setSearchQuery('');
+    setSearchQuery("");
     setCurrentPage(1);
   };
 
@@ -366,14 +399,16 @@ export default function EmailPage() {
     try {
       await api.email.markRead({ message_ids: emailIds, is_read: isRead });
       setEmails((prev) =>
-        prev.map((e) => (emailIds.includes(e.message_id) ? { ...e, is_read: isRead } : e))
+        prev.map((e) =>
+          emailIds.includes(e.message_id) ? { ...e, is_read: isRead } : e,
+        ),
       );
       setSelectedIds(new Set());
     } catch (error) {
       logger.error(
-        'Failed to mark emails',
-        { component: 'Email', action: 'markEmails' },
-        toError(error)
+        "Failed to mark emails",
+        { component: "Email", action: "markEmails" },
+        toError(error),
       );
     }
   };
@@ -387,16 +422,18 @@ export default function EmailPage() {
     try {
       await api.email.toggleFlag(emailId, newFlagged);
       setEmails((prev) =>
-        prev.map((e) => (e.message_id === emailId ? { ...e, is_flagged: newFlagged } : e))
+        prev.map((e) =>
+          e.message_id === emailId ? { ...e, is_flagged: newFlagged } : e,
+        ),
       );
       if (selectedEmail?.message_id === emailId) {
         setSelectedEmail({ ...selectedEmail, is_flagged: newFlagged });
       }
     } catch (error) {
       logger.error(
-        'Failed to toggle flag',
-        { component: 'Email', action: 'toggleFlag' },
-        toError(error)
+        "Failed to toggle flag",
+        { component: "Email", action: "toggleFlag" },
+        toError(error),
       );
     }
   };
@@ -410,7 +447,9 @@ export default function EmailPage() {
 
       // Only update UI if API call succeeded
       if (result.success) {
-        setEmails((prev) => prev.filter((e) => !emailIds.includes(e.message_id)));
+        setEmails((prev) =>
+          prev.filter((e) => !emailIds.includes(e.message_id)),
+        );
         if (selectedEmailId && emailIds.includes(selectedEmailId)) {
           setSelectedEmailId(null);
           setSelectedEmail(null);
@@ -418,16 +457,16 @@ export default function EmailPage() {
         setSelectedIds(new Set());
         alert(`✅ ${emailIds.length} email eliminate con successo`);
       } else {
-        throw new Error('Delete operation failed');
+        throw new Error("Delete operation failed");
       }
     } catch (error) {
       logger.error(
-        'Failed to delete emails',
-        { component: 'Email', action: 'deleteEmails' },
-        toError(error)
+        "Failed to delete emails",
+        { component: "Email", action: "deleteEmails" },
+        toError(error),
       );
       alert(
-        `❌ Errore: Impossibile eliminare le email. Riprova.\n\nDettagli: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `❌ Errore: Impossibile eliminare le email. Riprova.\n\nDettagli: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     }
   };
@@ -473,7 +512,7 @@ export default function EmailPage() {
       });
 
       setIsComposeOpen(false);
-      alert('Draft saved successfully');
+      alert("Draft saved successfully");
 
       // Refresh current view to show changes if we are in drafts (or general refresh)
       if (selectedFolderId) {
@@ -481,17 +520,17 @@ export default function EmailPage() {
       }
     } catch (error) {
       logger.error(
-        'Failed to save draft',
-        { component: 'Email', action: 'saveDraft' },
-        toError(error)
+        "Failed to save draft",
+        { component: "Email", action: "saveDraft" },
+        toError(error),
       );
-      alert('Failed to save draft. Please try again.');
+      alert("Failed to save draft. Please try again.");
     }
   };
 
   // Handle compose
   const handleCompose = () => {
-    setComposeMode('new');
+    setComposeMode("new");
     setComposeInitialData({});
     setIsComposeOpen(true);
   };
@@ -499,16 +538,16 @@ export default function EmailPage() {
   // Handle reply
   const handleReply = () => {
     if (!selectedEmail) return;
-    setComposeMode('reply');
+    setComposeMode("reply");
 
     // Convert HTML to plain text for the textarea
     const originalContent = htmlToPlainText(
-      selectedEmail.html_content || selectedEmail.text_content || ''
+      selectedEmail.html_content || selectedEmail.text_content || "",
     );
     const quotedContent = originalContent
-      .split('\n')
+      .split("\n")
       .map((line) => `> ${line}`)
-      .join('\n');
+      .join("\n");
 
     setComposeInitialData({
       to: [selectedEmail.from.address],
@@ -533,14 +572,14 @@ export default function EmailPage() {
 
     // Convert HTML to plain text for the textarea
     const originalContent = htmlToPlainText(
-      selectedEmail.html_content || selectedEmail.text_content || ''
+      selectedEmail.html_content || selectedEmail.text_content || "",
     );
     const quotedContent = originalContent
-      .split('\n')
+      .split("\n")
       .map((line) => `> ${line}`)
-      .join('\n');
+      .join("\n");
 
-    setComposeMode('replyAll');
+    setComposeMode("replyAll");
     setComposeInitialData({
       to: uniqueRecipients,
       subject: `Re: ${selectedEmail.subject}`,
@@ -554,11 +593,11 @@ export default function EmailPage() {
   // Handle forward
   const handleForward = () => {
     if (!selectedEmail) return;
-    setComposeMode('forward');
+    setComposeMode("forward");
 
     // Convert HTML to plain text for the textarea
     const originalContent = htmlToPlainText(
-      selectedEmail.html_content || selectedEmail.text_content || ''
+      selectedEmail.html_content || selectedEmail.text_content || "",
     );
 
     setComposeInitialData({
@@ -568,7 +607,7 @@ export default function EmailPage() {
 From: ${selectedEmail.from.name || selectedEmail.from.address} <${selectedEmail.from.address}>
 Date: ${formatDateSafe(selectedEmail.date)}
 Subject: ${selectedEmail.subject}
-To: ${selectedEmail.to.map((t) => `${t.name || ''} <${t.address}>`).join(', ')}
+To: ${selectedEmail.to.map((t) => `${t.name || ""} <${t.address}>`).join(", ")}
 
 ${originalContent}`,
     });
@@ -579,22 +618,24 @@ ${originalContent}`,
   const handleSendEmail = async (data: ComposeData) => {
     setIsSending(true);
     try {
-      if (composeMode === 'reply' || composeMode === 'replyAll') {
+      if (composeMode === "reply" || composeMode === "replyAll") {
         if (selectedEmailId) {
           // For reply: to = original sender, cc = empty
           // For replyAll: to = original sender, cc = all other recipients
-          const toAddress = data.to[0] || selectedEmail?.from.address || '';
+          const toAddress = data.to[0] || selectedEmail?.from.address || "";
           const ccAddresses =
-            composeMode === 'replyAll' && data.cc?.length ? data.cc.join(',') : undefined;
+            composeMode === "replyAll" && data.cc?.length
+              ? data.cc.join(",")
+              : undefined;
 
           await api.email.replyEmail(selectedEmailId, {
             content: data.htmlContent,
-            reply_all: composeMode === 'replyAll',
+            reply_all: composeMode === "replyAll",
             to: toAddress,
             cc: ccAddresses,
           });
         }
-      } else if (composeMode === 'forward') {
+      } else if (composeMode === "forward") {
         if (selectedEmailId) {
           await api.email.forwardEmail(selectedEmailId, {
             to: data.to,
@@ -620,52 +661,65 @@ ${originalContent}`,
       }
     } catch (error) {
       logger.error(
-        'Failed to send email',
-        { component: 'Email', action: 'sendEmail' },
-        toError(error)
+        "Failed to send email",
+        { component: "Email", action: "sendEmail" },
+        toError(error),
       );
-      alert('Failed to send email. Please try again.');
+      alert("Failed to send email. Please try again.");
     } finally {
       setIsSending(false);
     }
   };
 
   // Handle download attachment
-  const handleDownloadAttachment = async (attachmentId: string, filename: string) => {
+  const handleDownloadAttachment = async (
+    attachmentId: string,
+    filename: string,
+  ) => {
     if (!selectedEmailId) return;
 
     try {
-      const blob = await api.email.downloadAttachment(selectedEmailId, attachmentId);
+      const blob = await api.email.downloadAttachment(
+        selectedEmailId,
+        attachmentId,
+      );
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
     } catch (error) {
       logger.error(
-        'Failed to download attachment',
-        { component: 'Email', action: 'downloadAttachment' },
-        toError(error)
+        "Failed to download attachment",
+        { component: "Email", action: "downloadAttachment" },
+        toError(error),
       );
     }
   };
 
   // Handle add to CRM
   const handleAddToCRM = async (email: string, name: string) => {
-    const displayName = name || email.split('@')[0];
-    if (!confirm(`Aggiungere "${displayName}" (${email}) come nuovo cliente in CRM?`)) return;
+    const displayName = name || email.split("@")[0];
+    if (
+      !confirm(
+        `Aggiungere "${displayName}" (${email}) come nuovo cliente in CRM?`,
+      )
+    )
+      return;
 
     try {
       const client = await api.crm.createClient(
         {
-          full_name: name || email.split('@')[0],
+          full_name: name || email.split("@")[0],
           email: email,
         },
-        connectionStatus?.email || 'email_import'
+        connectionStatus?.email || "email_import",
       );
 
-      alert(`Cliente "${client.full_name}" creato con successo! ID: ${client.id}`);
+      alert(
+        `Cliente "${client.full_name}" creato con successo! ID: ${client.id}`,
+      );
 
       // Reload email detail to refresh the CRM badge
       if (selectedEmailId && selectedFolderId) {
@@ -673,11 +727,11 @@ ${originalContent}`,
       }
     } catch (error) {
       logger.error(
-        'Failed to create client',
-        { component: 'Email', action: 'createClient' },
-        toError(error)
+        "Failed to create client",
+        { component: "Email", action: "createClient" },
+        toError(error),
       );
-      alert('Errore nella creazione del cliente. Riprova.');
+      alert("Errore nella creazione del cliente. Riprova.");
     }
   };
 
@@ -707,7 +761,9 @@ ${originalContent}`,
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-[var(--foreground-muted)]">Checking connection...</p>
+          <p className="text-sm text-[var(--foreground-muted)]">
+            Checking connection...
+          </p>
         </div>
       </div>
     );
@@ -715,7 +771,12 @@ ${originalContent}`,
 
   // Not connected state
   if (!connectionStatus?.connected) {
-    return <ZohoConnectBanner onConnect={handleConnect} isConnecting={isConnecting} />;
+    return (
+      <ZohoConnectBanner
+        onConnect={handleConnect}
+        isConnecting={isConnecting}
+      />
+    );
   }
 
   // Main email interface
@@ -767,7 +828,9 @@ ${originalContent}`,
           onReply={handleReply}
           onReplyAll={handleReplyAll}
           onForward={handleForward}
-          onToggleFlag={() => selectedEmailId && handleToggleFlag(selectedEmailId)}
+          onToggleFlag={() =>
+            selectedEmailId && handleToggleFlag(selectedEmailId)
+          }
           onDelete={() => selectedEmailId && handleDelete([selectedEmailId])}
           onDownloadAttachment={handleDownloadAttachment}
           isLoading={isEmailDetailLoading}

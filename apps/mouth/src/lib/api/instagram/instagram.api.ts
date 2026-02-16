@@ -3,8 +3,11 @@
  * Optimized for Omnichannel Dashboard using the conversations table.
  */
 
-import type { IApiClient } from '../types/api-client.types';
-import type { InstagramConversation, InstagramMessage } from './instagram.types';
+import type { IApiClient } from "../types/api-client.types";
+import type {
+  InstagramConversation,
+  InstagramMessage,
+} from "./instagram.types";
 
 export class InstagramApi {
   constructor(private client: IApiClient) {}
@@ -16,19 +19,22 @@ export class InstagramApi {
     params: {
       limit?: number;
       offset?: number;
-    } = {}
+    } = {},
   ): Promise<InstagramConversation[]> {
     return await this.client.request<InstagramConversation[]>(
-      `/api/instagram/conversations?limit=${params.limit || 50}&offset=${params.offset || 0}`
+      `/api/instagram/conversations?limit=${params.limit || 50}&offset=${params.offset || 0}`,
     );
   }
 
   /**
    * Get messages for a specific instagram_user_id
    */
-  async getMessages(instagramUserId: string, limit: number = 100): Promise<InstagramMessage[]> {
+  async getMessages(
+    instagramUserId: string,
+    limit: number = 100,
+  ): Promise<InstagramMessage[]> {
     return await this.client.request<InstagramMessage[]>(
-      `/api/instagram/messages/${instagramUserId}?limit=${limit}`
+      `/api/instagram/messages/${instagramUserId}?limit=${limit}`,
     );
   }
 
@@ -38,18 +44,18 @@ export class InstagramApi {
   async sendMessage(
     instagramUserId: string,
     text: string,
-    replyToMessageId?: string
+    replyToMessageId?: string,
   ): Promise<{ success: boolean; message_id?: string }> {
     return await this.client.request<{ success: boolean; message_id?: string }>(
-      '/api/instagram/send',
+      "/api/instagram/send",
       {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify({
           instagram_user_id: instagramUserId,
           text,
           reply_to: replyToMessageId,
         }),
-      }
+      },
     );
   }
 }

@@ -9,7 +9,11 @@ export interface AgenticQueryResponse {
   debug_info?: {
     giant_key_points?: string[];
     giant_warnings?: string[];
-    cell_corrections?: Array<{ correction: string; severity?: string; source?: string }>;
+    cell_corrections?: Array<{
+      correction: string;
+      severity?: string;
+      source?: string;
+    }>;
     cell_enhancements?: string[];
     cell_calibrations?: string[];
     [key: string]: unknown;

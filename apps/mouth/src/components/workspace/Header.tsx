@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { usePathname } from 'next/navigation';
-import { Bell, Clock, Menu, X, MessageCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { routeTitles } from '@/types/navigation';
-import { cn } from '@/lib/utils';
+import React, { useState } from "react";
+import { usePathname } from "next/navigation";
+import { Bell, Clock, Menu, X, MessageCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { routeTitles } from "@/types/navigation";
+import { cn } from "@/lib/utils";
 
 interface HeaderProps {
   userName: string;
@@ -41,30 +41,30 @@ export function Header({
     }
     // Check for dynamic routes
     for (const [route, title] of Object.entries(routeTitles)) {
-      if (pathname.startsWith(route) && route !== '/') {
+      if (pathname.startsWith(route) && route !== "/") {
         return title;
       }
     }
-    return 'Dashboard';
+    return "Dashboard";
   };
 
   // Get greeting based on time
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
   };
 
   // Format current date
   const formatDate = () => {
     const options: Intl.DateTimeFormatOptions = {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
     };
-    return new Date().toLocaleDateString('en-US', options);
+    return new Date().toLocaleDateString("en-US", options);
   };
 
   return (
@@ -76,7 +76,7 @@ export function Header({
           <button
             onClick={onMobileMenuToggle}
             className="md:hidden p-2 rounded-lg hover:bg-[var(--background-elevated)] transition-colors"
-            aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
+            aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
           >
             {isMobileMenuOpen ? (
               <X className="w-5 h-5 text-[var(--foreground)]" />
@@ -87,9 +87,11 @@ export function Header({
 
           {/* Compact Greeting - Page Title + Date */}
           <div className="hidden sm:block">
-            <h1 className="text-lg font-semibold text-[var(--foreground)]">{getPageTitle()}</h1>
+            <h1 className="text-lg font-semibold text-[var(--foreground)]">
+              {getPageTitle()}
+            </h1>
             <p className="text-xs text-[var(--foreground-muted)]">
-              {formatDate()} • {userName.split(' ')[0]}
+              {formatDate()} • {userName.split(" ")[0]}
             </p>
           </div>
 
@@ -111,7 +113,7 @@ export function Header({
             >
               <MessageCircle className="w-5 h-5 text-[var(--foreground-secondary)]" />
               <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] text-xs font-semibold rounded-full bg-[var(--accent)] text-white">
-                {whatsappUnread > 99 ? '99+' : whatsappUnread}
+                {whatsappUnread > 99 ? "99+" : whatsappUnread}
               </span>
             </Button>
           )}
@@ -128,7 +130,7 @@ export function Header({
               <Bell className="w-5 h-5 text-[var(--foreground-secondary)]" />
               {notificationCount > 0 && (
                 <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] text-xs font-semibold rounded-full bg-[var(--accent)] text-white">
-                  {notificationCount > 99 ? '99+' : notificationCount}
+                  {notificationCount > 99 ? "99+" : notificationCount}
                 </span>
               )}
             </Button>
@@ -136,10 +138,15 @@ export function Header({
             {/* Notifications Dropdown */}
             {showNotifications && (
               <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setShowNotifications(false)}
+                />
                 <div className="absolute right-0 top-full mt-2 w-80 max-h-96 overflow-y-auto z-50 bg-[var(--background-secondary)] border border-[var(--border)] rounded-xl shadow-xl">
                   <div className="p-4 border-b border-[var(--border)]">
-                    <h3 className="font-semibold text-[var(--foreground)]">Notifications</h3>
+                    <h3 className="font-semibold text-[var(--foreground)]">
+                      Notifications
+                    </h3>
                   </div>
                   <div className="p-4">
                     <p className="text-sm text-[var(--foreground-muted)] text-center py-4">
@@ -160,15 +167,19 @@ export function Header({
                 variant="outline"
                 size="sm"
                 className={cn(
-                  'hidden sm:flex items-center gap-2 transition-all',
+                  "hidden sm:flex items-center gap-2 transition-all",
                   isClockIn
-                    ? 'border-[var(--success)] text-[var(--success)] hover:bg-[var(--success)]/10'
-                    : 'border-[var(--border)] text-[var(--foreground-secondary)] hover:bg-[var(--background-elevated)]'
+                    ? "border-[var(--success)] text-[var(--success)] hover:bg-[var(--success)]/10"
+                    : "border-[var(--border)] text-[var(--foreground-secondary)] hover:bg-[var(--background-elevated)]",
                 )}
               >
                 <Clock className="w-4 h-4" />
                 <span className="hidden md:inline">
-                  {isClockLoading ? 'Loading...' : isClockIn ? 'Clock Out' : 'Clock In'}
+                  {isClockLoading
+                    ? "Loading..."
+                    : isClockIn
+                      ? "Clock Out"
+                      : "Clock In"}
                 </span>
               </Button>
 
@@ -179,10 +190,12 @@ export function Header({
                 variant="ghost"
                 size="icon"
                 className={cn(
-                  'sm:hidden',
-                  isClockIn ? 'text-[var(--success)]' : 'text-[var(--foreground-secondary)]'
+                  "sm:hidden",
+                  isClockIn
+                    ? "text-[var(--success)]"
+                    : "text-[var(--foreground-secondary)]",
                 )}
-                aria-label={isClockIn ? 'Clock out' : 'Clock in'}
+                aria-label={isClockIn ? "Clock out" : "Clock in"}
               >
                 <Clock className="w-5 h-5" />
               </Button>

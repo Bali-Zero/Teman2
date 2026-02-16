@@ -4,7 +4,7 @@
  * Safe logging that strips in production
  */
 
-const isProduction = process.env.NODE_ENV === 'production';
+const isProduction = process.env.NODE_ENV === "production";
 
 /**
  * Safe console log - stripped in production
@@ -12,7 +12,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 export function debug(...args: unknown[]): void {
   if (!isProduction) {
     // eslint-disable-next-line no-console
-    console.log('[DEBUG]', ...args);
+    console.log("[DEBUG]", ...args);
   }
 }
 
@@ -22,7 +22,7 @@ export function debug(...args: unknown[]): void {
 export function warn(...args: unknown[]): void {
   if (!isProduction) {
     // eslint-disable-next-line no-console
-    console.warn('[WARN]', ...args);
+    console.warn("[WARN]", ...args);
   }
 }
 
@@ -31,7 +31,7 @@ export function warn(...args: unknown[]): void {
  */
 export function error(...args: unknown[]): void {
   // eslint-disable-next-line no-console
-  console.error('[ERROR]', ...args);
+  console.error("[ERROR]", ...args);
 }
 
 /**
@@ -63,7 +63,7 @@ export function createLogger(namespace: string) {
  * Call this in app initialization
  */
 export function stripConsoleInProduction(): void {
-  if (isProduction && typeof window !== 'undefined') {
+  if (isProduction && typeof window !== "undefined") {
     // eslint-disable-next-line @typescript-eslint/no-empty-function
     const noop = () => {};
 
@@ -77,7 +77,7 @@ export function stripConsoleInProduction(): void {
 
     // Keep error but prefix it
     console.error = (...args: unknown[]) => {
-      originalError('[App Error]', ...args);
+      originalError("[App Error]", ...args);
     };
   }
 }

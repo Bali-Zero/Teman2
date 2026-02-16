@@ -1,7 +1,7 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { PricingResponse, PricingCategory, PricingItem } from '@/types/pricing';
-import { Info, AlertTriangle, MessageCircle } from 'lucide-react';
+import React from "react";
+import { motion } from "framer-motion";
+import { PricingResponse, PricingCategory, PricingItem } from "@/types/pricing";
+import { Info, AlertTriangle, MessageCircle } from "lucide-react";
 
 interface PricingTableProps {
   data: PricingResponse;
@@ -35,15 +35,18 @@ export const PricingTable: React.FC<PricingTableProps> = ({ data }) => {
   }
 
   const renderPrice = (item: PricingItem) => {
-    if (item.price) return <span className="text-xl font-bold text-white">{item.price}</span>;
+    if (item.price)
+      return <span className="text-xl font-bold text-white">{item.price}</span>;
     if (item.price_1y && item.price_2y) {
       return (
         <div className="flex flex-col">
           <span className="text-lg font-bold text-white">
-            {item.price_1y} <span className="text-xs font-normal text-white/50">(1y)</span>
+            {item.price_1y}{" "}
+            <span className="text-xs font-normal text-white/50">(1y)</span>
           </span>
           <span className="text-lg font-bold text-white">
-            {item.price_2y} <span className="text-xs font-normal text-white/50">(2y)</span>
+            {item.price_2y}{" "}
+            <span className="text-xs font-normal text-white/50">(2y)</span>
           </span>
         </div>
       );
@@ -53,12 +56,18 @@ export const PricingTable: React.FC<PricingTableProps> = ({ data }) => {
         <div className="flex flex-col gap-1">
           {item.offshore && (
             <span className="text-lg font-bold text-emerald-400">
-              {item.offshore} <span className="text-xs font-normal text-white/50">(Offshore)</span>
+              {item.offshore}{" "}
+              <span className="text-xs font-normal text-white/50">
+                (Offshore)
+              </span>
             </span>
           )}
           {item.onshore && (
             <span className="text-lg font-bold text-blue-400">
-              {item.onshore} <span className="text-xs font-normal text-white/50">(Onshore)</span>
+              {item.onshore}{" "}
+              <span className="text-xs font-normal text-white/50">
+                (Onshore)
+              </span>
             </span>
           )}
         </div>
@@ -67,13 +76,16 @@ export const PricingTable: React.FC<PricingTableProps> = ({ data }) => {
     return <span className="text-white/60 text-sm">Contact for Quote</span>;
   };
 
-  const renderCategory = (title: string, items: PricingCategory | undefined) => {
+  const renderCategory = (
+    title: string,
+    items: PricingCategory | undefined,
+  ) => {
     if (!items || Object.keys(items).length === 0) return null;
 
     return (
       <motion.div variants={itemVariants} className="mb-6 last:mb-0">
         <h3 className="text-sm font-medium text-white/40 uppercase tracking-widest mb-3 pl-1 border-l-2 border-emerald-500/50">
-          {title.replace(/_/g, ' ')}
+          {title.replace(/_/g, " ")}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {Object.entries(items).map(([name, details]) => (
@@ -85,7 +97,9 @@ export const PricingTable: React.FC<PricingTableProps> = ({ data }) => {
                 <Info size={14} className="text-white/30" />
               </div>
 
-              <h4 className="font-semibold text-white/90 mb-1 leading-tight">{name}</h4>
+              <h4 className="font-semibold text-white/90 mb-1 leading-tight">
+                {name}
+              </h4>
 
               {/* If it's a search result, it might be nested differently, adapt if needed */}
               <div className="mt-2 text-right">{renderPrice(details)}</div>
@@ -107,19 +121,19 @@ export const PricingTable: React.FC<PricingTableProps> = ({ data }) => {
     if (data.results) {
       // It's a search result
       return Object.entries(data.results).map(([category, items]) =>
-        renderCategory(category, items as PricingCategory)
+        renderCategory(category, items as PricingCategory),
       );
     }
 
     // It's a specific category listing
     return (
       <>
-        {renderCategory('Single Entry Visas', data.single_entry_visas)}
-        {renderCategory('Multiple Entry Visas', data.multiple_entry_visas)}
-        {renderCategory('KITAS & Long Stay', data.kitas_permits)}
-        {renderCategory('Business & Legal', data.business_legal_services)}
-        {renderCategory('Taxation', data.taxation_services)}
-        {renderCategory('Quick Packages', data.quick_quotes)}
+        {renderCategory("Single Entry Visas", data.single_entry_visas)}
+        {renderCategory("Multiple Entry Visas", data.multiple_entry_visas)}
+        {renderCategory("KITAS & Long Stay", data.kitas_permits)}
+        {renderCategory("Business & Legal", data.business_legal_services)}
+        {renderCategory("Taxation", data.taxation_services)}
+        {renderCategory("Quick Packages", data.quick_quotes)}
       </>
     );
   };
@@ -136,7 +150,7 @@ export const PricingTable: React.FC<PricingTableProps> = ({ data }) => {
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           <span className="text-xs font-bold text-white/70 uppercase tracking-widest">
-            {data.official_notice?.replace('🔒 ', '') || 'Official Pricing'}
+            {data.official_notice?.replace("🔒 ", "") || "Official Pricing"}
           </span>
         </div>
         {data.search_query && (
@@ -151,28 +165,34 @@ export const PricingTable: React.FC<PricingTableProps> = ({ data }) => {
         {renderContent()}
 
         {/* Warnings */}
-        {data.important_warnings && Object.keys(data.important_warnings).length > 0 && (
-          <div className="mt-6 p-3 rounded-lg bg-orange-500/10 border border-orange-500/20">
-            <h4 className="text-xs font-bold text-orange-400 uppercase mb-2 flex items-center gap-2">
-              <AlertTriangle size={12} /> Important Warnings
-            </h4>
-            <ul className="space-y-1">
-              {Object.values(data.important_warnings).map((warning, i) => (
-                <li key={i} className="text-xs text-orange-200/80 flex items-start gap-2">
-                  <span className="mt-1 w-1 h-1 rounded-full bg-orange-500/50 shrink-0" />
-                  {warning}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        {data.important_warnings &&
+          Object.keys(data.important_warnings).length > 0 && (
+            <div className="mt-6 p-3 rounded-lg bg-orange-500/10 border border-orange-500/20">
+              <h4 className="text-xs font-bold text-orange-400 uppercase mb-2 flex items-center gap-2">
+                <AlertTriangle size={12} /> Important Warnings
+              </h4>
+              <ul className="space-y-1">
+                {Object.values(data.important_warnings).map((warning, i) => (
+                  <li
+                    key={i}
+                    className="text-xs text-orange-200/80 flex items-start gap-2"
+                  >
+                    <span className="mt-1 w-1 h-1 rounded-full bg-orange-500/50 shrink-0" />
+                    {warning}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
         {/* Contact Footer */}
         {data.contact_info && (
           <div className="mt-6 flex items-center justify-between pt-4 border-t border-white/5">
-            <div className="text-xs text-white/40">Official Pricing 2026 • Subject to change</div>
+            <div className="text-xs text-white/40">
+              Official Pricing 2026 • Subject to change
+            </div>
             <a
-              href={`https://wa.me/${data.contact_info.whatsapp?.replace(/[^0-9]/g, '')}`}
+              href={`https://wa.me/${data.contact_info.whatsapp?.replace(/[^0-9]/g, "")}`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs font-medium transition-colors cursor-pointer"

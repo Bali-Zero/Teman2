@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { FileX, RefreshCw } from 'lucide-react';
+import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { FileX, RefreshCw } from "lucide-react";
 
 export default function DocumentsError({
   error,
@@ -12,7 +12,7 @@ export default function DocumentsError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error('Documents Error:', error);
+    console.error("Documents Error:", error);
   }, [error]);
 
   return (
@@ -22,10 +22,12 @@ export default function DocumentsError({
       </div>
 
       <div className="mt-6 text-center space-y-2 max-w-md">
-        <h2 className="text-2xl font-semibold tracking-tight">Documents Unavailable</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">
+          Documents Unavailable
+        </h2>
         <p className="text-muted-foreground">
-          We couldn&apos;t access your document storage. This may be a temporary issue with the file
-          service.
+          We couldn&apos;t access your document storage. This may be a temporary
+          issue with the file service.
         </p>
       </div>
 

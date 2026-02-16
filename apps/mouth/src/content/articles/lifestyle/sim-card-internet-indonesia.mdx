@@ -76,8 +76,8 @@ import {
   Calculator,
   Checklist,
   InfoCard,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # SIM Cards & Internet in Indonesia 2026: Expat Guide
 
@@ -93,53 +93,53 @@ Staying connected in Indonesia is easy and affordable. Here's everything you nee
       name: "Telkomsel",
       subtitle: "Best coverage",
       values: {
-        "Coverage": "★★★★★",
-        "Speed": "★★★★☆",
-        "Price": "★★★☆☆",
-        "Best For": "Reliable everywhere"
+        Coverage: "★★★★★",
+        Speed: "★★★★☆",
+        Price: "★★★☆☆",
+        "Best For": "Reliable everywhere",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "XL Axiata",
       subtitle: "Good value",
       values: {
-        "Coverage": "★★★★☆",
-        "Speed": "★★★★☆",
-        "Price": "★★★★☆",
-        "Best For": "Balance of price/quality"
-      }
+        Coverage: "★★★★☆",
+        Speed: "★★★★☆",
+        Price: "★★★★☆",
+        "Best For": "Balance of price/quality",
+      },
     },
     {
       name: "Indosat (IM3)",
       subtitle: "Budget option",
       values: {
-        "Coverage": "★★★☆☆",
-        "Speed": "★★★★☆",
-        "Price": "★★★★★",
-        "Best For": "Cities, budget"
-      }
+        Coverage: "★★★☆☆",
+        Speed: "★★★★☆",
+        Price: "★★★★★",
+        "Best For": "Cities, budget",
+      },
     },
     {
       name: "3 (Tri)",
       subtitle: "Cheapest data",
       values: {
-        "Coverage": "★★★☆☆",
-        "Speed": "★★★☆☆",
-        "Price": "★★★★★",
-        "Best For": "Heavy data users"
-      }
+        Coverage: "★★★☆☆",
+        Speed: "★★★☆☆",
+        Price: "★★★★★",
+        "Best For": "Heavy data users",
+      },
     },
     {
       name: "Smartfren",
       subtitle: "4G specialist",
       values: {
-        "Coverage": "★★☆☆☆",
-        "Speed": "★★★★☆",
-        "Price": "★★★★☆",
-        "Best For": "Urban areas only"
-      }
-    }
+        Coverage: "★★☆☆☆",
+        Speed: "★★★★☆",
+        Price: "★★★★☆",
+        "Best For": "Urban areas only",
+      },
+    },
   ]}
 />
 
@@ -196,7 +196,8 @@ Staying connected in Indonesia is easy and affordable. Here's everything you nee
       currency: "IDR",
       note: `Approximately USD ${Math.round(monthly / 16000)}/month`
     };
-  }}
+
+}}
 />
 
 ---
@@ -206,11 +207,9 @@ Staying connected in Indonesia is easy and affordable. Here's everything you nee
 ### Tourist SIM (Airport/Shop)
 
 <InfoCard variant="tip" title="Easiest Option">
-Available at airports, malls, and phone shops:
-- **Pre-registered** (no passport copy needed)
-- **Ready to use** immediately
-- **Tourist packages** with data
-- Cost: IDR 50-150K with data
+  Available at airports, malls, and phone shops: - **Pre-registered** (no
+  passport copy needed) - **Ready to use** immediately - **Tourist packages**
+  with data - Cost: IDR 50-150K with data
 </InfoCard>
 
 ### Regular SIM Registration
@@ -227,33 +226,33 @@ Since 2019, Indonesia requires **SIM card registration** with ID.
       label: "Passport",
       description: "Original or good copy",
       required: true,
-      category: "identity"
+      category: "identity",
     },
     {
       id: "kitas",
       label: "KITAS/KITAP (if applicable)",
       description: "For long-term residents",
       required: false,
-      category: "identity"
+      category: "identity",
     },
     {
       id: "phone",
       label: "Unlocked phone",
       description: "Must accept Indonesian SIM",
       required: true,
-      category: "device"
+      category: "device",
     },
     {
       id: "imei",
       label: "Phone IMEI registered",
       description: "May be auto-registered at airport",
       required: true,
-      category: "device"
-    }
+      category: "device",
+    },
   ]}
   categories={[
     { id: "identity", label: "Identity", color: "blue" },
-    { id: "device", label: "Device", color: "green" }
+    { id: "device", label: "Device", color: "green" },
   ]}
   showProgress={true}
 />
@@ -264,11 +263,13 @@ Since 2019, Indonesia requires **SIM card registration** with ID.
 Foreign phones must register their **IMEI** to work with Indonesian SIMs beyond 90 days.
 
 **Options:**
+
 1. Register at airport arrival (free for first phone)
 2. Register online via Bea Cukai (customs)
 3. Pay tax for additional devices (~IDR 2.5M)
 
 Without registration, your SIM will stop working after 90 days.
+
 </InfoCard>
 
 ---
@@ -277,27 +278,27 @@ Without registration, your SIM will stop working after 90 days.
 
 ### Telkomsel (Best Coverage)
 
-| Package | Data | Validity | Price |
-|---------|------|----------|-------|
-| Combo Sakti | 15GB | 30 days | IDR 100K |
-| Combo Sakti | 30GB | 30 days | IDR 150K |
-| Unlimited | Unlimited | 30 days | IDR 400K |
+| Package     | Data      | Validity | Price    |
+| ----------- | --------- | -------- | -------- |
+| Combo Sakti | 15GB      | 30 days  | IDR 100K |
+| Combo Sakti | 30GB      | 30 days  | IDR 150K |
+| Unlimited   | Unlimited | 30 days  | IDR 400K |
 
 ### XL Axiata (Good Value)
 
-| Package | Data | Validity | Price |
-|---------|------|----------|-------|
-| XTRA Combo | 20GB | 30 days | IDR 100K |
-| XTRA Combo | 40GB | 30 days | IDR 175K |
-| Unlimited | Unlimited | 30 days | IDR 350K |
+| Package    | Data      | Validity | Price    |
+| ---------- | --------- | -------- | -------- |
+| XTRA Combo | 20GB      | 30 days  | IDR 100K |
+| XTRA Combo | 40GB      | 30 days  | IDR 175K |
+| Unlimited  | Unlimited | 30 days  | IDR 350K |
 
 ### Tri (Budget)
 
-| Package | Data | Validity | Price |
-|---------|------|----------|-------|
-| AON | 30GB | 30 days | IDR 80K |
-| AON | 60GB | 30 days | IDR 150K |
-| Unlimited | Unlimited | 30 days | IDR 250K |
+| Package   | Data      | Validity | Price    |
+| --------- | --------- | -------- | -------- |
+| AON       | 30GB      | 30 days  | IDR 80K  |
+| AON       | 60GB      | 30 days  | IDR 150K |
+| Unlimited | Unlimited | 30 days  | IDR 250K |
 
 ---
 
@@ -313,54 +314,54 @@ Without registration, your SIM will stop working after 90 days.
       name: "IndiHome (Telkom)",
       subtitle: "Most widespread",
       values: {
-        "Speed": "10-300 Mbps",
-        "Price": "IDR 275K-700K",
-        "Coverage": "Best",
-        "Reliability": "Good"
+        Speed: "10-300 Mbps",
+        Price: "IDR 275K-700K",
+        Coverage: "Best",
+        Reliability: "Good",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "Biznet",
       subtitle: "Urban areas",
       values: {
-        "Speed": "50-500 Mbps",
-        "Price": "IDR 300K-900K",
-        "Coverage": "Cities only",
-        "Reliability": "Very good"
-      }
+        Speed: "50-500 Mbps",
+        Price: "IDR 300K-900K",
+        Coverage: "Cities only",
+        Reliability: "Very good",
+      },
     },
     {
       name: "First Media",
       subtitle: "Jakarta/Java",
       values: {
-        "Speed": "50-500 Mbps",
-        "Price": "IDR 300K-800K",
-        "Coverage": "Limited areas",
-        "Reliability": "Good"
-      }
+        Speed: "50-500 Mbps",
+        Price: "IDR 300K-800K",
+        Coverage: "Limited areas",
+        Reliability: "Good",
+      },
     },
     {
       name: "MyRepublic",
       subtitle: "Growing",
       values: {
-        "Speed": "50-300 Mbps",
-        "Price": "IDR 300K-700K",
-        "Coverage": "Expanding",
-        "Reliability": "Good"
-      }
-    }
+        Speed: "50-300 Mbps",
+        Price: "IDR 300K-700K",
+        Coverage: "Expanding",
+        Reliability: "Good",
+      },
+    },
   ]}
 />
 
 ### Bali Specific Options
 
-| Provider | Availability | Notes |
-|----------|--------------|-------|
-| IndiHome | Most areas | Reliable but slow setup |
-| Biznet | Urban areas | Fast, good for nomads |
-| CBN | Limited | Corporate focus |
-| Local WISP | Rural | Varies greatly |
+| Provider   | Availability | Notes                   |
+| ---------- | ------------ | ----------------------- |
+| IndiHome   | Most areas   | Reliable but slow setup |
+| Biznet     | Urban areas  | Fast, good for nomads   |
+| CBN        | Limited      | Corporate focus         |
+| Local WISP | Rural        | Varies greatly          |
 
 ---
 
@@ -374,17 +375,20 @@ Without registration, your SIM will stop working after 90 days.
 3. **Emergency**: Pocket WiFi or phone hotspot
 
 Never rely on single connection for important calls!
+
 </InfoCard>
 
 ### Coworking Spaces
 
 Most coworking spaces offer:
+
 - Fast fiber internet
 - Backup connections
 - Comfortable workspace
 - Networking
 
 Popular in Bali:
+
 - Outpost (Canggu, Ubud)
 - Dojo Bali (Canggu)
 - Tropical Nomad (Canggu)
@@ -396,12 +400,12 @@ Popular in Bali:
 
 ### Slow Connection?
 
-| Issue | Solution |
-|-------|----------|
-| Congestion | Switch to less busy provider |
-| Location | Move closer to window/router |
+| Issue      | Solution                      |
+| ---------- | ----------------------------- |
+| Congestion | Switch to less busy provider  |
+| Location   | Move closer to window/router  |
 | Throttling | Check data usage, buy package |
-| VPN needed | Use quality VPN service |
+| VPN needed | Use quality VPN service       |
 
 ### VPN in Indonesia
 
@@ -413,6 +417,7 @@ VPNs are **not illegal** in Indonesia but:
 - Free VPNs often slow
 
 Popular options: ExpressVPN, NordVPN, Surfshark
+
 </InfoCard>
 
 ---
@@ -457,7 +462,7 @@ Popular options: ExpressVPN, NordVPN, Surfshark
     "Which provider has best coverage in Ubud?",
     "How do I register my phone IMEI?",
     "Can I get fiber internet in villa rental?",
-    "What's the cheapest unlimited data?"
+    "What's the cheapest unlimited data?",
   ]}
 />
 

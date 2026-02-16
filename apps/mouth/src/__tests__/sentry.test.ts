@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock Sentry module before any imports
-vi.mock('@sentry/nextjs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@sentry/nextjs')>();
+vi.mock("@sentry/nextjs", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@sentry/nextjs")>();
   return {
     ...actual,
     init: vi.fn(),
@@ -10,19 +10,19 @@ vi.mock('@sentry/nextjs', async (importOriginal) => {
   };
 });
 
-describe('Sentry Configuration', () => {
-  describe('Client Config', () => {
-    it('should export Sentry.init configuration', async () => {
+describe("Sentry Configuration", () => {
+  describe("Client Config", () => {
+    it("should export Sentry.init configuration", async () => {
       // Mock environment variables
-      vi.stubEnv('NEXT_PUBLIC_SENTRY_DSN', 'https://test@sentry.io/123');
-      vi.stubEnv('NODE_ENV', 'production');
+      vi.stubEnv("NEXT_PUBLIC_SENTRY_DSN", "https://test@sentry.io/123");
+      vi.stubEnv("NODE_ENV", "production");
 
       // Clear previous calls
       vi.clearAllMocks();
 
       // Import will trigger Sentry.init
-      const Sentry = await import('@sentry/nextjs');
-      await import('../../sentry.client.config');
+      const Sentry = await import("@sentry/nextjs");
+      await import("../../sentry.client.config");
 
       expect(Sentry.init).toHaveBeenCalled();
       const initCall = (Sentry.init as any).mock.calls[
@@ -30,8 +30,8 @@ describe('Sentry Configuration', () => {
       ][0];
 
       expect(initCall).toMatchObject({
-        dsn: 'https://test@sentry.io/123',
-        environment: 'production',
+        dsn: "https://test@sentry.io/123",
+        environment: "production",
         tracesSampleRate: 0.1,
         replaysSessionSampleRate: 0.1,
         replaysOnErrorSampleRate: 1.0,
@@ -40,10 +40,10 @@ describe('Sentry Configuration', () => {
       vi.unstubAllEnvs();
     });
 
-    it('should block errors in development', async () => {
+    it("should block errors in development", async () => {
       // This test verifies that the config file exports a beforeSend function
       // The actual blocking logic is tested by checking the config structure
-      const Sentry = await import('@sentry/nextjs');
+      const Sentry = await import("@sentry/nextjs");
 
       // Verify that Sentry.init was called (from previous test or config load)
       expect(Sentry.init).toBeDefined();
@@ -55,51 +55,51 @@ describe('Sentry Configuration', () => {
     });
   });
 
-  describe('Server Config', () => {
-    it('should export Sentry.init configuration', async () => {
-      vi.stubEnv('SENTRY_DSN', 'https://test@sentry.io/456');
-      vi.stubEnv('NODE_ENV', 'production');
+  describe("Server Config", () => {
+    it("should export Sentry.init configuration", async () => {
+      vi.stubEnv("SENTRY_DSN", "https://test@sentry.io/456");
+      vi.stubEnv("NODE_ENV", "production");
 
-      const Sentry = await import('@sentry/nextjs');
-      await import('../../sentry.server.config');
+      const Sentry = await import("@sentry/nextjs");
+      await import("../../sentry.server.config");
 
       expect(Sentry.init).toHaveBeenCalledWith(
         expect.objectContaining({
-          dsn: 'https://test@sentry.io/456',
-          environment: 'production',
+          dsn: "https://test@sentry.io/456",
+          environment: "production",
           tracesSampleRate: 0.1,
-        })
+        }),
       );
 
       vi.unstubAllEnvs();
     });
   });
 
-  describe('Edge Config', () => {
-    it('should export Sentry.init configuration', async () => {
-      vi.stubEnv('SENTRY_DSN', 'https://test@sentry.io/789');
-      vi.stubEnv('NODE_ENV', 'production');
+  describe("Edge Config", () => {
+    it("should export Sentry.init configuration", async () => {
+      vi.stubEnv("SENTRY_DSN", "https://test@sentry.io/789");
+      vi.stubEnv("NODE_ENV", "production");
 
-      const Sentry = await import('@sentry/nextjs');
-      await import('../../sentry.edge.config');
+      const Sentry = await import("@sentry/nextjs");
+      await import("../../sentry.edge.config");
 
       expect(Sentry.init).toHaveBeenCalledWith(
         expect.objectContaining({
-          dsn: 'https://test@sentry.io/789',
-          environment: 'production',
+          dsn: "https://test@sentry.io/789",
+          environment: "production",
           tracesSampleRate: 0.1,
-        })
+        }),
       );
 
       vi.unstubAllEnvs();
     });
   });
 
-  describe('Instrumentation', () => {
-    it('should load server config in nodejs runtime', async () => {
-      vi.stubEnv('NEXT_RUNTIME', 'nodejs');
+  describe("Instrumentation", () => {
+    it("should load server config in nodejs runtime", async () => {
+      vi.stubEnv("NEXT_RUNTIME", "nodejs");
 
-      const { register } = await import('../instrumentation');
+      const { register } = await import("../instrumentation");
 
       // Should not throw
       expect(async () => await register()).not.toThrow();
@@ -107,10 +107,10 @@ describe('Sentry Configuration', () => {
       vi.unstubAllEnvs();
     });
 
-    it('should load edge config in edge runtime', async () => {
-      vi.stubEnv('NEXT_RUNTIME', 'edge');
+    it("should load edge config in edge runtime", async () => {
+      vi.stubEnv("NEXT_RUNTIME", "edge");
 
-      const { register } = await import('../instrumentation');
+      const { register } = await import("../instrumentation");
 
       // Should not throw
       expect(async () => await register()).not.toThrow();
@@ -119,15 +119,15 @@ describe('Sentry Configuration', () => {
     });
   });
 
-  describe('Global Error Handler', () => {
-    it('should capture exceptions with Sentry', async () => {
-      const { default: GlobalError } = await import('../app/global-error');
-      const mockError = new Error('Test error');
+  describe("Global Error Handler", () => {
+    it("should capture exceptions with Sentry", async () => {
+      const { default: GlobalError } = await import("../app/global-error");
+      const mockError = new Error("Test error");
 
       // This test is mainly for documentation purposes
       // Full integration test would require React Testing Library
       expect(GlobalError).toBeDefined();
-      expect(GlobalError.name).toBe('GlobalError');
+      expect(GlobalError.name).toBe("GlobalError");
     });
   });
 });

@@ -76,8 +76,8 @@ import {
   Calculator,
   ComparisonTable,
   InfoCard,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Income Tax (PPh 21) for Expatriates in Indonesia 2026
 
@@ -93,25 +93,45 @@ Indonesia uses **progressive tax rates**:
   items={[
     {
       name: "Bracket 1",
-      values: { "Income Range": "IDR 0 - 60M", "Tax Rate": "5%", "Max Tax": "IDR 3M" }
+      values: {
+        "Income Range": "IDR 0 - 60M",
+        "Tax Rate": "5%",
+        "Max Tax": "IDR 3M",
+      },
     },
     {
       name: "Bracket 2",
-      values: { "Income Range": "IDR 60M - 250M", "Tax Rate": "15%", "Max Tax": "IDR 28.5M" }
+      values: {
+        "Income Range": "IDR 60M - 250M",
+        "Tax Rate": "15%",
+        "Max Tax": "IDR 28.5M",
+      },
     },
     {
       name: "Bracket 3",
-      values: { "Income Range": "IDR 250M - 500M", "Tax Rate": "25%", "Max Tax": "IDR 62.5M" }
+      values: {
+        "Income Range": "IDR 250M - 500M",
+        "Tax Rate": "25%",
+        "Max Tax": "IDR 62.5M",
+      },
     },
     {
       name: "Bracket 4",
-      values: { "Income Range": "IDR 500M - 5B", "Tax Rate": "30%", "Max Tax": "IDR 1.35B" }
+      values: {
+        "Income Range": "IDR 500M - 5B",
+        "Tax Rate": "30%",
+        "Max Tax": "IDR 1.35B",
+      },
     },
     {
       name: "Bracket 5",
-      values: { "Income Range": "Over IDR 5B", "Tax Rate": "35%", "Max Tax": "Unlimited" },
-      highlight: true
-    }
+      values: {
+        "Income Range": "Over IDR 5B",
+        "Tax Rate": "35%",
+        "Max Tax": "Unlimited",
+      },
+      highlight: true,
+    },
   ]}
 />
 
@@ -226,7 +246,8 @@ Indonesia uses **progressive tax rates**:
       currency: "IDR",
       note: `Effective rate: ${effectiveRate}%${!values.npwp ? ' (includes 20% non-NPWP penalty)' : ''}`
     };
-  }}
+
+}}
 />
 
 ---
@@ -235,19 +256,17 @@ Indonesia uses **progressive tax rates**:
 
 PTKP is the amount of income exempt from tax:
 
-| Status | Code | Annual PTKP |
-|--------|------|-------------|
-| Single | TK/0 | IDR 54,000,000 |
-| Married, no kids | K/0 | IDR 58,500,000 |
-| Married + 1 child | K/1 | IDR 63,000,000 |
-| Married + 2 children | K/2 | IDR 67,500,000 |
-| Married + 3 children | K/3 | IDR 72,000,000 |
+| Status               | Code | Annual PTKP    |
+| -------------------- | ---- | -------------- |
+| Single               | TK/0 | IDR 54,000,000 |
+| Married, no kids     | K/0  | IDR 58,500,000 |
+| Married + 1 child    | K/1  | IDR 63,000,000 |
+| Married + 2 children | K/2  | IDR 67,500,000 |
+| Married + 3 children | K/3  | IDR 72,000,000 |
 
 <InfoCard variant="tip" title="Maximize Your PTKP">
-- Register dependents properly with HR
-- Maximum 3 dependents (children)
-- Dependents must live with you
-- Spouse only counts if not working
+  - Register dependents properly with HR - Maximum 3 dependents (children) -
+  Dependents must live with you - Spouse only counts if not working
 </InfoCard>
 
 ---
@@ -255,6 +274,7 @@ PTKP is the amount of income exempt from tax:
 ## What's Taxable?
 
 ### Included in PPh 21:
+
 - Base salary
 - Allowances (housing, transport, meals)
 - Bonuses and THR
@@ -262,6 +282,7 @@ PTKP is the amount of income exempt from tax:
 - Stock options (when exercised)
 
 ### Exempt:
+
 - BPJS employer contributions
 - Certain work tools/equipment
 - Some business travel reimbursements
@@ -277,6 +298,7 @@ If you don't have NPWP, your employer withholds **20% more** tax. This adds up q
 - Without NPWP: IDR 60M tax
 
 Get your NPWP to avoid this penalty.
+
 </InfoCard>
 
 ---
@@ -290,7 +312,7 @@ Get your NPWP to avoid this penalty.
     "Is PPh 21 final or can I get refund?",
     "What if employer doesn't withhold correctly?",
     "How do I check my tax is correct?",
-    "Are allowances always taxable?"
+    "Are allowances always taxable?",
   ]}
 />
 

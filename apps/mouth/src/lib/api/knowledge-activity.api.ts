@@ -1,6 +1,6 @@
-import type { IApiClient } from './types/api-client.types';
+import type { IApiClient } from "./types/api-client.types";
 
-export type KBActionType = 'view' | 'download';
+export type KBActionType = "view" | "download";
 
 interface KBActivityPayload {
   action_type: KBActionType;
@@ -23,13 +23,13 @@ export class KnowledgeActivityApi {
    */
   async logActivity(payload: KBActivityPayload): Promise<void> {
     try {
-      await this.client.request('/api/knowledge/activity/log', {
-        method: 'POST',
+      await this.client.request("/api/knowledge/activity/log", {
+        method: "POST",
         body: JSON.stringify(payload),
       });
     } catch (error) {
       // Silently ignore errors - logging is non-critical
-      console.debug('KB activity log failed (non-critical):', error);
+      console.debug("KB activity log failed (non-critical):", error);
     }
   }
 
@@ -40,10 +40,10 @@ export class KnowledgeActivityApi {
     resourceType: string,
     resourceId?: string,
     resourceTitle?: string,
-    resourceCategory?: string
+    resourceCategory?: string,
   ): void {
     this.logActivity({
-      action_type: 'view',
+      action_type: "view",
       resource_type: resourceType,
       resource_id: resourceId,
       resource_title: resourceTitle,
@@ -58,10 +58,10 @@ export class KnowledgeActivityApi {
     resourceType: string,
     resourceId?: string,
     resourceTitle?: string,
-    resourceCategory?: string
+    resourceCategory?: string,
   ): void {
     this.logActivity({
-      action_type: 'download',
+      action_type: "download",
       resource_type: resourceType,
       resource_id: resourceId,
       resource_title: resourceTitle,

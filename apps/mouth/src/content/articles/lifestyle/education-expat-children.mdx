@@ -76,8 +76,8 @@ import {
   Calculator,
   Checklist,
   InfoCard,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Schools for Expat Children Indonesia 2026: Education Guide
 
@@ -96,8 +96,8 @@ Finding the right school is a top priority for expat families. Here's everything
         { label: "Continue home country curriculum", next: "home" },
         { label: "International recognized diploma", next: "ib" },
         { label: "Budget-conscious quality", next: "budget" },
-        { label: "Indonesian cultural immersion", next: "local" }
-      ]
+        { label: "Indonesian cultural immersion", next: "local" },
+      ],
     },
     {
       id: "home",
@@ -106,58 +106,65 @@ Finding the right school is a top priority for expat families. Here's everything
         { label: "British", next: "british" },
         { label: "American", next: "american" },
         { label: "Australian", next: "australian" },
-        { label: "Other national", next: "national" }
-      ]
+        { label: "Other national", next: "national" },
+      ],
     },
     {
       id: "ib",
       result: {
         title: "IB World Schools",
-        description: "International Baccalaureate curriculum. Globally recognized, inquiry-based learning. Available at many international schools in Jakarta and Bali."
-      }
+        description:
+          "International Baccalaureate curriculum. Globally recognized, inquiry-based learning. Available at many international schools in Jakarta and Bali.",
+      },
     },
     {
       id: "budget",
       result: {
         title: "National Plus Schools",
-        description: "Indonesian schools with English instruction and international elements. Lower cost than full international schools. Good for longer stays."
-      }
+        description:
+          "Indonesian schools with English instruction and international elements. Lower cost than full international schools. Good for longer stays.",
+      },
     },
     {
       id: "local",
       result: {
         title: "Indonesian Schools",
-        description: "Local curriculum in Indonesian. Best for cultural immersion and language learning. May require Indonesian language ability."
-      }
+        description:
+          "Local curriculum in Indonesian. Best for cultural immersion and language learning. May require Indonesian language ability.",
+      },
     },
     {
       id: "british",
       result: {
         title: "British Curriculum Schools",
-        description: "IGCSE and A-Levels. Multiple options in Jakarta and Bali. Easy transition if returning to UK or going to UK universities."
-      }
+        description:
+          "IGCSE and A-Levels. Multiple options in Jakarta and Bali. Easy transition if returning to UK or going to UK universities.",
+      },
     },
     {
       id: "american",
       result: {
         title: "American Curriculum Schools",
-        description: "US-style education with AP courses. Good for university in USA. Several options in Jakarta, fewer in other cities."
-      }
+        description:
+          "US-style education with AP courses. Good for university in USA. Several options in Jakarta, fewer in other cities.",
+      },
     },
     {
       id: "australian",
       result: {
         title: "Australian Curriculum Schools",
-        description: "Australian system popular in Bali. Good for families from Australia or planning to move there."
-      }
+        description:
+          "Australian system popular in Bali. Good for families from Australia or planning to move there.",
+      },
     },
     {
       id: "national",
       result: {
         title: "Other National Schools",
-        description: "French, German, Korean, Japanese schools available in Jakarta. Limited options outside the capital."
-      }
-    }
+        description:
+          "French, German, Korean, Japanese schools available in Jakarta. Limited options outside the capital.",
+      },
+    },
   ]}
 />
 
@@ -173,43 +180,43 @@ Finding the right school is a top priority for expat families. Here's everything
       name: "IB (International Baccalaureate)",
       subtitle: "Global standard",
       values: {
-        "Recognition": "Worldwide",
-        "Style": "Inquiry-based",
-        "Exams": "IB Diploma",
-        "Best for": "International mobility"
+        Recognition: "Worldwide",
+        Style: "Inquiry-based",
+        Exams: "IB Diploma",
+        "Best for": "International mobility",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "British (Cambridge)",
       subtitle: "IGCSE/A-Levels",
       values: {
-        "Recognition": "Commonwealth + global",
-        "Style": "Structured",
-        "Exams": "IGCSE, A-Levels",
-        "Best for": "UK/EU universities"
-      }
+        Recognition: "Commonwealth + global",
+        Style: "Structured",
+        Exams: "IGCSE, A-Levels",
+        "Best for": "UK/EU universities",
+      },
     },
     {
       name: "American",
       subtitle: "US system",
       values: {
-        "Recognition": "Americas + global",
-        "Style": "Flexible, broad",
-        "Exams": "SAT/AP",
-        "Best for": "US universities"
-      }
+        Recognition: "Americas + global",
+        Style: "Flexible, broad",
+        Exams: "SAT/AP",
+        "Best for": "US universities",
+      },
     },
     {
       name: "Australian",
       subtitle: "ATAR system",
       values: {
-        "Recognition": "Australia + Asia",
-        "Style": "Balanced",
-        "Exams": "HSC/ATAR",
-        "Best for": "Australia pathway"
-      }
-    }
+        Recognition: "Australia + Asia",
+        Style: "Balanced",
+        Exams: "HSC/ATAR",
+        "Best for": "Australia pathway",
+      },
+    },
   ]}
 />
 
@@ -219,12 +226,12 @@ Finding the right school is a top priority for expat families. Here's everything
 
 ### Annual Fee Ranges
 
-| School Type | Annual Cost |
-|-------------|-------------|
-| International (premium) | USD 20,000-35,000 |
+| School Type              | Annual Cost       |
+| ------------------------ | ----------------- |
+| International (premium)  | USD 20,000-35,000 |
 | International (mid-tier) | USD 10,000-20,000 |
-| National Plus | USD 3,000-10,000 |
-| Indonesian private | USD 500-3,000 |
+| National Plus            | USD 3,000-10,000  |
+| Indonesian private       | USD 500-3,000     |
 
 ### Cost Calculator
 
@@ -291,7 +298,8 @@ Finding the right school is a top priority for expat families. Here's everything
       currency: "IDR",
       note: `~USD ${Math.round(total / 16000).toLocaleString()}/year`
     };
-  }}
+
+}}
 />
 
 ---
@@ -300,24 +308,26 @@ Finding the right school is a top priority for expat families. Here's everything
 
 ### Jakarta
 
-| School | Curriculum | Annual Fee |
-|--------|------------|------------|
-| Jakarta Intercultural School | IB/American | USD 25-30K |
-| British School Jakarta | British | USD 20-28K |
-| BINUS School | National/Cambridge | USD 5-10K |
-| Sekolah Pelita Harapan | National/Cambridge | USD 8-15K |
+| School                       | Curriculum         | Annual Fee |
+| ---------------------------- | ------------------ | ---------- |
+| Jakarta Intercultural School | IB/American        | USD 25-30K |
+| British School Jakarta       | British            | USD 20-28K |
+| BINUS School                 | National/Cambridge | USD 5-10K  |
+| Sekolah Pelita Harapan       | National/Cambridge | USD 8-15K  |
 
 ### Bali
 
-| School | Curriculum | Annual Fee |
-|--------|------------|------------|
-| Canggu Community School | IB | USD 15-22K |
-| Green School Bali | Custom/Green | USD 15-25K |
-| Bali Island School | Australian | USD 10-18K |
-| Australian Independent School | Australian | USD 8-15K |
+| School                        | Curriculum   | Annual Fee |
+| ----------------------------- | ------------ | ---------- |
+| Canggu Community School       | IB           | USD 15-22K |
+| Green School Bali             | Custom/Green | USD 15-25K |
+| Bali Island School            | Australian   | USD 10-18K |
+| Australian Independent School | Australian   | USD 8-15K  |
 
 <InfoCard variant="note" title="Green School Bali">
-**Unique option:** Green School offers innovative, sustainability-focused education in bamboo buildings. Popular with eco-conscious families but wait lists can be long. Apply early!
+  **Unique option:** Green School offers innovative, sustainability-focused
+  education in bamboo buildings. Popular with eco-conscious families but wait
+  lists can be long. Apply early!
 </InfoCard>
 
 ---
@@ -334,71 +344,71 @@ Finding the right school is a top priority for expat families. Here's everything
       label: "Research schools",
       description: "Visit websites, tours",
       required: true,
-      category: "research"
+      category: "research",
     },
     {
       id: "visit",
       label: "School visits/tours",
       description: "See facilities in person",
       required: true,
-      category: "research"
+      category: "research",
     },
     {
       id: "application",
       label: "Submit application",
       description: "Online or paper form",
       required: true,
-      category: "apply"
+      category: "apply",
     },
     {
       id: "records",
       label: "School records/transcripts",
       description: "From previous school",
       required: true,
-      category: "documents"
+      category: "documents",
     },
     {
       id: "passport",
       label: "Passport copies",
       description: "Child and parents",
       required: true,
-      category: "documents"
+      category: "documents",
     },
     {
       id: "photos",
       label: "Passport photos",
       description: "Recent photos",
       required: true,
-      category: "documents"
+      category: "documents",
     },
     {
       id: "test",
       label: "Assessment/interview",
       description: "Varies by school",
       required: false,
-      category: "assessment"
+      category: "assessment",
     },
     {
       id: "medical",
       label: "Medical records",
       description: "Vaccination history",
       required: true,
-      category: "documents"
+      category: "documents",
     },
     {
       id: "fee",
       label: "Pay enrollment fee",
       description: "Non-refundable typically",
       required: true,
-      category: "payment"
-    }
+      category: "payment",
+    },
   ]}
   categories={[
     { id: "research", label: "Research", color: "blue" },
     { id: "apply", label: "Apply", color: "green" },
     { id: "documents", label: "Documents", color: "amber" },
     { id: "assessment", label: "Assessment", color: "purple" },
-    { id: "payment", label: "Payment", color: "red" }
+    { id: "payment", label: "Payment", color: "red" },
   ]}
   showProgress={true}
 />
@@ -413,6 +423,7 @@ Finding the right school is a top priority for expat families. Here's everything
 Children must have proper visa status to attend school:
 
 **Required:**
+
 - Dependent KITAS (linked to parent's work permit)
 - Student KITAS (for study purposes)
 - Second Home Visa (children included)
@@ -420,16 +431,17 @@ Children must have proper visa status to attend school:
 **VOA/Visa-Free:** Generally not sufficient for school enrollment
 
 Check visa requirements before enrolling!
+
 </InfoCard>
 
 ### Language Support
 
-| Service | Availability |
-|---------|--------------|
-| EAL (English Additional Language) | Most international schools |
-| Indonesian lessons | All schools |
-| Bahasa for beginners | Many offer intensive |
-| Mother tongue programs | Limited (some for major languages) |
+| Service                           | Availability                       |
+| --------------------------------- | ---------------------------------- |
+| EAL (English Additional Language) | Most international schools         |
+| Indonesian lessons                | All schools                        |
+| Bahasa for beginners              | Many offer intensive               |
+| Mother tongue programs            | Limited (some for major languages) |
 
 ---
 
@@ -437,20 +449,20 @@ Check visa requirements before enrolling!
 
 ### Academic Year
 
-| System | Start | End |
-|--------|-------|-----|
-| International (most) | August | June |
+| System                | Start   | End      |
+| --------------------- | ------- | -------- |
+| International (most)  | August  | June     |
 | Australian curriculum | January | December |
-| Indonesian schools | July | June |
+| Indonesian schools    | July    | June     |
 
 ### Holidays
 
-| Holiday | Typical Duration |
-|---------|------------------|
-| Summer/Long break | 6-8 weeks |
-| Christmas/Winter | 2-3 weeks |
-| Mid-year break | 1-2 weeks |
-| Indonesian holidays | Various |
+| Holiday             | Typical Duration |
+| ------------------- | ---------------- |
+| Summer/Long break   | 6-8 weeks        |
+| Christmas/Winter    | 2-3 weeks        |
+| Mid-year break      | 1-2 weeks        |
+| Indonesian holidays | Various          |
 
 ---
 
@@ -469,18 +481,19 @@ Check visa requirements before enrolling!
 8. **Future** - University preparation
 
 Visit multiple schools before deciding!
+
 </InfoCard>
 
 ### Questions to Ask
 
-| Topic | Questions |
-|-------|-----------|
+| Topic     | Questions                         |
+| --------- | --------------------------------- |
 | Academics | Curriculum, assessments, outcomes |
-| Teachers | Qualifications, turnover |
-| Support | SEN, counseling, ESL |
-| Community | Parent involvement, events |
-| Practical | Hours, transport, lunch |
-| Costs | All fees, payment plans |
+| Teachers  | Qualifications, turnover          |
+| Support   | SEN, counseling, ESL              |
+| Community | Parent involvement, events        |
+| Practical | Hours, transport, lunch           |
+| Costs     | All fees, payment plans           |
 
 ---
 
@@ -492,22 +505,24 @@ Visit multiple schools before deciding!
 Homeschooling is **legal** in Indonesia with proper registration.
 
 **Requirements:**
+
 - Register with local education office
 - Follow approved curriculum
 - Regular assessments
 - Documentation maintained
 
 Many expat families combine homeschooling with local activities and tutors.
+
 </InfoCard>
 
 ### Popular Approaches
 
-| Approach | Description |
-|----------|-------------|
-| Online schools | Structured, accredited |
-| Curriculum packages | Self-directed |
-| Hybrid | Part-time school + home |
-| Unschooling | Child-led learning |
+| Approach            | Description             |
+| ------------------- | ----------------------- |
+| Online schools      | Structured, accredited  |
+| Curriculum packages | Self-directed           |
+| Hybrid              | Part-time school + home |
+| Unschooling         | Child-led learning      |
 
 ---
 
@@ -520,7 +535,7 @@ Many expat families combine homeschooling with local activities and tutors.
     "What's the best school in Bali for young children?",
     "Can my child attend on a tourist visa?",
     "How do I get on Green School's waiting list?",
-    "Are there scholarships for international schools?"
+    "Are there scholarships for international schools?",
   ]}
 />
 

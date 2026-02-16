@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback } from "react";
 
 interface UseInfiniteScrollOptions {
   /** Callback when scroll threshold is reached */
@@ -21,7 +21,7 @@ export function useInfiniteScroll({
   onLoadMore,
   hasMore,
   isLoading,
-  rootMargin = '200px',
+  rootMargin = "200px",
   threshold = 0,
 }: UseInfiniteScrollOptions) {
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -34,7 +34,7 @@ export function useInfiniteScroll({
         onLoadMore();
       }
     },
-    [hasMore, isLoading, onLoadMore]
+    [hasMore, isLoading, onLoadMore],
   );
 
   useEffect(() => {

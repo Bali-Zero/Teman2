@@ -3,8 +3,8 @@
  * Extends existing analytics with dashboard-specific tracking
  */
 
-import { debug, error } from '@/lib/utils/console';
-import { trackEvent, AnalyticsEvent } from './analytics';
+import { debug, error } from "@/lib/utils/console";
+import { trackEvent, AnalyticsEvent } from "./analytics";
 
 interface DashboardAnalyticsEvent extends AnalyticsEvent {
   category: string;
@@ -37,32 +37,33 @@ class EnhancedAnalyticsService {
   };
 
   initialize(userId: string, userProperties: UserProperties) {
-    if (typeof window === 'undefined' || !window.gtag) return;
+    if (typeof window === "undefined" || !window.gtag) return;
 
     this.userId = userId;
     this.isInitialized = true;
 
     // Set user properties in GA4
-    window.gtag('config', process.env.NEXT_PUBLIC_GA_ID || '', {
+    window.gtag("config", process.env.NEXT_PUBLIC_GA_ID || "", {
       user_id: userId,
       custom_map: {
-        custom_parameter_1: 'role',
-        custom_parameter_2: 'admin_status',
+        custom_parameter_1: "role",
+        custom_parameter_2: "admin_status",
       },
     });
 
     // Set user properties
-    window.gtag('set', 'user_properties', {
+    window.gtag("set", "user_properties", {
       role: userProperties.role,
-      admin_status: userProperties.isAdmin ? 'admin' : 'user',
+      admin_status: userProperties.isAdmin ? "admin" : "user",
     });
 
     // Track login event
-    this.trackEvent('login', 'authentication', userProperties.role);
+    this.trackEvent("login", "authentication", userProperties.role);
   }
 
   trackEvent(action: string, category: string, label?: string, value?: number) {
-    if (!this.isInitialized || typeof window === 'undefined' || !window.gtag) return;
+    if (!this.isInitialized || typeof window === "undefined" || !window.gtag)
+      return;
 
     const event: DashboardAnalyticsEvent = {
       event_name: action,
@@ -81,7 +82,7 @@ class EnhancedAnalyticsService {
     };
 
     // Send to GA4
-    window.gtag('event', action, {
+    window.gtag("event", action, {
       event_category: category,
       event_label: label,
       value: value,
@@ -92,101 +93,136 @@ class EnhancedAnalyticsService {
     trackEvent(event.event_name, event.properties);
 
     // Console for development
-    if (process.env.NODE_ENV === 'development') {
-      debug('📊 Analytics Event:', event);
+    if (process.env.NODE_ENV === "development") {
+      debug("📊 Analytics Event:", event);
     }
   }
 
   trackPageView(page: string, title?: string) {
-    if (!this.isInitialized || typeof window === 'undefined' || !window.gtag) return;
+    if (!this.isInitialized || typeof window === "undefined" || !window.gtag)
+      return;
 
-    window.gtag('config', process.env.NEXT_PUBLIC_GA_ID || '', {
+    window.gtag("config", process.env.NEXT_PUBLIC_GA_ID || "", {
       page_path: page,
       page_title: title,
     });
 
     // Also track in base analytics
-    trackEvent('page_view', { page, title });
+    trackEvent("page_view", { page, title });
 
-    if (process.env.NODE_ENV === 'development') {
-      debug('📊 Page View:', { page, title });
+    if (process.env.NODE_ENV === "development") {
+      debug("📊 Page View:", { page, title });
     }
   }
 
   trackPerformance(metrics: Partial<PerformanceMetrics>) {
     this.performanceMetrics = { ...this.performanceMetrics, ...metrics };
 
-    if (process.env.NODE_ENV === 'development') {
-      debug('📊 Performance Metrics:', this.performanceMetrics);
+    if (process.env.NODE_ENV === "development") {
+      debug("📊 Performance Metrics:", this.performanceMetrics);
     }
 
     // Track performance events
     if (metrics.loadTime) {
-      this.trackEvent('dashboard_load', 'performance', undefined, Math.round(metrics.loadTime));
+      this.trackEvent(
+        "dashboard_load",
+        "performance",
+        undefined,
+        Math.round(metrics.loadTime),
+      );
     }
 
     if (metrics.apiCallTime) {
-      this.trackEvent('api_call', 'performance', undefined, Math.round(metrics.apiCallTime));
+      this.trackEvent(
+        "api_call",
+        "performance",
+        undefined,
+        Math.round(metrics.apiCallTime),
+      );
     }
 
     if (metrics.errorCount && metrics.errorCount > 0) {
-      this.trackEvent('error', 'system', undefined, metrics.errorCount);
+      this.trackEvent("error", "system", undefined, metrics.errorCount);
     }
   }
 
   trackUserInteraction(action: string, element: string, context?: string) {
-    this.trackEvent(action, 'user_interaction', `${element}${context ? ` - ${context}` : ''}`);
+    this.trackEvent(
+      action,
+      "user_interaction",
+      `${element}${context ? ` - ${context}` : ""}`,
+    );
   }
 
-  trackDashboardFeature(feature: string, action: string = 'use') {
-    this.trackEvent(`${action}_${feature}`, 'dashboard_feature', feature);
+  trackDashboardFeature(feature: string, action: string = "use") {
+    this.trackEvent(`${action}_${feature}`, "dashboard_feature", feature);
   }
 
   trackError(err: Error, context?: string) {
     this.performanceMetrics.errorCount += 1;
 
-    this.trackEvent('javascript_error', 'error', `${err.name}: ${err.message}`);
+    this.trackEvent("javascript_error", "error", `${err.name}: ${err.message}`);
 
-    if (process.env.NODE_ENV === 'development') {
-      error('📊 Tracked Error:', err, context);
+    if (process.env.NODE_ENV === "development") {
+      error("📊 Tracked Error:", err, context);
     }
   }
 
-  trackApiCall(endpoint: string, method: string, duration: number, success: boolean) {
+  trackApiCall(
+    endpoint: string,
+    method: string,
+    duration: number,
+    success: boolean,
+  ) {
     this.trackEvent(
-      success ? 'api_success' : 'api_error',
-      'api_call',
+      success ? "api_success" : "api_error",
+      "api_call",
       `${method} ${endpoint}`,
-      Math.round(duration)
+      Math.round(duration),
     );
   }
 
   // A/B Testing tracking
   trackExperiment(experimentName: string, variant: string) {
-    this.trackEvent('experiment_view', 'ab_test', `${experimentName}_${variant}`);
+    this.trackEvent(
+      "experiment_view",
+      "ab_test",
+      `${experimentName}_${variant}`,
+    );
   }
 
   trackConversion(goal: string, value?: number) {
-    this.trackEvent('conversion', 'ab_test', goal, value);
+    this.trackEvent("conversion", "ab_test", goal, value);
   }
 
   // Dashboard specific tracking
   trackDashboardLoad(startTime: number) {
     const loadTime = performance.now() - startTime;
     this.trackPerformance({ loadTime });
-    this.trackEvent('dashboard_loaded', 'dashboard', undefined, Math.round(loadTime));
+    this.trackEvent(
+      "dashboard_loaded",
+      "dashboard",
+      undefined,
+      Math.round(loadTime),
+    );
   }
 
   trackWidgetInteraction(widgetName: string, action: string) {
-    this.trackEvent(`widget_${action}`, 'dashboard', widgetName);
+    this.trackEvent(`widget_${action}`, "dashboard", widgetName);
   }
 
-  trackEmailAction(action: 'delete' | 'read' | 'send' | 'reply', count: number = 1) {
-    this.trackEvent(`email_${action}`, 'email', undefined, count);
+  trackEmailAction(
+    action: "delete" | "read" | "send" | "reply",
+    count: number = 1,
+  ) {
+    this.trackEvent(`email_${action}`, "email", undefined, count);
   }
 
-  trackCaseAction(action: 'view' | 'edit' | 'create' | 'delete', caseType?: string) {
-    this.trackEvent(`case_${action}`, 'crm', caseType);
+  trackCaseAction(
+    action: "view" | "edit" | "create" | "delete",
+    caseType?: string,
+  ) {
+    this.trackEvent(`case_${action}`, "crm", caseType);
   }
 
   // Get metrics for reporting
@@ -212,21 +248,27 @@ export function useEnhancedAnalytics() {
   return {
     trackEvent: enhancedAnalytics.trackEvent.bind(enhancedAnalytics),
     trackPageView: enhancedAnalytics.trackPageView.bind(enhancedAnalytics),
-    trackUserInteraction: enhancedAnalytics.trackUserInteraction.bind(enhancedAnalytics),
-    trackDashboardFeature: enhancedAnalytics.trackDashboardFeature.bind(enhancedAnalytics),
+    trackUserInteraction:
+      enhancedAnalytics.trackUserInteraction.bind(enhancedAnalytics),
+    trackDashboardFeature:
+      enhancedAnalytics.trackDashboardFeature.bind(enhancedAnalytics),
     trackError: enhancedAnalytics.trackError.bind(enhancedAnalytics),
-    trackEmailAction: enhancedAnalytics.trackEmailAction.bind(enhancedAnalytics),
+    trackEmailAction:
+      enhancedAnalytics.trackEmailAction.bind(enhancedAnalytics),
     trackCaseAction: enhancedAnalytics.trackCaseAction.bind(enhancedAnalytics),
-    trackPerformance: enhancedAnalytics.trackPerformance.bind(enhancedAnalytics),
+    trackPerformance:
+      enhancedAnalytics.trackPerformance.bind(enhancedAnalytics),
     trackExperiment: enhancedAnalytics.trackExperiment.bind(enhancedAnalytics),
     trackConversion: enhancedAnalytics.trackConversion.bind(enhancedAnalytics),
-    trackDashboardLoad: enhancedAnalytics.trackDashboardLoad.bind(enhancedAnalytics),
-    trackWidgetInteraction: enhancedAnalytics.trackWidgetInteraction.bind(enhancedAnalytics),
+    trackDashboardLoad:
+      enhancedAnalytics.trackDashboardLoad.bind(enhancedAnalytics),
+    trackWidgetInteraction:
+      enhancedAnalytics.trackWidgetInteraction.bind(enhancedAnalytics),
   };
 }
 
 // Higher-order component for automatic tracking
-import React from 'react';
+import React from "react";
 
 export function withEnhancedAnalytics<P extends object>(
   Component: React.ComponentType<P>,
@@ -234,7 +276,7 @@ export function withEnhancedAnalytics<P extends object>(
     trackPageView?: boolean;
     trackPerformance?: boolean;
     componentName?: string;
-  } = {}
+  } = {},
 ) {
   const WrappedComponent = (props: P) => {
     const startTime = React.useRef(performance.now());
@@ -242,7 +284,8 @@ export function withEnhancedAnalytics<P extends object>(
 
     React.useEffect(() => {
       if (options.trackPageView !== false) {
-        const componentName = options.componentName || Component.displayName || Component.name;
+        const componentName =
+          options.componentName || Component.displayName || Component.name;
         trackPageView(`/${componentName.toLowerCase()}`, componentName);
       }
 
@@ -263,9 +306,9 @@ export function withEnhancedAnalytics<P extends object>(
 declare global {
   interface Window {
     gtag: (
-      command: 'config' | 'event' | 'set',
+      command: "config" | "event" | "set",
       targetId: string | Record<string, any>,
-      config?: Record<string, any>
+      config?: Record<string, any>,
     ) => void;
   }
 }

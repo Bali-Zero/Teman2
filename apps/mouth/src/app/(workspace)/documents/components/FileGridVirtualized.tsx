@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * FileGridVirtualized Component
@@ -7,14 +7,14 @@
  * anche con migliaia di file
  */
 
-import React, { useRef, useMemo } from 'react';
-import { useVirtualizer } from '@tanstack/react-virtual';
-import { motion } from 'framer-motion';
-import type { FileItem } from '@/lib/api/drive/drive.types';
-import { getFileIcon, getDepartmentInfo } from './file-icon';
-import { MoreVertical, Users } from 'lucide-react';
-import { usePrefetchFolder } from '@/hooks/useDrive';
-import { cn } from '@/lib/utils';
+import React, { useRef, useMemo } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { motion } from "framer-motion";
+import type { FileItem } from "@/lib/api/drive/drive.types";
+import { getFileIcon, getDepartmentInfo } from "./file-icon";
+import { MoreVertical, Users } from "lucide-react";
+import { usePrefetchFolder } from "@/hooks/useDrive";
+import { cn } from "@/lib/utils";
 
 interface FileGridVirtualizedProps {
   files: FileItem[];
@@ -50,21 +50,25 @@ export function FileGridVirtualized({
       folders: files.filter((f) => f.is_folder),
       documents: files.filter((f) => !f.is_folder),
     }),
-    [files]
+    [files],
   );
 
   // Combine with headers: [foldersHeader, ...folders, filesHeader, ...files]
   const virtualItems = useMemo(() => {
-    const items: Array<{ type: 'header' | 'file'; file?: FileItem; title?: string }> = [];
+    const items: Array<{
+      type: "header" | "file";
+      file?: FileItem;
+      title?: string;
+    }> = [];
 
     if (folders.length > 0) {
-      items.push({ type: 'header', title: 'Cartelle' });
-      folders.forEach((f) => items.push({ type: 'file', file: f }));
+      items.push({ type: "header", title: "Cartelle" });
+      folders.forEach((f) => items.push({ type: "file", file: f }));
     }
 
     if (documents.length > 0) {
-      items.push({ type: 'header', title: 'File' });
-      documents.forEach((f) => items.push({ type: 'file', file: f }));
+      items.push({ type: "header", title: "File" });
+      documents.forEach((f) => items.push({ type: "file", file: f }));
     }
 
     return items;
@@ -85,8 +89,8 @@ export function FileGridVirtualized({
     };
 
     updateColumns();
-    window.addEventListener('resize', updateColumns);
-    return () => window.removeEventListener('resize', updateColumns);
+    window.addEventListener("resize", updateColumns);
+    return () => window.removeEventListener("resize", updateColumns);
   }, []);
 
   // Calculate rows for virtualization
@@ -131,18 +135,25 @@ export function FileGridVirtualized({
   }
 
   return (
-    <div ref={parentRef} className="h-full overflow-auto" style={{ contain: 'strict' }}>
+    <div
+      ref={parentRef}
+      className="h-full overflow-auto"
+      style={{ contain: "strict" }}
+    >
       <div
         style={{
           height: `${virtualizer.getTotalSize()}px`,
-          width: '100%',
-          position: 'relative',
+          width: "100%",
+          position: "relative",
         }}
       >
         <div className="p-5">
           {virtualRows.map((virtualRow) => {
             const startIndex = virtualRow.index * columns;
-            const rowItems = virtualItems.slice(startIndex, startIndex + columns);
+            const rowItems = virtualItems.slice(
+              startIndex,
+              startIndex + columns,
+            );
 
             return (
               <div
@@ -150,18 +161,21 @@ export function FileGridVirtualized({
                 data-index={virtualRow.index}
                 ref={virtualizer.measureElement}
                 style={{
-                  position: 'absolute',
+                  position: "absolute",
                   top: 0,
                   left: 0,
-                  width: '100%',
+                  width: "100%",
                   transform: `translateY(${virtualRow.start}px)`,
                 }}
                 className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3"
               >
                 {rowItems.map((item, idx) => {
-                  if (item.type === 'header') {
+                  if (item.type === "header") {
                     return (
-                      <div key={item.title} className="col-span-full mb-2 mt-4 first:mt-0">
+                      <div
+                        key={item.title}
+                        className="col-span-full mb-2 mt-4 first:mt-0"
+                      >
                         <h3 className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                           {item.title}
                         </h3>
@@ -244,11 +258,11 @@ function VirtualFileCard({
       whileHover={{ y: -2 }}
       whileTap={{ scale: 0.98 }}
       className={cn(
-        'group relative flex cursor-pointer flex-col items-center rounded-xl p-4',
-        'transition-all duration-200 ease-out',
+        "group relative flex cursor-pointer flex-col items-center rounded-xl p-4",
+        "transition-all duration-200 ease-out",
         isSelected
-          ? 'bg-blue-50/80 dark:bg-blue-950/40 ring-1 ring-blue-400/50 dark:ring-blue-500/40'
-          : 'bg-white/60 dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/60 border border-slate-200/40 dark:border-slate-700/30'
+          ? "bg-blue-50/80 dark:bg-blue-950/40 ring-1 ring-blue-400/50 dark:ring-blue-500/40"
+          : "bg-white/60 dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/60 border border-slate-200/40 dark:border-slate-700/30",
       )}
     >
       {/* Quick actions */}
@@ -266,7 +280,7 @@ function VirtualFileCard({
 
       {/* Icon */}
       <div className="relative mb-3 transition-transform duration-200 group-hover:scale-[1.02]">
-        {getFileIcon(file, 'lg')}
+        {getFileIcon(file, "lg")}
       </div>
 
       {/* Name */}
@@ -311,7 +325,11 @@ function VirtualFileCard({
             stroke="currentColor"
             strokeWidth={3}
           >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M5 13l4 4L19 7"
+            />
           </svg>
         </motion.div>
       )}
@@ -320,8 +338,8 @@ function VirtualFileCard({
 }
 
 const formatSize = (bytes: number | undefined) => {
-  if (!bytes) return '--';
-  const units = ['B', 'KB', 'MB', 'GB'];
+  if (!bytes) return "--";
+  const units = ["B", "KB", "MB", "GB"];
   let size = bytes;
   let unitIndex = 0;
   while (size >= 1024 && unitIndex < units.length - 1) {
@@ -337,8 +355,8 @@ const formatRelativeTime = (dateStr: string) => {
   const diffMs = now.getTime() - date.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffDays === 0) return 'Today';
-  if (diffDays === 1) return 'Yesterday';
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
   if (diffDays < 7) return `${diffDays}d ago`;
   if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
   if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo ago`;

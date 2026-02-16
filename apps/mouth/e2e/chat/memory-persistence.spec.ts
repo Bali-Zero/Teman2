@@ -1,4 +1,4 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect, Page } from "@playwright/test";
 
 /**
  * E2E Tests for Memory Persistence
@@ -10,21 +10,21 @@ import { test, expect, Page } from '@playwright/test';
  * 4. Memory persists across page refreshes
  */
 
-test.describe('Memory Persistence', () => {
+test.describe("Memory Persistence", () => {
   // Mock user data
   const testUser = {
-    name: 'Roberto Testini',
-    email: 'roberto@test.com',
-    id: 'user-123',
-    role: 'user',
+    name: "Roberto Testini",
+    email: "roberto@test.com",
+    id: "user-123",
+    role: "user",
   };
 
   // Mock memory context with facts
   const mockMemoryContext = {
     success: true,
     user_id: testUser.email,
-    profile_facts: ['Name: Roberto', 'Location: Torino', 'Profession: Lawyer'],
-    summary: 'Interested in opening a law firm in Bali',
+    profile_facts: ["Name: Roberto", "Location: Torino", "Profession: Lawyer"],
+    summary: "Interested in opening a law firm in Bali",
     counters: { conversations: 5, searches: 10, tasks: 2 },
     has_data: true,
   };
@@ -42,83 +42,100 @@ test.describe('Memory Persistence', () => {
   async function setupAuthenticatedUser(page: Page) {
     // Mock Auth
     await page.addInitScript(() => {
-      localStorage.setItem('auth_token', 'mock-token');
+      localStorage.setItem("auth_token", "mock-token");
       localStorage.setItem(
-        'user_profile',
+        "user_profile",
         JSON.stringify({
-          name: 'Roberto Testini',
-          email: 'roberto@test.com',
-          id: 'user-123',
-          role: 'user',
-        })
+          name: "Roberto Testini",
+          email: "roberto@test.com",
+          id: "user-123",
+          role: "user",
+        }),
       );
     });
 
     // Mock Profile endpoint
-    await page.route('**/api/auth/profile', async (route) => {
+    await page.route("**/api/auth/profile", async (route) => {
       await route.fulfill({ json: testUser });
     });
 
     // Mock Team Status
-    await page.route('**/api/team/my-status**', async (route) => {
+    await page.route("**/api/team/my-status**", async (route) => {
       await route.fulfill({
         json: { is_online: true, today_hours: 4, week_hours: 20 },
       });
     });
 
     // Mock Conversations List
-    await page.route('**/api/bali-zero/conversations/list**', async (route) => {
+    await page.route("**/api/bali-zero/conversations/list**", async (route) => {
       await route.fulfill({
         json: { success: true, conversations: [], total: 0 },
       });
     });
   }
 
-  test.describe('Memory Context Fetching', () => {
-    test('should handle empty memory context for new users', async ({ page }) => {
+  test.describe("Memory Context Fetching", () => {
+    test("should handle empty memory context for new users", async ({
+      page,
+    }) => {
       await setupAuthenticatedUser(page);
 
-      await page.route('**/api/bali-zero/conversations/memory/context', async (route) => {
-        await route.fulfill({ json: emptyMemoryContext });
-      });
+      await page.route(
+        "**/api/bali-zero/conversations/memory/context",
+        async (route) => {
+          await route.fulfill({ json: emptyMemoryContext });
+        },
+      );
 
-      await page.goto('/chat');
-      await page.waitForLoadState('networkidle');
+      await page.goto("/chat");
+      await page.waitForLoadState("networkidle");
 
       // Page should load without errors even with no memory
-      await expect(page.locator('textarea[placeholder="Type your message..."]')).toBeVisible();
+      await expect(
+        page.locator('textarea[placeholder="Type your message..."]'),
+      ).toBeVisible();
     });
 
-    test('should handle memory context API errors gracefully', async ({ page }) => {
+    test("should handle memory context API errors gracefully", async ({
+      page,
+    }) => {
       await setupAuthenticatedUser(page);
 
-      await page.route('**/api/bali-zero/conversations/memory/context', async (route) => {
-        await route.fulfill({
-          status: 500,
-          json: { detail: 'Database error' },
-        });
-      });
+      await page.route(
+        "**/api/bali-zero/conversations/memory/context",
+        async (route) => {
+          await route.fulfill({
+            status: 500,
+            json: { detail: "Database error" },
+          });
+        },
+      );
 
-      await page.goto('/chat');
-      await page.waitForLoadState('networkidle');
+      await page.goto("/chat");
+      await page.waitForLoadState("networkidle");
 
       // Page should still be usable despite error
-      await expect(page.locator('textarea[placeholder="Type your message..."]')).toBeVisible();
+      await expect(
+        page.locator('textarea[placeholder="Type your message..."]'),
+      ).toBeVisible();
     });
   });
 
-  test.describe('Memory Integration with Chat', () => {
-    test('should include memory context in chat requests', async ({ page }) => {
+  test.describe("Memory Integration with Chat", () => {
+    test("should include memory context in chat requests", async ({ page }) => {
       await setupAuthenticatedUser(page);
 
-      await page.route('**/api/bali-zero/conversations/memory/context', async (route) => {
-        await route.fulfill({ json: mockMemoryContext });
-      });
+      await page.route(
+        "**/api/bali-zero/conversations/memory/context",
+        async (route) => {
+          await route.fulfill({ json: mockMemoryContext });
+        },
+      );
 
       let chatRequestBody: string | null = null;
 
       // Intercept chat stream request to verify memory is included
-      await page.route('**/api/agentic-rag/stream', async (route) => {
+      await page.route("**/api/agentic-rag/stream", async (route) => {
         const request = route.request();
         chatRequestBody = request.postData();
 
@@ -126,17 +143,17 @@ test.describe('Memory Persistence', () => {
         const chunks = [
           'data: {"type": "token", "content": "Ciao Roberto! "}\n\n',
           'data: {"type": "token", "content": "Come posso aiutarti con il tuo studio legale a Bali?"}\n\n',
-          'data: [DONE]\n\n',
+          "data: [DONE]\n\n",
         ];
         await route.fulfill({
           status: 200,
-          contentType: 'text/event-stream',
-          body: chunks.join(''),
+          contentType: "text/event-stream",
+          body: chunks.join(""),
         });
       });
 
       // Mock conversation save
-      await page.route('**/api/bali-zero/conversations/save', async (route) => {
+      await page.route("**/api/bali-zero/conversations/save", async (route) => {
         await route.fulfill({
           json: {
             success: true,
@@ -146,16 +163,21 @@ test.describe('Memory Persistence', () => {
         });
       });
 
-      await page.goto('/chat');
-      await page.waitForLoadState('networkidle');
+      await page.goto("/chat");
+      await page.waitForLoadState("networkidle");
 
       // Send a message
-      await page.fill('textarea[placeholder="Type your message..."]', 'Buongiorno!');
-      await page.keyboard.press('Enter');
+      await page.fill(
+        'textarea[placeholder="Type your message..."]',
+        "Buongiorno!",
+      );
+      await page.keyboard.press("Enter");
 
       // Wait for response
       await expect(
-        page.getByText('Ciao Roberto! Come posso aiutarti con il tuo studio legale a Bali?')
+        page.getByText(
+          "Ciao Roberto! Come posso aiutarti con il tuo studio legale a Bali?",
+        ),
       ).toBeVisible({ timeout: 10000 });
 
       // Verify user_id was included in request
@@ -164,66 +186,78 @@ test.describe('Memory Persistence', () => {
       expect(body.user_id).toBe(testUser.email);
     });
 
-    test('should personalize response using memory context', async ({ page }) => {
+    test("should personalize response using memory context", async ({
+      page,
+    }) => {
       await setupAuthenticatedUser(page);
 
-      await page.route('**/api/bali-zero/conversations/memory/context', async (route) => {
-        await route.fulfill({ json: mockMemoryContext });
-      });
+      await page.route(
+        "**/api/bali-zero/conversations/memory/context",
+        async (route) => {
+          await route.fulfill({ json: mockMemoryContext });
+        },
+      );
 
       // Mock response that uses memory context (personalized)
-      await page.route('**/api/agentic-rag/stream', async (route) => {
+      await page.route("**/api/agentic-rag/stream", async (route) => {
         const chunks = [
           'data: {"type": "token", "content": "Buongiorno Avvocato Roberto! "}\n\n',
           'data: {"type": "token", "content": "Ricordo che sei interessato ad aprire uno studio a Bali. "}\n\n',
           'data: {"type": "token", "content": "Come procede il progetto?"}\n\n',
           'data: {"type": "metadata", "data": {"route_used": "agentic", "emotional_state": "friendly"}}\n\n',
-          'data: [DONE]\n\n',
+          "data: [DONE]\n\n",
         ];
         await route.fulfill({
           status: 200,
-          contentType: 'text/event-stream',
-          body: chunks.join(''),
+          contentType: "text/event-stream",
+          body: chunks.join(""),
         });
       });
 
-      await page.route('**/api/bali-zero/conversations/save', async (route) => {
+      await page.route("**/api/bali-zero/conversations/save", async (route) => {
         await route.fulfill({
           json: { success: true, conversation_id: 1, messages_saved: 2 },
         });
       });
 
-      await page.goto('/chat');
-      await page.waitForLoadState('networkidle');
+      await page.goto("/chat");
+      await page.waitForLoadState("networkidle");
 
       // Send a message
-      await page.fill('textarea[placeholder="Type your message..."]', 'Ciao!');
-      await page.keyboard.press('Enter');
+      await page.fill('textarea[placeholder="Type your message..."]', "Ciao!");
+      await page.keyboard.press("Enter");
 
       // Verify personalized response mentions user's name and project
-      await expect(page.getByText(/Avvocato Roberto/)).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText(/Avvocato Roberto/)).toBeVisible({
+        timeout: 10000,
+      });
       await expect(page.getByText(/Bali/)).toBeVisible();
     });
   });
 
-  test.describe('Memory Persistence Across Sessions', () => {});
+  test.describe("Memory Persistence Across Sessions", () => {});
 
-  test.describe('Memory Context Security', () => {
-    test('should not fetch memory context for unauthenticated users', async ({ page }) => {
+  test.describe("Memory Context Security", () => {
+    test("should not fetch memory context for unauthenticated users", async ({
+      page,
+    }) => {
       // Don't set up authenticated user
 
       let memoryContextCalled = false;
 
-      await page.route('**/api/bali-zero/conversations/memory/context', async (route) => {
-        memoryContextCalled = true;
-        await route.fulfill({
-          status: 401,
-          json: { detail: 'Not authenticated' },
-        });
-      });
+      await page.route(
+        "**/api/bali-zero/conversations/memory/context",
+        async (route) => {
+          memoryContextCalled = true;
+          await route.fulfill({
+            status: 401,
+            json: { detail: "Not authenticated" },
+          });
+        },
+      );
 
       // Navigate to chat (should redirect to login or show auth prompt)
-      await page.goto('/chat');
+      await page.goto("/chat");
 
       // Wait briefly
       await page.waitForTimeout(1000);
@@ -232,21 +266,26 @@ test.describe('Memory Persistence', () => {
       // The exact behavior depends on auth middleware
     });
 
-    test('should not expose memory context of other users', async ({ page }) => {
+    test("should not expose memory context of other users", async ({
+      page,
+    }) => {
       await setupAuthenticatedUser(page);
 
       // Always return the authenticated user's context, never another user's
-      await page.route('**/api/bali-zero/conversations/memory/context', async (route) => {
-        await route.fulfill({
-          json: {
-            ...mockMemoryContext,
-            user_id: testUser.email, // Always the authenticated user
-          },
-        });
-      });
+      await page.route(
+        "**/api/bali-zero/conversations/memory/context",
+        async (route) => {
+          await route.fulfill({
+            json: {
+              ...mockMemoryContext,
+              user_id: testUser.email, // Always the authenticated user
+            },
+          });
+        },
+      );
 
-      await page.goto('/chat');
-      await page.waitForLoadState('networkidle');
+      await page.goto("/chat");
+      await page.waitForLoadState("networkidle");
 
       // No way to access other users' memory
       // This is verified by backend authorization, tested in API tests

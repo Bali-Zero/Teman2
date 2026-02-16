@@ -1,22 +1,27 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { api } from '../../api';
-import type { PortalDashboard, SendMessageRequest } from '../portal/portal.types';
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { api } from "../../api";
+import type {
+  PortalDashboard,
+  SendMessageRequest,
+} from "../portal/portal.types";
 
 // Mock Data Factory - aligned with portal.types.ts
-const createMockDashboard = (overrides?: Partial<PortalDashboard>): PortalDashboard => ({
+const createMockDashboard = (
+  overrides?: Partial<PortalDashboard>,
+): PortalDashboard => ({
   visa: {
-    status: 'active',
-    type: 'KITAS',
-    expiryDate: '2025-12-31',
+    status: "active",
+    type: "KITAS",
+    expiryDate: "2025-12-31",
     daysRemaining: 365,
   },
   company: {
-    status: 'active',
-    primaryCompanyName: 'Test Co',
+    status: "active",
+    primaryCompanyName: "Test Co",
     totalCompanies: 1,
   },
   taxes: {
-    status: 'compliant',
+    status: "compliant",
     nextDeadline: null,
     daysToDeadline: null,
   },
@@ -33,18 +38,18 @@ const createMockDashboard = (overrides?: Partial<PortalDashboard>): PortalDashbo
 
 const createEmptyDashboard = (): PortalDashboard => ({
   visa: {
-    status: 'none',
+    status: "none",
     type: null,
     expiryDate: null,
     daysRemaining: null,
   },
   company: {
-    status: 'none',
+    status: "none",
     primaryCompanyName: null,
     totalCompanies: 0,
   },
   taxes: {
-    status: 'compliant',
+    status: "compliant",
     nextDeadline: null,
     daysToDeadline: null,
   },
@@ -78,25 +83,25 @@ const localStorageMock = (() => {
     }),
   };
 })();
-Object.defineProperty(window, 'localStorage', { value: localStorageMock });
+Object.defineProperty(window, "localStorage", { value: localStorageMock });
 
-describe('Portal API Integration Tests', () => {
+describe("Portal API Integration Tests", () => {
   beforeEach(() => {
     mockFetch.mockReset();
     localStorageMock.clear();
     vi.clearAllMocks();
 
     // Set auth token
-    localStorageMock.setItem('auth_token', 'test-token');
-    localStorageMock.setItem('csrf_token', 'test-csrf');
+    localStorageMock.setItem("auth_token", "test-token");
+    localStorageMock.setItem("csrf_token", "test-csrf");
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  describe('Dashboard Flow', () => {
-    it('should fetch dashboard and timeline in parallel', async () => {
+  describe("Dashboard Flow", () => {
+    it("should fetch dashboard and timeline in parallel", async () => {
       const mockDashboard = createMockDashboard();
 
       const mockTimeline = {
@@ -108,15 +113,15 @@ describe('Portal API Integration Tests', () => {
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
-          statusText: 'OK',
-          headers: new Headers({ 'content-type': 'application/json' }),
+          statusText: "OK",
+          headers: new Headers({ "content-type": "application/json" }),
           json: async () => ({ data: mockDashboard }),
         })
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
-          statusText: 'OK',
-          headers: new Headers({ 'content-type': 'application/json' }),
+          statusText: "OK",
+          headers: new Headers({ "content-type": "application/json" }),
           json: async () => ({ data: mockTimeline }),
         });
 
@@ -128,18 +133,18 @@ describe('Portal API Integration Tests', () => {
       expect(mockFetch).toHaveBeenCalledTimes(2);
     });
 
-    it('should handle partial failures gracefully', async () => {
+    it("should handle partial failures gracefully", async () => {
       const emptyDashboard = createEmptyDashboard();
 
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
-          statusText: 'OK',
-          headers: new Headers({ 'content-type': 'application/json' }),
+          statusText: "OK",
+          headers: new Headers({ "content-type": "application/json" }),
           json: async () => ({ data: emptyDashboard }),
         })
-        .mockRejectedValueOnce(new Error('Timeline API Error'));
+        .mockRejectedValueOnce(new Error("Timeline API Error"));
 
       const dashboard = await api.portal.getDashboard();
 
@@ -150,45 +155,45 @@ describe('Portal API Integration Tests', () => {
     });
   });
 
-  describe('Authentication Flow', () => {
-    it('should include auth token in portal API requests', async () => {
+  describe("Authentication Flow", () => {
+    it("should include auth token in portal API requests", async () => {
       const mockDashboard = createEmptyDashboard();
 
       mockFetch.mockResolvedValue({
         ok: true,
         status: 200,
-        statusText: 'OK',
-        headers: new Headers({ 'content-type': 'application/json' }),
+        statusText: "OK",
+        headers: new Headers({ "content-type": "application/json" }),
         json: async () => ({ data: mockDashboard }),
       });
 
       await api.portal.getDashboard();
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/portal/dashboard'),
+        expect.stringContaining("/api/portal/dashboard"),
         expect.objectContaining({
           headers: expect.objectContaining({
-            Authorization: expect.stringContaining('Bearer'),
+            Authorization: expect.stringContaining("Bearer"),
           }),
-        })
+        }),
       );
     });
 
-    it('should handle 401 errors and redirect', async () => {
+    it("should handle 401 errors and redirect", async () => {
       mockFetch.mockResolvedValue({
         ok: false,
         status: 401,
-        statusText: 'Unauthorized',
-        headers: new Headers({ 'content-type': 'application/json' }),
-        json: async () => ({ error: 'Unauthorized' }),
+        statusText: "Unauthorized",
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({ error: "Unauthorized" }),
       });
 
       await expect(api.portal.getDashboard()).rejects.toThrow();
     });
   });
 
-  describe('Message Flow', () => {
-    it('should fetch messages with pagination', async () => {
+  describe("Message Flow", () => {
+    it("should fetch messages with pagination", async () => {
       const mockMessages = {
         messages: [],
         total: 0,
@@ -198,8 +203,8 @@ describe('Portal API Integration Tests', () => {
       mockFetch.mockResolvedValue({
         ok: true,
         status: 200,
-        statusText: 'OK',
-        headers: new Headers({ 'content-type': 'application/json' }),
+        statusText: "OK",
+        headers: new Headers({ "content-type": "application/json" }),
         json: async () => ({ data: mockMessages }),
       });
 
@@ -207,32 +212,32 @@ describe('Portal API Integration Tests', () => {
 
       expect(result).toEqual(mockMessages);
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/portal/messages?limit=20&offset=10'),
-        expect.any(Object)
+        expect.stringContaining("/api/portal/messages?limit=20&offset=10"),
+        expect.any(Object),
       );
     });
 
-    it('should send message correctly', async () => {
+    it("should send message correctly", async () => {
       const mockMessage = {
-        id: 'msg-001',
-        content: 'Test message',
-        direction: 'client_to_team',
-        sentBy: 'Test User',
-        subject: 'Test',
+        id: "msg-001",
+        content: "Test message",
+        direction: "client_to_team",
+        sentBy: "Test User",
+        subject: "Test",
         createdAt: new Date().toISOString(),
       };
 
       mockFetch.mockResolvedValue({
         ok: true,
         status: 200,
-        statusText: 'OK',
-        headers: new Headers({ 'content-type': 'application/json' }),
+        statusText: "OK",
+        headers: new Headers({ "content-type": "application/json" }),
         json: async () => ({ data: mockMessage }),
       });
 
       const request: SendMessageRequest = {
-        content: 'Test message',
-        subject: 'Test',
+        content: "Test message",
+        subject: "Test",
         practiceId: 1,
       };
 
@@ -240,92 +245,92 @@ describe('Portal API Integration Tests', () => {
 
       expect(result).toEqual(mockMessage);
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/portal/messages'),
+        expect.stringContaining("/api/portal/messages"),
         expect.objectContaining({
-          method: 'POST',
-          body: expect.stringContaining('Test'),
-        })
+          method: "POST",
+          body: expect.stringContaining("Test"),
+        }),
       );
     });
   });
 
-  describe('Document Upload Flow', () => {
-    it('should upload document with FormData', async () => {
-      const file = new File(['test'], 'test.pdf', { type: 'application/pdf' });
+  describe("Document Upload Flow", () => {
+    it("should upload document with FormData", async () => {
+      const file = new File(["test"], "test.pdf", { type: "application/pdf" });
       const mockDocument = {
-        id: 'doc-001',
-        name: 'test.pdf',
-        type: 'passport',
-        category: 'personal',
-        status: 'verified',
+        id: "doc-001",
+        name: "test.pdf",
+        type: "passport",
+        category: "personal",
+        status: "verified",
         uploadDate: new Date().toISOString(),
-        size: '1.2 MB',
-        downloadUrl: '/documents/doc-001',
+        size: "1.2 MB",
+        downloadUrl: "/documents/doc-001",
       };
 
       mockFetch.mockResolvedValue({
         ok: true,
         status: 200,
-        statusText: 'OK',
-        headers: new Headers({ 'content-type': 'application/json' }),
+        statusText: "OK",
+        headers: new Headers({ "content-type": "application/json" }),
         json: async () => ({ data: mockDocument }),
       });
 
-      const result = await api.portal.uploadDocument(file, 'passport');
+      const result = await api.portal.uploadDocument(file, "passport");
 
       expect(result).toEqual(mockDocument);
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/portal/documents/upload'),
+        expect.stringContaining("/api/portal/documents/upload"),
         expect.objectContaining({
-          method: 'POST',
+          method: "POST",
           body: expect.any(FormData),
-        })
+        }),
       );
     });
   });
 
-  describe('Invitation Flow (Public)', () => {
-    it('should validate invite token without auth', async () => {
+  describe("Invitation Flow (Public)", () => {
+    it("should validate invite token without auth", async () => {
       const mockResponse = {
         valid: true,
-        clientName: 'Test Client',
-        email: 'test@example.com',
+        clientName: "Test Client",
+        email: "test@example.com",
       };
 
       mockFetch.mockResolvedValue({
         ok: true,
         status: 200,
-        statusText: 'OK',
-        headers: new Headers({ 'content-type': 'application/json' }),
+        statusText: "OK",
+        headers: new Headers({ "content-type": "application/json" }),
         json: async () => mockResponse,
       });
 
-      const result = await api.portal.validateInviteToken('test-token');
+      const result = await api.portal.validateInviteToken("test-token");
 
       expect(result).toEqual(mockResponse);
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/portal/invite/validate/test-token'),
-        expect.any(Object)
+        expect.stringContaining("/api/portal/invite/validate/test-token"),
+        expect.any(Object),
       );
     });
 
-    it('should complete registration without auth', async () => {
+    it("should complete registration without auth", async () => {
       const mockResponse = {
         success: true,
-        message: 'Registration completed',
+        message: "Registration completed",
       };
 
       mockFetch.mockResolvedValue({
         ok: true,
         status: 200,
-        statusText: 'OK',
-        headers: new Headers({ 'content-type': 'application/json' }),
+        statusText: "OK",
+        headers: new Headers({ "content-type": "application/json" }),
         json: async () => mockResponse,
       });
 
       const result = await api.portal.completeRegistration({
-        token: 'test-token',
-        pin: '1234',
+        token: "test-token",
+        pin: "1234",
       });
 
       expect(result).toEqual(mockResponse);

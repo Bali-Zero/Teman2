@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { motion } from 'framer-motion';
+import React from "react";
+import { motion } from "framer-motion";
 
 const SIZE = 40;
 const STROKE = 3;
@@ -9,9 +9,9 @@ const RADIUS = (SIZE - STROKE) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 function getColor(score: number): string {
-  if (score >= 70) return '#D4B483'; // gold
-  if (score >= 40) return '#F59E0B'; // amber
-  return '#555'; // dim
+  if (score >= 70) return "#D4B483"; // gold
+  if (score >= 40) return "#F59E0B"; // amber
+  return "#555"; // dim
 }
 
 export default function MatchScoreRing({ score }: { score: number }) {
@@ -46,10 +46,13 @@ export default function MatchScoreRing({ score }: { score: number }) {
           strokeDasharray={CIRCUMFERENCE}
           initial={{ strokeDashoffset: CIRCUMFERENCE }}
           animate={{ strokeDashoffset: offset }}
-          transition={{ duration: 0.8, ease: 'easeOut', delay: 0.2 }}
+          transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
         />
       </svg>
-      <span className="absolute font-mono text-[10px] font-medium" style={{ color }}>
+      <span
+        className="absolute font-mono text-[10px] font-medium"
+        style={{ color }}
+      >
         {pct}
       </span>
     </div>

@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
-import ReactConfetti from 'react-confetti';
+import React, { useState, useEffect, useCallback } from "react";
+import ReactConfetti from "react-confetti";
 
 interface ConfettiProps {
   active: boolean;
@@ -19,7 +19,11 @@ interface ConfettiProps {
  *
  * // Trigger: setShowConfetti(true)
  */
-export function Confetti({ active, duration = 3000, onComplete }: ConfettiProps) {
+export function Confetti({
+  active,
+  duration = 3000,
+  onComplete,
+}: ConfettiProps) {
   const [isActive, setIsActive] = useState(false);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
@@ -33,8 +37,8 @@ export function Confetti({ active, duration = 3000, onComplete }: ConfettiProps)
     };
 
     updateDimensions();
-    window.addEventListener('resize', updateDimensions);
-    return () => window.removeEventListener('resize', updateDimensions);
+    window.addEventListener("resize", updateDimensions);
+    return () => window.removeEventListener("resize", updateDimensions);
   }, []);
 
   useEffect(() => {
@@ -58,19 +62,19 @@ export function Confetti({ active, duration = 3000, onComplete }: ConfettiProps)
       numberOfPieces={300}
       gravity={0.3}
       colors={[
-        '#6366f1', // accent (indigo)
-        '#22c55e', // success (green)
-        '#f59e0b', // warning (amber)
-        '#3b82f6', // info (blue)
-        '#ec4899', // pink
-        '#8b5cf6', // purple
+        "#6366f1", // accent (indigo)
+        "#22c55e", // success (green)
+        "#f59e0b", // warning (amber)
+        "#3b82f6", // info (blue)
+        "#ec4899", // pink
+        "#8b5cf6", // purple
       ]}
       style={{
-        position: 'fixed',
+        position: "fixed",
         top: 0,
         left: 0,
         zIndex: 9999,
-        pointerEvents: 'none',
+        pointerEvents: "none",
       }}
     />
   );
@@ -96,7 +100,9 @@ export function useConfetti() {
     setActive(false);
   }, []);
 
-  const ConfettiComponent = <Confetti active={active} onComplete={handleComplete} />;
+  const ConfettiComponent = (
+    <Confetti active={active} onComplete={handleComplete} />
+  );
 
   return { triggerConfetti, ConfettiComponent, isActive: active };
 }

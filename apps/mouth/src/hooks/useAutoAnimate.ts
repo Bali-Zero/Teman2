@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useAutoAnimate as useAutoAnimateFormkit } from '@formkit/auto-animate/react';
+import { useAutoAnimate as useAutoAnimateFormkit } from "@formkit/auto-animate/react";
 
 /**
  * Re-export of useAutoAnimate from @formkit/auto-animate

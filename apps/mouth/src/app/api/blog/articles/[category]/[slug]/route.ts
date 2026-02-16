@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { serialize } from 'next-mdx-remote/serialize';
-import remarkGfm from 'remark-gfm';
-import type { Article } from '@/lib/blog/types';
-import { getArticleBySlug } from '@/lib/blog/articles';
-import { logger } from '@/lib/logger';
-import { toError } from '@/lib/types/common';
+import { NextRequest, NextResponse } from "next/server";
+import { serialize } from "next-mdx-remote/serialize";
+import remarkGfm from "remark-gfm";
+import type { Article } from "@/lib/blog/types";
+import { getArticleBySlug } from "@/lib/blog/articles";
+import { logger } from "@/lib/logger";
+import { toError } from "@/lib/types/common";
 
 interface RouteParams {
   params: Promise<{
@@ -20,8 +20,8 @@ interface RouteParams {
 function stripImports(content: string): string {
   // Remove import statements (single and multi-line)
   return content
-    .replace(/^import\s+[\s\S]*?from\s+['"][^'"]+['"];?\s*$/gm, '')
-    .replace(/^import\s*{[\s\S]*?}\s*from\s*['"][^'"]+['"];?\s*$/gm, '')
+    .replace(/^import\s+[\s\S]*?from\s+['"][^'"]+['"];?\s*$/gm, "")
+    .replace(/^import\s*{[\s\S]*?}\s*from\s*['"][^'"]+['"];?\s*$/gm, "")
     .trim();
 }
 
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         const mdxSource = await serialize(cleanContent, {
           mdxOptions: {
             remarkPlugins: [remarkGfm],
-            development: process.env.NODE_ENV === 'development',
+            development: process.env.NODE_ENV === "development",
           },
         });
 
@@ -55,9 +55,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         });
       } catch (mdxError) {
         logger.error(
-          'MDX serialization failed, falling back to raw content',
-          { component: 'BlogArticle', action: 'mdxSerialize' },
-          toError(mdxError)
+          "MDX serialization failed, falling back to raw content",
+          { component: "BlogArticle", action: "mdxSerialize" },
+          toError(mdxError),
         );
         // Fallback: return article without mdxSource (will render as plain text)
         return NextResponse.json({
@@ -74,12 +74,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json(mockArticle);
     }
 
-    return NextResponse.json({ error: 'Article not found' }, { status: 404 });
+    return NextResponse.json({ error: "Article not found" }, { status: 404 });
   } catch (error) {
     logger.error(
-      'Failed to fetch article',
-      { component: 'BlogArticle', action: 'fetch' },
-      toError(error)
+      "Failed to fetch article",
+      { component: "BlogArticle", action: "fetch" },
+      toError(error),
     );
 
     // Try mock data as fallback
@@ -89,7 +89,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json(mockArticle);
     }
 
-    return NextResponse.json({ error: 'Failed to fetch article' }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch article" },
+      { status: 500 },
+    );
   }
 }
 
@@ -103,7 +106,7 @@ export async function PATCH(_request: NextRequest, { params }: RouteParams) {
     {
       error: `Article updates not supported. Edit MDX file directly: src/content/articles/${category}/${slug}.mdx`,
     },
-    { status: 501 }
+    { status: 501 },
   );
 }
 
@@ -117,19 +120,20 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     {
       error: `Article deletion not supported. Delete MDX file directly: src/content/articles/${category}/${slug}.mdx`,
     },
-    { status: 501 }
+    { status: 501 },
   );
 }
 
 // Mock article for demo/development
 function getMockArticle(category: string, slug: string): Article | null {
   const mockArticles: Record<string, Article> = {
-    'immigration/golden-visa-revolution': {
-      id: '1',
-      slug: 'golden-visa-revolution',
-      title: "The Golden Visa Revolution: Indonesia's $350K Bet on Global Talent",
+    "immigration/golden-visa-revolution": {
+      id: "1",
+      slug: "golden-visa-revolution",
+      title:
+        "The Golden Visa Revolution: Indonesia's $350K Bet on Global Talent",
       excerpt:
-        'Indonesia launches its Golden Visa program, offering 5-10 year stays for investors and high-net-worth individuals.',
+        "Indonesia launches its Golden Visa program, offering 5-10 year stays for investors and high-net-worth individuals.",
       content: `
 # The Golden Visa Revolution
 
@@ -189,41 +193,41 @@ The Golden Visa program positions Indonesia, and particularly Bali, as a premier
 
 *Have questions about the Golden Visa? [Contact our team](/contact) for a free consultation.*
       `,
-      coverImage: '/static/blog/golden-visa.jpg',
-      category: 'immigration',
-      tags: ['golden-visa', 'investment', 'residency', 'indonesia'],
+      coverImage: "/static/blog/golden-visa.jpg",
+      category: "immigration",
+      tags: ["golden-visa", "investment", "residency", "indonesia"],
       author: {
-        id: 'zantara-ai',
-        name: 'Zantara AI',
-        avatar: '/static/zantara-avatar.png',
-        role: 'AI Research Assistant',
+        id: "zantara-ai",
+        name: "Zantara AI",
+        avatar: "/static/zantara-avatar.png",
+        role: "AI Research Assistant",
         isAI: true,
       },
-      publishedAt: new Date('2024-12-20'),
-      updatedAt: new Date('2024-12-20'),
+      publishedAt: new Date("2024-12-20"),
+      updatedAt: new Date("2024-12-20"),
       readingTime: 12,
       viewCount: 15420,
       featured: true,
       trending: true,
       aiGenerated: true,
-      status: 'published',
-      seoTitle: 'Golden Visa Indonesia 2026: Complete Guide | Bali Zero',
+      status: "published",
+      seoTitle: "Golden Visa Indonesia 2026: Complete Guide | Bali Zero",
       seoDescription:
         "Everything you need to know about Indonesia's Golden Visa program. Investment requirements, benefits, and application process explained.",
-      relatedArticleIds: ['oss-2-complete-guide', 'kitas-application-2026'],
-      coverImageAlt: 'Golden Visa Indonesia program',
-      createdAt: new Date('2024-12-20'),
+      relatedArticleIds: ["oss-2-complete-guide", "kitas-application-2026"],
+      coverImageAlt: "Golden Visa Indonesia program",
+      createdAt: new Date("2024-12-20"),
       shareCount: 234,
       likeCount: 89,
       commentCount: 12,
-      locale: 'en',
+      locale: "en",
     },
-    'business/oss-2-complete-guide': {
-      id: '2',
-      slug: 'oss-2-complete-guide',
-      title: 'OSS 2.0: The Complete Guide to Indonesia Business Licensing',
+    "business/oss-2-complete-guide": {
+      id: "2",
+      slug: "oss-2-complete-guide",
+      title: "OSS 2.0: The Complete Guide to Indonesia Business Licensing",
       excerpt:
-        'Everything you need to know about the Online Single Submission system for company registration.',
+        "Everything you need to know about the Online Single Submission system for company registration.",
       content: `
 # OSS 2.0: Complete Guide
 
@@ -290,41 +294,41 @@ Under OSS-RBA, businesses are classified by risk level:
 
 *Need help with OSS registration? [Contact us](/contact) for professional assistance.*
       `,
-      coverImage: '/static/blog/oss-guide.jpg',
-      category: 'business',
-      tags: ['oss', 'business-license', 'pt-pma', 'indonesia'],
+      coverImage: "/static/blog/oss-guide.jpg",
+      category: "business",
+      tags: ["oss", "business-license", "pt-pma", "indonesia"],
       author: {
-        id: '1',
-        name: 'Legal Team',
-        avatar: '/static/team/legal.jpg',
-        role: 'Legal Advisor',
+        id: "1",
+        name: "Legal Team",
+        avatar: "/static/team/legal.jpg",
+        role: "Legal Advisor",
         isAI: false,
       },
-      publishedAt: new Date('2024-12-18'),
-      updatedAt: new Date('2024-12-18'),
+      publishedAt: new Date("2024-12-18"),
+      updatedAt: new Date("2024-12-18"),
       readingTime: 15,
       viewCount: 8932,
       featured: false,
       trending: true,
       aiGenerated: false,
-      status: 'published',
-      seoTitle: 'OSS 2.0 Guide: Indonesia Business License System | Bali Zero',
+      status: "published",
+      seoTitle: "OSS 2.0 Guide: Indonesia Business License System | Bali Zero",
       seoDescription:
         "Complete guide to Indonesia's OSS 2.0 system. Learn how to register your business, obtain licenses, and navigate KBLI codes.",
-      relatedArticleIds: ['golden-visa-revolution', 'tax-deadlines-2026'],
-      coverImageAlt: 'OSS 2.0 Business Licensing Indonesia',
-      createdAt: new Date('2024-12-18'),
+      relatedArticleIds: ["golden-visa-revolution", "tax-deadlines-2026"],
+      coverImageAlt: "OSS 2.0 Business Licensing Indonesia",
+      createdAt: new Date("2024-12-18"),
       shareCount: 156,
       likeCount: 67,
       commentCount: 8,
-      locale: 'en',
+      locale: "en",
     },
-    'tax-legal/tax-deadlines-2026': {
-      id: '3',
-      slug: 'tax-deadlines-2026',
-      title: 'Tax Deadlines 2026: What Every Expat in Indonesia Needs to Know',
+    "tax-legal/tax-deadlines-2026": {
+      id: "3",
+      slug: "tax-deadlines-2026",
+      title: "Tax Deadlines 2026: What Every Expat in Indonesia Needs to Know",
       excerpt:
-        'Key dates and obligations for personal and corporate tax filings. Coretax system now fully operational.',
+        "Key dates and obligations for personal and corporate tax filings. Coretax system now fully operational.",
       content: `
 # Tax Deadlines 2026
 
@@ -369,34 +373,34 @@ Stay compliant with Indonesia's tax requirements. The new **Coretax** system is 
 
 *Need tax assistance? [Schedule a consultation](/contact) with our tax experts.*
       `,
-      coverImage: '/static/blog/tax-calendar.jpg',
-      category: 'tax-legal',
-      tags: ['tax', 'deadlines', 'compliance', 'indonesia', 'coretax'],
+      coverImage: "/static/blog/tax-calendar.jpg",
+      category: "tax-legal",
+      tags: ["tax", "deadlines", "compliance", "indonesia", "coretax"],
       author: {
-        id: 'zantara-ai',
-        name: 'Zantara AI',
-        avatar: '/static/zantara-avatar.png',
-        role: 'AI Research Assistant',
+        id: "zantara-ai",
+        name: "Zantara AI",
+        avatar: "/static/zantara-avatar.png",
+        role: "AI Research Assistant",
         isAI: true,
       },
-      publishedAt: new Date('2025-12-28'),
-      updatedAt: new Date('2025-12-28'),
+      publishedAt: new Date("2025-12-28"),
+      updatedAt: new Date("2025-12-28"),
       readingTime: 8,
       viewCount: 6234,
       featured: false,
       trending: true,
       aiGenerated: true,
-      status: 'published',
-      seoTitle: 'Indonesia Tax Deadlines 2026: Expat Guide | Bali Zero',
+      status: "published",
+      seoTitle: "Indonesia Tax Deadlines 2026: Expat Guide | Bali Zero",
       seoDescription:
-        'Complete 2026 tax calendar for expats in Indonesia. Personal, corporate, and VAT deadlines with Coretax integration.',
-      relatedArticleIds: ['oss-2-complete-guide', 'golden-visa-revolution'],
-      coverImageAlt: 'Indonesia Tax Calendar 2026',
-      createdAt: new Date('2025-12-28'),
+        "Complete 2026 tax calendar for expats in Indonesia. Personal, corporate, and VAT deadlines with Coretax integration.",
+      relatedArticleIds: ["oss-2-complete-guide", "golden-visa-revolution"],
+      coverImageAlt: "Indonesia Tax Calendar 2026",
+      createdAt: new Date("2025-12-28"),
       shareCount: 89,
       likeCount: 45,
       commentCount: 5,
-      locale: 'en',
+      locale: "en",
     },
   };
 

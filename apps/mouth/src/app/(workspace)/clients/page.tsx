@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Clients Page - CRM Workspace
@@ -10,8 +10,8 @@
  * - Error Boundary per resilienza
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   Users,
   Search,
@@ -23,32 +23,36 @@ import {
   SortAsc,
   SortDesc,
   AlertCircle,
-} from 'lucide-react';
-import { useAutoAnimate } from '@formkit/auto-animate/react';
-import { useVirtualizer } from '@tanstack/react-virtual';
-import { Button } from '@/components/ui/button';
-import { api } from '@/lib/api';
-import type { Client } from '@/lib/api/crm/crm.types';
-import { CLIENT_STATUSES, COMMON_NATIONALITIES } from '@/lib/api/crm/crm.types';
-import { ClientKanban } from '@/components/crm/ClientKanban';
-import { ClientCard } from '@/components/crm/ClientCard';
-import { CRMErrorBoundary, CRMSkeleton } from '@/components/crm';
-import { useCrmClients, useCrmStats } from '@/hooks';
-import { useDebounce } from '@/lib/hooks/optimized/useDebounce';
-import { logger } from '@/lib/logger';
+} from "lucide-react";
+import { useAutoAnimate } from "@formkit/auto-animate/react";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
+import type { Client } from "@/lib/api/crm/crm.types";
+import { CLIENT_STATUSES, COMMON_NATIONALITIES } from "@/lib/api/crm/crm.types";
+import { ClientKanban } from "@/components/crm/ClientKanban";
+import { ClientCard } from "@/components/crm/ClientCard";
+import { CRMErrorBoundary, CRMSkeleton } from "@/components/crm";
+import { useCrmClients, useCrmStats } from "@/hooks";
+import { useDebounce } from "@/lib/hooks/optimized/useDebounce";
+import { logger } from "@/lib/logger";
 
 // Status badge styling
 const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
-  lead: { bg: 'bg-blue-500/20', text: 'text-blue-400' },
-  active: { bg: 'bg-green-500/20', text: 'text-green-400' },
-  completed: { bg: 'bg-purple-500/20', text: 'text-purple-400' },
-  lost: { bg: 'bg-red-500/20', text: 'text-red-400' },
-  inactive: { bg: 'bg-gray-500/20', text: 'text-gray-400' },
+  lead: { bg: "bg-blue-500/20", text: "text-blue-400" },
+  active: { bg: "bg-green-500/20", text: "text-green-400" },
+  completed: { bg: "bg-purple-500/20", text: "text-purple-400" },
+  lost: { bg: "bg-red-500/20", text: "text-red-400" },
+  inactive: { bg: "bg-gray-500/20", text: "text-gray-400" },
 };
 
-type SortField = 'full_name' | 'created_at' | 'last_interaction_date' | 'status';
-type SortOrder = 'asc' | 'desc';
-type ViewMode = 'list' | 'kanban';
+type SortField =
+  | "full_name"
+  | "created_at"
+  | "last_interaction_date"
+  | "status";
+type SortOrder = "asc" | "desc";
+type ViewMode = "list" | "kanban";
 
 interface Filters {
   status: string;
@@ -91,8 +95,8 @@ function VirtualizedClientGrid({
       else setColumns(1);
     };
     updateColumns();
-    window.addEventListener('resize', updateColumns);
-    return () => window.removeEventListener('resize', updateColumns);
+    window.addEventListener("resize", updateColumns);
+    return () => window.removeEventListener("resize", updateColumns);
   }, []);
 
   const rows = Math.ceil(clients.length / columns);
@@ -119,7 +123,10 @@ function VirtualizedClientGrid({
             <ClientCard key={client.id} client={client} />
           ))}
         </div>
-        <div ref={loadMoreRef} className="h-10 flex items-center justify-center">
+        <div
+          ref={loadMoreRef}
+          className="h-10 flex items-center justify-center"
+        >
           {isLoadingMore && (
             <div className="flex items-center gap-2 text-sm text-[var(--foreground-muted)]">
               <div className="w-4 h-4 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
@@ -128,7 +135,8 @@ function VirtualizedClientGrid({
           )}
           {!hasMore && totalClients > PAGE_SIZE && (
             <span className="text-sm text-[var(--foreground-muted)]">
-              All {isMounted ? totalClients.toLocaleString() : totalClients} clients loaded
+              All {isMounted ? totalClients.toLocaleString() : totalClients}{" "}
+              clients loaded
             </span>
           )}
         </div>
@@ -143,8 +151,8 @@ function VirtualizedClientGrid({
       <div
         style={{
           height: `${virtualizer.getTotalSize()}px`,
-          width: '100%',
-          position: 'relative',
+          width: "100%",
+          position: "relative",
         }}
       >
         {virtualRows.map((virtualRow) => {
@@ -156,10 +164,10 @@ function VirtualizedClientGrid({
             <div
               key={virtualRow.key}
               style={{
-                position: 'absolute',
+                position: "absolute",
                 top: 0,
                 left: 0,
-                width: '100%',
+                width: "100%",
                 height: `${virtualRow.size}px`,
                 transform: `translateY(${virtualRow.start}px)`,
               }}
@@ -169,9 +177,9 @@ function VirtualizedClientGrid({
                   <ClientCard key={client.id} client={client} />
                 ))}
                 {rowClients.length < columns &&
-                  Array.from({ length: columns - rowClients.length }).map((_, i) => (
-                    <div key={`empty-${i}`} />
-                  ))}
+                  Array.from({ length: columns - rowClients.length }).map(
+                    (_, i) => <div key={`empty-${i}`} />,
+                  )}
               </div>
             </div>
           );
@@ -186,7 +194,8 @@ function VirtualizedClientGrid({
         )}
         {!hasMore && totalClients > PAGE_SIZE && (
           <span className="text-sm text-[var(--foreground-muted)]">
-            All {isMounted ? totalClients.toLocaleString() : totalClients} clients loaded
+            All {isMounted ? totalClients.toLocaleString() : totalClients}{" "}
+            clients loaded
           </span>
         )}
       </div>
@@ -200,20 +209,20 @@ function VirtualizedClientGrid({
 function ClientsListContent() {
   const router = useRouter();
   const [listParent] = useAutoAnimate();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<Filters>({
-    status: '',
-    nationality: '',
-    assigned_to: '',
+    status: "",
+    nationality: "",
+    assigned_to: "",
   });
-  const [sortField, setSortField] = useState<SortField>('created_at');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
-  const [currentUserEmail, setCurrentUserEmail] = useState<string>('');
+  const [sortField, setSortField] = useState<SortField>("created_at");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
+  const [currentUserEmail, setCurrentUserEmail] = useState<string>("");
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // Load current user profile
@@ -239,13 +248,21 @@ function ClientsListContent() {
   }, []);
 
   // Use optimized CRM hook with caching
-  const { clients, total, isLoading, isError, error, loadMore, hasMore, isLoadingMore } =
-    useCrmClients({
-      status: filters.status || undefined,
-      assigned_to: filters.assigned_to || undefined,
-      search: debouncedSearch || undefined,
-      limit: PAGE_SIZE,
-    });
+  const {
+    clients,
+    total,
+    isLoading,
+    isError,
+    error,
+    loadMore,
+    hasMore,
+    isLoadingMore,
+  } = useCrmClients({
+    status: filters.status || undefined,
+    assigned_to: filters.assigned_to || undefined,
+    search: debouncedSearch || undefined,
+    limit: PAGE_SIZE,
+  });
 
   // Stats hook
   const { data: stats } = useCrmStats();
@@ -254,11 +271,16 @@ function ClientsListContent() {
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoading && !isLoadingMore) {
+        if (
+          entries[0].isIntersecting &&
+          hasMore &&
+          !isLoading &&
+          !isLoadingMore
+        ) {
           loadMore();
         }
       },
-      { threshold: 0.1 }
+      { threshold: 0.1 },
     );
 
     if (loadMoreRef.current) {
@@ -269,65 +291,79 @@ function ClientsListContent() {
   }, [hasMore, isLoading, isLoadingMore, loadMore]);
 
   // Handle status change
-  const handleStatusChange = useCallback(async (clientId: number, newStatus: string) => {
-    try {
-      const currentUser = api.getUserProfile();
-      await api.crm.updateClient(clientId, { status: newStatus }, currentUser?.email || 'system');
-    } catch (error) {
-      logger.error('Failed to update status:', {}, error as Error);
-    }
-  }, []);
+  const handleStatusChange = useCallback(
+    async (clientId: number, newStatus: string) => {
+      try {
+        const currentUser = api.getUserProfile();
+        await api.crm.updateClient(
+          clientId,
+          { status: newStatus },
+          currentUser?.email || "system",
+        );
+      } catch (error) {
+        logger.error("Failed to update status:", {}, error as Error);
+      }
+    },
+    [],
+  );
 
   // Filtering
   const visibleClients = profileLoaded && isMounted ? clients : [];
   const uniqueAssignees = Array.from(
-    new Set(visibleClients.map((c) => c.assigned_to).filter(Boolean))
+    new Set(visibleClients.map((c) => c.assigned_to).filter(Boolean)),
   );
 
   const filteredClients = visibleClients
     .filter((client) => {
       if (filters.status && client.status !== filters.status) return false;
-      if (filters.nationality && client.nationality !== filters.nationality) return false;
-      if (filters.assigned_to && client.assigned_to !== filters.assigned_to) return false;
+      if (filters.nationality && client.nationality !== filters.nationality)
+        return false;
+      if (filters.assigned_to && client.assigned_to !== filters.assigned_to)
+        return false;
       return true;
     })
     .sort((a, b) => {
       let comparison = 0;
       switch (sortField) {
-        case 'full_name':
-          comparison = (a.full_name || '').localeCompare(b.full_name || '');
+        case "full_name":
+          comparison = (a.full_name || "").localeCompare(b.full_name || "");
           break;
-        case 'created_at':
-          comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        case "created_at":
+          comparison =
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
           break;
-        case 'last_interaction_date':
-          const aDate = a.last_interaction_date ? new Date(a.last_interaction_date).getTime() : 0;
-          const bDate = b.last_interaction_date ? new Date(b.last_interaction_date).getTime() : 0;
+        case "last_interaction_date":
+          const aDate = a.last_interaction_date
+            ? new Date(a.last_interaction_date).getTime()
+            : 0;
+          const bDate = b.last_interaction_date
+            ? new Date(b.last_interaction_date).getTime()
+            : 0;
           comparison = aDate - bDate;
           break;
-        case 'status':
-          comparison = (a.status || '').localeCompare(b.status || '');
+        case "status":
+          comparison = (a.status || "").localeCompare(b.status || "");
           break;
       }
-      return sortOrder === 'asc' ? comparison : -comparison;
+      return sortOrder === "asc" ? comparison : -comparison;
     });
 
   const handleNewClient = () => {
-    router.push('/clients/new');
+    router.push("/clients/new");
   };
 
   const clearFilters = () => {
-    setFilters({ status: '', nationality: '', assigned_to: '' });
+    setFilters({ status: "", nationality: "", assigned_to: "" });
   };
 
   const activeFiltersCount = Object.values(filters).filter(Boolean).length;
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
       setSortField(field);
-      setSortOrder('desc');
+      setSortOrder("desc");
     }
   };
 
@@ -340,7 +376,9 @@ function ClientsListContent() {
           Error loading clients
         </h2>
         <p className="text-sm text-red-600 dark:text-red-300 mb-4">
-          {error instanceof Error ? error.message : 'An unexpected error occurred'}
+          {error instanceof Error
+            ? error.message
+            : "An unexpected error occurred"}
         </p>
         <Button onClick={() => window.location.reload()} variant="outline">
           Retry
@@ -354,29 +392,36 @@ function ClientsListContent() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--foreground)]">Clients</h1>
+          <h1 className="text-2xl font-bold text-[var(--foreground)]">
+            Clients
+          </h1>
           <p className="text-sm text-[var(--foreground-muted)]">
-            {isMounted ? filteredClients.length.toLocaleString() : filteredClients.length} client
-            {filteredClients.length !== 1 ? 's' : ''}
-            {hasMore && ' (scroll for more)'}
+            {isMounted
+              ? filteredClients.length.toLocaleString()
+              : filteredClients.length}{" "}
+            client
+            {filteredClients.length !== 1 ? "s" : ""}
+            {hasMore && " (scroll for more)"}
             {activeFiltersCount > 0 &&
               ` • filtered from ${isMounted ? visibleClients.length.toLocaleString() : visibleClients.length}`}
-            {stats && <span className="ml-2 text-xs">• {stats.totalClients} total</span>}
+            {stats && (
+              <span className="ml-2 text-xs">• {stats.totalClients} total</span>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2">
           {/* View Toggle */}
           <div className="bg-[var(--background-secondary)] p-1 rounded-lg border border-[var(--border)] flex">
             <button
-              onClick={() => setViewMode('list')}
-              className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-[var(--background-elevated)] shadow-sm text-[var(--foreground)]' : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'}`}
+              onClick={() => setViewMode("list")}
+              className={`p-2 rounded-md transition-all ${viewMode === "list" ? "bg-[var(--background-elevated)] shadow-sm text-[var(--foreground)]" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
               title="List View"
             >
               <List className="w-4 h-4" />
             </button>
             <button
-              onClick={() => setViewMode('kanban')}
-              className={`p-2 rounded-md transition-all ${viewMode === 'kanban' ? 'bg-[var(--background-elevated)] shadow-sm text-[var(--foreground)]' : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'}`}
+              onClick={() => setViewMode("kanban")}
+              className={`p-2 rounded-md transition-all ${viewMode === "kanban" ? "bg-[var(--background-elevated)] shadow-sm text-[var(--foreground)]" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
               title="Kanban Board"
             >
               <LayoutGrid className="w-4 h-4" />
@@ -404,7 +449,7 @@ function ClientsListContent() {
             />
             {searchQuery && (
               <button
-                onClick={() => setSearchQuery('')}
+                onClick={() => setSearchQuery("")}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
               >
                 <X className="w-4 h-4" />
@@ -412,7 +457,7 @@ function ClientsListContent() {
             )}
           </div>
           <Button
-            variant={showFilters ? 'default' : 'outline'}
+            variant={showFilters ? "default" : "outline"}
             className="gap-2"
             onClick={() => setShowFilters(!showFilters)}
           >
@@ -449,7 +494,9 @@ function ClientsListContent() {
                 </label>
                 <select
                   value={filters.status}
-                  onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                  onChange={(e) =>
+                    setFilters({ ...filters, status: e.target.value })
+                  }
                   className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
                 >
                   <option value="">All statuses</option>
@@ -466,7 +513,9 @@ function ClientsListContent() {
                 </label>
                 <select
                   value={filters.nationality}
-                  onChange={(e) => setFilters({ ...filters, nationality: e.target.value })}
+                  onChange={(e) =>
+                    setFilters({ ...filters, nationality: e.target.value })
+                  }
                   className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
                 >
                   <option value="">All nationalities</option>
@@ -483,13 +532,15 @@ function ClientsListContent() {
                 </label>
                 <select
                   value={filters.assigned_to}
-                  onChange={(e) => setFilters({ ...filters, assigned_to: e.target.value })}
+                  onChange={(e) =>
+                    setFilters({ ...filters, assigned_to: e.target.value })
+                  }
                   className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
                 >
                   <option value="">All team members</option>
                   {uniqueAssignees.map((assignee) => (
                     <option key={assignee} value={assignee}>
-                      {assignee?.split('@')[0]}
+                      {assignee?.split("@")[0]}
                     </option>
                   ))}
                 </select>
@@ -500,28 +551,31 @@ function ClientsListContent() {
       </div>
 
       {/* Sorting (List View Only) */}
-      {viewMode === 'list' && (
+      {viewMode === "list" && (
         <div className="flex items-center gap-2 text-sm">
           <span className="text-[var(--foreground-muted)]">Sort by:</span>
           <div className="flex gap-1">
             {[
-              { field: 'created_at' as SortField, label: 'Created' },
-              { field: 'full_name' as SortField, label: 'Name' },
-              { field: 'last_interaction_date' as SortField, label: 'Last Contact' },
-              { field: 'status' as SortField, label: 'Status' },
+              { field: "created_at" as SortField, label: "Created" },
+              { field: "full_name" as SortField, label: "Name" },
+              {
+                field: "last_interaction_date" as SortField,
+                label: "Last Contact",
+              },
+              { field: "status" as SortField, label: "Status" },
             ].map(({ field, label }) => (
               <button
                 key={field}
                 onClick={() => toggleSort(field)}
                 className={`px-3 py-1 rounded-full flex items-center gap-1 transition-colors ${
                   sortField === field
-                    ? 'bg-[var(--accent)]/20 text-[var(--accent)]'
-                    : 'bg-[var(--background-secondary)] text-[var(--foreground-muted)] hover:bg-[var(--background-elevated)]'
+                    ? "bg-[var(--accent)]/20 text-[var(--accent)]"
+                    : "bg-[var(--background-secondary)] text-[var(--foreground-muted)] hover:bg-[var(--background-elevated)]"
                 }`}
               >
                 {label}
                 {sortField === field &&
-                  (sortOrder === 'asc' ? (
+                  (sortOrder === "asc" ? (
                     <SortAsc className="w-3 h-3" />
                   ) : (
                     <SortDesc className="w-3 h-3" />
@@ -539,7 +593,7 @@ function ClientsListContent() {
         </div>
       ) : filteredClients.length > 0 ? (
         <div className="flex-1 overflow-auto">
-          {viewMode === 'list' ? (
+          {viewMode === "list" ? (
             <VirtualizedClientGrid
               clients={filteredClients}
               loadMoreRef={loadMoreRef}
@@ -549,19 +603,24 @@ function ClientsListContent() {
               isMounted={isMounted}
             />
           ) : (
-            <ClientKanban clients={filteredClients} onStatusChange={handleStatusChange} />
+            <ClientKanban
+              clients={filteredClients}
+              onStatusChange={handleStatusChange}
+            />
           )}
         </div>
       ) : (
         <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background-secondary)]/50 p-12 text-center">
           <Users className="w-16 h-16 mx-auto text-[var(--foreground-muted)] mb-4 opacity-50" />
-          <h2 className="text-lg font-semibold text-[var(--foreground)] mb-2">No clients found</h2>
+          <h2 className="text-lg font-semibold text-[var(--foreground)] mb-2">
+            No clients found
+          </h2>
           <p className="text-sm text-[var(--foreground-muted)] max-w-md mx-auto mb-6">
             {searchQuery
-              ? 'No clients match your search. Try different keywords.'
+              ? "No clients match your search. Try different keywords."
               : activeFiltersCount > 0
-                ? 'No clients match the selected filters.'
-                : 'Get started by adding your first client.'}
+                ? "No clients match the selected filters."
+                : "Get started by adding your first client."}
           </p>
           {activeFiltersCount > 0 ? (
             <Button variant="outline" onClick={clearFilters} className="gap-2">

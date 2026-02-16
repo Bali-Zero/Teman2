@@ -1,16 +1,38 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState, useCallback, useMemo, Suspense, lazy } from 'react';
-import { api } from '@/lib/api';
-import { logger } from '@/lib/logger';
-import { EnrichedConversation, Message, ChannelType, ConversationStatus } from './types';
-import { useToast } from '@/components/ui/toast';
-import { useDashboardData } from '@/hooks/useDashboardData';
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+  Suspense,
+  lazy,
+} from "react";
+import { api } from "@/lib/api";
+import { logger } from "@/lib/logger";
+import {
+  EnrichedConversation,
+  Message,
+  ChannelType,
+  ConversationStatus,
+} from "./types";
+import { useToast } from "@/components/ui/toast";
+import { useDashboardData } from "@/hooks/useDashboardData";
 
 // Lazy load heavy components to reduce initial bundle
-const InboxSidebar = lazy(() => import('./components/InboxSidebar').then(m => ({ default: m.InboxSidebar })));
-const ChatArea = lazy(() => import('./components/ChatArea').then(m => ({ default: m.ChatArea })));
-const LeadContextPanel = lazy(() => import('./components/LeadContextPanel').then(m => ({ default: m.LeadContextPanel })));
+const InboxSidebar = lazy(() =>
+  import("./components/InboxSidebar").then((m) => ({
+    default: m.InboxSidebar,
+  })),
+);
+const ChatArea = lazy(() =>
+  import("./components/ChatArea").then((m) => ({ default: m.ChatArea })),
+);
+const LeadContextPanel = lazy(() =>
+  import("./components/LeadContextPanel").then((m) => ({
+    default: m.LeadContextPanel,
+  })),
+);
 
 // Lightweight skeleton for loading state
 const PageSkeleton = () => (
@@ -23,42 +45,47 @@ const PageSkeleton = () => (
 
 export default function OmnichannelPage() {
   const { systemStatus } = useDashboardData();
-  const [conversations, setConversations] = useState<EnrichedConversation[]>([]);
+  const [conversations, setConversations] = useState<EnrichedConversation[]>(
+    [],
+  );
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [enrichment, setEnrichment] = useState<any>(null);
   const [isDetailsLoading, setIsDetailsLoading] = useState(false);
-  const [filterMode, setFilterType] = useState<'all' | 'unread'>('all');
+  const [filterMode, setFilterType] = useState<"all" | "unread">("all");
   const { success, error: toastError } = useToast();
 
-  const selectedConversation = conversations.find(c => c.id === selectedId) || null;
+  const selectedConversation =
+    conversations.find((c) => c.id === selectedId) || null;
 
   // 1. Fetch conversations (Inbox)
   const fetchConversations = useCallback(async () => {
     try {
       setLoading(true);
       const waData = await api.whatsapp.getConversations();
-      
-      logger.info('WhatsApp conversations fetched', {
-        component: 'OmnichannelPage',
-        action: 'fetchConversations',
-        count: Array.isArray(waData) ? waData.length : 'not an array'
+
+      logger.info("WhatsApp conversations fetched", {
+        component: "OmnichannelPage",
+        action: "fetchConversations",
+        metadata: {
+          count: Array.isArray(waData) ? waData.length : "not an array",
+        },
       });
 
       if (!Array.isArray(waData)) {
-        throw new Error('Received invalid data format from WhatsApp API');
+        throw new Error("Received invalid data format from WhatsApp API");
       }
-      
-      const enriched: EnrichedConversation[] = waData.map(c => ({
+
+      const enriched: EnrichedConversation[] = waData.map((c) => ({
         id: c.id,
         phone: c.phone,
         client_name: c.client_name || c.phone,
         last_message: c.last_message || "",
         last_message_date: c.last_message_date,
-        channel: 'whatsapp' as ChannelType,
-        status: (c as any).status || 'open',
-        priority: (c as any).priority || 'medium',
+        channel: "whatsapp" as ChannelType,
+        status: (c as any).status || "open",
+        priority: (c as any).priority || "medium",
         tags: (c as any).tags || [],
         assignedTo: (c as any).assigned_to,
         unreadCount: c.unread_count || 0,
@@ -66,8 +93,8 @@ export default function OmnichannelPage() {
 
       setConversations(enriched);
     } catch (err) {
-      logger.error('Failed to fetch conversations');
-      toastError('Sync Error', 'Could not fetch inbox from cloud.');
+      logger.error("Failed to fetch conversations");
+      toastError("Sync Error", "Could not fetch inbox from cloud.");
     } finally {
       setLoading(false);
     }
@@ -81,33 +108,40 @@ export default function OmnichannelPage() {
       try {
         setIsDetailsLoading(true);
         const [msgs, enrichData, notesData] = await Promise.all([
-          selectedConversation.channel === 'whatsapp' ? api.whatsapp.getMessages(selectedConversation.phone) : Promise.resolve([]),
+          selectedConversation.channel === "whatsapp"
+            ? api.whatsapp.getMessages(selectedConversation.phone)
+            : Promise.resolve([]),
           api.workflow.getEnrichment(selectedId),
-          api.workflow.getNotes(selectedId)
+          api.workflow.getNotes(selectedId),
         ]);
 
         setEnrichment(enrichData);
-        
+
         const uiMessages: Message[] = [
           ...msgs.map((m: any) => ({
             id: m.id || Math.random().toString(),
             text: m.message_text || m.content || "",
-            sender: m.direction === 'outbound' ? 'agent' : 'user',
+            sender: m.direction === "outbound" ? "agent" : "user",
             timestamp: m.timestamp || new Date().toISOString(),
-            isInternalNote: false 
+            isInternalNote: false,
           })),
           ...notesData.map((n: any) => ({
             id: `note_${n.id}`,
             text: n.content,
-            sender: 'agent',
+            sender: "agent",
             timestamp: n.created_at,
-            isInternalNote: true
-          }))
+            isInternalNote: true,
+          })),
         ];
 
-        setMessages(uiMessages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()));
+        setMessages(
+          uiMessages.sort(
+            (a, b) =>
+              new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+          ),
+        );
       } catch (err) {
-        logger.error('Failed to load conversation details');
+        logger.error("Failed to load conversation details");
       } finally {
         setIsDetailsLoading(false);
       }
@@ -124,18 +158,27 @@ export default function OmnichannelPage() {
   const handleSendMessage = async (text: string, isNote: boolean) => {
     if (!selectedConversation || !selectedId) return;
     const optimisticId = Date.now().toString();
-    setMessages(prev => [...prev, { id: optimisticId, text, sender: 'agent', timestamp: new Date().toISOString(), isInternalNote: isNote }]);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: optimisticId,
+        text,
+        sender: "agent",
+        timestamp: new Date().toISOString(),
+        isInternalNote: isNote,
+      },
+    ]);
 
     try {
       if (isNote) {
         await api.workflow.addNote(selectedId, text, "current_user", "Team");
-        success('Note Saved', 'Internal note added.');
+        success("Note Saved", "Internal note added.");
       } else {
         await api.whatsapp.sendMessage(selectedConversation.phone, text);
       }
     } catch (err) {
-      toastError('Send Failed', 'Message could not be delivered.');
-      setMessages(prev => prev.filter(m => m.id !== optimisticId));
+      toastError("Send Failed", "Message could not be delivered.");
+      setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
     }
   };
 
@@ -143,32 +186,37 @@ export default function OmnichannelPage() {
     if (!selectedId) return;
     try {
       await api.workflow.assign(selectedId, userId);
-      success('Assigned', `Lead assigned to ${userId}`);
+      success("Assigned", `Lead assigned to ${userId}`);
       fetchConversations();
-    } catch (e) { toastError('Error', 'Could not assign lead.'); }
+    } catch (e) {
+      toastError("Error", "Could not assign lead.");
+    }
   };
 
   const handleStatusChange = async (status: string) => {
     if (!selectedId) return;
     try {
       await api.workflow.updateStatus(selectedId, status);
-      success('Status Updated', `Set to ${status}`);
+      success("Status Updated", `Set to ${status}`);
       fetchConversations();
-    } catch (e) { toastError('Error', 'Could not update status.'); }
+    } catch (e) {
+      toastError("Error", "Could not update status.");
+    }
   };
 
   // 4. Filtering Logic
   const filteredConversations = useMemo(() => {
-    if (filterMode === 'unread') return conversations.filter(c => c.unreadCount > 0);
+    if (filterMode === "unread")
+      return conversations.filter((c) => c.unreadCount > 0);
     return conversations;
   }, [conversations, filterMode]);
 
   return (
     <Suspense fallback={<PageSkeleton />}>
       <div className="flex h-full w-full bg-background overflow-hidden">
-        <InboxSidebar 
-          conversations={filteredConversations} 
-          selectedId={selectedId} 
+        <InboxSidebar
+          conversations={filteredConversations}
+          selectedId={selectedId}
           onSelect={setSelectedId}
           isLoading={loading}
           filterMode={filterMode}
@@ -177,8 +225,8 @@ export default function OmnichannelPage() {
         />
 
         <div className="flex-1 flex flex-col min-w-0">
-          <ChatArea 
-            conversation={selectedConversation} 
+          <ChatArea
+            conversation={selectedConversation}
             messages={messages}
             onSendMessage={handleSendMessage}
             onStatusChange={handleStatusChange}
@@ -186,8 +234,8 @@ export default function OmnichannelPage() {
           />
         </div>
 
-        <LeadContextPanel 
-          conversation={selectedConversation} 
+        <LeadContextPanel
+          conversation={selectedConversation}
           enrichment={enrichment}
           onAssign={handleAssign}
           onStatusChange={handleStatusChange}

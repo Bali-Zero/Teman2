@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ApiClient } from '../api-client';
-import { UserProfile } from '@/types';
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { ApiClient } from "../api-client";
+import { UserProfile } from "@/types";
 
 // Mock localStorage setup
 const localStorageMock = (() => {
@@ -19,11 +19,11 @@ const localStorageMock = (() => {
   };
 })();
 
-Object.defineProperty(window, 'localStorage', { value: localStorageMock });
+Object.defineProperty(window, "localStorage", { value: localStorageMock });
 
-describe('Streaming Integration Tests', () => {
+describe("Streaming Integration Tests", () => {
   let api: ApiClient;
-  const baseUrl = 'https://api.test.com';
+  const baseUrl = "https://api.test.com";
   // Create a fresh mock for each test
   const mockFetch = vi.fn();
 
@@ -32,32 +32,32 @@ describe('Streaming Integration Tests', () => {
     vi.clearAllMocks();
 
     // Stub global fetch for this test scope
-    vi.stubGlobal('fetch', mockFetch);
+    vi.stubGlobal("fetch", mockFetch);
 
     api = new ApiClient(baseUrl);
 
     const mockProfile: UserProfile = {
-      id: '123',
-      email: 'test@example.com',
-      name: 'Test User',
-      role: 'user',
+      id: "123",
+      email: "test@example.com",
+      name: "Test User",
+      role: "user",
     };
     api.setUserProfile(mockProfile);
-    api.setToken('test-token');
-    api.setCsrfToken('csrf-token');
+    api.setToken("test-token");
+    api.setCsrfToken("csrf-token");
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
-  describe('SSE Streaming Parsing', () => {
-    it('should parse multiple token chunks correctly', async () => {
+  describe("SSE Streaming Parsing", () => {
+    it("should parse multiple token chunks correctly", async () => {
       const chunks = [
         'data: {"type":"token","content":"Hello"}\n',
         'data: {"type":"token","content":" "}\n',
         'data: {"type":"token","content":"World"}\n',
-        'data: [DONE]\n',
+        "data: [DONE]\n",
       ];
 
       const mockReader = {
@@ -93,21 +93,27 @@ describe('Streaming Integration Tests', () => {
       const onChunk = vi.fn();
       const onDone = vi.fn();
 
-      await api.sendMessageStreaming('test', undefined, onChunk, onDone, vi.fn());
+      await api.sendMessageStreaming(
+        "test",
+        undefined,
+        onChunk,
+        onDone,
+        vi.fn(),
+      );
 
-      expect(onChunk).toHaveBeenCalledWith('Hello');
-      expect(onChunk).toHaveBeenCalledWith('Hello ');
-      expect(onChunk).toHaveBeenCalledWith('Hello World');
-      expect(onDone).toHaveBeenCalledWith('Hello World', [], undefined);
+      expect(onChunk).toHaveBeenCalledWith("Hello");
+      expect(onChunk).toHaveBeenCalledWith("Hello ");
+      expect(onChunk).toHaveBeenCalledWith("Hello World");
+      expect(onDone).toHaveBeenCalledWith("Hello World", [], undefined);
     });
 
-    it('should handle tool steps during streaming', async () => {
+    it("should handle tool steps during streaming", async () => {
       const chunks = [
         'data: {"type":"tool_start","data":{"name":"search","args":{"query":"test"}}}\n',
         'data: {"type":"status","data":"Searching..."}\n',
         'data: {"type":"tool_end","data":{"result":"Found 5 results"}}\n',
         'data: {"type":"token","content":"Based on search"}\n',
-        'data: [DONE]\n',
+        "data: [DONE]\n",
       ];
 
       const mockReader = {
@@ -148,32 +154,39 @@ describe('Streaming Integration Tests', () => {
       const onChunk = vi.fn();
       const onDone = vi.fn();
 
-      await api.sendMessageStreaming('test', undefined, onChunk, onDone, vi.fn(), onStep);
+      await api.sendMessageStreaming(
+        "test",
+        undefined,
+        onChunk,
+        onDone,
+        vi.fn(),
+        onStep,
+      );
 
       expect(onStep).toHaveBeenCalledWith({
-        type: 'tool_start',
-        data: { name: 'search', args: { query: 'test' } },
+        type: "tool_start",
+        data: { name: "search", args: { query: "test" } },
         timestamp: expect.any(Date),
       });
       expect(onStep).toHaveBeenCalledWith({
-        type: 'status',
-        data: 'Searching...',
+        type: "status",
+        data: "Searching...",
         timestamp: expect.any(Date),
       });
       expect(onStep).toHaveBeenCalledWith({
-        type: 'tool_end',
-        data: { result: 'Found 5 results' },
+        type: "tool_end",
+        data: { result: "Found 5 results" },
         timestamp: expect.any(Date),
       });
-      expect(onChunk).toHaveBeenCalledWith('Based on search');
+      expect(onChunk).toHaveBeenCalledWith("Based on search");
     });
 
-    it('should handle sources and metadata in streaming', async () => {
+    it("should handle sources and metadata in streaming", async () => {
       const chunks = [
         'data: {"type":"token","content":"Answer"}\n',
         'data: {"type":"sources","data":[{"title":"Source 1","content":"Content 1"}]}\n',
         'data: {"type":"metadata","data":{"execution_time":1.5,"route_used":"fast"}}\n',
-        'data: [DONE]\n',
+        "data: [DONE]\n",
       ];
 
       const mockReader = {
@@ -208,15 +221,25 @@ describe('Streaming Integration Tests', () => {
 
       const onDone = vi.fn();
 
-      await api.sendMessageStreaming('test', undefined, vi.fn(), onDone, vi.fn());
+      await api.sendMessageStreaming(
+        "test",
+        undefined,
+        vi.fn(),
+        onDone,
+        vi.fn(),
+      );
 
-      expect(onDone).toHaveBeenCalledWith('Answer', [{ title: 'Source 1', content: 'Content 1' }], {
-        execution_time: 1.5,
-        route_used: 'fast',
-      });
+      expect(onDone).toHaveBeenCalledWith(
+        "Answer",
+        [{ title: "Source 1", content: "Content 1" }],
+        {
+          execution_time: 1.5,
+          route_used: "fast",
+        },
+      );
     });
 
-    it('should handle abort signal during streaming', async () => {
+    it("should handle abort signal during streaming", async () => {
       const abortController = new AbortController();
       let readCallCount = 0;
 
@@ -228,7 +251,9 @@ describe('Streaming Integration Tests', () => {
           }
           return Promise.resolve({
             done: false,
-            value: new TextEncoder().encode('data: {"type":"token","content":"Chunk"}\n'),
+            value: new TextEncoder().encode(
+              'data: {"type":"token","content":"Chunk"}\n',
+            ),
           });
         }),
         cancel: vi.fn(),
@@ -244,7 +269,7 @@ describe('Streaming Integration Tests', () => {
       const onError = vi.fn();
 
       await api.sendMessageStreaming(
-        'test',
+        "test",
         undefined,
         vi.fn(),
         vi.fn(),
@@ -252,13 +277,13 @@ describe('Streaming Integration Tests', () => {
         undefined,
         120000,
         undefined,
-        abortController.signal
+        abortController.signal,
       );
 
       expect(mockReader.cancel).toHaveBeenCalled();
     });
 
-    it('should handle streaming errors gracefully', async () => {
+    it("should handle streaming errors gracefully", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 500,
@@ -266,26 +291,34 @@ describe('Streaming Integration Tests', () => {
 
       const onError = vi.fn();
 
-      await api.sendMessageStreaming('test', undefined, vi.fn(), vi.fn(), onError);
+      await api.sendMessageStreaming(
+        "test",
+        undefined,
+        vi.fn(),
+        vi.fn(),
+        onError,
+      );
 
       expect(onError).toHaveBeenCalledWith(expect.any(Error));
     });
 
-    it('should handle malformed SSE messages', async () => {
+    it("should handle malformed SSE messages", async () => {
       const mockReader = {
         read: vi
           .fn()
           .mockResolvedValueOnce({
             done: false,
-            value: new TextEncoder().encode('data: invalid json\n'),
+            value: new TextEncoder().encode("data: invalid json\n"),
           })
           .mockResolvedValueOnce({
             done: false,
-            value: new TextEncoder().encode('data: {"type":"token","content":"Valid"}\n'),
+            value: new TextEncoder().encode(
+              'data: {"type":"token","content":"Valid"}\n',
+            ),
           })
           .mockResolvedValueOnce({
             done: false,
-            value: new TextEncoder().encode('data: [DONE]\n'),
+            value: new TextEncoder().encode("data: [DONE]\n"),
           })
           .mockResolvedValueOnce({ done: true }),
         cancel: vi.fn(),
@@ -301,14 +334,20 @@ describe('Streaming Integration Tests', () => {
       const onChunk = vi.fn();
       const onDone = vi.fn();
 
-      await api.sendMessageStreaming('test', undefined, onChunk, onDone, vi.fn());
+      await api.sendMessageStreaming(
+        "test",
+        undefined,
+        onChunk,
+        onDone,
+        vi.fn(),
+      );
 
       // Should skip invalid JSON and process valid chunk
-      expect(onChunk).toHaveBeenCalledWith('Valid');
-      expect(onDone).toHaveBeenCalledWith('Valid', [], undefined);
+      expect(onChunk).toHaveBeenCalledWith("Valid");
+      expect(onDone).toHaveBeenCalledWith("Valid", [], undefined);
     });
 
-    it('should handle split SSE frames across network chunks', async () => {
+    it("should handle split SSE frames across network chunks", async () => {
       // Simulate frame split: "data: {" split across two reads
       const chunk1 = 'data: {"type":"token"';
       const chunk2 = ',"content":"Hello"}\n';
@@ -326,7 +365,7 @@ describe('Streaming Integration Tests', () => {
           })
           .mockResolvedValueOnce({
             done: false,
-            value: new TextEncoder().encode('data: [DONE]\n'),
+            value: new TextEncoder().encode("data: [DONE]\n"),
           })
           .mockResolvedValueOnce({ done: true }),
         cancel: vi.fn(),
@@ -342,21 +381,27 @@ describe('Streaming Integration Tests', () => {
       const onChunk = vi.fn();
       const onDone = vi.fn();
 
-      await api.sendMessageStreaming('test', undefined, onChunk, onDone, vi.fn());
+      await api.sendMessageStreaming(
+        "test",
+        undefined,
+        onChunk,
+        onDone,
+        vi.fn(),
+      );
 
-      expect(onChunk).toHaveBeenCalledWith('Hello');
-      expect(onDone).toHaveBeenCalledWith('Hello', [], undefined);
+      expect(onChunk).toHaveBeenCalledWith("Hello");
+      expect(onDone).toHaveBeenCalledWith("Hello", [], undefined);
     });
 
-    it('should handle timeout during streaming', async () => {
+    it("should handle timeout during streaming", async () => {
       // Skip timeout test as it requires complex timer handling
       // Timeout functionality is tested in error handling unit tests
       expect(true).toBe(true);
     });
   });
 
-  describe('Streaming with Conversation History', () => {
-    it('should include conversation history in request', async () => {
+  describe("Streaming with Conversation History", () => {
+    it("should include conversation history in request", async () => {
       const mockReader = {
         read: vi.fn().mockResolvedValueOnce({ done: true }),
         cancel: vi.fn(),
@@ -370,21 +415,21 @@ describe('Streaming Integration Tests', () => {
       });
 
       const conversationHistory = [
-        { role: 'user', content: 'Message 1' },
-        { role: 'assistant', content: 'Response 1' },
-        { role: 'user', content: 'Message 2' },
-        { role: 'assistant', content: 'Response 2' },
+        { role: "user", content: "Message 1" },
+        { role: "assistant", content: "Response 1" },
+        { role: "user", content: "Message 2" },
+        { role: "assistant", content: "Response 2" },
       ];
 
       await api.sendMessageStreaming(
-        'Message 3',
-        'session-123',
+        "Message 3",
+        "session-123",
         vi.fn(),
         vi.fn(),
         vi.fn(),
         undefined,
         120000,
-        conversationHistory
+        conversationHistory,
       );
 
       const callArgs = mockFetch.mock.calls[0];
@@ -393,7 +438,7 @@ describe('Streaming Integration Tests', () => {
       expect(body.conversation_history.length).toBeLessThanOrEqual(200); // Should limit to last 200
     });
 
-    it('should limit conversation history to last 200 messages', async () => {
+    it("should limit conversation history to last 200 messages", async () => {
       const mockReader = {
         read: vi.fn().mockResolvedValueOnce({ done: true }),
         cancel: vi.fn(),
@@ -408,26 +453,26 @@ describe('Streaming Integration Tests', () => {
 
       // Create 210 messages
       const conversationHistory = Array.from({ length: 210 }, (_, i) => ({
-        role: i % 2 === 0 ? 'user' : 'assistant',
+        role: i % 2 === 0 ? "user" : "assistant",
         content: `Message ${i}`,
       }));
 
       await api.sendMessageStreaming(
-        'New message',
-        'session-123',
+        "New message",
+        "session-123",
         vi.fn(),
         vi.fn(),
         vi.fn(),
         undefined,
         120000,
-        conversationHistory
+        conversationHistory,
       );
 
       const callArgs = mockFetch.mock.calls[0];
       const body = JSON.parse(callArgs[1].body);
       expect(body.conversation_history.length).toBe(200);
       // Should be last 200 messages
-      expect(body.conversation_history[0].content).toBe('Message 10');
+      expect(body.conversation_history[0].content).toBe("Message 10");
     });
   });
 });

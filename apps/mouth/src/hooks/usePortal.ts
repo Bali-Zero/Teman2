@@ -4,9 +4,9 @@
  * Hooks ottimizzati per il client portal con React Query
  */
 
-import { useCallback } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 import type {
   PortalDashboard,
   PortalProfile,
@@ -18,7 +18,7 @@ import type {
   PortalMessage,
   SendMessageRequest,
   PortalPreferences,
-} from '@/lib/api/portal/portal.types';
+} from "@/lib/api/portal/portal.types";
 
 // ============================================================================
 // DASHBOARD
@@ -26,7 +26,7 @@ import type {
 
 export function usePortalDashboard() {
   return useQuery({
-    queryKey: ['portal', 'dashboard'],
+    queryKey: ["portal", "dashboard"],
     queryFn: async (): Promise<PortalDashboard> => {
       return api.portal.getDashboard();
     },
@@ -37,7 +37,7 @@ export function usePortalDashboard() {
 
 export function usePortalTimeline(limit: number = 50) {
   return useQuery({
-    queryKey: ['portal', 'timeline', limit],
+    queryKey: ["portal", "timeline", limit],
     queryFn: async () => {
       return api.portal.getTimeline(limit);
     },
@@ -53,7 +53,7 @@ export function usePortalProfile() {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ['portal', 'profile'],
+    queryKey: ["portal", "profile"],
     queryFn: async (): Promise<PortalProfile> => {
       return api.portal.getProfile();
     },
@@ -61,7 +61,7 @@ export function usePortalProfile() {
   });
 
   const invalidate = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['portal', 'profile'] });
+    queryClient.invalidateQueries({ queryKey: ["portal", "profile"] });
   }, [queryClient]);
 
   return { ...query, invalidate };
@@ -73,7 +73,7 @@ export function usePortalProfile() {
 
 export function useVisaStatus() {
   return useQuery({
-    queryKey: ['portal', 'visa'],
+    queryKey: ["portal", "visa"],
     queryFn: async (): Promise<VisaInfo> => {
       return api.portal.getVisaStatus();
     },
@@ -87,7 +87,7 @@ export function useVisaStatus() {
 
 export function usePortalCompanies() {
   return useQuery({
-    queryKey: ['portal', 'companies'],
+    queryKey: ["portal", "companies"],
     queryFn: async (): Promise<PortalCompany[]> => {
       return api.portal.getCompanies();
     },
@@ -97,9 +97,9 @@ export function usePortalCompanies() {
 
 export function usePortalCompany(companyId: number | null) {
   return useQuery({
-    queryKey: ['portal', 'companies', companyId],
+    queryKey: ["portal", "companies", companyId],
     queryFn: async (): Promise<PortalCompany> => {
-      if (!companyId) throw new Error('Company ID required');
+      if (!companyId) throw new Error("Company ID required");
       return api.portal.getCompanyDetail(companyId);
     },
     enabled: !!companyId,
@@ -115,8 +115,8 @@ export function useSetPrimaryCompany() {
       return api.portal.setPrimaryCompany(companyId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['portal', 'companies'] });
-      queryClient.invalidateQueries({ queryKey: ['portal', 'dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ["portal", "companies"] });
+      queryClient.invalidateQueries({ queryKey: ["portal", "dashboard"] });
     },
   });
 }
@@ -127,7 +127,7 @@ export function useSetPrimaryCompany() {
 
 export function useTaxOverview() {
   return useQuery({
-    queryKey: ['portal', 'taxes'],
+    queryKey: ["portal", "taxes"],
     queryFn: async (): Promise<TaxOverview> => {
       return api.portal.getTaxOverview();
     },
@@ -143,7 +143,7 @@ export function usePortalDocuments(documentType?: string) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ['portal', 'documents', documentType],
+    queryKey: ["portal", "documents", documentType],
     queryFn: async (): Promise<PortalDocument[]> => {
       return api.portal.getDocuments(documentType);
     },
@@ -163,8 +163,8 @@ export function usePortalDocuments(documentType?: string) {
       return api.portal.uploadDocument(file, documentType, practiceId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['portal', 'documents'] });
-      queryClient.invalidateQueries({ queryKey: ['portal', 'dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ["portal", "documents"] });
+      queryClient.invalidateQueries({ queryKey: ["portal", "dashboard"] });
     },
   });
 
@@ -187,11 +187,16 @@ interface UsePortalMessagesOptions {
 }
 
 export function usePortalMessages(options: UsePortalMessagesOptions = {}) {
-  const { limit = 50, offset = 0, autoRefresh = true, refreshInterval = 30000 } = options;
+  const {
+    limit = 50,
+    offset = 0,
+    autoRefresh = true,
+    refreshInterval = 30000,
+  } = options;
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ['portal', 'messages', { limit, offset }],
+    queryKey: ["portal", "messages", { limit, offset }],
     queryFn: async (): Promise<MessagesResponse> => {
       return api.portal.getMessages(limit, offset);
     },
@@ -204,7 +209,7 @@ export function usePortalMessages(options: UsePortalMessagesOptions = {}) {
       return api.portal.sendMessage(request);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['portal', 'messages'] });
+      queryClient.invalidateQueries({ queryKey: ["portal", "messages"] });
     },
   });
 
@@ -213,7 +218,7 @@ export function usePortalMessages(options: UsePortalMessagesOptions = {}) {
       return api.portal.markMessageRead(messageId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['portal', 'messages'] });
+      queryClient.invalidateQueries({ queryKey: ["portal", "messages"] });
     },
   });
 
@@ -233,7 +238,7 @@ export function usePortalPreferences() {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ['portal', 'preferences'],
+    queryKey: ["portal", "preferences"],
     queryFn: async (): Promise<PortalPreferences> => {
       return api.portal.getPreferences();
     },
@@ -245,7 +250,7 @@ export function usePortalPreferences() {
       return api.portal.updatePreferences(preferences);
     },
     onSuccess: (updated) => {
-      queryClient.setQueryData(['portal', 'preferences'], updated);
+      queryClient.setQueryData(["portal", "preferences"], updated);
     },
   });
 
@@ -262,9 +267,9 @@ export function usePortalPreferences() {
 
 export function useValidateInviteToken(token: string | null) {
   return useQuery({
-    queryKey: ['portal', 'invite', token],
+    queryKey: ["portal", "invite", token],
     queryFn: async () => {
-      if (!token) throw new Error('Token required');
+      if (!token) throw new Error("Token required");
       return api.portal.validateInviteToken(token);
     },
     enabled: !!token,
@@ -286,10 +291,10 @@ export function useCompleteRegistration() {
 
 interface PortalNotification {
   id: string;
-  type: 'visa' | 'document' | 'tax' | 'message' | 'action';
+  type: "visa" | "document" | "tax" | "message" | "action";
   title: string;
   message: string;
-  severity: 'info' | 'warning' | 'critical';
+  severity: "info" | "warning" | "critical";
   href?: string;
   createdAt: string;
 }
@@ -301,47 +306,53 @@ export function usePortalNotifications() {
 
   if (dashboard) {
     // Visa notifications
-    if (dashboard.visa.status === 'expired') {
+    if (dashboard.visa.status === "expired") {
       notifications.push({
-        id: 'visa-expired',
-        type: 'visa',
-        title: 'Visa Expired',
-        message: 'Your visa has expired. Please contact us immediately.',
-        severity: 'critical',
-        href: '/portal/visa',
+        id: "visa-expired",
+        type: "visa",
+        title: "Visa Expired",
+        message: "Your visa has expired. Please contact us immediately.",
+        severity: "critical",
+        href: "/portal/visa",
         createdAt: new Date().toISOString(),
       });
-    } else if (dashboard.visa.status === 'warning' && dashboard.visa.daysRemaining) {
+    } else if (
+      dashboard.visa.status === "warning" &&
+      dashboard.visa.daysRemaining
+    ) {
       notifications.push({
-        id: 'visa-expiring',
-        type: 'visa',
-        title: 'Visa Expiring Soon',
+        id: "visa-expiring",
+        type: "visa",
+        title: "Visa Expiring Soon",
         message: `Your visa expires in ${dashboard.visa.daysRemaining} days.`,
-        severity: 'warning',
-        href: '/portal/visa',
+        severity: "warning",
+        href: "/portal/visa",
         createdAt: new Date().toISOString(),
       });
     }
 
     // Tax notifications
-    if (dashboard.taxes.status === 'overdue') {
+    if (dashboard.taxes.status === "overdue") {
       notifications.push({
-        id: 'tax-overdue',
-        type: 'tax',
-        title: 'Tax Overdue',
-        message: 'You have overdue tax obligations.',
-        severity: 'critical',
-        href: '/portal/taxes',
+        id: "tax-overdue",
+        type: "tax",
+        title: "Tax Overdue",
+        message: "You have overdue tax obligations.",
+        severity: "critical",
+        href: "/portal/taxes",
         createdAt: new Date().toISOString(),
       });
-    } else if (dashboard.taxes.status === 'attention' && dashboard.taxes.daysToDeadline) {
+    } else if (
+      dashboard.taxes.status === "attention" &&
+      dashboard.taxes.daysToDeadline
+    ) {
       notifications.push({
-        id: 'tax-due',
-        type: 'tax',
-        title: 'Tax Due Soon',
+        id: "tax-due",
+        type: "tax",
+        title: "Tax Due Soon",
         message: `Tax deadline in ${dashboard.taxes.daysToDeadline} days.`,
-        severity: 'warning',
-        href: '/portal/taxes',
+        severity: "warning",
+        href: "/portal/taxes",
         createdAt: new Date().toISOString(),
       });
     }
@@ -349,12 +360,12 @@ export function usePortalNotifications() {
     // Document notifications
     if (dashboard.documents.pending > 0) {
       notifications.push({
-        id: 'documents-pending',
-        type: 'document',
-        title: 'Pending Documents',
-        message: `${dashboard.documents.pending} document${dashboard.documents.pending > 1 ? 's' : ''} pending verification.`,
-        severity: 'info',
-        href: '/portal/vault',
+        id: "documents-pending",
+        type: "document",
+        title: "Pending Documents",
+        message: `${dashboard.documents.pending} document${dashboard.documents.pending > 1 ? "s" : ""} pending verification.`,
+        severity: "info",
+        href: "/portal/vault",
         createdAt: new Date().toISOString(),
       });
     }
@@ -362,12 +373,12 @@ export function usePortalNotifications() {
     // Message notifications
     if (dashboard.messages.unread > 0) {
       notifications.push({
-        id: 'messages-unread',
-        type: 'message',
-        title: 'Unread Messages',
-        message: `${dashboard.messages.unread} unread message${dashboard.messages.unread > 1 ? 's' : ''}.`,
-        severity: 'info',
-        href: '/portal/messages',
+        id: "messages-unread",
+        type: "message",
+        title: "Unread Messages",
+        message: `${dashboard.messages.unread} unread message${dashboard.messages.unread > 1 ? "s" : ""}.`,
+        severity: "info",
+        href: "/portal/messages",
         createdAt: new Date().toISOString(),
       });
     }
@@ -376,15 +387,15 @@ export function usePortalNotifications() {
     dashboard.actions.forEach((action, index) => {
       notifications.push({
         id: `action-${index}`,
-        type: 'action',
+        type: "action",
         title: action.title,
         message: action.description,
         severity:
-          action.priority === 'high'
-            ? 'critical'
-            : action.priority === 'medium'
-              ? 'warning'
-              : 'info',
+          action.priority === "high"
+            ? "critical"
+            : action.priority === "medium"
+              ? "warning"
+              : "info",
         href: action.href,
         createdAt: new Date().toISOString(),
       });
@@ -394,7 +405,8 @@ export function usePortalNotifications() {
   return {
     notifications,
     unreadCount: notifications.length,
-    criticalCount: notifications.filter((n) => n.severity === 'critical').length,
-    warningCount: notifications.filter((n) => n.severity === 'warning').length,
+    criticalCount: notifications.filter((n) => n.severity === "critical")
+      .length,
+    warningCount: notifications.filter((n) => n.severity === "warning").length,
   };
 }

@@ -7,22 +7,22 @@
  * @module ChatPage
  */
 
-'use client';
+"use client";
 
-import { Loader2 } from 'lucide-react';
+import { Loader2 } from "lucide-react";
 
 // Custom Hooks
-import { useChatPage } from '@/hooks/useChatPage';
-import type { Message, AgentStep } from '@/types';
+import { useChatPage } from "@/hooks/useChatPage";
+import type { Message, AgentStep } from "@/types";
 
 // Components
-import { ChatHeader } from '@/components/chat/ChatHeader';
-import { ChatSidebar } from '@/components/chat/ChatSidebar';
-import { ChatMessageListVirtualized } from '@/components/chat/ChatMessageListVirtualized';
-import { ChatInputBar } from '@/components/chat/ChatInputBar';
-import { ImageGenModal } from '@/components/chat/ImageGenModal';
-import { SearchDocsModal } from '@/components/search/SearchDocsModal';
-import { Toast } from '@/components/chat/Toast';
+import { ChatHeader } from "@/components/chat/ChatHeader";
+import { ChatSidebar } from "@/components/chat/ChatSidebar";
+import { ChatMessageListVirtualized } from "@/components/chat/ChatMessageListVirtualized";
+import { ChatInputBar } from "@/components/chat/ChatInputBar";
+import { ImageGenModal } from "@/components/chat/ImageGenModal";
+import { SearchDocsModal } from "@/components/search/SearchDocsModal";
+import { Toast } from "@/components/chat/Toast";
 
 /**
  * Chat Page Component - Modular Architecture
@@ -97,7 +97,13 @@ export default function ChatPage() {
       />
 
       {/* Toast Notification */}
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
 
       {/* Sidebar */}
       <ChatSidebar
@@ -117,7 +123,9 @@ export default function ChatPage() {
         open={sidebar.isSearchDocsOpen}
         onClose={sidebar.closeSearchDocs}
         onInsert={(text) => {
-          chatInput.setInput(chatInput.input ? `${chatInput.input}\n${text}` : text);
+          chatInput.setInput(
+            chatInput.input ? `${chatInput.input}\n${text}` : text,
+          );
         }}
         initialQuery={chatInput.input}
       />
@@ -161,15 +169,16 @@ export default function ChatPage() {
               imageUrl: m.imageUrl,
               steps: m.steps
                 ? (m.steps.map((step) => ({
-                    type: step.type as AgentStep['type'],
+                    type: step.type as AgentStep["type"],
                     data: step.data,
                     timestamp: step.timestamp,
                   })) as AgentStep[])
                 : undefined,
-              currentStatus: m.isPending || m.isStreaming ? currentStatus : undefined,
+              currentStatus:
+                m.isPending || m.isStreaming ? currentStatus : undefined,
               verification_score: undefined,
               metadata: m.metadata,
-            })
+            }),
           )}
           isLoading={isPending}
           thinkingElapsedTime={0}
@@ -204,7 +213,7 @@ export default function ChatPage() {
           onStartRecording={() => {}}
           onStopRecording={() => {}}
           onToggleRecording={() => {
-            showToast('Voice recording temporarily disabled.', 'error');
+            showToast("Voice recording temporarily disabled.", "error");
           }}
         />
       </main>

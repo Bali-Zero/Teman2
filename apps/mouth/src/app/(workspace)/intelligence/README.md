@@ -128,16 +128,16 @@ intelligence/
 ### API Client
 
 ```typescript
-import { intelligenceApi } from '@/lib/api/intelligence.api';
+import { intelligenceApi } from "@/lib/api/intelligence.api";
 
 // Get pending items
-const items = await intelligenceApi.getPendingItems('visa');
+const items = await intelligenceApi.getPendingItems("visa");
 
 // Get analytics
 const analytics = await intelligenceApi.getAnalytics(30);
 
 // Bulk approve
-await intelligenceApi.approveItem('visa', 'item-id');
+await intelligenceApi.approveItem("visa", "item-id");
 ```
 
 ---

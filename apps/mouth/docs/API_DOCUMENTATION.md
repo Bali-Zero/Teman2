@@ -254,7 +254,7 @@ curl -X POST http://localhost:8000/api/agentic-rag/stream \
        summary: Description
        operationId: uniqueId
        responses:
-         '200':
+         "200":
            description: Success
    ```
 

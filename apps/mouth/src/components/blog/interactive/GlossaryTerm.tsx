@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import * as React from 'react';
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ExternalLink, BookOpen, Link2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import * as React from "react";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ExternalLink, BookOpen, Link2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // ============================================================================
 // Types
@@ -24,7 +24,7 @@ export interface GlossaryTermProps {
   /** Link to full article */
   articleUrl?: string;
   /** Variant */
-  variant?: 'inline' | 'highlight';
+  variant?: "inline" | "highlight";
   /** Children (usually the term text) */
   children?: React.ReactNode;
   /** Custom class */
@@ -42,12 +42,14 @@ export function GlossaryTerm({
   indonesian,
   relatedTerms,
   articleUrl,
-  variant = 'inline',
+  variant = "inline",
   children,
   className,
 }: GlossaryTermProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [tooltipPosition, setTooltipPosition] = useState<'above' | 'below'>('above');
+  const [tooltipPosition, setTooltipPosition] = useState<"above" | "below">(
+    "above",
+  );
   const triggerRef = React.useRef<HTMLSpanElement>(null);
 
   // Calculate tooltip position
@@ -56,15 +58,17 @@ export function GlossaryTerm({
       const rect = triggerRef.current.getBoundingClientRect();
       const spaceAbove = rect.top;
       const spaceBelow = window.innerHeight - rect.bottom;
-      setTooltipPosition(spaceBelow > 200 || spaceBelow > spaceAbove ? 'below' : 'above');
+      setTooltipPosition(
+        spaceBelow > 200 || spaceBelow > spaceAbove ? "below" : "above",
+      );
     }
     setIsOpen(true);
   };
 
-  const isHighlight = variant === 'highlight';
+  const isHighlight = variant === "highlight";
 
   return (
-    <span className={cn('relative inline-block', className)}>
+    <span className={cn("relative inline-block", className)}>
       {/* Trigger */}
       <span
         ref={triggerRef}
@@ -72,10 +76,10 @@ export function GlossaryTerm({
         onMouseLeave={() => setIsOpen(false)}
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          'cursor-help transition-colors',
+          "cursor-help transition-colors",
           isHighlight
-            ? 'px-1.5 py-0.5 rounded bg-[#2251ff]/10 text-[#2251ff] font-medium'
-            : 'border-b border-dotted border-white/40 hover:border-[#2251ff] hover:text-[#2251ff]'
+            ? "px-1.5 py-0.5 rounded bg-[#2251ff]/10 text-[#2251ff] font-medium"
+            : "border-b border-dotted border-white/40 hover:border-[#2251ff] hover:text-[#2251ff]",
         )}
       >
         {children || term}
@@ -85,16 +89,24 @@ export function GlossaryTerm({
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: tooltipPosition === 'above' ? 5 : -5, scale: 0.95 }}
+            initial={{
+              opacity: 0,
+              y: tooltipPosition === "above" ? 5 : -5,
+              scale: 0.95,
+            }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: tooltipPosition === 'above' ? 5 : -5, scale: 0.95 }}
+            exit={{
+              opacity: 0,
+              y: tooltipPosition === "above" ? 5 : -5,
+              scale: 0.95,
+            }}
             transition={{ duration: 0.15 }}
             className={cn(
-              'absolute z-50 w-72 p-4 rounded-xl',
-              'bg-black/95 border border-white/10 shadow-2xl',
-              tooltipPosition === 'above'
-                ? 'bottom-full left-1/2 -translate-x-1/2 mb-2'
-                : 'top-full left-1/2 -translate-x-1/2 mt-2'
+              "absolute z-50 w-72 p-4 rounded-xl",
+              "bg-black/95 border border-white/10 shadow-2xl",
+              tooltipPosition === "above"
+                ? "bottom-full left-1/2 -translate-x-1/2 mb-2"
+                : "top-full left-1/2 -translate-x-1/2 mt-2",
             )}
             onMouseEnter={() => setIsOpen(true)}
             onMouseLeave={() => setIsOpen(false)}
@@ -102,10 +114,10 @@ export function GlossaryTerm({
             {/* Arrow */}
             <div
               className={cn(
-                'absolute left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 bg-black/95 border-white/10',
-                tooltipPosition === 'above'
-                  ? 'bottom-0 translate-y-1/2 border-r border-b'
-                  : 'top-0 -translate-y-1/2 border-l border-t'
+                "absolute left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 bg-black/95 border-white/10",
+                tooltipPosition === "above"
+                  ? "bottom-0 translate-y-1/2 border-r border-b"
+                  : "top-0 -translate-y-1/2 border-l border-t",
               )}
             />
 
@@ -113,7 +125,11 @@ export function GlossaryTerm({
             <div className="flex items-start justify-between gap-2 mb-2">
               <div>
                 <h5 className="font-semibold text-white">{term}</h5>
-                {indonesian && <p className="text-xs text-white/40 mt-0.5">🇮🇩 {indonesian}</p>}
+                {indonesian && (
+                  <p className="text-xs text-white/40 mt-0.5">
+                    🇮🇩 {indonesian}
+                  </p>
+                )}
               </div>
               <div className="p-1 rounded bg-[#2251ff]/20">
                 <BookOpen className="w-3.5 h-3.5 text-[#2251ff]" />
@@ -121,7 +137,9 @@ export function GlossaryTerm({
             </div>
 
             {/* Definition */}
-            <p className="text-sm text-white/70 leading-relaxed">{definition}</p>
+            <p className="text-sm text-white/70 leading-relaxed">
+              {definition}
+            </p>
 
             {/* Full explanation (if provided) */}
             {fullExplanation && (

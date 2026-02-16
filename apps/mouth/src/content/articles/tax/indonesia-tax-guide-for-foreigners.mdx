@@ -89,8 +89,8 @@ import {
   GlossaryTerm,
   ConfidenceMeter,
   AskZantara,
-  LegalDecoder
-} from '@/components/insights/interactive';
+  LegalDecoder,
+} from "@/components/insights/interactive";
 
 # Indonesia Tax Guide for Foreigners 2026
 
@@ -101,11 +101,23 @@ This comprehensive guide explains Indonesian taxation from a foreigner's perspec
 <ConfidenceMeter
   title="Information Confidence"
   items={[
-    { label: "Tax Residency Rules", confidence: 98, source: "UU PPh & DJP Regulations" },
+    {
+      label: "Tax Residency Rules",
+      confidence: 98,
+      source: "UU PPh & DJP Regulations",
+    },
     { label: "Tax Rates & Brackets", confidence: 98, source: "UU HPP 2021" },
-    { label: "Filing Requirements", confidence: 95, source: "DJP Guidelines 2024" },
+    {
+      label: "Filing Requirements",
+      confidence: 95,
+      source: "DJP Guidelines 2024",
+    },
     { label: "Tax Treaty Info", confidence: 92, source: "DJP Treaty Database" },
-    { label: "Deductions & Credits", confidence: 88, source: "PMK Regulations" }
+    {
+      label: "Deductions & Credits",
+      confidence: 88,
+      source: "PMK Regulations",
+    },
   ]}
 />
 
@@ -121,121 +133,188 @@ The most important question for any foreigner in Indonesia: **Are you a tax resi
   nodes={[
     {
       id: "start",
-      question: "Have you been in Indonesia for more than 183 days in a 12-month period?",
+      question:
+        "Have you been in Indonesia for more than 183 days in a 12-month period?",
       options: [
-        { label: "Yes, more than 183 days", nextNodeId: "result-resident-days" },
+        {
+          label: "Yes, more than 183 days",
+          nextNodeId: "result-resident-days",
+        },
         { label: "No, less than 183 days", nextNodeId: "check-intent" },
-        { label: "I'm not sure", nextNodeId: "count-days" }
-      ]
+        { label: "I'm not sure", nextNodeId: "count-days" },
+      ],
     },
     {
       id: "check-intent",
       question: "Do you intend to stay in Indonesia permanently or long-term?",
       options: [
         { label: "Yes, I plan to live here", nextNodeId: "check-ties" },
-        { label: "No, temporary stay only", nextNodeId: "check-kitas" }
-      ]
+        { label: "No, temporary stay only", nextNodeId: "check-kitas" },
+      ],
     },
     {
       id: "check-ties",
       question: "Do you have strong ties to Indonesia?",
       helpText: "Family, permanent home, primary business activities, etc.",
       options: [
-        { label: "Yes, I have strong ties", nextNodeId: "result-resident-ties" },
-        { label: "No strong ties yet", nextNodeId: "check-kitas" }
-      ]
+        {
+          label: "Yes, I have strong ties",
+          nextNodeId: "result-resident-ties",
+        },
+        { label: "No strong ties yet", nextNodeId: "check-kitas" },
+      ],
     },
     {
       id: "check-kitas",
       question: "What type of stay permit do you have?",
       options: [
-        { label: "KITAS (work, spouse, investor)", nextNodeId: "result-likely-resident" },
+        {
+          label: "KITAS (work, spouse, investor)",
+          nextNodeId: "result-likely-resident",
+        },
         { label: "Tourist visa / VOA", nextNodeId: "check-work" },
-        { label: "Business visa / multiple entry", nextNodeId: "check-work" }
-      ]
+        { label: "Business visa / multiple entry", nextNodeId: "check-work" },
+      ],
     },
     {
       id: "check-work",
       question: "Are you earning income in Indonesia?",
       options: [
-        { label: "Yes, from Indonesian sources", nextNodeId: "result-non-resident-taxable" },
+        {
+          label: "Yes, from Indonesian sources",
+          nextNodeId: "result-non-resident-taxable",
+        },
         { label: "No, only foreign income", nextNodeId: "result-non-resident" },
-        { label: "Remote work for foreign company", nextNodeId: "result-remote-complex" }
-      ]
+        {
+          label: "Remote work for foreign company",
+          nextNodeId: "result-remote-complex",
+        },
+      ],
     },
     {
       id: "count-days",
-      question: "Let's count your days. In the past 12 months, approximately how many days in Indonesia?",
+      question:
+        "Let's count your days. In the past 12 months, approximately how many days in Indonesia?",
       options: [
         { label: "0-90 days", nextNodeId: "result-short-stay" },
         { label: "91-182 days", nextNodeId: "result-approaching" },
-        { label: "183+ days", nextNodeId: "result-resident-days" }
-      ]
+        { label: "183+ days", nextNodeId: "result-resident-days" },
+      ],
     },
     {
       id: "result-resident-days",
       isResult: true,
       title: "Tax Resident (183-Day Rule)",
-      description: "You are an Indonesian tax resident based on physical presence.",
-      recommendation: "As a tax resident, Indonesia can tax your worldwide income. You must obtain NPWP, file annual SPT, and report all income sources. Tax credits available for foreign taxes paid.",
-      nextSteps: ["Register for NPWP immediately", "Track all income sources", "Consider tax treaty benefits", "File SPT Tahunan by March 31"]
+      description:
+        "You are an Indonesian tax resident based on physical presence.",
+      recommendation:
+        "As a tax resident, Indonesia can tax your worldwide income. You must obtain NPWP, file annual SPT, and report all income sources. Tax credits available for foreign taxes paid.",
+      nextSteps: [
+        "Register for NPWP immediately",
+        "Track all income sources",
+        "Consider tax treaty benefits",
+        "File SPT Tahunan by March 31",
+      ],
     },
     {
       id: "result-resident-ties",
       isResult: true,
       title: "Tax Resident (Intention/Ties)",
-      description: "You may be considered tax resident based on intention to stay and ties.",
-      recommendation: "Even without 183 days, strong ties (family, home ownership, business) can establish residency. Consult a tax advisor to confirm your status.",
-      nextSteps: ["Document your ties to Indonesia", "Get NPWP", "Consider timing of residency", "Review tax treaty"]
+      description:
+        "You may be considered tax resident based on intention to stay and ties.",
+      recommendation:
+        "Even without 183 days, strong ties (family, home ownership, business) can establish residency. Consult a tax advisor to confirm your status.",
+      nextSteps: [
+        "Document your ties to Indonesia",
+        "Get NPWP",
+        "Consider timing of residency",
+        "Review tax treaty",
+      ],
     },
     {
       id: "result-likely-resident",
       isResult: true,
       title: "Likely Tax Resident (KITAS Holder)",
       description: "KITAS holders are generally treated as tax residents.",
-      recommendation: "If you hold KITAS and work in Indonesia, you're almost certainly a tax resident. Your employer should withhold PPh 21. You must file annual SPT.",
-      nextSteps: ["NPWP through employer or direct", "Monthly PPh 21 withholding", "Annual SPT filing", "Check if you need to report foreign assets"]
+      recommendation:
+        "If you hold KITAS and work in Indonesia, you're almost certainly a tax resident. Your employer should withhold PPh 21. You must file annual SPT.",
+      nextSteps: [
+        "NPWP through employer or direct",
+        "Monthly PPh 21 withholding",
+        "Annual SPT filing",
+        "Check if you need to report foreign assets",
+      ],
     },
     {
       id: "result-non-resident-taxable",
       isResult: true,
       title: "Non-Resident with Indonesian Income",
-      description: "You're not a tax resident but have Indonesian-source income.",
-      recommendation: "Non-residents pay tax only on Indonesian-source income. Withholding tax (PPh 26) at 20% applies unless tax treaty reduces this. No SPT filing required.",
-      nextSteps: ["Check if tax treaty applies", "Ensure withholding is correct", "Obtain SKD for treaty benefits", "Keep records for home country"]
+      description:
+        "You're not a tax resident but have Indonesian-source income.",
+      recommendation:
+        "Non-residents pay tax only on Indonesian-source income. Withholding tax (PPh 26) at 20% applies unless tax treaty reduces this. No SPT filing required.",
+      nextSteps: [
+        "Check if tax treaty applies",
+        "Ensure withholding is correct",
+        "Obtain SKD for treaty benefits",
+        "Keep records for home country",
+      ],
     },
     {
       id: "result-non-resident",
       isResult: true,
       title: "Non-Resident, No Indonesian Income",
       description: "You have no Indonesian tax obligations.",
-      recommendation: "No Indonesian-source income means no Indonesian tax liability. You don't need NPWP. Be careful not to exceed 183 days or create taxable presence.",
-      nextSteps: ["Track your days carefully", "Avoid Indonesian-source income", "Consider home country obligations", "Review if situation changes"]
+      recommendation:
+        "No Indonesian-source income means no Indonesian tax liability. You don't need NPWP. Be careful not to exceed 183 days or create taxable presence.",
+      nextSteps: [
+        "Track your days carefully",
+        "Avoid Indonesian-source income",
+        "Consider home country obligations",
+        "Review if situation changes",
+      ],
     },
     {
       id: "result-remote-complex",
       isResult: true,
       title: "Digital Nomad / Remote Worker",
       description: "Your situation requires careful analysis.",
-      recommendation: "Remote work is a gray area. Technically, work performed in Indonesia could be Indonesian-source income. Many digital nomads don't register, but this carries risk. Second Home Visa holders have specific rules.",
-      nextSteps: ["Consider Second Home Visa rules", "Track days carefully", "Consult tax professional", "Consider voluntary registration"]
+      recommendation:
+        "Remote work is a gray area. Technically, work performed in Indonesia could be Indonesian-source income. Many digital nomads don't register, but this carries risk. Second Home Visa holders have specific rules.",
+      nextSteps: [
+        "Consider Second Home Visa rules",
+        "Track days carefully",
+        "Consult tax professional",
+        "Consider voluntary registration",
+      ],
     },
     {
       id: "result-short-stay",
       isResult: true,
       title: "Short-Term Visitor",
       description: "You're clearly not a tax resident.",
-      recommendation: "With under 90 days, you're a non-resident. Only Indonesian-source income is taxable (rare for short visitors). Focus on your home country tax obligations.",
-      nextSteps: ["No Indonesian tax registration needed", "Declare any Indonesian income at home", "Track entry/exit dates"]
+      recommendation:
+        "With under 90 days, you're a non-resident. Only Indonesian-source income is taxable (rare for short visitors). Focus on your home country tax obligations.",
+      nextSteps: [
+        "No Indonesian tax registration needed",
+        "Declare any Indonesian income at home",
+        "Track entry/exit dates",
+      ],
     },
     {
       id: "result-approaching",
       isResult: true,
       title: "Approaching Residency Threshold",
       description: "You're close to becoming a tax resident.",
-      recommendation: "91-182 days means you're approaching the threshold. Carefully track your days. Consider whether becoming a resident is advantageous or if you should limit your stay.",
-      nextSteps: ["Track days precisely", "Plan exit strategy if needed", "Consider tax implications", "Consult advisor before crossing 183"]
-    }
+      recommendation:
+        "91-182 days means you're approaching the threshold. Carefully track your days. Consider whether becoming a resident is advantageous or if you should limit your stay.",
+      nextSteps: [
+        "Track days precisely",
+        "Plan exit strategy if needed",
+        "Consider tax implications",
+        "Consult advisor before crossing 183",
+      ],
+    },
   ]}
 />
 
@@ -243,6 +322,7 @@ The most important question for any foreigner in Indonesia: **Are you a tax resi
 The 183 days don't need to be consecutive. Indonesia counts days in any **12-month period**, which can span calendar years. Entry and exit days both count as full days.
 
 Example: If you arrive October 1, 2024, and count forward 12 months to September 30, 2026—total days in Indonesia during this period determines residency.
+
 </InfoCard>
 
 ---
@@ -259,74 +339,89 @@ Example: If you arrive October 1, 2024, and count forward 12 months to September
   sections={[
     {
       id: "pph",
-      original: "Pajak Penghasilan (PPh) adalah pajak yang dikenakan terhadap orang pribadi atau badan atas penghasilan yang diterima atau diperoleh dalam tahun pajak.",
-      explanation: "PPh (Income Tax) is charged on all income earned by individuals or entities. For foreigners, this includes salary, business income, investment returns, and (if resident) worldwide income.",
+      original:
+        "Pajak Penghasilan (PPh) adalah pajak yang dikenakan terhadap orang pribadi atau badan atas penghasilan yang diterima atau diperoleh dalam tahun pajak.",
+      explanation:
+        "PPh (Income Tax) is charged on all income earned by individuals or entities. For foreigners, this includes salary, business income, investment returns, and (if resident) worldwide income.",
       keyPoints: [
         "Applies to residents and non-residents differently",
         "Residents: taxed on worldwide income",
         "Non-residents: taxed only on Indonesian income",
-        "Various PPh types: 21 (salary), 23 (services), 26 (foreign payments)"
+        "Various PPh types: 21 (salary), 23 (services), 26 (foreign payments)",
       ],
-      impact: "This is your primary tax obligation. Understanding which PPh applies to your income is essential.",
+      impact:
+        "This is your primary tax obligation. Understanding which PPh applies to your income is essential.",
       severity: "high",
-      reference: "UU PPh Pasal 2"
+      reference: "UU PPh Pasal 2",
     },
     {
       id: "pph21",
-      original: "PPh Pasal 21 adalah pajak atas penghasilan sehubungan dengan pekerjaan, jasa, atau kegiatan dengan nama dan dalam bentuk apa pun.",
-      explanation: "PPh 21 is the tax withheld from your salary by your employer. If you're employed in Indonesia, your employer deducts this monthly and pays it to the tax office on your behalf.",
+      original:
+        "PPh Pasal 21 adalah pajak atas penghasilan sehubungan dengan pekerjaan, jasa, atau kegiatan dengan nama dan dalam bentuk apa pun.",
+      explanation:
+        "PPh 21 is the tax withheld from your salary by your employer. If you're employed in Indonesia, your employer deducts this monthly and pays it to the tax office on your behalf.",
       keyPoints: [
         "Withheld monthly by employer",
         "Progressive rates: 5% to 35%",
         "Includes allowances and benefits",
-        "Final for most employees"
+        "Final for most employees",
       ],
-      impact: "If employed, you'll see PPh 21 on your payslip. Check that it's calculated correctly.",
+      impact:
+        "If employed, you'll see PPh 21 on your payslip. Check that it's calculated correctly.",
       severity: "high",
-      reference: "UU PPh Pasal 21"
+      reference: "UU PPh Pasal 21",
     },
     {
       id: "pph26",
-      original: "PPh Pasal 26 adalah pajak yang dipotong atas penghasilan yang dibayarkan kepada Wajib Pajak luar negeri.",
-      explanation: "PPh 26 is withheld from payments to non-residents. If you're not a tax resident but receive Indonesian income (dividends, royalties, services), 20% is typically withheld—unless a tax treaty reduces this.",
+      original:
+        "PPh Pasal 26 adalah pajak yang dipotong atas penghasilan yang dibayarkan kepada Wajib Pajak luar negeri.",
+      explanation:
+        "PPh 26 is withheld from payments to non-residents. If you're not a tax resident but receive Indonesian income (dividends, royalties, services), 20% is typically withheld—unless a tax treaty reduces this.",
       keyPoints: [
         "Standard rate: 20%",
         "Tax treaties can reduce to 10-15%",
         "Applies to: dividends, royalties, interest, services",
-        "Withheld by the payer in Indonesia"
+        "Withheld by the payer in Indonesia",
       ],
-      impact: "Non-residents: ensure payers apply correct treaty rates. Keep proof of withholding for your home country.",
+      impact:
+        "Non-residents: ensure payers apply correct treaty rates. Keep proof of withholding for your home country.",
       severity: "medium",
-      reference: "UU PPh Pasal 26"
+      reference: "UU PPh Pasal 26",
     },
     {
       id: "npwp",
-      original: "Nomor Pokok Wajib Pajak (NPWP) adalah nomor yang diberikan kepada Wajib Pajak sebagai sarana dalam administrasi perpajakan.",
-      explanation: "NPWP is your tax identification number. All tax residents must have one. It's also needed for many administrative purposes: opening bank accounts, buying property, certain visa processes.",
+      original:
+        "Nomor Pokok Wajib Pajak (NPWP) adalah nomor yang diberikan kepada Wajib Pajak sebagai sarana dalam administrasi perpajakan.",
+      explanation:
+        "NPWP is your tax identification number. All tax residents must have one. It's also needed for many administrative purposes: opening bank accounts, buying property, certain visa processes.",
       keyPoints: [
         "Format: XX.XXX.XXX.X-XXX.XXX",
         "Required for tax filing",
         "Needed for bank accounts, property",
-        "Foreigners use passport for registration"
+        "Foreigners use passport for registration",
       ],
-      impact: "Get NPWP early. Without it, you may face higher withholding (20% markup) and administrative difficulties.",
+      impact:
+        "Get NPWP early. Without it, you may face higher withholding (20% markup) and administrative difficulties.",
       severity: "high",
-      reference: "UU KUP"
+      reference: "UU KUP",
     },
     {
       id: "spt",
-      original: "Surat Pemberitahuan (SPT) adalah surat yang oleh Wajib Pajak digunakan untuk melaporkan penghitungan dan/atau pembayaran pajak.",
-      explanation: "SPT is your annual tax return. Tax residents must file SPT Tahunan (annual return) by March 31 each year, reporting all income even if tax was already withheld.",
+      original:
+        "Surat Pemberitahuan (SPT) adalah surat yang oleh Wajib Pajak digunakan untuk melaporkan penghitungan dan/atau pembayaran pajak.",
+      explanation:
+        "SPT is your annual tax return. Tax residents must file SPT Tahunan (annual return) by March 31 each year, reporting all income even if tax was already withheld.",
       keyPoints: [
         "Deadline: March 31 for individuals",
         "Reports all income sources",
         "Can claim deductions and credits",
-        "Filed online via DJP Online"
+        "Filed online via DJP Online",
       ],
-      impact: "Late filing = penalties. Even if you owe no additional tax, you must file.",
+      impact:
+        "Late filing = penalties. Even if you owe no additional tax, you must file.",
       severity: "high",
-      reference: "UU KUP Pasal 3"
-    }
+      reference: "UU KUP Pasal 3",
+    },
   ]}
 />
 
@@ -347,8 +442,8 @@ Indonesia uses a **progressive tax rate** system for individual income:
         "Annual Income Range": "IDR 0 - 60,000,000",
         "Tax Rate": "5%",
         "Tax on Bracket": "Up to IDR 3,000,000",
-        "Monthly Equivalent": "~IDR 0-5M/month"
-      }
+        "Monthly Equivalent": "~IDR 0-5M/month",
+      },
     },
     {
       name: "Bracket 2",
@@ -357,8 +452,8 @@ Indonesia uses a **progressive tax rate** system for individual income:
         "Annual Income Range": "IDR 60,000,001 - 250,000,000",
         "Tax Rate": "15%",
         "Tax on Bracket": "Up to IDR 28,500,000",
-        "Monthly Equivalent": "~IDR 5-21M/month"
-      }
+        "Monthly Equivalent": "~IDR 5-21M/month",
+      },
     },
     {
       name: "Bracket 3",
@@ -367,8 +462,8 @@ Indonesia uses a **progressive tax rate** system for individual income:
         "Annual Income Range": "IDR 250,000,001 - 500,000,000",
         "Tax Rate": "25%",
         "Tax on Bracket": "Up to IDR 62,500,000",
-        "Monthly Equivalent": "~IDR 21-42M/month"
-      }
+        "Monthly Equivalent": "~IDR 21-42M/month",
+      },
     },
     {
       name: "Bracket 4",
@@ -377,8 +472,8 @@ Indonesia uses a **progressive tax rate** system for individual income:
         "Annual Income Range": "IDR 500,000,001 - 5,000,000,000",
         "Tax Rate": "30%",
         "Tax on Bracket": "Up to IDR 1,350,000,000",
-        "Monthly Equivalent": "~IDR 42-417M/month"
-      }
+        "Monthly Equivalent": "~IDR 42-417M/month",
+      },
     },
     {
       name: "Bracket 5",
@@ -387,14 +482,18 @@ Indonesia uses a **progressive tax rate** system for individual income:
         "Annual Income Range": "> IDR 5,000,000,000",
         "Tax Rate": "35%",
         "Tax on Bracket": "Unlimited",
-        "Monthly Equivalent": "> IDR 417M/month"
+        "Monthly Equivalent": "> IDR 417M/month",
       },
-      highlight: true
-    }
+      highlight: true,
+    },
   ]}
   categories={[
-    { id: "income", label: "Income", fields: ["Annual Income Range", "Monthly Equivalent"] },
-    { id: "tax", label: "Tax", fields: ["Tax Rate", "Tax on Bracket"] }
+    {
+      id: "income",
+      label: "Income",
+      fields: ["Annual Income Range", "Monthly Equivalent"],
+    },
+    { id: "tax", label: "Tax", fields: ["Tax Rate", "Tax on Bracket"] },
   ]}
 />
 
@@ -402,11 +501,12 @@ Indonesia uses a **progressive tax rate** system for individual income:
 You don't pay 35% on all your income if you earn over IDR 5 billion. Each bracket only applies to income within that range.
 
 **Example:** If you earn IDR 300 million annually:
+
 - First IDR 60M taxed at 5% = IDR 3,000,000
 - Next IDR 190M (60M-250M) taxed at 15% = IDR 28,500,000
 - Next IDR 50M (250M-300M) taxed at 25% = IDR 12,500,000
 - **Total tax: IDR 44,000,000** (effective rate: ~14.7%)
-</InfoCard>
+  </InfoCard>
 
 ---
 
@@ -544,9 +644,10 @@ You don't pay 35% on all your income if you earn over IDR 5 billion. Each bracke
       currency: "IDR",
       note: `Effective tax rate: ${effectiveRate}%${!values['has-npwp'] ? ' (includes 20% non-NPWP penalty)' : ''}`
     };
-  }}
-  ctaText="Consult Tax Advisor"
-  ctaAction={() => window.open('/contact?service=tax-consultation', '_blank')}
+
+}}
+ctaText="Consult Tax Advisor"
+ctaAction={() => window.open('/contact?service=tax-consultation', '\_blank')}
 />
 
 ---
@@ -558,25 +659,27 @@ You don't pay 35% on all your income if you earn over IDR 5 billion. Each bracke
   definition="Penghasilan Tidak Kena Pajak - the non-taxable income threshold that reduces your taxable income based on personal circumstances."
   indonesian="Penghasilan Tidak Kena Pajak"
   relatedTerms={["PPh 21", "SPT", "NPWP"]}
->PTKP</GlossaryTerm> is your tax-free allowance. It's deducted from gross income before tax is calculated.
+>
+  PTKP
+</GlossaryTerm>
+is your tax-free allowance. It's deducted from gross income before tax is
+calculated.
 
-| Status | Code | Annual PTKP |
-|--------|------|-------------|
+| Status                | Code | Annual PTKP    |
+| --------------------- | ---- | -------------- |
 | Single, no dependents | TK/0 | IDR 54,000,000 |
-| Single + 1 dependent | TK/1 | IDR 58,500,000 |
+| Single + 1 dependent  | TK/1 | IDR 58,500,000 |
 | Single + 2 dependents | TK/2 | IDR 63,000,000 |
 | Single + 3 dependents | TK/3 | IDR 67,500,000 |
-| Married, no children | K/0 | IDR 58,500,000 |
-| Married + 1 child | K/1 | IDR 63,000,000 |
-| Married + 2 children | K/2 | IDR 67,500,000 |
-| Married + 3 children | K/3 | IDR 72,000,000 |
+| Married, no children  | K/0  | IDR 58,500,000 |
+| Married + 1 child     | K/1  | IDR 63,000,000 |
+| Married + 2 children  | K/2  | IDR 67,500,000 |
+| Married + 3 children  | K/3  | IDR 72,000,000 |
 
 <InfoCard variant="note" title="Dependents Definition">
-Dependents must be:
-- Family members by blood (3 generations) or marriage (in a straight line)
-- Living in your household
-- Not earning income themselves
-- Maximum 3 dependents can be claimed
+  Dependents must be: - Family members by blood (3 generations) or marriage (in
+  a straight line) - Living in your household - Not earning income themselves -
+  Maximum 3 dependents can be claimed
 </InfoCard>
 
 ---
@@ -595,32 +698,67 @@ Indonesia has <GlossaryTerm term="Tax Treaty" definition="Perjanjian Penghindara
   items={[
     {
       name: "Australia",
-      values: { "Dividends": "15%", "Interest": "10%", "Royalties": "10%/15%", "Treaty Year": "1992" }
+      values: {
+        Dividends: "15%",
+        Interest: "10%",
+        Royalties: "10%/15%",
+        "Treaty Year": "1992",
+      },
     },
     {
       name: "United Kingdom",
-      values: { "Dividends": "10%/15%", "Interest": "10%", "Royalties": "10%/15%", "Treaty Year": "1993" }
+      values: {
+        Dividends: "10%/15%",
+        Interest: "10%",
+        Royalties: "10%/15%",
+        "Treaty Year": "1993",
+      },
     },
     {
       name: "United States",
-      values: { "Dividends": "10%/15%", "Interest": "10%", "Royalties": "10%", "Treaty Year": "1988" }
+      values: {
+        Dividends: "10%/15%",
+        Interest: "10%",
+        Royalties: "10%",
+        "Treaty Year": "1988",
+      },
     },
     {
       name: "Singapore",
-      values: { "Dividends": "10%/15%", "Interest": "10%", "Royalties": "10%", "Treaty Year": "1990" }
+      values: {
+        Dividends: "10%/15%",
+        Interest: "10%",
+        Royalties: "10%",
+        "Treaty Year": "1990",
+      },
     },
     {
       name: "Netherlands",
-      values: { "Dividends": "10%/15%", "Interest": "10%", "Royalties": "10%", "Treaty Year": "2002" }
+      values: {
+        Dividends: "10%/15%",
+        Interest: "10%",
+        Royalties: "10%",
+        "Treaty Year": "2002",
+      },
     },
     {
       name: "Japan",
-      values: { "Dividends": "10%/15%", "Interest": "10%", "Royalties": "10%", "Treaty Year": "1982" }
+      values: {
+        Dividends: "10%/15%",
+        Interest: "10%",
+        Royalties: "10%",
+        "Treaty Year": "1982",
+      },
     },
     {
       name: "Germany",
-      values: { "Dividends": "10%/15%", "Interest": "10%", "Royalties": "10%/15%", "Treaty Year": "1990" }
-    }
+      values: {
+        Dividends: "10%/15%",
+        Interest: "10%",
+        Royalties: "10%/15%",
+        "Treaty Year": "1990",
+      },
+    },
   ]}
 />
 
@@ -632,6 +770,7 @@ To claim reduced treaty rates, you typically need:
 3. **Documentation** - Proof that you're the beneficial owner of the income
 
 Submit these to the Indonesian payer before payment to ensure correct withholding.
+
 </InfoCard>
 
 ---
@@ -654,13 +793,13 @@ Submit these to the Indonesian payer before payment to ensure correct withholdin
         "KITAS/KITAP (color copy)",
         "Domicile letter (if employed, from employer)",
         "Work contract (if employed)",
-        "NPWP application form"
+        "NPWP application form",
       ],
       tips: [
         "Passport must be valid",
         "KITAS must be current",
-        "Employer letter helps speed up process"
-      ]
+        "Employer letter helps speed up process",
+      ],
     },
     {
       id: "form",
@@ -671,12 +810,9 @@ Submit these to the Indonesian payer before payment to ensure correct withholdin
       documents: [
         "Form completed in Indonesian",
         "Employer details (if employed)",
-        "Address in Indonesia"
+        "Address in Indonesia",
       ],
-      tips: [
-        "Use your KITAS address",
-        "KPP determined by address location"
-      ]
+      tips: ["Use your KITAS address", "KPP determined by address location"],
     },
     {
       id: "submit",
@@ -684,19 +820,16 @@ Submit these to the Indonesian payer before payment to ensure correct withholdin
       description: "Submit to the appropriate tax office (KPP)",
       duration: "1-2 hours",
       status: "required",
-      documents: [
-        "All documents above",
-        "Original passport for verification"
-      ],
+      documents: ["All documents above", "Original passport for verification"],
       tips: [
         "Go to KPP based on domicile address",
         "Some KPP allow online pre-registration",
-        "Bule Counter may be available at some offices"
+        "Bule Counter may be available at some offices",
       ],
       warnings: [
         "Long queues possible",
-        "May need to return if documents incomplete"
-      ]
+        "May need to return if documents incomplete",
+      ],
     },
     {
       id: "verification",
@@ -707,8 +840,8 @@ Submit these to the Indonesian payer before payment to ensure correct withholdin
       tips: [
         "Some offices issue same day",
         "Others may take up to 3 working days",
-        "Check status online via DJP"
-      ]
+        "Check status online via DJP",
+      ],
     },
     {
       id: "receive",
@@ -716,21 +849,20 @@ Submit these to the Indonesian payer before payment to ensure correct withholdin
       description: "Get your NPWP card and certificate",
       duration: "Same day or pickup later",
       status: "final",
-      documents: [
-        "NPWP card (physical)",
-        "SKT (registration certificate)"
-      ],
+      documents: ["NPWP card (physical)", "SKT (registration certificate)"],
       tips: [
         "Save your NPWP number immediately",
         "Register for DJP Online",
-        "Update bank accounts with NPWP"
-      ]
-    }
+        "Update bank accounts with NPWP",
+      ],
+    },
   ]}
 />
 
 <InfoCard variant="warning" title="No NPWP = Higher Taxes">
-If you don't have NPWP, your tax withholding is **20% higher** than normal rates. This can add up significantly over a year. Get your NPWP as soon as you become a tax resident.
+  If you don't have NPWP, your tax withholding is **20% higher** than normal
+  rates. This can add up significantly over a year. Get your NPWP as soon as you
+  become a tax resident.
 </InfoCard>
 
 ---
@@ -745,93 +877,94 @@ If you don't have NPWP, your tax withholding is **20% higher** than normal rates
     {
       id: "bukti-potong",
       label: "Collect Bukti Potong PPh 21",
-      description: "Form 1721-A1 from employer showing annual income and tax withheld",
+      description:
+        "Form 1721-A1 from employer showing annual income and tax withheld",
       required: true,
-      category: "documents"
+      category: "documents",
     },
     {
       id: "other-income",
       label: "Document other Indonesian income",
       description: "Interest, dividends, rental income, freelance work",
       required: false,
-      category: "documents"
+      category: "documents",
     },
     {
       id: "foreign-income",
       label: "Document foreign income (residents only)",
       description: "Foreign salaries, investments, rental income",
       required: false,
-      category: "documents"
+      category: "documents",
     },
     {
       id: "foreign-tax",
       label: "Foreign tax paid certificates",
       description: "For claiming foreign tax credits",
       required: false,
-      category: "documents"
+      category: "documents",
     },
     {
       id: "efin",
       label: "Get EFIN (Electronic Filing ID)",
       description: "Required for DJP Online access - one-time registration",
       required: true,
-      category: "registration"
+      category: "registration",
     },
     {
       id: "djp-login",
       label: "Access DJP Online",
       description: "Login at djponline.pajak.go.id",
       required: true,
-      category: "registration"
+      category: "registration",
     },
     {
       id: "form-type",
       label: "Select correct form",
       description: "1770SS (<60M), 1770S (employee), or 1770 (business/mixed)",
       required: true,
-      category: "filing"
+      category: "filing",
     },
     {
       id: "fill-form",
       label: "Complete SPT form online",
       description: "Enter income, deductions, and calculate tax",
       required: true,
-      category: "filing"
+      category: "filing",
     },
     {
       id: "check-calc",
       label: "Verify tax calculation",
       description: "Check if underpaid or overpaid (Kurang/Lebih Bayar)",
       required: true,
-      category: "filing"
+      category: "filing",
     },
     {
       id: "payment",
       label: "Pay any underpayment",
       description: "If you owe additional tax, pay before filing",
       required: false,
-      category: "payment"
+      category: "payment",
     },
     {
       id: "submit",
       label: "Submit SPT electronically",
       description: "E-filing through DJP Online",
       required: true,
-      category: "filing"
+      category: "filing",
     },
     {
       id: "receipt",
       label: "Save BPE (electronic receipt)",
       description: "Proof of filing - keep for records",
       required: true,
-      category: "filing"
-    }
+      category: "filing",
+    },
   ]}
   categories={[
     { id: "documents", label: "Documents", color: "blue" },
     { id: "registration", label: "Registration", color: "purple" },
     { id: "filing", label: "Filing", color: "green" },
-    { id: "payment", label: "Payment", color: "amber" }
+    { id: "payment", label: "Payment", color: "amber" },
   ]}
   showProgress={true}
   allowExport={true}
@@ -842,10 +975,12 @@ If you don't have NPWP, your tax withholding is **20% higher** than normal rates
 - **Corporate SPT**: April 30
 
 Late filing penalties:
+
 - Individual: IDR 100,000
 - Corporate: IDR 1,000,000
 
 Late payment: 2% per month on unpaid tax
+
 </InfoCard>
 
 ---
@@ -864,11 +999,13 @@ Indonesia doesn't have a specific "digital nomad" tax regime. Technically:
 **Reality**: Many digital nomads don't register. This is a risk. The tax office is increasingly aware of remote workers.
 
 **Safest approach**: Stay under 183 days, or consider voluntary registration if staying longer.
+
 </InfoCard>
 
 ### Second Home Visa Holders
 
 The new **Second Home Visa** (5-10 years) doesn't automatically create tax residency, but:
+
 - 183+ days still triggers residency
 - You may need to prove income isn't from Indonesia
 - Consider voluntary NPWP registration for banking/property
@@ -876,6 +1013,7 @@ The new **Second Home Visa** (5-10 years) doesn't automatically create tax resid
 ### Expatriates on Assignment
 
 If your home country employer assigns you to Indonesia:
+
 - Usually become Indonesian tax resident
 - May be eligible for **tax equalization** (employer covers difference)
 - Check for **hypothetical tax** arrangements
@@ -903,6 +1041,7 @@ If you're taxed at 20% but your country has a treaty for 10%, you're overpaying.
 
 **6. No Records**
 Keep payslips, Bukti Potong, bank statements for 10 years. Tax office can audit.
+
 </InfoCard>
 
 ---
@@ -919,7 +1058,7 @@ Indonesian tax can be complex, especially for foreigners with multiple income so
     "Do I need to report my foreign income?",
     "What's the penalty for late SPT filing?",
     "How do I claim tax treaty benefits?",
-    "Can I deduct my rent from taxable income?"
+    "Can I deduct my rent from taxable income?",
   ]}
 />
 
@@ -937,15 +1076,20 @@ Indonesian tax can be complex, especially for foreigners with multiple income so
 
 ## Opinioni e Discussioni in Corso
 
-<InfoCard variant="note" title="⚠️ Nota: Questa sezione contiene OPINIONI e discussioni non ancora confermate ufficialmente">
-Le informazioni seguenti provengono da discussioni pubbliche, articoli di settore e analisi di esperti. **Non sono confermate da fonti governative ufficiali** e potrebbero non realizzarsi.
+<InfoCard
+  variant="note"
+  title="⚠️ Nota: Questa sezione contiene OPINIONI e discussioni non ancora confermate ufficialmente"
+>
+  Le informazioni seguenti provengono da discussioni pubbliche, articoli di
+  settore e analisi di esperti. **Non sono confermate da fonti governative
+  ufficiali** e potrebbero non realizzarsi.
 </InfoCard>
 
 ### Possibili sviluppi fiscali 2026-2027 (OPINIONE)
 
 Basandosi sulle discussioni in corso nel settore fiscale indonesiano:
 
-1. **Carbon Tax (Pajak Karbon)** - Si discute un'espansione della carbon tax oltre il settore energetico. Attualmente applicata solo alle centrali a carbone, potrebbe estendersi a trasporti e industria manifatturiera. *Nessuna data confermata.*
+1. **Carbon Tax (Pajak Karbon)** - Si discute un'espansione della carbon tax oltre il settore energetico. Attualmente applicata solo alle centrali a carbone, potrebbe estendersi a trasporti e industria manifatturiera. _Nessuna data confermata._
 
 2. **Digital Services Tax espansa** - C'è discussione su una possibile espansione della tassazione dei servizi digitali per includere più piattaforme e creatori di contenuti. Alcune opinioni indicano che potrebbe interessare anche i freelancer che lavorano per clienti esteri.
 
@@ -958,5 +1102,8 @@ Basandosi sulle discussioni in corso nel settore fiscale indonesiano:
 ---
 
 <InfoCard variant="note" title="Disclaimer">
-This guide is for informational purposes only and does not constitute tax advice. Tax laws change frequently and individual circumstances vary. Always consult a qualified tax professional for advice specific to your situation. Last updated: January 2026.
+  This guide is for informational purposes only and does not constitute tax
+  advice. Tax laws change frequently and individual circumstances vary. Always
+  consult a qualified tax professional for advice specific to your situation.
+  Last updated: January 2026.
 </InfoCard>

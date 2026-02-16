@@ -138,7 +138,7 @@ Per vedere i log in produzione:
 
 ```javascript
 // Nella console del browser
-JSON.parse(localStorage.getItem('error_logs'));
+JSON.parse(localStorage.getItem("error_logs"));
 ```
 
 ## Troubleshooting

@@ -3,10 +3,10 @@
  * Continuous monitoring and reporting for type safety metrics
  */
 
-import { logger } from '@/lib/logger';
-import type { Metadata } from '@/lib/types/common';
-import { typeSafetyMetrics } from '@/lib/metrics/type-safety-metrics';
-import { logTypeSafety } from './type-safety-logger';
+import { logger } from "@/lib/logger";
+import type { Metadata } from "@/lib/types/common";
+import { typeSafetyMetrics } from "@/lib/metrics/type-safety-metrics";
+import { logTypeSafety } from "./type-safety-logger";
 
 /**
  * Scan codebase for `any` usage
@@ -36,7 +36,8 @@ export async function scanAnyUsage(): Promise<{
  */
 export class TypeSafetyMonitor {
   private checkInterval: NodeJS.Timeout | null = null;
-  private lastMetrics: ReturnType<typeof typeSafetyMetrics.getMetrics> | null = null;
+  private lastMetrics: ReturnType<typeof typeSafetyMetrics.getMetrics> | null =
+    null;
 
   /**
    * Start monitoring type safety metrics
@@ -72,13 +73,15 @@ export class TypeSafetyMonitor {
     const currentMetrics = typeSafetyMetrics.getMetrics();
 
     if (this.lastMetrics) {
-      const anyDelta = currentMetrics.totalAnyCount - this.lastMetrics.totalAnyCount;
-      const progressDelta = currentMetrics.migrationProgress - this.lastMetrics.migrationProgress;
+      const anyDelta =
+        currentMetrics.totalAnyCount - this.lastMetrics.totalAnyCount;
+      const progressDelta =
+        currentMetrics.migrationProgress - this.lastMetrics.migrationProgress;
 
       if (anyDelta !== 0 || progressDelta !== 0) {
-        logger.info('Type safety metrics changed', {
-          component: 'TypeSafetyMonitor',
-          action: 'metrics_change',
+        logger.info("Type safety metrics changed", {
+          component: "TypeSafetyMonitor",
+          action: "metrics_change",
           metadata: {
             anyDelta,
             progressDelta,
@@ -89,9 +92,9 @@ export class TypeSafetyMonitor {
 
         // Alert if `any` count increased
         if (anyDelta > 0) {
-          logger.warn('Type safety regression detected', {
-            component: 'TypeSafetyMonitor',
-            action: 'regression_detected',
+          logger.warn("Type safety regression detected", {
+            component: "TypeSafetyMonitor",
+            action: "regression_detected",
             metadata: {
               anyIncrease: anyDelta,
               currentTotal: currentMetrics.totalAnyCount,
@@ -115,21 +118,25 @@ export class TypeSafetyMonitor {
     const recommendations: string[] = [];
 
     if (metrics.totalAnyCount > 10) {
-      recommendations.push(`Consider reducing ${metrics.totalAnyCount - 10} more 'any' types`);
+      recommendations.push(
+        `Consider reducing ${metrics.totalAnyCount - 10} more 'any' types`,
+      );
     }
 
     if (metrics.criticalAnyCount > 0) {
       recommendations.push(
-        `Remove ${metrics.criticalAnyCount} 'any' types from critical code paths`
+        `Remove ${metrics.criticalAnyCount} 'any' types from critical code paths`,
       );
     }
 
     if (metrics.migrationProgress < 90) {
-      recommendations.push(`Continue migration: ${metrics.migrationProgress.toFixed(1)}% complete`);
+      recommendations.push(
+        `Continue migration: ${metrics.migrationProgress.toFixed(1)}% complete`,
+      );
     }
 
     if (metrics.typeGuardsCount < 5) {
-      recommendations.push('Add more type guards for runtime type safety');
+      recommendations.push("Add more type guards for runtime type safety");
     }
 
     return {

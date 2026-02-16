@@ -1,5 +1,5 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { Message, AgentStep } from '@/types';
+import { useState, useCallback, useRef, useEffect } from "react";
+import { Message, AgentStep } from "@/types";
 
 export interface UseChatMessagesReturn {
   messages: Message[];
@@ -28,26 +28,29 @@ export function useChatMessages(): UseChatMessagesReturn {
     };
   }, []);
 
-  const safeSetMessages = useCallback((updater: (prev: Message[]) => Message[]) => {
-    if (!isMountedRef.current || isAbortedRef.current) return;
-    setMessages((prev) => {
-      if (!isMountedRef.current || isAbortedRef.current) return prev;
-      return updater(prev);
-    });
-  }, []);
+  const safeSetMessages = useCallback(
+    (updater: (prev: Message[]) => Message[]) => {
+      if (!isMountedRef.current || isAbortedRef.current) return;
+      setMessages((prev) => {
+        if (!isMountedRef.current || isAbortedRef.current) return prev;
+        return updater(prev);
+      });
+    },
+    [],
+  );
 
   const addMessage = useCallback(
     (message: Message) => {
       safeSetMessages((prev) => [...prev, message]);
     },
-    [safeSetMessages]
+    [safeSetMessages],
   );
 
   const addMessages = useCallback(
     (newMessages: Message[]) => {
       safeSetMessages((prev) => [...prev, ...newMessages]);
     },
-    [safeSetMessages]
+    [safeSetMessages],
   );
 
   const updateLastAssistantMessage = useCallback(
@@ -55,13 +58,13 @@ export function useChatMessages(): UseChatMessagesReturn {
       safeSetMessages((prev) => {
         const newMessages = [...prev];
         const lastMsg = newMessages[newMessages.length - 1];
-        if (lastMsg?.role === 'assistant') {
+        if (lastMsg?.role === "assistant") {
           newMessages[newMessages.length - 1] = { ...lastMsg, ...updates };
         }
         return newMessages;
       });
     },
-    [safeSetMessages]
+    [safeSetMessages],
   );
 
   const appendToLastAssistantContent = useCallback(
@@ -69,7 +72,7 @@ export function useChatMessages(): UseChatMessagesReturn {
       safeSetMessages((prev) => {
         const newMessages = [...prev];
         const lastMsg = newMessages[newMessages.length - 1];
-        if (lastMsg?.role === 'assistant') {
+        if (lastMsg?.role === "assistant") {
           newMessages[newMessages.length - 1] = {
             ...lastMsg,
             content: lastMsg.content + chunk,
@@ -78,7 +81,7 @@ export function useChatMessages(): UseChatMessagesReturn {
         return newMessages;
       });
     },
-    [safeSetMessages]
+    [safeSetMessages],
   );
 
   const addStepToLastAssistant = useCallback(
@@ -86,29 +89,29 @@ export function useChatMessages(): UseChatMessagesReturn {
       safeSetMessages((prev) => {
         const newMessages = [...prev];
         const lastMsg = newMessages[newMessages.length - 1];
-        if (lastMsg?.role === 'assistant') {
+        if (lastMsg?.role === "assistant") {
           const updatedSteps = [...(lastMsg.steps || []), step];
           let newStatus = lastMsg.currentStatus;
 
-          if (step.type === 'status') {
+          if (step.type === "status") {
             newStatus = step.data;
-          } else if (step.type === 'phase') {
+          } else if (step.type === "phase") {
             const phaseName = step.data.name;
             const phaseStatus = step.data.status;
-            if (phaseStatus === 'started') {
+            if (phaseStatus === "started") {
               newStatus =
-                phaseName === 'giant'
-                  ? 'Giant Reasoning...'
-                  : phaseName === 'cell'
-                    ? 'Cell Calibration...'
-                    : 'Zantara Synthesis...';
+                phaseName === "giant"
+                  ? "Giant Reasoning..."
+                  : phaseName === "cell"
+                    ? "Cell Calibration..."
+                    : "Zantara Synthesis...";
             } else {
               newStatus = `${phaseName} Complete`;
             }
-          } else if (step.type === 'tool_start') {
-            newStatus = `Using tool: ${step.data.name || 'External Tool'}...`;
-          } else if (step.type === 'tool_end') {
-            newStatus = 'Analyzing results...';
+          } else if (step.type === "tool_start") {
+            newStatus = `Using tool: ${step.data.name || "External Tool"}...`;
+          } else if (step.type === "tool_end") {
+            newStatus = "Analyzing results...";
           }
 
           newMessages[newMessages.length - 1] = {
@@ -120,14 +123,14 @@ export function useChatMessages(): UseChatMessagesReturn {
         return newMessages;
       });
     },
-    [safeSetMessages]
+    [safeSetMessages],
   );
 
   const updateLastAssistantStatus = useCallback(
     (status: string) => {
       updateLastAssistantMessage({ currentStatus: status });
     },
-    [updateLastAssistantMessage]
+    [updateLastAssistantMessage],
   );
 
   const clearMessages = useCallback(() => {

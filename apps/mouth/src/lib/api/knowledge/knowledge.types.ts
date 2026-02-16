@@ -1,10 +1,10 @@
 // Knowledge/Search API types - defined directly to avoid dependency on generated files
 export enum TierLevel {
-  S = 'S',
-  A = 'A',
-  B = 'B',
-  C = 'C',
-  D = 'D',
+  S = "S",
+  A = "A",
+  B = "B",
+  C = "C",
+  D = "D",
 }
 
 export interface ChunkMetadata {

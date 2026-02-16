@@ -247,7 +247,9 @@ export function useChatPage() {
     }
 
     // Update with real message
-    setMessages((prev) => prev.map((m) => (m.id === tempMessage.id ? response : m)));
+    setMessages((prev) =>
+      prev.map((m) => (m.id === tempMessage.id ? response : m)),
+    );
   };
 
   return {
@@ -424,9 +426,9 @@ e2e/
 
 ```css
 /* Dark theme (default) */
---background: #2a2a2a --foreground: #fafafa --accent: #10b981 (emerald) --muted: #6b7280
-  /* Google Drive theme (documents) */ --drive-primary: #1a73e8 --drive-selected: #e8f0fe
-  --drive-hover: #f5f5f5;
+--background: #2a2a2a --foreground: #fafafa --accent: #10b981 (emerald)
+  --muted: #6b7280 /* Google Drive theme (documents) */ --drive-primary: #1a73e8
+  --drive-selected: #e8f0fe --drive-hover: #f5f5f5;
 ```
 
 ### Spacing

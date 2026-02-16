@@ -76,8 +76,8 @@ import {
   Calculator,
   InfoCard,
   Checklist,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Money Transfer to Indonesia 2026: Best Options for Foreigners
 
@@ -93,53 +93,53 @@ Sending money to Indonesia doesn't have to be expensive. Here's how to get the b
       name: "Wise (TransferWise)",
       subtitle: "Recommended",
       values: {
-        "Speed": "1-2 business days",
-        "Fees": "~0.5-1%",
-        "Rate": "Mid-market",
-        "Best For": "Regular transfers"
+        Speed: "1-2 business days",
+        Fees: "~0.5-1%",
+        Rate: "Mid-market",
+        "Best For": "Regular transfers",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "Bank Wire (SWIFT)",
       subtitle: "Traditional",
       values: {
-        "Speed": "3-5 business days",
-        "Fees": "$25-50 + spread",
-        "Rate": "Bank rate (poor)",
-        "Best For": "Large amounts"
-      }
+        Speed: "3-5 business days",
+        Fees: "$25-50 + spread",
+        Rate: "Bank rate (poor)",
+        "Best For": "Large amounts",
+      },
     },
     {
       name: "Revolut",
       subtitle: "Digital bank",
       values: {
-        "Speed": "1-3 days",
-        "Fees": "Free (limits apply)",
-        "Rate": "Good",
-        "Best For": "Existing users"
-      }
+        Speed: "1-3 days",
+        Fees: "Free (limits apply)",
+        Rate: "Good",
+        "Best For": "Existing users",
+      },
     },
     {
       name: "Western Union",
       subtitle: "Cash pickup",
       values: {
-        "Speed": "Minutes",
-        "Fees": "3-5%",
-        "Rate": "Poor",
-        "Best For": "Cash emergencies"
-      }
+        Speed: "Minutes",
+        Fees: "3-5%",
+        Rate: "Poor",
+        "Best For": "Cash emergencies",
+      },
     },
     {
       name: "PayPal",
       subtitle: "Online payments",
       values: {
-        "Speed": "Instant (to PayPal)",
-        "Fees": "~4%",
-        "Rate": "Poor",
-        "Best For": "Small amounts"
-      }
-    }
+        Speed: "Instant (to PayPal)",
+        Fees: "~4%",
+        Rate: "Poor",
+        "Best For": "Small amounts",
+      },
+    },
   ]}
 />
 
@@ -205,7 +205,8 @@ Sending money to Indonesia doesn't have to be expensive. Here's how to get the b
       currency: "USD",
       note: `Approximately IDR ${Math.round(idrReceived).toLocaleString()} received`
     };
-  }}
+
+}}
 />
 
 ---
@@ -213,12 +214,9 @@ Sending money to Indonesia doesn't have to be expensive. Here's how to get the b
 ## Wise (TransferWise)
 
 <InfoCard variant="tip" title="Best Overall Choice">
-**Why Wise is popular:**
-- Uses real mid-market exchange rate
-- Low, transparent fees
-- Fast (usually 1-2 days)
-- Easy to use app
-- Can receive to Indonesian bank account
+  **Why Wise is popular:** - Uses real mid-market exchange rate - Low,
+  transparent fees - Fast (usually 1-2 days) - Easy to use app - Can receive to
+  Indonesian bank account
 </InfoCard>
 
 ### How to Use Wise for Indonesia
@@ -232,11 +230,11 @@ Sending money to Indonesia doesn't have to be expensive. Here's how to get the b
 ### Wise Fees
 
 | Amount | Approximate Fee | You Receive |
-|--------|-----------------|-------------|
-| $500 | ~$5 | ~IDR 7.9M |
-| $1,000 | ~$8 | ~IDR 15.9M |
-| $2,000 | ~$14 | ~IDR 31.8M |
-| $5,000 | ~$30 | ~IDR 79.5M |
+| ------ | --------------- | ----------- |
+| $500   | ~$5             | ~IDR 7.9M   |
+| $1,000 | ~$8             | ~IDR 15.9M  |
+| $2,000 | ~$14            | ~IDR 31.8M  |
+| $5,000 | ~$30            | ~IDR 79.5M  |
 
 ---
 
@@ -246,12 +244,12 @@ Sending money to Indonesia doesn't have to be expensive. Here's how to get the b
 
 Traditional bank wires still work but are expensive:
 
-| Bank | Fee | Notes |
-|------|-----|-------|
-| Chase | $40-50 | International wire |
-| Bank of America | $35-45 | Varies by account |
-| Wells Fargo | $35-45 | Standard rate |
-| HSBC | $30-40 | Better for HSBC to HSBC |
+| Bank            | Fee    | Notes                   |
+| --------------- | ------ | ----------------------- |
+| Chase           | $40-50 | International wire      |
+| Bank of America | $35-45 | Varies by account       |
+| Wells Fargo     | $35-45 | Standard rate           |
+| HSBC            | $30-40 | Better for HSBC to HSBC |
 
 ### Hidden Costs
 
@@ -263,6 +261,7 @@ Bank transfers have multiple costs:
 - **Exchange rate markup**: 2-4%
 
 A $2,000 transfer might cost $100+ total!
+
 </InfoCard>
 
 ---
@@ -281,46 +280,46 @@ A $2,000 transfer might cost $100+ total!
       label: "Indonesian bank account",
       description: "In your name",
       required: true,
-      category: "banking"
+      category: "banking",
     },
     {
       id: "swift",
       label: "Bank SWIFT code",
       description: "For international transfers",
       required: true,
-      category: "banking"
+      category: "banking",
     },
     {
       id: "address",
       label: "Bank branch address",
       description: "Sometimes required",
       required: false,
-      category: "banking"
+      category: "banking",
     },
     {
       id: "purpose",
       label: "Purpose of transfer",
       description: "May be asked for large amounts",
       required: false,
-      category: "compliance"
-    }
+      category: "compliance",
+    },
   ]}
   categories={[
     { id: "banking", label: "Banking", color: "blue" },
-    { id: "compliance", label: "Compliance", color: "amber" }
+    { id: "compliance", label: "Compliance", color: "amber" },
   ]}
   showProgress={true}
 />
 
 ### Major Indonesian Bank SWIFT Codes
 
-| Bank | SWIFT Code |
-|------|------------|
-| BCA | CENAIDJA |
-| Mandiri | BMRIIDJA |
-| BNI | BABORIDJA |
-| CIMB Niaga | BABORIDJA |
-| Permata | BABORIDJA |
+| Bank       | SWIFT Code |
+| ---------- | ---------- |
+| BCA        | CENAIDJA   |
+| Mandiri    | BMRIIDJA   |
+| BNI        | BABORIDJA  |
+| CIMB Niaga | BABORIDJA  |
+| Permata    | BABORIDJA  |
 
 ---
 
@@ -334,16 +333,17 @@ Sending money out of Indonesia has restrictions:
 - Banks may ask questions
 
 Keep records of all incoming transfers to justify outgoing.
+
 </InfoCard>
 
 ### Options for Sending Out
 
-| Method | Limit | Notes |
-|--------|-------|-------|
-| Bank wire | No limit (with docs) | Need documentation |
-| Wise (from IDR) | Yes, limited | Convenient |
-| PayPal | Limited | Withdrawal restrictions |
-| Crypto | Varies | Gray area |
+| Method          | Limit                | Notes                   |
+| --------------- | -------------------- | ----------------------- |
+| Bank wire       | No limit (with docs) | Need documentation      |
+| Wise (from IDR) | Yes, limited         | Convenient              |
+| PayPal          | Limited              | Withdrawal restrictions |
+| Crypto          | Varies               | Gray area               |
 
 ---
 
@@ -368,12 +368,12 @@ Instead of transferring everything, consider:
 
 ### ATM Withdrawals
 
-| Card Type | Fee | Rate |
-|-----------|-----|------|
-| Wise | ~$1 | Mid-market |
-| Revolut | Free (limits) | Mid-market |
-| Charles Schwab | Rebated | Bank rate |
-| Regular cards | $3-5 | +3% markup |
+| Card Type      | Fee           | Rate       |
+| -------------- | ------------- | ---------- |
+| Wise           | ~$1           | Mid-market |
+| Revolut        | Free (limits) | Mid-market |
+| Charles Schwab | Rebated       | Bank rate  |
+| Regular cards  | $3-5          | +3% markup |
 
 ---
 
@@ -391,11 +391,9 @@ Instead of transferring everything, consider:
 ## Tax Considerations
 
 <InfoCard variant="note" title="Know the Rules">
-- Large transfers may trigger reporting
-- Consistent transfers could suggest income
-- Keep records of all transfers
-- Consult tax professional if concerned
-- Indonesia has financial reporting requirements
+  - Large transfers may trigger reporting - Consistent transfers could suggest
+  income - Keep records of all transfers - Consult tax professional if concerned
+  - Indonesia has financial reporting requirements
 </InfoCard>
 
 ---
@@ -409,7 +407,7 @@ Instead of transferring everything, consider:
     "What's the cheapest way to send $5000?",
     "Can I receive money without Indonesian bank account?",
     "Are there limits on transfers to Indonesia?",
-    "How do I send money from Indonesia?"
+    "How do I send money from Indonesia?",
   ]}
 />
 

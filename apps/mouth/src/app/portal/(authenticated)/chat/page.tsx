@@ -1,12 +1,15 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { Loader2, Send, MessageCircle, User, Users } from 'lucide-react';
-import { api } from '@/lib/api';
-import { useToast } from '@/components/ui/toast';
-import { cn } from '@/lib/utils';
-import type { PortalMessage, MessagesResponse } from '@/lib/api/portal/portal.types';
-import { Button } from '@/components/ui/button';
+import React, { useEffect, useState, useRef, useCallback } from "react";
+import { Loader2, Send, MessageCircle, User, Users } from "lucide-react";
+import { api } from "@/lib/api";
+import { useToast } from "@/components/ui/toast";
+import { cn } from "@/lib/utils";
+import type {
+  PortalMessage,
+  MessagesResponse,
+} from "@/lib/api/portal/portal.types";
+import { Button } from "@/components/ui/button";
 
 const POLL_INTERVAL = 30000; // 30 seconds
 
@@ -16,7 +19,7 @@ export default function ChatPage() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
-  const [newMessage, setNewMessage] = useState('');
+  const [newMessage, setNewMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -29,33 +32,34 @@ export default function ChatPage() {
         const data: MessagesResponse = await api.portal.getMessages(100, 0);
         // Sort messages: oldest first (top), newest last (bottom)
         const sortedMessages = [...data.messages].sort(
-          (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
         );
         setMessages(sortedMessages);
         setUnreadCount(data.unreadCount);
       } catch (err) {
         if (!silent) {
-          error('Failed to load messages', 'Please try again later');
+          error("Failed to load messages", "Please try again later");
         }
         console.error(err);
       } finally {
         setIsLoading(false);
       }
     },
-    [error]
+    [error],
   );
 
   // Mark visible messages as read
   const markVisibleMessagesAsRead = useCallback(async () => {
     const unreadMessages = messages.filter(
-      (msg) => msg.direction === 'team_to_client' && !msg.readAt
+      (msg) => msg.direction === "team_to_client" && !msg.readAt,
     );
 
     for (const msg of unreadMessages) {
       try {
         await api.portal.markMessageRead(parseInt(msg.id));
       } catch (err) {
-        console.error('Failed to mark message as read:', msg.id, err);
+        console.error("Failed to mark message as read:", msg.id, err);
       }
     }
 
@@ -82,7 +86,7 @@ export default function ChatPage() {
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
 
@@ -104,12 +108,14 @@ export default function ChatPage() {
 
     try {
       setIsSending(true);
-      const sentMessage = await api.portal.sendMessage({ content: trimmedMessage });
+      const sentMessage = await api.portal.sendMessage({
+        content: trimmedMessage,
+      });
       setMessages((prev) => [...prev, sentMessage]);
-      setNewMessage('');
+      setNewMessage("");
       inputRef.current?.focus();
     } catch (err) {
-      error('Failed to send message', 'Please try again');
+      error("Failed to send message", "Please try again");
       console.error(err);
     } finally {
       setIsSending(false);
@@ -117,7 +123,7 @@ export default function ChatPage() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
@@ -125,9 +131,9 @@ export default function ChatPage() {
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
+    return date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
       hour12: true,
     });
   };
@@ -139,14 +145,15 @@ export default function ChatPage() {
     yesterday.setDate(yesterday.getDate() - 1);
 
     if (date.toDateString() === today.toDateString()) {
-      return 'Today';
+      return "Today";
     } else if (date.toDateString() === yesterday.toDateString()) {
-      return 'Yesterday';
+      return "Yesterday";
     } else {
-      return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined,
+      return date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year:
+          date.getFullYear() !== today.getFullYear() ? "numeric" : undefined,
       });
     }
   };
@@ -161,7 +168,7 @@ export default function ChatPage() {
       groups[date].push(message);
       return groups;
     },
-    {} as Record<string, PortalMessage[]>
+    {} as Record<string, PortalMessage[]>,
   );
 
   if (isLoading) {
@@ -179,7 +186,9 @@ export default function ChatPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Messages</h1>
-            <p className="text-muted-foreground">Chat with your Bali Zero team</p>
+            <p className="text-muted-foreground">
+              Chat with your Bali Zero team
+            </p>
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Users className="w-4 h-4" />
@@ -189,7 +198,7 @@ export default function ChatPage() {
         {unreadCount > 0 && (
           <div className="mt-2 px-3 py-1.5 bg-primary/10 text-primary text-sm rounded-full inline-flex items-center gap-1.5">
             <MessageCircle className="w-4 h-4" />
-            {unreadCount} unread message{unreadCount !== 1 ? 's' : ''}
+            {unreadCount} unread message{unreadCount !== 1 ? "s" : ""}
           </div>
         )}
       </section>
@@ -202,7 +211,9 @@ export default function ChatPage() {
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center py-12">
             <MessageCircle className="w-16 h-16 text-muted-foreground/30 mb-4" />
-            <h3 className="text-lg font-semibold text-muted-foreground">No messages yet</h3>
+            <h3 className="text-lg font-semibold text-muted-foreground">
+              No messages yet
+            </h3>
             <p className="text-sm text-muted-foreground/70 mt-1 max-w-xs">
               Start a conversation with your Bali Zero team. We're here to help!
             </p>
@@ -222,7 +233,11 @@ export default function ChatPage() {
               {/* Messages for this date */}
               <div className="space-y-3">
                 {dateMessages.map((message) => (
-                  <MessageBubble key={message.id} message={message} formatTime={formatTime} />
+                  <MessageBubble
+                    key={message.id}
+                    message={message}
+                    formatTime={formatTime}
+                  />
                 ))}
               </div>
             </div>
@@ -243,10 +258,10 @@ export default function ChatPage() {
             placeholder="Type a message..."
             disabled={isSending}
             className={cn(
-              'flex-1 px-4 py-3 rounded-xl border bg-background',
-              'focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary',
-              'placeholder:text-muted-foreground/60',
-              'disabled:opacity-50 disabled:cursor-not-allowed'
+              "flex-1 px-4 py-3 rounded-xl border bg-background",
+              "focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary",
+              "placeholder:text-muted-foreground/60",
+              "disabled:opacity-50 disabled:cursor-not-allowed",
             )}
           />
           <Button
@@ -278,11 +293,13 @@ function MessageBubble({
   message: PortalMessage;
   formatTime: (date: string) => string;
 }) {
-  const isFromTeam = message.direction === 'team_to_client';
+  const isFromTeam = message.direction === "team_to_client";
   const isUnread = isFromTeam && !message.readAt;
 
   return (
-    <div className={cn('flex gap-2', isFromTeam ? 'justify-start' : 'justify-end')}>
+    <div
+      className={cn("flex gap-2", isFromTeam ? "justify-start" : "justify-end")}
+    >
       {/* Team Avatar */}
       {isFromTeam && (
         <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
@@ -293,24 +310,26 @@ function MessageBubble({
       {/* Message Content */}
       <div
         className={cn(
-          'max-w-[80%] md:max-w-[70%] rounded-2xl px-4 py-2.5',
+          "max-w-[80%] md:max-w-[70%] rounded-2xl px-4 py-2.5",
           isFromTeam
-            ? 'bg-neutral-100 dark:bg-neutral-800 rounded-tl-sm'
-            : 'bg-primary text-primary-foreground rounded-tr-sm',
-          isUnread && 'ring-2 ring-primary/30'
+            ? "bg-neutral-100 dark:bg-neutral-800 rounded-tl-sm"
+            : "bg-primary text-primary-foreground rounded-tr-sm",
+          isUnread && "ring-2 ring-primary/30",
         )}
       >
         {/* Sender name for team messages */}
         {isFromTeam && message.sentBy && (
-          <p className="text-xs font-medium text-primary mb-1">{message.sentBy}</p>
+          <p className="text-xs font-medium text-primary mb-1">
+            {message.sentBy}
+          </p>
         )}
 
         {/* Subject if present */}
         {message.subject && (
           <p
             className={cn(
-              'text-sm font-semibold mb-1',
-              isFromTeam ? 'text-foreground' : 'text-primary-foreground'
+              "text-sm font-semibold mb-1",
+              isFromTeam ? "text-foreground" : "text-primary-foreground",
             )}
           >
             {message.subject}
@@ -320,8 +339,8 @@ function MessageBubble({
         {/* Message content */}
         <p
           className={cn(
-            'text-sm whitespace-pre-wrap break-words',
-            isFromTeam ? 'text-foreground' : 'text-primary-foreground'
+            "text-sm whitespace-pre-wrap break-words",
+            isFromTeam ? "text-foreground" : "text-primary-foreground",
           )}
         >
           {message.content}
@@ -330,12 +349,12 @@ function MessageBubble({
         {/* Time */}
         <p
           className={cn(
-            'text-[10px] mt-1',
-            isFromTeam ? 'text-muted-foreground' : 'text-primary-foreground/70'
+            "text-[10px] mt-1",
+            isFromTeam ? "text-muted-foreground" : "text-primary-foreground/70",
           )}
         >
           {formatTime(message.createdAt)}
-          {!isFromTeam && message.readAt && ' • Read'}
+          {!isFromTeam && message.readAt && " • Read"}
         </p>
       </div>
 

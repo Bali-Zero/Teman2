@@ -60,7 +60,7 @@ class APIClient {
   private token: string | null = null;
 
   constructor() {
-    this.baseURL = process.env.NEXT_PUBLIC_API_URL || '';
+    this.baseURL = process.env.NEXT_PUBLIC_API_URL || "";
     this.loadToken();
   }
 
@@ -69,15 +69,15 @@ class APIClient {
   // ─────────────────────────────────────────────────────────
 
   private loadToken(): void {
-    if (typeof window !== 'undefined') {
-      this.token = localStorage.getItem('auth_token');
+    if (typeof window !== "undefined") {
+      this.token = localStorage.getItem("auth_token");
     }
   }
 
   setToken(token: string): void {
     this.token = token;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('auth_token', token);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("auth_token", token);
     }
   }
 
@@ -87,8 +87,8 @@ class APIClient {
 
   clearToken(): void {
     this.token = null;
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('auth_token');
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("auth_token");
     }
   }
 
@@ -100,12 +100,12 @@ class APIClient {
     method: string,
     path: string,
     data?: unknown,
-    options?: RequestInit
+    options?: RequestInit,
   ): Promise<T> {
     const url = `${this.baseURL}${path}`;
 
     const headers: HeadersInit = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
       ...options?.headers,
     };
@@ -125,7 +125,11 @@ class APIClient {
     // Handle errors
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new APIError(error.message || response.statusText, response.status, error);
+      throw new APIError(
+        error.message || response.statusText,
+        response.status,
+        error,
+      );
     }
 
     // Handle empty response
@@ -137,46 +141,57 @@ class APIClient {
   }
 
   async get<T>(path: string, options?: RequestInit): Promise<T> {
-    return this.request<T>('GET', path, undefined, options);
+    return this.request<T>("GET", path, undefined, options);
   }
 
-  async post<T>(path: string, data?: unknown, options?: RequestInit): Promise<T> {
-    return this.request<T>('POST', path, data, options);
+  async post<T>(
+    path: string,
+    data?: unknown,
+    options?: RequestInit,
+  ): Promise<T> {
+    return this.request<T>("POST", path, data, options);
   }
 
-  async put<T>(path: string, data?: unknown, options?: RequestInit): Promise<T> {
-    return this.request<T>('PUT', path, data, options);
+  async put<T>(
+    path: string,
+    data?: unknown,
+    options?: RequestInit,
+  ): Promise<T> {
+    return this.request<T>("PUT", path, data, options);
   }
 
   async delete<T>(path: string, options?: RequestInit): Promise<T> {
-    return this.request<T>('DELETE', path, undefined, options);
+    return this.request<T>("DELETE", path, undefined, options);
   }
 
   // ─────────────────────────────────────────────────────────
   // STREAMING (SSE)
   // ─────────────────────────────────────────────────────────
 
-  async *stream(path: string, data?: unknown): AsyncGenerator<string, void, unknown> {
+  async *stream(
+    path: string,
+    data?: unknown,
+  ): AsyncGenerator<string, void, unknown> {
     const url = `${this.baseURL}${path}`;
 
     const response = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
       },
       body: JSON.stringify(data),
     });
 
     if (!response.ok) {
-      throw new APIError('Stream failed', response.status);
+      throw new APIError("Stream failed", response.status);
     }
 
     const reader = response.body?.getReader();
     const decoder = new TextDecoder();
 
     if (!reader) {
-      throw new APIError('No response body', 500);
+      throw new APIError("No response body", 500);
     }
 
     while (true) {
@@ -186,11 +201,11 @@ class APIClient {
       const chunk = decoder.decode(value, { stream: true });
 
       // Parse SSE format
-      const lines = chunk.split('\n');
+      const lines = chunk.split("\n");
       for (const line of lines) {
-        if (line.startsWith('data: ')) {
+        if (line.startsWith("data: ")) {
           const jsonStr = line.slice(6);
-          if (jsonStr === '[DONE]') {
+          if (jsonStr === "[DONE]") {
             return;
           }
           try {
@@ -213,15 +228,15 @@ class APIClient {
   async upload<T>(
     path: string,
     formData: FormData,
-    onProgress?: (percent: number) => void
+    onProgress?: (percent: number) => void,
   ): Promise<T> {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
 
-      xhr.open('POST', `${this.baseURL}${path}`);
+      xhr.open("POST", `${this.baseURL}${path}`);
 
       if (this.token) {
-        xhr.setRequestHeader('Authorization', `Bearer ${this.token}`);
+        xhr.setRequestHeader("Authorization", `Bearer ${this.token}`);
       }
 
       xhr.upload.onprogress = (e) => {
@@ -234,12 +249,12 @@ class APIClient {
         if (xhr.status >= 200 && xhr.status < 300) {
           resolve(JSON.parse(xhr.responseText));
         } else {
-          reject(new APIError('Upload failed', xhr.status));
+          reject(new APIError("Upload failed", xhr.status));
         }
       };
 
       xhr.onerror = () => {
-        reject(new APIError('Upload failed', 0));
+        reject(new APIError("Upload failed", 0));
       };
 
       xhr.send(formData);
@@ -251,7 +266,7 @@ class APIClient {
   // ─────────────────────────────────────────────────────────
 
   async login(email: string, password: string): Promise<AuthResponse> {
-    const response = await this.post<AuthResponse>('/api/auth/login', {
+    const response = await this.post<AuthResponse>("/api/auth/login", {
       email,
       password,
     });
@@ -265,7 +280,7 @@ class APIClient {
 
   async logout(): Promise<void> {
     try {
-      await this.post('/api/auth/logout');
+      await this.post("/api/auth/logout");
     } finally {
       this.clearToken();
       this.clearUserProfile();
@@ -277,28 +292,28 @@ class APIClient {
   // ─────────────────────────────────────────────────────────
 
   async getProfile(): Promise<UserProfile> {
-    const profile = await this.get<UserProfile>('/api/users/me');
+    const profile = await this.get<UserProfile>("/api/users/me");
     this.setUserProfile(profile);
     return profile;
   }
 
   setUserProfile(profile: UserProfile): void {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('user_profile', JSON.stringify(profile));
+    if (typeof window !== "undefined") {
+      localStorage.setItem("user_profile", JSON.stringify(profile));
     }
   }
 
   getUserProfile(): UserProfile | null {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('user_profile');
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("user_profile");
       return stored ? JSON.parse(stored) : null;
     }
     return null;
   }
 
   clearUserProfile(): void {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('user_profile');
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("user_profile");
     }
   }
 }
@@ -316,21 +331,24 @@ export const api = new APIClient();
 **File:** `lib/api/chat/index.ts`
 
 ```typescript
-import { api } from '../client';
+import { api } from "../client";
 
 export const chatApi = {
-  send: (data: SendMessageRequest) => api.post<SendMessageResponse>('/api/chat/send', data),
+  send: (data: SendMessageRequest) =>
+    api.post<SendMessageResponse>("/api/chat/send", data),
 
-  stream: (data: SendMessageRequest) => api.stream('/api/chat/stream', data),
+  stream: (data: SendMessageRequest) => api.stream("/api/chat/stream", data),
 
-  getConversation: (id: string) => api.get<Conversation>(`/api/conversations/${id}`),
+  getConversation: (id: string) =>
+    api.get<Conversation>(`/api/conversations/${id}`),
 
   listConversations: (params?: ListParams) =>
-    api.get<Conversation[]>('/api/conversations', { params }),
+    api.get<Conversation[]>("/api/conversations", { params }),
 
   deleteConversation: (id: string) => api.delete(`/api/conversations/${id}`),
 
-  feedback: (messageId: string, rating: number) => api.post('/api/feedback', { messageId, rating }),
+  feedback: (messageId: string, rating: number) =>
+    api.post("/api/feedback", { messageId, rating }),
 };
 ```
 
@@ -341,11 +359,13 @@ export const chatApi = {
 ```typescript
 export const crmApi = {
   // Clients
-  listClients: (params?: ListParams) => api.get<Client[]>('/api/crm/clients', { params }),
+  listClients: (params?: ListParams) =>
+    api.get<Client[]>("/api/crm/clients", { params }),
 
   getClient: (id: string) => api.get<Client>(`/api/crm/clients/${id}`),
 
-  createClient: (data: CreateClientRequest) => api.post<Client>('/api/crm/clients', data),
+  createClient: (data: CreateClientRequest) =>
+    api.post<Client>("/api/crm/clients", data),
 
   updateClient: (id: string, data: UpdateClientRequest) =>
     api.put<Client>(`/api/crm/clients/${id}`, data),
@@ -372,28 +392,33 @@ export const crmApi = {
 ```typescript
 export const driveApi = {
   listFiles: (folderId?: string) =>
-    api.get<DriveFile[]>('/api/drive/files', {
+    api.get<DriveFile[]>("/api/drive/files", {
       params: folderId ? { folderId } : undefined,
     }),
 
   getFile: (fileId: string) => api.get<DriveFile>(`/api/drive/files/${fileId}`),
 
-  uploadFile: (file: File, folderId?: string, onProgress?: (p: number) => void) => {
+  uploadFile: (
+    file: File,
+    folderId?: string,
+    onProgress?: (p: number) => void,
+  ) => {
     const formData = new FormData();
-    formData.append('file', file);
-    if (folderId) formData.append('folderId', folderId);
-    return api.upload<DriveFile>('/api/drive/upload', formData, onProgress);
+    formData.append("file", file);
+    if (folderId) formData.append("folderId", folderId);
+    return api.upload<DriveFile>("/api/drive/upload", formData, onProgress);
   },
 
   createFolder: (name: string, parentId?: string) =>
-    api.post<DriveFile>('/api/drive/folders', { name, parentId }),
+    api.post<DriveFile>("/api/drive/folders", { name, parentId }),
 
   moveFile: (fileId: string, targetFolderId: string) =>
     api.put(`/api/drive/files/${fileId}/move`, { targetFolderId }),
 
   deleteFile: (fileId: string) => api.delete(`/api/drive/files/${fileId}`),
 
-  search: (query: string) => api.get<DriveFile[]>('/api/drive/search', { params: { q: query } }),
+  search: (query: string) =>
+    api.get<DriveFile[]>("/api/drive/search", { params: { q: query } }),
 };
 ```
 
@@ -405,24 +430,25 @@ export const driveApi = {
 export const intelligenceApi = {
   // News/Articles
   listArticles: (params?: ArticleListParams) =>
-    api.get<Article[]>('/api/intel/articles', { params }),
+    api.get<Article[]>("/api/intel/articles", { params }),
 
   getArticle: (id: string) => api.get<Article>(`/api/intel/articles/${id}`),
 
-  createArticle: (data: CreateArticleRequest) => api.post<Article>('/api/intel/articles', data),
+  createArticle: (data: CreateArticleRequest) =>
+    api.post<Article>("/api/intel/articles", data),
 
   publishArticle: (id: string) => api.post(`/api/intel/articles/${id}/publish`),
 
   // AI Article Composer
   generateArticle: (topic: string, style?: string) =>
-    api.stream('/api/intel/compose', { topic, style }),
+    api.stream("/api/intel/compose", { topic, style }),
 
   // Analytics
   getAnalytics: (dateRange?: DateRange) =>
-    api.get<AnalyticsData>('/api/intel/analytics', { params: dateRange }),
+    api.get<AnalyticsData>("/api/intel/analytics", { params: dateRange }),
 
   // System Pulse
-  getSystemPulse: () => api.get<SystemPulse>('/api/intel/pulse'),
+  getSystemPulse: () => api.get<SystemPulse>("/api/intel/pulse"),
 };
 ```
 
@@ -444,7 +470,7 @@ function useFeature() {
   const load = useCallback(async () => {
     setIsLoading(true);
     try {
-      const result = await api.get('/api/feature');
+      const result = await api.get("/api/feature");
       setData(result);
     } catch (e) {
       setError(e as Error);
@@ -464,7 +490,7 @@ function useComplexFeature() {
   // Derive state
   const filteredUsers = useMemo(
     () => users?.filter((u) => settings?.showInactive || u.active),
-    [users, settings]
+    [users, settings],
   );
 
   return { filteredUsers };
@@ -530,10 +556,10 @@ class APIError extends Error {
   constructor(
     message: string,
     public status: number,
-    public data?: unknown
+    public data?: unknown,
   ) {
     super(message);
-    this.name = 'APIError';
+    this.name = "APIError";
   }
 
   get isUnauthorized(): boolean {
@@ -554,14 +580,14 @@ function handleAPIError(error: unknown) {
   if (error instanceof APIError) {
     if (error.isUnauthorized) {
       // Redirect to login
-      router.push('/login');
+      router.push("/login");
       return;
     }
 
     // Show toast
     toast.error(error.message);
   } else {
-    toast.error('An unexpected error occurred');
+    toast.error("An unexpected error occurred");
   }
 }
 ```
@@ -625,7 +651,7 @@ class WebSocketClient {
 
     this.ws.onopen = () => {
       this.reconnectAttempts = 0;
-      this.emit('connected');
+      this.emit("connected");
     };
 
     this.ws.onmessage = (event) => {
@@ -634,12 +660,12 @@ class WebSocketClient {
     };
 
     this.ws.onclose = () => {
-      this.emit('disconnected');
+      this.emit("disconnected");
       this.scheduleReconnect();
     };
 
     this.ws.onerror = (error) => {
-      this.emit('error', error);
+      this.emit("error", error);
     };
   }
 
@@ -653,7 +679,7 @@ class WebSocketClient {
 
     setTimeout(() => {
       if (this.ws?.readyState === WebSocket.CLOSED) {
-        this.connect(this.ws.url, ''); // Re-get token
+        this.connect(this.ws.url, ""); // Re-get token
       }
     }, delay);
   }
@@ -706,7 +732,7 @@ interface ListParams {
   pageSize?: number;
   search?: string;
   sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+  sortOrder?: "asc" | "desc";
 }
 
 // Auth
@@ -721,14 +747,14 @@ interface User {
   id: string;
   email: string;
   name: string;
-  role: 'admin' | 'member' | 'client';
+  role: "admin" | "member" | "client";
   avatar?: string;
 }
 
 // Message
 interface Message {
   id: string;
-  role: 'user' | 'assistant' | 'system';
+  role: "user" | "assistant" | "system";
   content: string;
   timestamp: string;
   sources?: Source[];

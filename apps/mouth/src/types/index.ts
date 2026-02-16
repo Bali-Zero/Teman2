@@ -23,15 +23,23 @@ export interface UserProfile {
 }
 
 export type AgentStep =
-  | { type: 'status'; data: string; timestamp: Date }
-  | { type: 'thinking'; data: string; timestamp: Date }
-  | { type: 'tool_call'; data: { tool: string; args: Record<string, unknown> }; timestamp: Date }
-  | { type: 'tool_start'; data: { name: string; args: Record<string, unknown> }; timestamp: Date }
-  | { type: 'tool_end'; data: { result: string }; timestamp: Date }
-  | { type: 'observation'; data: string; timestamp: Date }
-  | { type: 'phase'; data: { name: string; status: string }; timestamp: Date }
+  | { type: "status"; data: string; timestamp: Date }
+  | { type: "thinking"; data: string; timestamp: Date }
   | {
-      type: 'reasoning_step';
+      type: "tool_call";
+      data: { tool: string; args: Record<string, unknown> };
+      timestamp: Date;
+    }
+  | {
+      type: "tool_start";
+      data: { name: string; args: Record<string, unknown> };
+      timestamp: Date;
+    }
+  | { type: "tool_end"; data: { result: string }; timestamp: Date }
+  | { type: "observation"; data: string; timestamp: Date }
+  | { type: "phase"; data: { name: string; status: string }; timestamp: Date }
+  | {
+      type: "reasoning_step";
       data: {
         phase: string;
         status: string;
@@ -44,7 +52,7 @@ export type AgentStep =
 
 export interface Message {
   id?: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   sources?: Source[];
   imageUrl?: string;
@@ -54,6 +62,8 @@ export interface Message {
   verification_score?: number;
   metadata?: {
     execution_time?: number;
+    conversation_id?: string | number;
+    persisted?: boolean;
     route_used?: string;
     context_length?: number;
     emotional_state?: string;

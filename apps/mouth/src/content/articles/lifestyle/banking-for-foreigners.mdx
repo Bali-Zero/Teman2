@@ -76,8 +76,8 @@ import {
   Checklist,
   InfoCard,
   JourneyMap,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Banking for Foreigners in Indonesia 2026: Complete Guide
 
@@ -93,6 +93,7 @@ Foreigners can open Indonesian bank accounts if they have:
 - Proof of address in Indonesia
 
 Some banks allow limited accounts for tourists, but full services require residency.
+
 </InfoCard>
 
 ---
@@ -110,9 +111,9 @@ Some banks allow limited accounts for tourists, but full services require reside
         "Minimum Deposit": "IDR 500K-1M",
         "ATM Card": "Yes",
         "Online Banking": "Yes",
-        "Best For": "Daily use"
+        "Best For": "Daily use",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "Current (Giro)",
@@ -121,8 +122,8 @@ Some banks allow limited accounts for tourists, but full services require reside
         "Minimum Deposit": "IDR 1-5M",
         "ATM Card": "Sometimes",
         "Online Banking": "Yes",
-        "Best For": "Business transactions"
-      }
+        "Best For": "Business transactions",
+      },
     },
     {
       name: "Foreign Currency",
@@ -131,8 +132,8 @@ Some banks allow limited accounts for tourists, but full services require reside
         "Minimum Deposit": "Varies",
         "ATM Card": "No",
         "Online Banking": "Limited",
-        "Best For": "Holding foreign currency"
-      }
+        "Best For": "Holding foreign currency",
+      },
     },
     {
       name: "Tourist Account",
@@ -141,9 +142,9 @@ Some banks allow limited accounts for tourists, but full services require reside
         "Minimum Deposit": "Varies",
         "ATM Card": "Limited",
         "Online Banking": "Limited",
-        "Best For": "Short-term visitors"
-      }
-    }
+        "Best For": "Short-term visitors",
+      },
+    },
   ]}
 />
 
@@ -153,20 +154,17 @@ Some banks allow limited accounts for tourists, but full services require reside
 
 ### Recommended Banks
 
-| Bank | Good For | Notes |
-|------|----------|-------|
-| **BCA** | Most popular, best ATM network | Foreigner-friendly |
-| **Mandiri** | State bank, stable | Wide coverage |
-| **CIMB Niaga** | Regional connections | Good for Singapore |
-| **Permata** | International transfers | Competitive rates |
-| **HSBC** | Internationals | Premium banking |
+| Bank           | Good For                       | Notes              |
+| -------------- | ------------------------------ | ------------------ |
+| **BCA**        | Most popular, best ATM network | Foreigner-friendly |
+| **Mandiri**    | State bank, stable             | Wide coverage      |
+| **CIMB Niaga** | Regional connections           | Good for Singapore |
+| **Permata**    | International transfers        | Competitive rates  |
+| **HSBC**       | Internationals                 | Premium banking    |
 
 <InfoCard variant="tip" title="BCA is the Default Choice">
-Most expats choose **BCA** because:
-- Largest ATM network in Indonesia
-- Accepted everywhere
-- Good mobile app
-- Relatively easy for foreigners
+  Most expats choose **BCA** because: - Largest ATM network in Indonesia -
+  Accepted everywhere - Good mobile app - Relatively easy for foreigners
 </InfoCard>
 
 ---
@@ -187,8 +185,8 @@ Most expats choose **BCA** because:
       tips: [
         "Choose bank near your area",
         "Some branches better for foreigners",
-        "Ask expat community for recommendations"
-      ]
+        "Ask expat community for recommendations",
+      ],
     },
     {
       id: "documents",
@@ -201,8 +199,8 @@ Most expats choose **BCA** because:
         "KITAS/KITAP (original + copy)",
         "NPWP (if available)",
         "Proof of address",
-        "Initial deposit cash"
-      ]
+        "Initial deposit cash",
+      ],
     },
     {
       id: "visit",
@@ -213,8 +211,8 @@ Most expats choose **BCA** because:
       tips: [
         "Go early (avoid lunch rush)",
         "Bring all originals",
-        "Be patient"
-      ]
+        "Be patient",
+      ],
     },
     {
       id: "forms",
@@ -225,8 +223,8 @@ Most expats choose **BCA** because:
       tips: [
         "Fill out application form",
         "Specimen signature",
-        "Initial deposit"
-      ]
+        "Initial deposit",
+      ],
     },
     {
       id: "card",
@@ -237,8 +235,8 @@ Most expats choose **BCA** because:
       tips: [
         "Some banks issue immediately",
         "Others require return visit",
-        "Activate card"
-      ]
+        "Activate card",
+      ],
     },
     {
       id: "setup",
@@ -249,9 +247,9 @@ Most expats choose **BCA** because:
       tips: [
         "Download bank app",
         "Register for mobile banking",
-        "Set up transfer limits"
-      ]
-    }
+        "Set up transfer limits",
+      ],
+    },
   ]}
 />
 
@@ -269,49 +267,49 @@ Most expats choose **BCA** because:
       label: "Passport (original + copy)",
       description: "Photo page",
       required: true,
-      category: "identity"
+      category: "identity",
     },
     {
       id: "kitas",
       label: "KITAS or KITAP (original + copy)",
       description: "Valid stay permit",
       required: true,
-      category: "identity"
+      category: "identity",
     },
     {
       id: "npwp",
       label: "NPWP",
       description: "Indonesian tax number",
       required: false,
-      category: "tax"
+      category: "tax",
     },
     {
       id: "address",
       label: "Proof of address",
       description: "Utility bill, lease, or domicile letter",
       required: true,
-      category: "address"
+      category: "address",
     },
     {
       id: "photos",
       label: "Passport photos",
       description: "Some banks require",
       required: false,
-      category: "identity"
+      category: "identity",
     },
     {
       id: "cash",
       label: "Initial deposit",
       description: "IDR 500K-1M minimum",
       required: true,
-      category: "financial"
-    }
+      category: "financial",
+    },
   ]}
   categories={[
     { id: "identity", label: "Identity", color: "blue" },
     { id: "tax", label: "Tax", color: "green" },
     { id: "address", label: "Address", color: "amber" },
-    { id: "financial", label: "Financial", color: "purple" }
+    { id: "financial", label: "Financial", color: "purple" },
   ]}
   showProgress={true}
 />
@@ -323,16 +321,16 @@ Most expats choose **BCA** because:
 If you don't have KITAS:
 
 ### Options
+
 1. **Tourist savings accounts** - Limited, some banks offer
 2. **Digital banks** - Some allow passport-only
 3. **International banks** - HSBC with global relationship
 4. **Payment apps** - GoPay, OVO (limited functions)
 
 <InfoCard variant="warning" title="Limited Without KITAS">
-Without KITAS, banking options are very limited. Consider:
-- Using international cards (Wise, Revolut)
-- Withdrawing from ATMs with foreign cards
-- Digital payment apps for daily expenses
+  Without KITAS, banking options are very limited. Consider: - Using
+  international cards (Wise, Revolut) - Withdrawing from ATMs with foreign cards
+  - Digital payment apps for daily expenses
 </InfoCard>
 
 ---
@@ -341,12 +339,12 @@ Without KITAS, banking options are very limited. Consider:
 
 ### Receiving Money to Indonesia
 
-| Method | Speed | Cost | Notes |
-|--------|-------|------|-------|
-| **Wise** | 1-2 days | Low | Best rates |
-| **Bank wire** | 2-5 days | High | Traditional |
-| **PayPal** | Instant | Medium | Limited withdrawal |
-| **Western Union** | Instant | High | Cash pickup |
+| Method            | Speed    | Cost   | Notes              |
+| ----------------- | -------- | ------ | ------------------ |
+| **Wise**          | 1-2 days | Low    | Best rates         |
+| **Bank wire**     | 2-5 days | High   | Traditional        |
+| **PayPal**        | Instant  | Medium | Limited withdrawal |
+| **Western Union** | Instant  | High   | Cash pickup        |
 
 ### Sending Money Out
 
@@ -362,12 +360,14 @@ Without KITAS, banking options are very limited. Consider:
 Most Indonesian banks have apps:
 
 ### BCA Mobile
+
 - Transfers
 - Bill payment
 - QR payments (QRIS)
 - Balance check
 
 ### Features to Look For
+
 - English language option
 - International transfer capability
 - Good UI/UX
@@ -379,14 +379,14 @@ Most Indonesian banks have apps:
 
 ### Common Fees
 
-| Fee Type | Range | Notes |
-|----------|-------|-------|
-| Monthly admin | IDR 0-15K | Some accounts free |
-| ATM withdrawal (own bank) | Free | At own network |
-| ATM withdrawal (other bank) | IDR 7,500-15K | Per transaction |
-| Transfer (same bank) | Free-5K | Usually free |
-| Transfer (other bank) | IDR 6,500-10K | Interbank |
-| SWIFT international | IDR 50-200K | Plus correspondent fees |
+| Fee Type                    | Range         | Notes                   |
+| --------------------------- | ------------- | ----------------------- |
+| Monthly admin               | IDR 0-15K     | Some accounts free      |
+| ATM withdrawal (own bank)   | Free          | At own network          |
+| ATM withdrawal (other bank) | IDR 7,500-15K | Per transaction         |
+| Transfer (same bank)        | Free-5K       | Usually free            |
+| Transfer (other bank)       | IDR 6,500-10K | Interbank               |
+| SWIFT international         | IDR 50-200K   | Plus correspondent fees |
 
 ---
 
@@ -399,7 +399,7 @@ Most Indonesian banks have apps:
     "Can I open account without NPWP?",
     "Which bank has best English support?",
     "How do I receive international transfers?",
-    "What are ATM limits for foreigners?"
+    "What are ATM limits for foreigners?",
   ]}
 />
 

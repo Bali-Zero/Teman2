@@ -71,10 +71,7 @@ relatedArticles:
 tableOfContents: true
 ---
 
-import {
-  InfoCard,
-  AskZantara
-} from '@/components/insights/interactive';
+import { InfoCard, AskZantara } from "@/components/insights/interactive";
 
 # AI Coding: From Autocomplete to Autonomous
 
@@ -86,14 +83,14 @@ import {
 
 <InfoCard variant="highlight" title="Major AI Coding Tools">
 
-| Tool | Best For | Model |
-|------|----------|-------|
-| **GitHub Copilot** | IDE integration | GPT-4o / Claude |
-| **Cursor** | Full project context | Multiple |
-| **Claude Code** | Complex reasoning | Claude 4.5 Opus |
-| **Codeium** | Free tier | Proprietary |
-| **Amazon Q** | AWS ecosystem | Proprietary |
-| **Tabnine** | Privacy-focused | Multiple |
+| Tool               | Best For             | Model           |
+| ------------------ | -------------------- | --------------- |
+| **GitHub Copilot** | IDE integration      | GPT-4o / Claude |
+| **Cursor**         | Full project context | Multiple        |
+| **Claude Code**    | Complex reasoning    | Claude 4.5 Opus |
+| **Codeium**        | Free tier            | Proprietary     |
+| **Amazon Q**       | AWS ecosystem        | Proprietary     |
+| **Tabnine**        | Privacy-focused      | Multiple        |
 
 </InfoCard>
 
@@ -102,18 +99,23 @@ import {
 ## What They Can Actually Do
 
 ### Code Generation
+
 Beyond autocomplete — describe a feature in natural language, get working implementation. "Add a user authentication system with OAuth, JWT tokens, and rate limiting."
 
 ### Bug Fixing
+
 Paste an error message, get the fix. Context-aware debugging that understands your codebase, not just the error.
 
 ### Refactoring
+
 "Refactor this class to use composition instead of inheritance" — and it actually works, maintaining all functionality.
 
 ### Test Generation
+
 "Write comprehensive tests for this module" — generates unit tests, edge cases, and integration tests with proper mocking.
 
 ### Documentation
+
 Automatic documentation generation that understands intent, not just function signatures.
 
 ---
@@ -124,15 +126,15 @@ Real data from engineering teams:
 
 <InfoCard variant="info" title="Measured Impact">
 
-| Metric | Without AI | With AI | Improvement |
-|--------|------------|---------|-------------|
-| Code written/day | 150 lines | 400 lines | 167% |
-| Time to first PR | 5 hours | 2 hours | 60% faster |
-| Bug fix time | 45 min | 15 min | 67% faster |
-| Documentation | Often skipped | Usually done | ∞ |
-| Test coverage | 60% | 85% | 42% increase |
+| Metric           | Without AI    | With AI      | Improvement  |
+| ---------------- | ------------- | ------------ | ------------ |
+| Code written/day | 150 lines     | 400 lines    | 167%         |
+| Time to first PR | 5 hours       | 2 hours      | 60% faster   |
+| Bug fix time     | 45 min        | 15 min       | 67% faster   |
+| Documentation    | Often skipped | Usually done | ∞            |
+| Test coverage    | 60%           | 85%          | 42% increase |
 
-*Source: Aggregated from GitHub, Cursor, and independent studies*
+_Source: Aggregated from GitHub, Cursor, and independent studies_
 
 </InfoCard>
 
@@ -141,12 +143,14 @@ Real data from engineering teams:
 ## Tool Deep Dive: GitHub Copilot
 
 **Strengths:**
+
 - Seamless IDE integration
 - Huge training dataset
 - Excellent for common patterns
 - Strong autocomplete
 
 **Weaknesses:**
+
 - Limited project context
 - Can't execute or test
 - Basic chat compared to dedicated AI
@@ -158,12 +162,14 @@ Real data from engineering teams:
 ## Tool Deep Dive: Cursor
 
 **Strengths:**
+
 - Full codebase context
 - Multi-file editing
 - Integrated terminal
 - Composer for large changes
 
 **Weaknesses:**
+
 - Requires new IDE adoption
 - Steeper learning curve
 - More expensive
@@ -175,12 +181,14 @@ Real data from engineering teams:
 ## Tool Deep Dive: Claude Code
 
 **Strengths:**
+
 - Superior reasoning for complex tasks
 - Extended thinking for architecture
 - Exceptional code review
 - Direct terminal access
 
 **Weaknesses:**
+
 - CLI-only currently
 - Requires Claude Pro/Max subscription
 - Learning curve for terminal-averse
@@ -212,12 +220,14 @@ The human role shifts from "writing code" to "directing AI and ensuring quality.
 <InfoCard variant="warning" title="Common Mistakes">
 
 **Don't:**
+
 - Accept AI code without understanding it
 - Let AI make architectural decisions alone
 - Skip testing because "AI wrote it"
 - Over-rely on single tools
 
 **Do:**
+
 - Verify AI suggestions against requirements
 - Use AI for first drafts, humans for review
 - Maintain strong testing practices
@@ -242,12 +252,12 @@ The playing field has leveled significantly.
 
 ## Getting Started Recommendations
 
-| Experience Level | Recommendation |
-|------------------|----------------|
-| Junior | Start with Copilot in VS Code |
-| Mid-level | Try Cursor for project-wide AI |
-| Senior | Experiment with Claude Code for complex tasks |
-| Teams | Implement with review requirements |
+| Experience Level | Recommendation                                |
+| ---------------- | --------------------------------------------- |
+| Junior           | Start with Copilot in VS Code                 |
+| Mid-level        | Try Cursor for project-wide AI                |
+| Senior           | Experiment with Claude Code for complex tasks |
+| Teams            | Implement with review requirements            |
 
 ---
 
@@ -273,6 +283,6 @@ The craft evolves. The craftsman remains essential.
     "Best AI tool for beginners?",
     "Is AI-generated code production-ready?",
     "How to learn AI-assisted coding?",
-    "Will AI replace developers?"
+    "Will AI replace developers?",
   ]}
 />

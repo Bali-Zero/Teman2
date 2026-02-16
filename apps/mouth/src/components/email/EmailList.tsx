@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React from 'react';
+import React from "react";
 import {
   Star,
   Paperclip,
@@ -11,10 +11,10 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useDebounce } from '@/lib/hooks/optimized';
-import type { EmailSummary } from '@/lib/api/email/email.types';
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useDebounce } from "@/lib/hooks/optimized";
+import type { EmailSummary } from "@/lib/api/email/email.types";
 
 interface EmailListProps {
   emails: EmailSummary[];
@@ -73,10 +73,10 @@ export function EmailList({
         <button
           onClick={() => onSelectAll(!allSelected)}
           className={cn(
-            'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
+            "w-5 h-5 rounded border-2 flex items-center justify-center transition-colors",
             allSelected
-              ? 'bg-[var(--accent)] border-[var(--accent)]'
-              : 'border-[var(--border)] hover:border-[var(--accent)]'
+              ? "bg-[var(--accent)] border-[var(--accent)]"
+              : "border-[var(--border)] hover:border-[var(--accent)]",
           )}
         >
           {allSelected && <Check className="w-3 h-3 text-white" />}
@@ -119,10 +119,10 @@ export function EmailList({
               onChange={(e) => setLocalSearch(e.target.value)}
               placeholder="Search emails..."
               className={cn(
-                'w-full pl-9 pr-3 py-2 text-sm rounded-lg transition-colors',
-                'bg-[var(--background-elevated)] border border-[var(--border)]',
-                'text-[var(--foreground)] placeholder:text-[var(--foreground-muted)]',
-                'focus:outline-none focus:border-[var(--accent)]'
+                "w-full pl-9 pr-3 py-2 text-sm rounded-lg transition-colors",
+                "bg-[var(--background-elevated)] border border-[var(--border)]",
+                "text-[var(--foreground)] placeholder:text-[var(--foreground-muted)]",
+                "focus:outline-none focus:border-[var(--accent)]",
               )}
             />
           </div>
@@ -146,7 +146,9 @@ export function EmailList({
           <div className="flex flex-col items-center justify-center h-full text-center p-6">
             <Mail className="w-12 h-12 text-[var(--foreground-muted)] opacity-50 mb-4" />
             <p className="text-sm text-[var(--foreground-muted)]">
-              {searchQuery ? 'No emails match your search' : 'No emails in this folder'}
+              {searchQuery
+                ? "No emails match your search"
+                : "No emails in this folder"}
             </p>
           </div>
         ) : (
@@ -160,12 +162,12 @@ export function EmailList({
                 <div
                   key={email.message_id}
                   className={cn(
-                    'flex items-start gap-3 px-3 py-3 cursor-pointer transition-colors',
+                    "flex items-start gap-3 px-3 py-3 cursor-pointer transition-colors",
                     isActive
-                      ? 'bg-[var(--accent)]/10'
+                      ? "bg-[var(--accent)]/10"
                       : !email.is_read
-                        ? 'bg-[var(--background-secondary)]'
-                        : 'hover:bg-[var(--background-elevated)]'
+                        ? "bg-[var(--background-secondary)]"
+                        : "hover:bg-[var(--background-elevated)]",
                   )}
                 >
                   {/* Checkbox */}
@@ -175,10 +177,10 @@ export function EmailList({
                       onToggleSelect(email.message_id);
                     }}
                     className={cn(
-                      'w-5 h-5 mt-0.5 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors',
+                      "w-5 h-5 mt-0.5 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors",
                       isSelected
-                        ? 'bg-[var(--accent)] border-[var(--accent)]'
-                        : 'border-[var(--border)] hover:border-[var(--accent)]'
+                        ? "bg-[var(--accent)] border-[var(--accent)]"
+                        : "border-[var(--border)] hover:border-[var(--accent)]",
                     )}
                   >
                     {isSelected && <Check className="w-3 h-3 text-white" />}
@@ -191,24 +193,32 @@ export function EmailList({
                       onToggleFlag(email.message_id);
                     }}
                     className={cn(
-                      'mt-0.5 flex-shrink-0 transition-colors',
+                      "mt-0.5 flex-shrink-0 transition-colors",
                       email.is_flagged
-                        ? 'text-[var(--warning)]'
-                        : 'text-[var(--foreground-muted)] hover:text-[var(--warning)]'
+                        ? "text-[var(--warning)]"
+                        : "text-[var(--foreground-muted)] hover:text-[var(--warning)]",
                     )}
                   >
-                    <Star className={cn('w-4 h-4', email.is_flagged && 'fill-current')} />
+                    <Star
+                      className={cn(
+                        "w-4 h-4",
+                        email.is_flagged && "fill-current",
+                      )}
+                    />
                   </button>
 
                   {/* Email Content */}
-                  <div onClick={() => onSelectEmail(email.message_id)} className="flex-1 min-w-0">
+                  <div
+                    onClick={() => onSelectEmail(email.message_id)}
+                    className="flex-1 min-w-0"
+                  >
                     <div className="flex items-center gap-2 mb-0.5">
                       <span
                         className={cn(
-                          'text-sm truncate',
+                          "text-sm truncate",
                           !email.is_read
-                            ? 'font-semibold text-[var(--foreground)]'
-                            : 'text-[var(--foreground)]'
+                            ? "font-semibold text-[var(--foreground)]"
+                            : "text-[var(--foreground)]",
                         )}
                       >
                         {email.from.name || email.from.address}
@@ -219,13 +229,13 @@ export function EmailList({
                     </div>
                     <p
                       className={cn(
-                        'text-sm truncate mb-0.5',
+                        "text-sm truncate mb-0.5",
                         !email.is_read
-                          ? 'font-medium text-[var(--foreground)]'
-                          : 'text-[var(--foreground-muted)]'
+                          ? "font-medium text-[var(--foreground)]"
+                          : "text-[var(--foreground-muted)]",
                       )}
                     >
-                      {email.subject || '(No subject)'}
+                      {email.subject || "(No subject)"}
                     </p>
                     <p className="text-xs text-[var(--foreground-muted)] truncate">
                       {email.snippet}
@@ -249,7 +259,7 @@ export function EmailList({
       {totalEmails > 0 && (
         <div className="flex items-center justify-between p-3 border-t border-[var(--border)] bg-[var(--background-secondary)]">
           <span className="text-xs text-[var(--foreground-muted)]">
-            {emails.length > 0 ? (currentPage - 1) * 50 + 1 : 0} -{' '}
+            {emails.length > 0 ? (currentPage - 1) * 50 + 1 : 0} -{" "}
             {Math.min(currentPage * 50, totalEmails)} of {totalEmails} emails
           </span>
           <div className="flex items-center gap-1">
@@ -282,17 +292,24 @@ function formatDate(dateStr: string): string {
       ? new Date(timestamp) // Timestamp in milliseconds
       : new Date(dateStr); // ISO string
 
-  if (isNaN(date.getTime())) return '';
+  if (isNaN(date.getTime())) return "";
 
   const now = new Date();
   const isToday = date.toDateString() === now.toDateString();
   const isThisYear = date.getFullYear() === now.getFullYear();
 
   if (isToday) {
-    return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString("it-IT", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   } else if (isThisYear) {
-    return date.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+    return date.toLocaleDateString("it-IT", { day: "numeric", month: "short" });
   } else {
-    return date.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
+    return date.toLocaleDateString("it-IT", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
   }
 }

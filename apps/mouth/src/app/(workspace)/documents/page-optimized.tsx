@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Documents Page - Ultra Optimized
@@ -6,13 +6,13 @@
  * Versione perfezionata con React Query, virtualizzazione e performance ottimali
  */
 
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { Loader2, CloudOff, Cloud, Sparkles } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { api } from '@/lib/api';
-import { logger } from '@/lib/logger';
+import React, { useState, useCallback, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import { Loader2, CloudOff, Cloud, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
+import { logger } from "@/lib/logger";
 
 // Hooks ottimizzati
 import {
@@ -23,23 +23,23 @@ import {
   useDriveMutationsOptimized,
   useFileSelection,
   useFileKeyboardNavigation,
-} from '@/hooks';
+} from "@/hooks";
 
 // Componenti
 import {
   DocumentsErrorBoundary,
   DocumentsInlineError,
   logDocumentsError,
-} from './components/DocumentsErrorBoundary';
-import { DriveToolbarOptimized } from './components/DriveToolbarOptimized';
-import { DriveBreadcrumb } from './components/DriveBreadcrumb';
-import { FileGridVirtualized } from './components/FileGridVirtualized';
-import { FileList } from './components/FileList';
-import { FileGridSkeleton } from './components/FileGridSkeleton';
-import { FileListSkeleton } from './components/FileListSkeleton';
-import { DepartmentHome } from './components/DepartmentHome';
-import { DriveSidebar } from './components/DriveSidebar';
-import { DriveInfoPanel } from './components/DriveInfoPanel';
+} from "./components/DocumentsErrorBoundary";
+import { DriveToolbarOptimized } from "./components/DriveToolbarOptimized";
+import { DriveBreadcrumb } from "./components/DriveBreadcrumb";
+import { FileGridVirtualized } from "./components/FileGridVirtualized";
+import { FileList } from "./components/FileList";
+import { FileGridSkeleton } from "./components/FileGridSkeleton";
+import { FileListSkeleton } from "./components/FileListSkeleton";
+import { DepartmentHome } from "./components/DepartmentHome";
+import { DriveSidebar } from "./components/DriveSidebar";
+import { DriveInfoPanel } from "./components/DriveInfoPanel";
 
 import {
   FileModal,
@@ -49,33 +49,38 @@ import {
   DropZone,
   UploadDialog,
   FileViewer,
-} from '@/components/documents';
+} from "@/components/documents";
 
-import type { FileItem } from '@/lib/api/drive/drive.types';
+import type { FileItem } from "@/lib/api/drive/drive.types";
 
 export default function DocumentsPageOptimized() {
   const router = useRouter();
 
   // State
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [sidebarView, setSidebarView] = useState<'my-drive' | 'recent' | 'starred' | 'trash'>(
-    'my-drive'
-  );
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [sidebarView, setSidebarView] = useState<
+    "my-drive" | "recent" | "starred" | "trash"
+  >("my-drive");
   const [showInfoPanel, setShowInfoPanel] = useState(false);
 
   // Modal states
-  const [modalMode, setModalMode] = useState<'folder' | 'rename' | null>(null);
+  const [modalMode, setModalMode] = useState<"folder" | "rename" | null>(null);
   const [renameTarget, setRenameTarget] = useState<FileItem | null>(null);
-  const [createMenuPos, setCreateMenuPos] = useState<{ x: number; y: number } | null>(null);
+  const [createMenuPos, setCreateMenuPos] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
   const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [filesToMove, setFilesToMove] = useState<FileItem[]>([]);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; file: FileItem } | null>(
-    null
-  );
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    file: FileItem;
+  } | null>(null);
 
   // Data fetching
   const { data: driveStatus, isLoading: statusLoading } = useDriveStatus();
@@ -95,12 +100,14 @@ export default function DocumentsPageOptimized() {
   }, [filesData]);
 
   const breadcrumb = useMemo(() => {
-    return filesData?.pages[0]?.breadcrumb || [{ id: 'root', name: 'My Drive' }];
+    return (
+      filesData?.pages[0]?.breadcrumb || [{ id: "root", name: "My Drive" }]
+    );
   }, [filesData]);
 
   const isConnected = driveStatus?.connected ?? false;
   const isConfigured = driveStatus?.configured ?? false;
-  const isAtRoot = currentFolderId === null && searchQuery === '';
+  const isAtRoot = currentFolderId === null && searchQuery === "";
 
   // File selection
   const {
@@ -116,7 +123,8 @@ export default function DocumentsPageOptimized() {
   const { uploads, uploadMultiple, clearCompleted } = useDriveUpload();
 
   // Mutations
-  const { createFolder, renameFile, deleteFile, moveFiles } = useDriveMutationsOptimized();
+  const { createFolder, renameFile, deleteFile, moveFiles } =
+    useDriveMutationsOptimized();
 
   // Prefetching
   const { prefetchFolder } = usePrefetchFolder();
@@ -126,27 +134,27 @@ export default function DocumentsPageOptimized() {
     (file: FileItem) => {
       if (file.is_folder) {
         setCurrentFolderId(file.id);
-        setSearchQuery('');
+        setSearchQuery("");
         handleDeselectAll();
       } else {
         setPreviewFile(file);
       }
     },
-    [handleDeselectAll]
+    [handleDeselectAll],
   );
 
   const handleFileClick = useCallback(
     (file: FileItem, index: number, e: React.MouseEvent) => {
       handleSelect(file, index, e);
     },
-    [handleSelect]
+    [handleSelect],
   );
 
   const handleFileDoubleClick = useCallback(
     (file: FileItem) => {
       handleFileOpen(file);
     },
-    [handleFileOpen]
+    [handleFileOpen],
   );
 
   const handleContextMenu = useCallback(
@@ -157,7 +165,7 @@ export default function DocumentsPageOptimized() {
       }
       setContextMenu({ x: e.clientX, y: e.clientY, file });
     },
-    [selectedIds, selectSingle]
+    [selectedIds, selectSingle],
   );
 
   const handleNavigate = useCallback(
@@ -167,10 +175,10 @@ export default function DocumentsPageOptimized() {
       } else if (breadcrumb[index]) {
         setCurrentFolderId(breadcrumb[index].id);
       }
-      setSearchQuery('');
+      setSearchQuery("");
       handleDeselectAll();
     },
-    [breadcrumb, handleDeselectAll]
+    [breadcrumb, handleDeselectAll],
   );
 
   const handleUpload = useCallback(
@@ -178,7 +186,7 @@ export default function DocumentsPageOptimized() {
       setShowUploadDialog(false);
       await uploadMultiple(filesToUpload, currentFolderId, { parallel: 3 });
     },
-    [currentFolderId, uploadMultiple]
+    [currentFolderId, uploadMultiple],
   );
 
   const handleConnect = async () => {
@@ -200,7 +208,7 @@ export default function DocumentsPageOptimized() {
     },
     onRename: (file) => {
       setRenameTarget(file);
-      setModalMode('rename');
+      setModalMode("rename");
     },
     enabled: isConnected && !isAtRoot,
   });
@@ -211,13 +219,13 @@ export default function DocumentsPageOptimized() {
       setContextMenu(null);
       setCreateMenuPos(null);
     };
-    window.addEventListener('click', handleClick);
-    return () => window.removeEventListener('click', handleClick);
+    window.addEventListener("click", handleClick);
+    return () => window.removeEventListener("click", handleClick);
   }, []);
 
   useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown as any);
-    return () => window.removeEventListener('keydown', handleKeyDown as any);
+    window.addEventListener("keydown", handleKeyDown as any);
+    return () => window.removeEventListener("keydown", handleKeyDown as any);
   }, [handleKeyDown]);
 
   // Loading state
@@ -226,7 +234,7 @@ export default function DocumentsPageOptimized() {
       <div className="flex h-screen flex-col items-center justify-center gap-4 bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-slate-950 dark:via-slate-900 dark:to-blue-950">
         <motion.div
           animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
         >
           <Loader2 className="h-10 w-10 text-blue-500" />
         </motion.div>
@@ -269,7 +277,9 @@ export default function DocumentsPageOptimized() {
 
   // Main interface
   const selectedFile =
-    selectedIds.size === 1 ? files.find((f) => selectedIds.has(f.id)) || null : null;
+    selectedIds.size === 1
+      ? files.find((f) => selectedIds.has(f.id)) || null
+      : null;
 
   return (
     <DocumentsErrorBoundary onReset={refetch}>
@@ -298,7 +308,9 @@ export default function DocumentsPageOptimized() {
                 viewMode={viewMode}
                 onViewModeChange={setViewMode}
                 onUploadClick={() => setShowUploadDialog(true)}
-                onCreateClick={(e) => setCreateMenuPos({ x: e.clientX, y: e.clientY + 20 })}
+                onCreateClick={(e) =>
+                  setCreateMenuPos({ x: e.clientX, y: e.clientY + 20 })
+                }
                 isConnected={isConnected}
                 isSyncing={isFetchingNextPage}
                 showInfoPanel={showInfoPanel}
@@ -308,13 +320,19 @@ export default function DocumentsPageOptimized() {
                 selectedCount={selectedIds.size}
               />
               <div className="border-b border-slate-200/60 bg-white dark:bg-[var(--background)] px-4 py-2">
-                <DriveBreadcrumb items={breadcrumb} onNavigate={handleNavigate} />
+                <DriveBreadcrumb
+                  items={breadcrumb}
+                  onNavigate={handleNavigate}
+                />
               </div>
             </>
           )}
 
           {/* File Grid/List */}
-          <DropZone onFilesDropped={handleUpload} disabled={!isConnected || isAtRoot}>
+          <DropZone
+            onFilesDropped={handleUpload}
+            disabled={!isConnected || isAtRoot}
+          >
             <div
               className="flex-1 overflow-hidden bg-white dark:bg-[var(--background)]"
               onClick={handleDeselectAll}
@@ -325,7 +343,7 @@ export default function DocumentsPageOptimized() {
                   onRetry={refetch}
                 />
               ) : filesLoading && !files.length ? (
-                viewMode === 'grid' ? (
+                viewMode === "grid" ? (
                   <FileGridSkeleton />
                 ) : (
                   <FileListSkeleton />
@@ -337,7 +355,7 @@ export default function DocumentsPageOptimized() {
                   storageUsed={0}
                   storageTotal={30 * 1024 * 1024 * 1024 * 1024}
                 />
-              ) : viewMode === 'grid' ? (
+              ) : viewMode === "grid" ? (
                 <FileGridVirtualized
                   files={files}
                   selectedFiles={selectedIds}
@@ -375,7 +393,7 @@ export default function DocumentsPageOptimized() {
               try {
                 await api.drive.downloadFile(file.id, file.name);
               } catch {
-                window.open(api.drive.getDownloadUrl(file.id), '_blank');
+                window.open(api.drive.getDownloadUrl(file.id), "_blank");
               }
             }}
             onDelete={(file) => {
@@ -392,7 +410,7 @@ export default function DocumentsPageOptimized() {
           isOpen={!!createMenuPos}
           onClose={() => setCreateMenuPos(null)}
           position={createMenuPos || { x: 0, y: 0 }}
-          onSelect={(mode) => setModalMode(mode === 'folder' ? 'folder' : null)}
+          onSelect={(mode) => setModalMode(mode === "folder" ? "folder" : null)}
         />
 
         <FileModal
@@ -402,12 +420,12 @@ export default function DocumentsPageOptimized() {
             setModalMode(null);
             setRenameTarget(null);
           }}
-          initialName={renameTarget?.name || ''}
+          initialName={renameTarget?.name || ""}
           loading={createFolder.isPending || renameFile.isPending}
           onSubmit={(name) => {
-            if (modalMode === 'rename' && renameTarget) {
+            if (modalMode === "rename" && renameTarget) {
               renameFile.mutate({ fileId: renameTarget.id, newName: name });
-            } else if (modalMode === 'folder') {
+            } else if (modalMode === "folder") {
               createFolder.mutate({ name, parentId: currentFolderId });
             }
             setModalMode(null);
@@ -423,7 +441,7 @@ export default function DocumentsPageOptimized() {
             onOpen={handleFileOpen}
             onRename={(file) => {
               setRenameTarget(file);
-              setModalMode('rename');
+              setModalMode("rename");
             }}
             onDelete={(file) => deleteFile.mutate(file.id)}
             onMove={(file) => {
@@ -435,7 +453,7 @@ export default function DocumentsPageOptimized() {
               try {
                 await api.drive.downloadFile(file.id, file.name);
               } catch {
-                window.open(api.drive.getDownloadUrl(file.id), '_blank');
+                window.open(api.drive.getDownloadUrl(file.id), "_blank");
               }
             }}
           />
@@ -446,13 +464,18 @@ export default function DocumentsPageOptimized() {
             isOpen={true}
             onClose={() => setShowMoveDialog(false)}
             onMove={(targetId) => {
-              moveFiles.mutate({ fileIds: filesToMove.map((f) => f.id), targetFolderId: targetId });
+              moveFiles.mutate({
+                fileIds: filesToMove.map((f) => f.id),
+                targetFolderId: targetId,
+              });
               setShowMoveDialog(false);
             }}
             files={filesToMove}
             currentFolderId={currentFolderId}
             onLoadFolder={async (parentId) => {
-              const results = await api.drive.listFiles({ folder_id: parentId || undefined });
+              const results = await api.drive.listFiles({
+                folder_id: parentId || undefined,
+              });
               return results.files;
             }}
           />
@@ -462,7 +485,7 @@ export default function DocumentsPageOptimized() {
           isOpen={showUploadDialog}
           onClose={() => setShowUploadDialog(false)}
           onUpload={handleUpload}
-          uploading={uploads.some((u) => u.status === 'uploading')}
+          uploading={uploads.some((u) => u.status === "uploading")}
         />
 
         <FileViewer
@@ -473,7 +496,7 @@ export default function DocumentsPageOptimized() {
             try {
               await api.drive.downloadFile(file.id, file.name);
             } catch {
-              window.open(api.drive.getDownloadUrl(file.id), '_blank');
+              window.open(api.drive.getDownloadUrl(file.id), "_blank");
             }
           }}
         />

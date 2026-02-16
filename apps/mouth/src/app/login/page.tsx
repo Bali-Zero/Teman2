@@ -1,54 +1,57 @@
-'use client';
+"use client";
 
-import { useSystemSound } from '@/hooks/useSystemSound';
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { ArrowRight } from 'lucide-react';
-import { api } from '@/lib/api';
-import { logger } from '@/lib/logger';
+import { useSystemSound } from "@/hooks/useSystemSound";
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { ArrowRight } from "lucide-react";
+import { api } from "@/lib/api";
+import { logger } from "@/lib/logger";
 
 // Configuration
 const REDIRECT_DELAY_MS = 1500;
 const ERROR_RESET_DELAY_MS = 2000;
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [pin, setPin] = useState('');
-  const [loginStage, setLoginStage] = useState<'idle' | 'authenticating' | 'success' | 'denied'>(
-    'idle'
-  );
+  const [email, setEmail] = useState("");
+  const [pin, setPin] = useState("");
+  const [loginStage, setLoginStage] = useState<
+    "idle" | "authenticating" | "success" | "denied"
+  >("idle");
   const { play } = useSystemSound();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loginStage !== 'idle') return;
+    if (loginStage !== "idle") return;
 
-    logger.info('Login process started', {
-      component: 'LoginPage',
-      action: 'handleLogin',
+    logger.info("Login process started", {
+      component: "LoginPage",
+      action: "handleLogin",
       metadata: {
         email,
         currentUrl: globalThis.location.href,
         cookiesEnabled: navigator.cookieEnabled,
-        localStorageAvailable: typeof localStorage !== 'undefined',
+        localStorageAvailable: typeof localStorage !== "undefined",
       },
     });
 
     // 1. Sound: Authenticate Start
-    play('auth_start');
-    setLoginStage('authenticating');
-    logger.debug('Auth sound played, stage set to authenticating', {
-      component: 'LoginPage',
-      action: 'handleLogin',
+    play("auth_start");
+    setLoginStage("authenticating");
+    logger.debug("Auth sound played, stage set to authenticating", {
+      component: "LoginPage",
+      action: "handleLogin",
     });
 
     try {
       // 2. Real API call
-      logger.debug('Calling api.login()', { component: 'LoginPage', action: 'handleLogin' });
+      logger.debug("Calling api.login()", {
+        component: "LoginPage",
+        action: "handleLogin",
+      });
       const loginResponse = await api.login(email, pin);
-      logger.info('Login API call successful', {
-        component: 'LoginPage',
-        action: 'handleLogin',
+      logger.info("Login API call successful", {
+        component: "LoginPage",
+        action: "handleLogin",
         metadata: {
           hasUser: !!loginResponse.user,
           userRole: loginResponse.user?.role,
@@ -57,28 +60,32 @@ export default function LoginPage() {
       });
 
       // 3. Success - Backend returned 200 OK with valid user data
-      setLoginStage('success');
-      play('access_granted');
-      logger.info('Login successful! Backend authenticated via httpOnly cookies', {
-        component: 'LoginPage',
-        action: 'handleLogin',
-      });
+      setLoginStage("success");
+      play("access_granted");
+      logger.info(
+        "Login successful! Backend authenticated via httpOnly cookies",
+        {
+          component: "LoginPage",
+          action: "handleLogin",
+        },
+      );
 
       // Get redirect path based on user role
       // Clients go to /portal, team members go to /dashboard
-      const redirectTo = loginResponse.user?.role === 'client' ? '/portal' : '/dashboard';
-      logger.info('Redirect path determined', {
-        component: 'LoginPage',
-        action: 'handleLogin',
+      const redirectTo =
+        loginResponse.user?.role === "client" ? "/portal" : "/dashboard";
+      logger.info("Redirect path determined", {
+        component: "LoginPage",
+        action: "handleLogin",
         metadata: { redirectTo, userRole: loginResponse.user?.role },
       });
 
       // Use globalThis.location.replace for a clean redirect without history entry
       // This ensures a full page reload so the layout can properly read the token
       setTimeout(() => {
-        logger.debug('Redirecting user', {
-          component: 'LoginPage',
-          action: 'handleLogin',
+        logger.debug("Redirecting user", {
+          component: "LoginPage",
+          action: "handleLogin",
           metadata: { redirectTo },
         });
         globalThis.location.replace(redirectTo);
@@ -86,25 +93,25 @@ export default function LoginPage() {
     } catch (error) {
       // 4. Failure
       logger.error(
-        'Login failed',
+        "Login failed",
         {
-          component: 'LoginPage',
-          action: 'handleLogin',
+          component: "LoginPage",
+          action: "handleLogin",
           metadata: { email },
         },
-        error instanceof Error ? error : new Error(String(error))
+        error instanceof Error ? error : new Error(String(error)),
       );
 
-      setLoginStage('denied');
-      play('access_denied');
+      setLoginStage("denied");
+      play("access_denied");
 
       // Reset after delay
       setTimeout(() => {
-        logger.debug('Resetting to idle state', {
-          component: 'LoginPage',
-          action: 'handleLogin',
+        logger.debug("Resetting to idle state", {
+          component: "LoginPage",
+          action: "handleLogin",
         });
-        setLoginStage('idle');
+        setLoginStage("idle");
       }, ERROR_RESET_DELAY_MS);
     }
   };
@@ -127,7 +134,7 @@ export default function LoginPage() {
       />
 
       {/* ACCESS GRANTED OVERLAY */}
-      {loginStage === 'success' && (
+      {loginStage === "success" && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -141,7 +148,7 @@ export default function LoginPage() {
       )}
 
       {/* ACCESS DENIED OVERLAY */}
-      {loginStage === 'denied' && (
+      {loginStage === "denied" && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -160,9 +167,9 @@ export default function LoginPage() {
         initial={{ x: -50, opacity: 0 }}
         animate={{
           x: 0,
-          opacity: loginStage === 'authenticating' ? 0.5 : 1, // Dim on authenticating
+          opacity: loginStage === "authenticating" ? 0.5 : 1, // Dim on authenticating
         }}
-        transition={{ duration: 0.8, ease: 'easeOut' }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
         className="w-full lg:w-[35%] h-full min-h-screen bg-[#212222] relative z-20 flex flex-col px-12 lg:px-16 py-12"
       >
         {/* Top: Brand Identity */}
@@ -172,9 +179,9 @@ export default function LoginPage() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{
               opacity: 1,
-              scale: loginStage === 'authenticating' ? 1.015 : 1, // Logo Zoom on Auth
+              scale: loginStage === "authenticating" ? 1.015 : 1, // Logo Zoom on Auth
             }}
-            transition={{ duration: loginStage === 'authenticating' ? 1 : 1 }}
+            transition={{ duration: loginStage === "authenticating" ? 1 : 1 }}
             className="relative w-32 md:w-40"
           >
             <img
@@ -209,8 +216,8 @@ export default function LoginPage() {
                 placeholder="user@zantara.id"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                onFocus={() => play('focus')}
-                disabled={loginStage !== 'idle'}
+                onFocus={() => play("focus")}
+                disabled={loginStage !== "idle"}
                 className="w-full bg-black/20 border-b border-white/10 py-3 pl-0 text-red-50 placeholder-white/20 caret-[#CE1126] focus:outline-none focus:border-[#CE1126] focus:shadow-[0_0_10px_rgba(206,17,38,0.2)] focus:bg-white/[0.02] transition-colors duration-0 text-sm font-light tracking-wide rounded-none"
               />
             </div>
@@ -229,8 +236,8 @@ export default function LoginPage() {
                 placeholder="••••••••"
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
-                onFocus={() => play('focus')}
-                disabled={loginStage !== 'idle'}
+                onFocus={() => play("focus")}
+                disabled={loginStage !== "idle"}
                 className="w-full bg-black/20 border-b border-white/10 py-3 pl-0 text-red-50 placeholder-white/20 caret-[#CE1126] focus:outline-none focus:border-[#CE1126] focus:shadow-[0_0_10px_rgba(206,17,38,0.2)] focus:bg-white/[0.02] transition-colors duration-0 text-sm font-light tracking-wide rounded-none"
               />
             </div>
@@ -238,7 +245,7 @@ export default function LoginPage() {
             <div className="pt-8">
               <button
                 type="submit"
-                disabled={loginStage !== 'idle'}
+                disabled={loginStage !== "idle"}
                 className="w-full group relative overflow-hidden bg-white/5 hover:bg-[#CE1126] hover:border-[#CE1126] hover:shadow-[0_0_30px_rgba(206,17,38,0.4)] border border-white/10 text-white text-xs font-bold tracking-[0.2em] uppercase py-4 transition-all duration-300 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span className="opacity-80 group-hover:opacity-100 transition-opacity">
@@ -247,7 +254,7 @@ export default function LoginPage() {
                 <ArrowRight className="h-3 w-3 text-cyan-500 opacity-70 group-hover:text-white group-hover:translate-x-1 group-hover:opacity-100 transition-all" />
 
                 {/* Glow Effect only on idle */}
-                {loginStage === 'idle' && (
+                {loginStage === "idle" && (
                   <div className="absolute bottom-0 left-0 h-[1px] w-full bg-gradient-to-r from-transparent via-white/50 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-500" />
                 )}
               </button>
@@ -258,7 +265,9 @@ export default function LoginPage() {
         {/* Footer */}
         <div className="w-full pt-8 border-t border-white/5">
           <div className="flex justify-between items-end">
-            <div className="text-[10px] text-white/20 tracking-[0.2em] font-mono">SYSTEM v5.4</div>
+            <div className="text-[10px] text-white/20 tracking-[0.2em] font-mono">
+              SYSTEM v5.4
+            </div>
             <div className="flex flex-col items-end gap-1">
               <div className="flex items-center gap-2">
                 <span className="w-1 h-1 rounded-full bg-cyan-500/50 animate-pulse" />
@@ -277,9 +286,9 @@ export default function LoginPage() {
           className="relative w-full h-full"
           animate={{
             filter:
-              loginStage === 'authenticating'
-                ? 'brightness(1.2) contrast(1.1)'
-                : 'brightness(1) contrast(1)',
+              loginStage === "authenticating"
+                ? "brightness(1.2) contrast(1.1)"
+                : "brightness(1) contrast(1)",
           }}
           transition={{ duration: 0.2 }} // Fast reaction to auth start
         >

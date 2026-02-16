@@ -77,8 +77,8 @@ import {
   Calculator,
   Checklist,
   InfoCard,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Bali Digital Nomad Guide 2026: Everything You Need
 
@@ -99,6 +99,7 @@ Bali remains one of the world's top digital nomad destinations. Here's your comp
 - Time zone works for many markets
 
 Over 100,000 digital nomads call Bali home.
+
 </InfoCard>
 
 ---
@@ -116,67 +117,73 @@ Over 100,000 digital nomads call Bali home.
         { label: "Social, nightlife, beach", next: "party" },
         { label: "Nature, yoga, spirituality", next: "spiritual" },
         { label: "Surfing, fitness, community", next: "surf" },
-        { label: "Quiet, local, authentic", next: "quiet" }
-      ]
+        { label: "Quiet, local, authentic", next: "quiet" },
+      ],
     },
     {
       id: "party",
       question: "Budget level?",
       options: [
         { label: "Budget-conscious", next: "kuta" },
-        { label: "Mid-range and up", next: "seminyak" }
-      ]
+        { label: "Mid-range and up", next: "seminyak" },
+      ],
     },
     {
       id: "spiritual",
       result: {
         title: "Ubud",
-        description: "Cultural heart of Bali. Rice terraces, yoga, healthy food, art scene. Slower pace, nature, retreats. Moderate prices. Good for longer stays."
-      }
+        description:
+          "Cultural heart of Bali. Rice terraces, yoga, healthy food, art scene. Slower pace, nature, retreats. Moderate prices. Good for longer stays.",
+      },
     },
     {
       id: "surf",
       result: {
         title: "Canggu",
-        description: "Digital nomad capital of Bali. Great coworking, surf breaks, fitness scene. Buzzing but not overwhelming. Where most nomads end up."
-      }
+        description:
+          "Digital nomad capital of Bali. Great coworking, surf breaks, fitness scene. Buzzing but not overwhelming. Where most nomads end up.",
+      },
     },
     {
       id: "quiet",
       question: "Beach or mountains?",
       options: [
         { label: "Beach", next: "sanur" },
-        { label: "Mountains/Cooler", next: "munduk" }
-      ]
+        { label: "Mountains/Cooler", next: "munduk" },
+      ],
     },
     {
       id: "kuta",
       result: {
         title: "Kuta/Legian",
-        description: "Budget-friendly, close to airport, lots of options. Busy and touristy but affordable. Good for short stays."
-      }
+        description:
+          "Budget-friendly, close to airport, lots of options. Busy and touristy but affordable. Good for short stays.",
+      },
     },
     {
       id: "seminyak",
       result: {
         title: "Seminyak",
-        description: "Upscale beach area. Boutiques, restaurants, beach clubs. Higher prices but more refined. Good for those wanting comfort."
-      }
+        description:
+          "Upscale beach area. Boutiques, restaurants, beach clubs. Higher prices but more refined. Good for those wanting comfort.",
+      },
     },
     {
       id: "sanur",
       result: {
         title: "Sanur",
-        description: "Relaxed beach town. Quieter, older crowd, calm waters. Good for focus work. Growing nomad presence. Good value."
-      }
+        description:
+          "Relaxed beach town. Quieter, older crowd, calm waters. Good for focus work. Growing nomad presence. Good value.",
+      },
     },
     {
       id: "munduk",
       result: {
         title: "North Bali (Munduk/Sidemen)",
-        description: "Mountain areas, cooler climate, rice terraces, waterfalls. Very peaceful. Limited infrastructure but improving. For those seeking solitude."
-      }
-    }
+        description:
+          "Mountain areas, cooler climate, rice terraces, waterfalls. Very peaceful. Limited infrastructure but improving. For those seeking solitude.",
+      },
+    },
   ]}
 />
 
@@ -192,58 +199,58 @@ Over 100,000 digital nomads call Bali home.
       name: "Canggu",
       subtitle: "Nomad central",
       values: {
-        "Coworking": "Excellent (10+)",
-        "Internet": "Good to great",
-        "Cost": "IDR 15-30M/month",
-        "Vibe": "Social, active",
-        "Best for": "Community seekers"
+        Coworking: "Excellent (10+)",
+        Internet: "Good to great",
+        Cost: "IDR 15-30M/month",
+        Vibe: "Social, active",
+        "Best for": "Community seekers",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "Ubud",
       subtitle: "Cultural hub",
       values: {
-        "Coworking": "Good (5-6)",
-        "Internet": "Good",
-        "Cost": "IDR 12-25M/month",
-        "Vibe": "Peaceful, spiritual",
-        "Best for": "Wellness focus"
-      }
+        Coworking: "Good (5-6)",
+        Internet: "Good",
+        Cost: "IDR 12-25M/month",
+        Vibe: "Peaceful, spiritual",
+        "Best for": "Wellness focus",
+      },
     },
     {
       name: "Seminyak",
       subtitle: "Upscale beach",
       values: {
-        "Coworking": "Limited",
-        "Internet": "Good",
-        "Cost": "IDR 20-40M/month",
-        "Vibe": "Polished, dining",
-        "Best for": "Comfort seekers"
-      }
+        Coworking: "Limited",
+        Internet: "Good",
+        Cost: "IDR 20-40M/month",
+        Vibe: "Polished, dining",
+        "Best for": "Comfort seekers",
+      },
     },
     {
       name: "Sanur",
       subtitle: "Quiet beach",
       values: {
-        "Coworking": "Few",
-        "Internet": "Good",
-        "Cost": "IDR 10-20M/month",
-        "Vibe": "Relaxed, family",
-        "Best for": "Focus + peace"
-      }
+        Coworking: "Few",
+        Internet: "Good",
+        Cost: "IDR 10-20M/month",
+        Vibe: "Relaxed, family",
+        "Best for": "Focus + peace",
+      },
     },
     {
       name: "Uluwatu",
       subtitle: "Surf haven",
       values: {
-        "Coworking": "Growing",
-        "Internet": "Variable",
-        "Cost": "IDR 15-35M/month",
-        "Vibe": "Surfy, cliff-top",
-        "Best for": "Surfers"
-      }
-    }
+        Coworking: "Growing",
+        Internet: "Variable",
+        Cost: "IDR 15-35M/month",
+        Vibe: "Surfy, cliff-top",
+        "Best for": "Surfers",
+      },
+    },
   ]}
 />
 
@@ -338,7 +345,8 @@ Over 100,000 digital nomads call Bali home.
       currency: "IDR",
       note: `~USD ${Math.round(total / 16000).toLocaleString()}/month`
     };
-  }}
+
+}}
 />
 
 ---
@@ -347,12 +355,12 @@ Over 100,000 digital nomads call Bali home.
 
 ### Best Visas for Nomads
 
-| Visa | Duration | Best For |
-|------|----------|----------|
-| VOA | 30+30 days | Short stays |
-| E33G | Up to 1 year | Digital Nomad Visa |
-| Second Home | 5 years | Long-term, wealthy |
-| Remote Worker | Special category | Working remotely |
+| Visa          | Duration         | Best For           |
+| ------------- | ---------------- | ------------------ |
+| VOA           | 30+30 days       | Short stays        |
+| E33G          | Up to 1 year     | Digital Nomad Visa |
+| Second Home   | 5 years          | Long-term, wealthy |
+| Remote Worker | Special category | Working remotely   |
 
 <InfoCard variant="tip" title="Visa Strategy">
 **Common nomad approach:**
@@ -363,6 +371,7 @@ Over 100,000 digital nomads call Bali home.
 4. Return with new VOA or apply for E33G Digital Nomad Visa
 
 Many nomads do "visa runs" every 60 days or get the E33G Digital Nomad Visa for long-term stays.
+
 </InfoCard>
 
 ---
@@ -379,57 +388,57 @@ Many nomads do "visa runs" every 60 days or get the E33G Digital Nomad Visa for 
       label: "Get local SIM card",
       description: "Telkomsel or XL at airport/shops",
       required: true,
-      category: "tech"
+      category: "tech",
     },
     {
       id: "grab",
       label: "Download Grab app",
       description: "For transport and food delivery",
       required: true,
-      category: "apps"
+      category: "apps",
     },
     {
       id: "gojek",
       label: "Download GoJek app",
       description: "Alternative transport, food, payments",
       required: true,
-      category: "apps"
+      category: "apps",
     },
     {
       id: "scooter",
       label: "Rent or buy scooter",
       description: "Essential for getting around",
       required: true,
-      category: "transport"
+      category: "transport",
     },
     {
       id: "accommodation",
       label: "Find longer-term accommodation",
       description: "After initial hotel/Airbnb",
       required: true,
-      category: "living"
+      category: "living",
     },
     {
       id: "coworking",
       label: "Try coworking spaces",
       description: "Day passes before committing",
       required: false,
-      category: "work"
+      category: "work",
     },
     {
       id: "bank",
       label: "Consider local bank account",
       description: "For longer stays - makes life easier",
       required: false,
-      category: "finance"
+      category: "finance",
     },
     {
       id: "community",
       label: "Join nomad communities",
       description: "Facebook groups, meetups",
       required: false,
-      category: "social"
-    }
+      category: "social",
+    },
   ]}
   categories={[
     { id: "tech", label: "Tech", color: "blue" },
@@ -438,7 +447,7 @@ Many nomads do "visa runs" every 60 days or get the E33G Digital Nomad Visa for 
     { id: "living", label: "Living", color: "purple" },
     { id: "work", label: "Work", color: "cyan" },
     { id: "finance", label: "Finance", color: "red" },
-    { id: "social", label: "Social", color: "pink" }
+    { id: "social", label: "Social", color: "pink" },
   ]}
   showProgress={true}
 />
@@ -449,22 +458,22 @@ Many nomads do "visa runs" every 60 days or get the E33G Digital Nomad Visa for 
 
 ### Where You'll Get Good Internet
 
-| Location | Speed | Reliability |
-|----------|-------|-------------|
-| Coworking spaces | 50-200 Mbps | Excellent |
-| Modern villas | 20-100 Mbps | Good |
-| Cafes (tourist areas) | 10-50 Mbps | Variable |
-| Rural areas | Variable | Less reliable |
+| Location              | Speed       | Reliability   |
+| --------------------- | ----------- | ------------- |
+| Coworking spaces      | 50-200 Mbps | Excellent     |
+| Modern villas         | 20-100 Mbps | Good          |
+| Cafes (tourist areas) | 10-50 Mbps  | Variable      |
+| Rural areas           | Variable    | Less reliable |
 
 ### Tips for Reliable Work
 
-| Tip | Why |
-|-----|-----|
-| Coworking for calls | Best reliability |
-| Backup mobile data | Failover option |
-| Test before renting | Verify speed |
-| Avoid peak hours | For video calls |
-| Choose fiber if possible | More stable |
+| Tip                      | Why              |
+| ------------------------ | ---------------- |
+| Coworking for calls      | Best reliability |
+| Backup mobile data       | Failover option  |
+| Test before renting      | Verify speed     |
+| Avoid peak hours         | For video calls  |
+| Choose fiber if possible | More stable      |
 
 ---
 
@@ -472,13 +481,13 @@ Many nomads do "visa runs" every 60 days or get the E33G Digital Nomad Visa for 
 
 ### Top Picks
 
-| Space | Area | Vibe |
-|-------|------|------|
-| Dojo | Canggu | Large, social, pools |
-| Outpost | Canggu/Ubud | Professional, events |
-| Hubud | Ubud | Pioneer, community |
-| Tropical Nomad | Canggu | Budget-friendly |
-| Livit Hub | Sanur | Quiet, focused |
+| Space          | Area        | Vibe                 |
+| -------------- | ----------- | -------------------- |
+| Dojo           | Canggu      | Large, social, pools |
+| Outpost        | Canggu/Ubud | Professional, events |
+| Hubud          | Ubud        | Pioneer, community   |
+| Tropical Nomad | Canggu      | Budget-friendly      |
+| Livit Hub      | Sanur       | Quiet, focused       |
 
 Typical monthly pass: IDR 2-4M (~$125-250)
 
@@ -497,16 +506,17 @@ Typical monthly pass: IDR 2-4M (~$125-250)
 - Rent or buy long-term
 
 Scooter accidents are the #1 risk for nomads in Bali.
+
 </InfoCard>
 
 ### Scooter Costs
 
-| Option | Cost |
-|--------|------|
-| Daily rental | IDR 70-100K |
+| Option         | Cost          |
+| -------------- | ------------- |
+| Daily rental   | IDR 70-100K   |
 | Monthly rental | IDR 800K-1.5M |
-| Annual rental | IDR 8-15M |
-| Buy used | IDR 10-20M |
+| Annual rental  | IDR 8-15M     |
+| Buy used       | IDR 10-20M    |
 
 ---
 
@@ -514,13 +524,13 @@ Scooter accidents are the #1 risk for nomads in Bali.
 
 ### Stay Healthy
 
-| Issue | Prevention |
-|-------|------------|
+| Issue      | Prevention                      |
+| ---------- | ------------------------------- |
 | Bali belly | Eat at clean places, probiotics |
-| Dengue | Mosquito protection |
-| Sun | Sunscreen, hydration |
-| Traffic | Careful driving, helmet |
-| Water | Don't drink tap water |
+| Dengue     | Mosquito protection             |
+| Sun        | Sunscreen, hydration            |
+| Traffic    | Careful driving, helmet         |
+| Water      | Don't drink tap water           |
 
 ### Essential Items
 
@@ -536,23 +546,23 @@ Scooter accidents are the #1 risk for nomads in Bali.
 
 ### Meeting Other Nomads
 
-| Platform | Usage |
-|----------|-------|
-| Facebook Groups | "Digital Nomads Bali", "Canggu Community" |
-| Coworking events | Workshops, happy hours |
-| Sports | Running clubs, surf groups |
-| Meetup.com | Various interest groups |
-| Bumble BFF | Friend matching |
+| Platform         | Usage                                     |
+| ---------------- | ----------------------------------------- |
+| Facebook Groups  | "Digital Nomads Bali", "Canggu Community" |
+| Coworking events | Workshops, happy hours                    |
+| Sports           | Running clubs, surf groups                |
+| Meetup.com       | Various interest groups                   |
+| Bumble BFF       | Friend matching                           |
 
 ### Social Calendar
 
-| Day | Common Events |
-|-----|---------------|
-| Monday | Recovery day |
+| Day              | Common Events      |
+| ---------------- | ------------------ |
+| Monday           | Recovery day       |
 | Tuesday-Thursday | Meetups, workshops |
-| Friday | Beach clubs |
-| Saturday | Day trips |
-| Sunday | Beach, brunch |
+| Friday           | Beach clubs        |
+| Saturday         | Day trips          |
+| Sunday           | Beach, brunch      |
 
 ---
 
@@ -569,6 +579,7 @@ Scooter accidents are the #1 risk for nomads in Bali.
 - **Long-term legality** - Not officially "allowed" to work on tourist visa
 
 Bali is amazing, but not without challenges.
+
 </InfoCard>
 
 ---
@@ -577,14 +588,14 @@ Bali is amazing, but not without challenges.
 
 ### Work-Life Balance
 
-| Practice | Benefit |
-|----------|---------|
-| Set work hours | Maintain productivity |
-| Separate spaces | Work space vs relax |
-| Time zone management | Schedule wisely |
-| Regular exercise | Stay healthy |
-| Community connection | Combat isolation |
-| Explore Bali | Don't just work |
+| Practice             | Benefit               |
+| -------------------- | --------------------- |
+| Set work hours       | Maintain productivity |
+| Separate spaces      | Work space vs relax   |
+| Time zone management | Schedule wisely       |
+| Regular exercise     | Stay healthy          |
+| Community connection | Combat isolation      |
+| Explore Bali         | Don't just work       |
 
 ---
 
@@ -597,7 +608,7 @@ Bali is amazing, but not without challenges.
     "What's the best area for first-timers?",
     "How much should I budget for Bali?",
     "Is it legal to work on tourist visa?",
-    "How do I find accommodation?"
+    "How do I find accommodation?",
   ]}
 />
 

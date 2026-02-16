@@ -4,7 +4,7 @@
  * Esporta tutti i componenti del client portal
  */
 
-export { PortalBottomNav } from './PortalBottomNav';
+export { PortalBottomNav } from "./PortalBottomNav";
 
 export {
   PortalErrorBoundary,
@@ -12,12 +12,12 @@ export {
   PortalCardSkeleton,
   PortalListSkeleton,
   PortalPageLoader,
-} from './PortalErrorBoundary';
+} from "./PortalErrorBoundary";
 
-export { PortalHeader } from './PortalHeader';
+export { PortalHeader } from "./PortalHeader";
 
 export {
   PortalNotificationsPopover,
   PortalNotificationsList,
   PortalNotificationBadge,
-} from './PortalNotifications';
+} from "./PortalNotifications";

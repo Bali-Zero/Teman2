@@ -5,12 +5,15 @@
  * con keyboard navigation e range selection
  */
 
-import { useState, useCallback, useRef } from 'react';
-import type { FileItem } from '@/lib/api/drive/drive.types';
+import { useState, useCallback, useRef } from "react";
+import type { FileItem } from "@/lib/api/drive/drive.types";
 
 interface UseFileSelectionOptions {
   files: FileItem[];
-  onSelectionChange?: (selectedIds: Set<string>, selectedFiles: FileItem[]) => void;
+  onSelectionChange?: (
+    selectedIds: Set<string>,
+    selectedFiles: FileItem[],
+  ) => void;
 }
 
 interface UseFileSelectionReturn {
@@ -20,7 +23,7 @@ interface UseFileSelectionReturn {
   handleSelect: (
     file: FileItem,
     index: number,
-    event: React.MouseEvent | React.KeyboardEvent
+    event: React.MouseEvent | React.KeyboardEvent,
   ) => void;
   handleSelectAll: () => void;
   handleDeselectAll: () => void;
@@ -46,15 +49,19 @@ export function useFileSelection({
       const newFiles = files.filter((f) => newIds.has(f.id));
       onSelectionChange?.(newIds, newFiles);
     },
-    [files, onSelectionChange]
+    [files, onSelectionChange],
   );
 
   // Handle selection with all modifier keys
   const handleSelect = useCallback(
-    (file: FileItem, index: number, event: React.MouseEvent | React.KeyboardEvent) => {
+    (
+      file: FileItem,
+      index: number,
+      event: React.MouseEvent | React.KeyboardEvent,
+    ) => {
       const isCtrl = event.ctrlKey || event.metaKey;
       const isShift = event.shiftKey;
-      const isDoubleClick = 'detail' in event && event.detail === 2;
+      const isDoubleClick = "detail" in event && event.detail === 2;
 
       // Prevent double-click from triggering selection change
       if (isDoubleClick) return;
@@ -104,7 +111,7 @@ export function useFileSelection({
 
       setLastSelectedIndex(index);
     },
-    [files, lastSelectedIndex, notifyChange]
+    [files, lastSelectedIndex, notifyChange],
   );
 
   // Select all files
@@ -137,7 +144,7 @@ export function useFileSelection({
       setSelectedIds(next);
       notifyChange(next);
     },
-    [files, notifyChange]
+    [files, notifyChange],
   );
 
   // Check if file is selected
@@ -145,7 +152,7 @@ export function useFileSelection({
     (fileId: string) => {
       return selectedIds.has(fileId);
     },
-    [selectedIds]
+    [selectedIds],
   );
 
   // Select single file (replaces selection)
@@ -158,7 +165,7 @@ export function useFileSelection({
       const index = files.findIndex((f) => f.id === file.id);
       setLastSelectedIndex(index);
     },
-    [files, notifyChange]
+    [files, notifyChange],
   );
 
   return {
@@ -207,34 +214,34 @@ export function useFileKeyboardNavigation({
       let newIndex = currentIndex;
 
       switch (event.key) {
-        case 'ArrowDown':
+        case "ArrowDown":
           event.preventDefault();
           newIndex = Math.min(currentIndex + 1, files.length - 1);
           break;
 
-        case 'ArrowUp':
+        case "ArrowUp":
           event.preventDefault();
           newIndex = Math.max(currentIndex - 1, 0);
           break;
 
-        case 'Home':
+        case "Home":
           event.preventDefault();
           newIndex = 0;
           break;
 
-        case 'End':
+        case "End":
           event.preventDefault();
           newIndex = files.length - 1;
           break;
 
-        case 'Enter':
+        case "Enter":
           event.preventDefault();
           if (files[currentIndex]) {
             onOpen(files[currentIndex]);
           }
           return;
 
-        case ' ':
+        case " ":
           event.preventDefault();
           if (files[currentIndex]) {
             onSelect(files[currentIndex], currentIndex, {
@@ -244,8 +251,8 @@ export function useFileKeyboardNavigation({
           }
           return;
 
-        case 'Delete':
-        case 'Backspace':
+        case "Delete":
+        case "Backspace":
           if (onDelete && selectedIds.size > 0) {
             event.preventDefault();
             const toDelete = files.filter((f) => selectedIds.has(f.id));
@@ -253,7 +260,7 @@ export function useFileKeyboardNavigation({
           }
           return;
 
-        case 'F2':
+        case "F2":
           if (onRename && selectedIds.size === 1) {
             event.preventDefault();
             const toRename = files.find((f) => selectedIds.has(f.id));
@@ -261,14 +268,14 @@ export function useFileKeyboardNavigation({
           }
           return;
 
-        case 'a':
+        case "a":
           if (event.ctrlKey || event.metaKey) {
             event.preventDefault();
             // Select all handled by parent
           }
           return;
 
-        case 'Escape':
+        case "Escape":
           event.preventDefault();
           // Deselect all handled by parent
           return;
@@ -281,8 +288,14 @@ export function useFileKeyboardNavigation({
       if (newIndex !== currentIndex && files[newIndex]) {
         if (event.shiftKey) {
           // Range selection
-          const start = Math.min(lastSelectedIndex !== -1 ? lastSelectedIndex : 0, newIndex);
-          const end = Math.max(lastSelectedIndex !== -1 ? lastSelectedIndex : 0, newIndex);
+          const start = Math.min(
+            lastSelectedIndex !== -1 ? lastSelectedIndex : 0,
+            newIndex,
+          );
+          const end = Math.max(
+            lastSelectedIndex !== -1 ? lastSelectedIndex : 0,
+            newIndex,
+          );
           for (let i = start; i <= end; i++) {
             onSelect(files[i], i, event);
           }
@@ -291,7 +304,16 @@ export function useFileKeyboardNavigation({
         }
       }
     },
-    [enabled, files, lastSelectedIndex, onDelete, onOpen, onRename, onSelect, selectedIds.size]
+    [
+      enabled,
+      files,
+      lastSelectedIndex,
+      onDelete,
+      onOpen,
+      onRename,
+      onSelect,
+      selectedIds.size,
+    ],
   );
 
   return { handleKeyDown };

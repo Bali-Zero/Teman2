@@ -76,8 +76,8 @@ import {
   Calculator,
   InfoCard,
   Checklist,
-  AskZantara
-} from '@/components/insights/interactive';
+  AskZantara,
+} from "@/components/insights/interactive";
 
 # Corporate Income Tax Indonesia 2026: Complete Guide
 
@@ -93,39 +93,39 @@ Corporate income tax (PPh Badan) is a significant consideration for any business
       name: "Standard Rate",
       subtitle: "Most companies",
       values: {
-        "Rate": "22%",
+        Rate: "22%",
         "Applies To": "Net taxable income",
-        "Entity Type": "PT, CV, etc."
+        "Entity Type": "PT, CV, etc.",
       },
-      highlight: true
+      highlight: true,
     },
     {
       name: "Public Company",
       subtitle: "Listed companies",
       values: {
-        "Rate": "19%",
+        Rate: "19%",
         "Applies To": "IPO with 40%+ free float",
-        "Entity Type": "Listed PT"
-      }
+        "Entity Type": "Listed PT",
+      },
     },
     {
       name: "SME Rate",
       subtitle: "Small businesses",
       values: {
-        "Rate": "0.5% of turnover",
+        Rate: "0.5% of turnover",
         "Applies To": "Turnover < IDR 4.8B",
-        "Entity Type": "CV, PT with low revenue"
-      }
+        "Entity Type": "CV, PT with low revenue",
+      },
     },
     {
       name: "Final Tax",
       subtitle: "Certain sectors",
       values: {
-        "Rate": "Varies (0.5-10%)",
+        Rate: "Varies (0.5-10%)",
         "Applies To": "Specific industries",
-        "Entity Type": "Construction, etc."
-      }
-    }
+        "Entity Type": "Construction, etc.",
+      },
+    },
   ]}
 />
 
@@ -197,7 +197,8 @@ Corporate income tax (PPh Badan) is a significant consideration for any business
       currency: "IDR",
       note: `Rate applied: ${rate}`
     };
-  }}
+
+}}
 />
 
 ---
@@ -214,15 +215,16 @@ Businesses with gross turnover under **IDR 4.8 billion/year** can use simplified
 - **Duration**: Maximum 7 years for PT, 4 years for CV/individuals
 
 After the maximum period, regular rates apply.
+
 </InfoCard>
 
 ### SME Tax Example
 
-| Monthly Revenue | Tax Due |
-|-----------------|---------|
-| IDR 100M | IDR 500K |
-| IDR 200M | IDR 1M |
-| IDR 400M | IDR 2M |
+| Monthly Revenue | Tax Due  |
+| --------------- | -------- |
+| IDR 100M        | IDR 500K |
+| IDR 200M        | IDR 1M   |
+| IDR 400M        | IDR 2M   |
 
 ---
 
@@ -240,77 +242,77 @@ After the maximum period, regular rates apply.
       label: "Employee salaries and benefits",
       description: "Wages, BPJS contributions",
       required: false,
-      category: "operational"
+      category: "operational",
     },
     {
       id: "rent",
       label: "Office rent",
       description: "Lease payments",
       required: false,
-      category: "operational"
+      category: "operational",
     },
     {
       id: "utilities",
       label: "Utilities",
       description: "Electricity, water, internet",
       required: false,
-      category: "operational"
+      category: "operational",
     },
     {
       id: "depreciation",
       label: "Depreciation",
       description: "Assets over time",
       required: false,
-      category: "capital"
+      category: "capital",
     },
     {
       id: "interest",
       label: "Interest expenses",
       description: "Loan interest (within limits)",
       required: false,
-      category: "financial"
+      category: "financial",
     },
     {
       id: "training",
       label: "Employee training",
       description: "Professional development",
       required: false,
-      category: "operational"
+      category: "operational",
     },
     {
       id: "marketing",
       label: "Marketing & advertising",
       description: "Business promotion",
       required: false,
-      category: "operational"
+      category: "operational",
     },
     {
       id: "professional",
       label: "Professional fees",
       description: "Legal, accounting, consulting",
       required: false,
-      category: "services"
-    }
+      category: "services",
+    },
   ]}
   categories={[
     { id: "operational", label: "Operational", color: "blue" },
     { id: "capital", label: "Capital", color: "green" },
     { id: "financial", label: "Financial", color: "amber" },
-    { id: "services", label: "Services", color: "purple" }
+    { id: "services", label: "Services", color: "purple" },
   ]}
   showProgress={false}
 />
 
 ### Non-Deductible Expenses
 
-| Expense | Notes |
-|---------|-------|
-| Dividends | Not an expense |
-| Personal expenses | Must be business-related |
-| Donations (most) | Some exceptions |
-| Fines and penalties | Government fines |
+| Expense                      | Notes                     |
+| ---------------------------- | ------------------------- |
+| Dividends                    | Not an expense            |
+| Personal expenses            | Must be business-related  |
+| Donations (most)             | Some exceptions           |
+| Fines and penalties          | Government fines          |
 | Entertainment (undocumented) | Need proper documentation |
-| Related party premium | Above market rate |
+| Related party premium        | Above market rate         |
 
 ---
 
@@ -318,14 +320,14 @@ After the maximum period, regular rates apply.
 
 ### Depreciation Groups
 
-| Group | Assets | Rate (Straight-line) | Rate (Declining) |
-|-------|--------|---------------------|-----------------|
-| 1 | 4-year life | 25% | 50% |
-| 2 | 8-year life | 12.5% | 25% |
-| 3 | 16-year life | 6.25% | 12.5% |
-| 4 | 20-year life | 5% | 10% |
-| Building (permanent) | 20-year | 5% | - |
-| Building (non-permanent) | 10-year | 10% | - |
+| Group                    | Assets       | Rate (Straight-line) | Rate (Declining) |
+| ------------------------ | ------------ | -------------------- | ---------------- |
+| 1                        | 4-year life  | 25%                  | 50%              |
+| 2                        | 8-year life  | 12.5%                | 25%              |
+| 3                        | 16-year life | 6.25%                | 12.5%            |
+| 4                        | 20-year life | 5%                   | 10%              |
+| Building (permanent)     | 20-year      | 5%                   | -                |
+| Building (non-permanent) | 10-year      | 10%                  | -                |
 
 ---
 
@@ -334,22 +336,20 @@ After the maximum period, regular rates apply.
 ### Annual Corporate Tax Return
 
 <InfoCard variant="note" title="Filing Deadlines">
-**SPT Tahunan Badan** (Annual Corporate Tax Return):
-- **Deadline**: 4 months after fiscal year-end
-- **For calendar year**: April 30
-- **Extension**: Up to 2 months possible
-- **Method**: e-Filing mandatory
+  **SPT Tahunan Badan** (Annual Corporate Tax Return): - **Deadline**: 4 months
+  after fiscal year-end - **For calendar year**: April 30 - **Extension**: Up to
+  2 months possible - **Method**: e-Filing mandatory
 </InfoCard>
 
 ### Monthly Obligations
 
-| Obligation | Deadline | Description |
-|------------|----------|-------------|
-| PPh 21 | 10th of following month | Employee withholding |
-| PPh 23 | 10th of following month | Service withholding |
-| PPh 25 | 15th of following month | Prepaid CIT installment |
-| PPh 4(2) | 10th of following month | Final tax items |
-| VAT (PPN) | End of following month | If VAT registered |
+| Obligation | Deadline                | Description             |
+| ---------- | ----------------------- | ----------------------- |
+| PPh 21     | 10th of following month | Employee withholding    |
+| PPh 23     | 10th of following month | Service withholding     |
+| PPh 25     | 15th of following month | Prepaid CIT installment |
+| PPh 4(2)   | 10th of following month | Final tax items         |
+| VAT (PPN)  | End of following month  | If VAT registered       |
 
 ---
 
@@ -364,15 +364,16 @@ Indonesia has strict **transfer pricing** rules for transactions between related
 - **Penalties** for non-compliance
 
 Work with qualified tax advisors for related party transactions.
+
 </InfoCard>
 
 ### Documentation Requirements
 
-| Report | Required For | Threshold |
-|--------|--------------|-----------|
-| Master File | Large taxpayers | Revenue IDR 50B+ |
-| Local File | Related party deals | Any material transaction |
-| CbC Report | Multinationals | Group revenue €750M+ |
+| Report      | Required For        | Threshold                |
+| ----------- | ------------------- | ------------------------ |
+| Master File | Large taxpayers     | Revenue IDR 50B+         |
+| Local File  | Related party deals | Any material transaction |
+| CbC Report  | Multinationals      | Group revenue €750M+     |
 
 ---
 
@@ -380,13 +381,13 @@ Work with qualified tax advisors for related party transactions.
 
 ### Available Incentives
 
-| Incentive | Benefit | For Whom |
-|-----------|---------|----------|
-| Pioneer Industry | Tax holiday up to 20 years | Large investments |
-| Investment Allowance | 30% super deduction | Qualifying investments |
-| R&D Incentive | 300% deduction | Research activities |
-| Vocational Training | 200% deduction | Training programs |
-| Special Economic Zone | Various | SEZ located businesses |
+| Incentive             | Benefit                    | For Whom               |
+| --------------------- | -------------------------- | ---------------------- |
+| Pioneer Industry      | Tax holiday up to 20 years | Large investments      |
+| Investment Allowance  | 30% super deduction        | Qualifying investments |
+| R&D Incentive         | 300% deduction             | Research activities    |
+| Vocational Training   | 200% deduction             | Training programs      |
+| Special Economic Zone | Various                    | SEZ located businesses |
 
 ---
 
@@ -404,24 +405,24 @@ Work with qualified tax advisors for related party transactions.
 
 ## Compliance Calendar
 
-| Month | Activity |
-|-------|----------|
-| January | Previous year reconciliation |
-| March | Prepare annual return |
-| April | File annual return (due April 30) |
-| Monthly | PPh installments and withholding |
-| Quarterly | Review and adjust estimates |
+| Month     | Activity                          |
+| --------- | --------------------------------- |
+| January   | Previous year reconciliation      |
+| March     | Prepare annual return             |
+| April     | File annual return (due April 30) |
+| Monthly   | PPh installments and withholding  |
+| Quarterly | Review and adjust estimates       |
 
 ---
 
 ## Penalties
 
-| Violation | Penalty |
-|-----------|---------|
-| Late filing | IDR 1M/month (max 24 months) |
-| Late payment | 2% per month |
+| Violation    | Penalty                       |
+| ------------ | ----------------------------- |
+| Late filing  | IDR 1M/month (max 24 months)  |
+| Late payment | 2% per month                  |
 | Underpayment | 2% per month + potential 200% |
-| Tax fraud | Criminal penalties possible |
+| Tax fraud    | Criminal penalties possible   |
 
 ---
 
@@ -434,7 +435,7 @@ Work with qualified tax advisors for related party transactions.
     "What's the SME tax rate threshold?",
     "How do I calculate depreciation?",
     "What expenses are deductible?",
-    "When is corporate tax return due?"
+    "When is corporate tax return due?",
   ]}
 />
 

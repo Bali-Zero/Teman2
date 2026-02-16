@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * PortalHeader Component
@@ -6,13 +6,13 @@
  * Header dedicato per il client portal con notifiche integrate
  */
 
-import React from 'react';
-import { usePathname } from 'next/navigation';
-import { Menu, X, ChevronLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { routeTitles } from '@/types/navigation';
-import { cn } from '@/lib/utils';
-import { PortalNotificationsPopover } from './PortalNotifications';
+import React from "react";
+import { usePathname } from "next/navigation";
+import { Menu, X, ChevronLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { routeTitles } from "@/types/navigation";
+import { cn } from "@/lib/utils";
+import { PortalNotificationsPopover } from "./PortalNotifications";
 
 interface PortalHeaderProps {
   userName: string;
@@ -43,29 +43,29 @@ export function PortalHeader({
     }
     // Check for dynamic routes
     for (const [route, title] of Object.entries(routeTitles)) {
-      if (pathname.startsWith(route) && route !== '/') {
+      if (pathname.startsWith(route) && route !== "/") {
         return title;
       }
     }
-    return 'Dashboard';
+    return "Dashboard";
   };
 
   // Get greeting based on time
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
   };
 
   // Format current date
   const formatDate = () => {
     const options: Intl.DateTimeFormatOptions = {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
+      weekday: "long",
+      day: "numeric",
+      month: "long",
     };
-    return new Date().toLocaleDateString('en-US', options);
+    return new Date().toLocaleDateString("en-US", options);
   };
 
   return (
@@ -89,10 +89,10 @@ export function PortalHeader({
           <button
             onClick={onMobileMenuToggle}
             className={cn(
-              'p-2 rounded-lg hover:bg-[var(--background-elevated)] transition-colors',
-              showBackButton && 'md:hidden'
+              "p-2 rounded-lg hover:bg-[var(--background-elevated)] transition-colors",
+              showBackButton && "md:hidden",
             )}
-            aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
+            aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
           >
             {isMobileMenuOpen ? (
               <X className="w-5 h-5 text-[var(--foreground)]" />
@@ -103,9 +103,11 @@ export function PortalHeader({
 
           {/* Page Title */}
           <div className="hidden sm:block">
-            <h1 className="text-lg font-semibold text-[var(--foreground)]">{getPageTitle()}</h1>
+            <h1 className="text-lg font-semibold text-[var(--foreground)]">
+              {getPageTitle()}
+            </h1>
             <p className="text-xs text-[var(--foreground-muted)]">
-              {formatDate()} • {getGreeting()}, {userName.split(' ')[0]}
+              {formatDate()} • {getGreeting()}, {userName.split(" ")[0]}
             </p>
           </div>
 

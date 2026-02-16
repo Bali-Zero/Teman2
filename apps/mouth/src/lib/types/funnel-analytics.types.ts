@@ -8,7 +8,7 @@ export interface FunnelAnalyticsReturn {
   completeStep: (funnelId: string, stepId: string, userId: string) => void;
   getUserProgress: (
     funnelId: string,
-    userId: string
+    userId: string,
   ) => {
     userId: string;
     funnelId: string;
@@ -45,7 +45,9 @@ export interface FunnelAnalyticsReturn {
     >;
   } | null;
   getConversionRates: (funnelId: string) => Record<string, number>;
-  getDropOffPoints: (funnelId: string) => Array<{ stage: string; dropOffRate: number }>;
+  getDropOffPoints: (
+    funnelId: string,
+  ) => Array<{ stage: string; dropOffRate: number }>;
   getCompletionRate: (funnelId: string) => number;
   getAverageCompletionTime: (funnelId: string) => number;
 }

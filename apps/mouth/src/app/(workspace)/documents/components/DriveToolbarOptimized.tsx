@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * DriveToolbarOptimized Component
@@ -10,7 +10,7 @@
  * - Stato di sincronizzazione
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Search,
   Grid3X3,
@@ -23,16 +23,16 @@ import {
   CloudOff,
   CheckCircle2,
   Loader2,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import { useDebounce } from '@/lib/hooks/optimized/useDebounce';
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { useDebounce } from "@/lib/hooks/optimized/useDebounce";
 
 interface DriveToolbarOptimizedProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
-  viewMode: 'grid' | 'list';
-  onViewModeChange: (mode: 'grid' | 'list') => void;
+  viewMode: "grid" | "list";
+  onViewModeChange: (mode: "grid" | "list") => void;
   onUploadClick: () => void;
   onCreateClick: (e: React.MouseEvent) => void;
   isConnected: boolean;
@@ -43,22 +43,22 @@ interface DriveToolbarOptimizedProps {
   hasSelection: boolean;
   totalFiles?: number;
   selectedCount?: number;
-  sortField?: 'name' | 'modified' | 'size';
-  sortDirection?: 'asc' | 'desc';
-  onSortChange?: (field: 'name' | 'modified' | 'size') => void;
+  sortField?: "name" | "modified" | "size";
+  sortDirection?: "asc" | "desc";
+  onSortChange?: (field: "name" | "modified" | "size") => void;
   fileTypeFilter?: string;
   onFileTypeFilterChange?: (type: string) => void;
 }
 
 const FILE_TYPES = [
-  { value: 'all', label: 'All Files' },
-  { value: 'folder', label: 'Folders' },
-  { value: 'document', label: 'Documents' },
-  { value: 'spreadsheet', label: 'Spreadsheets' },
-  { value: 'presentation', label: 'Presentations' },
-  { value: 'image', label: 'Images' },
-  { value: 'video', label: 'Videos' },
-  { value: 'pdf', label: 'PDFs' },
+  { value: "all", label: "All Files" },
+  { value: "folder", label: "Folders" },
+  { value: "document", label: "Documents" },
+  { value: "spreadsheet", label: "Spreadsheets" },
+  { value: "presentation", label: "Presentations" },
+  { value: "image", label: "Images" },
+  { value: "video", label: "Videos" },
+  { value: "pdf", label: "PDFs" },
 ];
 
 export function DriveToolbarOptimized({
@@ -76,10 +76,10 @@ export function DriveToolbarOptimized({
   hasSelection,
   totalFiles,
   selectedCount,
-  sortField = 'name',
-  sortDirection = 'asc',
+  sortField = "name",
+  sortDirection = "asc",
   onSortChange,
-  fileTypeFilter = 'all',
+  fileTypeFilter = "all",
   onFileTypeFilterChange,
 }: DriveToolbarOptimizedProps) {
   const [localQuery, setLocalQuery] = useState(searchQuery);
@@ -101,37 +101,50 @@ export function DriveToolbarOptimized({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ctrl/Cmd + K to focus search
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         inputRef.current?.focus();
       }
       // Escape to clear search
-      if (e.key === 'Escape' && localQuery) {
-        setLocalQuery('');
-        onSearchChange('');
+      if (e.key === "Escape" && localQuery) {
+        setLocalQuery("");
+        onSearchChange("");
       }
       // Ctrl/Cmd + Shift + V to toggle view
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'v') {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "v") {
         e.preventDefault();
-        onViewModeChange(viewMode === 'grid' ? 'list' : 'grid');
+        onViewModeChange(viewMode === "grid" ? "list" : "grid");
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [localQuery, onSearchChange, onViewModeChange, viewMode]);
 
   const handleClearSearch = useCallback(() => {
-    setLocalQuery('');
-    onSearchChange('');
+    setLocalQuery("");
+    onSearchChange("");
     inputRef.current?.focus();
   }, [onSearchChange]);
 
   const getConnectionStatus = () => {
     if (isSyncing)
-      return { icon: Loader2, text: 'Syncing...', className: 'text-blue-500 animate-spin' };
-    if (!isConnected) return { icon: CloudOff, text: 'Disconnected', className: 'text-red-500' };
-    return { icon: CheckCircle2, text: 'Connected', className: 'text-green-500' };
+      return {
+        icon: Loader2,
+        text: "Syncing...",
+        className: "text-blue-500 animate-spin",
+      };
+    if (!isConnected)
+      return {
+        icon: CloudOff,
+        text: "Disconnected",
+        className: "text-red-500",
+      };
+    return {
+      icon: CheckCircle2,
+      text: "Connected",
+      className: "text-green-500",
+    };
   };
 
   const status = getConnectionStatus();
@@ -169,12 +182,14 @@ export function DriveToolbarOptimized({
         {/* Connection Status */}
         <div
           className={cn(
-            'flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800',
-            status.className
+            "flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800",
+            status.className,
           )}
         >
           <StatusIcon className="h-4 w-4" />
-          <span className="hidden sm:inline text-xs font-medium">{status.text}</span>
+          <span className="hidden sm:inline text-xs font-medium">
+            {status.text}
+          </span>
         </div>
 
         <div className="flex-1" />
@@ -184,13 +199,16 @@ export function DriveToolbarOptimized({
           {/* Filter Toggle */}
           {onFileTypeFilterChange && (
             <Button
-              variant={showFilters ? 'secondary' : 'ghost'}
+              variant={showFilters ? "secondary" : "ghost"}
               size="icon"
               onClick={() => setShowFilters(!showFilters)}
-              className={cn('relative', fileTypeFilter !== 'all' && 'text-blue-600')}
+              className={cn(
+                "relative",
+                fileTypeFilter !== "all" && "text-blue-600",
+              )}
             >
               <Filter className="h-4 w-4" />
-              {fileTypeFilter !== 'all' && (
+              {fileTypeFilter !== "all" && (
                 <span className="absolute -top-0.5 -right-0.5 h-2 w-2 bg-blue-500 rounded-full" />
               )}
             </Button>
@@ -199,24 +217,24 @@ export function DriveToolbarOptimized({
           {/* View Mode Toggle */}
           <div className="flex items-center rounded-lg bg-slate-100 dark:bg-slate-800 p-1">
             <button
-              onClick={() => onViewModeChange('grid')}
+              onClick={() => onViewModeChange("grid")}
               className={cn(
-                'p-1.5 rounded-md transition-all',
-                viewMode === 'grid'
-                  ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-600'
-                  : 'text-slate-400 hover:text-slate-600'
+                "p-1.5 rounded-md transition-all",
+                viewMode === "grid"
+                  ? "bg-white dark:bg-slate-700 shadow-sm text-blue-600"
+                  : "text-slate-400 hover:text-slate-600",
               )}
               title="Grid view (Ctrl+Shift+V)"
             >
               <Grid3X3 className="h-4 w-4" />
             </button>
             <button
-              onClick={() => onViewModeChange('list')}
+              onClick={() => onViewModeChange("list")}
               className={cn(
-                'p-1.5 rounded-md transition-all',
-                viewMode === 'list'
-                  ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-600'
-                  : 'text-slate-400 hover:text-slate-600'
+                "p-1.5 rounded-md transition-all",
+                viewMode === "list"
+                  ? "bg-white dark:bg-slate-700 shadow-sm text-blue-600"
+                  : "text-slate-400 hover:text-slate-600",
               )}
               title="List view (Ctrl+Shift+V)"
             >
@@ -226,10 +244,13 @@ export function DriveToolbarOptimized({
 
           {/* Info Panel Toggle */}
           <Button
-            variant={showInfoPanel ? 'secondary' : 'ghost'}
+            variant={showInfoPanel ? "secondary" : "ghost"}
             size="sm"
             onClick={onToggleInfoPanel}
-            className={cn('hidden md:flex', hasSelection && !showInfoPanel && 'text-blue-600')}
+            className={cn(
+              "hidden md:flex",
+              hasSelection && !showInfoPanel && "text-blue-600",
+            )}
           >
             Info
           </Button>
@@ -249,17 +270,19 @@ export function DriveToolbarOptimized({
       {/* Filter Bar */}
       {showFilters && onFileTypeFilterChange && (
         <div className="flex items-center gap-4 px-4 py-2 border-t border-slate-200/60 dark:border-slate-700/40 bg-slate-50/50 dark:bg-slate-900/50">
-          <span className="text-xs font-medium text-slate-500 uppercase">Filter by:</span>
+          <span className="text-xs font-medium text-slate-500 uppercase">
+            Filter by:
+          </span>
           <div className="flex items-center gap-2 flex-wrap">
             {FILE_TYPES.map((type) => (
               <button
                 key={type.value}
                 onClick={() => onFileTypeFilterChange(type.value)}
                 className={cn(
-                  'px-3 py-1 text-xs font-medium rounded-full transition-all',
+                  "px-3 py-1 text-xs font-medium rounded-full transition-all",
                   fileTypeFilter === type.value
-                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100'
+                    ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                    : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100",
                 )}
               >
                 {type.label}
@@ -274,11 +297,13 @@ export function DriveToolbarOptimized({
         <div className="flex items-center gap-4">
           {totalFiles !== undefined && (
             <span>
-              {totalFiles.toLocaleString()} item{totalFiles !== 1 ? 's' : ''}
+              {totalFiles.toLocaleString()} item{totalFiles !== 1 ? "s" : ""}
             </span>
           )}
           {selectedCount !== undefined && selectedCount > 0 && (
-            <span className="text-blue-600 font-medium">{selectedCount} selected</span>
+            <span className="text-blue-600 font-medium">
+              {selectedCount} selected
+            </span>
           )}
           {lastSyncTime && (
             <span className="hidden sm:inline">
@@ -294,8 +319,8 @@ export function DriveToolbarOptimized({
             <select
               value={`${sortField}-${sortDirection}`}
               onChange={(e) => {
-                const [field, dir] = e.target.value.split('-');
-                onSortChange(field as 'name' | 'modified' | 'size');
+                const [field, dir] = e.target.value.split("-");
+                onSortChange(field as "name" | "modified" | "size");
               }}
               className="bg-transparent border-0 text-xs focus:ring-0 cursor-pointer"
             >

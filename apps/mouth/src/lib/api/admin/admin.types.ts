@@ -2,7 +2,7 @@
  * Admin API Types
  */
 
-export type ServiceStatus = 'ok' | 'warning' | 'error' | 'skipped' | 'unknown';
+export type ServiceStatus = "ok" | "warning" | "error" | "skipped" | "unknown";
 
 export interface HealthCheckResult {
   name: string;

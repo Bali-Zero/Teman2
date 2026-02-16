@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { initWebVitals } from '@/lib/web-vitals';
+import { useEffect } from "react";
+import { initWebVitals } from "@/lib/web-vitals";
 
 /**
  * Web Vitals Monitor Component
@@ -12,7 +12,7 @@ export function WebVitalsMonitor() {
     // Initialize web vitals monitoring (currently disabled due to Vercel build issues)
     initWebVitals({
       enabled: true,
-      debug: process.env.NODE_ENV === 'development',
+      debug: process.env.NODE_ENV === "development",
     });
   }, []);
 

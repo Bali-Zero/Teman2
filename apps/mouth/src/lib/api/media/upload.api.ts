@@ -1,4 +1,4 @@
-import type { IApiClient } from '../types/api-client.types';
+import type { IApiClient } from "../types/api-client.types";
 
 /**
  * File upload API methods
@@ -7,10 +7,15 @@ export class UploadApi {
   constructor(private client: IApiClient) {}
 
   async uploadFile(
-    file: File
-  ): Promise<{ success: boolean; url: string; filename: string; type: string }> {
+    file: File,
+  ): Promise<{
+    success: boolean;
+    url: string;
+    filename: string;
+    type: string;
+  }> {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
 
     // Build headers with CSRF token (Content-Type is set automatically by fetch for FormData)
     const headers: Record<string, string> = {};
@@ -18,21 +23,21 @@ export class UploadApi {
     // Add CSRF token for cookie-based auth
     const csrf = this.client.getCsrfToken();
     if (csrf) {
-      headers['X-CSRF-Token'] = csrf;
+      headers["X-CSRF-Token"] = csrf;
     }
 
     // Keep Authorization header for backward compatibility
     const token = this.client.getToken();
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+      headers["Authorization"] = `Bearer ${token}`;
     }
 
     const baseUrl = this.client.getBaseUrl();
     const response = await fetch(`${baseUrl}/media/upload`, {
-      method: 'POST',
+      method: "POST",
       headers,
       body: formData,
-      credentials: 'include', // Send httpOnly cookies
+      credentials: "include", // Send httpOnly cookies
     });
 
     if (!response.ok) {

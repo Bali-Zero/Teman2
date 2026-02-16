@@ -1,4 +1,4 @@
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ClientsLoading() {
   return (
@@ -33,17 +33,35 @@ export default function ClientsLoading() {
 
       {/* Table Rows */}
       {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="border-x border-b p-4 last:rounded-b-lg hover:bg-muted/50">
+        <div
+          key={i}
+          className="border-x border-b p-4 last:rounded-b-lg hover:bg-muted/50"
+        >
           <div className="grid grid-cols-12 gap-4 items-center">
-            <Skeleton variant="circular" width={32} height={32} className="col-span-1" />
+            <Skeleton
+              variant="circular"
+              width={32}
+              height={32}
+              className="col-span-1"
+            />
             <div className="col-span-3 space-y-1">
               <Skeleton variant="text" width={140} />
               <Skeleton variant="text" width={100} />
             </div>
             <Skeleton variant="text" width={100} className="col-span-2" />
             <Skeleton variant="text" width={120} className="col-span-2" />
-            <Skeleton variant="rounded" width={60} height={24} className="col-span-2" />
-            <Skeleton variant="rounded" width={80} height={32} className="col-span-2" />
+            <Skeleton
+              variant="rounded"
+              width={60}
+              height={24}
+              className="col-span-2"
+            />
+            <Skeleton
+              variant="rounded"
+              width={80}
+              height={32}
+              className="col-span-2"
+            />
           </div>
         </div>
       ))}

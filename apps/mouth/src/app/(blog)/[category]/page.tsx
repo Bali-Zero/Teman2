@@ -1,16 +1,16 @@
-'use client';
+"use client";
 
-import * as React from 'react';
-import { useParams } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { Plane, Building2, Scale, Home, Sun, Cpu } from 'lucide-react';
+import * as React from "react";
+import { useParams } from "next/navigation";
+import { motion } from "framer-motion";
+import { Plane, Building2, Scale, Home, Sun, Cpu } from "lucide-react";
 import {
   ArticleGrid,
   ArticleGridSkeleton,
   CategoryNav,
   NewsletterSidebar,
-} from '@/components/blog';
-import type { ArticleCategory, ArticleListItem } from '@/lib/blog/types';
+} from "@/components/blog";
+import type { ArticleCategory, ArticleListItem } from "@/lib/blog/types";
 
 // Category metadata
 const CATEGORY_META: Record<
@@ -23,40 +23,44 @@ const CATEGORY_META: Record<
   }
 > = {
   immigration: {
-    title: 'Immigration',
-    description: 'Visas, permits, and everything you need to know about relocating to Indonesia.',
+    title: "Immigration",
+    description:
+      "Visas, permits, and everything you need to know about relocating to Indonesia.",
     icon: Plane,
-    gradient: 'from-blue-500/20 via-cyan-500/10 to-transparent',
+    gradient: "from-blue-500/20 via-cyan-500/10 to-transparent",
   },
   business: {
-    title: 'Business',
-    description: 'Company setup, licensing, KBLI codes, and doing business in Indonesia.',
+    title: "Business",
+    description:
+      "Company setup, licensing, KBLI codes, and doing business in Indonesia.",
     icon: Building2,
-    gradient: 'from-emerald-500/20 via-teal-500/10 to-transparent',
+    gradient: "from-emerald-500/20 via-teal-500/10 to-transparent",
   },
-  'tax-legal': {
-    title: 'Tax & Legal',
-    description: 'Tax obligations, legal compliance, and regulatory updates.',
+  "tax-legal": {
+    title: "Tax & Legal",
+    description: "Tax obligations, legal compliance, and regulatory updates.",
     icon: Scale,
-    gradient: 'from-amber-500/20 via-orange-500/10 to-transparent',
+    gradient: "from-amber-500/20 via-orange-500/10 to-transparent",
   },
   property: {
-    title: 'Property',
-    description: 'Real estate, property ownership, and investment opportunities in Bali.',
+    title: "Property",
+    description:
+      "Real estate, property ownership, and investment opportunities in Bali.",
     icon: Home,
-    gradient: 'from-rose-500/20 via-pink-500/10 to-transparent',
+    gradient: "from-rose-500/20 via-pink-500/10 to-transparent",
   },
   lifestyle: {
-    title: 'Lifestyle',
-    description: 'Living in Bali, culture, community, and quality of life.',
+    title: "Lifestyle",
+    description: "Living in Bali, culture, community, and quality of life.",
     icon: Sun,
-    gradient: 'from-violet-500/20 via-purple-500/10 to-transparent',
+    gradient: "from-violet-500/20 via-purple-500/10 to-transparent",
   },
   tech: {
-    title: 'Tech',
-    description: 'Digital nomad life, tech industry, and remote work in Indonesia.',
+    title: "Tech",
+    description:
+      "Digital nomad life, tech industry, and remote work in Indonesia.",
     icon: Cpu,
-    gradient: 'from-fuchsia-500/20 via-pink-500/10 to-transparent',
+    gradient: "from-fuchsia-500/20 via-pink-500/10 to-transparent",
   },
 };
 
@@ -68,17 +72,17 @@ export default function CategoryPage() {
 
   // Reserved workspace paths - redirect to workspace if accessed
   const RESERVED_PATHS = [
-    'cases',
-    'clients',
-    'dashboard',
-    'documents',
-    'knowledge',
-    'team',
-    'analytics',
-    'intelligence',
-    'whatsapp',
-    'email',
-    'chat',
+    "cases",
+    "clients",
+    "dashboard",
+    "documents",
+    "knowledge",
+    "team",
+    "analytics",
+    "intelligence",
+    "whatsapp",
+    "email",
+    "chat",
   ];
 
   React.useEffect(() => {
@@ -96,14 +100,14 @@ export default function CategoryPage() {
       setLoading(true);
       try {
         const response = await fetch(
-          `/api/blog/articles?category=${category}&status=published&limit=20`
+          `/api/blog/articles?category=${category}&status=published&limit=20`,
         );
         if (response.ok) {
           const data = await response.json();
           setArticles(data.articles || []);
         }
       } catch (error) {
-        console.error('Failed to fetch articles:', error);
+        console.error("Failed to fetch articles:", error);
       } finally {
         setLoading(false);
       }
@@ -119,7 +123,9 @@ export default function CategoryPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-white mb-4">Category not found</h1>
+          <h1 className="text-2xl font-bold text-white mb-4">
+            Category not found
+          </h1>
           <a href="/insights" className="text-violet-400 hover:text-violet-300">
             Back to Insights
           </a>
@@ -131,9 +137,14 @@ export default function CategoryPage() {
   return (
     <div className="min-h-screen">
       {/* Hero section */}
-      <section className={`relative py-16 md:py-20 bg-gradient-to-b ${meta.gradient}`}>
+      <section
+        className={`relative py-16 md:py-20 bg-gradient-to-b ${meta.gradient}`}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
             {/* Icon */}
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/5 border border-white/10 mb-6">
               <Icon className="w-8 h-8 text-white" />
@@ -145,7 +156,9 @@ export default function CategoryPage() {
             </h1>
 
             {/* Description */}
-            <p className="text-lg text-white/60 max-w-2xl mb-8">{meta.description}</p>
+            <p className="text-lg text-white/60 max-w-2xl mb-8">
+              {meta.description}
+            </p>
 
             {/* Category nav */}
             <CategoryNav
@@ -154,7 +167,7 @@ export default function CategoryPage() {
                 if (cat) {
                   window.location.href = `/insights/${cat}`;
                 } else {
-                  window.location.href = '/insights';
+                  window.location.href = "/insights";
                 }
               }}
             />
@@ -171,10 +184,17 @@ export default function CategoryPage() {
               {loading ? (
                 <ArticleGridSkeleton count={6} />
               ) : articles.length > 0 ? (
-                <ArticleGrid articles={articles} variant="grid" columns={2} showFeatured={true} />
+                <ArticleGrid
+                  articles={articles}
+                  variant="grid"
+                  columns={2}
+                  showFeatured={true}
+                />
               ) : (
                 <div className="text-center py-12">
-                  <p className="text-white/50">No articles in this category yet.</p>
+                  <p className="text-white/50">
+                    No articles in this category yet.
+                  </p>
                 </div>
               )}
             </div>
@@ -186,7 +206,9 @@ export default function CategoryPage() {
 
               {/* Popular in category */}
               <div className="p-6 rounded-2xl bg-white/5 border border-white/10">
-                <h3 className="font-medium text-white mb-4">Popular in {meta.title}</h3>
+                <h3 className="font-medium text-white mb-4">
+                  Popular in {meta.title}
+                </h3>
                 <div className="space-y-4">
                   {articles.slice(0, 3).map((article) => (
                     <a

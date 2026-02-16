@@ -1,5 +1,5 @@
-import { useState, useCallback, useMemo } from 'react';
-import { KnowledgeSearchResult } from '@/lib/api';
+import { useState, useCallback, useMemo } from "react";
+import { KnowledgeSearchResult } from "@/lib/api";
 
 export function useSearchSelection(results: KnowledgeSearchResult[]) {
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
@@ -29,7 +29,7 @@ export function useSearchSelection(results: KnowledgeSearchResult[]) {
         .sort((a, b) => a - b)
         .map((i) => results[i])
         .filter(Boolean),
-    [results, selectedIds]
+    [results, selectedIds],
   );
 
   const resetSelection = useCallback(() => {

@@ -1,60 +1,63 @@
-'use client';
+"use client";
 
-import * as React from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
-import { motion } from 'framer-motion';
-import { formatDistanceToNow } from 'date-fns';
-import { Clock, Eye, TrendingUp, Sparkles, User } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import type { ArticleCardProps, ArticleCategory } from '@/lib/blog/types';
+import * as React from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { motion } from "framer-motion";
+import { formatDistanceToNow } from "date-fns";
+import { Clock, Eye, TrendingUp, Sparkles, User } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { ArticleCardProps, ArticleCategory } from "@/lib/blog/types";
 
 // Category color mapping - McKinsey style with blue accent
-const categoryStyles: Record<ArticleCategory, { bg: string; text: string; gradient: string }> = {
+const categoryStyles: Record<
+  ArticleCategory,
+  { bg: string; text: string; gradient: string }
+> = {
   immigration: {
-    bg: 'bg-[#2251ff]/10',
-    text: 'text-[#2251ff]',
-    gradient: 'from-[#2251ff]/20 to-[#4d73ff]/20',
+    bg: "bg-[#2251ff]/10",
+    text: "text-[#2251ff]",
+    gradient: "from-[#2251ff]/20 to-[#4d73ff]/20",
   },
   business: {
-    bg: 'bg-emerald-500/10',
-    text: 'text-emerald-400',
-    gradient: 'from-emerald-500/20 to-teal-500/20',
+    bg: "bg-emerald-500/10",
+    text: "text-emerald-400",
+    gradient: "from-emerald-500/20 to-teal-500/20",
   },
-  'tax-legal': {
-    bg: 'bg-amber-500/10',
-    text: 'text-amber-400',
-    gradient: 'from-amber-500/20 to-orange-500/20',
+  "tax-legal": {
+    bg: "bg-amber-500/10",
+    text: "text-amber-400",
+    gradient: "from-amber-500/20 to-orange-500/20",
   },
   property: {
-    bg: 'bg-[#e85c41]/10',
-    text: 'text-[#e85c41]',
-    gradient: 'from-[#e85c41]/20 to-[#d14832]/20',
+    bg: "bg-[#e85c41]/10",
+    text: "text-[#e85c41]",
+    gradient: "from-[#e85c41]/20 to-[#d14832]/20",
   },
   lifestyle: {
-    bg: 'bg-violet-500/10',
-    text: 'text-violet-400',
-    gradient: 'from-violet-500/20 to-purple-500/20',
+    bg: "bg-violet-500/10",
+    text: "text-violet-400",
+    gradient: "from-violet-500/20 to-purple-500/20",
   },
   tech: {
-    bg: 'bg-fuchsia-500/10',
-    text: 'text-fuchsia-400',
-    gradient: 'from-fuchsia-500/20 to-pink-500/20',
+    bg: "bg-fuchsia-500/10",
+    text: "text-fuchsia-400",
+    gradient: "from-fuchsia-500/20 to-pink-500/20",
   },
 };
 
 // Category badge component
 function CategoryBadge({ category }: { category: ArticleCategory }) {
   const styles = categoryStyles[category];
-  const label = category === 'tax-legal' ? 'Tax & Legal' : category;
+  const label = category === "tax-legal" ? "Tax & Legal" : category;
 
   return (
     <span
       className={cn(
-        'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase tracking-wider',
-        'bg-gradient-to-r',
+        "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase tracking-wider",
+        "bg-gradient-to-r",
         styles.gradient,
-        styles.text
+        styles.text,
       )}
     >
       {label}
@@ -215,7 +218,9 @@ function DefaultCard({
         </h3>
 
         {/* Excerpt */}
-        <p className="text-white/60 text-sm line-clamp-2 mb-3">{article.excerpt}</p>
+        <p className="text-white/60 text-sm line-clamp-2 mb-3">
+          {article.excerpt}
+        </p>
 
         {/* Meta */}
         <div className="flex items-center justify-between text-white/40 text-xs">
@@ -294,7 +299,11 @@ function CompactCard({ article, index = 0 }: ArticleCardProps) {
 }
 
 // Horizontal card (for lists)
-function HorizontalCard({ article, index = 0, showCategory = true }: ArticleCardProps) {
+function HorizontalCard({
+  article,
+  index = 0,
+  showCategory = true,
+}: ArticleCardProps) {
   const href = `/${article.category}/${article.slug}`;
 
   return (
@@ -352,7 +361,7 @@ function HorizontalCard({ article, index = 0, showCategory = true }: ArticleCard
 // Main ArticleCard component
 export function ArticleCard({
   article,
-  variant = 'default',
+  variant = "default",
   index = 0,
   showCategory = true,
   showAuthor = true,
@@ -369,11 +378,11 @@ export function ArticleCard({
   };
 
   switch (variant) {
-    case 'featured':
+    case "featured":
       return <FeaturedCard {...props} />;
-    case 'compact':
+    case "compact":
       return <CompactCard {...props} />;
-    case 'horizontal':
+    case "horizontal":
       return <HorizontalCard {...props} />;
     default:
       return <DefaultCard {...props} />;
@@ -381,4 +390,10 @@ export function ArticleCard({
 }
 
 // Named exports for direct use
-export { FeaturedCard, DefaultCard, CompactCard, HorizontalCard, CategoryBadge };
+export {
+  FeaturedCard,
+  DefaultCard,
+  CompactCard,
+  HorizontalCard,
+  CategoryBadge,
+};

@@ -1,30 +1,30 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import Image from 'next/image';
-import { Lock, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api';
+import React, { useState, useEffect, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import Image from "next/image";
+import { Lock, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { api } from "@/lib/api";
 
 function RegisterContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const token = searchParams.get('token');
+  const token = searchParams.get("token");
 
   const [isValidating, setIsValidating] = useState(true);
   const [isValid, setIsValid] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [clientName, setClientName] = useState('');
-  const [clientEmail, setClientEmail] = useState('');
-  const [pin, setPin] = useState('');
-  const [confirmPin, setConfirmPin] = useState('');
+  const [clientName, setClientName] = useState("");
+  const [clientEmail, setClientEmail] = useState("");
+  const [pin, setPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
 
   useEffect(() => {
     if (!token) {
       setIsValidating(false);
-      setError('Invalid invitation link. Please check the link in your email.');
+      setError("Invalid invitation link. Please check the link in your email.");
       return;
     }
 
@@ -33,14 +33,14 @@ function RegisterContent() {
         const result = await api.portal.validateInviteToken(token);
         if (result.valid) {
           setIsValid(true);
-          setClientName(result.clientName || '');
-          setClientEmail(result.email || '');
+          setClientName(result.clientName || "");
+          setClientEmail(result.email || "");
         } else {
-          setError(result.message || 'This invitation is no longer valid.');
+          setError(result.message || "This invitation is no longer valid.");
         }
       } catch (err) {
-        console.error('Token validation failed:', err);
-        setError('Failed to validate invitation. Please try again.');
+        console.error("Token validation failed:", err);
+        setError("Failed to validate invitation. Please try again.");
       } finally {
         setIsValidating(false);
       }
@@ -53,12 +53,12 @@ function RegisterContent() {
     e.preventDefault();
 
     if (pin !== confirmPin) {
-      setError('PINs do not match');
+      setError("PINs do not match");
       return;
     }
 
     if (pin.length < 4 || pin.length > 6 || !/^\d+$/.test(pin)) {
-      setError('PIN must be 4-6 digits');
+      setError("PIN must be 4-6 digits");
       return;
     }
 
@@ -75,14 +75,14 @@ function RegisterContent() {
         setIsComplete(true);
         // Redirect to login after 3 seconds
         setTimeout(() => {
-          router.push('/login');
+          router.push("/login");
         }, 3000);
       } else {
-        setError(result.message || 'Registration failed. Please try again.');
+        setError(result.message || "Registration failed. Please try again.");
       }
     } catch (err) {
-      console.error('Registration failed:', err);
-      setError('Registration failed. Please try again or contact support.');
+      console.error("Registration failed:", err);
+      setError("Registration failed. Please try again or contact support.");
     } finally {
       setIsSubmitting(false);
     }
@@ -116,7 +116,9 @@ function RegisterContent() {
               />
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-[#E6E7EB] mb-2">Welcome to Bali Zero!</h1>
+          <h1 className="text-2xl font-bold text-[#E6E7EB] mb-2">
+            Welcome to Bali Zero!
+          </h1>
           <p className="text-[#9AA0AE] mb-6">
             Your portal account has been activated. Redirecting you to login...
           </p>
@@ -136,10 +138,12 @@ function RegisterContent() {
           <div className="p-4 bg-red-500/20 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center">
             <AlertCircle className="w-10 h-10 text-red-500" />
           </div>
-          <h1 className="text-2xl font-bold text-[#E6E7EB] mb-2">Invalid Invitation</h1>
+          <h1 className="text-2xl font-bold text-[#E6E7EB] mb-2">
+            Invalid Invitation
+          </h1>
           <p className="text-[#9AA0AE] mb-6">
             {error ||
-              'This invitation link is no longer valid. Please contact your account manager for a new invitation.'}
+              "This invitation link is no longer valid. Please contact your account manager for a new invitation."}
           </p>
           <a
             href="mailto:support@balizero.com"
@@ -169,9 +173,12 @@ function RegisterContent() {
           <div className="p-4 bg-[#4FD1C5]/20 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center">
             <Lock className="w-10 h-10 text-[#4FD1C5]" />
           </div>
-          <h1 className="text-2xl font-bold text-[#E6E7EB] mb-2">Create Your PIN</h1>
+          <h1 className="text-2xl font-bold text-[#E6E7EB] mb-2">
+            Create Your PIN
+          </h1>
           <p className="text-[#9AA0AE]">
-            Welcome, <span className="font-medium text-[#E6E7EB]">{clientName}</span>!
+            Welcome,{" "}
+            <span className="font-medium text-[#E6E7EB]">{clientName}</span>!
             <br />
             Set a 4-6 digit PIN to secure your portal access.
           </p>
@@ -179,7 +186,9 @@ function RegisterContent() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-[#E6E7EB] mb-2">Email</label>
+            <label className="block text-sm font-medium text-[#E6E7EB] mb-2">
+              Email
+            </label>
             <input
               type="email"
               value={clientEmail}
@@ -198,21 +207,23 @@ function RegisterContent() {
               pattern="[0-9]*"
               maxLength={6}
               value={pin}
-              onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
               placeholder="Enter PIN"
               className="w-full px-4 py-3 bg-[#1A1D24] border border-white/5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4FD1C5] focus:border-[#4FD1C5]/50 text-center text-2xl tracking-widest text-[#E6E7EB] placeholder:text-[#9AA0AE]"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[#E6E7EB] mb-2">Confirm PIN</label>
+            <label className="block text-sm font-medium text-[#E6E7EB] mb-2">
+              Confirm PIN
+            </label>
             <input
               type="password"
               inputMode="numeric"
               pattern="[0-9]*"
               maxLength={6}
               value={confirmPin}
-              onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))}
+              onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ""))}
               placeholder="Confirm PIN"
               className="w-full px-4 py-3 bg-[#1A1D24] border border-white/5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4FD1C5] focus:border-[#4FD1C5]/50 text-center text-2xl tracking-widest text-[#E6E7EB] placeholder:text-[#9AA0AE]"
             />
@@ -229,8 +240,8 @@ function RegisterContent() {
             disabled={isSubmitting || pin.length < 4 || confirmPin.length < 4}
             className={`w-full py-3 rounded-lg font-medium transition-colors ${
               isSubmitting || pin.length < 4 || confirmPin.length < 4
-                ? 'bg-[#1A1D24] text-[#9AA0AE] cursor-not-allowed'
-                : 'bg-[#4FD1C5] text-[#0B0E13] hover:bg-[#4FD1C5]/80'
+                ? "bg-[#1A1D24] text-[#9AA0AE] cursor-not-allowed"
+                : "bg-[#4FD1C5] text-[#0B0E13] hover:bg-[#4FD1C5]/80"
             }`}
           >
             {isSubmitting ? (
@@ -239,7 +250,7 @@ function RegisterContent() {
                 Creating Account...
               </span>
             ) : (
-              'Activate My Portal'
+              "Activate My Portal"
             )}
           </button>
         </form>
