@@ -42,6 +42,9 @@ def mock_problematic_modules():
             mock.Image.Image = MagicMock
         sys.modules[m] = mock
 
+    # Special handling for article_composer - import the real module first
+    import backend.services.article_composer as article_composer_module
+
     # Mock backend services to avoid cascade
     svc_mock = types.ModuleType("backend.services")
     svc_mock.__path__ = []
@@ -60,6 +63,10 @@ def mock_problematic_modules():
         "qdrant_client",
     ]:
         sys.modules[m] = MagicMock()
+
+    # Add article_composer to the mock
+    sys.modules["backend.services.article_composer"] = article_composer_module
+    svc_mock.article_composer = article_composer_module
 
     # Special handling for integrations (needed by other tests if this runs first)
     integrations_mock = types.ModuleType("backend.services.integrations")

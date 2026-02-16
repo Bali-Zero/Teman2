@@ -125,8 +125,8 @@ export function useDashboardData() {
 
   const systemStatus = useMemo(() => data?.system_status || 'degraded', [data?.system_status]);
 
-  // Check if user is zero@balizero.com (memoized)
-  const isZero = useMemo(() => user.email === 'zero@balizero.com', [user.email]);
+  // Check if user is admin (using is_admin field from API)
+  const isZero = useMemo(() => user.is_admin, [user.is_admin]);
 
   // Computed values (memoized to prevent recalculation on every render)
   const totalUnread = useMemo(

@@ -35,12 +35,20 @@ app = create_app()
 # Re-export initialization functions
 __all__ = [
     "app",
+    "initialize_services",
+    "initialize_plugins",
     "on_startup",
     "on_shutdown",
     "_parse_history",
     "_allowed_origins",
     "_safe_endpoint_label",
 ]
+
+
+# Backward compatibility: Import and re-export initialization functions
+# These are used by tests and other modules that import from main or main_cloud
+from backend.app.setup.service_initializer import initialize_services
+from backend.app.setup.plugin_initializer import initialize_plugins
 
 
 # Backward compatibility: Export startup/shutdown handlers

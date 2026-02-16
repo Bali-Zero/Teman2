@@ -7,7 +7,7 @@ Replaces 7 separate calls with 1 optimized call.
 
 import asyncio
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import asyncpg
@@ -228,7 +228,7 @@ async def get_dashboard_summary(
 
     try:
         # Per-task timeout to prevent one slow query from blocking the entire response
-        TASK_TIMEOUT = 8.0  # seconds
+        TASK_TIMEOUT = 5.0  # seconds
 
         async def _with_timeout(coro, fallback):
             try:
@@ -312,7 +312,7 @@ async def get_dashboard_summary(
                     "client": practice.get("client_name", "Unknown Client"),
                     "status": frontend_status,
                     "daysRemaining": (
-                        (practice["expiry_date"] - datetime.now().date()).days
+                        (practice["expiry_date"] - datetime.now(timezone.utc).date()).days
                         if practice.get("expiry_date")
                         else None
                     ),

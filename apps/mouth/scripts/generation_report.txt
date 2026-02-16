@@ -1,0 +1,48 @@
+
+KBLI Data Generation Report - Phase 1
+======================================
+Date: 2026-02-16T10:26:38.708Z
+Total Codes: 1562
+With English Keywords: 1505 (96.4%)
+Without English Keywords: 57 (3.6%)
+
+Sample Codes with English Keywords:
+
+01111 - PERTANIAN JAGUNG
+Keywords: corn maize agriculture farming crop grain cultivation pertanian jagung kelompok mencakup kegiatan termasuk dalamnya pengolahan lahan
+
+
+01112 - PERTANIAN SEREALIA SELAIN PADI DAN JAGUNG
+Keywords: bar pub lounge agriculture farming agricultural pertanian serealia selain padi dan jagung kelompok mencakup kegiatan seperti gandum
+
+
+01113 - PERTANIAN KEDELAI
+Keywords: agriculture farming agricultural pertanian kedelai kelompok mencakup kegiatan termasuk dalamnya pengolahan lahan
+
+
+01114 - PERTANIAN KACANG TANAH
+Keywords: agriculture farming agricultural pertanian kacang tanah kelompok mencakup kegiatan termasuk dalamnya pengolahan
+
+
+01115 - PERTANIAN KACANG HIJAU
+Keywords: agriculture farming agricultural pertanian kacang hijau kelompok mencakup kegiatan termasuk dalamnya pengolahan
+
+
+01116 - PERTANIAN ANEKA KACANG SELAIN KEDELAI, KACANG TANAH, DAN KACANG HIJAU
+Keywords: agriculture farming agricultural pertanian aneka kacang selain kedelai tanah dan hijau kelompok mencakup kegiatan lainnya seperti buncis
+
+
+01117 - PERTANIAN BIJI-BIJIAN PENGHASIL MINYAK MAKAN
+Keywords: agriculture farming agricultural pertanian biji bijian penghasil minyak makan kelompok mencakup kegiatan seperti
+
+
+01118 - PERTANIAN BIJI-BIJIAN PENGHASIL MINYAK SELAIN MINYAK MAKAN
+Keywords: agriculture farming agricultural fishery fishing aquaculture pertanian biji bijian penghasil minyak selain makan kelompok mencakup kegiatan
+
+
+01121 - PERTANIAN PADI HIBRIDA
+Keywords: agriculture farming agricultural pertanian padi hibrida kelompok mencakup kegiatan termasuk dalamnya pengolahan
+
+
+01131 - PERTANIAN SAYURAN DAUN
+Keywords: agriculture farming agricultural pertanian sayuran daun kelompok mencakup kegiatan yang bunga atau batangnya

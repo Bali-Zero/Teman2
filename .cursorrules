@@ -1,0 +1,135 @@
+# Nuzantara Project Rules for Cursor
+
+## Project Type
+Production AI platform (v5.2.0) - FastAPI backend + Next.js frontend
+
+## Stack
+- Backend: Python 3.11+, FastAPI, 68 routers, 228 services, 477 tests
+- Frontend: Next.js, TypeScript, Tailwind
+- DB: PostgreSQL, Qdrant (vectors), Redis (cache)
+- Deploy: Fly.io (backend), Vercel (frontend)
+- Embedding: text-embedding-3-small (1536 dims) — NEVER CHANGE
+
+## Golden Rules (ENFORCE)
+
+1. **Virtualenv mandatory** - Never system Python
+2. **No root exec** - Use `PYTHONPATH=. python -m backend.module`
+3. **Absolute imports** - `from backend.core import config`, never relative
+4. **Async first** - `httpx` not `requests`, all I/O async
+5. **Type hints required** - Every function fully typed
+6. **No hardcoded secrets** - Use env vars
+7. **Data/logic separation** - Clean architecture
+8. **Logger not print()** - Use structured logging
+9. **Quality required** - Tests + error handling mandatory
+10. **Verify sources** - Never presume, always verify
+
+## Code Style
+
+### Python
+```python
+# Good
+from typing import Optional
+from backend.core.logging import logger
+import httpx
+
+async def fetch_data(id: str) -> Optional[dict]:
+    try:
+        async with httpx.AsyncClient() as client:
+            result = await client.get(f"/api/{id}")
+            logger.info(f"Fetch successful: {id}")
+            return result.json()
+    except Exception as e:
+        logger.error(f"Fetch failed: {id}", exc_info=True)
+        raise
+```
+
+### TypeScript
+```typescript
+// Good
+interface DataResponse {
+  id: string;
+  name: string;
+}
+
+async function fetchData(id: string): Promise<DataResponse | null> {
+  try {
+    const res = await fetch(`/api/${id}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (error) {
+    console.error('Fetch failed:', error);
+    return null;
+  }
+}
+```
+
+## Critical Paths
+- Backend: `apps/backend-rag/backend/{routers,services,models,db}/`
+- Frontend: `apps/mouth/{app,components,lib}/`
+- Tests: `apps/backend-rag/tests/`
+- MCP: `apps/nuzantara-mcp/`
+
+## Commands
+
+### Backend
+```bash
+source venv/bin/activate
+PYTHONPATH=. python -m uvicorn backend.main:app --reload
+PYTHONPATH=. pytest tests/ -v
+mypy backend/
+ruff check backend/
+```
+
+### Frontend
+```bash
+npm run dev
+npm run build
+npm run test
+```
+
+## Domain Rules
+
+### KBLI Data
+- **FLAT payloads only** in Qdrant
+- Fields: `code`, `title_id`, `title_en`, `description`, `category`, `section`
+- ❌ NO nested structures
+
+### Pricing
+- **ONLY from PricingTool**
+- Never hardcode or cache prices
+- Reference: `PRICING_REFERENCE.md`, `VISA_TYPES_REFERENCE.md`
+
+### Evidence Scoring
+- < 0.15: ABSTAIN (refuse to answer)
+- 0.15-0.60: CAUTIOUS (add disclaimer)
+- > 0.60: NORMAL (confident)
+
+## Deployment
+- Backend: `fly deploy --app nuzantara-rag`
+- Frontend: Auto-deploy to Vercel on git push
+
+## Owner
+- Codename: Zero
+- Real name: PRIVATE (never reveal)
+- Language: Italian with owner, client's language with others
+
+## Avoid
+❌ System Python
+❌ `requests` library
+❌ Nested Qdrant payloads
+❌ Hardcoded prices
+❌ `print()` statements
+❌ Relative imports
+❌ Blocking I/O
+❌ Missing types
+
+## Require
+✅ Virtualenv active
+✅ `httpx` for HTTP
+✅ Flat Qdrant payloads
+✅ PricingTool for prices
+✅ `logger` for logging
+✅ Absolute imports
+✅ Async/await
+✅ Full type hints
+✅ Tests for new features

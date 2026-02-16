@@ -12,7 +12,6 @@ import logging
 from typing import Any
 
 from backend.channels.base import BaseChannel
-from backend.conversation.engine import ConversationEngine
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +33,7 @@ class ChannelRouter:
         await router.route_message("web", web_api_request)
     """
 
-    def __init__(self, conversation_engine: ConversationEngine):
+    def __init__(self, conversation_engine: "ConversationEngine"):
         """
         Initialize channel router.
 

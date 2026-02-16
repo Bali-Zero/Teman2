@@ -473,7 +473,14 @@ async def get_upcoming_renewals(
     """
     try:
         async with db_pool.acquire() as conn:
-            rows = await conn.fetch("SELECT * FROM upcoming_renewals_view")
+            # Filter by days parameter - check if view supports filtering or use direct query
+            rows = await conn.fetch(
+                """
+                SELECT * FROM upcoming_renewals_view 
+                WHERE days_until_expiry <= $1
+                """,
+                days
+            )
             return [dict(row) for row in rows]
 
     except Exception as e:

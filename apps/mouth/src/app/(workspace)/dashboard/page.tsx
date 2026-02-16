@@ -359,8 +359,8 @@ export default function DashboardPage() {
                   funnel.completeStep(user.email, 'dashboard_engagement', 'delete_message', true);
                 // Send real-time update
                 realtime.sendDashboardUpdate('delete', 'case', id);
-                // Note: In a real implementation, you'd want to refetch the data
-                // For now, this is handled by React Query's cache invalidation
+                // TODO: Add queryClient.invalidateQueries({ queryKey: ['dashboard'] }) 
+                // after successful delete to refresh the interactions list
               } catch (error) {
                 const errorMessage = error instanceof Error ? error.message : String(error);
                 trackError(

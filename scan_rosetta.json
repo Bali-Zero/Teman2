@@ -1,0 +1,4 @@
+[
+  "https://bhumi.atrbpn.go.id/geonode/api/bhumi/groups_with_resources",
+  "https://bhumi.atrbpn.go.id/geonode/api/v2/resources?format=json&filter{is_published}=true&filter{resource_type}=dataset&api_preset=bhumi&page_size=1000"
+]
