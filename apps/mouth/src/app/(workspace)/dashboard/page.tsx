@@ -200,6 +200,11 @@ export default function DashboardPage() {
         {/* Featured Articles from Bali Zero - FIRST */}
         <FeaturedArticlesWidget />
 
+        {/* Bali Zero Homepage Live Preview - VISIBLE TO ALL */}
+        <div className="animate-in fade-in slide-in-from-top-4 duration-700">
+          <HomepagePreviewWidget />
+        </div>
+
         {/* Real-time Collaboration Status */}
         {realtime.isConnected && (
           <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-3 flex items-center gap-3">
@@ -225,11 +230,6 @@ export default function DashboardPage() {
         {/* Admin-only widgets */}
         {isZero && (
           <>
-            {/* Bali Zero Homepage Live Preview */}
-            <div className="animate-in fade-in slide-in-from-top-4 duration-700">
-              <HomepagePreviewWidget />
-            </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-4 duration-700">
               <div className="flex flex-col gap-6">
                 <Link

@@ -460,9 +460,20 @@ async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]
 
 
 @router.post("/chat", response_model=KBLINotebookChatResponse)
+
+
 async def chat_kbli(
-    request: KBLINotebookChatRequest, 
+
+
+    http_request: Request, # Iniezione corretta dell'oggetto Request di FastAPI
+
+
+    kbli_request: KBLINotebookChatRequest, # Il body della richiesta
+
+
     search_service=Depends(get_search_service)
+
+
 ):
     """Specialized chat for KBLI Notebook with BPS 2025 focus."""
     logger.info(f"💬 KBLI Chat Request: '{request.query[:50]}...'")
@@ -525,12 +536,12 @@ async def chat_kbli(
                 logger.error(f"❌ PostgreSQL fallback failed: {db_err}")
 
         # Detect KBLI codes from results + regex on query
-        codes_from_query = re.findall(r"\d{5}", request.query)
+        codes_from_query = re.findall(r"\d{5}", kbli_request.query)
         codes_from_results = [r.code for r in results if r.code != "N/A"]
         detected_kbli = list(dict.fromkeys(codes_from_query + codes_from_results))
 
         # Generate Italian explanation via LLM (with fallback)
-        answer = await _generate_kbli_explanation(request.query, results)
+        answer = await _generate_kbli_explanation(kbli_request.query, results)
 
         # Generate template-based follow-up suggestions
         suggested_queries = []
