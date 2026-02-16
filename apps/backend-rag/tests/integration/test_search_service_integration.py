@@ -53,10 +53,10 @@ def stubbed_search_service():
 
 
 @pytest.fixture(autouse=True)
-def clear_search_cache():
-    invalidate_cache("zantara:rag_search:*")
+async def clear_search_cache():
+    await invalidate_cache("zantara:rag_search:*")
     yield
-    invalidate_cache("zantara:rag_search:*")
+    await invalidate_cache("zantara:rag_search:*")
 
 
 @pytest.mark.integration

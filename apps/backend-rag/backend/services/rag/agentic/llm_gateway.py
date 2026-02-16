@@ -153,9 +153,26 @@ class LLMGateway:
 
     @property
     def _available(self) -> bool:
-        """Check availability dynamically."""
+        """Check availability dynamically.
+        
+        Returns the actual client availability unless a test override is set.
+        Tests can set gateway._available = True/False to mock availability.
+        """
+        # Check if test override is set
+        if "_available_override" in self.__dict__:
+            return self.__dict__["_available_override"]
+        # Return actual availability
         client = self._get_genai_client()
         return client.is_available if client else False
+
+    @_available.setter
+    def _available(self, value: bool) -> None:
+        """Set availability for testing purposes.
+        
+        This setter allows tests to mock the availability state.
+        In production, availability is determined by the GenAI client state.
+        """
+        self.__dict__["_available_override"] = value
 
     @property
     def gemini_tools(self) -> list:

@@ -523,7 +523,8 @@ async def test_cached_decorator_with_kwargs(cache_service_no_redis, clear_memory
 # ============================================================================
 
 
-def test_invalidate_cache_with_pattern(cache_service_no_redis, clear_memory_cache):
+@pytest.mark.asyncio
+async def test_invalidate_cache_with_pattern(cache_service_no_redis, clear_memory_cache):
     """Test invalidate_cache function"""
     # Use instance-level memory cache
     cache_service_no_redis._memory_cache.set("zantara:test:key1", "value1", ttl=60)
@@ -531,29 +532,31 @@ def test_invalidate_cache_with_pattern(cache_service_no_redis, clear_memory_cach
     cache_service_no_redis._memory_cache.set("zantara:other:key3", "value3", ttl=60)
 
     with patch("backend.core.cache.logger") as mock_logger:
-        count = invalidate_cache("zantara:test:*", cache_service=cache_service_no_redis)
+        count = await invalidate_cache("zantara:test:*", cache_service=cache_service_no_redis)
         assert count == 2
         mock_logger.info.assert_called_once()
 
 
-def test_invalidate_cache_default_pattern(cache_service_no_redis, clear_memory_cache):
+@pytest.mark.asyncio
+async def test_invalidate_cache_default_pattern(cache_service_no_redis, clear_memory_cache):
     """Test invalidate_cache with default pattern"""
     # Use instance-level memory cache
     cache_service_no_redis._memory_cache.set("zantara:test:key1", "value1", ttl=60)
     cache_service_no_redis._memory_cache.set("zantara:test:key2", "value2", ttl=60)
 
     with patch("backend.core.cache.logger"):
-        count = invalidate_cache(cache_service=cache_service_no_redis)
+        count = await invalidate_cache(cache_service=cache_service_no_redis)
         assert count == 2
 
 
-def test_invalidate_cache_no_matches(cache_service_no_redis, clear_memory_cache):
+@pytest.mark.asyncio
+async def test_invalidate_cache_no_matches(cache_service_no_redis, clear_memory_cache):
     """Test invalidate_cache with no matching keys"""
     # Use instance-level memory cache
     cache_service_no_redis._memory_cache.set("zantara:other:key", "value", ttl=60)
 
     with patch("backend.core.cache.logger"):
-        count = invalidate_cache("zantara:test:*", cache_service=cache_service_no_redis)
+        count = await invalidate_cache("zantara:test:*", cache_service=cache_service_no_redis)
         assert count == 0
 
 

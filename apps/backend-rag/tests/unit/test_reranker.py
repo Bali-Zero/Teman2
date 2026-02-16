@@ -30,6 +30,7 @@ async def test_reranker_init_success():
     with patch("backend.core.reranker.settings") as mock_settings:
         mock_settings.zerank_api_key = "test_key"
         mock_settings.zerank_api_url = "https://api.test.com"
+        mock_settings.api_keys = "test-api-key"
 
         reranker = ReRanker()
         assert reranker.enabled is True
@@ -42,6 +43,7 @@ async def test_reranker_disabled_without_key():
     """Test ReRanker disabled if key missing"""
     with patch("backend.core.reranker.settings") as mock_settings:
         mock_settings.zerank_api_key = None
+        mock_settings.api_keys = "test-api-key"
 
         reranker = ReRanker()
         assert reranker.enabled is False
@@ -53,6 +55,7 @@ async def test_rerank_logic():
     with patch("backend.core.reranker.settings") as mock_settings:
         mock_settings.zerank_api_key = "test_key"
         mock_settings.zerank_api_url = "https://api.test.com"
+        mock_settings.api_keys = "test-api-key"
 
         reranker = ReRanker()
 
@@ -99,6 +102,7 @@ async def test_rerank_api_error():
     """Test fallback when API fails"""
     with patch("backend.core.reranker.settings") as mock_settings:
         mock_settings.zerank_api_key = "test_key"
+        mock_settings.api_keys = "test-api-key"
 
         reranker = ReRanker()
         docs = [{"text": "doc1", "score": 0.5}, {"text": "doc2", "score": 0.4}]
@@ -123,6 +127,7 @@ async def test_rerank_empty_results():
     """Test handling of empty API results"""
     with patch("backend.core.reranker.settings") as mock_settings:
         mock_settings.zerank_api_key = "test_key"
+        mock_settings.api_keys = "test-api-key"
 
         reranker = ReRanker()
         docs = [{"text": "doc1", "score": 0.5}]

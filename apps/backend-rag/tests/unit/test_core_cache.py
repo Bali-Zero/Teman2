@@ -573,21 +573,22 @@ class TestUtilityFunctions:
         # Cleanup
         cache_module._cache_instance = None
 
+    @pytest.mark.asyncio
     @patch("backend.app.core.config.settings")
-    def test_invalidate_cache(self, mock_settings):
+    async def test_invalidate_cache(self, mock_settings):
         """Test invalidate_cache function"""
         mock_settings.redis_url = None
         cache = CacheService()
 
-        cache.set("zantara:test:1", "data1")
-        cache.set("zantara:test:2", "data2")
-        cache.set("other:key", "data3")
+        await cache.set("zantara:test:1", "data1")
+        await cache.set("zantara:test:2", "data2")
+        await cache.set("other:key", "data3")
 
-        count = invalidate_cache("zantara:test:*", cache_service=cache)
+        count = await invalidate_cache("zantara:test:*", cache_service=cache)
 
         assert count == 2
-        assert cache.get("zantara:test:1") is None
-        assert cache.get("other:key") == "data3"
+        assert await cache.get("zantara:test:1") is None
+        assert await cache.get("other:key") == "data3"
 
 
 class TestConstants:

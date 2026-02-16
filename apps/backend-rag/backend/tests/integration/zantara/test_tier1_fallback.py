@@ -27,10 +27,10 @@ if str(backend_path) not in sys.path:
 # Change to backend directory for imports
 os.chdir(str(backend_path / "backend"))
 
-from backend.services.rag.agentic.reasoning import (
-    ReasoningEngine,
-    _get_critical_domain_type,
-    _is_critical_domain,
+from backend.services.rag.agentic.reasoning import ReasoningEngine
+from backend.services.rag.agentic.reasoning_utils import (
+    get_critical_domain_type,
+    is_critical_domain,
 )
 from backend.services.tools.definitions import AgentState
 
@@ -165,26 +165,26 @@ class TestTier1Fallback:
     async def test_critical_domain_detection(self):
         """Test that critical domain detection works correctly"""
         # Test visa queries
-        assert _is_critical_domain("Quanto costa il KITAS?", "business_simple") is True
+        assert is_critical_domain("Quanto costa il KITAS?", "business_simple") is True
         assert (
-            _is_critical_domain("Quali sono i requisiti per il visto?", "business_complex") is True
+            is_critical_domain("Quali sono i requisiti per il visto?", "business_complex") is True
         )
 
         # Test legal queries
-        assert _is_critical_domain("Parlami della legge sul PMA", "business_complex") is True
+        assert is_critical_domain("Parlami della legge sul PMA", "business_complex") is True
 
         # Test pricing queries
-        assert _is_critical_domain("Prezzo servizio", "business_simple") is True
+        assert is_critical_domain("Prezzo servizio", "business_simple") is True
 
         # Test non-critical queries
-        assert _is_critical_domain("Tell me about Bali", "casual") is False
-        assert _is_critical_domain("Come funziona il sistema solare?", "casual") is False
+        assert is_critical_domain("Tell me about Bali", "casual") is False
+        assert is_critical_domain("Come funziona il sistema solare?", "casual") is False
 
         # Test domain type detection
-        assert _get_critical_domain_type("Quanto costa il KITAS?") == "visa"
-        assert _get_critical_domain_type("Parlami della legge") == "legal"
-        assert _get_critical_domain_type("Prezzo servizio") == "pricing"
-        assert _get_critical_domain_type("Quali documenti servono?") == "procedure"
+        assert get_critical_domain_type("Quanto costa il KITAS?") == "visa"
+        assert get_critical_domain_type("Parlami della legge") == "legal"
+        assert get_critical_domain_type("Prezzo servizio") == "pricing"
+        assert get_critical_domain_type("Quali documenti servono?") == "procedure"
 
     @pytest.mark.asyncio
     async def test_tier1_with_context(self):

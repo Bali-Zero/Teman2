@@ -25,6 +25,7 @@ class TestPostgreSQLDebugger:
         """Test initialization uses settings.database_url by default."""
         with patch("backend.app.utils.postgres_debugger.settings") as mock_settings:
             mock_settings.database_url = "postgresql://default:default@localhost/default"
+            mock_settings.api_keys = "test-api-key"
             debugger = PostgreSQLDebugger()
             assert debugger.database_url == "postgresql://default:default@localhost/default"
 

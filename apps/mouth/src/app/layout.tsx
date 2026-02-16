@@ -1,18 +1,16 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
-import { headers } from "next/headers";
 import {
   OrganizationJsonLd,
   LocalBusinessJsonLd,
   WebsiteJsonLd,
   AggregateRatingJsonLd,
+  DynamicJsonLd,
 } from "@/components/seo";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import { ErrorBoundary } from "@/components/optimization";
 import { WebVitalsMonitor } from "@/components/providers/WebVitalsMonitor";
-import { SERVICES_DATA } from "@/data/services_data";
-import { getArticleBySlug } from "@/lib/blog/articles";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -154,280 +152,32 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Get current pathname to inject page-specific JSON-LD schemas
-  const headersList = await headers();
-  const pathname =
-    headersList.get("x-pathname") || headersList.get("x-invoke-path") || "";
-  const baseUrl = process.env.NEXT_PUBLIC_PUBLIC_URL || "https://balizero.com";
-
-  // Array to collect all page-specific schemas
-  const pageSchemas: any[] = [];
-
-  // 1. SERVICE DETAIL PAGES: /services/[slug]
-  const serviceMatch = pathname.match(/^\/services\/([^\/]+)$/);
-  const serviceSlug = serviceMatch ? serviceMatch[1] : null;
-  const service = serviceSlug ? SERVICES_DATA[serviceSlug] : null;
-
-  if (service) {
-    const serviceType =
-      serviceSlug === "visa" ? "GovernmentService" : "ProfessionalService";
-
-    const serviceSchema = {
-      "@context": "https://schema.org",
-      "@type": serviceType,
-      name: service.name,
-      description: service.description,
-      provider: {
-        "@type": "Organization",
-        name: "Bali Zero",
-        url: baseUrl,
-        logo: `${baseUrl}/assets/logo/balizero-logo.png`,
-        contactPoint: {
-          "@type": "ContactPoint",
-          telephone: "+62-859-0436-9574",
-          contactType: "customer service",
-          availableLanguage: ["English", "Indonesian"],
-        },
-      },
-      areaServed: {
-        "@type": "Country",
-        name: "Indonesia",
-      },
-      offers: service.packages
-        .filter((pkg) => pkg.price !== "Contact")
-        .map((pkg) => ({
-          "@type": "Offer",
-          name: pkg.name,
-          description: pkg.description,
-          price: pkg.price.replace(/\./g, ""),
-          priceCurrency: "IDR",
-          availability: "https://schema.org/InStock",
-          validFrom: "2026-01-01",
-        })),
-      serviceType: service.name,
-      hoursAvailable: service.timeline,
-    };
-
-    const faqSchema = {
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      mainEntity: service.faqs.map((faq) => ({
-        "@type": "Question",
-        name: faq.question,
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: faq.answer,
-        },
-      })),
-    };
-
-    pageSchemas.push(serviceSchema, faqSchema);
-  }
-
-  // 2. ARTICLE PAGES: /[category]/[slug]
-  const articleMatch = pathname.match(
-    /^\/(immigration|business|tax-legal|property|lifestyle|tech)\/([^\/]+)$/,
-  );
-  if (articleMatch) {
-    const [, category, slug] = articleMatch;
-    try {
-      const article = await getArticleBySlug(category, slug);
-      if (article) {
-        const articleUrl = `${baseUrl}/${category}/${slug}`;
-        const imageUrl = article.coverImage?.startsWith("http")
-          ? article.coverImage
-          : `${baseUrl}${article.coverImage || "/static/og-image.jpg"}`;
-
-        // Article schema
-        const articleSchema = {
-          "@context": "https://schema.org",
-          "@type": "Article",
-          headline: article.title,
-          description: article.excerpt || article.subtitle || article.title,
-          url: articleUrl,
-          image: {
-            "@type": "ImageObject",
-            url: imageUrl,
-            width: 1200,
-            height: 630,
-          },
-          datePublished:
-            article.publishedAt?.toISOString() ||
-            article.createdAt.toISOString(),
-          dateModified: article.updatedAt.toISOString(),
-          author: {
-            "@type":
-              article.author.role === "AI Immigration Advisor"
-                ? "Organization"
-                : "Person",
-            name: article.author.name || "Bali Zero Editorial",
-            url: baseUrl,
-          },
-          publisher: {
-            "@type": "Organization",
-            name: "Bali Zero",
-            logo: {
-              "@type": "ImageObject",
-              url: `${baseUrl}/static/balizero-logo-clean.png`,
-              width: 200,
-              height: 200,
-            },
-          },
-          mainEntityOfPage: {
-            "@type": "WebPage",
-            "@id": articleUrl,
-          },
-          keywords: article.tags?.join(", "),
-          wordCount: article.readingTime
-            ? article.readingTime * 200
-            : undefined,
-          articleSection: category,
-          inLanguage: "en-US",
-        };
-
-        // Breadcrumb schema
-        const breadcrumbSchema = {
-          "@context": "https://schema.org",
-          "@type": "BreadcrumbList",
-          itemListElement: [
-            {
-              "@type": "ListItem",
-              position: 1,
-              name: "Home",
-              item: baseUrl,
-            },
-            {
-              "@type": "ListItem",
-              position: 2,
-              name: "Insights",
-              item: `${baseUrl}/insights`,
-            },
-            {
-              "@type": "ListItem",
-              position: 3,
-              name: article.category,
-              item: `${baseUrl}/insights/${article.category}`,
-            },
-            {
-              "@type": "ListItem",
-              position: 4,
-              name: article.title,
-              item: articleUrl,
-            },
-          ],
-        };
-
-        pageSchemas.push(articleSchema, breadcrumbSchema);
-      }
-    } catch (error) {
-      // Silently fail - don't block page rendering if article can't be loaded
-      // Error logged server-side if needed, but not blocking page render
-    }
-  }
-
-  // 3. SERVICES LIST PAGE: /services
-  if (pathname === "/services") {
-    const servicesListSchema = {
-      "@context": "https://schema.org",
-      "@type": "ItemList",
-      name: "Bali Zero Services",
-      description:
-        "Complete visa, immigration, company setup, and business consulting services in Bali, Indonesia",
-      itemListElement: Object.values(SERVICES_DATA).map((svc, index) => ({
-        "@type": "ListItem",
-        position: index + 1,
-        item: {
-          "@type": "Service",
-          name: svc.name,
-          description: svc.description,
-          url: `${baseUrl}/services/${svc.slug}`,
-        },
-      })),
-    };
-    pageSchemas.push(servicesListSchema);
-  }
-
-  // 4. CONTACT PAGE: /contact
-  if (pathname === "/contact") {
-    const contactPageSchema = {
-      "@context": "https://schema.org",
-      "@type": "ContactPage",
-      name: "Contact Bali Zero",
-      description:
-        "Get in touch with Bali Zero for visa, immigration, and business consulting services in Bali, Indonesia",
-      url: `${baseUrl}/contact`,
-      mainEntity: {
-        "@type": "Organization",
-        name: "Bali Zero",
-        url: baseUrl,
-        contactPoint: [
-          {
-            "@type": "ContactPoint",
-            telephone: "+62-859-0436-9574",
-            contactType: "customer service",
-            availableLanguage: ["English", "Indonesian"],
-            areaServed: "ID",
-          },
-          {
-            "@type": "ContactPoint",
-            email: "info@balizero.com",
-            contactType: "customer service",
-            availableLanguage: ["English", "Indonesian"],
-          },
-        ],
-      },
-    };
-    pageSchemas.push(contactPageSchema);
-  }
-
-  // 5. TEAM PAGE: /team
-  if (pathname === "/team") {
-    const aboutPageSchema = {
-      "@context": "https://schema.org",
-      "@type": "AboutPage",
-      name: "Bali Zero Team",
-      description:
-        "Meet the expert team at Bali Zero - visa, immigration, and business consulting professionals in Bali, Indonesia",
-      url: `${baseUrl}/team`,
-      mainEntity: {
-        "@type": "Organization",
-        name: "Bali Zero",
-        alternateName: "Bali Zero Team",
-        url: baseUrl,
-        description:
-          "Expert visa, immigration, company setup, and business consulting services in Bali, Indonesia. Trusted by 1000+ expats.",
-        foundingDate: "2020",
-        numberOfEmployees: {
-          "@type": "QuantitativeValue",
-          value: "10-50",
-        },
-        address: {
-          "@type": "PostalAddress",
-          addressLocality: "Bali",
-          addressRegion: "Bali",
-          addressCountry: "ID",
-        },
-      },
-    };
-    pageSchemas.push(aboutPageSchema);
-  }
-
   return (
     <html lang="en" className="dark">
       <head>
         {/* ⚡ Performance: Preconnect to critical domains */}
         <link rel="preconnect" href="https://nuzantara-rag.fly.dev" />
         <link rel="dns-prefetch" href="https://nuzantara-rag.fly.dev" />
-        
+
         {/* ⚡ Preload critical resources */}
-        <link rel="preload" href="/_next/static/css/app/layout.css" as="style" />
-        <link rel="preload" href="/_next/static/media/GeistVariableVF.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
-        
+        <link
+          rel="preload"
+          href="/_next/static/css/app/layout.css"
+          as="style"
+        />
+        <link
+          rel="preload"
+          href="/_next/static/media/GeistVariableVF.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
+
         {/* AI Discovery Links -->
         <link
           rel="alternate"
@@ -452,24 +202,11 @@ export default async function RootLayout({
         <OrganizationJsonLd />
         <LocalBusinessJsonLd />
         <WebsiteJsonLd />
-        {/* Google Reviews AggregateRating - show stars in search results (homepage only) */}
-        {pathname === "/" && <AggregateRatingJsonLd />}
+        {/* Google Reviews AggregateRating - always included, visible on homepage */}
+        <AggregateRatingJsonLd />
 
-        {/* Page-specific JSON-LD schemas - Injected in <head> for Schema.org Validator */}
-        {pageSchemas.map((schema, index) => {
-          const schemaType = schema["@type"] || "schema";
-          const uniqueId = `json-ld-${schemaType.toLowerCase()}-${index}`;
-          return (
-            <script
-              key={uniqueId}
-              id={uniqueId}
-              type="application/ld+json"
-              dangerouslySetInnerHTML={{
-                __html: JSON.stringify(schema).replace(/</g, "\\u003c"),
-              }}
-            />
-          );
-        })}
+        {/* Page-specific JSON-LD schemas - Client-side rendered for ISR compatibility */}
+        <DynamicJsonLd />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[var(--background)] text-[var(--foreground)]`}
