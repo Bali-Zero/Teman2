@@ -13,9 +13,6 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
 
   // ⚡ Bundle optimization
   compress: true,
@@ -38,8 +35,8 @@ const nextConfig: NextConfig = {
     serverMinification: true,
     // Optimize CSS (removes unused CSS in production)
     optimizeCss: true,
-    // Partial Prerendering - serves static shell immediately
-    ppr: true, // Enable for 10/10 performance - static shell + dynamic content
+    // Partial Prerendering - Next.js 16 handles this automatically
+    // PPR features are now part of the core rendering engine
     // Turbopack for faster builds (when stable)
     // turbo: {},
   },

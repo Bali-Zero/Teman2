@@ -62,6 +62,7 @@ class KGAgentState(TypedDict):
     confidence_scores: dict[str, float]  # {entity_id: confidence}
     intent: str | None  # company_setup, visa, hire, property, tax, etc.
     extracted_entities: list[str]  # Raw entities from query (before KG match)
+    domain: str | None  # visa, tax, property, kbli, company, general (for routing)
 
     # Result State
     workflow: dict | None  # Final workflow if found

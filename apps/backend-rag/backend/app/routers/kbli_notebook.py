@@ -84,6 +84,67 @@ class KBLINotebookChatResponse(BaseModel):
 KBLI_COLLECTION = "kbli_2025_final"
 
 
+@router.get("/llm-health")
+async def kbli_llm_health():
+    """Check LLM health for KBLI Notebook chat functionality."""
+    gateway = _get_llm_gateway()
+    
+    health_status = {
+        "llm_available": False,
+        "models": {},
+        "error": None
+    }
+    
+    try:
+        # Check gateway availability
+        health_status["llm_available"] = gateway._available
+        
+        if gateway._available:
+            # Run detailed health check
+            models_health = await gateway.health_check()
+            health_status["models"] = models_health
+            
+            # Quick test generation
+            try:
+                from backend.services.rag.agentic.llm_gateway import TIER_FLASH
+                chat = gateway.create_chat_with_history(
+                    history_to_use=[],
+                    model_tier=TIER_FLASH,
+                    system_instruction="You are a helpful assistant.",
+                )
+                test_response, model_used, _, usage = await gateway.send_message(
+                    chat=chat,
+                    message="Say 'OK'",
+                    system_prompt="You are a helpful assistant.",
+                    tier=TIER_FLASH,
+                    enable_function_calling=False,
+                    conversation_messages=[{"role": "user", "content": "Say 'OK'"}],
+                )
+                health_status["test_generation"] = {
+                    "success": bool(test_response and test_response.strip()),
+                    "model_used": model_used,
+                    "response_preview": test_response[:50] if test_response else None,
+                    "usage": {
+                        "prompt_tokens": usage.prompt_tokens if usage else 0,
+                        "completion_tokens": usage.completion_tokens if usage else 0,
+                        "cost_usd": usage.cost_usd if usage else 0.0,
+                    }
+                }
+            except Exception as test_err:
+                health_status["test_generation"] = {
+                    "success": False,
+                    "error": str(test_err)
+                }
+        else:
+            health_status["error"] = "LLM Gateway not available. Check GOOGLE_API_KEY or GOOGLE_APPLICATION_CREDENTIALS."
+            
+    except Exception as e:
+        health_status["error"] = f"Health check failed: {str(e)}"
+        logger.error(f"❌ LLM health check error: {e}", exc_info=True)
+    
+    return health_status
+
+
 async def _get_kbli_payload_from_qdrant(code: str) -> dict | None:
     """Fetch Qdrant payload for a specific KBLI code (by exact match on kode_kbli)."""
     headers = {"Content-Type": "application/json"}
@@ -293,7 +354,8 @@ KBLI_SYSTEM_PROMPT = (
     "5. RISK & LICENSING: Deeply explain what the Risk Level (Low, Medium, High) means for the specific activity. "
     "Mention if it's 'NIB only' or requires a 'Standard Certificate' or 'Business License'.\n"
     "6. LIMITATIONS: If the data is missing a specific detail, state: 'Based on current KBLI 2025 data and PP 28/2025, the exact requirement for X is not specified.'\n"
-    "7. LANGUAGE: Respond in the language detected in the query (usually Italian or English). Use professional, strategic tone."
+    "7. LANGUAGE: Respond in the language detected in the query (usually Italian or English). Use professional, strategic tone.\n"
+    "8. BALI RETAIL MORATORIUM: If the query mentions Bali and the context contains data about 'Toko Modern' or retail chains (KBLI 47111, 47112, 47113, 47191), you MUST explicitly warn the user that INGUB No. 6/2025 has suspended all new licenses for these activities in Bali to protect local SMEs and traditional markets."
 )
 
 
@@ -317,19 +379,25 @@ _TRANSLATE_SYSTEM = (
 )
 
 
-@cached(ttl=604800)  # Cache translations for 7 days
+@cached(ttl=604800, prefix="kbli_translate")  # Cache translations for 7 days
 async def _translate_query_for_kbli(query: str) -> str:
     """Translate any-language query to Indonesian KBLI search terms."""
     try:
         from backend.services.rag.agentic.llm_gateway import TIER_FLASH
 
         gateway = _get_llm_gateway()
+        
+        # Check if LLM gateway is available before attempting translation
+        if not gateway._available:
+            logger.warning("⚠️ LLM Gateway not available for translation, using original query")
+            return query
+        
         chat = gateway.create_chat_with_history(
             history_to_use=[],
             model_tier=TIER_FLASH,
             system_instruction=_TRANSLATE_SYSTEM,
         )
-        translated, _model, _resp, _usage = await gateway.send_message(
+        translated, model_used, _resp, _usage = await gateway.send_message(
             chat=chat,
             message=query,
             system_prompt=_TRANSLATE_SYSTEM,
@@ -337,11 +405,17 @@ async def _translate_query_for_kbli(query: str) -> str:
             enable_function_calling=False,
             conversation_messages=[{"role": "user", "content": query}],
         )
+        
+        # Validate translation is not empty
+        if not translated or not translated.strip():
+            logger.warning(f"⚠️ Translation returned empty from {model_used}, using original")
+            return query
+            
         translated = translated.strip().strip('"').strip("'")
-        logger.info(f"🌐 Query translation: '{query}' → '{translated}'")
+        logger.info(f"🌐 Query translation: '{query}' → '{translated}' (model: {model_used})")
         return translated
     except Exception as e:
-        logger.warning(f"Query translation failed, using original: {e}")
+        logger.warning(f"Query translation failed ({type(e).__name__}), using original: {e}")
         return query
 
 
@@ -400,7 +474,7 @@ def _detect_language(query: str) -> str:
     return "English"
 
 
-@cached(ttl=43200)  # Cache explanations for 12 hours
+@cached(ttl=43200, prefix="kbli_explain")  # Cache explanations for 12 hours
 async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]) -> str:
     """Generate a grounded explanation of KBLI search results using LLM."""
     if not results:
@@ -436,12 +510,19 @@ async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]
         from backend.services.rag.agentic.llm_gateway import TIER_FLASH
 
         gateway = _get_llm_gateway()
+        
+        # Check if LLM gateway is available
+        if not gateway._available:
+            logger.error("❌ LLM Gateway not available - check GOOGLE_API_KEY or GOOGLE_APPLICATION_CREDENTIALS")
+            raise RuntimeError("LLM service not available")
+        
         chat = gateway.create_chat_with_history(
             history_to_use=[],
             model_tier=TIER_FLASH,
             system_instruction=lang_system,
         )
-        response_text, _model, _resp, _usage = await gateway.send_message(
+        
+        response_text, model_used, resp_obj, usage = await gateway.send_message(
             chat=chat,
             message=message,
             system_prompt=lang_system,
@@ -449,34 +530,58 @@ async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]
             enable_function_calling=False,
             conversation_messages=[{"role": "user", "content": message}],
         )
+        
+        # CRITICAL: Validate response is not empty
+        if not response_text or not response_text.strip():
+            logger.error(f"❌ LLM returned empty response. Model: {model_used}, Usage: {usage}")
+            raise RuntimeError(f"LLM returned empty response from model {model_used}")
+        
+        logger.info(f"✅ KBLI explanation generated. Model: {model_used}, Length: {len(response_text)} chars")
         return response_text
+        
     except Exception as e:
-        logger.warning(f"LLM explanation failed, using fallback: {e}")
+        logger.error(f"❌ LLM explanation failed: {type(e).__name__}: {e}")
         # Deterministic fallback: markdown list of results
         lines = [f"Ho trovato {len(results)} codici KBLI rilevanti per la tua ricerca:\n"]
         for r in results:
             lines.append(f"**KBLI {r.code}** - {r.title}\n{r.description}\n")
-        return "\n".join(lines)
+        fallback_answer = "\n".join(lines)
+        logger.info(f"✅ Using fallback answer, length: {len(fallback_answer)} chars")
+        return fallback_answer
+
+
+# Minimum score threshold for ABSTAIN logic
+MIN_RELEVANCE_SCORE = 0.45  # Results below this score trigger ABSTAIN
+
+# Non-business keywords that should trigger helpful redirect
+NON_BUSINESS_KEYWORDS = [
+    "kitas", "kitap", "visa", "immigration", "imigrasi", "passport", "paspor",
+    "stay permit", "work permit", "izin tinggal", "izin kerja", "renewal",
+    "agente immigrazione", "visto", "permesso di soggiorno", "immigrazione"
+]
+
+
+def _is_non_business_query(query: str) -> bool:
+    """Check if query is about immigration/visa rather than business classification."""
+    query_lower = query.lower()
+    return any(keyword in query_lower for keyword in NON_BUSINESS_KEYWORDS)
 
 
 @router.post("/chat", response_model=KBLINotebookChatResponse)
-
-
 async def chat_kbli(
-
-
-    http_request: Request, # Iniezione corretta dell'oggetto Request di FastAPI
-
-
-    kbli_request: KBLINotebookChatRequest, # Il body della richiesta
-
-
+    http_request: Request,  # Iniezione corretta dell'oggetto Request di FastAPI
+    kbli_request: KBLINotebookChatRequest,  # Il body della richiesta
     search_service=Depends(get_search_service)
-
-
 ):
     """Specialized chat for KBLI Notebook with BPS 2025 focus."""
     logger.info(f"💬 KBLI Chat Request: '{kbli_request.query[:50]}...'")
+    
+    # Check LLM availability early
+    gateway = _get_llm_gateway()
+    if not gateway._available:
+        logger.error("❌ LLM Gateway not available - GOOGLE_API_KEY or GOOGLE_APPLICATION_CREDENTIALS may be missing")
+    else:
+        logger.debug("✅ LLM Gateway is available")
 
     try:
         # Translate query to Indonesian KBLI terms for better matching
@@ -508,6 +613,7 @@ async def chat_kbli(
                 )
                 if len(results) >= 5:
                     break
+            logger.info(f"✅ Found {len(results)} KBLI results from Qdrant")
         except Exception as q_err:
             logger.warning(f"⚠️ Qdrant search failed, falling back to PostgreSQL: {q_err}")
             # Fallback to Postgres search by name/code
@@ -527,11 +633,12 @@ async def chat_kbli(
                                     code=code,
                                     title=row["name"],
                                     description=row["description"][:200] + "...",
-                                    score=0.8, # Static score for fallback
+                                    score=0.8,  # Static score for fallback
                                     pma_status=props.get("pma_status", "UNKNOWN"),
                                     risk_category=props.get("kategori_risiko", "Unknown")
                                 )
                             )
+                        logger.info(f"✅ Found {len(results)} KBLI results from PostgreSQL fallback")
             except Exception as db_err:
                 logger.error(f"❌ PostgreSQL fallback failed: {db_err}")
 
@@ -540,8 +647,72 @@ async def chat_kbli(
         codes_from_results = [r.code for r in results if r.code != "N/A"]
         detected_kbli = list(dict.fromkeys(codes_from_query + codes_from_results))
 
+        # Check for non-business queries (KITAS/visa/immigration)
+        if _is_non_business_query(kbli_request.query):
+            logger.info(f"⚠️ Non-business query detected: '{kbli_request.query[:50]}'")
+            abstain_answer = (
+                "Mi dispiace, ma questa richiesta non riguarda la classificazione delle attività economiche (KBLI).\n\n"
+                "Sono specializzato in KBLI (Klasifikasi Baku Lapangan Usaha Indonesia) - il sistema di classificazione "
+                "delle attività economiche in Indonesia secondo il regolamento BPS 7/2025.\n\n"
+                "Per informazioni su KITAS, visti e permessi di soggiorno, ti consiglio di consultare:\n"
+                "• Il sito ufficiale dell'immigrazione indonesiana: imigrasi.go.id\n"
+                "• Un agente immigrazione autorizzato\n\n"
+                "Posso aiutarti invece a trovare il codice KBLI corretto per la tua attività commerciale in Indonesia. "
+                "Descrivimi che tipo di business vuoi avviare!"
+            )
+            return KBLINotebookChatResponse(
+                answer=abstain_answer,
+                detected_kbli=[],
+                results=[],
+                sources=[],
+                suggested_queries=[
+                    "Voglio aprire un ristorante a Bali",
+                    "Codice KBLI per import export",
+                    "Attività alberghiera KBLI"
+                ],
+            )
+
+        # ABSTAIN LOGIC: Filter results by minimum relevance score
+        filtered_results = [r for r in results if r.score >= MIN_RELEVANCE_SCORE]
+        if not filtered_results and results:
+            logger.warning(f"⚠️ All results below threshold {MIN_RELEVANCE_SCORE}. Triggering ABSTAIN.")
+            abstain_answer = (
+                "Mi dispiace, ma non ho trovato codici KBLI rilevanti per la tua ricerca.\n\n"
+                "Prova a:\n"
+                "• Usare termini più specifici relativi all'attività commerciale\n"
+                "• Descrivere il tipo di business che vuoi avviare\n"
+                "• Verificare l'ortografia dei termini\n\n"
+                "Sono specializzato in KBLI 2025 (BPS Regulation No. 7/2025) e posso aiutarti a trovare "
+                "il codice corretto per la tua attività in Indonesia."
+            )
+            return KBLINotebookChatResponse(
+                answer=abstain_answer,
+                detected_kbli=[],
+                results=[],
+                sources=[],
+                suggested_queries=[
+                    "Ristorante a Bali",
+                    "Import export Indonesia",
+                    "Hotel e hospitality"
+                ],
+            )
+        
+        # Use filtered results for explanation
+        results = filtered_results if filtered_results else results
+
         # Generate Italian explanation via LLM (with fallback)
         answer = await _generate_kbli_explanation(kbli_request.query, results)
+        
+        # CRITICAL: Ensure answer is never empty
+        if not answer or not answer.strip():
+            logger.error("❌ CRITICAL: Answer is empty after _generate_kbli_explanation")
+            # Ultimate fallback
+            if results:
+                answer = f"Ho trovato {len(results)} codici KBLI rilevanti per la tua ricerca:\n\n"
+                for r in results:
+                    answer += f"**KBLI {r.code}** - {r.title}\n{r.description}\n\n"
+            else:
+                answer = "Mi dispiace, non sono riuscito a trovare informazioni rilevanti. Riprova con termini diversi."
 
         # Generate template-based follow-up suggestions
         suggested_queries = []
@@ -559,6 +730,8 @@ async def chat_kbli(
             else:
                 suggested_queries.append(f"What are the risk requirements for KBLI {top.code}?")
 
+        logger.info(f"✅ KBLI Chat Response: answer_length={len(answer)}, results={len(results)}, detected={detected_kbli}")
+        
         return KBLINotebookChatResponse(
             answer=answer,
             detected_kbli=detected_kbli,
@@ -568,4 +741,4 @@ async def chat_kbli(
         )
     except Exception as e:
         logger.error(f"❌ KBLI Chat Error: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail="AI Engine connection failed") from e
+        raise HTTPException(status_code=500, detail=f"AI Engine error: {str(e)}") from e

@@ -52,6 +52,8 @@ class OrchestratorResponseBuilder:
         token_usage: Any,  # TokenUsage
         timings: dict[str, float],
         start_time: float,
+        workflow: dict | None = None,
+        reasoning: str | None = None,
     ) -> CoreResult:
         """
         Costruisce CoreResult da AgentState e metadata.
@@ -64,19 +66,36 @@ class OrchestratorResponseBuilder:
             token_usage: TokenUsage object
             timings: Dict con timing breakdown
             start_time: Timestamp di inizio
+            workflow: Optional KG LangGraph workflow dict
+            reasoning: Optional reasoning chain from KG LangGraph
 
         Returns:
             CoreResult completo
         """
+        from backend.app.core.constants import EvidenceScoreConstants
+        
         timings.get("total", 0.0)
         verification_score = getattr(state, "verification_score", 0.0)
         evidence_score = getattr(state, "evidence_score", 0.0)
+
+        # Determine if this is an ABSTAIN response
+        abstain = evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD
+        abstain_reason = None
+        if abstain:
+            if evidence_score < 0.05:
+                abstain_reason = "no_relevant_context"
+            elif evidence_score < 0.15:
+                abstain_reason = "low_confidence"
+            else:
+                abstain_reason = "insufficient_evidence"
 
         return CoreResult(
             answer=state.final_answer,
             sources=sources,
             verification_score=verification_score,
             evidence_score=evidence_score,
+            abstain=abstain,
+            abstain_reason=abstain_reason,
             is_ambiguous=False,
             entities=extracted_entities,
             model_used=model_used,
@@ -88,6 +107,8 @@ class OrchestratorResponseBuilder:
             document_count=len(sources),
             timings=timings,
             warnings=[],
+            workflow=workflow,
+            reasoning=reasoning,
         )
 
     def build_gate_response(

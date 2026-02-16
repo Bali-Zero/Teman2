@@ -158,9 +158,38 @@ class ReasoningEngine:
         """Get localized stub message for common scenarios."""
         stubs = {
             "abstain": {
-                "ITALIAN": "Mi dispiace, non ho trovato informazioni verificate sufficienti nei documenti ufficiali per rispondere alla tua domanda specifica. Posso aiutarti con altro?",
-                "INDONESIAN": "Maaf, saya tidak menemukan informasi terverifikasi yang cukup dalam dokumen resmi untuk menjawab pertanyaan spesifik Anda. Ada lagi yang bisa saya bantu?",
-                "ENGLISH": "I'm sorry, I couldn't find sufficient verified information in the official documents to answer your specific question. Can I help you with anything else?",
+                "ITALIAN": "Mi dispiace, non ho trovato informazioni rilevanti per questa domanda.",
+                "INDONESIAN": "Maaf, saya tidak menemukan informasi yang relevan untuk pertanyaan ini.",
+                "ENGLISH": "I'm sorry, I couldn't find relevant information for this question.",
+            },
+            "abstain_detailed": {
+                "ITALIAN": (
+                    "Per questa domanda specifica non ho informazioni verificate sufficienti nei documenti ufficiali.\n\n"
+                    "Posso aiutarti con:\n"
+                    "• Informazioni su visti e KITAS\n"
+                    "• Setup aziendale (PT PMA)\n"
+                    "• Questioni fiscali e legali\n"
+                    "• Procedure e documentazione\n\n"
+                    "Prova a riformulare la domanda o chiedi qualcosa di più specifico!"
+                ),
+                "INDONESIAN": (
+                    "Untuk pertanyaan spesifik ini, saya tidak memiliki informasi terverifikasi yang cukup dalam dokumen resmi.\n\n"
+                    "Saya dapat membantu Anda dengan:\n"
+                    "• Informasi visa dan KITAS\n"
+                    "• Pendirikan perusahaan (PT PMA)\n"
+                    "• Masalah perpajakan dan hukum\n"
+                    "• Prosedur dan dokumentasi\n\n"
+                    "Coba reformulasikan pertanyaan atau tanyakan sesuatu yang lebih spesifik!"
+                ),
+                "ENGLISH": (
+                    "For this specific question, I don't have sufficient verified information in the official documents.\n\n"
+                    "I can help you with:\n"
+                    "• Visa and KITAS information\n"
+                    "• Company setup (PT PMA)\n"
+                    "• Tax and legal matters\n"
+                    "• Procedures and documentation\n\n"
+                    "Try rephrasing the question or ask something more specific!"
+                ),
             },
             "error": {
                 "ITALIAN": "Mi dispiace, non sono riuscito a completare la richiesta. Riprova.",
@@ -592,15 +621,8 @@ class ReasoningEngine:
                     intent_type=intent_type, domain_type=domain_type
                 ).inc()
                 abstain_decision_total.labels(decision_type="strict_abstain").inc()
-                state.final_answer = (
-                    "Per questa domanda specifica non ho informazioni verificate sufficienti nei documenti ufficiali. "
-                    "Posso aiutarti con:\n"
-                    "• Informazioni su visti e KITAS\n"
-                    "• Setup aziendale (PT PMA)\n"
-                    "• Questioni fiscali e legali\n"
-                    "• Procedure e documentazione\n\n"
-                    "Prova a riformulare la domanda o chiedi qualcosa di più specifico!"
-                )
+                # Use localized ABSTAIN message
+                state.final_answer = self._get_localized_stub("abstain_detailed", language)
             else:
                 # TIER 1: Regenerate with Transparency Protocol
                 has_context = bool(state.context_gathered)

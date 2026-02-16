@@ -191,6 +191,14 @@ class AgenticQueryResponse(BaseModel):
     total_steps: int = 0
     debug_info: dict | None = None
     ab_test: dict | None = None  # A/B test variant info
+    # ABSTAIN handling
+    abstain: bool = False  # True when system refused to answer
+    abstain_reason: str | None = None  # Reason for abstaining
+    evidence_score: float = 0.0  # Evidence confidence score
+    # KG LangGraph outputs (Phase 3)
+    workflow: dict | None = None  # Synthesized workflow from KG LangGraph
+    reasoning: str | None = None  # Reasoning chain from KG exploration
+    detected_entities: list[dict] | None = None  # Entities detected from query
 
 
 @router.post("/query", response_model=AgenticQueryResponse)
@@ -304,6 +312,17 @@ async def query_agentic_rag(
         )
 
         # CoreResult is a Pydantic model, access via attributes
+        # Prepare detected entities for response
+        detected_entities_list = []
+        if result.entities:
+            for entity_type, entities in result.entities.items():
+                if isinstance(entities, list):
+                    for entity in entities:
+                        detected_entities_list.append({
+                            "type": entity_type,
+                            "value": entity
+                        })
+
         return AgenticQueryResponse(
             answer=result.answer,
             sources=result.sources,
@@ -325,6 +344,14 @@ async def query_agentic_rag(
                 "query_id": query_id,
                 "variants": ab_variants,
             },
+            # ABSTAIN fields
+            abstain=result.abstain,
+            abstain_reason=result.abstain_reason,
+            evidence_score=result.evidence_score,
+            # KG LangGraph outputs (Phase 3)
+            workflow=result.workflow,
+            reasoning=result.reasoning,
+            detected_entities=detected_entities_list if detected_entities_list else None,
         )
     except Exception as e:
         import traceback

@@ -1,7 +1,7 @@
 [project]
 name = "nuzantara-mcp"
-version = "0.1.0"
-description = "MCP server exposing Nuzantara RAG backend to AI agents"
+version = "2.0.0"
+description = "Full-spectrum MCP server: 72 tools, 10 prompts, 5 resources, 6 deterministic workflow chains"
 requires-python = ">=3.11"
 dependencies = [
     "fastmcp>=2.0.0",

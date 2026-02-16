@@ -1,29 +1,52 @@
 """
 Company Router - API endpoints for Company-Centric CRM
+Uses asyncpg like other CRM routers
 """
 from typing import Any, List, Optional
 
+import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import func
-from sqlalchemy.orm import selectinload
-from sqlmodel import select
-from sqlmodel.ext.asyncio.session import AsyncSession
 
-from backend.app.auth import get_current_user
-from backend.app.db import get_session
-from backend.app.modules.crm.company_models import (
-    ClientCompanyLink,
-    ClientCompanyLinkCreate,
-    Company,
-    CompanyCreate,
-    CompanyDocument,
-    CompanyDocumentCreate,
-    CompanyUpdate,
-    TaxRecord,
-    TaxDocument,
-)
+from backend.app.dependencies import get_current_user, get_database_pool
 
 router = APIRouter(prefix="/crm/companies", tags=["CRM Companies"])
+
+
+# ========== HELPER FUNCTIONS ==========
+
+def company_record_to_dict(record: asyncpg.Record) -> dict:
+    """Convert asyncpg record to dict for Company"""
+    return {
+        "id": record["id"],
+        "uuid": record["uuid"],
+        "company_name": record["company_name"],
+        "company_type": record["company_type"],
+        "brand_name": record["brand_name"],
+        "kbli_code": record["kbli_code"],
+        "kbli_description": record["kbli_description"],
+        "nib": record["nib"],
+        "npwp_company": record["npwp_company"],
+        "akta_pendirian_no": record["akta_pendirian_no"],
+        "akta_pendirian_date": record["akta_pendirian_date"],
+        "akta_perubahan_no": record["akta_perubahan_no"],
+        "akta_perubahan_date": record["akta_perubahan_date"],
+        "sk_menhumkam_no": record["sk_menhumkam_no"],
+        "sk_menhumkam_date": record["sk_menhumkam_date"],
+        "registered_address": record["registered_address"],
+        "office_address": record["office_address"],
+        "city": record["city"],
+        "province": record["province"],
+        "postal_code": record["postal_code"],
+        "company_phone": record["company_phone"],
+        "company_email": record["company_email"],
+        "status": record["status"],
+        "setup_progress": record["setup_progress"],
+        "google_drive_folder_id": record["google_drive_folder_id"],
+        "custom_fields": record["custom_fields"],
+        "created_at": record["created_at"].isoformat() if record["created_at"] else None,
+        "updated_at": record["updated_at"].isoformat() if record["updated_at"] else None,
+        "created_by": record["created_by"],
+    }
 
 
 # ========== COMPANY ENDPOINTS ==========
@@ -36,257 +59,243 @@ async def list_companies(
     kbli: Optional[str] = Query(None, description="Filter by KBLI code"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
-    session: AsyncSession = Depends(get_session),
+    db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
     """List all companies with optional filters"""
-    query = select(Company)
+    query = "SELECT * FROM companies WHERE 1=1"
+    params = []
     
     if search:
-        search_filter = (
-            Company.company_name.ilike(f"%{search}%") |
-            Company.nib.ilike(f"%{search}%") |
-            Company.npwp_company.ilike(f"%{search}%")
-        )
-        query = query.where(search_filter)
+        query += " AND (company_name ILIKE $1 OR nib ILIKE $1 OR npwp_company ILIKE $1)"
+        params.append(f"%{search}%")
     
     if status:
-        query = query.where(Company.status == status)
+        query += f" AND status = ${len(params) + 1}"
+        params.append(status)
     
     if kbli:
-        query = query.where(Company.kbli_code == kbli)
+        query += f" AND kbli_code = ${len(params) + 1}"
+        params.append(kbli)
     
-    query = query.order_by(Company.company_name).offset(skip).limit(limit)
+    query += f" ORDER BY company_name LIMIT ${len(params) + 1} OFFSET ${len(params) + 2}"
+    params.extend([limit, skip])
     
-    result = await session.execute(query)
-    companies = result.scalars().all()
-    
-    # Get primary contacts count
-    company_list = []
-    for comp in companies:
-        # Get associated clients
-        links_result = await session.execute(
-            select(ClientCompanyLink, Company)
-            .where(ClientCompanyLink.company_id == comp.id)
-            .options(selectinload(ClientCompanyLink.client))
-        )
-        links = links_result.all()
+    async with db.acquire() as conn:
+        rows = await conn.fetch(query, *params)
         
-        company_data = {
-            "id": comp.id,
-            "uuid": comp.uuid,
-            "company_name": comp.company_name,
-            "company_type": comp.company_type,
-            "nib": comp.nib,
-            "npwp_company": comp.npwp_company,
-            "kbli_code": comp.kbli_code,
-            "status": comp.status,
-            "setup_progress": comp.setup_progress,
-            "city": comp.city,
-            "created_at": comp.created_at,
-            "associates_count": len(links),
-        }
-        company_list.append(company_data)
-    
-    return company_list
+        companies = []
+        for row in rows:
+            comp = company_record_to_dict(row)
+            # Get associates count
+            count = await conn.fetchval(
+                "SELECT COUNT(*) FROM client_company_links WHERE company_id = $1",
+                comp["id"]
+            )
+            comp["associates_count"] = count
+            companies.append(comp)
+        
+        return companies
 
 
 @router.post("", response_model=dict[str, Any])
 async def create_company(
     request: Request,
-    data: CompanyCreate,
-    session: AsyncSession = Depends(get_session),
+    data: dict,
+    db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
     """Create a new company"""
     user_email = current_user.get("email", "system")
     
-    company = Company(
-        company_name=data.company_name,
-        company_type=data.company_type,
-        kbli_code=data.kbli_code,
-        nib=data.nib,
-        npwp_company=data.npwp_company,
-        registered_address=data.registered_address,
-        city=data.city,
-        province=data.province,
-        company_email=data.company_email,
-        company_phone=data.company_phone,
-        created_by=user_email,
-        updated_by=user_email,
-    )
+    query = """
+        INSERT INTO companies (
+            company_name, company_type, kbli_code, nib, npwp_company,
+            registered_address, city, province, company_email, company_phone,
+            created_by, updated_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11)
+        RETURNING id, uuid, company_name, company_type, status
+    """
     
-    session.add(company)
-    await session.commit()
-    await session.refresh(company)
-    
-    return {
-        "id": company.id,
-        "uuid": company.uuid,
-        "company_name": company.company_name,
-        "company_type": company.company_type,
-        "status": company.status,
-        "message": "Company created successfully",
-    }
+    async with db.acquire() as conn:
+        row = await conn.fetchrow(
+            query,
+            data.get("company_name"),
+            data.get("company_type", "PT PMA"),
+            data.get("kbli_code"),
+            data.get("nib"),
+            data.get("npwp_company"),
+            data.get("registered_address"),
+            data.get("city"),
+            data.get("province"),
+            data.get("company_email"),
+            data.get("company_phone"),
+            user_email,
+        )
+        
+        return {
+            "id": row["id"],
+            "uuid": row["uuid"],
+            "company_name": row["company_name"],
+            "company_type": row["company_type"],
+            "status": row["status"],
+            "message": "Company created successfully",
+        }
 
 
 @router.get("/{company_id}", response_model=dict[str, Any])
 async def get_company(
     request: Request,
     company_id: int,
-    session: AsyncSession = Depends(get_session),
+    db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
     """Get company details with associates"""
-    result = await session.get(Company, company_id)
-    if not result:
-        raise HTTPException(status_code=404, detail="Company not found")
-    
-    company = result
-    
-    # Get associates (clients linked to this company)
-    links_result = await session.execute(
-        select(ClientCompanyLink).where(
-            ClientCompanyLink.company_id == company_id
+    async with db.acquire() as conn:
+        row = await conn.fetchrow("SELECT * FROM companies WHERE id = $1", company_id)
+        if not row:
+            raise HTTPException(status_code=404, detail="Company not found")
+        
+        company = company_record_to_dict(row)
+        
+        # Get associates
+        associates = await conn.fetch(
+            """
+            SELECT ccl.*, c.full_name as client_name
+            FROM client_company_links ccl
+            JOIN clients c ON ccl.client_id = c.id
+            WHERE ccl.company_id = $1
+            """,
+            company_id
         )
-    )
-    links = links_result.scalars().all()
-    
-    # Get documents
-    docs_result = await session.execute(
-        select(CompanyDocument).where(
-            CompanyDocument.company_id == company_id
-        ).order_by(CompanyDocument.created_at.desc())
-    )
-    documents = docs_result.scalars().all()
-    
-    # Get tax record
-    tax_result = await session.execute(
-        select(TaxRecord).where(
-            TaxRecord.entity_type == "company",
-            TaxRecord.entity_id == company_id
+        
+        # Get documents
+        documents = await conn.fetch(
+            """
+            SELECT id, uuid, document_type, document_subtype, document_number,
+                   document_title, issue_date, expiry_date, status,
+                   google_drive_file_id, file_name, created_at
+            FROM company_documents
+            WHERE company_id = $1
+            ORDER BY created_at DESC
+            """,
+            company_id
         )
-    )
-    tax_record = tax_result.scalar_one_or_none()
-    
-    return {
-        "id": company.id,
-        "uuid": company.uuid,
-        "company_name": company.company_name,
-        "company_type": company.company_type,
-        "brand_name": company.brand_name,
-        "nib": company.nib,
-        "npwp_company": company.npwp_company,
-        "kbli_code": company.kbli_code,
-        "kbli_description": company.kbli_description,
-        "akta_pendirian_no": company.akta_pendirian_no,
-        "akta_pendirian_date": company.akta_pendirian_date,
-        "akta_perubahan_no": company.akta_perubahan_no,
-        "akta_perubahan_date": company.akta_perubahan_date,
-        "sk_menhumkam_no": company.sk_menhumkam_no,
-        "sk_menhumkam_date": company.sk_menhumkam_date,
-        "registered_address": company.registered_address,
-        "office_address": company.office_address,
-        "city": company.city,
-        "province": company.province,
-        "postal_code": company.postal_code,
-        "company_phone": company.company_phone,
-        "company_email": company.company_email,
-        "status": company.status,
-        "setup_progress": company.setup_progress,
-        "google_drive_folder_id": company.google_drive_folder_id,
-        "custom_fields": company.custom_fields,
-        "created_at": company.created_at,
-        "updated_at": company.updated_at,
-        "associates": [
+        
+        # Get tax record
+        tax_row = await conn.fetchrow(
+            "SELECT * FROM tax_records WHERE entity_type = 'company' AND entity_id = $1",
+            company_id
+        )
+        
+        company["associates"] = [
             {
-                "link_id": link.id,
-                "client_id": link.client_id,
-                "role": link.role,
-                "is_primary": link.is_primary,
-                "ownership_percentage": link.ownership_percentage,
-                "shares_count": link.shares_count,
-                "start_date": link.start_date,
-                "status": link.status,
+                "link_id": a["id"],
+                "client_id": a["client_id"],
+                "client_name": a["client_name"],
+                "role": a["role"],
+                "is_primary": a["is_primary"],
+                "ownership_percentage": a["ownership_percentage"],
+                "shares_count": a["shares_count"],
+                "start_date": a["start_date"].isoformat() if a["start_date"] else None,
+                "status": a["status"],
             }
-            for link in links
-        ],
-        "documents": [
+            for a in associates
+        ]
+        
+        company["documents"] = [
             {
-                "id": doc.id,
-                "uuid": doc.uuid,
-                "document_type": doc.document_type,
-                "document_subtype": doc.document_subtype,
-                "document_number": doc.document_number,
-                "document_title": doc.document_title,
-                "issue_date": doc.issue_date,
-                "expiry_date": doc.expiry_date,
-                "status": doc.status,
-                "google_drive_file_id": doc.google_drive_file_id,
-                "file_name": doc.file_name,
+                "id": d["id"],
+                "uuid": d["uuid"],
+                "document_type": d["document_type"],
+                "document_subtype": d["document_subtype"],
+                "document_number": d["document_number"],
+                "document_title": d["document_title"],
+                "issue_date": d["issue_date"].isoformat() if d["issue_date"] else None,
+                "expiry_date": d["expiry_date"].isoformat() if d["expiry_date"] else None,
+                "status": d["status"],
+                "google_drive_file_id": d["google_drive_file_id"],
+                "file_name": d["file_name"],
             }
-            for doc in documents
-        ],
-        "tax_record": {
-            "id": tax_record.id,
-            "npwp": tax_record.npwp,
-            "npwp_status": tax_record.npwp_status,
-            "tax_center": tax_record.tax_center,
-            "compliance_status": tax_record.compliance_status,
-            "next_filing_date": tax_record.next_filing_date,
-        } if tax_record else None,
-    }
+            for d in documents
+        ]
+        
+        if tax_row:
+            company["tax_record"] = {
+                "id": tax_row["id"],
+                "npwp": tax_row["npwp"],
+                "npwp_status": tax_row["npwp_status"],
+                "tax_center": tax_row["tax_center"],
+                "compliance_status": tax_row["compliance_status"],
+                "next_filing_date": tax_row["next_filing_date"].isoformat() if tax_row["next_filing_date"] else None,
+            }
+        
+        return company
 
 
 @router.patch("/{company_id}", response_model=dict[str, Any])
 async def update_company(
     request: Request,
     company_id: int,
-    data: CompanyUpdate,
-    session: AsyncSession = Depends(get_session),
+    data: dict,
+    db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
     """Update company details"""
-    company = await session.get(Company, company_id)
-    if not company:
-        raise HTTPException(status_code=404, detail="Company not found")
-    
     user_email = current_user.get("email", "system")
     
-    # Update fields
-    update_data = data.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(company, key, value)
+    # Build dynamic update query
+    allowed_fields = [
+        "company_name", "company_type", "kbli_code", "nib", "npwp_company",
+        "akta_pendirian_no", "akta_pendirian_date", "akta_perubahan_no",
+        "akta_perubahan_date", "sk_menhumkam_no", "sk_menhumkam_date",
+        "registered_address", "office_address", "city", "province",
+        "postal_code", "company_phone", "company_email", "status"
+    ]
     
-    company.updated_by = user_email
-    company.updated_at = func.now()
+    updates = []
+    params = []
+    for field, value in data.items():
+        if field in allowed_fields and value is not None:
+            updates.append(f"{field} = ${len(params) + 1}")
+            params.append(value)
     
-    await session.commit()
-    await session.refresh(company)
+    if not updates:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
     
-    return {
-        "id": company.id,
-        "company_name": company.company_name,
-        "message": "Company updated successfully",
-    }
+    updates.append(f"updated_by = ${len(params) + 1}")
+    updates.append("updated_at = NOW()")
+    params.append(user_email)
+    params.append(company_id)
+    
+    query = f"UPDATE companies SET {', '.join(updates)} WHERE id = ${len(params)} RETURNING id, company_name"
+    
+    async with db.acquire() as conn:
+        row = await conn.fetchrow(query, *params)
+        if not row:
+            raise HTTPException(status_code=404, detail="Company not found")
+        
+        return {
+            "id": row["id"],
+            "company_name": row["company_name"],
+            "message": "Company updated successfully",
+        }
 
 
 @router.delete("/{company_id}")
 async def delete_company(
     request: Request,
     company_id: int,
-    session: AsyncSession = Depends(get_session),
+    db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
     """Delete a company"""
-    company = await session.get(Company, company_id)
-    if not company:
-        raise HTTPException(status_code=404, detail="Company not found")
-    
-    await session.delete(company)
-    await session.commit()
-    
-    return {"message": "Company deleted successfully"}
+    async with db.acquire() as conn:
+        result = await conn.execute("DELETE FROM companies WHERE id = $1", company_id)
+        if result == "DELETE 0":
+            raise HTTPException(status_code=404, detail="Company not found")
+        
+        return {"message": "Company deleted successfully"}
 
 
 # ========== CLIENT-COMPANY LINK ENDPOINTS ==========
@@ -295,35 +304,40 @@ async def delete_company(
 async def get_company_clients(
     request: Request,
     company_id: int,
-    session: AsyncSession = Depends(get_session),
+    db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
     """Get all clients associated with a company"""
-    # Verify company exists
-    company = await session.get(Company, company_id)
-    if not company:
-        raise HTTPException(status_code=404, detail="Company not found")
-    
-    result = await session.execute(
-        select(ClientCompanyLink).where(
-            ClientCompanyLink.company_id == company_id
+    async with db.acquire() as conn:
+        # Verify company exists
+        exists = await conn.fetchval("SELECT 1 FROM companies WHERE id = $1", company_id)
+        if not exists:
+            raise HTTPException(status_code=404, detail="Company not found")
+        
+        rows = await conn.fetch(
+            """
+            SELECT ccl.*, c.full_name as client_name
+            FROM client_company_links ccl
+            JOIN clients c ON ccl.client_id = c.id
+            WHERE ccl.company_id = $1
+            """,
+            company_id
         )
-    )
-    links = result.scalars().all()
-    
-    return [
-        {
-            "link_id": link.id,
-            "client_id": link.client_id,
-            "role": link.role,
-            "is_primary": link.is_primary,
-            "ownership_percentage": link.ownership_percentage,
-            "shares_count": link.shares_count,
-            "start_date": link.start_date,
-            "status": link.status,
-        }
-        for link in links
-    ]
+        
+        return [
+            {
+                "link_id": r["id"],
+                "client_id": r["client_id"],
+                "client_name": r["client_name"],
+                "role": r["role"],
+                "is_primary": r["is_primary"],
+                "ownership_percentage": r["ownership_percentage"],
+                "shares_count": r["shares_count"],
+                "start_date": r["start_date"].isoformat() if r["start_date"] else None,
+                "status": r["status"],
+            }
+            for r in rows
+        ]
 
 
 @router.post("/{company_id}/clients/{client_id}/link", response_model=dict[str, Any])
@@ -331,49 +345,46 @@ async def link_client_to_company(
     request: Request,
     company_id: int,
     client_id: int,
-    data: ClientCompanyLinkCreate,
-    session: AsyncSession = Depends(get_session),
+    data: dict,
+    db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
     """Link a client to a company with a specific role"""
-    # Verify company exists
-    company = await session.get(Company, company_id)
-    if not company:
-        raise HTTPException(status_code=404, detail="Company not found")
-    
-    # Check if link already exists
-    result = await session.execute(
-        select(ClientCompanyLink).where(
-            ClientCompanyLink.client_id == client_id,
-            ClientCompanyLink.company_id == company_id
+    async with db.acquire() as conn:
+        # Verify company exists
+        exists = await conn.fetchval("SELECT 1 FROM companies WHERE id = $1", company_id)
+        if not exists:
+            raise HTTPException(status_code=404, detail="Company not found")
+        
+        # Check if link already exists
+        existing = await conn.fetchrow(
+            "SELECT 1 FROM client_company_links WHERE client_id = $1 AND company_id = $2",
+            client_id, company_id
         )
-    )
-    existing = result.scalar_one_or_none()
-    
-    if existing:
-        raise HTTPException(
-            status_code=400, 
-            detail="Client is already linked to this company"
+        if existing:
+            raise HTTPException(status_code=400, detail="Client is already linked to this company")
+        
+        row = await conn.fetchrow(
+            """
+            INSERT INTO client_company_links (
+                client_id, company_id, role, is_primary,
+                ownership_percentage, shares_count, start_date
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING id
+            """,
+            client_id,
+            company_id,
+            data.get("role", "shareholder"),
+            data.get("is_primary", False),
+            data.get("ownership_percentage"),
+            data.get("shares_count"),
+            data.get("start_date"),
         )
-    
-    link = ClientCompanyLink(
-        client_id=client_id,
-        company_id=company_id,
-        role=data.role,
-        is_primary=data.is_primary,
-        ownership_percentage=data.ownership_percentage,
-        shares_count=data.shares_count,
-        start_date=data.start_date,
-    )
-    
-    session.add(link)
-    await session.commit()
-    await session.refresh(link)
-    
-    return {
-        "link_id": link.id,
-        "message": "Client linked to company successfully",
-    }
+        
+        return {
+            "link_id": row["id"],
+            "message": "Client linked to company successfully",
+        }
 
 
 @router.delete("/{company_id}/clients/{client_id}/link")
@@ -381,25 +392,19 @@ async def unlink_client_from_company(
     request: Request,
     company_id: int,
     client_id: int,
-    session: AsyncSession = Depends(get_session),
+    db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
     """Remove link between client and company"""
-    result = await session.execute(
-        select(ClientCompanyLink).where(
-            ClientCompanyLink.client_id == client_id,
-            ClientCompanyLink.company_id == company_id
+    async with db.acquire() as conn:
+        result = await conn.execute(
+            "DELETE FROM client_company_links WHERE client_id = $1 AND company_id = $2",
+            client_id, company_id
         )
-    )
-    link = result.scalar_one_or_none()
-    
-    if not link:
-        raise HTTPException(status_code=404, detail="Link not found")
-    
-    await session.delete(link)
-    await session.commit()
-    
-    return {"message": "Client unlinked from company successfully"}
+        if result == "DELETE 0":
+            raise HTTPException(status_code=404, detail="Link not found")
+        
+        return {"message": "Client unlinked from company successfully"}
 
 
 # ========== COMPANY DOCUMENT ENDPOINTS ==========
@@ -409,90 +414,104 @@ async def get_company_documents(
     request: Request,
     company_id: int,
     doc_type: Optional[str] = Query(None, description="Filter by document type"),
-    session: AsyncSession = Depends(get_session),
+    db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
     """Get documents for a company"""
-    query = select(CompanyDocument).where(
-        CompanyDocument.company_id == company_id
-    )
-    
-    if doc_type:
-        query = query.where(CompanyDocument.document_type == doc_type)
-    
-    query = query.order_by(CompanyDocument.created_at.desc())
-    
-    result = await session.execute(query)
-    documents = result.scalars().all()
-    
-    return [
-        {
-            "id": doc.id,
-            "uuid": doc.uuid,
-            "document_type": doc.document_type,
-            "document_subtype": doc.document_subtype,
-            "document_number": doc.document_number,
-            "document_title": doc.document_title,
-            "description": doc.description,
-            "issue_date": doc.issue_date,
-            "expiry_date": doc.expiry_date,
-            "reminder_date": doc.reminder_date,
-            "status": doc.status,
-            "is_verified": doc.is_verified,
-            "google_drive_file_id": doc.google_drive_file_id,
-            "google_drive_file_url": doc.google_drive_file_url,
-            "file_name": doc.file_name,
-            "file_size_kb": doc.file_size_kb,
-            "mime_type": doc.mime_type,
-            "notes": doc.notes,
-            "created_at": doc.created_at,
-        }
-        for doc in documents
-    ]
+    async with db.acquire() as conn:
+        query = """
+            SELECT id, uuid, document_type, document_subtype, document_number,
+                   document_title, description, issue_date, expiry_date,
+                   reminder_date, status, is_verified, google_drive_file_id,
+                   google_drive_file_url, file_name, file_size_kb, mime_type,
+                   notes, created_at
+            FROM company_documents
+            WHERE company_id = $1
+        """
+        params = [company_id]
+        
+        if doc_type:
+            query += " AND document_type = $2"
+            params.append(doc_type)
+        
+        query += " ORDER BY created_at DESC"
+        
+        rows = await conn.fetch(query, *params)
+        
+        return [
+            {
+                "id": r["id"],
+                "uuid": r["uuid"],
+                "document_type": r["document_type"],
+                "document_subtype": r["document_subtype"],
+                "document_number": r["document_number"],
+                "document_title": r["document_title"],
+                "description": r["description"],
+                "issue_date": r["issue_date"].isoformat() if r["issue_date"] else None,
+                "expiry_date": r["expiry_date"].isoformat() if r["expiry_date"] else None,
+                "reminder_date": r["reminder_date"].isoformat() if r["reminder_date"] else None,
+                "status": r["status"],
+                "is_verified": r["is_verified"],
+                "google_drive_file_id": r["google_drive_file_id"],
+                "google_drive_file_url": r["google_drive_file_url"],
+                "file_name": r["file_name"],
+                "file_size_kb": r["file_size_kb"],
+                "mime_type": r["mime_type"],
+                "notes": r["notes"],
+                "created_at": r["created_at"].isoformat() if r["created_at"] else None,
+            }
+            for r in rows
+        ]
 
 
 @router.post("/{company_id}/documents", response_model=dict[str, Any])
 async def create_company_document(
     request: Request,
     company_id: int,
-    data: CompanyDocumentCreate,
-    session: AsyncSession = Depends(get_session),
+    data: dict,
+    db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
     """Add a document to a company"""
-    # Verify company exists
-    company = await session.get(Company, company_id)
-    if not company:
-        raise HTTPException(status_code=404, detail="Company not found")
-    
     user_email = current_user.get("email", "system")
     
-    document = CompanyDocument(
-        company_id=company_id,
-        document_type=data.document_type,
-        document_subtype=data.document_subtype,
-        document_number=data.document_number,
-        document_title=data.document_title,
-        description=data.description,
-        issue_date=data.issue_date,
-        expiry_date=data.expiry_date,
-        google_drive_file_id=data.google_drive_file_id,
-        google_drive_file_url=data.google_drive_file_url,
-        file_name=data.file_name,
-        file_size_kb=data.file_size_kb,
-        mime_type=data.mime_type,
-        uploaded_by=user_email,
-    )
-    
-    session.add(document)
-    await session.commit()
-    await session.refresh(document)
-    
-    return {
-        "id": document.id,
-        "uuid": document.uuid,
-        "message": "Document added successfully",
-    }
+    async with db.acquire() as conn:
+        # Verify company exists
+        exists = await conn.fetchval("SELECT 1 FROM companies WHERE id = $1", company_id)
+        if not exists:
+            raise HTTPException(status_code=404, detail="Company not found")
+        
+        row = await conn.fetchrow(
+            """
+            INSERT INTO company_documents (
+                company_id, document_type, document_subtype, document_number,
+                document_title, description, issue_date, expiry_date,
+                google_drive_file_id, google_drive_file_url, file_name,
+                file_size_kb, mime_type, uploaded_by
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+            RETURNING id, uuid
+            """,
+            company_id,
+            data.get("document_type"),
+            data.get("document_subtype"),
+            data.get("document_number"),
+            data.get("document_title"),
+            data.get("description"),
+            data.get("issue_date"),
+            data.get("expiry_date"),
+            data.get("google_drive_file_id"),
+            data.get("google_drive_file_url"),
+            data.get("file_name"),
+            data.get("file_size_kb"),
+            data.get("mime_type"),
+            user_email,
+        )
+        
+        return {
+            "id": row["id"],
+            "uuid": row["uuid"],
+            "message": "Document added successfully",
+        }
 
 
 @router.delete("/{company_id}/documents/{doc_id}")
@@ -500,25 +519,19 @@ async def delete_company_document(
     request: Request,
     company_id: int,
     doc_id: int,
-    session: AsyncSession = Depends(get_session),
+    db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
     """Delete a company document"""
-    result = await session.execute(
-        select(CompanyDocument).where(
-            CompanyDocument.id == doc_id,
-            CompanyDocument.company_id == company_id
+    async with db.acquire() as conn:
+        result = await conn.execute(
+            "DELETE FROM company_documents WHERE id = $1 AND company_id = $2",
+            doc_id, company_id
         )
-    )
-    document = result.scalar_one_or_none()
-    
-    if not document:
-        raise HTTPException(status_code=404, detail="Document not found")
-    
-    await session.delete(document)
-    await session.commit()
-    
-    return {"message": "Document deleted successfully"}
+        if result == "DELETE 0":
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        return {"message": "Document deleted successfully"}
 
 
 # ========== TAX RECORD ENDPOINTS ==========
@@ -527,62 +540,64 @@ async def delete_company_document(
 async def get_company_tax_record(
     request: Request,
     company_id: int,
-    session: AsyncSession = Depends(get_session),
+    db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
     """Get tax record for a company"""
-    result = await session.execute(
-        select(TaxRecord).where(
-            TaxRecord.entity_type == "company",
-            TaxRecord.entity_id == company_id
+    async with db.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT * FROM tax_records WHERE entity_type = 'company' AND entity_id = $1",
+            company_id
         )
-    )
-    tax_record = result.scalar_one_or_none()
-    
-    if not tax_record:
-        return {"message": "No tax record found for this company"}
-    
-    # Get tax documents
-    docs_result = await session.execute(
-        select(TaxDocument).where(
-            TaxDocument.entity_type == "company",
-            TaxDocument.entity_id == company_id
-        ).order_by(TaxDocument.created_at.desc())
-    )
-    tax_docs = docs_result.scalars().all()
-    
-    return {
-        "id": tax_record.id,
-        "uuid": tax_record.uuid,
-        "npwp": tax_record.npwp,
-        "npwp_status": tax_record.npwp_status,
-        "tax_center": tax_record.tax_center,
-        "is_pph21_registered": tax_record.is_pph21_registered,
-        "is_pph23_registered": tax_record.is_pph23_registered,
-        "is_pph25_registered": tax_record.is_pph25_registered,
-        "is_ppn_registered": tax_record.is_ppn_registered,
-        "is_pph29_registered": tax_record.is_pph29_registered,
-        "tax_year": tax_record.tax_year,
-        "reporting_period": tax_record.reporting_period,
-        "last_filing_date": tax_record.last_filing_date,
-        "next_filing_date": tax_record.next_filing_date,
-        "compliance_status": tax_record.compliance_status,
-        "custom_fields": tax_record.custom_fields,
-        "tax_documents": [
-            {
-                "id": doc.id,
-                "document_type": doc.document_type,
-                "tax_type": doc.tax_type,
-                "tax_year": doc.tax_year,
-                "tax_period": doc.tax_period,
-                "filing_date": doc.filing_date,
-                "reported_amount": doc.reported_amount,
-                "paid_amount": doc.paid_amount,
-                "status": doc.status,
-            }
-            for doc in tax_docs
-        ],
-    }
+        
+        if not row:
+            return {"message": "No tax record found for this company"}
+        
+        # Get tax documents
+        docs = await conn.fetch(
+            """
+            SELECT id, document_type, tax_type, tax_year, tax_period,
+                   document_number, filing_date, reported_amount, paid_amount,
+                   status, file_name
+            FROM tax_documents
+            WHERE entity_type = 'company' AND entity_id = $1
+            ORDER BY created_at DESC
+            """,
+            company_id
+        )
+        
+        return {
+            "id": row["id"],
+            "uuid": row["uuid"],
+            "npwp": row["npwp"],
+            "npwp_status": row["npwp_status"],
+            "tax_center": row["tax_center"],
+            "is_pph21_registered": row["is_pph21_registered"],
+            "is_pph23_registered": row["is_pph23_registered"],
+            "is_pph25_registered": row["is_pph25_registered"],
+            "is_ppn_registered": row["is_ppn_registered"],
+            "is_pph29_registered": row["is_pph29_registered"],
+            "tax_year": row["tax_year"],
+            "reporting_period": row["reporting_period"],
+            "last_filing_date": row["last_filing_date"].isoformat() if row["last_filing_date"] else None,
+            "next_filing_date": row["next_filing_date"].isoformat() if row["next_filing_date"] else None,
+            "compliance_status": row["compliance_status"],
+            "custom_fields": row["custom_fields"],
+            "tax_documents": [
+                {
+                    "id": d["id"],
+                    "document_type": d["document_type"],
+                    "tax_type": d["tax_type"],
+                    "tax_year": d["tax_year"],
+                    "tax_period": d["tax_period"],
+                    "filing_date": d["filing_date"].isoformat() if d["filing_date"] else None,
+                    "reported_amount": d["reported_amount"],
+                    "paid_amount": d["paid_amount"],
+                    "status": d["status"],
+                }
+                for d in docs
+            ],
+        }
 
 
 # ========== CLIENT-SPECIFIC COMPANY ENDPOINTS ==========
@@ -591,32 +606,40 @@ async def get_company_tax_record(
 async def get_client_companies(
     request: Request,
     client_id: int,
-    session: AsyncSession = Depends(get_session),
+    db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
     """Get all companies linked to a client"""
-    result = await session.execute(
-        select(ClientCompanyLink, Company)
-        .join(Company, ClientCompanyLink.company_id == Company.id)
-        .where(ClientCompanyLink.client_id == client_id)
-    )
-    links = result.all()
-    
-    return [
-        {
-            "company_id": link.Company.id,
-            "company_name": link.Company.company_name,
-            "company_type": link.Company.company_type,
-            "nib": link.Company.nib,
-            "npwp_company": link.Company.npwp_company,
-            "kbli_code": link.Company.kbli_code,
-            "status": link.Company.status,
-            "setup_progress": link.Company.setup_progress,
-            "link_id": link.ClientCompanyLink.id,
-            "role": link.ClientCompanyLink.role,
-            "is_primary": link.ClientCompanyLink.is_primary,
-            "ownership_percentage": link.ClientCompanyLink.ownership_percentage,
-            "start_date": link.ClientCompanyLink.start_date,
-        }
-        for link in links
-    ]
+    async with db.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT 
+                c.id as company_id, c.company_name, c.company_type, c.nib,
+                c.npwp_company, c.kbli_code, c.status, c.setup_progress,
+                ccl.id as link_id, ccl.role, ccl.is_primary, ccl.ownership_percentage,
+                ccl.start_date
+            FROM client_company_links ccl
+            JOIN companies c ON ccl.company_id = c.id
+            WHERE ccl.client_id = $1
+            """,
+            client_id
+        )
+        
+        return [
+            {
+                "company_id": r["company_id"],
+                "company_name": r["company_name"],
+                "company_type": r["company_type"],
+                "nib": r["nib"],
+                "npwp_company": r["npwp_company"],
+                "kbli_code": r["kbli_code"],
+                "status": r["status"],
+                "setup_progress": r["setup_progress"],
+                "link_id": r["link_id"],
+                "role": r["role"],
+                "is_primary": r["is_primary"],
+                "ownership_percentage": r["ownership_percentage"],
+                "start_date": r["start_date"].isoformat() if r["start_date"] else None,
+            }
+            for r in rows
+        ]

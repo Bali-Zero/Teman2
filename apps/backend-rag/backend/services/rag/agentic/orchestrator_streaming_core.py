@@ -244,12 +244,21 @@ class OrchestratorStreamingCore:
 
             # 5b. Stream KG LangGraph workflow if available
             if langgraph_workflow:
+                # First yield metadata with structured workflow for programmatic use
+                yield {
+                    "type": "metadata",
+                    "data": {
+                        "workflow": langgraph_workflow,
+                        "detected_entities": extracted_entities if any(extracted_entities.values()) else None,
+                    },
+                    "timestamp": time.time(),
+                }
+                # Then stream workflow text as tokens for display
                 workflow_text = self.core._format_workflow_for_prompt(langgraph_workflow)
-                # Stream workflow as additional tokens
                 for token in workflow_text.split():
                     yield {"type": "token", "data": token + " "}
                     await asyncio.sleep(0.005)
-                logger.info(f"\U0001f500 [Stream] Workflow appended: {langgraph_workflow.get('type')}")
+                logger.info(f"🔗 [Stream] Workflow streamed: {langgraph_workflow.get('type')}")
 
             # 6. Yield done event with metrics
             execution_time = time.time() - start_time

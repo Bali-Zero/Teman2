@@ -394,6 +394,11 @@ export interface ClientCompanyLink {
   shares_count?: number;
   start_date?: string;
   status: 'active' | 'resigned' | 'terminated' | 'pending';
+  // Company details (included in API response)
+  nib?: string;
+  npwp_company?: string;
+  kbli_code?: string;
+  setup_progress?: number;
 }
 
 export interface CompanyDocument {

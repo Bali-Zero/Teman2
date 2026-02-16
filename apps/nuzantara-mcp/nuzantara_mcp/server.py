@@ -1,19 +1,20 @@
 """
-Nuzantara Dynamic MCP Server
+Nuzantara MCP Server v2.0
+Full-spectrum business automation for Bali Zero.
 
-Exposes the Nuzantara RAG backend (Fly.io) as MCP tools for OpenClaw agents.
-Covers: KBLI search, legal RAG, knowledge graph, health monitoring.
+72 tools | 10 prompts | 5 resources | 6 deterministic workflow chains
 
-Transport: stdio (for OpenClaw local integration)
+Transport: stdio (for Claude Code / Cowork / OpenClaw local integration)
 """
 
 import logging
 import os
-from typing import Optional
+from typing import Any, Optional
 
 import httpx
 from fastmcp import FastMCP
 
+# --- Logging ---
 logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
 logger = logging.getLogger("nuzantara-mcp")
 
@@ -21,26 +22,36 @@ logger = logging.getLogger("nuzantara-mcp")
 BACKEND_URL = os.getenv("NUZANTARA_BACKEND_URL", "https://nuzantara-rag.fly.dev")
 API_KEY = os.getenv("NUZANTARA_API_KEY", "")
 TIMEOUT = int(os.getenv("NUZANTARA_TIMEOUT", "30"))
+LONG_TIMEOUT = int(os.getenv("NUZANTARA_LONG_TIMEOUT", "120"))
 
+# --- MCP Server Instance ---
 mcp = FastMCP(
-    name="Nuzantara RAG",
-    instructions="AI-powered legal & business intelligence for Indonesia (Bali Zero)",
+    name="Nuzantara",
+    instructions=(
+        "Full-spectrum AI business intelligence and automation platform for Bali Zero. "
+        "Covers: CRM, client portal, intelligence, content, analytics, KBLI/visa knowledge, "
+        "communications, Google Drive, autonomous workflows, and admin operations. "
+        "Use workflow chains for deterministic multi-step automation with near-zero human intervention."
+    ),
 )
 
 
-# --- HTTP helper ---
+# --- HTTP Helpers ---
 async def _call(
     endpoint: str,
     method: str = "GET",
     json: Optional[dict] = None,
     params: Optional[dict] = None,
+    timeout: Optional[int] = None,
 ) -> dict:
     """Authenticated call to Nuzantara backend."""
-    headers = {"Content-Type": "application/json"}
+    headers: dict[str, str] = {"Content-Type": "application/json"}
     if API_KEY:
         headers["Authorization"] = f"Bearer {API_KEY}"
 
-    async with httpx.AsyncClient(base_url=BACKEND_URL, timeout=TIMEOUT) as client:
+    async with httpx.AsyncClient(
+        base_url=BACKEND_URL, timeout=timeout or TIMEOUT
+    ) as client:
         resp = await client.request(
             method=method, url=endpoint, json=json, params=params, headers=headers
         )
@@ -48,214 +59,58 @@ async def _call(
         return resp.json()
 
 
-# =========================================================================
-# TOOLS - KBLI (Indonesian Business Classification)
-# =========================================================================
+async def _call_safe(
+    endpoint: str,
+    method: str = "GET",
+    json: Optional[dict] = None,
+    params: Optional[dict] = None,
+    timeout: Optional[int] = None,
+) -> dict[str, Any]:
+    """Like _call but returns error dict instead of raising."""
+    try:
+        return await _call(endpoint, method, json, params, timeout)
+    except httpx.HTTPStatusError as e:
+        return {"error": True, "status": e.response.status_code, "detail": str(e)}
+    except httpx.RequestError as e:
+        return {"error": True, "status": 0, "detail": f"Connection error: {e}"}
 
 
-@mcp.tool()
-async def search_kbli(query: str, limit: int = 10) -> dict:
-    """
-    Search Indonesian business activity codes (KBLI 2025).
+# --- Register all tool modules ---
+from nuzantara_mcp.tools.crm import register as register_crm
+from nuzantara_mcp.tools.portal import register as register_portal
+from nuzantara_mcp.tools.intel import register as register_intel
+from nuzantara_mcp.tools.content import register as register_content
+from nuzantara_mcp.tools.analytics import register as register_analytics
+from nuzantara_mcp.tools.knowledge import register as register_knowledge
+from nuzantara_mcp.tools.comms import register as register_comms
+from nuzantara_mcp.tools.drive import register as register_drive
+from nuzantara_mcp.tools.workflows import register as register_workflows
+from nuzantara_mcp.tools.admin import register as register_admin
+from nuzantara_mcp.tools.health import register as register_health
+from nuzantara_mcp.prompts.templates import register as register_prompts
+from nuzantara_mcp.resources.config import register as register_resources
+from nuzantara_mcp.workflows.chains import register as register_chains
 
-    Use when users ask about:
-    - Which KBLI code fits their business
-    - Business license requirements
-    - Foreign investment (PMA) eligibility
-    - Risk categories for business activities
-
-    Args:
-        query: Business activity description (any language - auto-translated to Indonesian)
-        limit: Max results (default 10, max 20)
-
-    Returns:
-        List of matching KBLI codes with title, score, PMA status, risk category.
-    """
-    return await _call(
-        "/api/v1/kbli-notebook/search",
-        params={"query": query, "limit": min(limit, 20)},
-    )
-
-
-@mcp.tool()
-async def inspect_kbli(code: str) -> dict:
-    """
-    Get deep details for a specific KBLI code.
-
-    Returns licensing requirements, PMA status, risk profile,
-    required permits, and related KBLI codes from the Knowledge Graph.
-
-    Args:
-        code: 5-digit KBLI code (e.g. "56101", "62010")
-
-    Returns:
-        Full KBLI detail: title, description, PMA status, licenses, related codes.
-    """
-    return await _call(f"/api/v1/kbli-notebook/inspect/{code}")
+register_crm(mcp, _call, _call_safe)
+register_portal(mcp, _call, _call_safe)
+register_intel(mcp, _call, _call_safe)
+register_content(mcp, _call, _call_safe)
+register_analytics(mcp, _call, _call_safe)
+register_knowledge(mcp, _call, _call_safe)
+register_comms(mcp, _call, _call_safe)
+register_drive(mcp, _call, _call_safe)
+register_workflows(mcp, _call, _call_safe)
+register_admin(mcp, _call, _call_safe)
+register_health(mcp, _call, _call_safe)
+register_prompts(mcp)
+register_resources(mcp, _call_safe, BACKEND_URL, API_KEY, TIMEOUT)
+register_chains(mcp, _call, _call_safe, LONG_TIMEOUT)
 
 
-@mcp.tool()
-async def chat_kbli(query: str) -> dict:
-    """
-    AI-powered KBLI consultation chat.
-
-    Translates the query to Indonesian, searches KBLI semantically,
-    and generates a grounded explanation with suggested follow-ups.
-
-    Args:
-        query: Question about business classification (any language)
-
-    Returns:
-        AI answer, detected KBLI codes, search results, suggested queries.
-    """
-    return await _call(
-        "/api/v1/kbli-notebook/chat",
-        method="POST",
-        json={"query": query},
-    )
-
-
-# =========================================================================
-# TOOLS - Agentic RAG (Legal Intelligence)
-# =========================================================================
-
-
-@mcp.tool()
-async def ask_legal(
-    question: str,
-    user_id: str = "mcp-agent",
-    session_id: Optional[str] = None,
-) -> dict:
-    """
-    Ask a legal question to Nuzantara's Agentic RAG system.
-
-    Covers Indonesian law: immigration, company formation, tax,
-    property, permits, visas, and general legal matters.
-
-    IMPORTANT: Requires authentication (JWT). If no API key is set,
-    this tool will return a 401 error.
-
-    Args:
-        question: Legal question (any language)
-        user_id: User identifier for context tracking
-        session_id: Optional session ID for conversation continuity
-
-    Returns:
-        AI-generated answer with sources, execution time, route used.
-    """
-    payload = {"query": question, "user_id": user_id}
-    if session_id:
-        payload["session_id"] = session_id
-
-    return await _call("/api/agentic-rag/query", method="POST", json=payload)
-
-
-# =========================================================================
-# TOOLS - Health & Monitoring
-# =========================================================================
-
-
-@mcp.tool()
-async def check_health() -> dict:
-    """
-    Check Nuzantara backend health status.
-
-    Returns service status, Qdrant collections count,
-    embedding model info, and database connectivity.
-
-    Returns:
-        Health status with database and embeddings details.
-    """
-    return await _call("/health")
-
-
-@mcp.tool()
-async def check_health_detailed() -> dict:
-    """
-    Get detailed health of all Nuzantara backend services.
-
-    Shows individual service status for: search, AI client,
-    database pool, memory service, intelligent router, health monitor.
-
-    Returns:
-        Per-service health breakdown with critical service indicators.
-    """
-    return await _call("/health/detailed")
-
-
-@mcp.tool()
-async def get_qdrant_metrics() -> dict:
-    """
-    Get Qdrant vector database performance metrics.
-
-    Returns search/upsert operation counts, average latency,
-    document counts, retry counts, and error counts.
-
-    Returns:
-        Qdrant operation metrics with timestamps.
-    """
-    return await _call("/health/metrics/qdrant")
-
-
-# =========================================================================
-# RESOURCES
-# =========================================================================
-
-
-@mcp.resource("config://nuzantara")
-def get_config() -> dict:
-    """Current MCP server configuration."""
-    return {
-        "backend_url": BACKEND_URL,
-        "authenticated": bool(API_KEY),
-        "timeout": TIMEOUT,
-    }
-
-
-# =========================================================================
-# PROMPTS
-# =========================================================================
-
-
-@mcp.prompt()
-def immigration_check(visa_type: str, nationality: str) -> str:
-    """Template for immigration eligibility questions."""
-    return (
-        f"I need information about {visa_type} visa for {nationality} nationals in Indonesia. "
-        "Please provide: eligibility requirements, application process, "
-        "required documents, processing time and costs, common issues."
-    )
-
-
-@mcp.prompt()
-def business_setup(business_type: str, investor_type: str = "foreign") -> str:
-    """Template for business setup guidance in Indonesia."""
-    return (
-        f"I want to establish a {business_type} business in Indonesia as a {investor_type} investor. "
-        "Guide me through: recommended company structure (PT, PT PMA), "
-        "required KBLI codes, licenses and permits, capital requirements, step-by-step process."
-    )
-
-
-@mcp.prompt()
-def kbli_comparison(code1: str, code2: str) -> str:
-    """Template to compare two KBLI codes."""
-    return (
-        f"Compare KBLI {code1} and KBLI {code2}: "
-        "What does each cover? What are the differences in PMA status, "
-        "risk category, and licensing requirements? "
-        "When should I choose one over the other?"
-    )
-
-
-# =========================================================================
-# ENTRY POINT
-# =========================================================================
-
-
+# --- Entry Point ---
 def main():
     """Run MCP server with stdio transport."""
-    logger.info(f"Starting Nuzantara MCP Server → {BACKEND_URL}")
+    logger.info(f"Nuzantara MCP v2.0 → {BACKEND_URL}")
     logger.info(f"Auth: {'enabled' if API_KEY else 'disabled (public endpoints only)'}")
     mcp.run(transport="stdio")
 

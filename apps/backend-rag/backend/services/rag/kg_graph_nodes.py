@@ -78,6 +78,7 @@ async def understand_query_node(
     - Intent: company_setup, visa, hire, property, tax, general
     - Entities: KBLI codes, visa types, document names, etc.
     - Citizenship: foreign vs domestic (impacts workflow requirements)
+    - Domain: visa, tax, property, kbli, company, general (for routing)
 
     Args:
         state: Current KGAgentState
@@ -87,34 +88,55 @@ async def understand_query_node(
         Updated state with intent and extracted_entities populated
     """
     logger.info(f"🔍 [Understand Query] Processing: {state['query'][:100]}...")
-
-    # Build extraction prompt
+    
+    query_lower = state['query'].lower()
+    
+    # Pre-check for domain-specific queries (fast-path before LLM call)
+    # This prevents visa/tax/property queries from being misclassified
+    domain_hints = _detect_domain_from_query(query_lower)
+    
+    # Build extraction prompt with enhanced domain guidance
     system_prompt = """You are an expert in Indonesian business and immigration law.
 Extract the following from the user's query:
 
 1. **Intent** (choose ONE):
    - company_setup: Setting up PT PMA, PT Perorangan, CV, Firma
-   - visa: KITAS, KITAP, VITAS, work permits
+   - visa: KITAS, KITAP, VITAS, work permits, immigration queries
    - hire: Hiring employees (TKA or local)
-   - property: Real estate, Hak Pakai, villa rental
-   - tax: PPh, PPN, tax compliance, NPWP
+   - property: Real estate, Hak Pakai, HGB, villa rental, land ownership
+   - tax: PPh, PPN, tax compliance, NPWP, VAT
    - general: General questions about regulations
 
-2. **Entities** (list all mentioned):
+2. **Domain Classification** (critical for routing):
+   - visa: Query is about KITAS, KITAP, visas, work permits, or immigration
+   - tax: Query is about taxes, NPWP, PPh, PPN, or fiscal matters
+   - property: Query is about real estate, Hak Pakai, HGB, or land
+   - kbli: Query is specifically about KBLI business codes
+   - company: Query is about company setup or business formation
+   - general: General information queries
+
+   IMPORTANT: If query asks "What is KITAS?" or "Apa itu KITAS?" → domain MUST be "visa"
+   If query asks "What is NPWP?" or "Apa itu NPWP?" → domain MUST be "tax"
+   If query asks "What is Hak Pakai?" → domain MUST be "property"
+
+3. **Entities** (list all mentioned):
    - KBLI codes (e.g., "56101", "ristorante" → extract "56101")
-   - Visa types (e.g., "KITAS E28A", "investor visa")
+   - Visa types (e.g., "KITAS", "KITAP", "E28A", "investor visa")
+   - Tax concepts (e.g., "NPWP", "PPh 21", "PPN")
+   - Property types (e.g., "Hak Pakai", "HGB")
    - Document names (e.g., "NIB", "NPWP", "RPTKA")
    - Company types (e.g., "PT PMA", "CV")
    - Legal references (e.g., "UU 6/2023", "PP 28/2025")
 
-3. **Citizenship** (infer from context):
+4. **Citizenship** (infer from context):
    - foreign: Query mentions "straniero", "expat", "foreign investor"
    - domestic: Query about local Indonesian processes
 
 Return ONLY a JSON object:
 {
-  "intent": "company_setup",
-  "entities": ["kbli:56101", "pt_pma"],
+  "intent": "visa",
+  "domain": "visa",
+  "entities": ["KITAS"],
   "citizenship": "foreign"
 }
 """
@@ -136,27 +158,181 @@ Return ONLY a JSON object:
         parsed = json.loads(response.content)
         state["intent"] = parsed.get("intent")
         state["extracted_entities"] = parsed.get("entities", [])
+        
+        # Store domain for routing decisions
+        domain = parsed.get("domain", domain_hints.get("domain", "general"))
+        state["domain"] = domain
 
-        # Update user_context with citizenship
+        # Update user_context with citizenship and domain
         if "citizenship" in parsed:
             state["user_context"]["citizenship"] = parsed["citizenship"]
+        state["user_context"]["domain"] = domain
 
         logger.info(
             f"✅ [Understand Query] Intent: {state['intent']}, "
+            f"Domain: {domain}, "
             f"Entities: {len(state['extracted_entities'])}, "
             f"Citizenship: {state['user_context'].get('citizenship')}"
         )
     except (json.JSONDecodeError, KeyError) as e:
         logger.error(f"❌ [Understand Query] Failed to parse LLM response: {e}")
-        state["intent"] = "general"
-        state["extracted_entities"] = []
+        # Use pre-detected domain as fallback
+        state["intent"] = domain_hints.get("intent", "general")
+        state["domain"] = domain_hints.get("domain", "general")
+        state["extracted_entities"] = domain_hints.get("entities", [])
+        logger.info(f"⚠️ [Understand Query] Using fallback classification: {state['domain']}")
 
     return state
+
+
+def _detect_domain_from_query(query_lower: str) -> dict:
+    """
+    Fast domain detection without LLM call.
+    
+    Used for fallback when LLM parsing fails, and to validate
+    LLM classification against explicit domain keywords.
+    
+    Returns dict with domain, intent, and entities.
+    """
+    result = {
+        "domain": "general",
+        "intent": "general",
+        "entities": []
+    }
+    
+    # Visa domain detection
+    visa_keywords = [
+        "kitas", "kitap", "vitas", "visa", "work permit", "izin kerja",
+        "rptka", "imta", "immigration", "imigrasi", "stay permit",
+        "izin tinggal", "foreign worker", "tenaga kerja asing", "tka",
+        "e28", "e31", "e33", "e-visa", "evisa"
+    ]
+    if any(kw in query_lower for kw in visa_keywords):
+        result["domain"] = "visa"
+        result["intent"] = "visa"
+        # Extract specific visa type
+        if "kitas" in query_lower:
+            result["entities"].append("KITAS")
+        elif "kitap" in query_lower:
+            result["entities"].append("KITAP")
+        elif "vitas" in query_lower:
+            result["entities"].append("VITAS")
+        return result
+    
+    # Tax domain detection
+    tax_keywords = [
+        "npwp", "pph", "ppn", "pbb", "tax", "pajak", "tasse",
+        "fiscal", "vat", "income tax", "spt"
+    ]
+    if any(kw in query_lower for kw in tax_keywords):
+        result["domain"] = "tax"
+        result["intent"] = "tax"
+        if "npwp" in query_lower:
+            result["entities"].append("NPWP")
+        elif "pph" in query_lower:
+            result["entities"].append("PPh")
+        elif "ppn" in query_lower:
+            result["entities"].append("PPN")
+        return result
+    
+    # Property domain detection
+    property_keywords = [
+        "hak pakai", "hgb", "hak milik", "hak guna bangunan",
+        "property", "villa", "real estate", "tanah", "land",
+        "hak sewa", "sertifikat"
+    ]
+    if any(kw in query_lower for kw in property_keywords):
+        result["domain"] = "property"
+        result["intent"] = "property"
+        if "hak pakai" in query_lower:
+            result["entities"].append("Hak Pakai")
+        elif "hgb" in query_lower:
+            result["entities"].append("HGB")
+        return result
+    
+    return result
 
 
 # ============================================================================
 # Node 2: Entity Resolution
 # ============================================================================
+
+# Domain-specific entity prefixes for proper routing
+DOMAIN_ENTITY_PREFIXES = {
+    "visa": ["visa_", "kitas", "kitap", "vitas", "imta", "rptka", "e31", "e28", "e33"],
+    "tax": ["tax_", "npwp", "pph_", "ppn", "pbb_", "spt"],
+    "property": ["property_", "hak_", "hgb", "shm", "ajb"],
+    "kbli": ["kbli_"],
+    "company": ["company_", "pt_", "nib_"],
+}
+
+# Entity types that should NOT be resolved against KBLI codes
+NON_KBLI_ENTITY_TYPES = {"visa_type", "tax_concept", "tax_code", "property_type"}
+
+
+def _is_non_kbli_entity(entity_str: str, entity_type: str | None = None) -> bool:
+    """
+    Check if an entity should NOT be matched against KBLI codes.
+    
+    Args:
+        entity_str: The entity string from extraction
+        entity_type: Optional entity type hint
+        
+    Returns:
+        True if entity is visa/tax/property (non-KBLI)
+    """
+    entity_lower = entity_str.lower()
+    
+    # Check explicit entity type
+    if entity_type and entity_type in NON_KBLI_ENTITY_TYPES:
+        return True
+    
+    # Check for visa-related entities
+    visa_patterns = [
+        "kitas", "kitap", "vitas", "visa", "e28", "e31", "e33", 
+        "imta", "rptka", "work_permit", "stay_permit"
+    ]
+    if any(pattern in entity_lower for pattern in visa_patterns):
+        return True
+    
+    # Check for tax-related entities
+    tax_patterns = ["npwp", "pph", "ppn", "pbb", "spt", "tax_"]
+    if any(pattern in entity_lower for pattern in tax_patterns):
+        return True
+    
+    # Check for property-related entities
+    property_patterns = ["hak_pakai", "hgb", "hak_milik", "property_", "shm_"]
+    if any(pattern in entity_lower for pattern in property_patterns):
+        return True
+    
+    return False
+
+
+def _get_entity_type_filter(entity_str: str) -> list[str] | None:
+    """
+    Get the expected entity types for a given entity string.
+    
+    Returns list of entity types to filter by, or None for no filter.
+    """
+    entity_lower = entity_str.lower()
+    
+    # Visa entities
+    if any(pattern in entity_lower for pattern in ["kitas", "kitap", "vitas", "e28", "e31", "e33", "imta", "rptka"]):
+        return ["visa", "permit", "immigration"]
+    
+    # Tax entities
+    if any(pattern in entity_lower for pattern in ["npwp", "pph", "ppn", "pbb"]):
+        return ["tax", "permit"]
+    
+    # Property entities
+    if any(pattern in entity_lower for pattern in ["hak_pakai", "hgb", "hak_milik", "shm"]):
+        return ["property", "permit"]
+    
+    # KBLI entities
+    if entity_str.isdigit() and len(entity_str) == 5:
+        return ["kbli", "business_code"]
+    
+    return None
 
 
 async def resolve_entities_node(
@@ -168,6 +344,9 @@ async def resolve_entities_node(
 
     Uses PostgreSQL similarity search to find KG entities that match
     the extracted entity strings from the query.
+    
+    IMPORTANT: This version properly handles entity type detection to avoid
+    matching visa/tax/property queries against KBLI codes.
 
     Args:
         state: Current KGAgentState
@@ -189,10 +368,20 @@ async def resolve_entities_node(
         confidence_scores = {}
 
         for entity_str in state["extracted_entities"]:
+            # Check if this is a non-KBLI entity (visa, tax, property)
+            if _is_non_kbli_entity(entity_str):
+                logger.info(f"🛂 [Resolve] Non-KBLI entity detected, skipping KG lookup: {entity_str}")
+                # For non-KBLI entities, we mark them as "unresolved" for KG purposes
+                # They will be handled by domain-specific subgraphs instead
+                continue
+
+            # Get entity type filter for better matching
+            entity_types = _get_entity_type_filter(entity_str)
+
             # Try exact match first
             exact_match = await conn.fetchrow(
                 """
-                SELECT entity_id, name, confidence
+                SELECT entity_id, name, confidence, entity_type
                 FROM kg_nodes
                 WHERE entity_id = $1 OR LOWER(name) = LOWER($2)
                 LIMIT 1
@@ -209,17 +398,33 @@ async def resolve_entities_node(
                 continue
 
             # Fallback: fuzzy match (similarity > 0.7)
-            fuzzy_matches = await conn.fetch(
-                """
-                SELECT entity_id, name, confidence,
-                       similarity(name, $1) as sim_score
-                FROM kg_nodes
-                WHERE similarity(name, $1) > 0.7
-                ORDER BY sim_score DESC
-                LIMIT 3
-                """,
-                entity_str,
-            )
+            # Use entity type filter if available
+            if entity_types:
+                fuzzy_matches = await conn.fetch(
+                    """
+                    SELECT entity_id, name, confidence, entity_type,
+                           similarity(name, $1) as sim_score
+                    FROM kg_nodes
+                    WHERE similarity(name, $1) > 0.7
+                      AND entity_type = ANY($2)
+                    ORDER BY sim_score DESC
+                    LIMIT 3
+                    """,
+                    entity_str,
+                    entity_types,
+                )
+            else:
+                fuzzy_matches = await conn.fetch(
+                    """
+                    SELECT entity_id, name, confidence, entity_type,
+                           similarity(name, $1) as sim_score
+                    FROM kg_nodes
+                    WHERE similarity(name, $1) > 0.7
+                    ORDER BY sim_score DESC
+                    LIMIT 3
+                    """,
+                    entity_str,
+                )
 
             if fuzzy_matches:
                 # Take best match
@@ -229,7 +434,7 @@ async def resolve_entities_node(
                 confidence_scores[entity_id] = best_match["confidence"] * best_match["sim_score"]
                 logger.info(
                     f"🔍 [Resolve] Fuzzy match: {entity_str} → {entity_id} "
-                    f"(sim: {best_match['sim_score']:.2f})"
+                    f"(sim: {best_match['sim_score']:.2f}, type: {best_match['entity_type']})"
                 )
             else:
                 logger.warning(f"⚠️ [Resolve] No match found for: {entity_str}")

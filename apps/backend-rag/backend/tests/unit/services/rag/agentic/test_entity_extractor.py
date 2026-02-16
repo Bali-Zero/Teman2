@@ -35,7 +35,8 @@ class TestEntityExtractionService:
         """Test extracting entities from empty query"""
         service = EntityExtractionService()
         result = await service.extract_entities("")
-        assert result == {}
+        assert result["domain"] == "general"
+        assert result["entity_types"] == []
 
     @pytest.mark.asyncio
     async def test_extract_entities_visa_code(self):
@@ -43,14 +44,12 @@ class TestEntityExtractionService:
         service = EntityExtractionService()
         # Visa codes are matched with pattern \b(e\d{2}[a-z]?)\b
         result = await service.extract_entities("I need an e211a visa")
-        # The pattern might not match exactly, so check if visa_type exists or if it's empty
-        # The regex looks for e followed by 2 digits and optional letter
-        if "visa_type" in result:
-            assert result["visa_type"] in ["E211A", "E211"]
-        else:
-            # If pattern doesn't match, might fall back to KITAS check
-            # This is acceptable behavior
-            pass
+        # Should detect visa domain and extract visa type
+        assert result["domain"] == "visa"
+        assert "visa" in result["entity_types"]
+        # Should have some visa_type (either E211A or VISA_GENERAL)
+        assert "visa_type" in result
+        assert result["visa_type"] in ["E211A", "E211", "VISA_GENERAL"]
 
     @pytest.mark.asyncio
     async def test_extract_entities_kitas(self):

@@ -1,3 +1,3 @@
-"""Nuzantara MCP Server - Exposes Nuzantara RAG backend as MCP tools."""
+"""Nuzantara MCP Server v2 - Full-spectrum business automation for Bali Zero."""
 
-__version__ = "0.1.0"
+__version__ = "2.0.0"
