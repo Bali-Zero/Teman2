@@ -180,12 +180,12 @@ class TestAbstainPolicy:
     """Test suite for ABSTAIN policy when evidence_score < 0.3"""
 
     @pytest.mark.asyncio
-    async def test_abstain_when_no_context_gathered(self):
-        """Test ABSTAIN when no context is gathered"""
+    async def test_abstain_when_no_context_gathered_critical(self):
+        """Test ABSTAIN when no context is gathered for critical domain query"""
         tool_map = {}
         engine = ReasoningEngine(tool_map=tool_map)
 
-        state = AgentState(query="test query", max_steps=1)
+        state = AgentState(query="KITAS visa requirements", max_steps=1)
         state.context_gathered = []  # No context
 
         llm_gateway = AsyncMock()
@@ -201,19 +201,20 @@ class TestAbstainPolicy:
                 chat=chat,
                 initial_prompt="test",
                 system_prompt="",
-                query="test",
+                query="KITAS visa requirements",  # Critical domain query
                 user_id="test_user",
                 model_tier=0,
                 tool_execution_counter={},
             )
 
-        # Should have ABSTAIN message
+        # Should have ABSTAIN message for critical domain
         assert (
             "per questa domanda specifica" in result_state.final_answer.lower()
             or "informazioni verificate sufficienti" in result_state.final_answer.lower()
+            or "couldn't find sufficient verified" in result_state.final_answer.lower()
         )
         assert hasattr(result_state, "evidence_score")
-        assert result_state.evidence_score < 0.3
+        assert result_state.evidence_score < 0.1
 
     @pytest.mark.asyncio
     async def test_abstain_when_weak_evidence(self):
@@ -293,11 +294,11 @@ class TestAbstainPolicy:
 
     @pytest.mark.asyncio
     async def test_abstain_skips_llm_generation(self):
-        """Test that ABSTAIN skips LLM generation"""
+        """Test that ABSTAIN skips LLM generation for critical domain"""
         tool_map = {}
         engine = ReasoningEngine(tool_map=tool_map)
 
-        state = AgentState(query="test query", max_steps=1)
+        state = AgentState(query="KITAS visa cost", max_steps=1)
         state.context_gathered = []  # No context
 
         llm_gateway = AsyncMock()
@@ -313,19 +314,19 @@ class TestAbstainPolicy:
                 chat=chat,
                 initial_prompt="test",
                 system_prompt="",
-                query="test",
+                query="KITAS visa cost",  # Critical domain query
                 user_id="test_user",
                 model_tier=0,
                 tool_execution_counter={},
             )
 
-        # Should have ABSTAIN message without calling LLM for final answer
+        # Should have ABSTAIN message for critical domain
         assert (
             "per questa domanda specifica" in result_state.final_answer.lower()
             or "informazioni verificate sufficienti" in result_state.final_answer.lower()
+            or "couldn't find sufficient verified" in result_state.final_answer.lower()
         )
-        # Verify LLM was not called for final answer generation
-        # (only called once for the initial thought)
+        # For critical domain with strict abstain, LLM should only be called once
         assert llm_gateway.send_message.call_count == 1
 
 
@@ -508,11 +509,11 @@ class TestUncertaintyStreaming:
 
     @pytest.mark.asyncio
     async def test_stream_abstain_when_weak_evidence(self):
-        """Test streaming mode ABSTAIN when evidence is weak"""
+        """Test streaming mode ABSTAIN when evidence is weak for critical domain"""
         tool_map = {}
         engine = ReasoningEngine(tool_map=tool_map)
 
-        state = AgentState(query="test query", max_steps=1)
+        state = AgentState(query="KITAS visa cost", max_steps=1)
         state.context_gathered = []  # No context
 
         llm_gateway = AsyncMock()
@@ -529,7 +530,7 @@ class TestUncertaintyStreaming:
                 chat=chat,
                 initial_prompt="test",
                 system_prompt="",
-                query="test",
+                query="KITAS visa cost",  # Critical domain query
                 user_id="test_user",
                 model_tier=0,
                 tool_execution_counter={},
@@ -539,12 +540,13 @@ class TestUncertaintyStreaming:
         # Should have evidence_score event
         evidence_events = [e for e in events if e.get("type") == "evidence_score"]
         assert len(evidence_events) == 1
-        assert evidence_events[0]["data"]["score"] < 0.3
+        assert evidence_events[0]["data"]["score"] < 0.1
 
-        # Should have ABSTAIN message in final answer
+        # Should have ABSTAIN message in final answer for critical domain
         assert (
             "per questa domanda specifica" in state.final_answer.lower()
             or "informazioni verificate sufficienti" in state.final_answer.lower()
+            or "couldn't find sufficient verified" in state.final_answer.lower()
         )
 
     @pytest.mark.asyncio

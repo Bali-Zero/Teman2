@@ -207,7 +207,8 @@ class TestEmbeddingsGeneratorSentenceTransformers:
             assert generator.dimensions == 768
 
     @patch("sentence_transformers.SentenceTransformer")
-    def test_generate_embeddings_sentence_transformers(self, mock_st):
+    @pytest.mark.asyncio
+    async def test_generate_embeddings_sentence_transformers(self, mock_st):
         """Test generating embeddings with Sentence Transformers"""
         mock_model = Mock()
         mock_model.get_sentence_embedding_dimension.return_value = 384
@@ -215,7 +216,7 @@ class TestEmbeddingsGeneratorSentenceTransformers:
         mock_st.return_value = mock_model
 
         generator = EmbeddingsGenerator(provider="sentence-transformers", settings=None)
-        result = generator.generate_embeddings(["Text 1", "Text 2"])
+        result = await generator.generate_embeddings(["Text 1", "Text 2"])
 
         assert len(result) == 2
         assert result[0] == [0.1, 0.2]
@@ -250,14 +251,15 @@ class TestEmbeddingsGeneratorCommon:
     """Test suite for common EmbeddingsGenerator functionality"""
 
     @patch("sentence_transformers.SentenceTransformer")
-    def test_generate_embeddings_empty_list(self, mock_st):
+    @pytest.mark.asyncio
+    async def test_generate_embeddings_empty_list(self, mock_st):
         """Test generating embeddings with empty list"""
         mock_model = Mock()
         mock_model.get_sentence_embedding_dimension.return_value = 384
         mock_st.return_value = mock_model
 
         generator = EmbeddingsGenerator(provider="sentence-transformers", settings=None)
-        result = generator.generate_embeddings([])
+        result = await generator.generate_embeddings([])
 
         assert result == []
 
@@ -277,7 +279,8 @@ class TestEmbeddingsGeneratorCommon:
             generator.generate_embeddings(["Text"])
 
     @patch("sentence_transformers.SentenceTransformer")
-    def test_generate_batch_embeddings(self, mock_st):
+    @pytest.mark.asyncio
+    async def test_generate_batch_embeddings(self, mock_st):
         """Test generate_batch_embeddings alias"""
         mock_model = Mock()
         mock_model.get_sentence_embedding_dimension.return_value = 384
@@ -285,7 +288,7 @@ class TestEmbeddingsGeneratorCommon:
         mock_st.return_value = mock_model
 
         generator = EmbeddingsGenerator(provider="sentence-transformers", settings=None)
-        result = generator.generate_batch_embeddings(["Text"])
+        result = await generator.generate_batch_embeddings(["Text"])
 
         assert result == [[0.1, 0.2]]
 
@@ -403,7 +406,8 @@ class TestEdgeCases:
             EmbeddingsGenerator(provider="openai", settings=mock_settings)
 
     @patch("sentence_transformers.SentenceTransformer")
-    def test_large_text_batch(self, mock_st):
+    @pytest.mark.asyncio
+    async def test_large_text_batch(self, mock_st):
         """Test handling large batch of texts"""
         mock_model = Mock()
         mock_model.get_sentence_embedding_dimension.return_value = 384
@@ -413,7 +417,7 @@ class TestEdgeCases:
 
         generator = EmbeddingsGenerator(provider="sentence-transformers", settings=None)
         texts = [f"Text {i}" for i in range(100)]
-        result = generator.generate_embeddings(texts)
+        result = await generator.generate_embeddings(texts)
 
         assert len(result) == 100
 

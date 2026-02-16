@@ -55,7 +55,10 @@ class TestConversationTrainer:
         trainer = ConversationTrainer(db_pool=None)
 
         with patch("backend.app.main_cloud.app", mock_app):
-            result = await trainer._get_db_pool()
+            with patch("backend.agents.agents.conversation_trainer.settings") as mock_settings:
+                mock_settings.log_level = "INFO"
+                mock_settings.api_keys = "test-api-key"
+                result = await trainer._get_db_pool()
 
         assert result == mock_pool
 
@@ -68,8 +71,11 @@ class TestConversationTrainer:
         mock_app.state.db_pool = None
 
         with patch("backend.app.main_cloud.app", mock_app):
-            with pytest.raises(RuntimeError) as exc_info:
-                await trainer._get_db_pool()
+            with patch("backend.agents.agents.conversation_trainer.settings") as mock_settings:
+                mock_settings.log_level = "INFO"
+                mock_settings.api_keys = "test-api-key"
+                with pytest.raises(RuntimeError) as exc_info:
+                    await trainer._get_db_pool()
 
         assert "Database pool not available" in str(exc_info.value)
 
