@@ -14,7 +14,7 @@ Supported languages:
 """
 
 import re
-from typing import Literal
+from typing import Any, Literal
 
 
 def detect_language(text: str) -> Literal["it", "en", "id", "uk", "ru"]:

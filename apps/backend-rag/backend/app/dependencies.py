@@ -19,7 +19,7 @@ Note: main_cloud.py still exports initialize_services() for backward compatibili
 """
 
 import logging
-from typing import Annotated
+from typing import Annotated, Any
 
 import asyncpg
 from fastapi import Depends, HTTPException, Request
