@@ -14,7 +14,7 @@ import re
 import time
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from backend.app.core.config import settings
@@ -476,11 +476,11 @@ async def chat_kbli(
 
 ):
     """Specialized chat for KBLI Notebook with BPS 2025 focus."""
-    logger.info(f"💬 KBLI Chat Request: '{request.query[:50]}...'")
+    logger.info(f"💬 KBLI Chat Request: '{kbli_request.query[:50]}...'")
 
     try:
         # Translate query to Indonesian KBLI terms for better matching
-        search_query = await _translate_query_for_kbli(request.query)
+        search_query = await _translate_query_for_kbli(kbli_request.query)
 
         # Search semantic context with translated query
         results = []
@@ -512,7 +512,7 @@ async def chat_kbli(
             logger.warning(f"⚠️ Qdrant search failed, falling back to PostgreSQL: {q_err}")
             # Fallback to Postgres search by name/code
             try:
-                db_pool = await get_optional_database_pool(http_req)
+                db_pool = await get_optional_database_pool(http_request)
                 if db_pool:
                     async with db_pool.acquire() as conn:
                         rows = await conn.fetch(

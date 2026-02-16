@@ -133,3 +133,4 @@ redis>=7.1.0  # Already present, used for caching
 
 # MCP (Model Context Protocol)
 mcp>=1.25.0  # Upgraded for pydantic 2.12+ compatibility
+python-json-logger>=2.0.0

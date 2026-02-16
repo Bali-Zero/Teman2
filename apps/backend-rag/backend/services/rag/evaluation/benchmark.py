@@ -118,7 +118,7 @@ class RAGBenchmark:
         self,
         evaluator: RAGASEvaluator | None = None,
         hybrid_service: HybridSearchService | None = None,
-        reranker: RerankerIntegration | None = None,
+        reranker: CrossEncoderRerankerMixin | None = None,
     ):
         """
         Initialize RAG Benchmark.
@@ -135,7 +135,7 @@ class RAGBenchmark:
         # Lazy init reranker
         if self.reranker is None:
             try:
-                self.reranker = RerankerIntegration()
+                self.reranker = CrossEncoderRerankerMixin()
             except Exception as e:
                 logger.warning(f"Failed to initialize reranker: {e}")
                 self.reranker = None
