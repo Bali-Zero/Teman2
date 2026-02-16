@@ -16,11 +16,9 @@ export const dynamicParams = true;
  * - Cache tags per invalidazione programmatica
  */
 export default async function NewsPage() {
-  // Fetch articoli dal filesystem (server-side) con caching ISR
-  // getAllArticles è wrappata con unstable_cache per performance ottimali
-  const { articles } = await getAllArticles({
-    limit: 20,
-  });
+  // Fetch all articles from filesystem (server-side) with ISR caching
+  // No limit: homepage needs specific slugs for the 5-article hero collage
+  const { articles } = await getAllArticles({});
 
   return <NewsPageClient articles={articles} />;
 }
