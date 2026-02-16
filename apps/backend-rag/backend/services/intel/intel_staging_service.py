@@ -99,147 +99,21 @@ class IntelStagingService:
         Returns:
             Path to saved file
         """
-        # #region agent log - DISABLED
-        # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
-            log_file.write(
-                json.dumps(
-                    {
-                        "sessionId": "debug-session",
-                        "runId": "run1",
-                        "hypothesisId": "B",
-                        "location": "intel_staging_service.py:108",
-                        "message": "save_staging_item entry",
-                        "data": {
-                            "intel_type": intel_type,
-                            "item_id": item_id,
-                            "has_staging_data": bool(staging_data),
-                        },
-                        "timestamp": int(datetime.now().timestamp() * 1000),
-                    }
-                )
-                + "\n"
-            )
-        # #endregion
         staging_dir = self.get_staging_dir(intel_type)
         staging_file = staging_dir / f"{item_id}.json"
-
-        # #region agent log - DISABLED
-        # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
-            log_file.write(
-                json.dumps(
-                    {
-                        "sessionId": "debug-session",
-                        "runId": "run1",
-                        "hypothesisId": "B",
-                        "location": "intel_staging_service.py:115",
-                        "message": "Before file write",
-                        "data": {
-                            "staging_file": str(staging_file),
-                            "file_exists_before": staging_file.exists(),
-                        },
-                        "timestamp": int(datetime.now().timestamp() * 1000),
-                    }
-                )
-                + "\n"
-            )
-        # #endregion
 
         # Atomic write: write to temp file first, then rename
         json_content = json.dumps(staging_data, indent=2)
         temp_file = staging_file.with_suffix(".json.tmp")
 
         try:
-            # #region agent log - DISABLED
-            # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
-                log_file.write(
-                    json.dumps(
-                        {
-                            "sessionId": "debug-session",
-                            "runId": "run1",
-                            "hypothesisId": "B",
-                            "location": "intel_staging_service.py:123",
-                            "message": "Writing to temp file",
-                            "data": {
-                                "temp_file": str(temp_file),
-                                "content_length": len(json_content),
-                            },
-                            "timestamp": int(datetime.now().timestamp() * 1000),
-                        }
-                    )
-                    + "\n"
-                )
-            # #endregion
 
             temp_file.write_text(json_content)
-
-            # #region agent log - DISABLED
-            # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
-                log_file.write(
-                    json.dumps(
-                        {
-                            "sessionId": "debug-session",
-                            "runId": "run1",
-                            "hypothesisId": "B",
-                            "location": "intel_staging_service.py:128",
-                            "message": "Before atomic rename",
-                            "data": {
-                                "temp_file": str(temp_file),
-                                "target_file": str(staging_file),
-                                "temp_exists": temp_file.exists(),
-                            },
-                            "timestamp": int(datetime.now().timestamp() * 1000),
-                        }
-                    )
-                    + "\n"
-                )
-            # #endregion
 
             # Atomic rename (works on most filesystems)
             temp_file.replace(staging_file)
 
-            # #region agent log - DISABLED
-            # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
-                log_file.write(
-                    json.dumps(
-                        {
-                            "sessionId": "debug-session",
-                            "runId": "run1",
-                            "hypothesisId": "B",
-                            "location": "intel_staging_service.py:135",
-                            "message": "save_staging_item success",
-                            "data": {
-                                "staging_file": str(staging_file),
-                                "file_exists_after": staging_file.exists(),
-                            },
-                            "timestamp": int(datetime.now().timestamp() * 1000),
-                        }
-                    )
-                    + "\n"
-                )
-            # #endregion
-
         except Exception as e:
-            # #region agent log - DISABLED
-            # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
-                log_file.write(
-                    json.dumps(
-                        {
-                            "sessionId": "debug-session",
-                            "runId": "run1",
-                            "hypothesisId": "B",
-                            "location": "intel_staging_service.py:140",
-                            "message": "save_staging_item error",
-                            "data": {
-                                "error": str(e),
-                                "error_type": type(e).__name__,
-                                "temp_file": str(temp_file),
-                            },
-                            "timestamp": int(datetime.now().timestamp() * 1000),
-                        }
-                    )
-                    + "\n"
-                )
-            # #endregion
             # Clean up temp file on error
             if temp_file.exists():
                 try:
@@ -294,135 +168,16 @@ class IntelStagingService:
         Returns:
             Existing item data if duplicate found, None otherwise
         """
-        # #region agent log - DISABLED
-        # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
-            log_file.write(
-                json.dumps(
-                    {
-                        "sessionId": "debug-session",
-                        "runId": "run1",
-                        "hypothesisId": "A",
-                        "location": "intel_staging_service.py:157",
-                        "message": "check_duplicate entry",
-                        "data": {"intel_type": intel_type, "source_url": source_url, "days": days},
-                        "timestamp": int(datetime.now().timestamp() * 1000),
-                    }
-                )
-                + "\n"
-            )
-        # #endregion
         staging_dir = self.get_staging_dir(intel_type)
         cutoff_date = datetime.utcnow() - timedelta(days=days)
 
-        # #region agent log - DISABLED
-        # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
-            log_file.write(
-                json.dumps(
-                    {
-                        "sessionId": "debug-session",
-                        "runId": "run1",
-                        "hypothesisId": "A",
-                        "location": "intel_staging_service.py:162",
-                        "message": "Before glob scan",
-                        "data": {
-                            "staging_dir": str(staging_dir),
-                            "dir_exists": staging_dir.exists(),
-                        },
-                        "timestamp": int(datetime.now().timestamp() * 1000),
-                    }
-                )
-                + "\n"
-            )
-        # #endregion
-
         file_paths = list(staging_dir.glob("*.json"))
 
-        # #region agent log - DISABLED
-        # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
-            log_file.write(
-                json.dumps(
-                    {
-                        "sessionId": "debug-session",
-                        "runId": "run1",
-                        "hypothesisId": "A",
-                        "location": "intel_staging_service.py:167",
-                        "message": "After glob scan",
-                        "data": {"files_found": len(file_paths)},
-                        "timestamp": int(datetime.now().timestamp() * 1000),
-                    }
-                )
-                + "\n"
-            )
-        # #endregion
-
         for file_path in file_paths:
-            # #region agent log - DISABLED
-            # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
-                log_file.write(
-                    json.dumps(
-                        {
-                            "sessionId": "debug-session",
-                            "runId": "run1",
-                            "hypothesisId": "A",
-                            "location": "intel_staging_service.py:171",
-                            "message": "Checking file",
-                            "data": {
-                                "file_path": str(file_path),
-                                "file_exists": file_path.exists(),
-                            },
-                            "timestamp": int(datetime.now().timestamp() * 1000),
-                        }
-                    )
-                    + "\n"
-                )
-            # #endregion
             try:
-                # #region agent log - DISABLED
-                with open(
-                    "/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a"
-                ) as log_file:
-                    log_file.write(
-                        json.dumps(
-                            {
-                                "sessionId": "debug-session",
-                                "runId": "run1",
-                                "hypothesisId": "A",
-                                "location": "intel_staging_service.py:175",
-                                "message": "Before file read",
-                                "data": {"file_path": str(file_path)},
-                                "timestamp": int(datetime.now().timestamp() * 1000),
-                            }
-                        )
-                        + "\n"
-                    )
-                # #endregion
 
                 with open(file_path) as f:
                     data = json.load(f)
-
-                # #region agent log - DISABLED
-                with open(
-                    "/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a"
-                ) as log_file:
-                    log_file.write(
-                        json.dumps(
-                            {
-                                "sessionId": "debug-session",
-                                "runId": "run1",
-                                "hypothesisId": "A",
-                                "location": "intel_staging_service.py:182",
-                                "message": "After file read",
-                                "data": {
-                                    "file_path": str(file_path),
-                                    "has_source_url": bool(data.get("source_url")),
-                                    "source_url_match": data.get("source_url") == source_url,
-                                },
-                                "timestamp": int(datetime.now().timestamp() * 1000),
-                            }
-                        )
-                        + "\n"
-                    )
-                # #endregion
 
                 if data.get("source_url") == source_url:
                     detected_at = data.get("detected_at")
@@ -430,174 +185,22 @@ class IntelStagingService:
                         try:
                             detected_dt = datetime.fromisoformat(detected_at.replace("Z", "+00:00"))
                             if detected_dt >= cutoff_date:
-                                # #region agent log - DISABLED
-                                with open(
-                                    "/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a"
-                                ) as log_file:
-                                    log_file.write(
-                                        json.dumps(
-                                            {
-                                                "sessionId": "debug-session",
-                                                "runId": "run1",
-                                                "hypothesisId": "A",
-                                                "location": "intel_staging_service.py:193",
-                                                "message": "Duplicate found",
-                                                "data": {
-                                                    "file_path": str(file_path),
-                                                    "detected_at": detected_at,
-                                                    "cutoff_date": cutoff_date.isoformat(),
-                                                },
-                                                "timestamp": int(datetime.now().timestamp() * 1000),
-                                            }
-                                        )
-                                        + "\n"
-                                    )
-                                # #endregion
                                 return data
                         except (ValueError, TypeError) as e:
-                            # #region agent log - DISABLED
-                            with open(
-                                "/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a"
-                            ) as log_file:
-                                log_file.write(
-                                    json.dumps(
-                                        {
-                                            "sessionId": "debug-session",
-                                            "runId": "run1",
-                                            "hypothesisId": "E",
-                                            "location": "intel_staging_service.py:199",
-                                            "message": "Date parse error",
-                                            "data": {
-                                                "file_path": str(file_path),
-                                                "error": str(e),
-                                                "error_type": type(e).__name__,
-                                            },
-                                            "timestamp": int(datetime.now().timestamp() * 1000),
-                                        }
-                                    )
-                                    + "\n"
-                                )
-                            # #endregion
                             # If date parsing fails, consider it a duplicate anyway
                             return data
                     else:
-                        # #region agent log - DISABLED
-                        with open(
-                            "/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a"
-                        ) as log_file:
-                            log_file.write(
-                                json.dumps(
-                                    {
-                                        "sessionId": "debug-session",
-                                        "runId": "run1",
-                                        "hypothesisId": "A",
-                                        "location": "intel_staging_service.py:206",
-                                        "message": "Duplicate found (no date)",
-                                        "data": {"file_path": str(file_path)},
-                                        "timestamp": int(datetime.now().timestamp() * 1000),
-                                    }
-                                )
-                                + "\n"
-                            )
-                        # #endregion
                         # No date, consider it a duplicate
                         return data
             except json.JSONDecodeError as e:
-                # #region agent log - DISABLED
-                with open(
-                    "/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a"
-                ) as log_file:
-                    log_file.write(
-                        json.dumps(
-                            {
-                                "sessionId": "debug-session",
-                                "runId": "run1",
-                                "hypothesisId": "E",
-                                "location": "intel_staging_service.py:213",
-                                "message": "JSON decode error",
-                                "data": {
-                                    "file_path": str(file_path),
-                                    "error": str(e),
-                                    "error_type": type(e).__name__,
-                                },
-                                "timestamp": int(datetime.now().timestamp() * 1000),
-                            }
-                        )
-                        + "\n"
-                    )
-                # #endregion
                 logger.warning(f"Invalid JSON in staging file {file_path}: {e}")
                 continue
             except PermissionError as e:
-                # #region agent log - DISABLED
-                with open(
-                    "/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a"
-                ) as log_file:
-                    log_file.write(
-                        json.dumps(
-                            {
-                                "sessionId": "debug-session",
-                                "runId": "run1",
-                                "hypothesisId": "E",
-                                "location": "intel_staging_service.py:220",
-                                "message": "Permission error",
-                                "data": {
-                                    "file_path": str(file_path),
-                                    "error": str(e),
-                                    "error_type": type(e).__name__,
-                                },
-                                "timestamp": int(datetime.now().timestamp() * 1000),
-                            }
-                        )
-                        + "\n"
-                    )
-                # #endregion
                 logger.warning(f"Permission denied reading {file_path}: {e}")
                 continue
             except Exception as e:
-                # #region agent log - DISABLED
-                with open(
-                    "/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a"
-                ) as log_file:
-                    log_file.write(
-                        json.dumps(
-                            {
-                                "sessionId": "debug-session",
-                                "runId": "run1",
-                                "hypothesisId": "E",
-                                "location": "intel_staging_service.py:227",
-                                "message": "Unexpected error",
-                                "data": {
-                                    "file_path": str(file_path),
-                                    "error": str(e),
-                                    "error_type": type(e).__name__,
-                                },
-                                "timestamp": int(datetime.now().timestamp() * 1000),
-                            }
-                        )
-                        + "\n"
-                    )
-                # #endregion
                 logger.error(f"Error reading staging file {file_path}: {e}", exc_info=True)
                 continue
-
-        # #region agent log - DISABLED
-        # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
-            log_file.write(
-                json.dumps(
-                    {
-                        "sessionId": "debug-session",
-                        "runId": "run1",
-                        "hypothesisId": "A",
-                        "location": "intel_staging_service.py:233",
-                        "message": "check_duplicate no duplicate",
-                        "data": {"source_url": source_url},
-                        "timestamp": int(datetime.now().timestamp() * 1000),
-                    }
-                )
-                + "\n"
-            )
-        # #endregion
         return None
 
     def list_pending_items(
@@ -692,144 +295,20 @@ class IntelStagingService:
         Returns:
             Path to archived file
         """
-        # #region agent log - DISABLED
-        # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
-            log_file.write(
-                json.dumps(
-                    {
-                        "sessionId": "debug-session",
-                        "runId": "run1",
-                        "hypothesisId": "C",
-                        "location": "intel_staging_service.py:278",
-                        "message": "archive_item entry",
-                        "data": {
-                            "intel_type": intel_type,
-                            "item_id": item_id,
-                            "archive_type": archive_type,
-                        },
-                        "timestamp": int(datetime.now().timestamp() * 1000),
-                    }
-                )
-                + "\n"
-            )
-        # #endregion
         staging_dir = self.get_staging_dir(intel_type)
         file_path = staging_dir / f"{item_id}.json"
 
-        # #region agent log - DISABLED
-        # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
-            log_file.write(
-                json.dumps(
-                    {
-                        "sessionId": "debug-session",
-                        "runId": "run1",
-                        "hypothesisId": "C",
-                        "location": "intel_staging_service.py:283",
-                        "message": "Before file check",
-                        "data": {"file_path": str(file_path), "file_exists": file_path.exists()},
-                        "timestamp": int(datetime.now().timestamp() * 1000),
-                    }
-                )
-                + "\n"
-            )
-        # #endregion
-
         if not file_path.exists():
-            # #region agent log - DISABLED
-            # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
-                log_file.write(
-                    json.dumps(
-                        {
-                            "sessionId": "debug-session",
-                            "runId": "run1",
-                            "hypothesisId": "C",
-                            "location": "intel_staging_service.py:287",
-                            "message": "File not found error",
-                            "data": {"file_path": str(file_path), "item_id": item_id},
-                            "timestamp": int(datetime.now().timestamp() * 1000),
-                        }
-                    )
-                    + "\n"
-                )
-            # #endregion
             raise FileNotFoundError(f"Staging item not found: {item_id}")
 
         archive_dir = staging_dir / "archived" / archive_type
         archive_dir.mkdir(parents=True, exist_ok=True)
         archive_path = archive_dir / file_path.name
 
-        # #region agent log - DISABLED
-        # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
-            log_file.write(
-                json.dumps(
-                    {
-                        "sessionId": "debug-session",
-                        "runId": "run1",
-                        "hypothesisId": "C",
-                        "location": "intel_staging_service.py:295",
-                        "message": "Before shutil.move",
-                        "data": {
-                            "source": str(file_path),
-                            "dest": str(archive_path),
-                            "source_exists": file_path.exists(),
-                            "dest_exists": archive_path.exists(),
-                        },
-                        "timestamp": int(datetime.now().timestamp() * 1000),
-                    }
-                )
-                + "\n"
-            )
-        # #endregion
-
         try:
             shutil.move(str(file_path), str(archive_path))
 
-            # #region agent log - DISABLED
-            # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
-                log_file.write(
-                    json.dumps(
-                        {
-                            "sessionId": "debug-session",
-                            "runId": "run1",
-                            "hypothesisId": "C",
-                            "location": "intel_staging_service.py:301",
-                            "message": "archive_item success",
-                            "data": {
-                                "source": str(file_path),
-                                "dest": str(archive_path),
-                                "source_exists_after": file_path.exists(),
-                                "dest_exists_after": archive_path.exists(),
-                            },
-                            "timestamp": int(datetime.now().timestamp() * 1000),
-                        }
-                    )
-                    + "\n"
-                )
-            # #endregion
-
         except Exception as e:
-            # #region agent log - DISABLED
-            # with open("/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log", "a") as log_file:
-                log_file.write(
-                    json.dumps(
-                        {
-                            "sessionId": "debug-session",
-                            "runId": "run1",
-                            "hypothesisId": "C",
-                            "location": "intel_staging_service.py:307",
-                            "message": "archive_item error",
-                            "data": {
-                                "error": str(e),
-                                "error_type": type(e).__name__,
-                                "source": str(file_path),
-                                "dest": str(archive_path),
-                            },
-                            "timestamp": int(datetime.now().timestamp() * 1000),
-                        }
-                    )
-                    + "\n"
-                )
-            # #endregion
             raise
 
         return archive_path
