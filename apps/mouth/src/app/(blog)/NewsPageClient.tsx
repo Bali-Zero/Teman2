@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Suspense, lazy } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -16,6 +17,14 @@ import {
 } from "lucide-react";
 import type { ArticleListItem } from "@/lib/blog/types";
 import { HomepageSEOSchemas } from "@/components/seo/HomepageFAQ";
+
+// Lazy load non-critical sections
+const KBLINavigatorSection = lazy(() => import("./components/KBLINavigatorSection"));
+
+// Skeleton for lazy-loaded sections
+const SectionSkeleton = () => (
+  <div className="animate-pulse bg-[#0a1628] h-[400px] lg:h-[500px]" />
+);
 
 // App domain for internal routes
 const APP_DOMAIN =
@@ -214,69 +223,10 @@ export default function NewsPageClient({ articles: serverArticles }: NewsPageCli
           </div>
         </section>
 
-        {/* Featured Tool - KBLI Navigator */}
-        <section className="border-b border-white/10">
-          <div className="max-w-[1400px] mx-auto">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
-              {/* Left: Hero Video */}
-              <div className="relative aspect-video lg:aspect-auto lg:min-h-[500px] overflow-hidden">
-                <video
-                  src="/videos/kbli-logo-puzzle.mp4"
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-              </div>
-
-              {/* Right: Content */}
-              <div className="bg-gradient-to-br from-[#0a2540] to-[#051C2C] p-10 lg:p-16 flex flex-col justify-center">
-                <span className="text-[#2251ff] text-xs font-semibold uppercase tracking-wider mb-4">
-                  Featured Tool
-                </span>
-                <h2 className="font-serif text-3xl lg:text-4xl text-white mb-4 leading-tight">
-                  KBLI 2025 Navigator
-                </h2>
-                <p className="text-white/70 text-lg mb-6 leading-relaxed">
-                  Instant access to all 1,562 KBLI 2025 codes with intelligent
-                  search, 4-level risk assessment, PMA status tracking, and
-                  AI-powered guidance. Perfect for PT PMA setup, work permits,
-                  and business compliance.
-                </p>
-
-                <div className="flex flex-wrap gap-3 mb-8 text-sm text-white/60">
-                  <span className="flex items-center gap-1.5">
-                    <Search className="w-4 h-4" />
-                    Smart bilingual search
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Activity className="w-4 h-4" />
-                    4-level risk system
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Building2 className="w-4 h-4" />
-                    PMA status tracking
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4" />
-                    AI assistant
-                  </span>
-                </div>
-
-                <Link
-                  href="/kbli-navigator"
-                  className="inline-flex items-center gap-3 text-white group w-fit"
-                >
-                  <span className="text-lg font-medium">Explore Navigator</span>
-                  <span className="w-10 h-10 rounded-full border-2 border-white/40 flex items-center justify-center group-hover:bg-[#2251ff] group-hover:border-[#2251ff] transition-all duration-300">
-                    <ArrowRight className="w-4 h-4" />
-                  </span>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </section>
+        {/* Featured Tool - KBLI Navigator - Lazy Loaded */}
+        <Suspense fallback={<SectionSkeleton />}>
+          <KBLINavigatorSection />
+        </Suspense>
 
         {/* Latest Insights Grid */}
         <section className="border-b border-white/10">
