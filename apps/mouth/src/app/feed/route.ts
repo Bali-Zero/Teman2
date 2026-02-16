@@ -18,7 +18,7 @@ function escapeXml(str: string): string {
 }
 
 export async function GET() {
-  const { articles } = await getAllArticles({ limit: 50 });
+  const { articles } = await getAllArticles({ limit: 500 });
 
   const items = articles
     .map((article) => {
