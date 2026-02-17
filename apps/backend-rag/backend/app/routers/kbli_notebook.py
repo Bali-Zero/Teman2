@@ -390,16 +390,17 @@ KBLI_MASTER_PROMPT = (
     "- NIB = Nomor Induk Berusaha = Business Identification Number (first step in OSS)\n"
     "If a user asks what these terms mean, explain them directly using this glossary.\n\n"
     "STRICT COMPLIANCE RULES:\n"
-    "1. CITATIONS: Cite 'Bab' and 'Pasal' of PP 28/2025 for every claim. In Indonesian: 'Bab X, Pasal Y'. In English: 'Chapter X, Article Y'. In other languages, translate accordingly.\n"
+    "1. CITATIONS: Only cite Bab/Pasal if the exact article is provided in the context data. NEVER invent or guess article numbers. If you don't have the exact citation, omit it.\n"
     "2. SCALE AWARENESS: Always explain that Risk Level and Licensing depend on Business Scale (Mikro vs Menengah/Besar).\n"
     "3. PMA ALERT: For foreign investment queries, always state the 10 Billion IDR Capital requirement. Use the term 'Capital Paid Up'.\n"
     "4. BALI SPECIFIC: If Bali is mentioned, check for Moratorium warnings (Retail/Alcohol) in the expert data.\n"
     "5. MISSING DATA: If a detail is not in the provided context, state it clearly: 'Information not present in official documents. Please verify at OSS (oss.go.id)'.\n"
     "6. TONE: Authoritative, senior, and precise. You are the source of truth.\n"
     "7. PMA STATUS UNKNOWN: If pma_status is 'Verify at OSS', tell the user to check at oss.go.id/perizinan as status varies by business scale.\n"
-    "8. COLLOQUIAL TERMS: Know that 'katering' = jasa boga (KBLI 56210), 'tato/tattoo' = perawatan tubuh/kecantikan (KBLI 96021/96022), "
-    "'co-working space' = penyewaan ruang kantor (KBLI 68200/82110), 'mobile app' = aktivitas pemrograman komputer (KBLI 62011/62012). "
-    "If user asks about these, map them to the correct KBLI sector in your response."
+    "8. COLLOQUIAL TERMS: Know that 'katering/catering' = jasa boga (KBLI 56210/56290), 'tato/tattoo studio' = perawatan kecantikan (KBLI 96021/96022/96090), "
+    "'co-working space' = penyewaan ruang kantor (KBLI 68200/82110), 'mobile app/aplikasi' = aktivitas pemrograman komputer (KBLI 62199/62191), "
+    "'galeri seni/art gallery' = aktivitas kesenian (KBLI 90001/90002/90003), 'fotografer/photography' = aktivitas fotografi (KBLI 74200). "
+    "If user asks about these, map them to the correct KBLI code in your response."
 )
 
 
@@ -412,12 +413,20 @@ _TRANSLATE_SYSTEM = (
     "3. For sector/category questions (e.g. 'construction sector', 'tourism sector'), use the Indonesian sector name.\n"
     "4. For comparison questions (e.g. 'difference between X and Y'), output both Indonesian terms separated by a space.\n"
     "5. For KBLI code numbers (e.g. 'KBLI 47911'), pass them through unchanged.\n"
-    "6. For Indonesian terms already correct (e.g. 'tertutup', 'terbuka', 'PMA'), pass them through unchanged.\n"
+    "6. For Indonesian terms already correct (e.g. 'tertutup', 'terbuka', 'terbatas', 'PMA'), pass them through unchanged.\n"
     "7. Prefer specific activity descriptions over generic sector names when the query is about a specific business.\n"
+    "8. Known colloquial mappings — use these exact Indonesian phrases:\n"
+    "   catering/katering → jasa boga acara tertentu\n"
+    "   tattoo/tato studio → perawatan kecantikan tubuh\n"
+    "   art gallery/galeri seni → aktivitas kesenian budaya\n"
+    "   photography/fotografer → aktivitas fotografi\n"
+    "   co-working space → penyewaan ruang kantor\n"
+    "   mobile app/aplikasi → pemrograman komputer aplikasi\n"
+    "   surf school/sekolah surfing → pendidikan olahraga rekreasi\n"
 )
 
 
-@cached(ttl=604800, prefix="kbli_translate_v4")  # Cache translations for 7 days (v4: language-aware fallbacks)
+@cached(ttl=604800, prefix="kbli_translate_v5")  # Cache translations for 7 days (v5: colloquial aliases)
 async def _translate_query_for_kbli(query: str) -> str:
     """Translate any-language query to Indonesian KBLI search terms."""
     try:
@@ -628,12 +637,21 @@ async def chat_kbli(
                 except Exception as lookup_err:
                     logger.warning(f"Direct lookup failed for {code}: {lookup_err}")
 
-        # P0 FIX: If KBLI code in query but not found in PostgreSQL, override search_query
-        # so Qdrant searches by code string directly (e.g. "47911" finds matching payload)
+        # P0 FIX: If KBLI code in query but not found in PostgreSQL, try Qdrant payload filter
         if codes_from_query and not direct_kbli_match:
             code = codes_from_query[0]
-            search_query = code  # Qdrant kode_kbli field will match exact code
-            logger.info(f"🔢 Code {code} not in kg_nodes, overriding search_query to '{code}' for Qdrant lookup")
+            logger.info(f"🔢 Code {code} not in kg_nodes, trying Qdrant payload filter lookup")
+            qdrant_payload = await _get_kbli_payload_from_qdrant(code)
+            if qdrant_payload:
+                direct_kbli_match = KBLISearchResult(
+                    code=code,
+                    title=qdrant_payload.get("judul", f"KBLI {code}"),
+                    description=(qdrant_payload.get("content", "") or "")[:200] + "...",
+                    score=1.0,
+                    pma_status=qdrant_payload.get("pma_status") or "Verify at OSS",
+                    risk_category=qdrant_payload.get("kategori_risiko") or "Verify at OSS",
+                )
+                logger.info(f"✅ Found KBLI {code} via Qdrant payload filter: {direct_kbli_match.title}")
 
         
         # Search semantic context with translated query
@@ -752,6 +770,56 @@ async def chat_kbli(
                 sources=[],
                 suggested_queries=suggested,
             )
+
+        # GLOSSARY SHORTCUT: Answer definitional questions directly without requiring Qdrant results
+        _glossary_terms = {
+            "terbatas": (
+                "**TERBATAS** means the business activity is *open to foreign investment with restrictions*. "
+                "This means a maximum foreign ownership percentage applies — the exact limit depends on the specific KBLI code "
+                "and is defined in Indonesia's Negative Investment List (DNI). "
+                "Foreign investors (PMA) can participate but cannot exceed the stated ownership cap.\n\n"
+                "**Key facts:**\n"
+                "- PMA is allowed, but capped (e.g. max 49%, 51%, or 67% depending on the sector)\n"
+                "- Minimum Capital Paid Up for PMA: Rp 10 Billion\n"
+                "- Verify the exact cap for your specific KBLI code at: oss.go.id/perizinan\n\n"
+                "Compare with: TERBUKA (100% foreign ownership allowed) | TERTUTUP (foreigners cannot invest)"
+            ),
+            "terbuka": (
+                "**TERBUKA** means the business activity is *fully open to foreign investment*. "
+                "Foreign investors (PMA) can own up to 100% of the business.\n\n"
+                "**Key facts:**\n"
+                "- No ownership cap for foreigners\n"
+                "- Minimum Capital Paid Up for PMA: Rp 10 Billion\n"
+                "- Register at: oss.go.id\n\n"
+                "Compare with: TERBATAS (restricted ownership) | TERTUTUP (closed to foreigners)"
+            ),
+            "tertutup": (
+                "**TERTUTUP** means the business activity is *closed to foreign investment*. "
+                "Only Indonesian nationals (WNI) can own this type of business. PMA is not permitted.\n\n"
+                "**Key facts:**\n"
+                "- Foreign investors (PMA) cannot own this business type\n"
+                "- Indonesian nationals only\n"
+                "- Verify status at: oss.go.id/perizinan\n\n"
+                "Compare with: TERBUKA (100% foreign allowed) | TERBATAS (restricted foreign allowed)"
+            ),
+        }
+        query_lower = kbli_request.query.lower()
+        for term, glossary_answer in _glossary_terms.items():
+            # Match queries like "what does X mean", "what is X", "explain X", "X meaning", or just the term alone
+            if (term in query_lower and any(kw in query_lower for kw in ["mean", "what", "explain", "definition", "define", "arti", "apa itu", "pengertian"])) \
+               or query_lower.strip() == term:
+                logger.info(f"📚 Glossary shortcut triggered for term: {term}")
+                return KBLINotebookChatResponse(
+                    answer=glossary_answer,
+                    detected_kbli=[],
+                    results=[],
+                    sources=[{"title": "Negative Investment List (DNI)", "relevance": "High"}],
+                    suggested_queries=[
+                        f"What KBLI codes are {term.upper()}?",
+                        "Can a foreigner open a restaurant in Bali?",
+                        "What is the minimum capital for PMA?",
+                    ],
+                )
 
         # ABSTAIN LOGIC: Filter results by minimum relevance score
         # BUT: Bypass if there's a direct KBLI code match (exact code lookup)
