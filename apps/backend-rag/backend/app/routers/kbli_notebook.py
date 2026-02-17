@@ -389,8 +389,17 @@ KBLI_MASTER_PROMPT = (
     "- OSS = Online Single Submission system at oss.go.id — official licensing portal\n"
     "- NIB = Nomor Induk Berusaha = Business Identification Number (first step in OSS)\n"
     "If a user asks what these terms mean, explain them directly using this glossary.\n\n"
+    "KNOWN KBLI CODES (use these exact definitions when asked):\n"
+    "- 47911 = PERDAGANGAN ECERAN MELALUI MEDIA UNTUK BERBAGAI MACAM BARANG — Retail trade of various consumer goods via internet/digital media platforms. PMA: TERBATAS (restricted).\n"
+    "- 56101 = RESTORAN — Restaurant services with permanent building. PMA: TERBATAS.\n"
+    "- 56210 = AKTIVITAS JASA BOGA UNTUK ACARA TERTENTU (EVENT CATERING) — Event catering/katering. PMA: TERBATAS.\n"
+    "- 56290 = AKTIVITAS JASA BOGA LAINNYA — Other food service activities. PMA: TERBATAS.\n"
+    "- 74200 = AKTIVITAS FOTOGRAFI — Photography services. PMA: TERBUKA (open to foreigners).\n"
+    "- 90001 = AKTIVITAS SENI PERTUNJUKAN — Performing arts. 90002 = PENGELOLAAN GEDUNG KESENIAN — Art venue/gallery management.\n"
+    "- 96090 = AKTIVITAS PERAWATAN TUBUH LAINNYA — Other personal care including tattoo studios. PMA: TERBATAS.\n"
+    "If a user asks about these codes by number, explain them directly from this list.\n\n"
     "STRICT COMPLIANCE RULES:\n"
-    "1. CITATIONS: Only cite Bab/Pasal if the exact article is provided in the context data. NEVER invent or guess article numbers. If you don't have the exact citation, omit it.\n"
+    "1. CITATIONS: NEVER use placeholder text like 'Chapter X', 'Article Y', 'Bab X', or 'Pasal Y'. These are NOT real citations. Only cite if you have the exact article number from context data. If unsure, omit citations entirely.\n"
     "2. SCALE AWARENESS: Always explain that Risk Level and Licensing depend on Business Scale (Mikro vs Menengah/Besar).\n"
     "3. PMA ALERT: For foreign investment queries, always state the 10 Billion IDR Capital requirement. Use the term 'Capital Paid Up'.\n"
     "4. BALI SPECIFIC: If Bali is mentioned, check for Moratorium warnings (Retail/Alcohol) in the expert data.\n"
@@ -426,7 +435,7 @@ _TRANSLATE_SYSTEM = (
 )
 
 
-@cached(ttl=604800, prefix="kbli_translate_v5")  # Cache translations for 7 days (v5: colloquial aliases)
+@cached(ttl=604800, prefix="kbli_translate_v6")  # Cache translations for 7 days (v6: known codes + citation fix)
 async def _translate_query_for_kbli(query: str) -> str:
     """Translate any-language query to Indonesian KBLI search terms."""
     try:
