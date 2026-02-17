@@ -10,8 +10,8 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from backend.app.core.auth import get_current_user
-from backend.app.core.database import get_database_pool
+from backend.app.dependencies import get_current_user
+from backend.app.dependencies import get_database_pool
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

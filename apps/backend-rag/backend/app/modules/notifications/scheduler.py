@@ -20,7 +20,7 @@ from typing import Optional
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-from backend.app.core.database import get_database_pool
+from backend.app.dependencies import get_database_pool
 
 from .checker import ExpiryChecker, AlertDeduplicator
 from .service import NotificationService
