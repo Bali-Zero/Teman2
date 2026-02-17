@@ -135,6 +135,10 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(crm_auto.router)
     api.include_router(crm_portal_integration.router)  # Team ↔ Portal integration
 
+    # Notification router (Automated email alerts)
+    from backend.app.modules.notifications.router import router as notifications_router
+    api.include_router(notifications_router)
+
     # Portal routers (Client-facing)
     api.include_router(portal.router)
     api.include_router(portal_invite.router)

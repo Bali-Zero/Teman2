@@ -1,0 +1,206 @@
+"""
+Notification Scheduler
+======================
+Scheduled task runner for automated notifications.
+
+Runs daily at 9:00 AM Bali time (UTC+8).
+Can be triggered manually via API.
+
+Deployment options:
+1. APScheduler (in-process, for simple deployments)
+2. Celery Beat (distributed, for production)
+3. External cron (systemd timer, Kubernetes CronJob)
+"""
+
+import logging
+import asyncio
+from datetime import datetime
+from typing import Optional
+
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+
+from backend.app.core.database import get_database_pool
+
+from .checker import ExpiryChecker, AlertDeduplicator
+from .service import NotificationService
+from .router import get_clients_from_db
+
+logger = logging.getLogger(__name__)
+
+# Bali timezone offset (UTC+8)
+BALI_TZ = "Asia/Singapore"  # Same timezone as Bali
+
+
+class NotificationScheduler:
+    """Scheduler for automated notification tasks."""
+
+    def __init__(self):
+        self.scheduler: Optional[AsyncIOScheduler] = None
+        self.is_running = False
+
+    async def start(self):
+        """Start the scheduler."""
+        if self.is_running:
+            logger.warning("Scheduler already running")
+            return
+
+        self.scheduler = AsyncIOScheduler(timezone=BALI_TZ)
+
+        # Schedule daily check at 9:00 AM Bali time
+        self.scheduler.add_job(
+            self._daily_check,
+            trigger=CronTrigger(hour=9, minute=0),
+            id="daily_notification_check",
+            name="Daily Expiry Check",
+            replace_existing=True,
+        )
+
+        # Schedule hourly check for any missed alerts
+        self.scheduler.add_job(
+            self._send_pending_alerts,
+            trigger=CronTrigger(minute=0),  # Every hour
+            id="hourly_pending_send",
+            name="Send Pending Alerts",
+            replace_existing=True,
+        )
+
+        self.scheduler.start()
+        self.is_running = True
+
+        logger.info(
+            "Notification scheduler started",
+            extra={"timezone": BALI_TZ, "scheduled_jobs": len(self.scheduler.get_jobs())},
+        )
+
+    async def stop(self):
+        """Stop the scheduler."""
+        if self.scheduler:
+            self.scheduler.shutdown()
+            self.is_running = False
+            logger.info("Notification scheduler stopped")
+
+    async def _daily_check(self):
+        """Run daily expiry check."""
+        logger.info("Starting daily expiry check")
+
+        try:
+            pool = await get_database_pool()
+
+            # Get all active clients
+            clients = await get_clients_from_db(pool)
+
+            if not clients:
+                logger.info("No clients to check")
+                return
+
+            # Run expiry check
+            checker = ExpiryChecker()
+            alerts = checker.check_all_clients(clients)
+
+            # Filter duplicates
+            deduplicator = AlertDeduplicator(pool)
+            new_alerts = []
+
+            for alert in alerts:
+                should_send = await deduplicator.should_send_alert(
+                    alert.client_id,
+                    alert.alert_type,
+                    min_days_between=1,  # Max 1 alert per day per type
+                )
+                if should_send:
+                    new_alerts.append(alert)
+
+            # Store alerts in database
+            async with pool.acquire() as conn:
+                for alert in new_alerts:
+                    await conn.execute(
+                        """
+                        INSERT INTO notification_alerts 
+                        (client_id, alert_type, status, message, email_subject, email_body, created_at)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7)
+                        ON CONFLICT (client_id, alert_type, DATE(created_at)) 
+                        DO NOTHING
+                        """,
+                        alert.client_id,
+                        alert.alert_type.value,
+                        alert.status.value,
+                        alert.message,
+                        alert.email_subject,
+                        alert.email_body,
+                        alert.created_at,
+                    )
+
+            logger.info(
+                "Daily check completed",
+                extra={
+                    "clients_checked": len(clients),
+                    "alerts_generated": len(alerts),
+                    "new_alerts": len(new_alerts),
+                },
+            )
+
+            # Immediately send alerts
+            await self._send_pending_alerts()
+
+        except Exception as e:
+            logger.error("Daily check failed", exc_info=e)
+
+    async def _send_pending_alerts(self):
+        """Send all pending alerts."""
+        try:
+            pool = await get_database_pool()
+            service = NotificationService(pool)
+
+            pending = await service.get_pending_alerts()
+
+            if not pending:
+                return
+
+            async def get_client_email(client_id: int) -> str | None:
+                async with pool.acquire() as conn:
+                    return await conn.fetchval(
+                        "SELECT email FROM clients WHERE id = $1",
+                        client_id,
+                    )
+
+            results = await service.process_alerts_batch(pending, get_client_email)
+
+            successful = sum(1 for r in results if r.success)
+
+            logger.info(
+                "Pending alerts sent",
+                extra={
+                    "total": len(results),
+                    "successful": successful,
+                    "failed": len(results) - successful,
+                },
+            )
+
+        except Exception as e:
+            logger.error("Failed to send pending alerts", exc_info=e)
+
+
+# Global scheduler instance
+_scheduler: Optional[NotificationScheduler] = None
+
+
+async def init_scheduler() -> NotificationScheduler:
+    """Initialize and start the global scheduler."""
+    global _scheduler
+    _scheduler = NotificationScheduler()
+    await _scheduler.start()
+    return _scheduler
+
+
+async def stop_scheduler():
+    """Stop the global scheduler."""
+    global _scheduler
+    if _scheduler:
+        await _scheduler.stop()
+        _scheduler = None
+
+
+def get_scheduler() -> Optional[NotificationScheduler]:
+    """Get the global scheduler instance."""
+    return _scheduler
