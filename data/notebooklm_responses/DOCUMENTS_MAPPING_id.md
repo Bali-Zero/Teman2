@@ -11,6 +11,7 @@
 ### Dokumen yang Diperlukan:
 
 #### Prioritas 1 (KRITIS):
+
 ```
 ✅ PP 31/2013 - Peraturan Imigrasi (regulasi dasar)
 ✅ Permenkumham 28/2024 - Peraturan E-Visa
@@ -18,6 +19,7 @@
 ```
 
 #### Prioritas 2 (PENTING):
+
 ```
 ✅ Daftar Jabatan Kemnaker 2024-2025
    - Posisi kerja yang disetujui untuk tenaga kerja asing
@@ -31,6 +33,7 @@
 ```
 
 #### Prioritas 3 (OPSIONAL):
+
 ```
 □ Variasi imigrasi provinsi (Bali, Jakarta)
 □ Formulir aplikasi IMTA & checklist
@@ -40,12 +43,14 @@
 ### Dari Mana Mendapatkannya:
 
 **Jika Anda memiliki PDFs:**
+
 ```bash
 # Cek direktori proyek
 find . -name "*PP*31*2013*" -o -name "*Permenkumham*28*" -o -name "*PP*34*2021*"
 ```
 
 **Jika TIDAK memiliki PDFs:**
+
 - NotebookLM dapat menggunakan **pengetahuan umum** jika Anda menentukan:
   ```
   "Berdasarkan peraturan terbaru Indonesia 2024-2025
@@ -54,6 +59,7 @@ find . -name "*PP*31*2013*" -o -name "*Permenkumham*28*" -o -name "*PP*34*2021*"
 - Download dari: https://peraturan.bpk.go.id / https://jdih.kemenkumham.go.id
 
 **Daftar Jabatan Kemnaker:**
+
 - Kemungkinan Excel/PDF dari Kementerian Ketenagakerjaan
 - Jika tidak tersedia, minta NotebookLM untuk daftar umum posisi kerja yang disetujui
 
@@ -66,6 +72,7 @@ find . -name "*PP*31*2013*" -o -name "*Permenkumham*28*" -o -name "*PP*34*2021*"
 ### Dokumen yang Diperlukan:
 
 #### Sudah Tersedia ✅ di `data/kb_sources/`:
+
 ```
 ✅ PP Nomor 28 Tahun 2025.pdf (20MB) - Peraturan KBLI terbaru
 ✅ KBLI_2025_FINAL_CLEAN.json (7.3MB) - 9.612 kode bisnis
@@ -74,6 +81,7 @@ find . -name "*PP*31*2013*" -o -name "*Permenkumham*28*" -o -name "*PP*34*2021*"
 ```
 
 #### Tambahan yang Diperlukan:
+
 ```
 ✅ PP 5/2021 - Undang-Undang Penanaman Modal (peraturan PMA)
 ✅ Daftar Negatif Investasi (DNI) 2021-2025
@@ -111,6 +119,7 @@ ls -lh
 ### Dokumen yang Diperlukan:
 
 #### Prioritas 1 (KRITIS):
+
 ```
 ✅ UU 7/2021 - Undang-Undang Harmonisasi Perpajakan
    - PPh Badan 22% (pajak perusahaan)
@@ -129,6 +138,7 @@ ls -lh
 ```
 
 #### Prioritas 2 (PENTING):
+
 ```
 ✅ Perjanjian Pajak (DTA - Double Taxation Agreements)
    - Indonesia - Italia
@@ -145,13 +155,16 @@ ls -lh
 ### Dari Mana Mendapatkannya:
 
 **Sumber pemerintah:**
+
 - https://pajak.go.id (DJP - Otoritas pajak)
 - https://peraturan.bpk.go.id (cari "UU 7/2021", "PP 55/2022")
 
 **Perjanjian Pajak:**
+
 - https://pajak.go.id/id/internasional/tax-treaty
 
 **Alternatif:**
+
 - Jika tidak memiliki PDFs, NotebookLM dapat menggunakan pengetahuan umum:
   ```
   "Berdasarkan UU 7/2021 dan PP 55/2022 (Tax Harmonization Law Indonesia),
@@ -167,6 +180,7 @@ ls -lh
 ### Dokumen yang Diperlukan:
 
 #### Prioritas 1 (KRITIS):
+
 ```
 ✅ PP 18/2021 - Hak Pakai untuk Orang Asing
    - Hak kepemilikan properti asing
@@ -181,6 +195,7 @@ ls -lh
 ```
 
 #### Prioritas 2 (PENTING):
+
 ```
 □ Peraturan zonasi provinsi
    - Bali: zona pariwisata, pembatasan kepemilikan asing
@@ -199,10 +214,12 @@ ls -lh
 ### Dari Mana Mendapatkannya:
 
 **Sumber pemerintah:**
+
 - PP 18/2021: https://peraturan.bpk.go.id
 - UUPA: Hukum agraria standar (1960, diperbarui)
 
 **Khusus Bali:**
+
 - Perda (Peraturan Daerah) Bali tentang properti
 - Persyaratan IMB (izin mendirikan bangunan)
 
@@ -242,6 +259,7 @@ Dari Notebook 4 (Property):
 **Total:** ~15-20 dokumen
 
 **Tujuan:** NotebookLM dapat melakukan referensi silang antar domain
+
 - Setup perusahaan + Persyaratan Visa
 - Pembelian properti + Implikasi Pajak
 - Skenario Bisnis + Imigrasi + Pajak
@@ -311,15 +329,18 @@ ls data/kb_sources/
 ### Untuk TIM:
 
 **Opsi A: Anda menyediakan semua PDFs**
+
 - Tim hanya upload ke NotebookLM
 - Tercepat, paling konsisten
 
 **Opsi B: Tim mencari dokumen sendiri**
+
 - Anda menyediakan daftar + sumber
 - Setiap orang download untuk domain mereka
 - Lebih fleksibel tapi lebih lambat
 
 **Opsi C: Hybrid (DIREKOMENDASIKAN)**
+
 - Anda menyediakan dokumen kritis (PP 28/2025, dll.) ✅ Sudah selesai
 - Tim menggunakan pengetahuan umum NotebookLM untuk peraturan lainnya
 - Tentukan nomor peraturan dalam prompt
@@ -328,18 +349,18 @@ ls data/kb_sources/
 
 ## 📋 Matriks Status Dokumen
 
-| Domain | Dokumen Kritis | Status | Lokasi |
-|--------|---------------|--------|----------|
-| **KBLI** | PP 28/2025 + JSON | ✅ SIAP | `data/kb_sources/` |
-| **KBLI** | Lampiran 1a, 1b | ✅ SIAP | `data/kb_sources/` |
-| **Visa** | PP 31/2013 | ⚠️ CARI | TBD |
-| **Visa** | Permenkumham 28/2024 | ⚠️ CARI | TBD |
-| **Visa** | PP 34/2021 | ⚠️ CARI | TBD |
-| **Visa** | Daftar Jabatan Kemnaker | ⚠️ CARI | TBD |
-| **Tax** | UU 7/2021 | ⚠️ CARI | TBD |
-| **Tax** | PP 55/2022 | ⚠️ CARI | TBD |
-| **Property** | PP 18/2021 | ⚠️ CARI | TBD |
-| **Property** | UUPA | ⚠️ CARI | TBD |
+| Domain       | Dokumen Kritis          | Status  | Lokasi             |
+| ------------ | ----------------------- | ------- | ------------------ |
+| **KBLI**     | PP 28/2025 + JSON       | ✅ SIAP | `data/kb_sources/` |
+| **KBLI**     | Lampiran 1a, 1b         | ✅ SIAP | `data/kb_sources/` |
+| **Visa**     | PP 31/2013              | ⚠️ CARI | TBD                |
+| **Visa**     | Permenkumham 28/2024    | ⚠️ CARI | TBD                |
+| **Visa**     | PP 34/2021              | ⚠️ CARI | TBD                |
+| **Visa**     | Daftar Jabatan Kemnaker | ⚠️ CARI | TBD                |
+| **Tax**      | UU 7/2021               | ⚠️ CARI | TBD                |
+| **Tax**      | PP 55/2022              | ⚠️ CARI | TBD                |
+| **Property** | PP 18/2021              | ⚠️ CARI | TBD                |
+| **Property** | UUPA                    | ⚠️ CARI | TBD                |
 
 ---
 
@@ -348,6 +369,7 @@ ls data/kb_sources/
 ### Segera:
 
 1. **Cari PDFs yang hilang:**
+
 ```bash
 # Cari peraturan di proyek
 find . -type f -name "*.pdf" | xargs grep -l "PP.*2013\|PP.*2021\|UU.*2021" 2>/dev/null

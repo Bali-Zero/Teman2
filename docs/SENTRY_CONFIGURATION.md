@@ -151,7 +151,7 @@ const sentryWebpackPluginOptions = {
    - Add this to any page component:
      ```typescript
      useEffect(() => {
-       throw new Error('[TEST] Sentry error tracking');
+       throw new Error("[TEST] Sentry error tracking");
      }, []);
      ```
 
@@ -225,8 +225,8 @@ Sentry automatically captures:
 
 3. Test manually:
    ```typescript
-   import * as Sentry from '@sentry/nextjs';
-   Sentry.captureException(new Error('Test error'));
+   import * as Sentry from "@sentry/nextjs";
+   Sentry.captureException(new Error("Test error"));
    ```
 
 ### Source maps not uploading:

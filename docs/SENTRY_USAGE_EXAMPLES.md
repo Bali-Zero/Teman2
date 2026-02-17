@@ -5,36 +5,36 @@
 ### 1. Capture Exceptions
 
 ```typescript
-import * as Sentry from '@sentry/nextjs';
+import * as Sentry from "@sentry/nextjs";
 
 try {
   // Your code
   await riskyOperation();
 } catch (error) {
   Sentry.captureException(error);
-  console.error('Operation failed:', error);
+  console.error("Operation failed:", error);
 }
 ```
 
 ### 2. Capture Messages
 
 ```typescript
-import * as Sentry from '@sentry/nextjs';
+import * as Sentry from "@sentry/nextjs";
 
 // Log important events
-Sentry.captureMessage('User completed onboarding', 'info');
+Sentry.captureMessage("User completed onboarding", "info");
 
 // Log warnings
-Sentry.captureMessage('API rate limit approaching', 'warning');
+Sentry.captureMessage("API rate limit approaching", "warning");
 
 // Log errors
-Sentry.captureMessage('Payment webhook failed', 'error');
+Sentry.captureMessage("Payment webhook failed", "error");
 ```
 
 ### 3. Add Context to Errors
 
 ```typescript
-import * as Sentry from '@sentry/nextjs';
+import * as Sentry from "@sentry/nextjs";
 
 Sentry.setUser({
   id: user.id,
@@ -42,14 +42,14 @@ Sentry.setUser({
   username: user.name,
 });
 
-Sentry.setContext('company', {
+Sentry.setContext("company", {
   id: company.id,
   name: company.name,
   plan: company.subscription_plan,
 });
 
-Sentry.setTag('feature', 'visa-application');
-Sentry.setTag('environment', process.env.NODE_ENV);
+Sentry.setTag("feature", "visa-application");
+Sentry.setTag("environment", process.env.NODE_ENV);
 ```
 
 ## React Error Boundaries
@@ -128,8 +128,8 @@ export default function Page() {
 
 ```typescript
 // app/api/example/route.ts
-import * as Sentry from '@sentry/nextjs';
-import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from "@sentry/nextjs";
+import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
@@ -150,11 +150,14 @@ export async function POST(request: NextRequest) {
         },
       },
       tags: {
-        endpoint: '/api/example',
+        endpoint: "/api/example",
       },
     });
 
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }
 ```
@@ -162,14 +165,14 @@ export async function POST(request: NextRequest) {
 ## Server Actions Error Tracking
 
 ```typescript
-'use server';
+"use server";
 
-import * as Sentry from '@sentry/nextjs';
+import * as Sentry from "@sentry/nextjs";
 
 export async function updateUserProfile(formData: FormData) {
   try {
-    const userId = formData.get('userId');
-    const name = formData.get('name');
+    const userId = formData.get("userId");
+    const name = formData.get("name");
 
     // Update user
     await db.user.update({
@@ -181,14 +184,14 @@ export async function updateUserProfile(formData: FormData) {
   } catch (error) {
     Sentry.captureException(error, {
       tags: {
-        action: 'updateUserProfile',
+        action: "updateUserProfile",
       },
       extra: {
-        userId: formData.get('userId'),
+        userId: formData.get("userId"),
       },
     });
 
-    return { error: 'Failed to update profile' };
+    return { error: "Failed to update profile" };
   }
 }
 ```
@@ -198,26 +201,26 @@ export async function updateUserProfile(formData: FormData) {
 ### Trace Custom Operations
 
 ```typescript
-import * as Sentry from '@sentry/nextjs';
+import * as Sentry from "@sentry/nextjs";
 
 export async function expensiveOperation() {
   const transaction = Sentry.startTransaction({
-    op: 'task',
-    name: 'Expensive Operation',
+    op: "task",
+    name: "Expensive Operation",
   });
 
   try {
     // Your expensive operation
     const span1 = transaction.startChild({
-      op: 'db.query',
-      description: 'Fetch user data',
+      op: "db.query",
+      description: "Fetch user data",
     });
     const users = await fetchUsers();
     span1.finish();
 
     const span2 = transaction.startChild({
-      op: 'processing',
-      description: 'Process data',
+      op: "processing",
+      description: "Process data",
     });
     const result = processUsers(users);
     span2.finish();
@@ -296,20 +299,23 @@ Sentry.init({
   beforeSend(event, hint) {
     // Filter sensitive data from URLs
     if (event.request?.url) {
-      event.request.url = event.request.url.replace(/token=[^&]*/g, 'token=[FILTERED]');
+      event.request.url = event.request.url.replace(
+        /token=[^&]*/g,
+        "token=[FILTERED]",
+      );
     }
 
     // Filter sensitive headers
     if (event.request?.headers) {
-      delete event.request.headers['authorization'];
-      delete event.request.headers['cookie'];
+      delete event.request.headers["authorization"];
+      delete event.request.headers["cookie"];
     }
 
     // Filter breadcrumb data
     if (event.breadcrumbs) {
       event.breadcrumbs = event.breadcrumbs.map((breadcrumb) => {
         if (breadcrumb.data?.password) {
-          breadcrumb.data.password = '[FILTERED]';
+          breadcrumb.data.password = "[FILTERED]";
         }
         return breadcrumb;
       });
@@ -327,22 +333,22 @@ Sentry.init({
   // ... other config
   ignoreErrors: [
     // Ignore browser extensions
-    'top.GLOBALS',
-    'chrome-extension://',
+    "top.GLOBALS",
+    "chrome-extension://",
 
     // Ignore network errors
-    'NetworkError',
-    'Failed to fetch',
+    "NetworkError",
+    "Failed to fetch",
 
     // Ignore known third-party errors
-    'ResizeObserver loop limit exceeded',
+    "ResizeObserver loop limit exceeded",
   ],
 
   beforeSend(event) {
     // Custom ignore logic
     if (event.exception) {
       const error = event.exception.values?.[0];
-      if (error?.value?.includes('User cancelled')) {
+      if (error?.value?.includes("User cancelled")) {
         return null; // Don't send to Sentry
       }
     }
@@ -354,8 +360,8 @@ Sentry.init({
 ## Integration with React Query
 
 ```typescript
-import * as Sentry from '@sentry/nextjs';
-import { QueryClient } from '@tanstack/react-query';
+import * as Sentry from "@sentry/nextjs";
+import { QueryClient } from "@tanstack/react-query";
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -363,7 +369,7 @@ export const queryClient = new QueryClient({
       onError: (error) => {
         Sentry.captureException(error, {
           tags: {
-            errorType: 'react-query',
+            errorType: "react-query",
           },
         });
       },
@@ -372,7 +378,7 @@ export const queryClient = new QueryClient({
       onError: (error, variables, context) => {
         Sentry.captureException(error, {
           tags: {
-            errorType: 'react-query-mutation',
+            errorType: "react-query-mutation",
           },
           extra: {
             variables,
@@ -476,7 +482,7 @@ Sentry.init({
   // ... other config
   tracesSampler: (samplingContext) => {
     // Sample more for slow endpoints
-    if (samplingContext.transactionContext.name?.includes('/api/slow')) {
+    if (samplingContext.transactionContext.name?.includes("/api/slow")) {
       return 1.0; // 100%
     }
 
@@ -491,12 +497,12 @@ Sentry.init({
 ### Wrap Async Operations
 
 ```typescript
-import * as Sentry from '@sentry/nextjs';
+import * as Sentry from "@sentry/nextjs";
 
 export async function safeAsync<T>(
   operation: () => Promise<T>,
   fallback: T,
-  context?: Record<string, any>
+  context?: Record<string, any>,
 ): Promise<T> {
   try {
     return await operation();
@@ -507,13 +513,15 @@ export async function safeAsync<T>(
 }
 
 // Usage
-const users = await safeAsync(() => fetchUsers(), [], { endpoint: '/api/users' });
+const users = await safeAsync(() => fetchUsers(), [], {
+  endpoint: "/api/users",
+});
 ```
 
 ### Rate Limiting Errors
 
 ```typescript
-import * as Sentry from '@sentry/nextjs';
+import * as Sentry from "@sentry/nextjs";
 
 const errorCache = new Map<string, number>();
 const RATE_LIMIT = 10; // Max 10 errors per minute

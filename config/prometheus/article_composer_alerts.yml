@@ -15,9 +15,9 @@ groups:
           severity: critical
           component: article_composer
         annotations:
-          summary: 'Article Composer error rate > 10%'
-          description: 'Error rate is {{ $value | humanizePercentage }} for the last 5 minutes'
-          runbook_url: 'https://docs.example.com/runbooks/article-composer-high-error-rate'
+          summary: "Article Composer error rate > 10%"
+          description: "Error rate is {{ $value | humanizePercentage }} for the last 5 minutes"
+          runbook_url: "https://docs.example.com/runbooks/article-composer-high-error-rate"
 
       # Critical: API Key Missing
       - alert: ArticleComposerAPIKeyMissing
@@ -31,9 +31,9 @@ groups:
           severity: critical
           component: article_composer
         annotations:
-          summary: 'Article Composer API key may be missing or invalid'
-          description: 'More than 50% of requests are failing with API errors'
-          runbook_url: 'https://docs.example.com/runbooks/article-composer-api-key'
+          summary: "Article Composer API key may be missing or invalid"
+          description: "More than 50% of requests are failing with API errors"
+          runbook_url: "https://docs.example.com/runbooks/article-composer-api-key"
 
       # Warning: Low Cache Hit Rate
       - alert: ArticleComposerLowCacheHitRate
@@ -47,9 +47,9 @@ groups:
           severity: warning
           component: article_composer
         annotations:
-          summary: 'Article Composer cache hit rate < 20%'
-          description: 'Cache hit rate is {{ $value | humanizePercentage }}. Consider checking Redis connection or cache TTL settings.'
-          runbook_url: 'https://docs.example.com/runbooks/article-composer-cache'
+          summary: "Article Composer cache hit rate < 20%"
+          description: "Cache hit rate is {{ $value | humanizePercentage }}. Consider checking Redis connection or cache TTL settings."
+          runbook_url: "https://docs.example.com/runbooks/article-composer-cache"
 
       # Warning: High API Costs
       - alert: ArticleComposerHighCosts
@@ -60,9 +60,9 @@ groups:
           severity: warning
           component: article_composer
         annotations:
-          summary: 'Article Composer API costs > $10/hour'
-          description: 'Current cost: ${{ $value }} per hour. Consider enabling caching or reviewing usage patterns.'
-          runbook_url: 'https://docs.example.com/runbooks/article-composer-costs'
+          summary: "Article Composer API costs > $10/hour"
+          description: "Current cost: ${{ $value }} per hour. Consider enabling caching or reviewing usage patterns."
+          runbook_url: "https://docs.example.com/runbooks/article-composer-costs"
 
       # Warning: Slow Response Time
       - alert: ArticleComposerSlowResponse
@@ -73,9 +73,9 @@ groups:
           severity: warning
           component: article_composer
         annotations:
-          summary: 'Article Composer 95th percentile response time > 10s'
-          description: 'P95 response time is {{ $value }}s. Consider checking Claude API latency or enabling caching.'
-          runbook_url: 'https://docs.example.com/runbooks/article-composer-performance'
+          summary: "Article Composer 95th percentile response time > 10s"
+          description: "P95 response time is {{ $value }}s. Consider checking Claude API latency or enabling caching."
+          runbook_url: "https://docs.example.com/runbooks/article-composer-performance"
 
       # Warning: Rate Limit Exceeded
       - alert: ArticleComposerRateLimitExceeded
@@ -86,9 +86,9 @@ groups:
           severity: warning
           component: article_composer
         annotations:
-          summary: 'Article Composer rate limit exceeded'
-          description: 'Rate limit is being hit. Consider increasing limit or optimizing request patterns.'
-          runbook_url: 'https://docs.example.com/runbooks/article-composer-rate-limit'
+          summary: "Article Composer rate limit exceeded"
+          description: "Rate limit is being hit. Consider increasing limit or optimizing request patterns."
+          runbook_url: "https://docs.example.com/runbooks/article-composer-rate-limit"
 
       # Info: High Request Volume
       - alert: ArticleComposerHighVolume
@@ -99,5 +99,5 @@ groups:
           severity: info
           component: article_composer
         annotations:
-          summary: 'Article Composer high request volume'
-          description: 'Request rate is {{ $value }} requests/second. Monitor for performance issues.'
+          summary: "Article Composer high request volume"
+          description: "Request rate is {{ $value }} requests/second. Monitor for performance issues."

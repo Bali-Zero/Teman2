@@ -26,7 +26,12 @@
       "enabled": true,
       "level": "info",
       "logDirectory": "~/Desktop/nuzantara/.cowork-optimization/logs",
-      "logActions": ["file_delete", "file_move", "file_replace", "permission_change"],
+      "logActions": [
+        "file_delete",
+        "file_move",
+        "file_replace",
+        "permission_change"
+      ],
       "maxLogSize": "10MB"
     },
     "limits": {

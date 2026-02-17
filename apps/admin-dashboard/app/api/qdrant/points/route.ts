@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
-import { QdrantClient } from '@qdrant/js-client-rest';
-import { logger } from '@/lib/logger';
+import { NextResponse } from "next/server";
+import { QdrantClient } from "@qdrant/js-client-rest";
+import { logger } from "@/lib/logger";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 const client = new QdrantClient({
   url: process.env.QDRANT_URL,
@@ -11,12 +11,12 @@ const client = new QdrantClient({
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const collection = searchParams.get('collection');
+  const collection = searchParams.get("collection");
   const limit = 20;
-  const offset = searchParams.get('offset');
+  const offset = searchParams.get("offset");
 
   if (!collection) {
-    return NextResponse.json({ error: 'Collection required' }, { status: 400 });
+    return NextResponse.json({ error: "Collection required" }, { status: 400 });
   }
 
   try {
@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(response);
   } catch (error: any) {
-    logger.error('Qdrant Scroll Error:', error);
+    logger.error("Qdrant Scroll Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

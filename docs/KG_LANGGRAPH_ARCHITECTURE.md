@@ -45,12 +45,14 @@ The Nuzantara Knowledge Graph has evolved from a **static retrieval tool** to a 
 ### Problem Statement
 
 **Before (Static Retrieval):**
+
 - ❌ No multi-hop reasoning (couldn't chain `KBLI 56101 → PT PMA → KITAS → RPTKA`)
 - ❌ Hardcoded workflow IDs (binary citizenship check only)
 - ❌ No state persistence (each query starts from scratch)
 - ❌ Limited graph operations (only `STARTS_WITH → NEXT_STEP` chains)
 
 **After (LangGraph Dynamic System):**
+
 - ✅ BFS traversal with cycle detection (up to 3 hops)
 - ✅ Dynamic workflow synthesis from graph chains
 - ✅ PostgreSQL checkpoints (pause/resume queries)
@@ -58,13 +60,13 @@ The Nuzantara Knowledge Graph has evolved from a **static retrieval tool** to a 
 
 ### Key Components
 
-| Component | File | Purpose |
-|-----------|------|---------|
-| **State Definitions** | `kg_graph_state.py` | TypedDict states for workflow |
-| **Node Implementations** | `kg_graph_nodes.py` | 5 core nodes + helper functions |
-| **Orchestrator** | `kg_langgraph_orchestrator.py` | StateGraph construction + routing |
-| **Tests** | `test_kg_langgraph.py` | 35 unit + integration tests |
-| **Metrics** | (embedded in nodes) | 5 Prometheus metrics |
+| Component                | File                           | Purpose                           |
+| ------------------------ | ------------------------------ | --------------------------------- |
+| **State Definitions**    | `kg_graph_state.py`            | TypedDict states for workflow     |
+| **Node Implementations** | `kg_graph_nodes.py`            | 5 core nodes + helper functions   |
+| **Orchestrator**         | `kg_langgraph_orchestrator.py` | StateGraph construction + routing |
+| **Tests**                | `test_kg_langgraph.py`         | 35 unit + integration tests       |
+| **Metrics**              | (embedded in nodes)            | 5 Prometheus metrics              |
 
 ---
 
@@ -153,7 +155,7 @@ class KGAgentState(TypedDict):
 **PropertyState**: Hak Pakai, HGB, villa rental
 **TaxState**: PPh, PPN, tax compliance
 
-*(Phase 3 implementation - see Future Enhancements)*
+_(Phase 3 implementation - see Future Enhancements)_
 
 ---
 
@@ -164,24 +166,27 @@ class KGAgentState(TypedDict):
 **Purpose:** Extract intent, entities, citizenship from user query
 
 **Input:**
+
 ```json
 {
   "query": "Aprire ristorante e assumere chef straniero",
-  "user_context": {"citizenship": "foreign"}
+  "user_context": { "citizenship": "foreign" }
 }
 ```
 
 **Process:**
+
 1. Build LLM extraction prompt (intent, entities, citizenship)
 2. Call LLM with structured output request (JSON)
 3. Parse response and update state
 
 **Output:**
+
 ```json
 {
   "intent": "company_setup",
   "extracted_entities": ["kbli:56101", "pt_pma", "kitas"],
-  "user_context": {"citizenship": "foreign"}
+  "user_context": { "citizenship": "foreign" }
 }
 ```
 
@@ -194,6 +199,7 @@ class KGAgentState(TypedDict):
 **Purpose:** Map extracted entities to KG entity_ids via fuzzy matching
 
 **Input:**
+
 ```json
 {
   "extracted_entities": ["restaurant", "kitas"]
@@ -201,22 +207,25 @@ class KGAgentState(TypedDict):
 ```
 
 **Process:**
+
 1. For each entity, try **exact match** (entity_id or name)
 2. If no exact match, try **fuzzy match** (PostgreSQL `similarity()` > 0.7)
 3. Store resolved entity_ids and confidence scores
 
 **Output:**
+
 ```json
 {
   "current_entities": ["kbli:56101", "kitas:e28a"],
   "confidence_scores": {
     "kbli:56101": 0.9,
-    "kitas:e28a": 0.765  // 0.9 * 0.85 (confidence * sim_score)
+    "kitas:e28a": 0.765 // 0.9 * 0.85 (confidence * sim_score)
   }
 }
 ```
 
 **Database Query:**
+
 ```sql
 -- Exact match
 SELECT entity_id, name, confidence
@@ -238,6 +247,7 @@ LIMIT 3
 **Purpose:** BFS traversal to find multi-hop relationship chains
 
 **Input:**
+
 ```json
 {
   "current_entities": ["kbli:56101"],
@@ -246,6 +256,7 @@ LIMIT 3
 ```
 
 **Process:**
+
 1. Initialize frontier with `current_entities`
 2. For each depth (max 3):
    - For each entity in frontier:
@@ -257,6 +268,7 @@ LIMIT 3
 3. Store all chains in state
 
 **Output:**
+
 ```json
 {
   "relationship_chains": [
@@ -279,6 +291,7 @@ LIMIT 3
 ```
 
 **Database Query:**
+
 ```sql
 SELECT e.relationship_type, e.target_entity_id,
        s.name as source_name, s.entity_type as source_type,
@@ -303,20 +316,25 @@ LIMIT 20
 **Purpose:** LLM analyzes graph chains to answer query
 
 **Input:**
+
 ```json
 {
   "query": "Aprire ristorante e assumere chef straniero",
-  "relationship_chains": [ /* chains from traversal */ ]
+  "relationship_chains": [
+    /* chains from traversal */
+  ]
 }
 ```
 
 **Process:**
+
 1. Format chains as readable text for LLM context
 2. Build reasoning prompt with graph evidence
 3. Call LLM for step-by-step reasoning
 4. Extract evidence entities from chains
 
 **Output:**
+
 ```json
 {
   "reasoning_steps": [
@@ -331,6 +349,7 @@ LIMIT 20
 ```
 
 **LLM Prompt Template:**
+
 ```
 You are analyzing a Knowledge Graph to answer: "{query}"
 
@@ -358,14 +377,18 @@ Provide:
 **Purpose:** Convert graph chains into executable workflow
 
 **Input:**
+
 ```json
 {
   "intent": "company_setup",
-  "relationship_chains": [ /* chains */ ]
+  "relationship_chains": [
+    /* chains */
+  ]
 }
 ```
 
 **Process:**
+
 1. Extract unique entities from all chains
 2. Build workflow steps (deduplicated)
 3. Sort by depth (ensures logical order)
@@ -373,6 +396,7 @@ Provide:
 5. Return WorkflowOutput
 
 **Output:**
+
 ```json
 {
   "workflow": {
@@ -392,7 +416,7 @@ Provide:
         "entity_type": "visa",
         "relationship": "ENABLES",
         "depth": 2
-      },
+      }
       // ... more steps
     ],
     "source": "graph_traversal",
@@ -403,6 +427,7 @@ Provide:
 ```
 
 **Confidence Calculation:**
+
 ```python
 def calculate_workflow_confidence(state):
     # Base from chains count
@@ -443,6 +468,7 @@ def route_after_query_understanding(state: KGAgentState) -> str:
 ```
 
 **Decision Tree:**
+
 - **Golden Route**: Pre-computed workflows for common scenarios
 - **Graph Traversal**: Complex queries requiring multi-hop reasoning
 - **Vector Search**: Simple queries (existing Qdrant fallback)
@@ -462,6 +488,7 @@ def route_after_traversal(state: KGAgentState) -> str:
 ```
 
 **Thresholds:**
+
 - **≥5 chains**: High confidence → proceed to reasoning
 - **1-4 chains**: Limited evidence → still reason (may be useful)
 - **0 chains**: No graph evidence → terminate (use vector search)
@@ -506,6 +533,7 @@ app = workflow.compile(checkpointer=checkpointer)
 ```
 
 **Checkpoint Table** (auto-created by PostgresSaver):
+
 ```sql
 CREATE TABLE checkpoints (
     thread_id TEXT NOT NULL,
@@ -519,11 +547,13 @@ CREATE TABLE checkpoints (
 ```
 
 **Benefits:**
+
 - ✅ Resume paused queries
 - ✅ Human-in-the-loop workflows
 - ✅ Audit trail of graph exploration
 
 **Usage:**
+
 ```python
 # Save checkpoint during execution (automatic)
 final_state = await app.ainvoke(initial_state, config={"configurable": {"thread_id": "query_123"}})
@@ -541,33 +571,37 @@ resumed_state = await app.ainvoke(
 
 ### Prometheus Metrics
 
-| Metric | Type | Labels | Purpose |
-|--------|------|--------|---------|
-| `kg_langgraph_queries_total` | Counter | `status`, `intent` | Success/error rate per intent |
-| `kg_graph_traversal_depth` | Histogram | - | Depth distribution (1-5 hops) |
-| `kg_relationship_chains_found` | Histogram | - | Chains discovered per query |
-| `kg_llm_reasoning_duration_seconds` | Histogram | - | LLM reasoning latency |
-| `kg_checkpoint_operations_total` | Counter | `operation` | Checkpoint save/load/resume |
+| Metric                              | Type      | Labels             | Purpose                       |
+| ----------------------------------- | --------- | ------------------ | ----------------------------- |
+| `kg_langgraph_queries_total`        | Counter   | `status`, `intent` | Success/error rate per intent |
+| `kg_graph_traversal_depth`          | Histogram | -                  | Depth distribution (1-5 hops) |
+| `kg_relationship_chains_found`      | Histogram | -                  | Chains discovered per query   |
+| `kg_llm_reasoning_duration_seconds` | Histogram | -                  | LLM reasoning latency         |
+| `kg_checkpoint_operations_total`    | Counter   | `operation`        | Checkpoint save/load/resume   |
 
 ### Grafana Queries
 
 **Success Rate:**
+
 ```promql
 rate(kg_langgraph_queries_total{status="success"}[5m])
 / rate(kg_langgraph_queries_total[5m])
 ```
 
 **Average Chains Found:**
+
 ```promql
 avg(kg_relationship_chains_found)
 ```
 
 **95th Percentile Reasoning Time:**
+
 ```promql
 histogram_quantile(0.95, kg_llm_reasoning_duration_seconds_bucket)
 ```
 
 **Traversal Depth Distribution:**
+
 ```promql
 histogram_quantile(0.95, kg_graph_traversal_depth_bucket)
 ```
@@ -722,14 +756,14 @@ fly deploy --strategy rolling
 
 ### Unit Tests (35 tests)
 
-| Category | Tests | Coverage |
-|----------|-------|----------|
-| State Management | 5 | TypedDict validation, state transitions |
-| Node Functions | 10 | Each node (understand, resolve, traverse, reason, synthesize) |
-| Routing Logic | 5 | Conditional edges (intent routing, traversal decisions) |
-| Graph Traversal | 8 | BFS, cycle detection, depth limiting, confidence filtering |
-| Checkpoint Persistence | 4 | Save/resume from PostgreSQL |
-| Integration | 3 | End-to-end workflows |
+| Category               | Tests | Coverage                                                      |
+| ---------------------- | ----- | ------------------------------------------------------------- |
+| State Management       | 5     | TypedDict validation, state transitions                       |
+| Node Functions         | 10    | Each node (understand, resolve, traverse, reason, synthesize) |
+| Routing Logic          | 5     | Conditional edges (intent routing, traversal decisions)       |
+| Graph Traversal        | 8     | BFS, cycle detection, depth limiting, confidence filtering    |
+| Checkpoint Persistence | 4     | Save/resume from PostgreSQL                                   |
+| Integration            | 3     | End-to-end workflows                                          |
 
 ### Running Tests
 
@@ -752,6 +786,7 @@ pytest backend/tests/services/rag/test_kg_langgraph.py --cov=backend.services.ra
 ### Test Examples
 
 **Node Test:**
+
 ```python
 @pytest.mark.asyncio
 async def test_traverse_graph_node_cycle_detection(sample_state, mock_db_pool):
@@ -771,6 +806,7 @@ async def test_traverse_graph_node_cycle_detection(sample_state, mock_db_pool):
 ```
 
 **Routing Test:**
+
 ```python
 def test_route_after_understanding_complex_query(sample_state):
     """Test routing to graph traversal for complex queries."""
@@ -788,23 +824,25 @@ def test_route_after_understanding_complex_query(sample_state):
 
 ### Benchmarks (Phase 1)
 
-| Metric | Target | Actual | Status |
-|--------|--------|--------|--------|
-| Simple golden route | <100ms | ~80ms | ✅ |
-| 1-hop traversal | <200ms | ~150ms | ✅ |
-| 3-hop traversal | <500ms | ~450ms | ✅ |
-| LLM reasoning | <2s | ~1.8s | ✅ |
-| Checkpoint save | <50ms | ~40ms | ✅ |
-| Checkpoint load | <30ms | ~25ms | ✅ |
+| Metric              | Target | Actual | Status |
+| ------------------- | ------ | ------ | ------ |
+| Simple golden route | <100ms | ~80ms  | ✅     |
+| 1-hop traversal     | <200ms | ~150ms | ✅     |
+| 3-hop traversal     | <500ms | ~450ms | ✅     |
+| LLM reasoning       | <2s    | ~1.8s  | ✅     |
+| Checkpoint save     | <50ms  | ~40ms  | ✅     |
+| Checkpoint load     | <30ms  | ~25ms  | ✅     |
 
 ### Scalability
 
 **Current Load:**
+
 - PostgreSQL KG: 131K edges, <200ms queries ✅
 - Concurrent queries: 10-50/s (tested in staging)
 - Memory footprint: ~200MB per workflow instance
 
 **Projected Limits:**
+
 - PostgreSQL can handle 1M edges before needing optimization
 - LangGraph async execution scales to 100+ concurrent workflows
 - Checkpoint table growth: ~100KB per session × 1000 sessions/day = 100MB/day
@@ -846,6 +884,7 @@ def test_route_after_understanding_complex_query(sample_state):
 ### Common Issues
 
 **1. "No LLM API key configured"**
+
 ```bash
 # Set API key
 export ANTHROPIC_API_KEY="sk-ant-..."
@@ -854,6 +893,7 @@ export OPENAI_API_KEY="sk-..."
 ```
 
 **2. "PostgreSQL connection error"**
+
 ```bash
 # Verify database URL
 echo $DATABASE_URL
@@ -863,11 +903,13 @@ psql $DATABASE_URL -c "SELECT COUNT(*) FROM kg_nodes;"
 ```
 
 **3. "No graph evidence found"**
+
 - Check if entities exist in KG: `SELECT * FROM kg_nodes WHERE name ILIKE '%restaurant%';`
 - Lower similarity threshold in `resolve_entities_node` (default: 0.7)
 - Add more seed entities to query
 
 **4. "Checkpoint not found"**
+
 - Verify thread_id matches: `SELECT * FROM checkpoints WHERE thread_id = '...';`
 - Ensure PostgresSaver is initialized: `checkpointer = PostgresSaver(db_pool)`
 
@@ -891,6 +933,7 @@ Phase 3 implements **4 domain-specific subgraphs** for specialized workflow synt
 ### Architecture Pattern
 
 **Parent-Child Composition:**
+
 ```
 Main Workflow (kg_langgraph_orchestrator.py)
 ├─ understand_query
@@ -905,6 +948,7 @@ Main Workflow (kg_langgraph_orchestrator.py)
 ```
 
 **Routing Priority:**
+
 1. **Subgraphs** (keyword-based: "pt pma", "kitas", "villa", "pajak")
 2. **Golden Routes** (exact intent: "pt_pma_setup", "nib_oss")
 3. **Graph Traversal** (complex queries with 2+ entities)
@@ -915,6 +959,7 @@ Main Workflow (kg_langgraph_orchestrator.py)
 #### 1. CompanySetupSubgraph
 
 **State:** `CompanyState` (extends KGAgentState)
+
 ```python
 company_type: str  # "pt_pma", "perorangan", "cv", "pt_lokal"
 is_foreign_investor: bool
@@ -924,6 +969,7 @@ licensing_requirements: list[dict]
 ```
 
 **Nodes (4):**
+
 1. `identify_company_type` - Detect company type from query + citizenship
 2. `check_pma_eligibility` - Query KG for PMA-allowed KBLI codes
 3. `get_capital_requirements` - Fetch min capital (PT PMA: 10B IDR)
@@ -934,6 +980,7 @@ licensing_requirements: list[dict]
 #### 2. VisaSubgraph
 
 **State:** `VisaState` (extends KGAgentState)
+
 ```python
 visa_type: str  # "kitas", "kitap", "vitas", "visa_on_arrival"
 purpose: str  # "work", "investment", "retirement"
@@ -943,6 +990,7 @@ visa_requirements: list[dict]
 ```
 
 **Nodes (4):**
+
 1. `identify_visa_type` - Detect visa type from keywords + purpose
 2. `check_rptka_requirements` - Add RPTKA if work visa
 3. `get_visa_requirements` - Fetch documents, fees (KITAS: Rp 3.5M PNBP)
@@ -953,6 +1001,7 @@ visa_requirements: list[dict]
 #### 3. PropertySubgraph
 
 **State:** `PropertyState` (extends KGAgentState)
+
 ```python
 property_type: str  # "hak_pakai", "hgb", "hak_milik", "rental"
 is_foreign_buyer: bool
@@ -960,6 +1009,7 @@ property_requirements: list[dict]
 ```
 
 **Nodes (3):**
+
 1. `identify_property_type` - Detect property type (foreign → Hak Pakai)
 2. `get_property_requirements` - Fetch ownership rules (Hak Pakai: 30 years renewable)
 3. `synthesize_property_workflow` - Build 7-step workflow (identify → due diligence → negotiate → PPJB → notary → BPHTB → BPN)
@@ -969,6 +1019,7 @@ property_requirements: list[dict]
 #### 4. TaxSubgraph
 
 **State:** `TaxState` (extends KGAgentState)
+
 ```python
 business_entity_type: str  # "pt_pma", "perorangan", "cv"
 revenue_amount: int  # IDR
@@ -978,6 +1029,7 @@ tax_obligations: list[dict]
 ```
 
 **Nodes (4):**
+
 1. `identify_tax_type` - Detect entity type + VAT threshold
 2. `get_tax_obligations` - Fetch PPh rates (22% corporate), PPN (11%)
 3. `calculate_tax_requirements` - Estimate tax amounts from revenue
@@ -1017,6 +1069,7 @@ return END
 **File:** `test_kg_subgraphs.py` (578 lines, 23 tests)
 
 **Test Breakdown:**
+
 - CompanySubgraph: 5 tests (type detection, PMA eligibility, capital, workflow)
 - VisaSubgraph: 6 tests (KITAS/KITAP, RPTKA, requirements, workflow)
 - PropertySubgraph: 4 tests (Hak Pakai/HGB, requirements, workflow)
@@ -1024,6 +1077,7 @@ return END
 - Integration: 4 tests (subgraph compilation)
 
 **Example Test:**
+
 ```python
 @pytest.mark.asyncio
 async def test_identify_visa_type_kitas(mock_llm):
@@ -1042,6 +1096,7 @@ async def test_identify_visa_type_kitas(mock_llm):
 ### Performance
 
 **Subgraph Execution Time:**
+
 - CompanySubgraph: <200ms (4 nodes, hardcoded knowledge)
 - VisaSubgraph: <300ms (4 nodes, 1 DB query for RPTKA)
 - PropertySubgraph: <150ms (3 nodes, hardcoded knowledge)
@@ -1054,6 +1109,7 @@ async def test_identify_visa_type_kitas(mock_llm):
 **Trade-off:** Subgraphs use hardcoded domain knowledge (fee tables, tax rates, requirements) instead of querying KG.
 
 **Rationale:**
+
 - ✅ Faster (<300ms vs 500ms+ for KG queries)
 - ✅ More reliable (no dependency on KG data quality)
 - ✅ Easier to maintain (update Python code vs re-ingest KG)
@@ -1064,6 +1120,7 @@ async def test_identify_visa_type_kitas(mock_llm):
 ### Example Queries
 
 **Company Setup:**
+
 ```python
 # Query: "Voglio aprire una PT PMA a Bali per ristorante"
 # → Routing: company_subgraph (matches "pt pma")
@@ -1071,6 +1128,7 @@ async def test_identify_visa_type_kitas(mock_llm):
 ```
 
 **Visa Application:**
+
 ```python
 # Query: "Come ottenere KITAS per lavorare come chef?"
 # → Routing: visa_subgraph (matches "kitas", "lavorare")
@@ -1078,6 +1136,7 @@ async def test_identify_visa_type_kitas(mock_llm):
 ```
 
 **Property Purchase:**
+
 ```python
 # Query: "Posso comprare villa con Hak Pakai?"
 # → Routing: property_subgraph (matches "villa", "hak pakai")
@@ -1085,6 +1144,7 @@ async def test_identify_visa_type_kitas(mock_llm):
 ```
 
 **Tax Compliance:**
+
 ```python
 # Query: "Quali tasse paga una PT PMA con 10B revenue?"
 # → Routing: tax_subgraph (matches "tasse", "pt pma")
@@ -1096,6 +1156,7 @@ async def test_identify_visa_type_kitas(mock_llm):
 **No Additional Dependencies:** Subgraphs use existing LangGraph + asyncpg + LangChain LLMs.
 
 **Migration Path:**
+
 1. Deploy orchestrator with subgraphs (already in `5d28e92ae`)
 2. Monitor subgraph usage via Prometheus metrics (already instrumented)
 3. Gradually migrate hardcoded knowledge to KG (Phase 4)
@@ -1110,6 +1171,7 @@ async def test_identify_visa_type_kitas(mock_llm):
 **LangGraph Docs:** https://docs.langchain.com/oss/python/langgraph
 **PostgreSQL KG:** 42,806 nodes, 131,326 edges (production)
 **Test Suites:**
+
 - Phase 1: `test_kg_langgraph.py` (35 tests)
 - Phase 3: `test_kg_subgraphs.py` (23 tests)
 - **Total:** 58/58 tests passing ✅

@@ -65,7 +65,7 @@ name: PostgreSQL Excel Export
 
 on:
   schedule:
-    - cron: '0 6 * * *' # Ogni giorno alle 6:00 UTC
+    - cron: "0 6 * * *" # Ogni giorno alle 6:00 UTC
   workflow_dispatch: # Esecuzione manuale
 
 jobs:
@@ -78,7 +78,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install dependencies
         run: pip install pandas openpyxl asyncpg

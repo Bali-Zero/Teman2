@@ -21,9 +21,9 @@ This document describes the logging and metrics implemented for FASE 1 (WebApp f
 Existing logging in `useChatSend.ts`:
 
 ```typescript
-logger.info('Message send started', {
-  component: 'useChatSend',
-  action: 'sendMessage',
+logger.info("Message send started", {
+  component: "useChatSend",
+  action: "sendMessage",
   metadata: { sessionId, textLength, hasImages, imageCount },
 });
 ```
@@ -42,9 +42,9 @@ logger.info('Message send started', {
 **Logging:**
 
 ```typescript
-logger.info('Image generation modal submitted', {
-  component: 'useChatPage',
-  action: 'handleImageGenSubmit',
+logger.info("Image generation modal submitted", {
+  component: "useChatPage",
+  action: "handleImageGenSubmit",
   metadata: { promptLength: number },
 });
 ```
@@ -68,11 +68,11 @@ logger.info('Image generation modal submitted', {
 **Logging:**
 
 ```typescript
-logger.info('Session ID generated with UUID v4', {
-  component: 'useChatPage',
-  action: 'init_session',
+logger.info("Session ID generated with UUID v4", {
+  component: "useChatPage",
+  action: "init_session",
   metadata: {
-    sessionIdFormat: 'uuid_v4',
+    sessionIdFormat: "uuid_v4",
     length: id.length,
   },
 });
@@ -416,7 +416,7 @@ expr: |
   ) > 10
 for: 5m
 severity: warning
-message: 'WhatsApp timeout rate > 10% for 5 minutes'
+message: "WhatsApp timeout rate > 10% for 5 minutes"
 ```
 
 ### Alert 2: Telegram All Strategies Failing
@@ -427,7 +427,7 @@ expr: |
   rate(telegram_send_failures[5m]) > 0.05
 for: 5m
 severity: critical
-message: 'Telegram messages failing all 3 strategies'
+message: "Telegram messages failing all 3 strategies"
 ```
 
 ---

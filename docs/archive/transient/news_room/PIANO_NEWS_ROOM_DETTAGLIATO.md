@@ -183,7 +183,7 @@ data/staging/
 **API Call:**
 
 ```typescript
-const res = await intelligenceApi.getPendingItems('news');
+const res = await intelligenceApi.getPendingItems("news");
 ```
 
 **Endpoint Backend:** `GET /api/intel/staging/pending?type=news`
@@ -272,9 +272,9 @@ const fullItem = await intelligenceApi.getPreview(item.type, item.id);
 
 ```typescript
 await intelligenceApi.editItem(item.type, item.id, {
-  title: 'New Title',
-  content: 'New Content',
-  category: 'business',
+  title: "New Title",
+  content: "New Content",
+  category: "business",
 });
 ```
 
@@ -311,7 +311,12 @@ await intelligenceApi.editItem(item.type, item.id, {
 
 ```typescript
 const imageBase64 = await convertFileToBase64(imageFile);
-await intelligenceApi.uploadCoverImage(item.type, item.id, imageBase64, imageFile.name);
+await intelligenceApi.uploadCoverImage(
+  item.type,
+  item.id,
+  imageBase64,
+  imageFile.name,
+);
 ```
 
 **Endpoint Backend:** `POST /api/intel/staging/{type}/{item_id}/cover` (STEP 4 - DA CREARE)

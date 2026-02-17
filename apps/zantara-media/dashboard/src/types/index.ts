@@ -1,32 +1,32 @@
 // Content Types
 export type ContentStatus =
-  | 'intake'
-  | 'draft'
-  | 'review'
-  | 'approved'
-  | 'scheduled'
-  | 'published'
-  | 'archived';
+  | "intake"
+  | "draft"
+  | "review"
+  | "approved"
+  | "scheduled"
+  | "published"
+  | "archived";
 
 export type ContentType =
-  | 'article'
-  | 'social_post'
-  | 'newsletter'
-  | 'podcast_script'
-  | 'video_script'
-  | 'thread';
+  | "article"
+  | "social_post"
+  | "newsletter"
+  | "podcast_script"
+  | "video_script"
+  | "thread";
 
-export type ContentPriority = 'low' | 'normal' | 'high' | 'urgent';
+export type ContentPriority = "low" | "normal" | "high" | "urgent";
 
 export type ContentCategory =
-  | 'immigration'
-  | 'tax'
-  | 'business'
-  | 'property'
-  | 'legal'
-  | 'bali_news'
-  | 'lifestyle'
-  | 'general';
+  | "immigration"
+  | "tax"
+  | "business"
+  | "property"
+  | "legal"
+  | "bali_news"
+  | "lifestyle"
+  | "general";
 
 export interface Content {
   id: string;
@@ -63,17 +63,21 @@ export interface ContentMetadata {
 
 // Distribution Types
 export type DistributionPlatform =
-  | 'twitter'
-  | 'linkedin'
-  | 'instagram'
-  | 'tiktok'
-  | 'telegram'
-  | 'whatsapp'
-  | 'newsletter'
-  | 'website'
-  | 'youtube';
+  | "twitter"
+  | "linkedin"
+  | "instagram"
+  | "tiktok"
+  | "telegram"
+  | "whatsapp"
+  | "newsletter"
+  | "website"
+  | "youtube";
 
-export type DistributionStatus = 'pending' | 'scheduled' | 'published' | 'failed';
+export type DistributionStatus =
+  | "pending"
+  | "scheduled"
+  | "published"
+  | "failed";
 
 export interface Distribution {
   id: string;
@@ -96,7 +100,7 @@ export interface DistributionMetrics {
 }
 
 // Intel Signal Types
-export type IntelPriority = 'high' | 'medium' | 'low';
+export type IntelPriority = "high" | "medium" | "low";
 
 export interface IntelSignal {
   id: string;
@@ -115,7 +119,7 @@ export interface IntelSignal {
 export interface CalendarEntry {
   id: string;
   title: string;
-  type: 'content' | 'distribution' | 'event' | 'deadline';
+  type: "content" | "distribution" | "event" | "deadline";
   date: string;
   time?: string;
   content_id?: string;
@@ -153,7 +157,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: 'admin' | 'editor' | 'writer' | 'viewer';
+  role: "admin" | "editor" | "writer" | "viewer";
   avatar_url?: string;
 }
 

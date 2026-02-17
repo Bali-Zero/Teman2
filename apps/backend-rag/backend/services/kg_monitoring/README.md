@@ -5,30 +5,35 @@ Automated monitoring and auto-ingestion service for Knowledge Graph data sources
 ## Overview
 
 This service monitors Indonesian legal websites for new regulations and updates:
+
 - **JDIH Kemenkumham** (https://jdih.kemenkumham.go.id/) - Legal database
 - **Peraturan BPK** (https://peraturan.bpk.go.id/) - Government regulations
 
 ## Components
 
 ### 1. `scraper.py` - Legal Website Scraper
+
 - Async HTTP scraping with retry logic
 - Rate limiting and polite crawling
 - Content extraction with BeautifulSoup
 - Structured document output
 
 ### 2. `change_detector.py` - Change Detection
+
 - MD5 hash-based change detection
 - PostgreSQL storage for document states
 - Change classification (new, updated, deleted)
 - Historical tracking with timestamps
 
 ### 3. `auto_ingestion.py` - LLM Extraction & Ingestion
+
 - LLM-based content extraction
 - Structured data parsing
 - Qdrant ingestion with embeddings
 - Batch processing
 
 ### 4. `quality_check.py` - Quality Validation
+
 - Multi-dimensional quality scoring
 - Content validation rules
 - Automated rejection criteria
@@ -101,6 +106,7 @@ for change in changes:
 ## Database Schema
 
 ### kg_monitored_documents
+
 ```sql
 CREATE TABLE kg_monitored_documents (
     document_id VARCHAR(32) PRIMARY KEY,
@@ -118,6 +124,7 @@ CREATE TABLE kg_monitored_documents (
 ```
 
 ### kg_change_events
+
 ```sql
 CREATE TABLE kg_change_events (
     id SERIAL PRIMARY KEY,
@@ -135,6 +142,7 @@ CREATE TABLE kg_change_events (
 ```
 
 ### kg_ingestion_results
+
 ```sql
 CREATE TABLE kg_ingestion_results (
     document_id VARCHAR(32) PRIMARY KEY,
@@ -175,6 +183,7 @@ pytest apps/backend-rag/backend/tests/services/kg_monitoring/ --cov=backend.serv
 ## Monitoring & Alerts
 
 The service sends alerts via Slack when:
+
 - New documents are detected
 - Documents are updated
 - Ingestion failures occur

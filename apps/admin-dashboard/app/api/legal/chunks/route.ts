@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server';
-import { QdrantClient } from '@qdrant/js-client-rest';
-import { logger } from '@/lib/logger';
+import { NextResponse } from "next/server";
+import { QdrantClient } from "@qdrant/js-client-rest";
+import { logger } from "@/lib/logger";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-const COLLECTION = 'legal_unified_hybrid';
+const COLLECTION = "legal_unified_hybrid";
 
 const client = new QdrantClient({
   url: process.env.QDRANT_URL,
@@ -13,10 +13,10 @@ const client = new QdrantClient({
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100);
-  const offsetParam = searchParams.get('offset');
-  const search = searchParams.get('search') || '';
-  const regulationType = searchParams.get('regulation_type') || '';
+  const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 100);
+  const offsetParam = searchParams.get("offset");
+  const search = searchParams.get("search") || "";
+  const regulationType = searchParams.get("regulation_type") || "";
 
   try {
     // Build filter
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 
     if (regulationType) {
       mustConditions.push({
-        key: 'regulation_type',
+        key: "regulation_type",
         match: { value: regulationType },
       });
     }
@@ -32,12 +32,13 @@ export async function GET(request: Request) {
     if (search) {
       // Text search on the text field
       mustConditions.push({
-        key: 'text',
+        key: "text",
         match: { text: search },
       });
     }
 
-    const filter = mustConditions.length > 0 ? { must: mustConditions } : undefined;
+    const filter =
+      mustConditions.length > 0 ? { must: mustConditions } : undefined;
 
     // Use scroll for pagination
     const scrollParams: any = {
@@ -66,9 +67,9 @@ export async function GET(request: Request) {
         const payload = point.payload as Record<string, any>;
         return {
           id: point.id,
-          text: payload?.text || '',
-          regulation_type: payload?.regulation_type || '',
-          document_number: payload?.document_number || payload?.number || '',
+          text: payload?.text || "",
+          regulation_type: payload?.regulation_type || "",
+          document_number: payload?.document_number || payload?.number || "",
           year: payload?.year || 0,
           pasal: payload?.pasal || payload?.article_number || null,
           ayat: payload?.ayat || null,
@@ -91,9 +92,9 @@ export async function GET(request: Request) {
       const payload = point.payload as Record<string, any>;
       return {
         id: point.id,
-        text: payload?.text || '',
-        regulation_type: payload?.regulation_type || '',
-        document_number: payload?.document_number || payload?.number || '',
+        text: payload?.text || "",
+        regulation_type: payload?.regulation_type || "",
+        document_number: payload?.document_number || payload?.number || "",
         year: payload?.year || 0,
         pasal: payload?.pasal || payload?.article_number || null,
         ayat: payload?.ayat || null,
@@ -111,7 +112,10 @@ export async function GET(request: Request) {
       next_offset: result.next_page_offset,
     });
   } catch (error: any) {
-    logger.error('Legal Chunks Error:', error);
-    return NextResponse.json({ error: error.message, collection: COLLECTION }, { status: 500 });
+    logger.error("Legal Chunks Error:", error);
+    return NextResponse.json(
+      { error: error.message, collection: COLLECTION },
+      { status: 500 },
+    );
   }
 }

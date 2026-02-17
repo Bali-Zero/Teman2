@@ -118,10 +118,10 @@ const ratingMap = {
   issue: 3,
 };
 
-const response = await fetch('/api/feedback/rate-conversation', {
-  method: 'POST',
+const response = await fetch("/api/feedback/rate-conversation", {
+  method: "POST",
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
   body: JSON.stringify({
     session_id: sessionId,

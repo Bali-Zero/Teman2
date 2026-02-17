@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
-import { Pool } from 'pg';
-import { logger } from '@/lib/logger';
+import { NextResponse } from "next/server";
+import { Pool } from "pg";
+import { logger } from "@/lib/logger";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -10,8 +10,8 @@ const pool = new Pool({
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const userId = searchParams.get('userId');
-  const search = searchParams.get('search');
+  const userId = searchParams.get("userId");
+  const search = searchParams.get("search");
 
   try {
     const client = await pool.connect();
@@ -52,10 +52,13 @@ export async function GET(request: Request) {
       client.release();
     }
   } catch (error: any) {
-    logger.error('User Context Error:', error);
+    logger.error("User Context Error:", error);
     // Handle missing tables gracefully
-    if (error.code === '42P01') {
-      return NextResponse.json({ users: [], warning: 'User tables not found or schema mismatch' });
+    if (error.code === "42P01") {
+      return NextResponse.json({
+        users: [],
+        warning: "User tables not found or schema mismatch",
+      });
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

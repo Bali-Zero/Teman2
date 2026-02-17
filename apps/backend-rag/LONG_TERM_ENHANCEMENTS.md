@@ -148,8 +148,8 @@ Reusable React/TypeScript components for displaying tax & visa data in client po
 ### Usage Example
 
 ```tsx
-import { TaxSummaryCard, TaxObligationsList } from '@/components/portal/tax';
-import { VisaStatusCard } from '@/components/portal/visa';
+import { TaxSummaryCard, TaxObligationsList } from "@/components/portal/tax";
+import { VisaStatusCard } from "@/components/portal/visa";
 
 export default function PortalHome() {
   return (
@@ -379,10 +379,10 @@ PYTHONPATH=. python -m backend.services.analytics.historical_analytics
 **React Component:**
 
 ```tsx
-import useSWR from 'swr';
+import useSWR from "swr";
 
 function AnalyticsDashboard() {
-  const { data } = useSWR('/api/analytics/completion-rates');
+  const { data } = useSWR("/api/analytics/completion-rates");
 
   return (
     <div>
@@ -406,7 +406,7 @@ name: Monthly Analytics Report
 on:
   schedule:
     # 1st of every month at 9:00 AM SGT
-    - cron: '0 1 1 * *'
+    - cron: "0 1 1 * *"
 
 jobs:
   generate-report:

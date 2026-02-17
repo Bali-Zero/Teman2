@@ -15,6 +15,7 @@ SLHS certifica che il tuo locale rispetta gli standard igienico-sanitari indones
 **Ente rilasciante:** Dinas Kesehatan Provinsi Bali o Dinas Kesehatan Kabupaten/Kota (es. Badung, Denpasar, Gianyar)
 
 **Base legale:**
+
 - Permenkes No. 1096/Menkes/Per/VI/2011 (Higiene Sanitasi Jasaboga)
 - PP No. 28/2004 (Keamanan, Mutu dan Gizi Pangan)
 - UU No. 36/2009 (Kesehatan)
@@ -85,6 +86,7 @@ SLHS certifica che il tuo locale rispetta gli standard igienico-sanitari indones
 Prima di presentare domanda, il locale deve essere conforme. Checklist strutturale:
 
 **Cucina:**
+
 - Pavimento piastrellato, lavabile, senza crepe
 - Pareti rivestite fino a min 1.5m di altezza con materiale lavabile
 - Ventilazione adeguata (exhaust fan o cappa aspirante)
@@ -93,6 +95,7 @@ Prima di presentare domanda, il locale deve essere conforme. Checklist struttura
 - Lavandino dedicato per lavaggio mani con sapone e asciugamani
 
 **Stoccaggio:**
+
 - Frigoriferi con termometro visibile
 - Separazione alimenti crudi e cotti in frigorifero
 - Scaffalature rialzate da terra (min 15 cm)
@@ -100,16 +103,19 @@ Prima di presentare domanda, il locale deve essere conforme. Checklist struttura
 - Sistema FIFO (First In First Out) visibile
 
 **Area lavaggio:**
+
 - Lavandino a 3 vasche (wash, rinse, sanitize) o equivalente
 - Acqua calda disponibile
 - Rack asciugatura stoviglie
 
 **Bagni:**
+
 - Bagni separati per staff e clienti
 - Sapone, asciugamani, cestino rifiuti
 - Ventilazione adeguata
 
 **Gestione rifiuti:**
+
 - Bidoni con coperchio e pedal
 - Separazione rifiuti organici e inorganici
 - Area rifiuti esterna coperta e protetta
@@ -126,12 +132,14 @@ Prepara tutti i documenti elencati sopra. Consigli pratici:
 ### STEP 3: Submission Domanda alla Dinas Kesehatan (1-2 giorni)
 
 **Dove presentare:**
+
 - **Denpasar**: Dinas Kesehatan Kota Denpasar, Jl. Letda Kajeng
 - **Badung (Canggu, Seminyak, Kuta)**: Dinas Kesehatan Kabupaten Badung, Mangupura
 - **Gianyar (Ubud)**: Dinas Kesehatan Kabupaten Gianyar
 - **Tabanan**: Dinas Kesehatan Kabupaten Tabanan
 
 **Procedura:**
+
 1. Vai all'ufficio Dinas Kesehatan con tutti i documenti
 2. Compila il **formulir permohonan** (modulo di domanda)
 3. Paga la **retribusi** (tassa governativa): **IDR 200.000 - 500.000** (varia per kabupaten)
@@ -144,6 +152,7 @@ Prepara tutti i documenti elencati sopra. Consigli pratici:
 L'ispettore sanitario (petugas sanitasi) della Dinas Kesehatan verrà al tuo locale per verificare:
 
 **Cosa controllano:**
+
 - Conformità strutturale cucina (pavimento, pareti, ventilazione)
 - Separazione aree (preparazione, cottura, lavaggio, stoccaggio)
 - Temperatura frigoriferi (deve essere ≤ 4°C per alimenti freschi)
@@ -154,6 +163,7 @@ L'ispettore sanitario (petugas sanitasi) della Dinas Kesehatan verrà al tuo loc
 - Risultati analisi acqua conformi
 
 **Consigli per superare l'ispezione:**
+
 - Fai una **pulizia profonda** il giorno prima
 - Assicurati che **tutto il personale** sia presente e in divisa pulita
 - Prepara una **cartella documenti** ordinata da mostrare all'ispettore
@@ -162,6 +172,7 @@ L'ispettore sanitario (petugas sanitasi) della Dinas Kesehatan verrà al tuo loc
 - Assicurati che i **bidoni rifiuti** siano puliti e con coperchio
 
 **Se l'ispezione fallisce:**
+
 - L'ispettore rilascia un **rapporto con osservazioni** (catatan)
 - Hai **14-30 giorni** per correggere le non-conformità
 - Dopo la correzione, richiedi una **re-ispezione** (gratuita o con piccola fee)
@@ -170,6 +181,7 @@ L'ispettore sanitario (petugas sanitasi) della Dinas Kesehatan verrà al tuo loc
 ### STEP 5: Rilascio Certificato SLHS (3-5 giorni dopo ispezione positiva)
 
 Dopo ispezione positiva:
+
 1. L'ispettore invia il **rapporto positivo** alla Dinas Kesehatan
 2. Il Kepala Dinas (direttore) firma il certificato
 3. Ritira il certificato SLHS presso l'ufficio Dinas Kesehatan
@@ -179,15 +191,15 @@ Dopo ispezione positiva:
 
 ## Timeline Completa
 
-| Fase | Durata | Note |
-|------|--------|------|
-| Preparazione strutturale | 2-4 settimane | Se il locale è già conforme, si salta |
-| Raccolta documenti | 1 settimana | Analisi acqua è il bottleneck |
-| Submission domanda | 1-2 giorni | Portare tutti i documenti |
-| Attesa ispezione | 1-2 settimane | Dipende dal carico di lavoro Dinas |
-| Ispezione | 1 giorno | Durata visita: 1-3 ore |
-| Rilascio certificato | 3-5 giorni | Dopo ispezione positiva |
-| **TOTALE** | **3-6 settimane** | Con locale già conforme: 3-4 settimane |
+| Fase                     | Durata            | Note                                   |
+| ------------------------ | ----------------- | -------------------------------------- |
+| Preparazione strutturale | 2-4 settimane     | Se il locale è già conforme, si salta  |
+| Raccolta documenti       | 1 settimana       | Analisi acqua è il bottleneck          |
+| Submission domanda       | 1-2 giorni        | Portare tutti i documenti              |
+| Attesa ispezione         | 1-2 settimane     | Dipende dal carico di lavoro Dinas     |
+| Ispezione                | 1 giorno          | Durata visita: 1-3 ore                 |
+| Rilascio certificato     | 3-5 giorni        | Dopo ispezione positiva                |
+| **TOTALE**               | **3-6 settimane** | Con locale già conforme: 3-4 settimane |
 
 ---
 
@@ -195,20 +207,21 @@ Dopo ispezione positiva:
 
 ### Fee governative:
 
-| Voce | Costo |
-|------|-------|
-| Retribusi permohonan SLHS | IDR 200.000 - 500.000 |
-| Analisi acqua (laboratorium) | IDR 500.000 - 1.000.000 |
-| Certificati medici personale (per persona) | IDR 50.000 - 100.000 |
-| **Totale fee governative** | **IDR 1.000.000 - 2.000.000** |
+| Voce                                       | Costo                         |
+| ------------------------------------------ | ----------------------------- |
+| Retribusi permohonan SLHS                  | IDR 200.000 - 500.000         |
+| Analisi acqua (laboratorium)               | IDR 500.000 - 1.000.000       |
+| Certificati medici personale (per persona) | IDR 50.000 - 100.000          |
+| **Totale fee governative**                 | **IDR 1.000.000 - 2.000.000** |
 
 ### Servizio Bali Zero 2025:
 
-| Servizio | Prezzo | Include |
-|----------|--------|---------|
+| Servizio          | Prezzo            | Include                                                                                      |
+| ----------------- | ----------------- | -------------------------------------------------------------------------------------------- |
 | SLHS Full Service | **IDR 9.000.000** | Preparazione documenti, submission, accompagnamento ispezione, follow-up, ritiro certificato |
 
 **Cosa include il servizio Bali Zero:**
+
 - Consulenza pre-ispezione (checklist conformità)
 - Preparazione completa documentazione
 - Submission alla Dinas Kesehatan
@@ -222,22 +235,27 @@ Dopo ispezione positiva:
 ## Problemi Comuni e Soluzioni
 
 ### 1. Ispezione fallita per cucina non conforme
+
 **Problema:** Pavimento in cemento grezzo, nessuna separazione aree.
 **Soluzione:** Investire in piastrellatura e divisori. Costo ristrutturazione cucina base: IDR 15-30 milioni.
 
 ### 2. Analisi acqua non conforme
+
 **Problema:** Acqua del pozzo con coliformi o metalli pesanti fuori norma.
 **Soluzione:** Installare sistema di filtrazione (reverse osmosis o UV). Costo: IDR 5-15 milioni. Ripetere analisi dopo installazione.
 
 ### 3. Personale senza certificato medico
+
 **Problema:** Staff assunto informalmente senza pemeriksaan kesehatan.
 **Soluzione:** Portare tutto il personale al Puskesmas. Costo minimo, ma richiede 1-2 giorni.
 
 ### 4. Documenti aziendali incompleti
+
 **Problema:** NIB non ancora rilasciato o NPWP non attivo.
 **Soluzione:** Completare prima la registrazione aziendale (PT PMA/PMDN + OSS). Bali Zero può gestire entrambi i processi in parallelo.
 
 ### 5. Locale in zona non conforme
+
 **Problema:** Locale in area residenziale senza izin usaha.
 **Soluzione:** Verificare la zonizzazione (RDTR/RTRW) prima di firmare il contratto di affitto. Bali Zero offre consulenza pre-location.
 
@@ -248,11 +266,13 @@ Dopo ispezione positiva:
 SLHS ha validità di **1 anno** e deve essere rinnovato annualmente.
 
 ### Timeline rinnovo:
+
 - Iniziare il processo **2 mesi prima** della scadenza
 - Il rinnovo è più semplice del primo rilascio (meno documenti)
 - È comunque prevista una **re-ispezione**
 
 ### Documenti per rinnovo:
+
 1. SLHS originale (in scadenza)
 2. NIB aggiornato
 3. Certificati medici personale aggiornati
@@ -260,10 +280,12 @@ SLHS ha validità di **1 anno** e deve essere rinnovato annualmente.
 5. Formulir permohonan perpanjangan (modulo rinnovo)
 
 ### Costi rinnovo:
+
 - Fee governativa: IDR 200.000 - 500.000
 - Servizio Bali Zero rinnovo: **IDR 5.000.000**
 
 ### Cosa succede se SLHS scade?
+
 - **Operare con SLHS scaduto è illegale**
 - Rischi: multa, chiusura temporanea, problemi con assicurazione
 - Se scaduto da più di 3 mesi, potrebbe essere necessario rifare l'intero processo

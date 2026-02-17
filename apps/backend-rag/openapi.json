@@ -18494,7 +18494,13 @@
           }
         },
         "type": "object",
-        "required": ["client_id", "compliance_type", "title", "description", "deadline"],
+        "required": [
+          "client_id",
+          "compliance_type",
+          "title",
+          "description",
+          "deadline"
+        ],
         "title": "AddComplianceItemRequest"
       },
       "AddEventRequest": {
@@ -18634,7 +18640,13 @@
           }
         },
         "type": "object",
-        "required": ["execution_id", "agent_name", "status", "message", "started_at"],
+        "required": [
+          "execution_id",
+          "agent_name",
+          "status",
+          "message",
+          "started_at"
+        ],
         "title": "AgentExecutionResponse"
       },
       "AgenticQueryRequest": {
@@ -18776,7 +18788,13 @@
           }
         },
         "type": "object",
-        "required": ["answer", "sources", "context_length", "execution_time", "route_used"],
+        "required": [
+          "answer",
+          "sources",
+          "context_length",
+          "execution_time",
+          "route_used"
+        ],
         "title": "AgenticQueryResponse"
       },
       "ApprovalRequest": {
@@ -18867,7 +18885,12 @@
           }
         },
         "type": "object",
-        "required": ["attachment_id", "store_name", "attachment_path", "attachment_name"],
+        "required": [
+          "attachment_id",
+          "store_name",
+          "attachment_path",
+          "attachment_name"
+        ],
         "title": "AttachmentObject",
         "description": "Model for attachment details required by Zoho API."
       },
@@ -19026,7 +19049,13 @@
           }
         },
         "type": "object",
-        "required": ["total_books", "successful", "failed", "results", "execution_time_seconds"],
+        "required": [
+          "total_books",
+          "successful",
+          "failed",
+          "results",
+          "execution_time_seconds"
+        ],
         "title": "BatchIngestionResponse",
         "description": "Response from batch ingestion"
       },
@@ -19291,7 +19320,14 @@
           }
         },
         "type": "object",
-        "required": ["success", "book_title", "book_author", "tier", "chunks_created", "message"],
+        "required": [
+          "success",
+          "book_title",
+          "book_author",
+          "tier",
+          "chunks_created",
+          "message"
+        ],
         "title": "BookIngestionResponse",
         "description": "Response from book ingestion"
       },
@@ -21008,7 +21044,14 @@
           }
         },
         "type": "object",
-        "required": ["user_id", "email", "date", "clock_in", "clock_out", "hours_worked"],
+        "required": [
+          "user_id",
+          "email",
+          "date",
+          "clock_in",
+          "clock_out",
+          "hours_worked"
+        ],
         "title": "DailyHours",
         "description": "Daily work hours"
       },
@@ -21870,7 +21913,13 @@
           }
         },
         "type": "object",
-        "required": ["user_email", "query_text", "original_answer", "feedback_type", "rating"],
+        "required": [
+          "user_email",
+          "query_text",
+          "original_answer",
+          "feedback_type",
+          "rating"
+        ],
         "title": "FeedbackRequest",
         "description": "User feedback for continuous learning"
       },
@@ -22281,7 +22330,13 @@
           }
         },
         "type": "object",
-        "required": ["success", "collection", "documents_ingested", "execution_time_ms", "message"],
+        "required": [
+          "success",
+          "collection",
+          "documents_ingested",
+          "execution_time_ms",
+          "message"
+        ],
         "title": "IngestResponse",
         "description": "Ingest response"
       },
@@ -22369,7 +22424,14 @@
           }
         },
         "type": "object",
-        "required": ["collection", "id", "document", "embedding", "metadata", "full_data"],
+        "required": [
+          "collection",
+          "id",
+          "document",
+          "embedding",
+          "metadata",
+          "full_data"
+        ],
         "title": "IntelStoreRequest"
       },
       "InteractionCreate": {
@@ -23494,7 +23556,13 @@
           }
         },
         "type": "object",
-        "required": ["timestamp", "overall_score", "overall_status", "status_counts", "islands"],
+        "required": [
+          "timestamp",
+          "overall_score",
+          "overall_status",
+          "status_counts",
+          "islands"
+        ],
         "title": "NusantaraHealth",
         "description": "Overall system health as Nusantara archipelago"
       },
@@ -23609,7 +23677,14 @@
           }
         },
         "type": "object",
-        "required": ["message_id", "timestamp", "channel", "direction", "from", "to"],
+        "required": [
+          "message_id",
+          "timestamp",
+          "channel",
+          "direction",
+          "from",
+          "to"
+        ],
         "title": "OpenClawWebhookPayload",
         "description": "OpenClaw webhook payload schema"
       },
@@ -25476,7 +25551,13 @@
           }
         },
         "type": "object",
-        "required": ["query", "results", "total_found", "user_level", "execution_time_ms"],
+        "required": [
+          "query",
+          "results",
+          "total_found",
+          "user_level",
+          "execution_time_ms"
+        ],
         "title": "SearchResponse",
         "description": "Search response model"
       },
@@ -26139,7 +26220,13 @@
           }
         },
         "type": "object",
-        "required": ["user_id", "email", "is_online", "last_action", "last_action_type"],
+        "required": [
+          "user_id",
+          "email",
+          "is_online",
+          "last_action",
+          "last_action_type"
+        ],
         "title": "TeamMemberStatus",
         "description": "Team member status"
       },

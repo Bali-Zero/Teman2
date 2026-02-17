@@ -2,16 +2,16 @@
  * API Error Handler
  */
 
-import { error as logError } from '@/lib/logger';
+import { error as logError } from "@/lib/logger";
 
 export class ApiError extends Error {
   constructor(
     message: string,
     public statusCode: number,
-    public data?: unknown
+    public data?: unknown,
   ) {
     super(message);
-    this.name = 'ApiError';
+    this.name = "ApiError";
   }
 }
 
@@ -26,31 +26,34 @@ export function handleApiError(err: unknown): ApiError {
   }
 
   if (err instanceof Error) {
-    logError('API Error:', err.message);
+    logError("API Error:", err.message);
     return new ApiError(err.message, 0);
   }
 
-  return new ApiError('An unexpected error occurred', 0);
+  return new ApiError("An unexpected error occurred", 0);
 }
 
 function getErrorMessage(status: number): string {
   switch (status) {
     case 400:
-      return 'Invalid request';
+      return "Invalid request";
     case 401:
-      return 'Unauthorized';
+      return "Unauthorized";
     case 403:
-      return 'Forbidden';
+      return "Forbidden";
     case 404:
-      return 'Resource not found';
+      return "Resource not found";
     case 500:
-      return 'Server error';
+      return "Server error";
     default:
-      return 'An error occurred';
+      return "An error occurred";
   }
 }
 
-export async function safeFetch<T>(url: string, options?: RequestInit): Promise<T> {
+export async function safeFetch<T>(
+  url: string,
+  options?: RequestInit,
+): Promise<T> {
   try {
     const response = await fetch(url, options);
 

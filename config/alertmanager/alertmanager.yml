@@ -5,23 +5,23 @@ global:
   # Resolve timeout for alerts
   resolve_timeout: 5m
   # Default SMTP configuration (can be overridden per receiver)
-  smtp_smarthost: 'smtp.gmail.com:587'
-  smtp_from: 'alerts@example.com'
-  smtp_auth_username: 'alerts@example.com'
-  smtp_auth_password: 'your_password'
+  smtp_smarthost: "smtp.gmail.com:587"
+  smtp_from: "alerts@example.com"
+  smtp_auth_username: "alerts@example.com"
+  smtp_auth_password: "your_password"
   smtp_require_tls: true
 
 # Templates for notifications
 templates:
-  - '/etc/alertmanager/templates/*.tmpl'
+  - "/etc/alertmanager/templates/*.tmpl"
 
 # Route tree
 route:
   # Default receiver for all alerts
-  receiver: 'default-receiver'
+  receiver: "default-receiver"
 
   # Group alerts by these labels
-  group_by: ['alertname', 'cluster', 'service']
+  group_by: ["alertname", "cluster", "service"]
 
   # Wait time before sending first notification
   group_wait: 10s
@@ -37,8 +37,8 @@ route:
     # Article Composer alerts
     - match:
         component: article_composer
-      receiver: 'article-composer-team'
-      group_by: ['alertname', 'severity']
+      receiver: "article-composer-team"
+      group_by: ["alertname", "severity"]
       group_wait: 10s
       group_interval: 5m
       repeat_interval: 6h
@@ -47,7 +47,7 @@ route:
     # Critical alerts go to on-call
     - match:
         severity: critical
-      receiver: 'on-call'
+      receiver: "on-call"
       group_wait: 0s
       group_interval: 5m
       repeat_interval: 1h
@@ -55,7 +55,7 @@ route:
     # Warning alerts go to team
     - match:
         severity: warning
-      receiver: 'team-slack'
+      receiver: "team-slack"
       group_wait: 30s
       group_interval: 10m
       repeat_interval: 24h
@@ -67,31 +67,31 @@ inhibit_rules:
       alertname: ArticleComposerAPIKeyMissing
     target_match:
       alertname: ArticleComposerHighErrorRate
-    equal: ['component']
+    equal: ["component"]
 
   # If service is down, suppress all other alerts
   - source_match:
       alertname: ServiceDown
     target_match_re:
-      alertname: '.*'
-    equal: ['cluster']
+      alertname: ".*"
+    equal: ["cluster"]
 
 # Receivers
 receivers:
   # Default receiver (fallback)
-  - name: 'default-receiver'
+  - name: "default-receiver"
     email_configs:
-      - to: 'devops@example.com'
+      - to: "devops@example.com"
         headers:
-          Subject: 'Alert: {{ .GroupLabels.alertname }}'
-        html: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+          Subject: "Alert: {{ .GroupLabels.alertname }}"
+        html: "{{ range .Alerts }}{{ .Annotations.description }}{{ end }}"
 
   # Article Composer team receiver
-  - name: 'article-composer-team'
+  - name: "article-composer-team"
     email_configs:
-      - to: 'article-composer-team@example.com'
+      - to: "article-composer-team@example.com"
         headers:
-          Subject: 'Article Composer Alert: {{ .GroupLabels.alertname }}'
+          Subject: "Article Composer Alert: {{ .GroupLabels.alertname }}"
         html: |
           <h2>Article Composer Alert</h2>
           <p><strong>Alert:</strong> {{ .GroupLabels.alertname }}</p>
@@ -100,9 +100,9 @@ receivers:
           <p><strong>Runbook:</strong> <a href="{{ range .Alerts }}{{ .Annotations.runbook_url }}{{ end }}">View Runbook</a></p>
 
     slack_configs:
-      - api_url: 'https://hooks.slack.com/services/YOUR/WEBHOOK/URL'
-        channel: '#alerts-article-composer'
-        title: 'Article Composer Alert: {{ .GroupLabels.alertname }}'
+      - api_url: "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+        channel: "#alerts-article-composer"
+        title: "Article Composer Alert: {{ .GroupLabels.alertname }}"
         text: |
           *Alert:* {{ .GroupLabels.alertname }}
           *Severity:* {{ .GroupLabels.severity }}
@@ -111,21 +111,21 @@ receivers:
         send_resolved: true
 
   # On-call receiver (critical alerts)
-  - name: 'on-call'
+  - name: "on-call"
     email_configs:
-      - to: 'oncall@example.com'
+      - to: "oncall@example.com"
         headers:
-          Subject: '🚨 CRITICAL: {{ .GroupLabels.alertname }}'
+          Subject: "🚨 CRITICAL: {{ .GroupLabels.alertname }}"
     # PagerDuty integration (optional)
     # pagerduty_configs:
     #   - service_key: 'your_pagerduty_service_key'
     #     description: '{{ .GroupLabels.alertname }}'
 
   # Team Slack receiver
-  - name: 'team-slack'
+  - name: "team-slack"
     slack_configs:
-      - api_url: 'https://hooks.slack.com/services/YOUR/WEBHOOK/URL'
-        channel: '#alerts'
-        title: '⚠️ Warning: {{ .GroupLabels.alertname }}'
-        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+      - api_url: "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+        channel: "#alerts"
+        title: "⚠️ Warning: {{ .GroupLabels.alertname }}"
+        text: "{{ range .Alerts }}{{ .Annotations.description }}{{ end }}"
         send_resolved: true

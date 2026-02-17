@@ -18,6 +18,7 @@ NotebookLM → Claude Max → Gemini AI Studio → ChatGPT Plus → Claude Max �
 ```
 
 **Tools Used:**
+
 - ✅ NotebookLM - Grounded seed generation
 - ✅ Claude Max (20x/day) - Polish & review
 - ✅ Gemini 2.0 Pro (AI Studio) - Bulk variations
@@ -38,6 +39,7 @@ NotebookLM → Claude Max → Gemini AI Studio → ChatGPT Plus → Claude Max �
 ### Step 1.1: NotebookLM Setup
 
 1. **Prepare KB Sources**
+
    ```bash
    mkdir -p data/kb_sources
    cd data/kb_sources
@@ -60,6 +62,7 @@ NotebookLM → Claude Max → Gemini AI Studio → ChatGPT Plus → Claude Max �
 3. **Generate for Each Golden Route**
 
    For route: **kitas_work**
+
    ```
    Query to NotebookLM:
    "Generate a comprehensive guide for obtaining a work KITAS in Indonesia.
@@ -92,11 +95,13 @@ NotebookLM → Claude Max → Gemini AI Studio → ChatGPT Plus → Claude Max �
 ### Step 1.2: Transcription
 
 **Option A: Whisper API (if available)**
+
 ```bash
 python scripts/caching/transcribe_podcasts.py --method whisper
 ```
 
 **Option B: Manual (Otter.ai)**
+
 1. Go to https://otter.ai
 2. Upload MP3 files
 3. Download transcriptions as TXT
@@ -107,6 +112,7 @@ python scripts/caching/transcribe_podcasts.py --method whisper
 **Daily Quota:** 20 conversations/day
 
 **Process:**
+
 1. Open Claude.ai (use Claude Max account)
 2. Copy template from `prompts/claude_max_polish.txt`
 3. For each transcription:
@@ -117,6 +123,7 @@ python scripts/caching/transcribe_podcasts.py --method whisper
    - Save to `data/golden_seeds/seed_NNN.json`
 
 **JSON Format:**
+
 ```json
 {
   "id": "seed_001",
@@ -132,6 +139,7 @@ python scripts/caching/transcribe_podcasts.py --method whisper
 ```
 
 **Timeline:**
+
 - Day 1-2: NotebookLM generation (54 podcasts)
 - Day 2: Transcription (batch process)
 - Day 3-4: Claude polish (20/day = 3 days for 54)
@@ -147,6 +155,7 @@ python scripts/caching/consolidate_seeds.py \
 ```
 
 **Verify Quality:**
+
 ```bash
 python scripts/caching/validate_seeds.py \
   --file data/golden_seeds.json \
@@ -177,6 +186,7 @@ python master_pipeline.py phase2 \
 **Output:** 1,500 prompt files in `data/variations/prompts/`
 
 **File Structure:**
+
 ```
 data/variations/prompts/
 ├── seed_001_var_001.txt
@@ -188,6 +198,7 @@ data/variations/prompts/
 ### Step 2.2: Batch Processing in AI Studio
 
 **Google AI Studio Free Tier:**
+
 - 1,500 requests/day
 - Resets at midnight PT
 - Can run multiple prompts in web UI
@@ -210,6 +221,7 @@ data/variations/prompts/
 **Method B: Semi-Automated (with Cursor)**
 
 Use Cursor to build a script that:
+
 1. Reads prompt files
 2. Opens AI Studio URLs with prompt pre-filled
 3. Waits for user to click "Run" and copy response
@@ -228,6 +240,7 @@ python scripts/caching/parse_gemini_responses.py \
 ```
 
 **Output Format:**
+
 ```json
 {
   "conversations": [
@@ -280,6 +293,7 @@ python master_pipeline.py phase3
 ### Step 3.2: Batch Verification with ChatGPT
 
 **ChatGPT Plus Rate Limit:**
+
 - 40 messages per 3 hours
 - ~300 messages per day
 - Day 1: 225 verifications ✅
@@ -296,6 +310,7 @@ python master_pipeline.py phase3
 3. Process in batches of 40 (every 3 hours)
 
 **Timeline:**
+
 - Batch 1 (0-40): 9am-12pm
 - Batch 2 (41-80): 12pm-3pm
 - Batch 3 (81-120): 3pm-6pm
@@ -313,6 +328,7 @@ python scripts/caching/analyze_verification.py \
 ```
 
 **Report Output:**
+
 ```
 📊 Verification Report
 
@@ -334,6 +350,7 @@ RECOMMENDATION: Pass rate >90% → APPROVE ALL 1,500 conversations ✅
 ```
 
 **If pass rate <90%:**
+
 - Use Claude Max (20x/day) to fix flagged conversations
 - Re-verify fixed conversations
 - Iterate until pass rate >90%
@@ -393,6 +410,7 @@ Save to `data/review_dashboard.html`
 ### Step 4.2: Manual Review Process
 
 1. **Open Dashboard**
+
    ```bash
    open data/review_dashboard.html
    # or: python -m http.server 8000
@@ -402,10 +420,10 @@ Save to `data/review_dashboard.html`
    - Read query + response
    - Check verification scores
    - Look for issues:
-     * Missing citations
-     * Hallucinations
-     * Obsolete procedures
-     * Pricing errors
+     - Missing citations
+     - Hallucinations
+     - Obsolete procedures
+     - Pricing errors
    - Decision: Approve / Edit / Reject
 
 3. **For Top 20 (High-Value Routes):**
@@ -416,6 +434,7 @@ Save to `data/review_dashboard.html`
    - Apply suggestions
 
 **Claude Max Quota:** 20 reviews/day
+
 - Day 1: Review conversations 1-20
 - Day 2: Review conversations 21-40
 - Day 3: Review conversations 41-50
@@ -446,6 +465,7 @@ python master_pipeline.py phase5
 **Output:** `data/redis_upload.sh`
 
 **Script Preview:**
+
 ```bash
 #!/bin/bash
 REDIS_HOST=localhost
@@ -460,11 +480,13 @@ redis-cli SET "cache:conv:kitas_work:it:2" '{"query":"...","response":"..."}' EX
 ### Step 5.2: Upload to Redis
 
 **Option A: Local Redis**
+
 ```bash
 bash data/redis_upload.sh
 ```
 
 **Option B: Production Redis (Fly.io)**
+
 ```bash
 # Connect to Fly.io Redis
 fly ssh console -a nuzantara-rag
@@ -499,6 +521,7 @@ redis-cli
 ### Cache Hit Rate Tracking
 
 **Add to backend:**
+
 ```python
 # backend/services/caching/cache_monitor.py
 
@@ -518,6 +541,7 @@ async def cache_metrics(request, call_next):
 ```
 
 **Grafana Query:**
+
 ```promql
 # Cache hit rate
 rate(cache_hit_total[5m]) /
@@ -536,6 +560,7 @@ rate(cache_hit_total[5m]) /
 ```
 
 **Incremental Update:**
+
 - Don't regenerate all seeds
 - Only generate variations for updated routes
 - Merge with existing cache
@@ -549,6 +574,7 @@ rate(cache_hit_total[5m]) /
 **Symptoms:** "Audio Overview" button grayed out or errors
 
 **Solutions:**
+
 1. Ensure notebook has 3+ source documents
 2. Wait 5 minutes after upload for full indexing
 3. Try generating text summary first
@@ -560,6 +586,7 @@ rate(cache_hit_total[5m]) /
 **Symptoms:** "Rate limit exceeded" error
 
 **Solutions:**
+
 1. Wait until midnight PT (quota resets)
 2. Use multiple Google accounts (3-4 accounts = 6,000 requests/day)
 3. Spread work across 2-3 days
@@ -570,6 +597,7 @@ rate(cache_hit_total[5m]) /
 **Symptoms:** Malformed JSON in verification responses
 
 **Solutions:**
+
 1. Add to prompt: "Return ONLY valid JSON, no markdown formatting"
 2. Strip markdown code fences: `json.loads(response.strip('```json\n').strip('\n```'))`
 3. Use GPT-4 instead of GPT-3.5 for better JSON compliance
@@ -579,6 +607,7 @@ rate(cache_hit_total[5m]) /
 **Symptoms:** "You've reached your daily message limit"
 
 **Solutions:**
+
 1. Wait until midnight PT (quota resets)
 2. Use multiple Claude accounts if available
 3. Prioritize: Review top routes first, lower priority routes can wait
@@ -589,11 +618,13 @@ rate(cache_hit_total[5m]) /
 **Symptoms:** Too many conversations flagged for rejection
 
 **Root Causes:**
+
 1. Seed quality too low (fix in Phase 1)
 2. Gemini generating off-topic variations (adjust prompts)
 3. Verification criteria too strict (relax thresholds)
 
 **Solutions:**
+
 1. Re-generate seeds with better NotebookLM prompts
 2. Add more constraints to variation prompts
 3. Lower quality threshold from 0.85 to 0.80
@@ -604,16 +635,18 @@ rate(cache_hit_total[5m]) /
 ## Cost Comparison
 
 ### This Pipeline (Multi-Tool)
+
 - **Cost:** $0 (flat-rate subscriptions)
 - **Time:** 7-10 days (human time: ~20 hours)
 - **Output:** 1,500-3,000 conversations
 - **Quality:** High (multiple review layers)
 
 ### Alternative: Pure API (OpenAI/Anthropic)
+
 - **Cost:** $1,500-3,000 for 3,000 conversations
-  * Generation: 3,000 × $0.50 = $1,500
-  * Verification: 3,000 × $0.20 = $600
-  * Review: 3,000 × $0.30 = $900
+  - Generation: 3,000 × $0.50 = $1,500
+  - Verification: 3,000 × $0.20 = $600
+  - Review: 3,000 × $0.30 = $900
 - **Time:** 1-2 days (faster but expensive)
 - **Output:** 3,000 conversations
 - **Quality:** Medium (less human review)
@@ -625,11 +658,13 @@ rate(cache_hit_total[5m]) /
 ## Next Steps
 
 1. **Start Phase 1:**
+
    ```bash
    python master_pipeline.py phase1
    ```
 
 2. **Read NotebookLM Guide:**
+
    ```bash
    cat docs/caching/NOTEBOOKLM_GUIDE.md
    ```

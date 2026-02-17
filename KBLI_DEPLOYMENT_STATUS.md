@@ -9,16 +9,19 @@
 ## Deployment Summary
 
 ### Git Status
+
 ✅ **Branch:** main (synced with origin/main)
 ✅ **Latest Commit:** 99c6ee574 (perf: bundle splitting, virtual scroll, preload)
 ✅ **All KBLI changes:** Committed and pushed
 
 ### File Status
+
 ✅ **Local file:** 919 KB (includes English keywords)
 ✅ **Keywords verified:** "restaurant cafe dining" found locally (1 occurrence)
 ✅ **Backups created:** 3 automatic backups available
 
 ### Vercel Status
+
 ✅ **HTTP Status:** 200 OK
 ✅ **Server:** Vercel (responding)
 ✅ **Auto-deploy:** Triggered from GitHub push
@@ -29,6 +32,7 @@
 ## Production Verification
 
 ### HTTP Response
+
 ```
 HTTP/2 200
 cache-control: private, no-cache, no-store, max-age=0, must-revalidate
@@ -41,6 +45,7 @@ x-vercel-cache: MISS
 **Cache Status:** MISS (fresh deployment, not cached)
 
 ### Keywords Check
+
 ⚠️ **Note:** Production verification showed 0 occurrences of "restaurant" and "software" keywords at check time. This could mean:
 
 1. **Deployment still in progress** (CDN propagation takes 2-5 minutes)
@@ -52,12 +57,14 @@ x-vercel-cache: MISS
 ## Next Steps to Verify
 
 ### 1. Wait for CDN Propagation (5 minutes)
+
 ```bash
 # Wait for Vercel edge cache to propagate
 sleep 300
 ```
 
 ### 2. Force Cache Refresh
+
 - Open: https://zantara.balizero.com/kbli-navigator
 - Hard refresh: **Cmd+Shift+R** (Mac) or **Ctrl+Shift+F5** (Windows)
 - Test searches:
@@ -66,12 +73,14 @@ sleep 300
   - "hotel" → Should find 55101
 
 ### 3. Check Vercel Dashboard
+
 - Visit: https://vercel.com/dashboard
 - Find: nuzantara-mouth or zantara project
 - Check: Recent deployments
 - Verify: Latest deployment includes KBLI changes
 
 ### 4. Manual Deploy (If Auto-Deploy Didn't Trigger)
+
 ```bash
 # Install Vercel CLI (requires sudo)
 sudo npm install -g vercel
@@ -106,6 +115,7 @@ vercel --prod
 If deployment has issues:
 
 ### Option 1: Revert Locally and Push
+
 ```bash
 cd /Users/nuzantara/Desktop/nuzantara
 
@@ -120,6 +130,7 @@ git push origin main
 ```
 
 ### Option 2: Vercel Dashboard
+
 - Go to Vercel dashboard
 - Find previous deployment
 - Click "Promote to Production"
@@ -129,21 +140,25 @@ git push origin main
 ## Files Location
 
 ### Production
+
 - **URL:** https://zantara.balizero.com/kbli-navigator
 - **File:** `apps/mouth/public/kbli-navigator/index.html` (919KB)
 
 ### Backups (Safe Rollback)
+
 - `index.html.backup_before_phase2_20260216_181615` (781KB - original)
 - `index.html.backup_phase1_2026-02-16T10-19-40` (792KB - after Phase 1)
 - `index.html.backup_phase1_2026-02-16T10-26-44` (915KB - after enhancement)
 
 ### Scripts
+
 - `apps/mouth/scripts/generate_kbli_data.js`
 - `apps/mouth/scripts/auto_generate_english_keywords.js`
 - `apps/mouth/scripts/update_index_html.js`
 - `apps/mouth/scripts/kbli_english_keywords.json`
 
 ### Documentation
+
 - `apps/mouth/scripts/PHASE_1_FINAL_SUMMARY.md`
 - `apps/mouth/scripts/SESSION_HANDOVER_PHASE_1.md`
 - `apps/mouth/scripts/PHASE_1_IMPLEMENTATION_REPORT.md`
@@ -155,6 +170,7 @@ git push origin main
 Once CDN propagates (2-5 minutes), production should show:
 
 ### English Searches (NEW!)
+
 ✅ "restaurant" → Code 56101
 ✅ "software" → Code 62013
 ✅ "hotel" → Code 55101
@@ -164,6 +180,7 @@ Once CDN propagates (2-5 minutes), production should show:
 ✅ "retail" → Code 47911
 
 ### Indonesian Searches (MAINTAINED!)
+
 ✅ "restoran" → Code 56101
 ✅ "teknologi" → Tech codes
 ✅ "pertanian" → Ag codes
@@ -174,6 +191,7 @@ Once CDN propagates (2-5 minutes), production should show:
 ## Monitoring Commands
 
 ### Check Deployment Status
+
 ```bash
 # Check if file is live on production
 curl -s https://zantara.balizero.com/kbli-navigator | grep -o "restaurant cafe dining" | wc -l
@@ -187,6 +205,7 @@ curl -s https://zantara.balizero.com/kbli-navigator | grep -i "error"
 ```
 
 ### Monitor Vercel Logs
+
 ```bash
 # If Vercel CLI installed
 vercel logs https://zantara.balizero.com
@@ -197,18 +216,22 @@ vercel logs https://zantara.balizero.com
 ## Troubleshooting
 
 ### Issue: Keywords Not Live
+
 **Symptoms:** Production shows 0 occurrences of "restaurant"
 
 **Solutions:**
+
 1. Wait 5 more minutes for CDN propagation
 2. Hard refresh browser (Cmd+Shift+R)
 3. Check Vercel dashboard for deployment status
 4. Manually trigger deploy: `vercel --prod` from `apps/mouth/`
 
 ### Issue: Searches Don't Work
+
 **Symptoms:** English searches return no results
 
 **Solutions:**
+
 1. Open browser console (F12)
 2. Check for JavaScript errors
 3. Verify K array loaded (type `K.length` in console, should be 1562)
@@ -218,13 +241,13 @@ vercel logs https://zantara.balizero.com
 
 ## Current Status Summary
 
-| Item | Status | Details |
-|------|--------|---------|
-| **Local File** | ✅ Updated | 919KB with keywords |
-| **Git Commits** | ✅ Pushed | All changes on GitHub |
-| **Vercel Status** | ✅ Responding | HTTP 200 OK |
-| **Keywords Live** | ⏳ Verifying | Wait for CDN propagation |
-| **Production Tests** | ⏳ Pending | Manual verification needed |
+| Item                 | Status        | Details                    |
+| -------------------- | ------------- | -------------------------- |
+| **Local File**       | ✅ Updated    | 919KB with keywords        |
+| **Git Commits**      | ✅ Pushed     | All changes on GitHub      |
+| **Vercel Status**    | ✅ Responding | HTTP 200 OK                |
+| **Keywords Live**    | ⏳ Verifying  | Wait for CDN propagation   |
+| **Production Tests** | ⏳ Pending    | Manual verification needed |
 
 ---
 

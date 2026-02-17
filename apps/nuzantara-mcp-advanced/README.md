@@ -61,11 +61,11 @@ Add to your Claude Code MCP configuration:
 
 ### Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `NUZANTARA_BACKEND_URL` | Backend URL | `https://nuzantara-rag.fly.dev` |
-| `FLY_APP` | Fly.io app name | `nuzantara-rag` |
-| `NUZANTARA_ROOT` | Project root path | `/Users/nuzantara/Desktop/nuzantara` |
+| Variable                | Description       | Default                              |
+| ----------------------- | ----------------- | ------------------------------------ |
+| `NUZANTARA_BACKEND_URL` | Backend URL       | `https://nuzantara-rag.fly.dev`      |
+| `FLY_APP`               | Fly.io app name   | `nuzantara-rag`                      |
+| `NUZANTARA_ROOT`        | Project root path | `/Users/nuzantara/Desktop/nuzantara` |
 
 ## Prompts
 

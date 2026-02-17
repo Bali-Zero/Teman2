@@ -226,7 +226,9 @@ If Telegram alert fails:
     <div class="content">
       <p>Dear {client_name},</p>
       {body}
-      <a href="https://portal.balizero.com" class="button">View Portal Dashboard</a>
+      <a href="https://portal.balizero.com" class="button"
+        >View Portal Dashboard</a
+      >
     </div>
     <div class="footer">
       <p>This is an automated notification from Bali Zero.</p>
@@ -434,7 +436,7 @@ Add to Prometheus `alert.rules.yml`:
   labels:
     severity: warning
   annotations:
-    summary: 'Telegram alert failure rate > 50%'
+    summary: "Telegram alert failure rate > 50%"
 
 - alert: EmailNotificationFailure
   expr: |
@@ -443,7 +445,7 @@ Add to Prometheus `alert.rules.yml`:
   labels:
     severity: warning
   annotations:
-    summary: 'No email notifications sent in 2 days'
+    summary: "No email notifications sent in 2 days"
 ```
 
 ---

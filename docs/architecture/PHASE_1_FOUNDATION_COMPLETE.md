@@ -47,6 +47,7 @@ Defines the contract that all channel adapters must implement:
   - Properties: `channel_name`, `supports_markdown`, `supports_media`, `max_message_length`
 
 **Helper Methods:**
+
 - `truncate_message()` - Truncate long messages
 - `split_message()` - Split messages into chunks
 
@@ -57,12 +58,14 @@ Defines the contract that all channel adapters must implement:
 Central hub that routes messages to appropriate channel adapters:
 
 **Key Methods:**
+
 - `register_adapter(channel_name, adapter)` - Register channel adapters
 - `route_message(channel, raw_event)` - Main routing logic
 - `get_available_channels()` - List registered channels
 - `is_channel_registered(channel)` - Check if channel is active
 
 **Routing Flow:**
+
 1. Get channel adapter
 2. Normalize message (platform → ChannelMessage)
 3. Send status update (typing indicator)
@@ -76,12 +79,14 @@ Central hub that routes messages to appropriate channel adapters:
 Channel-agnostic conversation processing:
 
 **Key Methods:**
+
 - `process_message(message, channel_config)` - Process through RAG pipeline
 - `_convert_event_to_response(event)` - Convert orchestrator events → ChannelResponse
 - `_load_context(session_id)` - Load conversation history (stub for Phase 4)
 - `_save_context(session_id, context)` - Save conversation state (stub for Phase 4)
 
 **Event Types Handled:**
+
 - `token` - Streaming text tokens
 - `thinking` - LLM reasoning steps
 - `tool_call` - Agent tool execution
@@ -158,13 +163,13 @@ await channel_router.route_message("telegram", telegram_webhook_event)
 
 ## 🎯 Benefits Achieved
 
-| Benefit | Status |
-|---------|--------|
-| **Unified Interface** | ✅ All channels use same ChannelMessage/Response |
-| **Pluggable Architecture** | ✅ Add new channel = 1 adapter class |
-| **Channel-Agnostic Core** | ✅ RAG pipeline doesn't know about channels |
-| **Type Safety** | ✅ Full type hints with dataclasses |
-| **Testing** | ✅ 17/17 tests passing (100% coverage) |
+| Benefit                    | Status                                           |
+| -------------------------- | ------------------------------------------------ |
+| **Unified Interface**      | ✅ All channels use same ChannelMessage/Response |
+| **Pluggable Architecture** | ✅ Add new channel = 1 adapter class             |
+| **Channel-Agnostic Core**  | ✅ RAG pipeline doesn't know about channels      |
+| **Type Safety**            | ✅ Full type hints with dataclasses              |
+| **Testing**                | ✅ 17/17 tests passing (100% coverage)           |
 
 ---
 
@@ -173,6 +178,7 @@ await channel_router.route_message("telegram", telegram_webhook_event)
 **Goal:** Migrate existing channels (Telegram, Web)
 
 **Tasks:**
+
 1. Create `TelegramChannelAdapter` - Migrate from `routers/telegram.py`
 2. Create `WebChannelAdapter` - Migrate from `routers/agentic_rag.py`
 3. Update routers to use `ChannelRouter`
@@ -180,6 +186,7 @@ await channel_router.route_message("telegram", telegram_webhook_event)
 5. Deploy without breaking existing functionality
 
 **Files to Create:**
+
 - `backend/channels/telegram/adapter.py`
 - `backend/channels/telegram/formatter.py`
 - `backend/channels/telegram/config.py`
@@ -230,18 +237,22 @@ await channel_router.route_message("telegram", telegram_webhook_event)
 ## 🔧 Technical Decisions
 
 ### 1. Dataclasses vs Pydantic
+
 **Decision:** Used `@dataclass` for ChannelMessage/Response
 **Reason:** Simpler, no validation overhead, sufficient for internal DTOs
 
 ### 2. Async-First Design
+
 **Decision:** All methods are `async def`
 **Reason:** Supports streaming, webhooks, and long-running operations
 
 ### 3. Stub Implementation for Context
+
 **Decision:** `_load_context()` and `_save_context()` are stubs
 **Reason:** Will integrate with PostgreSQL/Redis in Phase 4
 
 ### 4. Event Type Normalization
+
 **Decision:** Convert all orchestrator events → ChannelResponse
 **Reason:** Allows each channel to format events differently
 
@@ -264,6 +275,7 @@ The foundation is solid and ready for Phase 2 migration of existing channels.
 **Key Achievement:** We now have a **channel-agnostic architecture** that allows adding new channels in ~1 day instead of ~3 weeks.
 
 **Files Created:**
+
 - `backend/channels/base.py` (200 lines)
 - `backend/channels/router.py` (180 lines)
 - `backend/conversation/engine.py` (150 lines)

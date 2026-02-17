@@ -3907,42 +3907,54 @@
       "name": "check_security_gate",
       "type": "function",
       "line": 63,
-      "tests": ["apps/backend-rag/backend/tests/services/rag/agentic/test_query_gates.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_query_gates.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/services/rag/agentic/query_gates.py",
       "name": "check_greeting_gate",
       "type": "function",
       "line": 86,
-      "tests": ["apps/backend-rag/backend/tests/services/rag/agentic/test_query_gates.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_query_gates.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/services/rag/agentic/query_gates.py",
       "name": "check_casual_gate",
       "type": "function",
       "line": 107,
-      "tests": ["apps/backend-rag/backend/tests/services/rag/agentic/test_query_gates.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_query_gates.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/services/rag/agentic/query_gates.py",
       "name": "check_identity_gate",
       "type": "function",
       "line": 130,
-      "tests": ["apps/backend-rag/backend/tests/services/rag/agentic/test_query_gates.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_query_gates.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/services/rag/agentic/query_gates.py",
       "name": "check_out_of_domain_gate",
       "type": "function",
       "line": 155,
-      "tests": ["apps/backend-rag/backend/tests/services/rag/agentic/test_query_gates.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_query_gates.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/services/rag/agentic/query_gates.py",
       "name": "check_clarification_gate",
       "type": "function",
       "line": 177,
-      "tests": ["apps/backend-rag/backend/tests/services/rag/agentic/test_query_gates.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_query_gates.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/services/rag/agentic/prompt_builder.py",
@@ -3969,14 +3981,18 @@
       "name": "format_conversation_history_for_recall",
       "type": "function",
       "line": 235,
-      "tests": ["apps/backend-rag/backend/tests/services/rag/agentic/test_query_helpers.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_query_helpers.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/services/rag/agentic/query_helpers.py",
       "name": "build_recall_prompt",
       "type": "function",
       "line": 255,
-      "tests": ["apps/backend-rag/backend/tests/services/rag/agentic/test_query_helpers.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_query_helpers.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/services/rag/agentic/tools.py",
@@ -3992,7 +4008,9 @@
       "name": "add_to_history",
       "type": "function",
       "line": 203,
-      "tests": ["apps/backend-rag/backend/tests/services/rag/agentic/test_chat_session.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_chat_session.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/services/rag/agentic/llm_gateway.py",
@@ -4095,28 +4113,36 @@
       "name": "get_tool_display_name",
       "type": "function",
       "line": 272,
-      "tests": ["apps/backend-rag/backend/tests/services/rag/agentic/test_thinking_indicators.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_thinking_indicators.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/services/rag/agentic/thinking_indicators.py",
       "name": "get_message",
       "type": "function",
       "line": 72,
-      "tests": ["apps/backend-rag/backend/tests/services/rag/agentic/test_thinking_indicators.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_thinking_indicators.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/services/rag/agentic/thinking_indicators.py",
       "name": "get_phase_duration",
       "type": "function",
       "line": 121,
-      "tests": ["apps/backend-rag/backend/tests/services/rag/agentic/test_thinking_indicators.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_thinking_indicators.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/services/rag/agentic/thinking_indicators.py",
       "name": "should_show_thinking",
       "type": "function",
       "line": 132,
-      "tests": ["apps/backend-rag/backend/tests/services/rag/agentic/test_thinking_indicators.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_thinking_indicators.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/services/rag/agentic/response_processor.py",
@@ -4163,14 +4189,18 @@
       "name": "_get_critical_domain_type",
       "type": "function",
       "line": 56,
-      "tests": ["apps/backend-rag/backend/tests/integration/zantara/test_tier1_fallback.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/integration/zantara/test_tier1_fallback.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/services/rag/agentic/reasoning.py",
       "name": "_validate_context_quality",
       "type": "function",
       "line": 486,
-      "tests": ["apps/backend-rag/backend/tests/unit/services/rag/agentic/test_reasoning.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/rag/agentic/test_reasoning.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/services/rag/agentic/orchestrator_context.py",
@@ -4247,7 +4277,9 @@
       "name": "save_conversation_memory",
       "type": "async_function",
       "line": 76,
-      "tests": ["apps/backend-rag/backend/tests/services/rag/agentic/test_memory_handler.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/services/rag/agentic/test_memory_handler.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/services/rag/agentic/orchestrator_routing.py",
@@ -4329,28 +4361,36 @@
       "name": "send_typing_action",
       "type": "async_function",
       "line": 122,
-      "tests": ["apps/backend-rag/backend/tests/services/integrations/test_whatsapp_service.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/services/integrations/test_whatsapp_service.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/services/integrations/whatsapp_service.py",
       "name": "format_message",
       "type": "function",
       "line": 182,
-      "tests": ["apps/backend-rag/backend/tests/services/integrations/test_whatsapp_service.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/services/integrations/test_whatsapp_service.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/services/integrations/github_publisher.py",
       "name": "check_file_exists",
       "type": "async_function",
       "line": 89,
-      "tests": ["apps/backend-rag/backend/tests/services/integrations/test_github_publisher.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/services/integrations/test_github_publisher.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/services/integrations/github_publisher.py",
       "name": "get_file_sha",
       "type": "async_function",
       "line": 120,
-      "tests": ["apps/backend-rag/backend/tests/services/integrations/test_github_publisher.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/services/integrations/test_github_publisher.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/services/integrations/zoho_oauth_service.py",
@@ -4405,14 +4445,18 @@
       "name": "TestMaintainerAgent",
       "type": "class",
       "line": 240,
-      "tests": ["apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"]
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/agents/agents/test_maintainer.py",
       "name": "scan_and_maintain",
       "type": "async_function",
       "line": 288,
-      "tests": ["apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"]
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/agents/agents/test_maintainer.py",
@@ -4440,35 +4484,45 @@
       "name": "ConversationTrainerRequest",
       "type": "class",
       "line": 8,
-      "tests": ["apps/backend-rag/backend/tests/unit/agents/agents/test_schemas.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/agents/agents/test_schemas.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/agents/agents/schemas.py",
       "name": "KnowledgeGraphBuilderRequest",
       "type": "class",
       "line": 16,
-      "tests": ["apps/backend-rag/backend/tests/unit/agents/agents/test_schemas.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/agents/agents/test_schemas.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/agents/agents/schemas.py",
       "name": "EntitySearchRequest",
       "type": "class",
       "line": 25,
-      "tests": ["apps/backend-rag/backend/tests/unit/agents/agents/test_schemas.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/agents/agents/test_schemas.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/agents/agents/test_cleaner.py",
       "name": "TestCleanerAgent",
       "type": "class",
       "line": 470,
-      "tests": ["apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"]
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/agents/agents/test_cleaner.py",
       "name": "scan_and_clean",
       "type": "async_function",
       "line": 525,
-      "tests": ["apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"]
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/agents/agents/test_cleaner.py",
@@ -4485,35 +4539,45 @@
       "name": "_generate_simple_report",
       "type": "function",
       "line": 764,
-      "tests": ["apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"]
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/agents/agents/unified_test_force_orchestrator.py",
       "name": "_generate_summary",
       "type": "function",
       "line": 433,
-      "tests": ["apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"]
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/agents/agents/unified_test_force_orchestrator.py",
       "name": "_log_summary",
       "type": "function",
       "line": 448,
-      "tests": ["apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"]
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py",
       "name": "_generate_summary",
       "type": "function",
       "line": 369,
-      "tests": ["apps/backend-rag/backend/agents/agents/unified_test_force_orchestrator.py"]
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/unified_test_force_orchestrator.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py",
       "name": "_log_summary",
       "type": "function",
       "line": 418,
-      "tests": ["apps/backend-rag/backend/agents/agents/unified_test_force_orchestrator.py"]
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/unified_test_force_orchestrator.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py",
@@ -4544,28 +4608,36 @@
       "name": "TestGuardian",
       "type": "class",
       "line": 109,
-      "tests": ["apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"]
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/agents/agents/test_guardian.py",
       "name": "analyze_coverage",
       "type": "function",
       "line": 261,
-      "tests": ["apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"]
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/agents/agents/test_creator.py",
       "name": "TestCreatorAgent",
       "type": "class",
       "line": 140,
-      "tests": ["apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"]
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/agents/agents/test_creator.py",
       "name": "scan_and_generate",
       "type": "async_function",
       "line": 196,
-      "tests": ["apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"]
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/agents/agents/test_creator.py",
@@ -4586,14 +4658,18 @@
       "name": "_build_prompt",
       "type": "function",
       "line": 70,
-      "tests": ["apps/backend-rag/backend/tests/unit/agents/services/test_nurturing_message.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/agents/services/test_nurturing_message.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/agents/services/nurturing_message.py",
       "name": "_generate_fallback_message",
       "type": "function",
       "line": 101,
-      "tests": ["apps/backend-rag/backend/tests/unit/agents/services/test_nurturing_message.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/agents/services/test_nurturing_message.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/agents/services/kg_repository.py",
@@ -4630,7 +4706,9 @@
       "name": "get_segment",
       "type": "function",
       "line": 45,
-      "tests": ["apps/backend-rag/backend/tests/unit/agents/services/test_client_segmentation.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/agents/services/test_client_segmentation.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/agents/services/test_metrics.py",
@@ -4684,7 +4762,9 @@
       "name": "get_summary",
       "type": "function",
       "line": 202,
-      "tests": ["apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"]
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/agents/services/test_metrics.py",
@@ -4719,7 +4799,9 @@
       "name": "collect_all_coverage",
       "type": "function",
       "line": 367,
-      "tests": ["apps/backend-rag/backend/agents/agents/unified_test_force_orchestrator.py"]
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/unified_test_force_orchestrator.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/agents/services/llm_adapter.py",
@@ -4733,7 +4815,9 @@
       "name": "close_llm_adapter",
       "type": "async_function",
       "line": 671,
-      "tests": ["apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"]
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/agents/services/llm_adapter.py",
@@ -4747,175 +4831,225 @@
       "name": "save_baseline",
       "type": "function",
       "line": 67,
-      "tests": ["apps/backend-rag/backend/agents/agents/unified_test_force_orchestrator.py"]
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/unified_test_force_orchestrator.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/agents/services/differential_coverage_analyzer.py",
       "name": "calculate_delta",
       "type": "function",
       "line": 109,
-      "tests": ["apps/backend-rag/backend/agents/agents/unified_test_force_orchestrator.py"]
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/unified_test_force_orchestrator.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/app/routers/admin_team_activity.py",
       "name": "get_overview",
       "type": "async_function",
       "line": 81,
-      "tests": ["apps/backend-rag/backend/tests/unit/app/routers/test_analytics.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_analytics.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/app/routers/memory_vector.py",
       "name": "initialize_memory_vector_db",
       "type": "async_function",
       "line": 26,
-      "tests": ["apps/backend-rag/backend/tests/unit/app/routers/test_memory_vector.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_memory_vector.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/app/routers/memory_vector.py",
       "name": "get_memory_vector_db",
       "type": "async_function",
       "line": 47,
-      "tests": ["apps/backend-rag/backend/tests/unit/app/routers/test_memory_vector.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_memory_vector.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/app/routers/article_composer.py",
       "name": "generate_slug",
       "type": "function",
       "line": 548,
-      "tests": ["apps/backend-rag/backend/tests/unit/routers/test_article_composer.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/routers/test_article_composer.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/app/routers/article_composer.py",
       "name": "generate_mdx_content",
       "type": "function",
       "line": 565,
-      "tests": ["apps/backend-rag/backend/tests/unit/routers/test_article_composer.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/routers/test_article_composer.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/app/routers/session.py",
       "name": "get_session_service",
       "type": "function",
       "line": 24,
-      "tests": ["apps/backend-rag/backend/tests/unit/app/routers/test_session.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_session.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/app/routers/handlers.py",
       "name": "extract_handlers_from_router",
       "type": "function",
       "line": 14,
-      "tests": ["apps/backend-rag/backend/tests/unit/app/routers/test_handlers.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_handlers.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/app/routers/team_analytics.py",
       "name": "get_team_analytics_service",
       "type": "function",
       "line": 21,
-      "tests": ["apps/backend-rag/backend/tests/unit/app/routers/test_team_analytics.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_team_analytics.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/app/routers/legal_ingest.py",
       "name": "get_legal_service",
       "type": "function",
       "line": 37,
-      "tests": ["apps/backend-rag/backend/tests/unit/app/routers/test_legal_ingest.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_legal_ingest.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/app/routers/nusantara_health.py",
       "name": "get_status_from_score",
       "type": "function",
       "line": 41,
-      "tests": ["apps/backend-rag/backend/tests/unit/app/routers/test_nusantara_health.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_nusantara_health.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/app/routers/agentic_rag.py",
       "name": "clean_image_generation_response",
       "type": "function",
       "line": 28,
-      "tests": ["apps/backend-rag/backend/tests/unit/app/routers/test_agentic_rag_router.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_agentic_rag_router.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/app/routers/agentic_rag.py",
       "name": "ConversationMessageInput",
       "type": "class",
       "line": 129,
-      "tests": ["apps/backend-rag/backend/tests/unit/services/oracle/test_oracle_service.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/services/oracle/test_oracle_service.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/app/routers/agentic_rag.py",
       "name": "AgenticQueryRequest",
       "type": "class",
       "line": 143,
-      "tests": ["apps/backend-rag/backend/tests/unit/app/routers/test_agentic_rag_router.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_agentic_rag_router.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/app/routers/agentic_rag.py",
       "name": "AgenticQueryResponse",
       "type": "class",
       "line": 155,
-      "tests": ["apps/backend-rag/backend/tests/unit/app/routers/test_agentic_rag_router.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_agentic_rag_router.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/app/routers/agentic_rag.py",
       "name": "query_agentic_rag",
       "type": "async_function",
       "line": 167,
-      "tests": ["apps/backend-rag/backend/tests/unit/app/routers/test_agentic_rag_router.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_agentic_rag_router.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/app/routers/agentic_rag.py",
       "name": "get_conversation_history_for_agentic",
       "type": "async_function",
       "line": 247,
-      "tests": ["apps/backend-rag/backend/tests/unit/app/routers/test_agentic_rag_router.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_agentic_rag_router.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/app/routers/agentic_rag.py",
       "name": "stream_agentic_rag",
       "type": "async_function",
       "line": 348,
-      "tests": ["apps/backend-rag/backend/tests/unit/app/routers/test_agentic_rag_router.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_agentic_rag_router.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/app/routers/conversations.py",
       "name": "get_conversation_history",
       "type": "async_function",
       "line": 411,
-      "tests": ["apps/backend-rag/backend/tests/unit/app/routers/test_agentic_rag_router.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_agentic_rag_router.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/app/routers/autonomous_agents.py",
       "name": "get_agent_stats",
       "type": "function",
       "line": 597,
-      "tests": ["apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"]
+      "tests": [
+        "apps/backend-rag/backend/agents/agents/test_force_orchestrator.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/app/routers/websocket.py",
       "name": "ConnectionManager",
       "type": "class",
       "line": 22,
-      "tests": ["apps/backend-rag/backend/tests/unit/app/routers/test_websocket.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_websocket.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/app/routers/websocket.py",
       "name": "get_current_user_ws",
       "type": "async_function",
       "line": 75,
-      "tests": ["apps/backend-rag/backend/tests/unit/app/routers/test_websocket.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_websocket.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/app/routers/websocket.py",
       "name": "send_personal_message",
       "type": "async_function",
       "line": 51,
-      "tests": ["apps/backend-rag/backend/tests/unit/app/routers/test_websocket.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_websocket.py"
+      ]
     },
     {
       "file": "apps/backend-rag/backend/app/routers/websocket.py",
       "name": "broadcast",
       "type": "async_function",
       "line": 64,
-      "tests": ["apps/backend-rag/backend/tests/unit/app/routers/test_websocket.py"]
+      "tests": [
+        "apps/backend-rag/backend/tests/unit/app/routers/test_websocket.py"
+      ]
     }
   ],
   "deprecated": [],

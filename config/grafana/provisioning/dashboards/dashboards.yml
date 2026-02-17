@@ -3,10 +3,10 @@
 apiVersion: 1
 
 providers:
-  - name: 'Nuzantara Dashboards'
+  - name: "Nuzantara Dashboards"
     orgId: 1
-    folder: 'Nuzantara'
-    folderUid: 'nuzantara'
+    folder: "Nuzantara"
+    folderUid: "nuzantara"
     type: file
     disableDeletion: false
     updateIntervalSeconds: 30

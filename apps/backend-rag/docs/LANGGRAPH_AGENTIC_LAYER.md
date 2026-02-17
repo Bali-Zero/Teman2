@@ -58,12 +58,12 @@ backend/app/routers/
 
 ### Core States
 
-| State Class         | Purpose                                      | Key Fields                                  |
-|---------------------|----------------------------------------------|---------------------------------------------|
-| `AgentState`        | Basic RAG workflow state                     | question, documents, generation             |
-| `RetrievalState`    | Extended retrieval tracking                  | query_vector, collection_name, top_k        |
-| `GradingState`      | Document relevance tracking                  | relevance_scores, filtered_documents        |
-| `WorkflowState`     | Full multi-step workflow (most commonly used)| All above + execution_path, step_count      |
+| State Class      | Purpose                                       | Key Fields                             |
+| ---------------- | --------------------------------------------- | -------------------------------------- |
+| `AgentState`     | Basic RAG workflow state                      | question, documents, generation        |
+| `RetrievalState` | Extended retrieval tracking                   | query_vector, collection_name, top_k   |
+| `GradingState`   | Document relevance tracking                   | relevance_scores, filtered_documents   |
+| `WorkflowState`  | Full multi-step workflow (most commonly used) | All above + execution_path, step_count |
 
 ### Example: WorkflowState
 
@@ -109,13 +109,14 @@ graph TD
 
 ### Node Descriptions
 
-| Node        | Input                        | Output                                     | Integration Status    |
-|-------------|------------------------------|--------------------------------------------|-----------------------|
-| `retrieve`  | question                     | documents, retrieved_scores                | 🟡 Stub (TODO: Qdrant)|
-| `grade`     | documents, retrieved_scores  | filtered_documents, relevance_scores       | 🟡 Stub (TODO: LLM)   |
-| `generate`  | question, filtered_documents | generation                                 | 🟡 Stub (TODO: LLM)   |
+| Node       | Input                        | Output                               | Integration Status     |
+| ---------- | ---------------------------- | ------------------------------------ | ---------------------- |
+| `retrieve` | question                     | documents, retrieved_scores          | 🟡 Stub (TODO: Qdrant) |
+| `grade`    | documents, retrieved_scores  | filtered_documents, relevance_scores | 🟡 Stub (TODO: LLM)    |
+| `generate` | question, filtered_documents | generation                           | 🟡 Stub (TODO: LLM)    |
 
 **Legend:**
+
 - 🟡 Stub: Placeholder implementation (returns mock data)
 - 🟢 Integrated: Connected to existing services
 - 🔴 Not Implemented
@@ -131,6 +132,7 @@ graph TD
 **Authentication:** Required (JWT token)
 
 **Request Body:**
+
 ```json
 {
   "question": "What are the requirements for a KITAS visa?",
@@ -143,6 +145,7 @@ graph TD
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -151,12 +154,13 @@ graph TD
   "execution_path": ["retrieve", "grade", "generate"],
   "step_count": 3,
   "timestamp": "2026-02-14T13:02:38.940051",
-  "metadata": {"user_id": "user_123"},
+  "metadata": { "user_id": "user_123" },
   "errors": null
 }
 ```
 
 **Example cURL:**
+
 ```bash
 curl -X POST https://nuzantara-rag.fly.dev/api/agent/invoke \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
@@ -176,6 +180,7 @@ curl -X POST https://nuzantara-rag.fly.dev/api/agent/invoke \
 **Authentication:** Not required (public endpoint)
 
 **Response (200 OK):**
+
 ```json
 {
   "status": "healthy",
@@ -186,6 +191,7 @@ curl -X POST https://nuzantara-rag.fly.dev/api/agent/invoke \
 ```
 
 **Example cURL:**
+
 ```bash
 curl https://nuzantara-rag.fly.dev/api/agent/health
 ```
@@ -199,6 +205,7 @@ curl https://nuzantara-rag.fly.dev/api/agent/health
 **File:** `backend/services/search/search_service.py`
 
 **Integration:**
+
 ```python
 # In retrieve_node (graph.py)
 from backend.app.dependencies import get_search_service
@@ -227,6 +234,7 @@ async def retrieve_node(state: WorkflowState) -> WorkflowState:
 **File:** `backend/services/llm/llm_gateway.py`
 
 **Integration:**
+
 ```python
 # In grade_node (graph.py)
 from backend.app.dependencies import get_llm_client
@@ -260,6 +268,7 @@ async def grade_node(state: WorkflowState) -> WorkflowState:
 **File:** `backend/services/rag/agentic/orchestrator.py`
 
 **Integration:**
+
 ```python
 # In generate_node (graph.py)
 from backend.app.dependencies import get_orchestrator
@@ -312,6 +321,7 @@ print(f'✅ Found {len(agent_routes)} agent endpoints')
 ```
 
 **Results:**
+
 - ✅ Graph compilation: SUCCESS
 - ✅ Workflow invocation: SUCCESS (3 steps executed)
 - ✅ API imports: SUCCESS (2 endpoints)
@@ -393,20 +403,20 @@ curl https://nuzantara-rag.fly.dev/api/agent/health
 
 ### Current Performance (Stub Implementation)
 
-| Metric                  | Value       | Notes                                  |
-|-------------------------|-------------|----------------------------------------|
-| Workflow execution time | ~50ms       | Mock data only (no I/O)                |
-| Step count              | 3           | retrieve → grade → generate            |
-| Memory usage            | < 10 MB     | Lightweight graph compilation          |
+| Metric                  | Value   | Notes                         |
+| ----------------------- | ------- | ----------------------------- |
+| Workflow execution time | ~50ms   | Mock data only (no I/O)       |
+| Step count              | 3       | retrieve → grade → generate   |
+| Memory usage            | < 10 MB | Lightweight graph compilation |
 
 ### Projected Performance (Full Integration)
 
-| Metric                  | Estimated   | Bottleneck                             |
-|-------------------------|-------------|----------------------------------------|
-| Retrieve node           | 200-500ms   | Qdrant vector search                   |
-| Grade node              | 1-2s        | LLM API call (Claude/OpenAI)           |
-| Generate node           | 2-5s        | LLM generation (depends on length)     |
-| **Total end-to-end**    | **3-8s**    | LLM latency dominates                  |
+| Metric               | Estimated | Bottleneck                         |
+| -------------------- | --------- | ---------------------------------- |
+| Retrieve node        | 200-500ms | Qdrant vector search               |
+| Grade node           | 1-2s      | LLM API call (Claude/OpenAI)       |
+| Generate node        | 2-5s      | LLM generation (depends on length) |
+| **Total end-to-end** | **3-8s**  | LLM latency dominates              |
 
 ### Optimization Strategies
 
@@ -446,6 +456,7 @@ curl https://nuzantara-rag.fly.dev/api/agent/health
 **Symptom:** `ImportError: cannot import name 'rag_graph' from 'backend.app.agents.graph'`
 
 **Solution:**
+
 ```bash
 # Verify LangGraph is installed
 source .venv/bin/activate
@@ -462,6 +473,7 @@ PYTHONPATH=. python -c "from backend.app.agents.graph import rag_graph; print(ty
 **Symptom:** `404 Not Found` when calling `/api/agent/invoke`
 
 **Solution:**
+
 ```bash
 # Verify router is imported in router_registration.py
 grep "agent" backend/app/setup/router_registration.py
@@ -485,6 +497,7 @@ print([r.path for r in app.routes if '/api/agent' in str(r.path)])
 **Cause:** One of the nodes (retrieve/grade/generate) is blocking indefinitely
 
 **Solution:**
+
 1. Add timeout to node operations (use `asyncio.wait_for`)
 2. Check logs for which node is stuck:
    ```bash
@@ -512,9 +525,9 @@ print([r.path for r in app.routes if '/api/agent' in str(r.path)])
 
 ## 13. Version History
 
-| Version | Date       | Author             | Changes                                      |
-|---------|------------|--------------------|----------------------------------------------|
-| 1.0.0   | 2026-02-14 | Chief Architect    | Initial implementation with RAG workflow     |
+| Version | Date       | Author          | Changes                                  |
+| ------- | ---------- | --------------- | ---------------------------------------- |
+| 1.0.0   | 2026-02-14 | Chief Architect | Initial implementation with RAG workflow |
 
 ---
 

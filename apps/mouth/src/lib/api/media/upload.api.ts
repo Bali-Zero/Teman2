@@ -6,9 +6,7 @@ import type { IApiClient } from "../types/api-client.types";
 export class UploadApi {
   constructor(private client: IApiClient) {}
 
-  async uploadFile(
-    file: File,
-  ): Promise<{
+  async uploadFile(file: File): Promise<{
     success: boolean;
     url: string;
     filename: string;

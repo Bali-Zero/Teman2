@@ -60,6 +60,7 @@ CREATE INDEX idx_conversations_created_at ON conversations(created_at DESC);
 Chat endpoint with automatic conversation persistence.
 
 **Request:**
+
 ```json
 {
   "query": "What is the capital of France?",
@@ -72,6 +73,7 @@ Chat endpoint with automatic conversation persistence.
 ```
 
 **Response:**
+
 ```json
 {
   "answer": "The capital of France is Paris.",
@@ -84,6 +86,7 @@ Chat endpoint with automatic conversation persistence.
 ```
 
 **Flow:**
+
 1. Retrieve last 20 messages from DB for session
 2. Inject conversation history into RAG context
 3. Process query with orchestrator
@@ -95,16 +98,18 @@ Chat endpoint with automatic conversation persistence.
 Retrieve conversation history for a session.
 
 **Query Parameters:**
+
 - `limit` (optional): Max messages to return (default: 20, 0 = all)
 
 **Response:**
+
 ```json
 {
   "success": true,
   "session_id": "session-123",
   "messages": [
-    {"role": "user", "content": "Hello"},
-    {"role": "assistant", "content": "Hi there!"}
+    { "role": "user", "content": "Hello" },
+    { "role": "assistant", "content": "Hi there!" }
   ],
   "total_messages": 2
 }
@@ -115,9 +120,11 @@ Retrieve conversation history for a session.
 Admin endpoint to cleanup old conversations.
 
 **Query Parameters:**
+
 - `days` (optional): Retention period in days (default: 30)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -134,25 +141,25 @@ Admin endpoint to cleanup old conversations.
 
 ```typescript
 // Send message with session persistence
-const response = await fetch('/webhook/chat', {
-  method: 'POST',
+const response = await fetch("/webhook/chat", {
+  method: "POST",
   headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
   },
   body: JSON.stringify({
     query: userMessage,
     session_id: sessionId, // Generate once per session
     metadata: {
-      source: 'webapp',
-      timestamp: new Date().toISOString()
-    }
-  })
+      source: "webapp",
+      timestamp: new Date().toISOString(),
+    },
+  }),
 });
 
 const data = await response.json();
-console.log('Conversation ID:', data.conversation_id);
-console.log('Persisted:', data.persisted);
+console.log("Conversation ID:", data.conversation_id);
+console.log("Persisted:", data.persisted);
 
 // After page refresh, conversation history is automatically loaded
 // when you send the next message with the same session_id
@@ -235,6 +242,7 @@ export JWT_TOKEN="your-jwt-token"
 ```
 
 **Test Coverage:**
+
 - ✅ Save and retrieve messages
 - ✅ Message limit enforcement
 - ✅ Context persistence across requests
@@ -268,7 +276,7 @@ SELECT COUNT(*) FROM conversations;
 SELECT pg_size_pretty(pg_total_relation_size('conversations'));
 
 -- Check recent activity
-SELECT 
+SELECT
     DATE(created_at) as date,
     COUNT(*) as conversations
 FROM conversations
@@ -306,12 +314,14 @@ ORDER BY date DESC;
 ### Issue: Conversations not persisting
 
 **Check:**
+
 1. Database connection available
 2. JWT token valid
 3. `session_id` provided in request
 4. Check logs for errors
 
 **Debug:**
+
 ```bash
 # Check database connection
 psql $DATABASE_URL -c "SELECT 1"
@@ -323,11 +333,13 @@ psql $DATABASE_URL -c "SELECT id, session_id, created_at FROM conversations ORDE
 ### Issue: Context not maintained
 
 **Check:**
+
 1. Same `session_id` used across requests
 2. Conversation history retrieved (check logs)
 3. RAG orchestrator receiving history
 
 **Debug:**
+
 ```python
 # Check if history is being retrieved
 messages = await repo.get_messages(session_id="your-session-id")
@@ -337,11 +349,13 @@ print(f"Retrieved {len(messages)} messages")
 ### Issue: Cleanup not running
 
 **Check:**
+
 1. AutonomousScheduler started
 2. `conversation_cleanup_enabled=True`
 3. Database pool available
 
 **Debug:**
+
 ```bash
 # Check scheduler status
 curl http://localhost:8080/api/health/scheduler
@@ -388,6 +402,7 @@ If issues occur:
 ## Support
 
 For issues or questions:
+
 - Check logs: `tail -f logs/backend.log`
 - Database queries: See "Monitoring" section
 - Contact: Backend team

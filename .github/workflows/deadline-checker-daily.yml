@@ -3,7 +3,7 @@ name: Deadline Checker - Daily Job
 on:
   schedule:
     # Run daily at 6:00 AM Singapore time (22:00 UTC previous day)
-    - cron: '0 22 * * *'
+    - cron: "0 22 * * *"
   workflow_dispatch: # Allow manual trigger
 
 jobs:
@@ -18,7 +18,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install dependencies
         run: |

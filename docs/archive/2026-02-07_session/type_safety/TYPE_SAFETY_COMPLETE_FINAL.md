@@ -81,10 +81,10 @@
 #### 1. Metriche Tracking:
 
 ```typescript
-import { typeSafetyMetrics } from '@/lib/metrics/type-safety-metrics';
+import { typeSafetyMetrics } from "@/lib/metrics/type-safety-metrics";
 
 // Track improvement
-typeSafetyMetrics.trackImprovement(37, 1, 'particles-background.tsx');
+typeSafetyMetrics.trackImprovement(37, 1, "particles-background.tsx");
 
 // Get metrics
 const metrics = typeSafetyMetrics.getMetrics();
@@ -94,11 +94,11 @@ console.log(`Migration progress: ${metrics.migrationProgress}%`);
 #### 2. Logging:
 
 ```typescript
-import { logTypeSafety } from '@/lib/utils/type-safety-logger';
+import { logTypeSafety } from "@/lib/utils/type-safety-logger";
 
 logTypeSafety({
-  file: 'particles-background.tsx',
-  action: 'any_replaced',
+  file: "particles-background.tsx",
+  action: "any_replaced",
   metadata: { before: 2, after: 0 },
 });
 ```
@@ -106,7 +106,7 @@ logTypeSafety({
 #### 3. Monitoring Continuo:
 
 ```typescript
-import { typeSafetyMonitor } from '@/lib/utils/type-safety-monitor';
+import { typeSafetyMonitor } from "@/lib/utils/type-safety-monitor";
 
 // Start daily monitoring
 typeSafetyMonitor.start();

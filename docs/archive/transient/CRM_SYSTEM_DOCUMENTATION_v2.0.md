@@ -160,15 +160,15 @@ date_of_birth = client.date_of_birth if client.date_of_birth else None
 ```typescript
 const client = await api.crm.createClient(
   {
-    full_name: 'Marco Rossi',
-    email: 'marco@example.com',
-    phone: '+393331234567',
-    nationality: 'Italian',
-    passport_expiry: '2028-12-31', // or "" (converted to NULL)
-    status: 'lead',
-    assigned_to: 'adit@balizero.com',
+    full_name: "Marco Rossi",
+    email: "marco@example.com",
+    phone: "+393331234567",
+    nationality: "Italian",
+    passport_expiry: "2028-12-31", // or "" (converted to NULL)
+    status: "lead",
+    assigned_to: "adit@balizero.com",
   },
-  'zero@balizero.com'
+  "zero@balizero.com",
 ); // created_by
 ```
 
@@ -211,7 +211,7 @@ for field, value in updates.dict(exclude_unset=True).items():
 
 ```typescript
 await api.crm.deleteClient(client.id, user.email);
-router.push('/clients');
+router.push("/clients");
 router.refresh(); // CRITICAL: Force data refetch
 ```
 
@@ -258,12 +258,12 @@ INSERT INTO client_family_members (
 
 ```typescript
 await api.crm.createFamilyMember(clientId, {
-  full_name: 'Anna Rossi',
-  relationship: 'spouse',
-  nationality: 'Italian',
-  passport_number: 'AB1234567',
-  passport_expiry: '2027-06-15', // or "" (auto NULL)
-  visa_expiry: '', // Empty → NULL in DB
+  full_name: "Anna Rossi",
+  relationship: "spouse",
+  nationality: "Italian",
+  passport_number: "AB1234567",
+  passport_expiry: "2027-06-15", // or "" (auto NULL)
+  visa_expiry: "", // Empty → NULL in DB
 });
 ```
 
@@ -332,11 +332,11 @@ INSERT INTO documents (
 
 ```typescript
 await api.crm.createDocument(clientId, {
-  document_type: 'Passport',
-  document_category: 'immigration',
-  file_name: 'passport_marco_rossi.pdf',
-  google_drive_file_url: 'https://drive.google.com/file/d/...',
-  expiry_date: '2028-12-31', // or "" (auto NULL)
+  document_type: "Passport",
+  document_category: "immigration",
+  file_name: "passport_marco_rossi.pdf",
+  google_drive_file_url: "https://drive.google.com/file/d/...",
+  expiry_date: "2028-12-31", // or "" (auto NULL)
   family_member_id: 123, // Optional
 });
 ```
@@ -358,13 +358,13 @@ const onAddNote = async (note: string) => {
   const user = await api.getProfile();
   await api.crm.createInteraction({
     client_id: clientId,
-    interaction_type: 'note',
+    interaction_type: "note",
     summary: note,
     team_member: user.email,
   });
   const interactionsData = await api.crm.getClientTimeline(clientId, 20);
   setInteractions(interactionsData);
-  toast.success('Note Added');
+  toast.success("Note Added");
 };
 ```
 
@@ -416,14 +416,14 @@ const countryFlag = getCountryFlag(client.nationality);
 
 ```typescript
 const NATIONALITY_FLAGS: Record<string, string> = {
-  Italian: '🇮🇹',
-  Italy: '🇮🇹',
-  Russian: '🇷🇺',
-  Russia: '🇷🇺',
-  Ukrainian: '🇺🇦',
-  Ukraine: '🇺🇦',
-  American: '🇺🇸',
-  USA: '🇺🇸',
+  Italian: "🇮🇹",
+  Italy: "🇮🇹",
+  Russian: "🇷🇺",
+  Russia: "🇷🇺",
+  Ukrainian: "🇺🇦",
+  Ukraine: "🇺🇦",
+  American: "🇺🇸",
+  USA: "🇺🇸",
   // ... 26 more countries
 };
 ```
@@ -544,11 +544,11 @@ if not is_super_admin:
 ```typescript
 // BEFORE (❌ Stale data)
 await api.crm.deleteClient(client.id, user.email);
-router.push('/clients');
+router.push("/clients");
 
 // AFTER (✅ Fresh data)
 await api.crm.deleteClient(client.id, user.email);
-router.push('/clients');
+router.push("/clients");
 router.refresh(); // Force refetch
 ```
 
@@ -585,7 +585,7 @@ field_mapping = {
 
 ```typescript
 // apps/mouth/src/lib/api/crm/crm.api.ts
-console.error('Failed to create client:', error);
+console.error("Failed to create client:", error);
 ```
 
 **Backend**: Check logs for SQL errors
@@ -725,8 +725,8 @@ CREATE TABLE documents (
 ```typescript
 // Don't send empty strings for dates
 const data = {
-  passport_expiry: '', // ❌ Will crash
-  date_of_birth: '', // ❌ Will crash
+  passport_expiry: "", // ❌ Will crash
+  date_of_birth: "", // ❌ Will crash
 };
 ```
 
@@ -736,7 +736,7 @@ const data = {
 // Send undefined or valid date string
 const data = {
   passport_expiry: formData.passport_expiry || undefined, // ✅ OK
-  date_of_birth: '1990-01-15', // ✅ OK
+  date_of_birth: "1990-01-15", // ✅ OK
 };
 ```
 
@@ -769,14 +769,14 @@ const clients = await api.crm.getClients(); // Auto-filtered by assigned_to
 
 ```typescript
 await api.crm.deleteClient(id);
-router.push('/clients'); // ❌ Stale cache
+router.push("/clients"); // ❌ Stale cache
 ```
 
 **✅ ALWAYS**:
 
 ```typescript
 await api.crm.deleteClient(id);
-router.push('/clients');
+router.push("/clients");
 router.refresh(); // ✅ Fresh data
 ```
 

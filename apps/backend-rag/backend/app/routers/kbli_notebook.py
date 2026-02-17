@@ -526,12 +526,6 @@ async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]
             enable_function_calling=False,
             conversation_messages=[{"role": "user", "content": message}],
         )
-            message=message,
-            system_prompt=lang_system,
-            tier=TIER_FLASH,
-            enable_function_calling=False,
-            conversation_messages=[{"role": "user", "content": message}],
-        )
         
         # CRITICAL: Validate response is not empty
         if not response_text or not response_text.strip():

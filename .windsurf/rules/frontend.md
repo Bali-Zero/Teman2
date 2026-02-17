@@ -21,7 +21,10 @@ apps/mouth/src/
 ## Pattern TypeScript
 
 ```typescript
-interface DataResponse { id: string; name: string; }
+interface DataResponse {
+  id: string;
+  name: string;
+}
 
 async function fetchData(id: string): Promise<DataResponse | null> {
   try {
@@ -29,7 +32,7 @@ async function fetchData(id: string): Promise<DataResponse | null> {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   } catch (error) {
-    console.error('Fetch failed:', error);
+    console.error("Fetch failed:", error);
     return null;
   }
 }

@@ -16,7 +16,7 @@
 - [ ] ✅ Result #2 is Code 47403 (Retail Software)
 - [ ] ✅ Console shows: `[KBLI Search Phase 2] ✓ ... Top score: 50`
 
-**Notes:** ******\*\*******\_\_\_******\*\*******
+**Notes:** **\*\***\*\***\*\***\_\_\_**\*\***\*\***\*\***
 
 ---
 
@@ -28,7 +28,7 @@
 - [ ] ✅ Clicking "restoran" triggers new search
 - [ ] ✅ Results appear for restaurants (Code 56101)
 
-**Notes:** ******\*\*******\_\_\_******\*\*******
+**Notes:** **\*\***\*\***\*\***\_\_\_**\*\***\*\***\*\***
 
 ---
 
@@ -39,7 +39,7 @@
 - [ ] ✅ Message: "No results found... Try using Indonesian terms..."
 - [ ] ✅ No JavaScript errors in console
 
-**Notes:** ******\*\*******\_\_\_******\*\*******
+**Notes:** **\*\***\*\***\*\***\_\_\_**\*\***\*\***\*\***
 
 ---
 
@@ -52,7 +52,7 @@
 - [ ] ✅ Only Open codes shown
 - [ ] ✅ Results are still relevant (scored)
 
-**Notes:** ******\*\*******\_\_\_******\*\*******
+**Notes:** **\*\***\*\***\*\***\_\_\_**\*\***\*\***\*\***
 
 ---
 
@@ -63,7 +63,7 @@
 - [ ] ✅ Only Low Risk codes shown
 - [ ] ✅ Relevance scoring still works
 
-**Notes:** ******\*\*******\_\_\_******\*\*******
+**Notes:** **\*\***\*\***\*\***\_\_\_**\*\***\*\***\*\***
 
 ---
 
@@ -76,7 +76,7 @@
 - [ ] ✅ No duplicates
 - [ ] ✅ Order maintained
 
-**Notes:** ******\*\*******\_\_\_******\*\*******
+**Notes:** **\*\***\*\***\*\***\_\_\_**\*\***\*\***\*\***
 
 ---
 
@@ -108,7 +108,7 @@ _______________________________
 - [ ] ✅ No errors in console
 - [ ] ✅ Results always correct
 
-**Notes:** ******\*\*******\_\_\_******\*\*******
+**Notes:** **\*\***\*\***\*\***\_\_\_**\*\***\*\***\*\***
 
 ---
 
@@ -122,7 +122,7 @@ _______________________________
 - [ ] ✅ Cards stack vertically
 - [ ] ✅ Touch interactions work
 
-**Device:** ******\*\*******\_\_\_******\*\*******
+**Device:** **\*\***\*\***\*\***\_\_\_**\*\***\*\***\*\***
 
 ---
 

@@ -4,7 +4,7 @@ on:
   schedule:
     # Run daily at 7:00 AM Singapore Time (SGT = UTC+8)
     # 11:00 PM UTC = 7:00 AM SGT next day
-    - cron: '0 23 * * *'
+    - cron: "0 23 * * *"
 
   workflow_dispatch: # Allow manual trigger
 
@@ -20,8 +20,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          python-version: "3.11"
+          cache: "pip"
 
       - name: Install dependencies
         working-directory: apps/backend-rag

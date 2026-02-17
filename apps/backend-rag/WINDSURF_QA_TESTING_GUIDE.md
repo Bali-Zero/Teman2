@@ -19,9 +19,11 @@ This guide documents the comprehensive test suite created for the Nuzantara RAG 
 ### Phase 2: Advanced RAG Features
 
 #### 1. Confidence Scoring Tests
+
 **File:** `backend/tests/services/rag/test_confidence_scoring.py`
 
 **Coverage:**
+
 - Evidence score calculation (high/medium/low confidence)
 - Critical domain detection (visa, tax, legal)
 - Abstain decision logic
@@ -29,20 +31,24 @@ This guide documents the comprehensive test suite created for the Nuzantara RAG 
 - Integration with reasoning engine
 
 **Key Test Classes:**
+
 - `TestConfidenceScoring` - Core confidence calculation
 - `TestCriticalDomainDetection` - Domain classification
 - `TestAbstainDecision` - Abstain logic
 - `TestConfidenceThresholds` - Threshold validation
 
 **Run:**
+
 ```bash
 pytest backend/tests/services/rag/test_confidence_scoring.py -v
 ```
 
 #### 2. Conditional Workflows Tests
+
 **File:** `backend/tests/services/rag/test_conditional_workflows.py`
 
 **Coverage:**
+
 - Query gate logic (team queries, critical domains)
 - Workflow routing (fast path, full reasoning, critical verification)
 - Dynamic tool selection based on query type
@@ -50,6 +56,7 @@ pytest backend/tests/services/rag/test_confidence_scoring.py -v
 - Conditional caching strategies
 
 **Key Test Classes:**
+
 - `TestQueryGates` - Query gate validation
 - `TestConditionalWorkflowRouting` - Workflow selection
 - `TestDynamicToolSelection` - Tool matching
@@ -57,14 +64,17 @@ pytest backend/tests/services/rag/test_confidence_scoring.py -v
 - `TestConditionalCaching` - Cache decisions
 
 **Run:**
+
 ```bash
 pytest backend/tests/services/rag/test_conditional_workflows.py -v
 ```
 
 #### 3. Feedback Loop Tests
+
 **File:** `backend/tests/services/rag/test_feedback_loop.py`
 
 **Coverage:**
+
 - Feedback collection (thumbs up/down, detailed ratings)
 - Feedback aggregation and analysis
 - Satisfaction score calculation
@@ -73,6 +83,7 @@ pytest backend/tests/services/rag/test_conditional_workflows.py -v
 - Feedback metrics and trending
 
 **Key Test Classes:**
+
 - `TestFeedbackCollection` - Feedback structure validation
 - `TestFeedbackAggregation` - Analytics calculation
 - `TestFeedbackDrivenImprovements` - Improvement triggers
@@ -81,14 +92,17 @@ pytest backend/tests/services/rag/test_conditional_workflows.py -v
 - `TestFeedbackAPIEndpoints` - API validation
 
 **Run:**
+
 ```bash
 pytest backend/tests/services/rag/test_feedback_loop.py -v
 ```
 
 #### 4. Personalization Tests
+
 **File:** `backend/tests/services/rag/test_personalization.py`
 
 **Coverage:**
+
 - User context tracking and history management
 - User preference management
 - Personalized response generation
@@ -97,6 +111,7 @@ pytest backend/tests/services/rag/test_feedback_loop.py -v
 - Privacy and security compliance
 
 **Key Test Classes:**
+
 - `TestUserContextTracking` - Context management
 - `TestUserPreferences` - Preference handling
 - `TestPersonalizedResponses` - Response customization
@@ -105,6 +120,7 @@ pytest backend/tests/services/rag/test_feedback_loop.py -v
 - `TestPrivacyAndSecurity` - Data protection
 
 **Run:**
+
 ```bash
 pytest backend/tests/services/rag/test_personalization.py -v
 ```
@@ -112,9 +128,11 @@ pytest backend/tests/services/rag/test_personalization.py -v
 ### Phase 3: Multi-Agent Coordination
 
 #### 5. Multi-Agent Tests
+
 **File:** `backend/tests/services/rag/test_multi_agent.py`
 
 **Coverage:**
+
 - Agent coordination and capability matching
 - Task delegation to specialists
 - Parallel execution and concurrency limits
@@ -125,6 +143,7 @@ pytest backend/tests/services/rag/test_personalization.py -v
 - Failover and recovery
 
 **Key Test Classes:**
+
 - `TestAgentCoordination` - Agent orchestration
 - `TestParallelExecution` - Concurrent execution
 - `TestAgentCommunication` - Inter-agent messaging
@@ -135,6 +154,7 @@ pytest backend/tests/services/rag/test_personalization.py -v
 - `TestAgentFailover` - Error recovery
 
 **Run:**
+
 ```bash
 pytest backend/tests/services/rag/test_multi_agent.py -v
 ```
@@ -142,9 +162,11 @@ pytest backend/tests/services/rag/test_multi_agent.py -v
 ### Knowledge Graph Monitoring
 
 #### 6. KG Health Tests
+
 **File:** `backend/tests/services/kg_monitoring/test_kg_health.py`
 
 **Coverage:**
+
 - KG connectivity and availability
 - Data integrity (node/edge counts, orphaned nodes, duplicates)
 - Performance metrics (query response time, P95 latency)
@@ -153,6 +175,7 @@ pytest backend/tests/services/rag/test_multi_agent.py -v
 - Maintenance task scheduling
 
 **Key Test Classes:**
+
 - `TestKGConnectivity` - Connection management
 - `TestKGDataIntegrity` - Data validation
 - `TestKGPerformanceMetrics` - Performance tracking
@@ -162,14 +185,17 @@ pytest backend/tests/services/rag/test_multi_agent.py -v
 - `TestKGMaintenanceTasks` - Maintenance scheduling
 
 **Run:**
+
 ```bash
 pytest backend/tests/services/kg_monitoring/test_kg_health.py -v
 ```
 
 #### 7. KG Performance Tests
+
 **File:** `backend/tests/services/kg_monitoring/test_kg_performance.py`
 
 **Coverage:**
+
 - Query performance (simple vs complex)
 - Query caching (hit/miss, expiration, invalidation)
 - Query optimization (limits, index hints, pattern rewriting)
@@ -180,6 +206,7 @@ pytest backend/tests/services/kg_monitoring/test_kg_health.py -v
 - Batch operations (performance, optimal batch size)
 
 **Key Test Classes:**
+
 - `TestQueryPerformance` - Query execution speed
 - `TestQueryCaching` - Cache effectiveness
 - `TestQueryOptimization` - Query improvements
@@ -190,26 +217,31 @@ pytest backend/tests/services/kg_monitoring/test_kg_health.py -v
 - `TestBatchOperations` - Batch efficiency
 
 **Run:**
+
 ```bash
 pytest backend/tests/services/kg_monitoring/test_kg_performance.py -v
 ```
 
 #### 8. KG Data Quality Tests
+
 **File:** `backend/tests/services/kg_monitoring/test_kg_data_quality.py`
 
 **Coverage:**
+
 - Data validation (schema, property types)
 - Data consistency (dangling references, bidirectional relationships)
 - Data completeness (property completeness, sparse nodes)
 - Data quality metrics (overall score, issue identification)
 
 **Key Test Classes:**
+
 - `TestDataValidation` - Schema validation
 - `TestDataConsistency` - Consistency checks
 - `TestDataCompleteness` - Completeness metrics
 - `TestDataQualityMetrics` - Quality scoring
 
 **Run:**
+
 ```bash
 pytest backend/tests/services/kg_monitoring/test_kg_data_quality.py -v
 ```
@@ -219,6 +251,7 @@ pytest backend/tests/services/kg_monitoring/test_kg_data_quality.py -v
 ## Test Execution
 
 ### Run All New Tests
+
 ```bash
 # All Phase 2 tests
 pytest backend/tests/services/rag/test_confidence_scoring.py \
@@ -244,6 +277,7 @@ pytest backend/tests/services/rag/test_confidence_scoring.py \
 ```
 
 ### Run with Coverage
+
 ```bash
 pytest backend/tests/services/rag/test_confidence_scoring.py \
        backend/tests/services/rag/test_conditional_workflows.py \
@@ -258,6 +292,7 @@ pytest backend/tests/services/rag/test_confidence_scoring.py \
 ```
 
 ### Run Specific Test Classes
+
 ```bash
 # Confidence scoring only
 pytest backend/tests/services/rag/test_confidence_scoring.py::TestConfidenceScoring -v
@@ -270,6 +305,7 @@ pytest backend/tests/services/kg_monitoring/test_kg_health.py::TestKGHealthCheck
 ```
 
 ### Run Integration Tests
+
 ```bash
 # Skip integration tests (faster for development)
 pytest -m "not integration" backend/tests/services/rag/ -v
@@ -304,30 +340,30 @@ on:
   pull_request:
     branches: [main, develop]
     paths:
-      - 'apps/backend-rag/backend/services/rag/**'
-      - 'apps/backend-rag/backend/tests/services/rag/**'
-      - 'apps/backend-rag/backend/tests/services/kg_monitoring/**'
+      - "apps/backend-rag/backend/services/rag/**"
+      - "apps/backend-rag/backend/tests/services/rag/**"
+      - "apps/backend-rag/backend/tests/services/kg_monitoring/**"
   push:
     branches: [windsurf/tests-*]
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
-      
+          python-version: "3.11"
+
       - name: Install dependencies
         run: |
           cd apps/backend-rag
           pip install -r requirements.txt
           pip install pytest pytest-asyncio pytest-cov pytest-mock
-      
+
       - name: Run Windsurf QA Tests
         run: |
           cd apps/backend-rag
@@ -341,7 +377,7 @@ jobs:
                  --cov-report=xml \
                  --cov-report=term \
                  -v
-      
+
       - name: Upload coverage
         uses: codecov/codecov-action@v3
         with:
@@ -354,6 +390,7 @@ jobs:
 ## Weekly Testing Schedule
 
 ### Week 2: Test Phase 2
+
 - Run all Phase 2 tests after Opus completes implementation
 - Verify confidence scoring integration
 - Validate conditional workflows
@@ -361,28 +398,34 @@ jobs:
 - Confirm personalization features
 
 ### Week 4: Test Phase 4
+
 - Run Phase 4 tests after Sonnet completes implementation
 - Integration tests with Phase 2
 
 ### Week 6: Test Phase 3b
+
 - Run Phase 3b tests after Opus completes implementation
 - Multi-agent coordination validation
 
 ### Week 8: Integration Tests (Phase 2+3b+4)
+
 - Combined integration test suite
 - Cross-phase compatibility testing
 - Performance benchmarking
 
 ### Week 12: Test Phase 5
+
 - Run Phase 5 tests after Gemini completes implementation
 - Advanced features validation
 
 ### Week 16: E2E Tests Multi-Phase
+
 - End-to-end workflow testing
 - User journey validation
 - Performance under load
 
 ### Week 20: Final Regression Suite
+
 - Complete regression test suite
 - All 8 phases validated
 - Production readiness check
@@ -412,15 +455,15 @@ jobs:
 
 ## Coverage Targets
 
-| Component | Target | Current |
-|-----------|--------|---------|
-| Confidence Scoring | >90% | TBD |
-| Conditional Workflows | >85% | TBD |
-| Feedback Loop | >85% | TBD |
-| Personalization | >80% | TBD |
-| Multi-Agent | >85% | TBD |
-| KG Monitoring | >85% | TBD |
-| **Overall** | **>85%** | **TBD** |
+| Component             | Target   | Current |
+| --------------------- | -------- | ------- |
+| Confidence Scoring    | >90%     | TBD     |
+| Conditional Workflows | >85%     | TBD     |
+| Feedback Loop         | >85%     | TBD     |
+| Personalization       | >80%     | TBD     |
+| Multi-Agent           | >85%     | TBD     |
+| KG Monitoring         | >85%     | TBD     |
+| **Overall**           | **>85%** | **TBD** |
 
 ---
 

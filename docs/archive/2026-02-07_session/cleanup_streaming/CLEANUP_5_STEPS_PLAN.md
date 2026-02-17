@@ -47,17 +47,17 @@
 
 ```typescript
 // PRIMA
-console.error('Failed to load client data:', err);
+console.error("Failed to load client data:", err);
 
 // DOPO
-import { logger } from '@/lib/logger';
+import { logger } from "@/lib/logger";
 logger.error(
-  'Failed to load client data',
+  "Failed to load client data",
   {
-    component: 'ClientDetailPage',
-    action: 'loadClientData',
+    component: "ClientDetailPage",
+    action: "loadClientData",
   },
-  err instanceof Error ? err : new Error(String(err))
+  err instanceof Error ? err : new Error(String(err)),
 );
 ```
 
@@ -111,7 +111,7 @@ const value = data as any;
 
 // DOPO
 const data: unknown = JSON.parse(jsonStr);
-if (isRecord(data) && typeof data.field === 'string') {
+if (isRecord(data) && typeof data.field === "string") {
   const value = data.field; // Type-safe
 }
 ```
@@ -136,11 +136,14 @@ if (isRecord(data) && typeof data.field === 'string') {
 
 ```typescript
 // Utility centralizzata
-export function handleError(error: unknown, context: { component: string; action: string }): void {
+export function handleError(
+  error: unknown,
+  context: { component: string; action: string },
+): void {
   logger.error(
-    'Operation failed',
+    "Operation failed",
     context,
-    error instanceof Error ? error : new Error(String(error))
+    error instanceof Error ? error : new Error(String(error)),
   );
 }
 ```

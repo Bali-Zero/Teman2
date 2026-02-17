@@ -8,6 +8,7 @@
 ## 📊 Risultati Test
 
 ### Test 1: Primo Messaggio
+
 ```json
 {
   "answer": "Sono qui se ti serve altro.",
@@ -17,9 +18,11 @@
   "execution_time": 6.27s
 }
 ```
+
 ✅ **PASS** - Messaggio salvato in DB (conversation_id: 1397)
 
 ### Test 2: Follow-up (Context Awareness)
+
 ```json
 {
   "answer": "Fatti sentire!",
@@ -29,9 +32,11 @@
   "execution_time": 4.25s
 }
 ```
+
 ✅ **PASS** - Stesso conversation_id, context mantenuto
 
 ### Test 3: History Retrieval
+
 ```json
 {
   "success": true,
@@ -39,26 +44,28 @@
   "total_messages": 20
 }
 ```
+
 ✅ **PASS** - 20 messaggi recuperati (include history precedente + nuovi)
 
 ---
 
 ## ✅ Criteri di Successo
 
-| Criterio | Target | Risultato | Status |
-|----------|--------|-----------|--------|
-| Persistence | 100% | ✅ true | PASS |
-| Conversation ID | Numero | ✅ 1397 | PASS |
-| Context Awareness | Mantiene | ✅ Si | PASS |
-| History Retrieval | Funziona | ✅ 20 msg | PASS |
-| Performance | < 50ms query | ✅ ~6s total | PASS |
-| Database | Salvato | ✅ Verificato | PASS |
+| Criterio          | Target       | Risultato     | Status |
+| ----------------- | ------------ | ------------- | ------ |
+| Persistence       | 100%         | ✅ true       | PASS   |
+| Conversation ID   | Numero       | ✅ 1397       | PASS   |
+| Context Awareness | Mantiene     | ✅ Si         | PASS   |
+| History Retrieval | Funziona     | ✅ 20 msg     | PASS   |
+| Performance       | < 50ms query | ✅ ~6s total  | PASS   |
+| Database          | Salvato      | ✅ Verificato | PASS   |
 
 ---
 
 ## 🎯 Sistema Funzionante
 
 ### Backend ✅
+
 - Endpoint `/webhook/chat` attivo
 - Auto-persistence funzionante
 - History retrieval OK
@@ -66,12 +73,14 @@
 - Cleanup job integrato
 
 ### Database ✅
+
 - Conversazioni salvate
 - Messages in JSONB
 - Indexes performanti
 - Session_id tracciato
 
 ### Performance ✅
+
 - Query time: < 50ms (DB)
 - Total time: ~5s (include AI processing)
 - Persistence rate: 100%
@@ -110,7 +119,7 @@ export function ChatPage() {
       sessionId,
       { source: 'webapp' }
     );
-    
+
     // Usa response.answer per UI
     console.log('Persisted:', response.persisted);
     console.log('Conversation ID:', response.conversation_id);
@@ -121,6 +130,7 @@ export function ChatPage() {
 ```
 
 ### 2. Deploy Frontend
+
 ```bash
 cd apps/mouth
 pnpm build
@@ -128,6 +138,7 @@ vercel --prod
 ```
 
 ### 3. Test End-to-End
+
 1. Apri webapp
 2. Invia messaggio
 3. **Refresh pagina (F5)**
@@ -135,6 +146,7 @@ vercel --prod
 5. Verifica che AI ricordi ✅
 
 ### 4. Monitoring
+
 ```bash
 # Watch logs
 flyctl logs -a nuzantara-rag | grep "persisted"

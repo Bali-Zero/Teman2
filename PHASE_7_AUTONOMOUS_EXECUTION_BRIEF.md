@@ -17,6 +17,7 @@ Create a **Proof of Concept** for autonomous task execution where the agent can 
 ## Scope Limitations (POC)
 
 **What This POC CAN Do:**
+
 - ✅ Generate task execution plan
 - ✅ Track task status (pending → in_progress → completed)
 - ✅ Request human approval for critical steps
@@ -24,6 +25,7 @@ Create a **Proof of Concept** for autonomous task execution where the agent can 
 - ✅ Rollback on failure
 
 **What This POC CANNOT Do:**
+
 - ❌ Submit government forms automatically (requires human)
 - ❌ Make payments (requires human)
 - ❌ Sign legal documents (requires human)
@@ -467,11 +469,11 @@ class TestRollback:
 
 ## Files to Create
 
-| File | Purpose | Lines |
-|------|---------|-------|
-| `backend/services/rag/autonomous_executor.py` | Executor + plan generation | ~350 |
-| `backend/app/routers/autonomous_execution.py` | API endpoints | ~150 |
-| `backend/tests/services/rag/test_autonomous_executor.py` | Tests | ~200 |
+| File                                                     | Purpose                    | Lines |
+| -------------------------------------------------------- | -------------------------- | ----- |
+| `backend/services/rag/autonomous_executor.py`            | Executor + plan generation | ~350  |
+| `backend/app/routers/autonomous_execution.py`            | API endpoints              | ~150  |
+| `backend/tests/services/rag/test_autonomous_executor.py` | Tests                      | ~200  |
 
 **Total:** ~700 lines
 

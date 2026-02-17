@@ -12,11 +12,13 @@
 The multi-channel architecture (Phases 2+3+4) was deployed but **failed to initialize** in production due to incorrect parameter passing to `AgenticRAGOrchestrator`. This document details the bug, root cause, solution, and verification.
 
 **Impact:**
+
 - Channel Router initialization: ❌ FAILED
 - Multi-channel features: ❌ NON-FUNCTIONAL
 - Backend health: ✅ HEALTHY (other services unaffected)
 
 **Resolution:**
+
 - Fixed orchestrator parameter passing
 - Created `create_default_tools()` helper function
 - All 5 channels now operational (Telegram, Web, WhatsApp, Instagram, Twitter)
@@ -106,6 +108,7 @@ def __init__(
 ```
 
 **Key Requirements:**
+
 1. `tools` parameter is **required** (list of BaseTool instances)
 2. No `ai_client` parameter exists
 3. `retriever` not `search_service`
@@ -152,6 +155,7 @@ def create_default_tools(search_service=None) -> list[BaseTool]:
 ```
 
 **Design Decisions:**
+
 - **4 essential tools** provide core functionality
 - **VectorSearchTool** conditional (requires search_service)
 - **PricingTool** always included (critical for client queries)
@@ -185,6 +189,7 @@ if not orchestrator:
 ```
 
 **Changes:**
+
 - ❌ Removed: `ai_client=`, `search_service=`, `tool_executor=`
 - ✅ Added: `tools=` (required), `retriever=` (correct param name)
 - ✅ Added: Logging for successful initialization
@@ -270,15 +275,16 @@ curl -s https://nuzantara-rag.fly.dev/health | jq .
 
 **5 Channels Active:**
 
-| Channel | Status | Features |
-|---------|--------|----------|
-| **Telegram** | ✅ Active | Progressive updates, full Markdown, 4096 chars |
-| **Web/SSE** | ✅ Active | Token-by-token streaming, unlimited length |
-| **WhatsApp** | ✅ Active | Meta Cloud API, limited Markdown, 1600 chars |
-| **Instagram** | ✅ Active | Graph API, plain text, 1000 chars |
-| **Twitter** | ✅ Active | API v2, plain text, 10000 chars |
+| Channel       | Status    | Features                                       |
+| ------------- | --------- | ---------------------------------------------- |
+| **Telegram**  | ✅ Active | Progressive updates, full Markdown, 4096 chars |
+| **Web/SSE**   | ✅ Active | Token-by-token streaming, unlimited length     |
+| **WhatsApp**  | ✅ Active | Meta Cloud API, limited Markdown, 1600 chars   |
+| **Instagram** | ✅ Active | Graph API, plain text, 1000 chars              |
+| **Twitter**   | ✅ Active | API v2, plain text, 10000 chars                |
 
 **Environment Variables Required:**
+
 - `TELEGRAM_BOT_TOKEN` (configured ✅)
 - `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` (configured ✅)
 - `INSTAGRAM_ACCESS_TOKEN`, `INSTAGRAM_ACCOUNT_ID` (configured ✅)
@@ -307,6 +313,7 @@ User Message → ChannelRouter → ConversationEngine → AgenticRAGOrchestrator
 **Question:** Should we initialize `app.state.orchestrator` properly elsewhere, or is the fallback sufficient?
 
 **Recommendation:**
+
 - If multi-channel is the only consumer, keep current pattern (fallback is primary)
 - If other parts need orchestrator, initialize it in `initialize_intelligent_router()` and store in `app.state`
 
@@ -315,6 +322,7 @@ User Message → ChannelRouter → ConversationEngine → AgenticRAGOrchestrator
 **Current:** 4 hardcoded essential tools
 
 **Future Enhancement:**
+
 - Make tool list configurable via environment variables
 - Allow dynamic tool loading based on available services
 - Support tool plugins/extensions
@@ -324,6 +332,7 @@ User Message → ChannelRouter → ConversationEngine → AgenticRAGOrchestrator
 **Gap Identified:** No unit tests for `create_default_tools()`
 
 **Recommendation:** Add test file:
+
 ```python
 # backend/tests/unit/services/rag/agentic/test_tools_factory.py
 def test_create_default_tools_with_search_service():
@@ -340,11 +349,13 @@ def test_create_default_tools_without_search_service():
 ### 4. Monitoring
 
 **Add Metrics:**
+
 - Channel Router initialization success/failure rate
 - Tool initialization time per tool
 - Fallback orchestrator usage frequency
 
 **Alert Triggers:**
+
 - Channel Router initialization failure
 - Less than 3 tools available (degraded state)
 
@@ -352,10 +363,10 @@ def test_create_default_tools_without_search_service():
 
 ## Files Modified
 
-| File | Changes | Purpose |
-|------|---------|---------|
-| `backend/app/setup/service_initializer.py` | Lines 828-847 modified | Fixed orchestrator initialization |
-| `backend/services/rag/agentic/tools.py` | Lines 970-999 added | Created `create_default_tools()` helper |
+| File                                       | Changes                | Purpose                                 |
+| ------------------------------------------ | ---------------------- | --------------------------------------- |
+| `backend/app/setup/service_initializer.py` | Lines 828-847 modified | Fixed orchestrator initialization       |
+| `backend/services/rag/agentic/tools.py`    | Lines 970-999 added    | Created `create_default_tools()` helper |
 
 **Commit:** 8dec12830
 **Branch:** main
@@ -384,4 +395,4 @@ def test_create_default_tools_without_search_service():
 **Production:** ✅ STABLE
 **Multi-Channel:** ✅ OPERATIONAL
 
-*End of Document*
+_End of Document_

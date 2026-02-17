@@ -120,11 +120,11 @@ Se gli utenti accedono a `https://www.balizero.com/portal/*`, possiamo reindiriz
 ```typescript
 // Redirect portal routes to my.balizero.com
 if (
-  request.nextUrl.pathname.startsWith('/portal') &&
-  request.nextUrl.hostname !== 'my.balizero.com'
+  request.nextUrl.pathname.startsWith("/portal") &&
+  request.nextUrl.hostname !== "my.balizero.com"
 ) {
   const url = request.nextUrl.clone();
-  url.hostname = 'my.balizero.com';
+  url.hostname = "my.balizero.com";
   return NextResponse.redirect(url, 301);
 }
 ```
@@ -266,9 +266,9 @@ export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // Redirect portal routes to dedicated subdomain
-  if (pathname.startsWith('/portal') && hostname !== 'my.balizero.com') {
+  if (pathname.startsWith("/portal") && hostname !== "my.balizero.com") {
     const url = request.nextUrl.clone();
-    url.hostname = 'my.balizero.com';
+    url.hostname = "my.balizero.com";
     return NextResponse.redirect(url, 301);
   }
 

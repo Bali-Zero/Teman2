@@ -101,16 +101,16 @@
 ### Utilizzo:
 
 ```typescript
-import { typeSafetyMetrics } from '@/lib/metrics/type-safety-metrics';
-import { logTypeSafety } from '@/lib/utils/type-safety-logger';
+import { typeSafetyMetrics } from "@/lib/metrics/type-safety-metrics";
+import { logTypeSafety } from "@/lib/utils/type-safety-logger";
 
 // Track improvement
-typeSafetyMetrics.trackImprovement(37, 15, 'useChatPage.ts');
+typeSafetyMetrics.trackImprovement(37, 15, "useChatPage.ts");
 
 // Log operation
 logTypeSafety({
-  file: 'useChatPage.ts',
-  action: 'any_replaced',
+  file: "useChatPage.ts",
+  action: "any_replaced",
   metadata: { before: 1, after: 0 },
 });
 

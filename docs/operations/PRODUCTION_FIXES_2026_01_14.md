@@ -79,12 +79,13 @@ The WebSocket client was attempting to authenticate by passing `userId` and `use
 
 ```typescript
 // Get token from storage
-const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+const token =
+  localStorage.getItem("auth_token") || sessionStorage.getItem("auth_token");
 
 // Validate JWT format
-const tokenParts = token.split('.');
+const tokenParts = token.split(".");
 if (tokenParts.length !== 3 || token.length < 50) {
-  logger.warn('Invalid token format detected');
+  logger.warn("Invalid token format detected");
   return;
 }
 

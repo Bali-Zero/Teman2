@@ -200,7 +200,7 @@ mv Dockerfile.old Dockerfile
 ## Success Criteria
 
 - [x] React Query: Cache hit rate > 80% dopo 5 min di navigazione — **DONE** (QueryProvider in layout.tsx, hooks: useClientsQuery, useArticlesQuery, useDashboardData, etc.)
-- [x] Rate Limiting: 429 responses dopo 100 req/min — **DONE** (Redis sliding window in middleware/rate_limiter.py, X-RateLimit-* headers)
+- [x] Rate Limiting: 429 responses dopo 100 req/min — **DONE** (Redis sliding window in middleware/rate_limiter.py, X-RateLimit-\* headers)
 - [x] Brotli: Content-Encoding: br header presente — **DONE** (brotli-asgi in middleware_config.py, gzip fallback)
 - [x] DB: EXPLAIN ANALYZE mostra Index Scan invece di Seq Scan — **DONE** (migrations 003 + 006: tax, visa, timeline, conversations, documents, practices, clients, query_analytics indexes)
 - [x] Docker: Immagine < 500MB (prima era ~1GB) — **DONE** (multi-stage Dockerfile with builder/runtime separation)
@@ -210,11 +210,11 @@ mv Dockerfile.old Dockerfile
 
 All 5 phases completed. See individual files for details:
 
-| Phase | Status | Key Files |
-|-------|--------|-----------|
-| 1. React Query | ✅ Complete | `apps/mouth/src/components/providers/QueryProvider.tsx`, `apps/mouth/src/hooks/use*Query.ts` |
-| 2a. Rate Limiting | ✅ Complete | `backend/middleware/rate_limiter.py` |
-| 2b. Brotli Compression | ✅ Complete | `backend/app/setup/middleware_config.py`, `requirements-prod.txt` |
-| 3a. DB Indexes | ✅ Complete | `backend/db/migrations_v2/003_portal_performance_indexes.sql`, `006_performance_indexes_advanced.sql` |
-| 3b. Query Cache | ✅ Complete | `backend/core/cache.py` (cached, cached_query, invalidate_namespace) |
-| 4. Docker | ✅ Complete | `apps/backend-rag/Dockerfile` (multi-stage) |
+| Phase                  | Status      | Key Files                                                                                             |
+| ---------------------- | ----------- | ----------------------------------------------------------------------------------------------------- |
+| 1. React Query         | ✅ Complete | `apps/mouth/src/components/providers/QueryProvider.tsx`, `apps/mouth/src/hooks/use*Query.ts`          |
+| 2a. Rate Limiting      | ✅ Complete | `backend/middleware/rate_limiter.py`                                                                  |
+| 2b. Brotli Compression | ✅ Complete | `backend/app/setup/middleware_config.py`, `requirements-prod.txt`                                     |
+| 3a. DB Indexes         | ✅ Complete | `backend/db/migrations_v2/003_portal_performance_indexes.sql`, `006_performance_indexes_advanced.sql` |
+| 3b. Query Cache        | ✅ Complete | `backend/core/cache.py` (cached, cached_query, invalidate_namespace)                                  |
+| 4. Docker              | ✅ Complete | `apps/backend-rag/Dockerfile` (multi-stage)                                                           |

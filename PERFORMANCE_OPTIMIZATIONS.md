@@ -66,12 +66,14 @@ Memoized list management with:
 - Infinite scroll support via `useInfiniteScroll`
 
 ```tsx
-const { paginatedItems, searchQuery, setSearchQuery, hasMore, loadMore } = useOptimizedList({
-  items: clients,
-  pageSize: 50,
-  filterFn: (client, query) => client.name.toLowerCase().includes(query.toLowerCase()),
-  keyExtractor: (client) => client.id,
-});
+const { paginatedItems, searchQuery, setSearchQuery, hasMore, loadMore } =
+  useOptimizedList({
+    items: clients,
+    pageSize: 50,
+    filterFn: (client, query) =>
+      client.name.toLowerCase().includes(query.toLowerCase()),
+    keyExtractor: (client) => client.id,
+  });
 ```
 
 ### 5. Code Cleanup

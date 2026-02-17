@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from "react";
 
 /**
  * Debounce a value
@@ -24,7 +24,7 @@ export function useDebounce<T>(value: T, delay: number): T {
  */
 export function useDebouncedCallback<T extends (...args: unknown[]) => unknown>(
   callback: T,
-  delay: number
+  delay: number,
 ): (...args: Parameters<T>) => void {
   const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -46,9 +46,9 @@ export function useDebouncedCallback<T extends (...args: unknown[]) => unknown>(
         callback(...args);
       }, delay);
     },
-    [callback, delay]
+    [callback, delay],
   );
 }
 
 // Add missing import
-import React from 'react';
+import React from "react";

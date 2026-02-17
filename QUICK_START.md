@@ -23,6 +23,7 @@ curl https://nuzantara-rag.fly.dev/api/health
 ## Step 2: Update Frontend (10 minutes)
 
 ### A. Add the new files (already created):
+
 - ✅ `apps/mouth/src/lib/api/chat/webhook-chat.api.ts`
 - ✅ `apps/mouth/src/hooks/useConversationPersistence.ts`
 
@@ -43,7 +44,7 @@ export function ChatComponent() {
       sessionId,
       { source: 'webapp' }
     );
-    
+
     // Use response.answer for UI
     // response.persisted tells you if it saved
     // response.conversation_id is the DB record
@@ -92,6 +93,7 @@ psql $DATABASE_URL -c "SELECT COUNT(*) FROM conversations;"
 ## ✅ Success!
 
 Your webapp now has full conversation persistence:
+
 - ✅ Messages saved automatically
 - ✅ Context maintained after refresh
 - ✅ Cleanup runs daily
@@ -102,19 +104,22 @@ Your webapp now has full conversation persistence:
 ## Troubleshooting
 
 **Messages not persisting?**
+
 ```bash
 # Check backend logs
 flyctl logs -a nuzantara-rag | grep "persisted"
 ```
 
 **Context not working?**
+
 ```typescript
 // Add debug logging
-console.log('Session ID:', sessionId);
-console.log('Persisted:', response.persisted);
+console.log("Session ID:", sessionId);
+console.log("Persisted:", response.persisted);
 ```
 
 **Need help?**
+
 - Full guide: `DEPLOYMENT_GUIDE.md`
 - Documentation: `apps/backend-rag/backend/docs/CONVERSATION_PERSISTENCE.md`
 - Tests: `apps/backend-rag/backend/tests/test_conversation_persistence.py`

@@ -42,7 +42,7 @@ cd apps/zantara-media/dashboard
 ### Tax Dashboard
 
 ```tsx
-import { TaxSummaryCard, TaxObligationsList } from '@/components/portal/tax';
+import { TaxSummaryCard, TaxObligationsList } from "@/components/portal/tax";
 
 export default function TaxDashboard() {
   return (
@@ -57,7 +57,7 @@ export default function TaxDashboard() {
 ### Visa Dashboard
 
 ```tsx
-import { VisaStatusCard, VisaHistoryList } from '@/components/portal/visa';
+import { VisaStatusCard, VisaHistoryList } from "@/components/portal/visa";
 
 export default function VisaDashboard() {
   return (
@@ -72,9 +72,9 @@ export default function VisaDashboard() {
 ### Combined Portal Home
 
 ```tsx
-import { TaxSummaryCard, TaxObligationsList } from '@/components/portal/tax';
-import { VisaStatusCard, VisaSummaryCard } from '@/components/portal/visa';
-import { TimelineEventsList } from '@/components/portal/timeline';
+import { TaxSummaryCard, TaxObligationsList } from "@/components/portal/tax";
+import { VisaStatusCard, VisaSummaryCard } from "@/components/portal/visa";
+import { TimelineEventsList } from "@/components/portal/timeline";
 
 export default function PortalHome() {
   const clientId = 123; // From auth context
@@ -204,7 +204,7 @@ All components use JWT authentication via Authorization header:
 
 ```tsx
 // In your API client
-const token = localStorage.getItem('portal_jwt');
+const token = localStorage.getItem("portal_jwt");
 
 fetch(`${API_URL}/api/portal/taxes`, {
   headers: {
@@ -274,10 +274,10 @@ npm run test:e2e portal-ui
 Components support i18n via `next-intl`:
 
 ```tsx
-import { useTranslations } from 'next-intl';
+import { useTranslations } from "next-intl";
 
-const t = useTranslations('Portal');
-<h2>{t('tax.title')}</h2>;
+const t = useTranslations("Portal");
+<h2>{t("tax.title")}</h2>;
 ```
 
 ## 📊 Analytics
@@ -287,11 +287,11 @@ Track user interactions:
 ```tsx
 // components/portal/analytics.ts
 export const trackPortalView = (page: string) => {
-  analytics.track('portal_view', { page });
+  analytics.track("portal_view", { page });
 };
 
 export const trackCTAClick = (action: string) => {
-  analytics.track('portal_cta', { action });
+  analytics.track("portal_cta", { action });
 };
 ```
 

@@ -167,31 +167,31 @@ Skills are TypeScript/JavaScript files with this structure:
 // ~/.claude/skills/nuzantara-deploy.ts
 
 export default {
-  name: 'deploy',
-  description: 'Deploy Nuzantara backend to Fly.io with verification',
+  name: "deploy",
+  description: "Deploy Nuzantara backend to Fly.io with verification",
 
   // This is loaded only when skill is invoked
   async run({ args, tools }) {
     // Step 1: Run tests
     const testResult = await tools.bash({
-      command: 'cd apps/backend-rag && source .venv/bin/activate && pytest',
-      description: 'Run backend tests',
+      command: "cd apps/backend-rag && source .venv/bin/activate && pytest",
+      description: "Run backend tests",
     });
 
     if (testResult.exitCode !== 0) {
-      return '❌ Tests failed. Aborting deploy.';
+      return "❌ Tests failed. Aborting deploy.";
     }
 
     // Step 2: Deploy
     const deployResult = await tools.bash({
-      command: 'fly deploy -c apps/backend-rag/fly.toml',
-      description: 'Deploy to Fly.io',
+      command: "fly deploy -c apps/backend-rag/fly.toml",
+      description: "Deploy to Fly.io",
     });
 
     // Step 3: Verify
     const healthCheck = await tools.bash({
-      command: 'curl https://nuzantara-rag.fly.dev/health',
-      description: 'Check health endpoint',
+      command: "curl https://nuzantara-rag.fly.dev/health",
+      description: "Check health endpoint",
     });
 
     return `✅ Deploy complete!\n${healthCheck.stdout}`;
@@ -226,14 +226,14 @@ mkdir -p ~/.claude/skills/nuzantara
 #### 3. Provide Clear Descriptions
 
 ```typescript
-description: 'Deploy Nuzantara backend to Fly.io, run health checks, and verify RAG endpoints are responding';
+description: "Deploy Nuzantara backend to Fly.io, run health checks, and verify RAG endpoints are responding";
 ```
 
 #### 4. Handle Errors Gracefully
 
 ```typescript
 try {
-  const result = await tools.bash({ command: '...' });
+  const result = await tools.bash({ command: "..." });
   if (result.exitCode !== 0) {
     return `❌ Failed: ${result.stderr}`;
   }
@@ -307,9 +307,9 @@ The **Lazy Agent Loader** skill creates a registry of available agents/workflows
 // Registry (always in context, ~200 tokens)
 {
   agents: [
-    { name: 'deploy', keywords: ['deploy', 'fly.io', 'production'] },
-    { name: 'test', keywords: ['test', 'pytest', 'quality'] },
-    { name: 'crm', keywords: ['client', 'practice', 'database'] },
+    { name: "deploy", keywords: ["deploy", "fly.io", "production"] },
+    { name: "test", keywords: ["test", "pytest", "quality"] },
+    { name: "crm", keywords: ["client", "practice", "database"] },
   ];
 }
 
@@ -422,13 +422,21 @@ Full implementation of a Nuzantara-specific skill:
 // ~/.claude/skills/nuzantara/populate-crm.ts
 
 export default {
-  name: 'populate-crm',
+  name: "populate-crm",
   description:
-    'Populate Nuzantara CRM with realistic test data for clients, companies, and practices',
+    "Populate Nuzantara CRM with realistic test data for clients, companies, and practices",
 
   args: {
-    clients: { type: 'number', default: 10, description: 'Number of clients to create' },
-    practices: { type: 'number', default: 15, description: 'Number of practices to create' },
+    clients: {
+      type: "number",
+      default: 10,
+      description: "Number of clients to create",
+    },
+    practices: {
+      type: "number",
+      default: 15,
+      description: "Number of practices to create",
+    },
   },
 
   async run({ args, tools }) {
@@ -436,17 +444,19 @@ export default {
 
     // Step 1: Read name lists
     const clientNames = await tools.read({
-      file_path: '/Users/antonellosiano/Projects/nuzantara/data/client-names.txt',
+      file_path:
+        "/Users/antonellosiano/Projects/nuzantara/data/client-names.txt",
     });
 
     const companyNames = await tools.read({
-      file_path: '/Users/antonellosiano/Projects/nuzantara/data/company-names.txt',
+      file_path:
+        "/Users/antonellosiano/Projects/nuzantara/data/company-names.txt",
     });
 
     // Step 2: Generate SQL
     const sql = generateCRMInsertSQL({
-      clientNames: clientNames.split('\n'),
-      companyNames: companyNames.split('\n'),
+      clientNames: clientNames.split("\n"),
+      companyNames: companyNames.split("\n"),
       numClients: clients,
       numPractices: practices,
     });
@@ -458,7 +468,7 @@ export default {
 
     // Step 4: Verify
     const verification = await tools.mcp_postgres__query({
-      sql: 'SELECT COUNT(*) FROM clients; SELECT COUNT(*) FROM practices;',
+      sql: "SELECT COUNT(*) FROM clients; SELECT COUNT(*) FROM practices;",
     });
 
     return `
@@ -480,7 +490,12 @@ Next steps:
   },
 };
 
-function generateCRMInsertSQL({ clientNames, companyNames, numClients, numPractices }) {
+function generateCRMInsertSQL({
+  clientNames,
+  companyNames,
+  numClients,
+  numPractices,
+}) {
   // Implementation here
   // Generate realistic INSERT statements with:
   // - Random client names from list

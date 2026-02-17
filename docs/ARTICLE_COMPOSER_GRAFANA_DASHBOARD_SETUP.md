@@ -42,9 +42,9 @@ curl -X POST \
 apiVersion: 1
 
 providers:
-  - name: 'Article Composer'
+  - name: "Article Composer"
     orgId: 1
-    folder: 'Monitoring'
+    folder: "Monitoring"
     type: file
     disableDeletion: false
     updateIntervalSeconds: 10

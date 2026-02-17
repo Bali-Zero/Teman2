@@ -318,8 +318,8 @@ Nessuna opinione. 200-300 parole max.]
 <div class="bz-expert-quote">
   <div class="bz-quote-icon">💡</div>
   <blockquote>
-    "La nostra esperienza con 500+ clienti suggerisce di non aspettare l'ultimo momento per il
-    rinnovo KITAS."
+    "La nostra esperienza con 500+ clienti suggerisce di non aspettare l'ultimo
+    momento per il rinnovo KITAS."
   </blockquote>
   <cite>— Team Bali Zero</cite>
 </div>
@@ -337,7 +337,8 @@ Nessuna opinione. 200-300 parole max.]
 
 <!-- Success/Opportunity -->
 <div class="bz-alert bz-alert-success">
-  <strong>✅ Opportunità:</strong> Chi fa domanda entro il 31/12 risparmia il 20%.
+  <strong>✅ Opportunità:</strong> Chi fa domanda entro il 31/12 risparmia il
+  20%.
 </div>
 
 <!-- Info -->
@@ -355,8 +356,12 @@ Nessuna opinione. 200-300 parole max.]
 
 ```html
 <div class="bz-cta-group">
-  <a href="/contact" class="bz-cta bz-cta-primary"> 💬 Prenota Consultazione </a>
-  <a href="/guides/kitas" class="bz-cta bz-cta-secondary"> 📄 Scarica Guida Completa </a>
+  <a href="/contact" class="bz-cta bz-cta-primary">
+    💬 Prenota Consultazione
+  </a>
+  <a href="/guides/kitas" class="bz-cta bz-cta-secondary">
+    📄 Scarica Guida Completa
+  </a>
 </div>
 ```
 

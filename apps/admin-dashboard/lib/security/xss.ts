@@ -6,18 +6,19 @@
  * Escape HTML entities to prevent XSS
  */
 export function escapeHtml(text: string): string {
-  const div = typeof window !== 'undefined' ? document.createElement('div') : null;
+  const div =
+    typeof window !== "undefined" ? document.createElement("div") : null;
   if (div) {
     div.textContent = text;
     return div.innerHTML;
   }
 
   return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 /**
@@ -26,8 +27,11 @@ export function escapeHtml(text: string): string {
 export function sanitizeSqlForDisplay(query: string): string {
   // Remove potential HTML/script tags
   return query
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '[SCRIPT REMOVED]')
-    .replace(/<[^>]+>/g, '');
+    .replace(
+      /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+      "[SCRIPT REMOVED]",
+    )
+    .replace(/<[^>]+>/g, "");
 }
 
 /**

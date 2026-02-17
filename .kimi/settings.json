@@ -17,7 +17,7 @@
     "code_language": "en",
     "domains": [
       "immigration",
-      "company_formation", 
+      "company_formation",
       "tax",
       "business_licensing",
       "legal_properties"
@@ -40,8 +40,8 @@
     "evidence_thresholds": {
       "abstain": 0.15,
       "cautious_min": 0.15,
-      "cautious_max": 0.60,
-      "normal": 0.60
+      "cautious_max": 0.6,
+      "normal": 0.6
     },
     "trusted_tools": ["calculator", "get_pricing", "team_knowledge"],
     "backend_url": "https://nuzantara-rag.fly.dev"
@@ -62,12 +62,23 @@
     {
       "name": "nuzantara-rag",
       "description": "Main Nuzantara RAG MCP server",
-      "tools": ["search_kbli", "inspect_kbli", "chat_kbli", "ask_legal", "check_health"]
+      "tools": [
+        "search_kbli",
+        "inspect_kbli",
+        "chat_kbli",
+        "ask_legal",
+        "check_health"
+      ]
     },
     {
       "name": "nuzantara-advanced",
       "description": "Advanced operations MCP server",
-      "tools": ["check_fly_status", "run_backend_tests", "check_system_health", "search_codebase"]
+      "tools": [
+        "check_fly_status",
+        "run_backend_tests",
+        "check_system_health",
+        "search_codebase"
+      ]
     }
   ]
 }

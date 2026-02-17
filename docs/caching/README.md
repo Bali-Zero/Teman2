@@ -143,13 +143,13 @@ python scripts/caching/master_pipeline.py phase5 \
 
 ### 5-Phase Workflow
 
-| Phase | Tool | Input | Output | Duration | Cost |
-|-------|------|-------|--------|----------|------|
-| **1. Golden Seeds** | NotebookLM + Claude Max | KB docs | 20-30 seeds | 2-3 days | €0 |
-| **2. Variations** | Gemini AI Studio | Seeds | 1,500-3,000 variations | 2-3 days | €0 |
-| **3. Verification** | ChatGPT Plus | 15% sample | Pass/fail report | 1-2 days | €0 |
-| **4. Review** | Claude Max + Windsurf | Top 50 | Approved set | 1 day | €0 |
-| **5. Upload** | Redis CLI | Cache-ready | Live cache | 1 hour | €0 |
+| Phase               | Tool                    | Input       | Output                 | Duration | Cost |
+| ------------------- | ----------------------- | ----------- | ---------------------- | -------- | ---- |
+| **1. Golden Seeds** | NotebookLM + Claude Max | KB docs     | 20-30 seeds            | 2-3 days | €0   |
+| **2. Variations**   | Gemini AI Studio        | Seeds       | 1,500-3,000 variations | 2-3 days | €0   |
+| **3. Verification** | ChatGPT Plus            | 15% sample  | Pass/fail report       | 1-2 days | €0   |
+| **4. Review**       | Claude Max + Windsurf   | Top 50      | Approved set           | 1 day    | €0   |
+| **5. Upload**       | Redis CLI               | Cache-ready | Live cache             | 1 hour   | €0   |
 
 **Total:** 7-10 days, **€0 cost**
 

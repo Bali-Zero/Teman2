@@ -12,6 +12,7 @@
 ## 🎯 SOTA CHARACTERISTICS
 
 **State-of-the-Art Questions:**
+
 - Integrate 3+ domains simultaneously
 - Real-world complex scenarios
 - Multiple legal entities
@@ -30,6 +31,7 @@
 ## FULL RELOCATION SCENARIOS (15 domande)
 
 ### 001_italian_family_full_relocation
+
 ```
 Famiglia italiana (2 adulti + 2 bambini) si trasferisce in Indonesia:
 setup completo PT PMA + visa + property + tax + scuola?
@@ -257,6 +259,7 @@ Lunghezza: 1000-1200 parole.
 ```
 
 ### 002_succession_planning_pt_pma_family
+
 ```
 Succession planning PT PMA: investitore straniero vuole passare business ai figli?
 
@@ -313,6 +316,7 @@ Lunghezza: 900-1100 parole.
 ```
 
 [... altre 13 domande full relocation:
+
 - Retired couple + adult children relocation
 - Single entrepreneur + property portfolio
 - Corporate transfer + family + housing
@@ -324,6 +328,7 @@ Lunghezza: 900-1100 parole.
 ## COMPLEX BUSINESS STRUCTURES (15 domande)
 
 ### 016_multiple_pt_pma_one_investor
+
 ```
 Uno straniero può avere multiple PT PMA? Struttura + visa + tax?
 
@@ -445,6 +450,7 @@ Lunghezza: 1000-1200 parole.
 ```
 
 [... altre 14 domande complex structures:
+
 - Partnership structures (foreign + Indonesian partners)
 - Franchise + franchisor + franchise fees taxation
 - Import/export business + licensing + KBLI
@@ -457,6 +463,7 @@ Lunghezza: 1000-1200 parole.
 ## CRISIS & CONTINGENCY SCENARIOS (12 domande)
 
 ### 031_pt_pma_bankruptcy_visa_property
+
 ```
 Se PT PMA fallisce: cosa succede a KITAS Investor e Hak Pakai property?
 
@@ -595,6 +602,7 @@ Lunghezza: 1100-1300 parole.
 ```
 
 [... altre 11 domande crisis scenarios:
+
 - Divorce + property division + KITAS dependent
 - Death of KITAS holder + inheritance + visa for heirs
 - Tax audit + penalties + KITAS implications
@@ -608,6 +616,7 @@ Lunghezza: 1100-1300 parole.
 ## TAX OPTIMIZATION STRATEGIES (10 domande)
 
 ### 043_italian_investor_tax_treaty_optimization
+
 ```
 Investitore italiano in Indonesia: come ottimizzare tasse usando tax treaty?
 
@@ -763,6 +772,7 @@ Lunghezza: 1200-1400 parole.
 ```
 
 [... altre 9 domande tax optimization:
+
 - Loss carryforward strategies
 - R&D tax incentives PT PMA
 - Depreciation optimization
@@ -787,6 +797,7 @@ Lunghezza: 1200-1400 parole.
 **Pending:** 80
 
 ### Breakdown:
+
 - [ ] Full Relocation Scenarios (15)
 - [ ] Complex Business Structures (15)
 - [ ] Crisis & Contingency (12)

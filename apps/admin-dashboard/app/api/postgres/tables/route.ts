@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
-import { Pool } from 'pg';
-import { logger } from '@/lib/logger';
+import { NextResponse } from "next/server";
+import { Pool } from "pg";
+import { logger } from "@/lib/logger";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -21,12 +21,14 @@ export async function GET() {
 
       const tablesWithCounts = await Promise.all(
         result.rows.map(async (row) => {
-          const countResult = await client.query(`SELECT count(*) FROM "${row.table_name}"`);
+          const countResult = await client.query(
+            `SELECT count(*) FROM "${row.table_name}"`,
+          );
           return {
             name: row.table_name,
             count: parseInt(countResult.rows[0].count, 10),
           };
-        })
+        }),
       );
 
       return NextResponse.json({ tables: tablesWithCounts });
@@ -34,7 +36,7 @@ export async function GET() {
       client.release();
     }
   } catch (error: any) {
-    logger.error('Postgres Error:', error);
+    logger.error("Postgres Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

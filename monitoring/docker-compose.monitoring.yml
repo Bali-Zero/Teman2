@@ -1,7 +1,7 @@
 # Monitoring Stack for Nuzantara
 # Includes: Prometheus, Grafana, Redis Exporter
 
-version: '3.8'
+version: "3.8"
 
 services:
   prometheus:
@@ -13,11 +13,11 @@ services:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus-data:/prometheus
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-      - '--web.console.templates=/usr/share/prometheus/consoles'
-      - '--web.enable-lifecycle'
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.enable-lifecycle"
     networks:
       - monitoring
 

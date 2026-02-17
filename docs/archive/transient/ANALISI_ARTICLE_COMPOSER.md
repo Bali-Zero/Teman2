@@ -90,7 +90,10 @@ Il componente è molto lungo (~800+ righe). Potrebbe essere spezzato:
 const val = (activeArticle.bali_zero_take as any)[key];
 
 // Meglio:
-const val = activeArticle.bali_zero_take[key as keyof typeof activeArticle.bali_zero_take];
+const val =
+  activeArticle.bali_zero_take[
+    key as keyof typeof activeArticle.bali_zero_take
+  ];
 ```
 
 ### 4. **Error Handling**

@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
-import { Pool } from 'pg';
-import { logger } from '@/lib/logger';
+import { NextResponse } from "next/server";
+import { Pool } from "pg";
+import { logger } from "@/lib/logger";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -25,10 +25,13 @@ export async function GET(request: Request) {
       client.release();
     }
   } catch (error: any) {
-    logger.error('Activity Log Error:', error);
+    logger.error("Activity Log Error:", error);
     // If table doesn't exist, return empty to avoid breaking UI
-    if (error.code === '42P01') {
-      return NextResponse.json({ activities: [], warning: 'Table activity_log not found' });
+    if (error.code === "42P01") {
+      return NextResponse.json({
+        activities: [],
+        warning: "Table activity_log not found",
+      });
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

@@ -64,12 +64,14 @@ Security is the default state, not an afterthought.
 ### Critical Technical Knowledge
 
 #### Embedding Model (FROZEN - NEVER CHANGE)
+
 - **Model**: `text-embedding-3-small` (1536 dims)
 - **Vectors**: 58,880 across 7 collections
 - **Verifica**: `curl https://nuzantara-rag.fly.dev/health | jq '.embeddings.model'`
 - **Cambiare = Invalidare tutti i vettori**
 
 #### KBLI Collection (Flat Payload)
+
 ```json
 {
   "kode_kbli": "56101",
@@ -79,18 +81,21 @@ Security is the default state, not an afterthought.
   "kategori_risiko": "Menengah Rendah"
 }
 ```
+
 - **NON nested** (no `metadata.text`)
 - **NON usare** `SearchService.search_collection()` per KBLI
 - **Usare** query diretta Qdrant REST via `_search_kbli_qdrant()`
 
 #### Evidence Scoring System
-| Score | Response Type | Behavior |
-|-------|---------------|----------|
-| < 0.15 | ABSTAIN | Rifiuto di rispondere, ammetto incertezza |
-| 0.15-0.60 | CAUTIOUS | Rispondo con disclaimer di incertezza |
-| > 0.60 | NORMAL | Risposta confidente |
+
+| Score     | Response Type | Behavior                                  |
+| --------- | ------------- | ----------------------------------------- |
+| < 0.15    | ABSTAIN       | Rifiuto di rispondere, ammetto incertezza |
+| 0.15-0.60 | CAUTIOUS      | Rispondo con disclaimer di incertezza     |
+| > 0.60    | NORMAL        | Risposta confidente                       |
 
 #### Trusted Tools (Bypass Evidence Check)
+
 - `calculator` - Calcoli matematici
 - `get_pricing` - Prezzi Bali Zero (SOLO da PricingTool)
 - `team_knowledge` - Informazioni team
@@ -111,6 +116,7 @@ Security is the default state, not an afterthought.
 ### LangGraph Knowledge Graph Architecture
 
 **5 Core Nodes:**
+
 1. `understand_query` - Intent extraction + entity recognition
 2. `resolve_entities` - Fuzzy matching to KG entity_ids
 3. `traverse_graph` - BFS multi-hop traversal (max 3 hops)
@@ -118,6 +124,7 @@ Security is the default state, not an afterthought.
 5. `synthesize_workflow` - Convert chains to executable workflows
 
 **4 Domain Subgraphs:**
+
 - `company_subgraph` - PT PMA, Perorangan, CV
 - `visa_subgraph` - KITAS, KITAP, VITAS
 - `property_subgraph` - Hak Pakai, HGB
@@ -133,13 +140,13 @@ Security is the default state, not an afterthought.
 
 ### Service Domains
 
-| Domain | Services |
-|--------|----------|
-| **Immigration** | KITAS, KITAP, VITAS, Digital Nomad, Investor, Retirement |
-| **Company Formation** | PT PMA, Local PT, OSS licensing |
-| **Tax Consulting** | NPWP, PPh, PPN, SPT, LKPM |
-| **Business Licensing** | KBLI 2025, sector permits, Halal |
-| **Legal Properties** | HGB, Leasehold, due diligence |
+| Domain                 | Services                                                 |
+| ---------------------- | -------------------------------------------------------- |
+| **Immigration**        | KITAS, KITAP, VITAS, Digital Nomad, Investor, Retirement |
+| **Company Formation**  | PT PMA, Local PT, OSS licensing                          |
+| **Tax Consulting**     | NPWP, PPh, PPN, SPT, LKPM                                |
+| **Business Licensing** | KBLI 2025, sector permits, Halal                         |
+| **Legal Properties**   | HGB, Leasehold, due diligence                            |
 
 ### Client Segments
 
@@ -162,6 +169,7 @@ Security is the default state, not an afterthought.
 > "In Indonesia non si improvvisa. Si costruisce con metodo, pazienza e le giuste connessioni."
 
 **Pillars:**
+
 - 🎯 Expertise - Deep regulatory knowledge
 - ⚡ Efficiency - AI-powered 80% time savings
 - 🔒 Compliance - Proactive monitoring
@@ -170,12 +178,12 @@ Security is the default state, not an afterthought.
 
 ### Pricing Model (Indicative)
 
-| Service | IDR | USD |
-|---------|-----|-----|
-| PT PMA Setup | 20M | ~$1,250 |
-| Complete (PT PMA + KITAS) | 105-165M | ~$6,500-10,500 |
-| KITAS Renewal | 25-40M | ~$1,500-2,500 |
-| Annual Compliance | 66-151M/year | ~$4,200-9,500/year |
+| Service                   | IDR          | USD                |
+| ------------------------- | ------------ | ------------------ |
+| PT PMA Setup              | 20M          | ~$1,250            |
+| Complete (PT PMA + KITAS) | 105-165M     | ~$6,500-10,500     |
+| KITAS Renewal             | 25-40M       | ~$1,500-2,500      |
+| Annual Compliance         | 66-151M/year | ~$4,200-9,500/year |
 
 **CRITICAL**: Prezzi SOLO da `PricingTool`, mai hardcoded!
 
@@ -200,12 +208,14 @@ Security is the default state, not an afterthought.
 ### Evidence-Based Communication
 
 **WRONG:**
+
 ```
 "The database contains outdated PT PMA data"
 "This price is incorrect"
 ```
 
 **CORRECT:**
+
 ```
 "After checking Qdrant collection 'bali_zero_pricing_hybrid',
 document ID xyz contains: [actual content]. This shows..."
@@ -240,6 +250,7 @@ curl https://nuzantara-rag.fly.dev/health
 ### Rogue AI Detection Protocol
 
 Other AI tools (Gemini, Windsurf, Cursor) have repeatedly broken production by:
+
 - Removing "unused" imports (e.g., `Any` from typing)
 - Renaming/deleting functions
 - Deleting entire modules
@@ -261,19 +272,23 @@ git commit --no-verify -m "message"
 ### Available MCP Tools (Nuzantara Server)
 
 **KBLI Tools:**
+
 - `search_kbli(query, limit)` - Search business codes
 - `inspect_kbli(code)` - Get KBLI details
 - `chat_kbli(query)` - AI KBLI consultation
 
 **Legal RAG:**
+
 - `ask_legal(question, user_id, session_id)` - Agentic RAG query (requires JWT)
 
 **Monitoring:**
+
 - `check_health()` - Backend health
 - `check_health_detailed()` - Per-service health
 - `get_qdrant_metrics()` - Vector DB metrics
 
 **Prompts:**
+
 - `immigration_check(visa_type, nationality)`
 - `business_setup(business_type, investor_type)`
 - `kbli_comparison(code1, code2)`
@@ -320,6 +335,7 @@ As a permanent member of Nuzantara, I commit to:
 When activated, I am **Kimi**, a navigational intelligence and permanent member of Nuzantara. I transform bureaucratic complexity into traversable pathways for Bali Zero clients.
 
 **My essence:**
+
 - Epistemic humility (I know what I don't know)
 - Anticipatory helpfulness (I guide, not just answer)
 - Evidence-based truth (I verify before concluding)

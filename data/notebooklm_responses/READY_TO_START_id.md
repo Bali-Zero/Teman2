@@ -10,17 +10,17 @@
 
 ### 1. Dokumentasi Lengkap
 
-| File | Baris | Status |
-|------|-------|--------|
-| `TEAM_GUIDE_id.md` | 404 | ✅ Lengkap |
-| `DOCUMENTS_MAPPING_id.md` | 383 | ✅ Lengkap |
-| `PROGRESS_TEMPLATE_id.md` | 241 | ✅ Lengkap |
-| `visa/questions_template.md` | 358 | ✅ Lengkap (120 pertanyaan) |
-| `kbli/questions_template.md` | 514 | ✅ Lengkap (200 pertanyaan) |
-| `tax/questions_template.md` | N/A | ✅ Lengkap (50 pertanyaan) |
-| `property/questions_template.md` | N/A | ✅ Lengkap (40 pertanyaan) |
-| `cross_domain/questions_template.md` | N/A | ✅ Lengkap (150 pertanyaan) |
-| `multi_domain/questions_template.md` | N/A | ✅ Lengkap (80 pertanyaan) |
+| File                                 | Baris | Status                      |
+| ------------------------------------ | ----- | --------------------------- |
+| `TEAM_GUIDE_id.md`                   | 404   | ✅ Lengkap                  |
+| `DOCUMENTS_MAPPING_id.md`            | 383   | ✅ Lengkap                  |
+| `PROGRESS_TEMPLATE_id.md`            | 241   | ✅ Lengkap                  |
+| `visa/questions_template.md`         | 358   | ✅ Lengkap (120 pertanyaan) |
+| `kbli/questions_template.md`         | 514   | ✅ Lengkap (200 pertanyaan) |
+| `tax/questions_template.md`          | N/A   | ✅ Lengkap (50 pertanyaan)  |
+| `property/questions_template.md`     | N/A   | ✅ Lengkap (40 pertanyaan)  |
+| `cross_domain/questions_template.md` | N/A   | ✅ Lengkap (150 pertanyaan) |
+| `multi_domain/questions_template.md` | N/A   | ✅ Lengkap (80 pertanyaan)  |
 
 **Total Template Pertanyaan:** 640 pertanyaan siap
 
@@ -70,6 +70,7 @@ data/notebooklm_responses/
 ## 🎯 Pembagian Tim
 
 ### Orang 1: SPESIALIS VISA
+
 - **Target:** 120 pertanyaan
 - **Notebook:** "Nuzantara - Visa & Immigration"
 - **Template:** `visa/questions_template.md`
@@ -78,6 +79,7 @@ data/notebooklm_responses/
 - **Status:** ✅ Siap mulai
 
 ### Orang 2: SPESIALIS KBLI
+
 - **Target:** 200 pertanyaan
 - **Notebook:** "Nuzantara - KBLI & Licensing"
 - **Template:** `kbli/questions_template.md`
@@ -86,6 +88,7 @@ data/notebooklm_responses/
 - **Status:** ✅ Siap mulai SEKARANG (semua dokumen sudah ada!)
 
 ### Orang 3: SPESIALIS PAJAK
+
 - **Target:** 50 pertanyaan
 - **Notebook:** "Nuzantara - Tax & Compliance"
 - **Template:** `tax/questions_template.md`
@@ -94,6 +97,7 @@ data/notebooklm_responses/
 - **Status:** ✅ Siap mulai
 
 ### Orang 4: SPESIALIS PROPERTI
+
 - **Target:** 40 pertanyaan
 - **Notebook:** "Nuzantara - Property & Real Estate"
 - **Template:** `property/questions_template.md`
@@ -102,6 +106,7 @@ data/notebooklm_responses/
 - **Status:** ✅ Siap mulai
 
 ### Orang 5: KOORDINATOR LINTAS DOMAIN
+
 - **Target:** 150 pertanyaan
 - **Notebook:** "Nuzantara - Cross Domain Level 2"
 - **Template:** `cross_domain/questions_template.md`
@@ -110,6 +115,7 @@ data/notebooklm_responses/
 - **Status:** ⏳ Template siap, tunggu domain dasar
 
 ### Orang 6: MULTI-DOMAIN SOTA
+
 - **Target:** 80 pertanyaan
 - **Notebook:** "Nuzantara - Multi-Domain SOTA"
 - **Template:** `multi_domain/questions_template.md`
@@ -159,17 +165,20 @@ data/notebooklm_responses/
 ## 📊 Timeline yang Diharapkan
 
 ### Minggu 1 (Target: 200 respon)
+
 - Orang 1: 50 respon visa
 - Orang 2: 80 respon KBLI (fokus Tier 1)
 - Orang 3: 40 respon pajak
 - Orang 4: 30 respon properti
 
 ### Minggu 2 (Target: 400 total)
+
 - Orang 1-4: Selesaikan domain dasar
 - Orang 5: Mulai lintas domain (100 respon)
 - Orang 6: Perencanaan
 
 ### Minggu 3 (Target: 640 total)
+
 - Orang 5: Selesaikan lintas domain
 - Orang 6: 80 respon SOTA
 - Review & konsolidasi tim
@@ -233,6 +242,7 @@ multi_domain/003_family_relocation_full.txt
 ## 📞 Workflow Harian
 
 ### Pagi (2 jam):
+
 1. Review `PROGRESS.md` Anda
 2. Prioritaskan 10-15 pertanyaan untuk hari ini
 3. Buka notebook NotebookLM
@@ -240,12 +250,14 @@ multi_domain/003_family_relocation_full.txt
 5. Simpan respon ke file `.txt`
 
 ### Siang (1 jam):
+
 6. Cek mandiri respon (quality gates)
 7. Split respon panjang jika perlu (>1000 kata)
 8. Update `PROGRESS.md`
 9. Flag masalah untuk review tim
 
 ### Output yang Diharapkan:
+
 - **Per orang per hari:** 10-15 respon tervalidasi
 - **Per orang per minggu:** 50-75 respon
 - **Full tim per minggu:** 300-450 respon
@@ -255,16 +267,21 @@ multi_domain/003_family_relocation_full.txt
 ## 🚨 Masalah Umum & Solusi Cepat
 
 ### Masalah: Respon NotebookLM terlalu umum
+
 **Solusi:** Reformulasi dengan lebih banyak konteks + kutipan regulasi
 
 ### Masalah: NotebookLM tidak mengutip dokumen yang diupload
+
 **Solusi:** Eksplisit "Berdasarkan dokumen yang diupload (PP 28/2025...)..."
 
 ### Masalah: Respon kontradiktif atau usang
+
 **Solusi:** Flag di `PROGRESS.md` → review tim
 
 ### Masalah: Respon terlalu panjang (>2000 kata)
+
 **Solusi:** Split menjadi bagian:
+
 ```
 001_topic_part1.txt (Definisi + Persyaratan)
 001_topic_part2.txt (Proses + Timeline)
@@ -285,15 +302,18 @@ Setiap orang update bagian mereka setiap hari:
 ### Progress: 45/120 (37.5%)
 
 #### Selesai (45)
+
 - [x] 001_kitas_investor.txt
 - [x] 002_kitas_work.txt
-...
+      ...
 
 #### Sedang Dikerjakan (10)
+
 - [ ] 046_kemnaker_software_engineer.txt
-...
+      ...
 
 #### Masalah / Catatan
+
 - Pertanyaan 023: NotebookLM menyebut VITAS 211 (USANG) - regenerate
 ```
 
@@ -302,11 +322,13 @@ Setiap orang update bagian mereka setiap hari:
 ## 🎉 Metrik Sukses
 
 ### Sukses Individual:
+
 - ✅ 100% pertanyaan yang ditugaskan selesai
 - ✅ 90%+ lolos cek kualitas mandiri
 - ✅ Update `PROGRESS.md` harian
 
 ### Sukses Tim:
+
 - ✅ 640+ respon total
 - ✅ 80%+ tingkat lolos validasi Damar
 - ✅ Timeline: 2-3 minggu selesai
@@ -320,6 +342,7 @@ Setiap orang update bagian mereka setiap hari:
 **Orang 5, 6:** Template siap, tunggu sinyal ketika dependensi selesai
 
 **Aksi Berikutnya:**
+
 1. Setiap orang: Baca `TEAM_GUIDE_id.md`
 2. Setiap orang: Setup notebook NotebookLM
 3. Orang 2: Upload PDF dan mulai pertanyaan Tier 1

@@ -129,10 +129,11 @@ export const ClientCard = React.memo(
     return (
       prevProps.client.id === nextProps.client.id &&
       prevProps.client.last_sentiment === nextProps.client.last_sentiment &&
-      prevProps.client.last_interaction_date === nextProps.client.last_interaction_date &&
+      prevProps.client.last_interaction_date ===
+        nextProps.client.last_interaction_date &&
       prevProps.isDragging === nextProps.isDragging
     );
-  }
+  },
 );
 ```
 
@@ -225,12 +226,15 @@ function useDashboardData() {
 **Implementazione:**
 
 ```typescript
-import dynamic from 'next/dynamic';
+import dynamic from "next/dynamic";
 
-const ParticlesBackground = dynamic(() => import('@/components/ui/particles-background'), {
-  ssr: false,
-  loading: () => null,
-});
+const ParticlesBackground = dynamic(
+  () => import("@/components/ui/particles-background"),
+  {
+    ssr: false,
+    loading: () => null,
+  },
+);
 ```
 
 **Best Practices:**
@@ -304,11 +308,11 @@ const total = useMemo(() => stats.a + stats.b, [stats.a, stats.b]);
 **Setup:**
 
 ```typescript
-import { initWebVitals } from '@/lib/web-vitals';
+import { initWebVitals } from "@/lib/web-vitals";
 
 initWebVitals({
   enabled: true,
-  debug: process.env.NODE_ENV === 'development',
+  debug: process.env.NODE_ENV === "development",
   sendToAnalytics: (metric) => {
     // Send to Sentry, GA, etc.
   },
@@ -366,13 +370,13 @@ const ESTIMATED_CARD_HEIGHT = 200;
 ```typescript
 // Best practices per staleTime
 useQuery({
-  queryKey: ['dashboard'],
+  queryKey: ["dashboard"],
   staleTime: 30_000, // 30 secondi per dati real-time
   refetchInterval: 60_000, // Auto-refresh ogni minuto
 });
 
 useQuery({
-  queryKey: ['clients'],
+  queryKey: ["clients"],
   staleTime: 60_000, // 1 minuto per dati che cambiano meno spesso
 });
 ```

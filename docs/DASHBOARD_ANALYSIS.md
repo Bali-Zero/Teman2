@@ -92,12 +92,12 @@ Return aggregated JSON
 // apps/mouth/src/components/dashboard/FeaturedArticlesWidget.tsx
 const featuredArticles: FeaturedArticle[] = [
   {
-    id: '1',
-    title: 'Suwung Landfill Closure...',
-    category: 'LIFESTYLE',
-    categoryColor: 'text-red-400',
-    imageUrl: '/static/news/suwung-landfill.jpg',
-    href: 'https://balizero.com/lifestyle/suwung-landfill-crisis',
+    id: "1",
+    title: "Suwung Landfill Closure...",
+    category: "LIFESTYLE",
+    categoryColor: "text-red-400",
+    imageUrl: "/static/news/suwung-landfill.jpg",
+    href: "https://balizero.com/lifestyle/suwung-landfill-crisis",
   },
   // ... altri 4 articoli
 ];
@@ -174,7 +174,7 @@ const featuredArticles: FeaturedArticle[] = [
 // apps/mouth/src/components/dashboard/AiPulseWidget.tsx
 useEffect(() => {
   const fetchPulse = async () => {
-    const data = await api.get<NeuralPulseData>('/api/dashboard/neural-pulse');
+    const data = await api.get<NeuralPulseData>("/api/dashboard/neural-pulse");
     setPulseData(data);
   };
   fetchPulse();
@@ -273,7 +273,7 @@ const handleQuickCreate = async (e: React.FormEvent) => {
   const user = await api.getProfile();
   await api.crm.createClient(quickForm, user.email);
   // Reload stats e navigate
-  router.push('/clients');
+  router.push("/clients");
 };
 ```
 
@@ -317,15 +317,17 @@ const handleQuickCreate = async (e: React.FormEvent) => {
 // apps/mouth/src/components/dashboard/FinancialRealityWidget.tsx
 export function FinancialRealityWidget({ revenue, growth }: Props) {
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
       minimumFractionDigits: 0,
     }).format(amount);
   };
 
   const paidPercentage =
-    revenue.total_revenue > 0 ? (revenue.paid_revenue / revenue.total_revenue) * 100 : 0;
+    revenue.total_revenue > 0
+      ? (revenue.paid_revenue / revenue.total_revenue) * 100
+      : 0;
 }
 ```
 
@@ -688,7 +690,7 @@ mapped_interactions.append({
 ```typescript
 export function useDashboardData() {
   const { data, isLoading, error } = useQuery<DashboardData>({
-    queryKey: ['dashboard'],
+    queryKey: ["dashboard"],
     queryFn: async () => {
       return await dashboardApi.getDashboardSummary();
     },
@@ -779,20 +781,20 @@ export function useDashboardData() {
 trackDashboardLoad(startTime);
 
 // Widget interactions
-trackWidgetInteraction('stats_card', 'active_cases');
-trackWidgetInteraction('whatsapp_preview', 'message_123');
+trackWidgetInteraction("stats_card", "active_cases");
+trackWidgetInteraction("whatsapp_preview", "message_123");
 
 // Email actions
-trackEmailAction('read', emailStats.unread_count);
+trackEmailAction("read", emailStats.unread_count);
 
 // User interactions
-trackUserInteraction('delete_message', 'whatsapp', id);
+trackUserInteraction("delete_message", "whatsapp", id);
 
 // Performance
 trackPerformance({ loadTime, errorCount });
 
 // Errors
-trackError(error, 'dashboard_load');
+trackError(error, "dashboard_load");
 ```
 
 ### A/B Testing

@@ -110,27 +110,27 @@ logger.error('Stream error', {
 ### Pattern Standardizzato:
 
 ```typescript
-import { handleError, handleApiError } from '@/lib/utils/error-handler';
+import { handleError, handleApiError } from "@/lib/utils/error-handler";
 
 // Per errori generici
 handleError(
   error,
   {
-    component: 'ComponentName',
-    action: 'actionName',
-    metadata: { key: 'value' },
+    component: "ComponentName",
+    action: "actionName",
+    metadata: { key: "value" },
   },
-  'User-friendly message'
+  "User-friendly message",
 );
 
 // Per errori API
 const { message, code } = handleApiError(
   error,
   {
-    component: 'ComponentName',
-    action: 'actionName',
+    component: "ComponentName",
+    action: "actionName",
   },
-  'Default message'
+  "Default message",
 );
 ```
 

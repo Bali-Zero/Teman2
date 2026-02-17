@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
-import { QdrantClient } from '@qdrant/js-client-rest';
-import { logger } from '@/lib/logger';
+import { NextResponse } from "next/server";
+import { QdrantClient } from "@qdrant/js-client-rest";
+import { logger } from "@/lib/logger";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 const client = new QdrantClient({
   url: process.env.QDRANT_URL,
@@ -24,21 +24,21 @@ export async function GET() {
             status: info.status,
           };
         } catch (e) {
-          return { name: col.name, error: 'Failed to fetch details' };
+          return { name: col.name, error: "Failed to fetch details" };
         }
-      })
+      }),
     );
 
     return NextResponse.json({ collections: collectionsWithStats });
   } catch (error: any) {
-    logger.error('Qdrant Collections Error:', error);
+    logger.error("Qdrant Collections Error:", error);
     return NextResponse.json(
       {
         error: error.message,
         details: error.cause ? String(error.cause) : undefined,
         url: process.env.QDRANT_URL,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

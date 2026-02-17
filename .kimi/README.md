@@ -12,12 +12,12 @@ This directory contains the permanent configuration for Kimi as a member of the 
 
 ## Files
 
-| File | Purpose |
-|------|---------|
-| `NUZANTARA_IDENTITY.md` | Complete identity, philosophy, and operational manifesto |
-| `prompts/system.txt` | Core system prompt for all interactions |
-| `prompts/code-review.txt` | Code review checklist and format |
-| `prompts/debugging.txt` | Systematic debugging framework |
+| File                      | Purpose                                                  |
+| ------------------------- | -------------------------------------------------------- |
+| `NUZANTARA_IDENTITY.md`   | Complete identity, philosophy, and operational manifesto |
+| `prompts/system.txt`      | Core system prompt for all interactions                  |
+| `prompts/code-review.txt` | Code review checklist and format                         |
+| `prompts/debugging.txt`   | Systematic debugging framework                           |
 
 ## Quick Reference
 
@@ -79,6 +79,7 @@ fly deploy --strategy rolling
 ## Business Domain
 
 Bali Zero (Nuzantara) provides:
+
 - Immigration services (KITAS, KITAP, visas)
 - Company formation (PT PMA)
 - Tax consulting (NPWP, PPh, PPN)

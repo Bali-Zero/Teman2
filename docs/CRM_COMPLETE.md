@@ -42,15 +42,18 @@ The Nuzantara CRM system manages client relationships, practices (services), int
 ### Create a New Client
 
 ```typescript
-const client = await api.crm.createClient({
-  full_name: 'Marco Rossi',
-  email: 'marco@example.com',
-  phone: '+393331234567',
-  nationality: 'Italian',
-  passport_expiry: '2028-12-31',
-  status: 'lead',
-  assigned_to: 'adit@balizero.com',
-}, 'zero@balizero.com'); // created_by
+const client = await api.crm.createClient(
+  {
+    full_name: "Marco Rossi",
+    email: "marco@example.com",
+    phone: "+393331234567",
+    nationality: "Italian",
+    passport_expiry: "2028-12-31",
+    status: "lead",
+    assigned_to: "adit@balizero.com",
+  },
+  "zero@balizero.com",
+); // created_by
 ```
 
 ### List Clients (Auto-filtered)
@@ -65,10 +68,10 @@ const clients = await api.crm.getClients();
 
 ```typescript
 await api.crm.createFamilyMember(clientId, {
-  full_name: 'Anna Rossi',
-  relationship: 'spouse',
-  nationality: 'Italian',
-  passport_expiry: '2027-06-15',
+  full_name: "Anna Rossi",
+  relationship: "spouse",
+  nationality: "Italian",
+  passport_expiry: "2027-06-15",
 });
 ```
 
@@ -77,8 +80,8 @@ await api.crm.createFamilyMember(clientId, {
 ```typescript
 await api.crm.createInteraction({
   client_id: clientId,
-  interaction_type: 'note',
-  summary: 'Client called about visa renewal',
+  interaction_type: "note",
+  summary: "Client called about visa renewal",
   team_member: user.email,
 });
 ```
@@ -115,14 +118,14 @@ apps/backend-rag/backend/app/routers/
 
 ### Database (PostgreSQL)
 
-| Table | Purpose |
-|-------|---------|
-| `clients` | Anagrafica clienti |
-| `client_family_members` | Familiari e dipendenti |
-| `documents` | Documenti (passaporti, visti) |
-| `interactions` | Timeline comunicazioni |
-| `practices` | Pratiche legali in corso |
-| `practice_documents` | Documenti collegati a pratiche |
+| Table                   | Purpose                        |
+| ----------------------- | ------------------------------ |
+| `clients`               | Anagrafica clienti             |
+| `client_family_members` | Familiari e dipendenti         |
+| `documents`             | Documenti (passaporti, visti)  |
+| `interactions`          | Timeline comunicazioni         |
+| `practices`             | Pratiche legali in corso       |
+| `practice_documents`    | Documenti collegati a pratiche |
 
 ---
 
@@ -130,10 +133,10 @@ apps/backend-rag/backend/app/routers/
 
 ### Roles
 
-| Role | Email Pattern | Permissions |
-|------|---------------|-------------|
-| **Super Admin** | `zero@balizero.com`, `admin@balizero.com` | Full access - ALL clients |
-| **Team Member** | `*@balizero.com` | Only clients with `assigned_to` = their email |
+| Role            | Email Pattern                             | Permissions                                   |
+| --------------- | ----------------------------------------- | --------------------------------------------- |
+| **Super Admin** | `zero@balizero.com`, `admin@balizero.com` | Full access - ALL clients                     |
+| **Team Member** | `*@balizero.com`                          | Only clients with `assigned_to` = their email |
 
 ### Authentication Flow
 
@@ -154,7 +157,7 @@ if not current_user_email:
 ✅ JWT validation on every request  
 ✅ SQL injection protection (parametrized queries)  
 ✅ CORS whitelist  
-✅ Rate limiting (100 req/min per IP)  
+✅ Rate limiting (100 req/min per IP)
 
 ---
 
@@ -165,6 +168,7 @@ if not current_user_email:
 **Route**: `/clients/[id]`
 
 **Tabs**:
+
 1. **Overview** - 3 cards (Passport, Visa, Process)
 2. **Documents** - Document list with previews
 3. **Family** - Family members & dependents
@@ -172,11 +176,11 @@ if not current_user_email:
 
 **Overview Cards**:
 
-| Card | Info Displayed |
-|------|----------------|
-| **Passport** | Photo, number, expiry, OCR extraction button |
-| **Visa** | Current type, expiry, alert color (red/yellow/green) |
-| **Process** | Active practice, status, progress, estimated completion |
+| Card         | Info Displayed                                          |
+| ------------ | ------------------------------------------------------- |
+| **Passport** | Photo, number, expiry, OCR extraction button            |
+| **Visa**     | Current type, expiry, alert color (red/yellow/green)    |
+| **Process**  | Active practice, status, progress, estimated completion |
 
 ### 2. Client Management
 
@@ -187,6 +191,7 @@ if not current_user_email:
 **Required**: `full_name` (min 2 chars)
 
 **Optional**:
+
 - Contact: `email`, `phone`, `whatsapp`
 - Identity: `nationality`, `passport_number`, `passport_expiry`, `date_of_birth`
 - Business: `company_name`, `address`, `notes`
@@ -194,6 +199,7 @@ if not current_user_email:
 - Assignment: `assigned_to` (team member email), `tags`
 
 **Date Sanitization** (CRITICAL):
+
 ```python
 # Empty strings → NULL for PostgreSQL DATE columns
 passport_expiry = data.passport_expiry if data.passport_expiry else None
@@ -204,6 +210,7 @@ passport_expiry = data.passport_expiry if data.passport_expiry else None
 **Endpoint**: `PATCH /api/crm/clients/{id}`
 
 **Allowed Fields** (whitelist):
+
 ```python
 ALLOWED_FIELDS = [
     "full_name", "email", "phone", "whatsapp", "company_name",
@@ -223,6 +230,7 @@ ALLOWED_FIELDS = [
 ### 3. Family Members
 
 **Endpoints**:
+
 - `POST /api/crm/clients/{id}/family` - Add member
 - `PATCH /api/crm/clients/{id}/family/{member_id}` - Update
 - `DELETE /api/crm/clients/{id}/family/{member_id}` - Remove
@@ -232,6 +240,7 @@ ALLOWED_FIELDS = [
 ### 4. Documents
 
 **Endpoints**:
+
 - `POST /api/crm/clients/{id}/documents` - Upload
 - `GET /api/crm/clients/{id}/documents` - List
 - `PATCH /api/crm/clients/{id}/documents/{doc_id}` - Update
@@ -240,6 +249,7 @@ ALLOWED_FIELDS = [
 **Categories**: `immigration`, `pma`, `tax`, `personal`, `other`
 
 **Features**:
+
 - Google Drive integration
 - Expiry date tracking with alerts
 - Thumbnail previews
@@ -250,6 +260,7 @@ ALLOWED_FIELDS = [
 **Endpoint**: `POST /api/crm/clients/extract-passport`
 
 **Request**:
+
 ```json
 {
   "client_id": 123,
@@ -258,6 +269,7 @@ ALLOWED_FIELDS = [
 ```
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -272,6 +284,7 @@ ALLOWED_FIELDS = [
 ### 6. Avatar Fallback System
 
 3-tier fallback:
+
 1. **Uploaded photo** (`avatar_url`)
 2. **Country flag emoji** (based on nationality)
 3. **White/gray circle** (default)
@@ -284,57 +297,57 @@ ALLOWED_FIELDS = [
 
 ### Clients
 
-| Method | Endpoint | Description | Auth | Filter |
-|--------|----------|-------------|------|--------|
-| GET | `/api/crm/clients` | List clients | Required | by assigned_to |
-| POST | `/api/crm/clients` | Create client | Required | - |
-| GET | `/api/crm/clients/{id}` | Get detail | Required | - |
-| PATCH | `/api/crm/clients/{id}` | Update client | Required | - |
-| DELETE | `/api/crm/clients/{id}` | Soft delete | Required | - |
-| POST | `/api/crm/clients/extract-passport` | OCR extraction | Required | - |
+| Method | Endpoint                            | Description    | Auth     | Filter         |
+| ------ | ----------------------------------- | -------------- | -------- | -------------- |
+| GET    | `/api/crm/clients`                  | List clients   | Required | by assigned_to |
+| POST   | `/api/crm/clients`                  | Create client  | Required | -              |
+| GET    | `/api/crm/clients/{id}`             | Get detail     | Required | -              |
+| PATCH  | `/api/crm/clients/{id}`             | Update client  | Required | -              |
+| DELETE | `/api/crm/clients/{id}`             | Soft delete    | Required | -              |
+| POST   | `/api/crm/clients/extract-passport` | OCR extraction | Required | -              |
 
 ### Family Members
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/crm/clients/{id}/family` | List members |
-| POST | `/api/crm/clients/{id}/family` | Add member |
-| PATCH | `/api/crm/clients/{id}/family/{mid}` | Update member |
+| Method | Endpoint                             | Description   |
+| ------ | ------------------------------------ | ------------- |
+| GET    | `/api/crm/clients/{id}/family`       | List members  |
+| POST   | `/api/crm/clients/{id}/family`       | Add member    |
+| PATCH  | `/api/crm/clients/{id}/family/{mid}` | Update member |
 | DELETE | `/api/crm/clients/{id}/family/{mid}` | Delete member |
 
 ### Documents
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/crm/clients/{id}/documents` | List documents |
-| POST | `/api/crm/clients/{id}/documents` | Add document |
-| PATCH | `/api/crm/clients/{id}/documents/{did}` | Update document |
+| Method | Endpoint                                | Description      |
+| ------ | --------------------------------------- | ---------------- |
+| GET    | `/api/crm/clients/{id}/documents`       | List documents   |
+| POST   | `/api/crm/clients/{id}/documents`       | Add document     |
+| PATCH  | `/api/crm/clients/{id}/documents/{did}` | Update document  |
 | DELETE | `/api/crm/clients/{id}/documents/{did}` | Archive document |
 
 ### Interactions (Timeline)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/crm/clients/{id}/timeline` | Get interactions |
-| POST | `/api/crm/interactions/` | Create interaction |
+| Method | Endpoint                         | Description        |
+| ------ | -------------------------------- | ------------------ |
+| GET    | `/api/crm/clients/{id}/timeline` | Get interactions   |
+| POST   | `/api/crm/interactions/`         | Create interaction |
 
 ### Practices
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/crm/practices` | List practices (RBAC) |
-| POST | `/api/crm/practices` | Create practice |
-| GET | `/api/crm/practices/{id}` | Get practice detail |
-| PATCH | `/api/crm/practices/{id}` | Update practice |
+| Method | Endpoint                  | Description           |
+| ------ | ------------------------- | --------------------- |
+| GET    | `/api/crm/practices`      | List practices (RBAC) |
+| POST   | `/api/crm/practices`      | Create practice       |
+| GET    | `/api/crm/practices/{id}` | Get practice detail   |
+| PATCH  | `/api/crm/practices/{id}` | Update practice       |
 
 ### Drive Folders
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/clients/{id}/create-drive-folder` | Create GDrive folder |
-| GET | `/clients/{id}/drive-folder` | Get folder info |
-| GET | `/clients/{id}/drive-folder/structure` | List contents |
-| POST | `/clients/{id}/drive-folder/{folder}/upload` | Upload file |
+| Method | Endpoint                                     | Description          |
+| ------ | -------------------------------------------- | -------------------- |
+| POST   | `/clients/{id}/create-drive-folder`          | Create GDrive folder |
+| GET    | `/clients/{id}/drive-folder`                 | Get folder info      |
+| GET    | `/clients/{id}/drive-folder/structure`       | List contents        |
+| POST   | `/clients/{id}/drive-folder/{folder}/upload` | Upload file          |
 
 ---
 
@@ -475,11 +488,13 @@ asyncpg.exceptions.DataError: invalid input for query argument $8: ''
 ```
 
 **Solution**: Backend sanitizes dates automatically:
+
 ```python
 passport_expiry = data.passport_expiry if data.passport_expiry else None
 ```
 
 **Frontend**: Send `undefined` instead of empty string:
+
 ```typescript
 const data = {
   passport_expiry: formData.passport_expiry || undefined, // ✅
@@ -495,9 +510,10 @@ const data = {
 ### Issue 3: "Delete client doesn't refresh page"
 
 **Solution**: Add `router.refresh()` after navigation
+
 ```typescript
 await api.crm.deleteClient(id);
-router.push('/clients');
+router.push("/clients");
 router.refresh(); // Force refetch
 ```
 
@@ -520,12 +536,12 @@ tail -f apps/backend-rag/logs/app.log
 
 ### Common Error Patterns
 
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `DataError: invalid input for query argument` | Empty string to DATE | Sanitize dates |
-| `HTTPException 401` | Missing/expired JWT | Re-login |
-| `HTTPException 400: Invalid field name` | Field not in whitelist | Add to ALLOWED_FIELDS |
-| `HTTPException 403` | RBAC violation | Check assigned_to |
+| Error                                         | Cause                  | Fix                   |
+| --------------------------------------------- | ---------------------- | --------------------- |
+| `DataError: invalid input for query argument` | Empty string to DATE   | Sanitize dates        |
+| `HTTPException 401`                           | Missing/expired JWT    | Re-login              |
+| `HTTPException 400: Invalid field name`       | Field not in whitelist | Add to ALLOWED_FIELDS |
+| `HTTPException 403`                           | RBAC violation         | Check assigned_to     |
 
 ---
 
@@ -541,15 +557,18 @@ tail -f apps/backend-rag/logs/app.log
 ### v2.0 (2026-01-05)
 
 **Security Fixes**:
+
 - Added authentication requirement for client list
 - Enforced strict `assigned_to` filtering
 - Removed special-case logic
 
 **Data Integrity**:
+
 - Date sanitization in all create/update endpoints
 - Fixed empty string → NULL conversion
 
 **Features**:
+
 - Avatar fallback system
 - Delete client auto-refresh
 - Team members dropdown updated
@@ -570,6 +589,7 @@ tail -f apps/backend-rag/logs/app.log
 **Logs**: `fly logs -a nuzantara-rag`
 
 **Emergency Rollback**:
+
 ```bash
 fly releases -a nuzantara-rag
 fly deploy -a nuzantara-rag --image registry.fly.io/nuzantara-rag:deployment-{VERSION}

@@ -78,36 +78,38 @@ Differenza **enorme**:
 
 **Non-residente (PPh 26):**
 
-| Aspetto | Dettaglio |
-| ------- | --------- |
-| Aliquota | **20% flat** sul reddito lordo |
-| PTKP | **Nessuno** (zero soglia esentasse) |
-| Deduzioni | **Nessuna** |
-| SPT | **Non richiesta** |
-| NPWP | **Non richiesto** |
-| Tipo imposta | **PPh 26** (non PPh 21) |
+| Aspetto         | Dettaglio                             |
+| --------------- | ------------------------------------- |
+| Aliquota        | **20% flat** sul reddito lordo        |
+| PTKP            | **Nessuno** (zero soglia esentasse)   |
+| Deduzioni       | **Nessuna**                           |
+| SPT             | **Non richiesta**                     |
+| NPWP            | **Non richiesto**                     |
+| Tipo imposta    | **PPh 26** (non PPh 21)               |
 | Base imponibile | Solo reddito di **fonte indonesiana** |
 
 **Residente (PPh 21):**
 
-| Aspetto | Dettaglio |
-| ------- | --------- |
-| Aliquota | **5%-35% progressiva** |
-| PTKP | **Sì** (IDR 54M+ esentasse) |
-| Deduzioni | **Sì** (biaya jabatan 5%, pensione, BPJS) |
-| SPT | **Obbligatoria** (entro 31 marzo) |
-| NPWP | **Obbligatorio** |
-| Tipo imposta | **PPh 21** |
-| Base imponibile | **Reddito mondiale** |
+| Aspetto         | Dettaglio                                 |
+| --------------- | ----------------------------------------- |
+| Aliquota        | **5%-35% progressiva**                    |
+| PTKP            | **Sì** (IDR 54M+ esentasse)               |
+| Deduzioni       | **Sì** (biaya jabatan 5%, pensione, BPJS) |
+| SPT             | **Obbligatoria** (entro 31 marzo)         |
+| NPWP            | **Obbligatorio**                          |
+| Tipo imposta    | **PPh 21**                                |
+| Base imponibile | **Reddito mondiale**                      |
 
 **Esempio confronto:**
 
 Stipendio mensile: **IDR 30.000.000** (circa €1.700/mese)
 
 **Se non-residente (PPh 26):**
+
 - IDR 30M × 20% = **IDR 6.000.000/mese di tasse**
 
 **Se residente (PPh 21, single TK/0):**
+
 - Reddito annuo: IDR 360M
 - Meno PTKP: IDR 360M - IDR 54M = IDR 306M imponibile
 - Tasse: (60M × 5%) + (190M × 15%) + (56M × 25%) = 3M + 28.5M + 14M = **IDR 45.5M/anno = ~IDR 3.790.000/mese**
@@ -154,13 +156,13 @@ Devo avere un NPWP? Come lo ottengo come straniero?
 
 **NPWP per Stranieri — Requisiti:**
 
-| Documento | Dettaglio |
-| --------- | --------- |
-| Passaporto | Copia + originale |
-| KITAS/KITAP | Copia valida |
-| SKTT | Surat Keterangan Tempat Tinggal (certificato domicilio) |
-| Surat Keterangan Kerja | Lettera del datore di lavoro (se dipendente) |
-| Domicile Letter | Dalla RT/RW locale |
+| Documento              | Dettaglio                                               |
+| ---------------------- | ------------------------------------------------------- |
+| Passaporto             | Copia + originale                                       |
+| KITAS/KITAP            | Copia valida                                            |
+| SKTT                   | Surat Keterangan Tempat Tinggal (certificato domicilio) |
+| Surat Keterangan Kerja | Lettera del datore di lavoro (se dipendente)            |
+| Domicile Letter        | Dalla RT/RW locale                                      |
 
 **Procedura:**
 
@@ -190,13 +192,13 @@ Esiste un trattato fiscale tra Indonesia e Italia? Posso evitare la doppia tassa
 
 **Indonesia-Italy Tax Treaty — Punti chiave:**
 
-| Tipo di Reddito | Aliquota Massima Treaty | Senza Treaty |
-| --------------- | ----------------------- | ------------ |
-| Dividendi | **10-15%** | 20% |
-| Interessi | **10%** | 20% |
-| Royalties | **10-15%** | 20% |
-| Reddito da lavoro dipendente | Tassato nel paese di lavoro | — |
-| Pensioni | Tassate nel paese di residenza | — |
+| Tipo di Reddito              | Aliquota Massima Treaty        | Senza Treaty |
+| ---------------------------- | ------------------------------ | ------------ |
+| Dividendi                    | **10-15%**                     | 20%          |
+| Interessi                    | **10%**                        | 20%          |
+| Royalties                    | **10-15%**                     | 20%          |
+| Reddito da lavoro dipendente | Tassato nel paese di lavoro    | —            |
+| Pensioni                     | Tassate nel paese di residenza | —            |
 
 **Come funziona per il reddito da lavoro:**
 
@@ -268,20 +270,22 @@ Come funziona il nuovo sistema TER introdotto da PMK 168/2023?
 Il **TER (Tarif Efektif Rata-rata)** è il nuovo sistema di calcolo mensile PPh 21, in vigore dal **1 gennaio 2024** (PMK 168/2023 e PP 58/2023).
 
 **Prima del TER (vecchio sistema):**
+
 - Calcolo mensile complesso con annualizzazione
 - Molti errori di calcolo da parte dei datori
 
 **Con il TER (nuovo sistema):**
+
 - Aliquota mensile semplificata basata su reddito lordo e status PTKP
 - Calcolo: **Reddito lordo × TER% = PPh 21 mensile**
 
 **Categorie TER:**
 
-| Categoria | Status PTKP | Esempio Aliquota (IDR 10M/mese) |
-| --------- | ----------- | ------------------------------- |
-| **TER A** | TK/0, TK/1 | ~2% |
-| **TER B** | TK/2, TK/3, K/0, K/1 | ~1.5% |
-| **TER C** | K/2, K/3 | ~1% |
+| Categoria | Status PTKP          | Esempio Aliquota (IDR 10M/mese) |
+| --------- | -------------------- | ------------------------------- |
+| **TER A** | TK/0, TK/1           | ~2%                             |
+| **TER B** | TK/2, TK/3, K/0, K/1 | ~1.5%                           |
+| **TER C** | K/2, K/3             | ~1%                             |
 
 **Esempio pratico per straniero residente (TK/0, stipendio IDR 30M/mese):**
 
@@ -316,6 +320,7 @@ Cosa succede se il mio stipendio è pagato in valuta estera (euro o dollari)?
 - PPh 21 calcolata su IDR 52.500.000
 
 **Dove trovare il KMK:**
+
 - Sito DJP: pajak.go.id
 - Aggiornato ogni mercoledì
 
@@ -413,9 +418,11 @@ What about non-residents? What's the difference?
 Monthly salary: **IDR 30,000,000** (~€1,700/month)
 
 **If non-resident (PPh 26):**
+
 - IDR 30M × 20% = **IDR 6,000,000/month tax**
 
 **If resident (PPh 21, single TK/0):**
+
 - Annual income: IDR 360M
 - Minus PTKP: IDR 360M - IDR 54M = IDR 306M taxable
 - Tax: (60M × 5%) + (190M × 15%) + (56M × 25%) = 3M + 28.5M + 14M = **IDR 45.5M/year = ~IDR 3,790,000/month**
@@ -462,13 +469,13 @@ Do I need NPWP? How do I get one as a foreigner?
 
 **NPWP for Foreigners — Requirements:**
 
-| Document | Details |
-| -------- | ------- |
-| Passport | Copy + original |
-| KITAS/KITAP | Valid copy |
-| SKTT | Surat Keterangan Tempat Tinggal (domicile certificate) |
-| Employment Letter | From employer (if employed) |
-| Domicile Letter | From local RT/RW |
+| Document          | Details                                                |
+| ----------------- | ------------------------------------------------------ |
+| Passport          | Copy + original                                        |
+| KITAS/KITAP       | Valid copy                                             |
+| SKTT              | Surat Keterangan Tempat Tinggal (domicile certificate) |
+| Employment Letter | From employer (if employed)                            |
+| Domicile Letter   | From local RT/RW                                       |
 
 **Process:**
 
@@ -498,13 +505,13 @@ Is there a tax treaty between Indonesia and Italy? Can I avoid double taxation?
 
 **Indonesia-Italy Tax Treaty — Key Points:**
 
-| Income Type | Treaty Max Rate | Without Treaty |
-| ----------- | --------------- | -------------- |
-| Dividends | **10-15%** | 20% |
-| Interest | **10%** | 20% |
-| Royalties | **10-15%** | 20% |
-| Employment income | Taxed in country of work | — |
-| Pensions | Taxed in country of residence | — |
+| Income Type       | Treaty Max Rate               | Without Treaty |
+| ----------------- | ----------------------------- | -------------- |
+| Dividends         | **10-15%**                    | 20%            |
+| Interest          | **10%**                       | 20%            |
+| Royalties         | **10-15%**                    | 20%            |
+| Employment income | Taxed in country of work      | —              |
+| Pensions          | Taxed in country of residence | —              |
 
 **How it works for employment income:**
 
@@ -576,20 +583,22 @@ How does the new TER system from PMK 168/2023 work?
 The **TER (Tarif Efektif Rata-rata / Average Effective Rate)** is the new monthly PPh 21 calculation system, effective **January 1, 2024** (PMK 168/2023 and PP 58/2023).
 
 **Before TER (old system):**
+
 - Complex monthly calculation with annualization
 - Many calculation errors by employers
 
 **With TER (new system):**
+
 - Simplified monthly rate based on gross income and PTKP status
 - Calculation: **Gross income × TER% = monthly PPh 21**
 
 **TER Categories:**
 
-| Category | PTKP Status | Example Rate (IDR 10M/month) |
-| -------- | ----------- | ---------------------------- |
-| **TER A** | TK/0, TK/1 | ~2% |
-| **TER B** | TK/2, TK/3, K/0, K/1 | ~1.5% |
-| **TER C** | K/2, K/3 | ~1% |
+| Category  | PTKP Status          | Example Rate (IDR 10M/month) |
+| --------- | -------------------- | ---------------------------- |
+| **TER A** | TK/0, TK/1           | ~2%                          |
+| **TER B** | TK/2, TK/3, K/0, K/1 | ~1.5%                        |
+| **TER C** | K/2, K/3             | ~1%                          |
 
 **Practical example for foreign resident (TK/0, salary IDR 30M/month):**
 
@@ -624,6 +633,7 @@ What if my salary is paid in foreign currency (euros or dollars)?
 - PPh 21 calculated on IDR 52,500,000
 
 **Where to find KMK:**
+
 - DJP website: pajak.go.id
 - Updated every Wednesday
 
@@ -644,12 +654,12 @@ What about BPJS for foreign employees?
 
 **BPJS Ketenagakerjaan (Employment Insurance):**
 
-| Program | Employer | Employee |
-| ------- | -------- | -------- |
-| JKK (Work Accident) | 0.24-1.74% | — |
-| JKM (Death) | 0.3% | — |
-| JHT (Old Age) | 3.7% | 2% |
-| JP (Pension) | 2% | 1% |
+| Program             | Employer   | Employee |
+| ------------------- | ---------- | -------- |
+| JKK (Work Accident) | 0.24-1.74% | —        |
+| JKM (Death)         | 0.3%       | —        |
+| JHT (Old Age)       | 3.7%       | 2%       |
+| JP (Pension)        | 2%         | 1%       |
 
 **Note for foreigners:**
 
@@ -698,12 +708,12 @@ What are the key action items for a foreign employee arriving in Indonesia?
 
 **Bali Zero Services for Foreign Employees:**
 
-| Service | Price |
-| ------- | ----- |
-| NPWP Personal + Coretax | **IDR 1,000,000** |
-| SPT Annual Personal | **IDR 2,000,000** |
-| Monthly Tax Report | **Starting IDR 1,500,000** |
-| Tax Consultation (1 hour) | **IDR 500,000** |
+| Service                   | Price                      |
+| ------------------------- | -------------------------- |
+| NPWP Personal + Coretax   | **IDR 1,000,000**          |
+| SPT Annual Personal       | **IDR 2,000,000**          |
+| Monthly Tax Report        | **Starting IDR 1,500,000** |
+| Tax Consultation (1 hour) | **IDR 500,000**            |
 
 **Contact:** info@balizero.com | WhatsApp: +62 813 3805 1876
 

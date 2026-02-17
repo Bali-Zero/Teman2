@@ -40,6 +40,7 @@ This implementation uses **3 specialized agents** running in parallel/sequence t
 ## 📦 Files Created
 
 ### **Agent Scripts:**
+
 ```
 scripts/agents/
 ├── agent1_extract_kbli_qdrant.py    # Extract from Qdrant (Research agent)
@@ -49,6 +50,7 @@ scripts/agents/
 ```
 
 ### **Data Flow:**
+
 ```
 data/
 ├── kbli_extraction_YYYYMMDD_HHMMSS.json  # Agent 1 output
@@ -63,12 +65,14 @@ data/
 ### **Prerequisites:**
 
 1. **Virtualenv activated:**
+
    ```bash
    cd apps/backend-rag
    source .venv/bin/activate
    ```
 
 2. **Environment variables set:**
+
    ```bash
    export QDRANT_URL="https://your-qdrant-url"
    export QDRANT_API_KEY="your-key"
@@ -88,6 +92,7 @@ cd scripts/agents
 ```
 
 **Expected output:**
+
 ```
 ══════════════════════════════════════════════════════════
   MULTI-AGENT KBLI EXPANSION - Orchestrator
@@ -157,6 +162,7 @@ PYTHONPATH=. python scripts/agents/agent3_insert_postgresql.py --dry-run
 ## 📊 Expected Results
 
 ### **Before Expansion:**
+
 ```json
 {
   "summary": {
@@ -169,6 +175,7 @@ PYTHONPATH=. python scripts/agents/agent3_insert_postgresql.py --dry-run
 ```
 
 ### **After Expansion:**
+
 ```json
 {
   "summary": {
@@ -308,6 +315,7 @@ GROUP BY relationship_type;
 ### **After Successful Expansion:**
 
 1. **Verify via MCP:**
+
    ```bash
    # Test nuzantara-mcp server
    openclaw mcp test nuzantara-rag search_kbli "restaurant"

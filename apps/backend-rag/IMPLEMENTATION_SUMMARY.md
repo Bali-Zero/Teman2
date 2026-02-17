@@ -13,6 +13,7 @@ Webapp was losing ALL conversations after page refresh. Score 0/10 on memory rec
 ## Solution Delivered
 
 Complete conversation persistence system with:
+
 - ✅ Automatic conversation saving to PostgreSQL
 - ✅ Context retrieval before each query (last 20 messages)
 - ✅ Seamless integration with RAG orchestrator
@@ -25,18 +26,22 @@ Complete conversation persistence system with:
 ## Files Created
 
 ### 1. Conversation Repository
+
 **File**: `backend/db/repositories/conversation_repository.py`
 
 Core database operations:
+
 - `save_messages()` - Save/update conversation with deduplication
 - `get_messages()` - Retrieve conversation history with limit
 - `cleanup_old_conversations()` - Delete conversations > N days
 - `anonymize_user_data()` - Anonymize user_id for privacy
 
 ### 2. Webhook Chat Router
+
 **File**: `backend/app/routers/webhook_chat.py`
 
 New `/webhook/chat` endpoint:
+
 - Accepts `session_id` in request body
 - Retrieves conversation history from DB
 - Injects history into RAG context
@@ -45,20 +50,25 @@ New `/webhook/chat` endpoint:
 - Returns conversation_id for tracking
 
 Additional endpoints:
+
 - `GET /webhook/chat/history/{session_id}` - Retrieve history
 - `DELETE /webhook/chat/cleanup` - Admin cleanup endpoint
 
 ### 3. Cleanup Cron Job
+
 **File**: `backend/jobs/conversation_cleanup.py`
 
 Daily maintenance job:
+
 - Deletes conversations older than 30 days
 - Anonymizes user_id after 7 days
 - Integrated into AutonomousScheduler
 - Runs every 24 hours
 
 ### 4. Tests & Documentation
+
 **Files**:
+
 - `tests/test_conversation_persistence.py` - Unit tests
 - `scripts/test_webhook_chat.sh` - Integration test script
 - `docs/CONVERSATION_PERSISTENCE.md` - Complete documentation
@@ -68,9 +78,11 @@ Daily maintenance job:
 ## Files Modified
 
 ### 1. Router Registration
+
 **File**: `backend/app/setup/router_registration.py`
 
 Added webhook_chat router import and registration:
+
 ```python
 from backend.app.routers import webhook_chat
 # ...
@@ -78,9 +90,11 @@ api.include_router(webhook_chat.router)
 ```
 
 ### 2. Autonomous Scheduler
+
 **File**: `backend/services/misc/autonomous_scheduler.py`
 
 Added conversation cleanup task:
+
 - Registered as TASK 10
 - Runs daily (86400 seconds interval)
 - Configurable via `conversation_cleanup_enabled` parameter
@@ -103,6 +117,7 @@ conversations (
 ```
 
 **Indexes** (already exist):
+
 - `idx_conversations_user_id` - Fast user lookups
 - `idx_conversations_session` - Fast session lookups
 - `idx_conversations_user_session` - Composite index
@@ -116,17 +131,17 @@ conversations (
 
 ```typescript
 // Send message with persistence
-const response = await fetch('/webhook/chat', {
-  method: 'POST',
+const response = await fetch("/webhook/chat", {
+  method: "POST",
   headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
   },
   body: JSON.stringify({
     query: "What is the capital of France?",
     session_id: sessionId, // Keep same ID across page refreshes
-    metadata: { source: 'webapp' }
-  })
+    metadata: { source: "webapp" },
+  }),
 });
 
 const data = await response.json();
@@ -146,30 +161,33 @@ const data = await response.json();
 
 ## Performance Metrics
 
-| Metric | Target | Achieved |
-|--------|--------|----------|
-| Query Time | < 50ms | ✅ < 50ms |
-| Memory Recall | 10/10 | ✅ 10/10 |
-| Persistence Rate | 100% | ✅ 100% |
-| Context Awareness | Full | ✅ Full |
+| Metric            | Target | Achieved  |
+| ----------------- | ------ | --------- |
+| Query Time        | < 50ms | ✅ < 50ms |
+| Memory Recall     | 10/10  | ✅ 10/10  |
+| Persistence Rate  | 100%   | ✅ 100%   |
+| Context Awareness | Full   | ✅ Full   |
 
 ---
 
 ## Testing
 
 ### Run Unit Tests
+
 ```bash
 cd apps/backend-rag/backend
 pytest tests/test_conversation_persistence.py -v
 ```
 
 ### Run Integration Test
+
 ```bash
 export JWT_TOKEN="your-token"
 ./scripts/test_webhook_chat.sh
 ```
 
 ### Manual Test
+
 1. Send message via `/webhook/chat`
 2. Note the `conversation_id` in response
 3. Refresh browser/restart app
@@ -195,6 +213,7 @@ export JWT_TOKEN="your-token"
 ## Monitoring
 
 ### Check Conversation Stats
+
 ```sql
 -- Total conversations
 SELECT COUNT(*) FROM conversations;
@@ -211,6 +230,7 @@ SELECT pg_size_pretty(pg_total_relation_size('conversations'));
 ```
 
 ### Check Cleanup Job
+
 ```bash
 # View scheduler status
 curl http://localhost:8080/api/health/scheduler
@@ -267,6 +287,7 @@ If issues occur:
 **Integration Test**: `scripts/test_webhook_chat.sh`
 
 For issues:
+
 - Check logs: `tail -f logs/backend.log`
 - Run tests: `pytest tests/test_conversation_persistence.py -v`
 - Manual cleanup: `python -m jobs.conversation_cleanup`

@@ -96,15 +96,15 @@
 
 ```typescript
 // Buffer management completo
-let sseBuffer = '';
-const lines = sseBuffer.split('\n');
-sseBuffer = lines.pop() ?? '';
+let sseBuffer = "";
+const lines = sseBuffer.split("\n");
+sseBuffer = lines.pop() ?? "";
 
 // Parsing robusto con try-catch per ogni JSON
 try {
   data = JSON.parse(jsonStr);
 } catch {
-  console.warn('Failed to parse SSE message:', line);
+  console.warn("Failed to parse SSE message:", line);
   continue;
 }
 ```
@@ -114,8 +114,8 @@ try {
 ```typescript
 // Buffer management semplice
 buffer += decoder.decode(value, { stream: true });
-const lines = buffer.split('\n');
-buffer = lines.pop() || '';
+const lines = buffer.split("\n");
+buffer = lines.pop() || "";
 
 // Parsing con try-catch globale
 try {

@@ -41,7 +41,7 @@ Cleanup completato con successo. Rimosse oltre **31,000 linee** di codice morto.
 
 **Files Removed:**
 
-- ✅ 27 file documentazione temporanea (CASES*PAGE*_.md, SENTRY\__.md, etc.)
+- ✅ 27 file documentazione temporanea (CASES*PAGE*\_.md, SENTRY\_\_.md, etc.)
 - ✅ 4 script shell temporanei (deploy-sentry.sh, etc.)
 - ✅ 4 componenti non utilizzati (charts/, chat-v2/, journey/, voice/)
 - ✅ 4 hook LLM non utilizzati (useAgenticRAGStream, useChatTTS, etc.)

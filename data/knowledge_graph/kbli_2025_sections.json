@@ -29,7 +29,10 @@
       "name": "Pertanian, Kehutanan, dan Perikanan",
       "name_en": "Agriculture, Forestry and Fishing",
       "code_prefixes": ["01", "02", "03"],
-      "highlights": ["Penyerapan/penyimpanan karbon", "Penangkaran satwa/tumbuhan liar dipisahkan"],
+      "highlights": [
+        "Penyerapan/penyimpanan karbon",
+        "Penangkaran satwa/tumbuhan liar dipisahkan"
+      ],
       "code_count": 121,
       "pma_stats": {
         "TERBUKA": 116,
@@ -101,7 +104,11 @@
       "name": "Pengadaan Listrik, Gas, Uap/Air Panas, dan Udara Dingin",
       "name_en": "Electricity, Gas, Steam and Air Conditioning",
       "code_prefixes": ["35"],
-      "highlights": ["Energi terbarukan vs tidak terbarukan", "Produksi hidrogen", "Unit karbon"],
+      "highlights": [
+        "Energi terbarukan vs tidak terbarukan",
+        "Produksi hidrogen",
+        "Unit karbon"
+      ],
       "code_count": 16,
       "pma_stats": {
         "TERBUKA": 16,
@@ -115,7 +122,11 @@
       "name": "Penyediaan Air, Pengelolaan Air Limbah, Penanganan Limbah, dan Remediasi",
       "name_en": "Water Supply, Sewerage, Waste Management",
       "code_prefixes": ["36", "37", "38", "39"],
-      "highlights": ["Penangkapan CO2", "Limbah radioaktif", "Sampah jadi energi"],
+      "highlights": [
+        "Penangkapan CO2",
+        "Limbah radioaktif",
+        "Sampah jadi energi"
+      ],
       "code_count": 19,
       "pma_stats": {
         "TERBUKA": 19,
@@ -143,7 +154,10 @@
       "name": "Perdagangan Besar dan Eceran",
       "name_en": "Wholesale and Retail Trade",
       "code_prefixes": ["45", "46", "47"],
-      "highlights": ["Reparasi kendaraan pindah ke T", "Platform digital = intermediasi"],
+      "highlights": [
+        "Reparasi kendaraan pindah ke T",
+        "Platform digital = intermediasi"
+      ],
       "code_count": 199,
       "pma_stats": {
         "TERBUKA": 196,
@@ -157,7 +171,10 @@
       "name": "Transportasi dan Penyimpanan",
       "name_en": "Transportation and Storage",
       "code_prefixes": ["49", "50", "51", "52", "53"],
-      "highlights": ["Transportasi antariksa dipisahkan", "Jasa intermediasi transportasi"],
+      "highlights": [
+        "Transportasi antariksa dipisahkan",
+        "Jasa intermediasi transportasi"
+      ],
       "code_count": 103,
       "pma_stats": {
         "TERBUKA": 100,
@@ -171,7 +188,10 @@
       "name": "Penyediaan Akomodasi dan Makan Minum",
       "name_en": "Accommodation and Food Service",
       "code_prefixes": ["55", "56"],
-      "highlights": ["Jasa intermediasi (OTA)", "Klasifikasi berbasis bangunan"],
+      "highlights": [
+        "Jasa intermediasi (OTA)",
+        "Klasifikasi berbasis bangunan"
+      ],
       "code_count": 26,
       "pma_stats": {
         "TERBUKA": 26,
@@ -222,7 +242,11 @@
       "name": "Aktivitas Keuangan dan Asuransi",
       "name_en": "Financial and Insurance Activities",
       "code_prefixes": ["64", "65", "66"],
-      "highlights": ["Berbasis aktivitas bukan entitas", "Unit karbon", "Aset kripto"],
+      "highlights": [
+        "Berbasis aktivitas bukan entitas",
+        "Unit karbon",
+        "Aset kripto"
+      ],
       "code_count": 102,
       "pma_stats": {
         "TERBUKA": 102,
@@ -236,7 +260,11 @@
       "name": "Real Estat",
       "name_en": "Real Estate Activities",
       "code_prefixes": ["68"],
-      "highlights": ["Hunian vs nonhunian", "Kawasan ekonomi khusus", "Gudang/penyimpanan mandiri"],
+      "highlights": [
+        "Hunian vs nonhunian",
+        "Kawasan ekonomi khusus",
+        "Gudang/penyimpanan mandiri"
+      ],
       "code_count": 14,
       "pma_stats": {
         "TERBUKA": 14,
@@ -299,7 +327,11 @@
       "name": "Pendidikan",
       "name_en": "Education",
       "code_prefixes": ["85"],
-      "highlights": ["Prasekolah dipisahkan", "Pelatihan kerja", "Sertifikasi profesi"],
+      "highlights": [
+        "Prasekolah dipisahkan",
+        "Pelatihan kerja",
+        "Sertifikasi profesi"
+      ],
       "code_count": 65,
       "pma_stats": {
         "TERBUKA": 65,

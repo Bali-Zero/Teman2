@@ -663,10 +663,10 @@ export async function POST(req: Request) {
   const { businessType } = await req.json();
 
   const recommendations = await fetch(`${BACKEND_URL}/api/kbli/recommend`, {
-    method: 'POST',
+    method: "POST",
     body: JSON.stringify({
       business_description: businessType,
-      location: 'Bali',
+      location: "Bali",
       foreign_investor: true,
     }),
   });

@@ -10,6 +10,7 @@
 ## PPh Badan (Corporate Tax) (8 domande)
 
 ### 001_pph_badan_rate_22
+
 ```
 Aliquota PPh Badan per PT PMA in Indonesia 2026?
 
@@ -29,6 +30,7 @@ Lunghezza: 350-450 parole.
 ```
 
 ### 002_pph_badan_calculation
+
 ```
 Come si calcola PPh Badan per PT PMA?
 
@@ -47,6 +49,7 @@ Lunghezza: 400-500 parole.
 ```
 
 ### 003_pph_badan_filing_deadline
+
 ```
 Scadenze filing PPh Badan per PT PMA?
 
@@ -69,6 +72,7 @@ Lunghezza: 300-400 parole.
 ## PPN (VAT) (8 domande)
 
 ### 009_ppn_rate_11_2026
+
 ```
 Aliquota PPN (VAT) in Indonesia 2026?
 
@@ -92,6 +96,7 @@ Lunghezza: 300-400 parole.
 ```
 
 ### 010_pkp_registration
+
 ```
 PKP (Pengusaha Kena Pajak) registration per PT PMA?
 
@@ -111,6 +116,7 @@ Lunghezza: 350-450 parole.
 ```
 
 ### 011_e_faktur_system
+
 ```
 Sistema e-Faktur per emettere fatture PPN?
 
@@ -137,6 +143,7 @@ Lunghezza: 400-500 parole.
 ## PPh 21 (Employee Withholding Tax) (6 domande)
 
 ### 017_pph_21_employees
+
 ```
 PPh 21 per dipendenti PT PMA (locals + expats)?
 
@@ -158,6 +165,7 @@ Lunghezza: 400-500 parole.
 ```
 
 ### 018_pph_21_expat_183_days
+
 ```
 PPh 21 per expat: regola 183 giorni tax residency?
 
@@ -186,6 +194,7 @@ Lunghezza: 350-450 parole.
 ## PPh 23 (Service Withholding Tax) (4 domande)
 
 ### 023_pph_23_services
+
 ```
 PPh 23 per servizi resi a PT PMA?
 
@@ -215,6 +224,7 @@ Lunghezza: 300-400 parole.
 ## PPh 26 (Foreign Withholding Tax) (4 domande)
 
 ### 027_pph_26_foreign_payments
+
 ```
 PPh 26 per pagamenti a stranieri (dividends, interest, royalties)?
 
@@ -245,6 +255,7 @@ Lunghezza: 400-500 parole.
 ## NPWP (Tax ID) (5 domande)
 
 ### 031_npwp_pt_pma
+
 ```
 NPWP (Tax ID) per PT PMA: come ottenerlo?
 
@@ -273,6 +284,7 @@ Lunghezza: 350-450 parole.
 ```
 
 ### 032_npwp_individuals
+
 ```
 NPWP per foreign investors/expats: obbligatorio?
 
@@ -303,6 +315,7 @@ Lunghezza: 300-400 parole.
 ## Tax Treaties (DTA) (6 domande)
 
 ### 037_tax_treaty_indonesia_italia
+
 ```
 Tax Treaty Indonesia-Italia (DTA): vantaggi per investitori italiani?
 
@@ -324,6 +337,7 @@ Lunghezza: 400-500 parole.
 ```
 
 ### 038_tax_treaty_application
+
 ```
 Come applicare tax treaty benefits in Indonesia?
 
@@ -353,6 +367,7 @@ Lunghezza: 350-450 parole.
 ## Tax Compliance & Penalties (5 domande)
 
 ### 043_tax_filing_calendar
+
 ```
 Calendario completo scadenze fiscali per PT PMA?
 
@@ -390,6 +405,7 @@ Lunghezza: 300-400 parole.
 **Pending:** 50
 
 ### Breakdown:
+
 - [ ] PPh Badan (8)
 - [ ] PPN / VAT (8)
 - [ ] PPh 21 Employee Tax (6)

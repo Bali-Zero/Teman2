@@ -221,7 +221,9 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menerapkan budi daya tanaman pangan yang baik (good agriculture practices)"]
+      "kewajiban": [
+        "Menerapkan budi daya tanaman pangan yang baik (good agriculture practices)"
+      ]
     }
   },
   {
@@ -516,7 +518,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah"],
       "kategori_risiko": "Menengah Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Komitmen untuk melakukan budi daya yang baik melalui penerapan GAP."]
+      "kewajiban": [
+        "Komitmen untuk melakukan budi daya yang baik melalui penerapan GAP."
+      ]
     }
   },
   {
@@ -642,7 +646,9 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)"]
+      "kewajiban": [
+        "Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)"
+      ]
     }
   },
   {
@@ -743,7 +749,9 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)"]
+      "kewajiban": [
+        "Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)"
+      ]
     }
   },
   {
@@ -904,7 +912,9 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Komitmen untuk melakukan budi daya yang baik melalui penerapan GAP."]
+      "kewajiban": [
+        "Komitmen untuk melakukan budi daya yang baik melalui penerapan GAP."
+      ]
     }
   },
   {
@@ -959,7 +969,9 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Komitmen untuk melakukan budi daya yang baik melalui penerapan GAP"]
+      "kewajiban": [
+        "Komitmen untuk melakukan budi daya yang baik melalui penerapan GAP"
+      ]
     }
   },
   {
@@ -1238,7 +1250,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah"],
       "kategori_risiko": "Menengah Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Komitmen untuk melakukan budi daya yang baik melalui penerapan GAP."]
+      "kewajiban": [
+        "Komitmen untuk melakukan budi daya yang baik melalui penerapan GAP."
+      ]
     }
   },
   {
@@ -1316,7 +1330,9 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)"]
+      "kewajiban": [
+        "Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)"
+      ]
     }
   },
   {
@@ -1328,7 +1344,9 @@
       "skala_usaha": ["Menengah"],
       "kategori_risiko": "Menengah Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Melakukan budi daya sesuai pedoman budi daya yang baik (GAP) cek"]
+      "kewajiban": [
+        "Melakukan budi daya sesuai pedoman budi daya yang baik (GAP) cek"
+      ]
     }
   },
   {
@@ -1382,7 +1400,9 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Menengah Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Komitmen untuk melakukan budi daya yang baik melalui penerapan GAP."]
+      "kewajiban": [
+        "Komitmen untuk melakukan budi daya yang baik melalui penerapan GAP."
+      ]
     }
   },
   {
@@ -1502,7 +1522,9 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)"]
+      "kewajiban": [
+        "Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)"
+      ]
     }
   },
   {
@@ -1691,7 +1713,9 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)."]
+      "kewajiban": [
+        "Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)."
+      ]
     }
   },
   {
@@ -1703,7 +1727,9 @@
       "skala_usaha": ["Menengah"],
       "kategori_risiko": "Menengah Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)."]
+      "kewajiban": [
+        "Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)."
+      ]
     }
   },
   {
@@ -1781,7 +1807,9 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)"]
+      "kewajiban": [
+        "Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)"
+      ]
     }
   },
   {
@@ -1831,7 +1859,9 @@
       "skala_usaha": ["Mikro"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)"]
+      "kewajiban": [
+        "Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)"
+      ]
     }
   },
   {
@@ -2056,7 +2086,9 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)"]
+      "kewajiban": [
+        "Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)"
+      ]
     }
   },
   {
@@ -2563,7 +2595,9 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)"]
+      "kewajiban": [
+        "Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)"
+      ]
     }
   },
   {
@@ -3031,7 +3065,9 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Menengah Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)."]
+      "kewajiban": [
+        "Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)."
+      ]
     }
   },
   {
@@ -3132,7 +3168,9 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)"]
+      "kewajiban": [
+        "Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)"
+      ]
     }
   },
   {
@@ -3310,7 +3348,9 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Menengah Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Komitmen untuk melakukan budi daya yang baik melalui penerapan GAP."]
+      "kewajiban": [
+        "Komitmen untuk melakukan budi daya yang baik melalui penerapan GAP."
+      ]
     }
   },
   {
@@ -3388,7 +3428,9 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Melakukan Budi daya sesuai pedoman Budi daya yang baik (GAP)"]
+      "kewajiban": [
+        "Melakukan Budi daya sesuai pedoman Budi daya yang baik (GAP)"
+      ]
     }
   },
   {
@@ -3512,7 +3554,9 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Melakukan Budi daya sesuai pedoman Budi daya yang baik (GAP)"]
+      "kewajiban": [
+        "Melakukan Budi daya sesuai pedoman Budi daya yang baik (GAP)"
+      ]
     }
   },
   {
@@ -3524,7 +3568,9 @@
       "skala_usaha": ["Menengah"],
       "kategori_risiko": "Menengah Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Melakukan Budi daya sesuai pedoman Budi daya yang baik (GAP)"]
+      "kewajiban": [
+        "Melakukan Budi daya sesuai pedoman Budi daya yang baik (GAP)"
+      ]
     }
   },
   {
@@ -3602,7 +3648,9 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Melakukan Budi daya sesuai pedoman Budi daya yang baik (GAP)."]
+      "kewajiban": [
+        "Melakukan Budi daya sesuai pedoman Budi daya yang baik (GAP)."
+      ]
     }
   },
   {
@@ -3614,7 +3662,9 @@
       "skala_usaha": ["Menengah"],
       "kategori_risiko": "Menengah Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Melakukan Budi daya sesuai pedoman Budi daya yang baik (GAP)."]
+      "kewajiban": [
+        "Melakukan Budi daya sesuai pedoman Budi daya yang baik (GAP)."
+      ]
     }
   },
   {
@@ -3668,7 +3718,9 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Menengah Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Komitmen untuk melakukan budi daya yang baik melalui penerapan GAP."]
+      "kewajiban": [
+        "Komitmen untuk melakukan budi daya yang baik melalui penerapan GAP."
+      ]
     }
   },
   {
@@ -3747,7 +3799,9 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)."]
+      "kewajiban": [
+        "Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)."
+      ]
     }
   },
   {
@@ -3838,7 +3892,9 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)."]
+      "kewajiban": [
+        "Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)."
+      ]
     }
   },
   {
@@ -3924,7 +3980,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah"],
       "kategori_risiko": "Menengah Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menerapkan teknologi pembukaan lahan tanpa bakar dan mengelola"]
+      "kewajiban": [
+        "Menerapkan teknologi pembukaan lahan tanpa bakar dan mengelola"
+      ]
     }
   },
   {
@@ -3936,7 +3994,9 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)."]
+      "kewajiban": [
+        "Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)."
+      ]
     }
   },
   {
@@ -4014,7 +4074,9 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)"]
+      "kewajiban": [
+        "Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)"
+      ]
     }
   },
   {
@@ -4064,7 +4126,9 @@
       "skala_usaha": ["Mikro"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)"]
+      "kewajiban": [
+        "Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)"
+      ]
     }
   },
   {
@@ -4175,7 +4239,9 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Melakukan Budi daya sesuai pedoman Budi daya yang baik (GAP)"]
+      "kewajiban": [
+        "Melakukan Budi daya sesuai pedoman Budi daya yang baik (GAP)"
+      ]
     }
   },
   {
@@ -4266,7 +4332,9 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)"]
+      "kewajiban": [
+        "Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)"
+      ]
     }
   },
   {
@@ -4367,7 +4435,9 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)"]
+      "kewajiban": [
+        "Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)"
+      ]
     }
   },
   {
@@ -4555,7 +4625,9 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)"]
+      "kewajiban": [
+        "Melakukan budi daya sesuai pedoman budi daya yang baik (GAP)"
+      ]
     }
   },
   {
@@ -7146,7 +7218,10 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Menengah Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Laporan Kegiatan Usaha (LKU) dan", "Menerapkan cara budi daya ikan yang baik"]
+      "kewajiban": [
+        "Laporan Kegiatan Usaha (LKU) dan",
+        "Menerapkan cara budi daya ikan yang baik"
+      ]
     }
   },
   {
@@ -7230,7 +7305,10 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Menengah Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Laporan kegiatan usaha (LKU) dan", "Menerapkan cara budi daya ikan yang baik"]
+      "kewajiban": [
+        "Laporan kegiatan usaha (LKU) dan",
+        "Menerapkan cara budi daya ikan yang baik"
+      ]
     }
   },
   {
@@ -7270,7 +7348,10 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Menengah Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Laporan kegiatan usaha (LKU) dan", "Menerapkan cara budi daya ikan yang baik"]
+      "kewajiban": [
+        "Laporan kegiatan usaha (LKU) dan",
+        "Menerapkan cara budi daya ikan yang baik"
+      ]
     }
   },
   {
@@ -7294,7 +7375,10 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Menengah Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Laporan kegiatan usaha (LKU) dan", "Menerapkan cara budi daya ikan yang baik"]
+      "kewajiban": [
+        "Laporan kegiatan usaha (LKU) dan",
+        "Menerapkan cara budi daya ikan yang baik"
+      ]
     }
   },
   {
@@ -7350,7 +7434,10 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Menengah Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Laporan kegiatan usaha (LKU) dan", "Menerapkan cara budi daya ikan yang baik"]
+      "kewajiban": [
+        "Laporan kegiatan usaha (LKU) dan",
+        "Menerapkan cara budi daya ikan yang baik"
+      ]
     }
   },
   {
@@ -7390,7 +7477,10 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Menengah Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Laporan kegiatan usaha (LKU) dan", "Menerapkan cara budi daya ikan yang baik"]
+      "kewajiban": [
+        "Laporan kegiatan usaha (LKU) dan",
+        "Menerapkan cara budi daya ikan yang baik"
+      ]
     }
   },
   {
@@ -7430,7 +7520,10 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Menengah Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Laporan kegiatan usaha (LKU) dan", "Menerapkan cara budi daya ikan yang baik"]
+      "kewajiban": [
+        "Laporan kegiatan usaha (LKU) dan",
+        "Menerapkan cara budi daya ikan yang baik"
+      ]
     }
   },
   {
@@ -7442,7 +7535,10 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Menengah Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Laporan kegiatan usaha (LKU) dan", "Menerapkan cara budi daya ikan yang baik"]
+      "kewajiban": [
+        "Laporan kegiatan usaha (LKU) dan",
+        "Menerapkan cara budi daya ikan yang baik"
+      ]
     }
   },
   {
@@ -7498,7 +7594,10 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Menengah Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Laporan kegiatan usaha (LKU) dan", "Menerapkan cara budi daya ikan yang baik"]
+      "kewajiban": [
+        "Laporan kegiatan usaha (LKU) dan",
+        "Menerapkan cara budi daya ikan yang baik"
+      ]
     }
   },
   {
@@ -7538,7 +7637,10 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Menengah Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Laporan kegiatan usaha (LKU) dan", "Menerapkan cara budi daya ikan yang baik"]
+      "kewajiban": [
+        "Laporan kegiatan usaha (LKU) dan",
+        "Menerapkan cara budi daya ikan yang baik"
+      ]
     }
   },
   {
@@ -7578,7 +7680,10 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Menengah Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Laporan kegiatan usaha (LKU) dan", "Menerapkan cara budi daya ikan yang baik"]
+      "kewajiban": [
+        "Laporan kegiatan usaha (LKU) dan",
+        "Menerapkan cara budi daya ikan yang baik"
+      ]
     }
   },
   {
@@ -9351,7 +9456,10 @@
       "skala_usaha": ["Besar"],
       "kategori_risiko": "Tinggi",
       "jangka_waktu": "14 Hari",
-      "kewajiban": ["Laporan pelaksanaan usaha", "Bukti pembayaran Penerimaan Negara Bukan Pajak"]
+      "kewajiban": [
+        "Laporan pelaksanaan usaha",
+        "Bukti pembayaran Penerimaan Negara Bukan Pajak"
+      ]
     }
   },
   {
@@ -9399,7 +9507,10 @@
       "skala_usaha": ["Besar"],
       "kategori_risiko": "Tinggi",
       "jangka_waktu": "14 Hari",
-      "kewajiban": ["Laporan pelaksanaan usaha", "Bukti pembayaran Penerimaan Negara Bukan Pajak"]
+      "kewajiban": [
+        "Laporan pelaksanaan usaha",
+        "Bukti pembayaran Penerimaan Negara Bukan Pajak"
+      ]
     }
   },
   {
@@ -38963,7 +39074,10 @@
       "skala_usaha": ["Menengah", "Besar"],
       "kategori_risiko": "Menengah Tinggi",
       "jangka_waktu": "14 Hari",
-      "kewajiban": ["Laporan pelaksanaan usaha", "Bukti pembayaran Penerimaan Negara Bukan Pajak"]
+      "kewajiban": [
+        "Laporan pelaksanaan usaha",
+        "Bukti pembayaran Penerimaan Negara Bukan Pajak"
+      ]
     }
   },
   {
@@ -38987,7 +39101,10 @@
       "skala_usaha": ["Menengah", "Besar"],
       "kategori_risiko": "Tinggi",
       "jangka_waktu": "14 Hari",
-      "kewajiban": ["Laporan pelaksanaan usaha", "Bukti pembayaran Penerimaan Negara Bukan Pajak"]
+      "kewajiban": [
+        "Laporan pelaksanaan usaha",
+        "Bukti pembayaran Penerimaan Negara Bukan Pajak"
+      ]
     }
   },
   {
@@ -43051,7 +43168,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -43102,7 +43221,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -43126,7 +43247,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -43150,7 +43273,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -43174,7 +43299,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -43227,7 +43354,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -43251,7 +43380,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -43329,7 +43460,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -43353,7 +43486,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -43377,7 +43512,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -43510,7 +43647,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -43590,7 +43729,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -43614,7 +43755,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -43638,7 +43781,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -43689,7 +43834,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -43763,7 +43910,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -43787,7 +43936,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -43838,7 +43989,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -43850,7 +44003,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -43874,7 +44029,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -43898,7 +44055,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -43922,7 +44081,9 @@
       "skala_usaha": ["Mikro", "Kecil"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -43946,7 +44107,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -43970,7 +44133,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -43982,7 +44147,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -44006,7 +44173,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -44160,7 +44329,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -44184,7 +44355,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -44208,7 +44381,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -44232,7 +44407,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -44256,7 +44433,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -44280,7 +44459,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -44304,7 +44485,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -44357,7 +44540,9 @@
       "skala_usaha": ["Mikro"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -44381,7 +44566,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -44405,7 +44592,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -44429,7 +44618,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -44453,7 +44644,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -44477,7 +44670,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -44501,7 +44696,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -44525,7 +44722,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -44549,7 +44748,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -44573,7 +44774,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada P Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada P Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -44597,7 +44800,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -44621,7 +44826,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -44833,7 +45040,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -44919,7 +45128,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -44931,7 +45142,9 @@
       "skala_usaha": ["Mikro"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -44986,7 +45199,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -45188,7 +45403,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -45239,7 +45456,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -45317,7 +45536,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -45368,7 +45589,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -45562,7 +45785,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -45644,7 +45869,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -45668,7 +45895,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -45692,7 +45921,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -45716,7 +45947,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -45740,7 +45973,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -45764,7 +45999,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -45788,7 +46025,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -45909,7 +46148,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -45966,7 +46207,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -45990,7 +46233,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46014,7 +46259,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46038,7 +46285,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46062,7 +46311,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46129,7 +46380,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46153,7 +46406,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46242,7 +46497,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46266,7 +46523,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46290,7 +46549,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46314,7 +46575,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46338,7 +46601,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46362,7 +46627,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46386,7 +46653,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46454,7 +46723,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46571,7 +46842,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46595,7 +46868,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46619,7 +46894,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46643,7 +46920,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46667,7 +46946,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46691,7 +46972,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46715,7 +46998,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46739,7 +47024,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46763,7 +47050,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46787,7 +47076,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46811,7 +47102,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46835,7 +47128,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46859,7 +47154,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46883,7 +47180,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46907,7 +47206,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46931,7 +47232,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46955,7 +47258,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -46979,7 +47284,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47003,7 +47310,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47027,7 +47336,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47051,7 +47362,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47063,7 +47376,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47087,7 +47402,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47111,7 +47428,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47135,7 +47454,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47159,7 +47480,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47183,7 +47506,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47207,7 +47532,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47231,7 +47558,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47243,7 +47572,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47267,7 +47598,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47291,7 +47624,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47315,7 +47650,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47339,7 +47676,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47363,7 +47702,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47658,7 +47999,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47682,7 +48025,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47706,7 +48051,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47730,7 +48077,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47754,7 +48103,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47778,7 +48129,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47802,7 +48155,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada P Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada P Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47826,7 +48181,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47850,7 +48207,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47874,7 +48233,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47898,7 +48259,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47922,7 +48285,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47946,7 +48311,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -47970,7 +48337,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48038,7 +48407,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48062,7 +48433,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48086,7 +48459,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48110,7 +48485,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48134,7 +48511,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48158,7 +48537,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48267,7 +48648,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48291,7 +48674,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48315,7 +48700,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48339,7 +48726,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48363,7 +48752,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48387,7 +48778,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48411,7 +48804,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48435,7 +48830,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48459,7 +48856,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48483,7 +48882,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48507,7 +48908,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48531,7 +48934,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48555,7 +48960,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48591,7 +48998,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48615,7 +49024,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48639,7 +49050,9 @@
       "skala_usaha": ["Mikro"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48663,7 +49076,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48675,7 +49090,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48687,7 +49104,9 @@
       "skala_usaha": ["Mikro"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48711,7 +49130,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48750,7 +49171,9 @@
       "skala_usaha": ["Mikro"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48762,7 +49185,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48790,7 +49215,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48814,7 +49241,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48838,7 +49267,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -48850,7 +49281,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -55350,7 +55783,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -56144,7 +56579,9 @@
       "skala_usaha": ["Mikro"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -60693,7 +61130,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -60717,7 +61156,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -60741,7 +61182,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -60765,7 +61208,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -61787,7 +62232,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -61811,7 +62258,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -61835,7 +62284,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -61859,7 +62310,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -61883,7 +62336,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -61907,7 +62362,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -61931,7 +62388,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -61955,7 +62414,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -61979,7 +62440,9 @@
       "skala_usaha": ["Mikro"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -62003,7 +62466,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -62015,7 +62480,9 @@
       "skala_usaha": ["Mikro"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -62077,7 +62544,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -62101,7 +62570,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -62113,7 +62584,9 @@
       "skala_usaha": ["Mikro"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -62137,7 +62610,9 @@
       "skala_usaha": ["Mikro"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -62161,7 +62636,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -62185,7 +62662,9 @@
       "skala_usaha": ["Mikro"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -62209,7 +62688,9 @@
       "skala_usaha": ["Mikro"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -62233,7 +62714,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -62257,7 +62740,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -62269,7 +62754,9 @@
       "skala_usaha": ["Mikro"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -62293,7 +62780,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -63001,7 +63490,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -63025,7 +63516,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -63076,7 +63569,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -63100,7 +63595,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -63794,7 +64291,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -67920,7 +68419,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -68221,7 +68722,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -68291,7 +68794,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {
@@ -68363,7 +68868,9 @@
       "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
       "kategori_risiko": "Rendah",
       "jangka_waktu": "Otomatis",
-      "kewajiban": ["Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"]
+      "kewajiban": [
+        "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+      ]
     }
   },
   {

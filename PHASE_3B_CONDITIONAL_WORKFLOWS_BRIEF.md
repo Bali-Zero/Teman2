@@ -18,6 +18,7 @@ Fix failing tests in `test_conditional_workflows.py` and complete conditional ro
 **Test Results:** 12/20 passing, 8 failing, 2 skipped
 
 **Root Causes:**
+
 1. `detect_team_query()` API changed: returns `(bool, str, str)` tuple instead of `bool`
 2. Workflow routing logic not implemented (`select_workflow()` always returns 'team_management')
 3. Tool selection logic incomplete (`select_tools()` missing 'web_search')
@@ -31,6 +32,7 @@ Fix failing tests in `test_conditional_workflows.py` and complete conditional ro
 **File:** `backend/services/rag/agentic/query_gates.py`
 
 **Option A - Revert to bool:**
+
 ```python
 def detect_team_query(query: str) -> bool:
     """Returns True if query is about team/people."""
@@ -39,6 +41,7 @@ def detect_team_query(query: str) -> bool:
 ```
 
 **Option B - Update tests to handle tuple:**
+
 ```python
 # In test_conditional_workflows.py
 def test_detect_team_query_positive():
@@ -86,6 +89,7 @@ def select_workflow(query: str, user_context: dict) -> str:
 ```
 
 **Test Coverage:**
+
 - `test_workflow_selection_simple_query` → 'fast_path'
 - `test_workflow_selection_complex_query` → 'full_reasoning'
 - `test_workflow_selection_critical_domain` → 'critical_verification'
@@ -136,6 +140,7 @@ def select_tools(query: str, workflow: str) -> list[str]:
 ```
 
 **Test Coverage:**
+
 - `test_tool_selection_for_visa_query` → includes 'kg_traversal' ✅
 - `test_tool_selection_for_tax_query` → includes 'kg_traversal' ✅
 - `test_tool_selection_for_general_query` → includes 'web_search' ❌ (currently failing)
@@ -150,6 +155,7 @@ def select_tools(query: str, workflow: str) -> list[str]:
 **Current Issue:** Tests fail with `TypeError: QueryGates.__init__() missing 1 required positional argument: 'prompt_builder'`
 
 **Fix:**
+
 ```python
 class QueryGates:
     def __init__(self, prompt_builder=None):  # ← Make optional
@@ -157,6 +163,7 @@ class QueryGates:
 ```
 
 **Or update test fixture:**
+
 ```python
 # In test_conditional_workflows.py
 @pytest.fixture
@@ -193,10 +200,10 @@ python -m pytest backend/tests/services/rag/test_conditional_workflows.py -v
 
 ## Files to Modify
 
-| File | Changes | Lines |
-|------|---------|-------|
-| `backend/services/rag/agentic/query_gates.py` | Implement workflow/tool selection | ~150 |
-| `backend/tests/services/rag/test_conditional_workflows.py` | Fix assertions (if Option B chosen) | ~20 |
+| File                                                       | Changes                             | Lines |
+| ---------------------------------------------------------- | ----------------------------------- | ----- |
+| `backend/services/rag/agentic/query_gates.py`              | Implement workflow/tool selection   | ~150  |
+| `backend/tests/services/rag/test_conditional_workflows.py` | Fix assertions (if Option B chosen) | ~20   |
 
 **Total Effort:** ~150-170 lines
 

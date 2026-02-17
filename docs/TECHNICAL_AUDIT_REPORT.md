@@ -8,13 +8,13 @@
 
 ## 📊 Executive Summary
 
-| Metric | Valore |
-|--------|--------|
-| Backend Routers | 78 |
-| Backend Services | 245+ |
-| Frontend Files (TS/TSX) | 530 |
-| React Query Hooks | 36 |
-| TODO/FIXME trovati | 25+ |
+| Metric                           | Valore   |
+| -------------------------------- | -------- |
+| Backend Routers                  | 78       |
+| Backend Services                 | 245+     |
+| Frontend Files (TS/TSX)          | 530      |
+| React Query Hooks                | 36       |
+| TODO/FIXME trovati               | 25+      |
 | Linee di codice totali (backend) | ~265,000 |
 
 ---
@@ -22,6 +22,7 @@
 ## 🔴 CRITICAL ISSUES (Top 10)
 
 ### 1. SQL Injection Risk - Dynamic Query Construction
+
 **File:** `apps/backend-rag/backend/app/routers/crm_clients.py:591-600`  
 **Linea:** 591-600, 1088-1092
 
@@ -43,6 +44,7 @@ await conn.execute(update_sql, *params)  # nosemgrep
 ---
 
 ### 2. Exception Handling Troppo Generico
+
 **File:** `apps/backend-rag/backend/app/routers/crm_clients.py:341-342`  
 **Occorrenze:** 46+ nei routers
 
@@ -53,7 +55,8 @@ except Exception as e:
 
 **Rischio:** Medio-Alto - Maschera errori critici di sistema, rende il debugging difficile, potenziale leak di informazioni sensibili.
 
-**Soluzione:** 
+**Soluzione:**
+
 - Catturare eccezioni specifiche (asyncpg.UniqueViolationError, asyncpg.ForeignKeyViolationError)
 - Usare structured logging con correlation IDs
 - Implementare error hierarchy custom
@@ -63,14 +66,15 @@ except Exception as e:
 ---
 
 ### 3. Mock API in Production Code
-**File:** `apps/mouth/src/hooks/useClientsQuery.ts:22-45`  
+
+**File:** `apps/mouth/src/hooks/useClientsQuery.ts:22-45`
 
 ```typescript
 // Mock API for type safety - replace with actual api import
 const mockApi = {
-  crm: { getClients: async () => ({ data: [] }) }
+  crm: { getClients: async () => ({ data: [] }) },
 };
-const api = (typeof window !== 'undefined' && window.api) || mockApi;
+const api = (typeof window !== "undefined" && window.api) || mockApi;
 ```
 
 **Rischio:** Alto - Se l'API reale fallisce nel caricamento, il sistema usa mock data silenziosamente causando data loss e UX inconsistente.
@@ -82,13 +86,15 @@ const api = (typeof window !== 'undefined' && window.api) || mockApi;
 ---
 
 ### 4. File Router Eccessivamente Grandi
+
 **File:** `apps/backend-rag/backend/app/routers/crm_clients.py` (1443 linee)  
 **File:** `apps/backend-rag/backend/app/routers/intel.py` (1479+ linee)  
 **File:** `apps/backend-rag/backend/app/routers/debug.py` (1058 linee)
 
 **Rischio:** Alto - Violazione Single Responsibility Principle, difficile manutenzione, testing complesso, rischio di merge conflicts.
 
-**Soluzione:** 
+**Soluzione:**
+
 - Split in sub-routers per dominio
 - Estrarre business logic in service layer
 - crm_clients.py → 5-6 router separati (clienti, documenti, passport, stats, audit)
@@ -98,7 +104,8 @@ const api = (typeof window !== 'undefined' && window.api) || mockApi;
 ---
 
 ### 5. Import Circolari Risk
-**File:** `apps/backend-rag/backend/app/routers/intel.py:838`  
+
+**File:** `apps/backend-rag/backend/app/routers/intel.py:838`
 
 ```python
 from backend.app.routers.telegram import ingest_intel_to_qdrant
@@ -114,6 +121,7 @@ from backend.app.routers.article_composer import publish_article
 ---
 
 ### 6. Race Condition in Cache Invalidation
+
 **File:** `apps/backend-rag/backend/app/routers/crm_clients.py:325-326, 629, 694`
 
 ```python
@@ -129,6 +137,7 @@ await invalidate_cache("zantara:crm_clients_stats:*")
 ---
 
 ### 7. Regex Inefficiente e Potenziale ReDoS
+
 **File:** `apps/backend-rag/backend/app/routers/intel.py:154-250`
 
 ```python
@@ -138,7 +147,8 @@ summary_match = re.search(r"## Summary\s*\n(.*?)(?=\n## |$)", content, re.DOTALL
 
 **Rischio:** Medio - Content markdown può essere grande, regex con `.*?` e lookahead causano backtracking esponenziale.
 
-**Soluzione:** 
+**Soluzione:**
+
 - Usare parser markdown dedicato (es: `mistune`, `markdown-it`)
 - Limitare dimensione input
 - Timeout su operazioni regex
@@ -148,12 +158,14 @@ summary_match = re.search(r"## Summary\s*\n(.*?)(?=\n## |$)", content, re.DOTALL
 ---
 
 ### 8. Mancanza di Rate Limiting su Endpoints Sensibili
+
 **File:** `apps/backend-rag/backend/app/routers/crm_clients.py` (molti endpoints)  
 **File:** `apps/backend-rag/backend/app/routers/intel.py:328-437`
 
 **Rischio:** Alto - Nessun rate limiting visibile su endpoint di creazione clienti, bulk operations, OCR processing.
 
 **Soluzione:** Implementare rate limiting per:
+
 - IP address
 - User ID
 - Endpoint specifici (OCR, bulk approve)
@@ -169,6 +181,7 @@ async def create_client(...)
 ---
 
 ### 9. Gestione Inconsistente delle Transazioni DB
+
 **File:** `apps/backend-rag/backend/app/routers/crm_clients.py:515-635`
 
 ```python
@@ -180,6 +193,7 @@ await conn.execute("INSERT INTO activity_log ...")  # INSERT separato
 **Rischio:** Medio - Se il secondo statement fallisce, il primo rimane committed causando inconsistenza.
 
 **Soluzione:** Usare transazioni esplicite:
+
 ```python
 async with conn.transaction():
     row = await conn.fetchrow(...)
@@ -191,14 +205,15 @@ async with conn.transaction():
 ---
 
 ### 10. React Query - Caching Inconsistente tra Hooks
+
 **File:** `apps/mouth/src/hooks/useClientsQuery.ts` vs `apps/mouth/src/hooks/useCrmClients.ts`
 
 ```typescript
 // useClientsQuery.ts
-queryKey: clientKeys.list(filters || {})
+queryKey: clientKeys.list(filters || {});
 
-// useCrmClients.ts  
-queryKey: ['crm', 'clients', { status, assigned_to, search, offset }]
+// useCrmClients.ts
+queryKey: ["crm", "clients", { status, assigned_to, search, offset }];
 ```
 
 **Rischio:** Medio - Due hook per la stessa entità con query keys diverse causano cache duplication e invalidation inconsistente.
@@ -212,6 +227,7 @@ queryKey: ['crm', 'clients', { status, assigned_to, search, offset }]
 ## 🟡 WARNINGS (Next 10)
 
 ### 11. Hardcoded Timeouts
+
 **File:** Multipli files backend  
 **Esempio:** `crm_clients.py:249` - `asyncio.timeout(10.0)`
 
@@ -220,6 +236,7 @@ queryKey: ['crm', 'clients', { status, assigned_to, search, offset }]
 ---
 
 ### 12. Mancanza di Pagination su Endpoints Lista
+
 **File:** `apps/backend-rag/backend/app/routers/intel.py:443-463`
 
 **Soluzione:** Implementare cursor-based pagination per liste potenzialmente grandi.
@@ -227,6 +244,7 @@ queryKey: ['crm', 'clients', { status, assigned_to, search, offset }]
 ---
 
 ### 13. Type Safety Issues - Any Types
+
 **File:** `apps/mouth/src/hooks/useCrmClients.ts:27-35`
 
 ```typescript
@@ -238,6 +256,7 @@ const debug = (...args: any[]) => {  // ❌ any
 ---
 
 ### 14. Memory Leak Potential - Global Traces Storage
+
 **File:** `apps/backend-rag/backend/app/routers/debug.py:302-318`
 
 ```python
@@ -250,6 +269,7 @@ _MAX_RAG_TRACES = 100
 ---
 
 ### 15. Inconsistent Error Response Format
+
 **File:** Vari routers  
 Alcuni ritornano `{"error": "msg"}`, altri `{"detail": "msg"}`, altri `{"success": false, "message": "msg"}`
 
@@ -258,6 +278,7 @@ Alcuni ritornano `{"error": "msg"}`, altri `{"detail": "msg"}`, altri `{"success
 ---
 
 ### 16. Duplicate Logic - Passport Extraction
+
 **File:** `apps/backend-rag/backend/app/routers/crm_clients.py:972-1109` e `1141-1367`
 
 Due endpoint quasi identici per passport OCR (normale e enhanced).
@@ -267,6 +288,7 @@ Due endpoint quasi identici per passport OCR (normale e enhanced).
 ---
 
 ### 17. Missing Input Sanitization
+
 **File:** `apps/backend-rag/backend/app/routers/intel.py:491-524`
 
 Bulk operations non validano dimensione massima di `item_ids`.
@@ -276,6 +298,7 @@ Bulk operations non validano dimensione massima di `item_ids`.
 ---
 
 ### 18. Synchronous I/O in Async Context
+
 **File:** `apps/backend-rag/backend/app/routers/intel.py:738-739`
 
 ```python
@@ -287,6 +310,7 @@ cover_path.write_bytes(image_data)  # Sync I/O
 ---
 
 ### 19. Missing Health Checks per Servizi Esterni
+
 **File:** `apps/backend-rag/backend/services/search/search_service.py`
 
 Nessun health check per Qdrant, embedding services.
@@ -296,6 +320,7 @@ Nessun health check per Qdrant, embedding services.
 ---
 
 ### 20. Dependency Injection Inconsistente
+
 **File:** Vari service files
 
 Alcuni servizi usano DI, altri usano import globali o singleton impliciti.
@@ -307,17 +332,20 @@ Alcuni servizi usano DI, altri usano import globali o singleton impliciti.
 ## 🟢 ENHANCEMENTS (Recommended)
 
 ### Performance
+
 1. **Implementare query batching** per N+1 query detection
 2. **Aggiungere Redis caching layer** per dati frequentemente accessi
 3. **Ottimizzare React Query** con `staleTime` e `cacheTime` appropriati
 4. **Implementare virtual scrolling** per liste grandi nel frontend
 
 ### Security
+
 5. **Aggiungere Content Security Policy** headers
 6. **Implementare audit logging** completo su tutte le operazioni CRUD
 7. **Aggiungere request signing** per API interne
 
 ### Developer Experience
+
 8. **Aggiungere OpenAPI documentation** completa con esempi
 9. **Implementare API versioning** strategy
 10. **Setup pre-commit hooks** per linting e type checking
@@ -326,12 +354,12 @@ Alcuni servizi usano DI, altri usano import globali o singleton impliciti.
 
 ## 📈 Effort Estimates
 
-| Issue Category | Count | Effort Medio | Priorità |
-|----------------|-------|--------------|----------|
-| Critical Security | 5 | 3-5 giorni | P0 |
-| Code Quality | 10 | 5-8 giorni | P1 |
-| Performance | 5 | 5-10 giorni | P1 |
-| DX/Tooling | 5 | 2-3 giorni | P2 |
+| Issue Category    | Count | Effort Medio | Priorità |
+| ----------------- | ----- | ------------ | -------- |
+| Critical Security | 5     | 3-5 giorni   | P0       |
+| Code Quality      | 10    | 5-8 giorni   | P1       |
+| Performance       | 5     | 5-10 giorni  | P1       |
+| DX/Tooling        | 5     | 2-3 giorni   | P2       |
 
 **Totale Stimato:** 15-26 giorni-uomo per risolvere tutti i critical e high priority issues.
 
@@ -353,7 +381,7 @@ Alcuni servizi usano DI, altri usano import globali o singleton impliciti.
 Backend Complexity:
 - Average router size: 380 lines
 - Largest router: crm_clients.py (1443 lines) ❌
-- Total try/except blocks: 450+ 
+- Total try/except blocks: 450+
 - Exception handling coverage: 95%
 
 Frontend Complexity:

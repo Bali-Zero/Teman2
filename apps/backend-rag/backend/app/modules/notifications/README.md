@@ -5,7 +5,7 @@ Automated email notification system for Bali Zero clients.
 ## Features
 
 - **Passport Alerts**: 13-month warning, 9-month critical, expired
-- **Visa Alerts**: 4-month warning, 2-month critical, expired  
+- **Visa Alerts**: 4-month warning, 2-month critical, expired
 - **Birthday Greetings**: Automated birthday emails with Indonesian blessings
 - **Multi-language**: Support for EN, IT, ID, RU, FR, DE, ES, ZH, JA
 - **Rate Limiting**: Prevents duplicate alerts within configurable time windows
@@ -47,43 +47,49 @@ MIN_DAYS_BETWEEN_ALERTS=1      # Max 1 alert per day per type
 ## API Endpoints
 
 ### POST /api/notifications/check
+
 Run manual expiry check (requires auth)
 
 ```json
 {
-  "client_id": 123  // optional, check all if omitted
+  "client_id": 123 // optional, check all if omitted
 }
 ```
 
 ### GET /api/notifications/status
+
 Get system status and pending alert count
 
 ### POST /api/notifications/send-pending
+
 Send all pending alerts (admin only)
 
 ## Scheduled Jobs
 
-| Job | Schedule | Description |
-|-----|----------|-------------|
+| Job                      | Schedule          | Description                                          |
+| ------------------------ | ----------------- | ---------------------------------------------------- |
 | daily_notification_check | 9:00 AM Bali time | Generate alerts for expiring documents and birthdays |
-| hourly_pending_send | Every hour | Send any pending alerts |
+| hourly_pending_send      | Every hour        | Send any pending alerts                              |
 
 ## Alert Thresholds
 
-| Document | Warning | Critical | Expired |
-|----------|---------|----------|---------|
-| Passport | 13 months | 9 months | < 0 days |
-| Visa | 4 months (~120 days) | 2 months (~60 days) | < 0 days |
+| Document | Warning              | Critical            | Expired  |
+| -------- | -------------------- | ------------------- | -------- |
+| Passport | 13 months            | 9 months            | < 0 days |
+| Visa     | 4 months (~120 days) | 2 months (~60 days) | < 0 days |
 
 ## Database Schema
 
 ### notification_alerts
+
 Stores generated alerts and their status
 
 ### notification_settings
+
 Per-client notification preferences
 
 ### notification_log
+
 Audit log of all notification activities
 
 ## Testing
@@ -101,25 +107,28 @@ curl http://localhost:8000/api/notifications/status \
 ## Deployment
 
 ### Fly.io (Current)
+
 Scheduler runs in-process with main application.
 
 ### Kubernetes
+
 Use CronJob for external scheduling:
+
 ```yaml
 apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: notification-check
 spec:
-  schedule: "0 9 * * *"  # 9 AM daily
+  schedule: "0 9 * * *" # 9 AM daily
   jobTemplate:
     spec:
       template:
         spec:
           containers:
-          - name: notifier
-            image: balizero-backend
-            command: ["python", "-m", "notifications.cli", "check"]
+            - name: notifier
+              image: balizero-backend
+              command: ["python", "-m", "notifications.cli", "check"]
 ```
 
 ## Adding New Languages

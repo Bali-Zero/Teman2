@@ -24,11 +24,11 @@ Successfully implemented and deployed a **LangGraph-based agentic layer** on top
 
 ### Test Results (2026-02-14 15:14 UTC)
 
-| Test | Endpoint | Status | Details |
-|------|----------|--------|---------|
-| ✅ | `GET /health` | 200 OK | Main health: healthy, v100-qdrant |
-| ✅ | `GET /api/agent/health` | 200 OK | Graph loaded: true, operational |
-| ✅ | `POST /api/agent/invoke` | 401 Unauthorized | Auth required (as expected) |
+| Test | Endpoint                 | Status           | Details                           |
+| ---- | ------------------------ | ---------------- | --------------------------------- |
+| ✅   | `GET /health`            | 200 OK           | Main health: healthy, v100-qdrant |
+| ✅   | `GET /api/agent/health`  | 200 OK           | Graph loaded: true, operational   |
+| ✅   | `POST /api/agent/invoke` | 401 Unauthorized | Auth required (as expected)       |
 
 **Overall:** 3/3 tests passed (100%)
 
@@ -47,17 +47,17 @@ Start → Retrieve → Grade → Generate → End
 
 ### Files Created/Modified
 
-| File | Lines | Type | Purpose |
-|------|-------|------|---------|
-| `backend/app/agents/__init__.py` | 20 | Created | Package initialization |
-| `backend/app/agents/state.py` | 100 | Created | TypedDict state definitions |
-| `backend/app/agents/graph.py` | 520 | Created | LangGraph workflow with real services |
-| `backend/app/routers/agent.py` | 280 | Created | API router with 2 endpoints |
-| `backend/app/setup/service_initializer.py` | +28 | Modified | Service injection at startup |
-| `backend/app/setup/router_registration.py` | +2 | Modified | Register agent router |
-| `backend/middleware/hybrid_auth.py` | +1 | Modified | Add health endpoint to public list |
-| `docs/LANGGRAPH_AGENTIC_LAYER.md` | 1,500+ | Created | Complete documentation |
-| `backend/tests/manual_test_agent.py` | 400+ | Created | Manual test suite |
+| File                                       | Lines  | Type     | Purpose                               |
+| ------------------------------------------ | ------ | -------- | ------------------------------------- |
+| `backend/app/agents/__init__.py`           | 20     | Created  | Package initialization                |
+| `backend/app/agents/state.py`              | 100    | Created  | TypedDict state definitions           |
+| `backend/app/agents/graph.py`              | 520    | Created  | LangGraph workflow with real services |
+| `backend/app/routers/agent.py`             | 280    | Created  | API router with 2 endpoints           |
+| `backend/app/setup/service_initializer.py` | +28    | Modified | Service injection at startup          |
+| `backend/app/setup/router_registration.py` | +2     | Modified | Register agent router                 |
+| `backend/middleware/hybrid_auth.py`        | +1     | Modified | Add health endpoint to public list    |
+| `docs/LANGGRAPH_AGENTIC_LAYER.md`          | 1,500+ | Created  | Complete documentation                |
+| `backend/tests/manual_test_agent.py`       | 400+   | Created  | Manual test suite                     |
 
 **Total:** 9 files, 2,850+ lines added
 
@@ -71,6 +71,7 @@ Start → Retrieve → Grade → Generate → End
 **Description:** Invoke the RAG workflow with a question
 
 **Request:**
+
 ```json
 {
   "question": "What are the requirements for a KITAS visa?",
@@ -82,6 +83,7 @@ Start → Retrieve → Grade → Generate → End
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -90,12 +92,13 @@ Start → Retrieve → Grade → Generate → End
   "execution_path": ["retrieve", "grade", "generate"],
   "step_count": 3,
   "timestamp": "2026-02-14T07:14:22.108034",
-  "metadata": {"user_id": "user_123"},
+  "metadata": { "user_id": "user_123" },
   "errors": null
 }
 ```
 
 **cURL Example:**
+
 ```bash
 curl -X POST https://nuzantara-rag.fly.dev/api/agent/invoke \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
@@ -114,6 +117,7 @@ curl -X POST https://nuzantara-rag.fly.dev/api/agent/invoke \
 **Description:** Check agent system health
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
@@ -124,6 +128,7 @@ curl -X POST https://nuzantara-rag.fly.dev/api/agent/invoke \
 ```
 
 **cURL Example:**
+
 ```bash
 curl https://nuzantara-rag.fly.dev/api/agent/health
 ```
@@ -135,11 +140,13 @@ curl https://nuzantara-rag.fly.dev/api/agent/health
 ### Test Execution (2026-02-14 with Gemini 2.5 Flash)
 
 **TEST 1: Mocked Services** ✅ PASSED
+
 - Uses mock data for all nodes
 - Validates state transitions
 - No external dependencies
 
 **TEST 2: Real Services** ✅ PASSED
+
 - **Retrieved:** 5 documents from Qdrant (scores: [0.67, 0.67, 0.60])
 - **Graded:** LLM filtered to 2 high-relevance docs (scores: [1.0, 0.9])
 - **Generated:** Professional 430-character RAG answer about KITAS requirements
@@ -148,6 +155,7 @@ curl https://nuzantara-rag.fly.dev/api/agent/health
 - **Token Usage:** 1,253 input + 316 output
 
 **TEST 3: Error Handling** ✅ PASSED
+
 - Graceful degradation when services fail
 - Mock fallbacks work correctly
 - No crashes
@@ -163,6 +171,7 @@ curl https://nuzantara-rag.fly.dev/api/agent/health
 **Purpose:** Retrieve relevant documents from Qdrant vector store
 
 **Implementation in `retrieve_node` (graph.py:54-148):**
+
 ```python
 search_result = await _search_service.search(
     query=question,
@@ -173,6 +182,7 @@ search_result = await _search_service.search(
 ```
 
 **Graceful Fallback:**
+
 - If SearchService unavailable → Mock documents with scores
 - Logs warning: "SearchService not available, using mock data"
 
@@ -185,6 +195,7 @@ search_result = await _search_service.search(
 **Purpose:** LLM-based relevance grading and answer generation
 
 **Implementation in `grade_node` (graph.py:150-292):**
+
 ```python
 response_text, model_used, _, token_usage = await _llm_gateway.send_message(
     chat=None,  # LLMGateway creates session internally
@@ -195,6 +206,7 @@ response_text, model_used, _, token_usage = await _llm_gateway.send_message(
 ```
 
 **Grading Prompt:**
+
 ```
 You are a document relevance grader.
 Rate each document's relevance on a scale of 0.0 to 1.0.
@@ -202,6 +214,7 @@ Respond with ONLY a JSON array of scores: [0.9, 0.7, 0.3]
 ```
 
 **Graceful Fallback:**
+
 - If LLMGateway unavailable → Score-based filtering (threshold 0.7)
 - If JSON parsing fails → Use retrieval scores
 - Logs warning: "LLMGateway not available, using score-based filtering"
@@ -209,6 +222,7 @@ Respond with ONLY a JSON array of scores: [0.9, 0.7, 0.3]
 ---
 
 **Implementation in `generate_node` (graph.py:294-400):**
+
 ```python
 response_text, model_used, _, token_usage = await _llm_gateway.send_message(
     chat=None,
@@ -220,6 +234,7 @@ response_text, model_used, _, token_usage = await _llm_gateway.send_message(
 ```
 
 **System Prompt:**
+
 ```
 You are Zantara, an expert AI assistant for Indonesian business and immigration matters.
 Your role is to provide accurate, helpful answers based on the provided context documents.
@@ -233,6 +248,7 @@ Guidelines:
 ```
 
 **Graceful Fallback:**
+
 - If LLMGateway unavailable → Mock generation with disclaimer
 - Logs warning: "LLMGateway not available, using mock generation"
 
@@ -256,16 +272,19 @@ Guidelines:
 ### Fly.io Deployment
 
 **Command:**
+
 ```bash
 fly deploy --app nuzantara-rag --strategy rolling
 ```
 
 **Image Details:**
+
 - Registry: `registry.fly.io/nuzantara-rag:deployment-01KHDFWJ61VSNG2RC9KJGPAC1Z`
 - Size: 444 MB
 - Build Time: ~60 seconds (Depot builder)
 
 **Machines:**
+
 - Machine 1: `7849e2efe56448` - Started, 1 passing health check ✅
 - Machine 2: `48e753ef166798` - Stopped (standby)
 - Machine 3: `48e7ed5f723798` - Stopped (standby)
@@ -294,12 +313,12 @@ fly deploy --app nuzantara-rag --strategy rolling
 
 ### Current Performance (Real Services)
 
-| Metric | Value | Details |
-|--------|-------|---------|
-| **Retrieve Node** | ~500ms | Qdrant vector search (5 docs) |
-| **Grade Node** | ~1.5s | LLM API call (Gemini 2.5 Flash) |
-| **Generate Node** | ~2.5s | LLM generation (430 chars) |
-| **Total End-to-End** | ~4.5s | Full RAG pipeline |
+| Metric               | Value  | Details                         |
+| -------------------- | ------ | ------------------------------- |
+| **Retrieve Node**    | ~500ms | Qdrant vector search (5 docs)   |
+| **Grade Node**       | ~1.5s  | LLM API call (Gemini 2.5 Flash) |
+| **Generate Node**    | ~2.5s  | LLM generation (430 chars)      |
+| **Total End-to-End** | ~4.5s  | Full RAG pipeline               |
 
 ### Token Usage (Real Test)
 
@@ -322,11 +341,13 @@ fly deploy --app nuzantara-rag --strategy rolling
 **File:** `backend/middleware/hybrid_auth.py`
 
 **Public Endpoints:** (line 145)
+
 ```python
 "/api/agent/health",  # BUSINESS: LangGraph agent layer health check - public status endpoint for monitoring
 ```
 
 **Protected Endpoints:**
+
 - `/api/agent/invoke` - Requires JWT token
 - Enforced by `get_current_user` dependency in router
 
@@ -343,6 +364,7 @@ fly deploy --app nuzantara-rag --strategy rolling
    - Token usage and cost
 
 2. **Prometheus Metrics** - Add custom metrics in `agent.py`:
+
    ```python
    agent_invoke_requests = Counter("agent_invoke_requests_total", ["status"])
    agent_invoke_duration = Histogram("agent_invoke_duration_seconds")
@@ -357,6 +379,7 @@ fly deploy --app nuzantara-rag --strategy rolling
 ### Priority 2: Advanced Features
 
 1. **Streaming Support** - Add SSE endpoint:
+
    ```python
    @router.post("/invoke/stream")
    async def invoke_agent_stream(...) -> StreamingResponse:
@@ -364,9 +387,11 @@ fly deploy --app nuzantara-rag --strategy rolling
    ```
 
 2. **Checkpointing** - Enable state persistence:
+
    ```bash
    pip install langgraph-checkpoint-postgres
    ```
+
    - Allows resuming interrupted workflows
    - Useful for long-running tasks
 
@@ -380,6 +405,7 @@ fly deploy --app nuzantara-rag --strategy rolling
 ### Priority 3: Performance Optimization
 
 1. **Parallel Execution** - Run retrieve + LLM grading in parallel:
+
    ```python
    # Current: Sequential (retrieve → grade → generate)
    # Optimized: Parallel (retrieve + grade prep) → generate
@@ -453,16 +479,19 @@ fly deploy --app nuzantara-rag --strategy rolling
 ## 📞 Support
 
 ### Health Check
+
 ```bash
 curl https://nuzantara-rag.fly.dev/api/agent/health
 ```
 
 ### Logs
+
 ```bash
 fly logs -a nuzantara-rag --region sin
 ```
 
 ### Monitoring
+
 - Fly.io Dashboard: https://fly.io/apps/nuzantara-rag/monitoring
 - GitHub Repository: https://github.com/Balizero1987/Teman2
 

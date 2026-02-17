@@ -1,6 +1,7 @@
 # The Generals Multi-Agent System
 
 A distributed task execution system where specialized "Generals" handle different types of tasks:
+
 - **Coding General**: Executes code-related tasks (shell commands, Python scripts, code execution)
 - **Intelligence General**: Performs research and analysis using Gemini 3 Pro
 - **Antigravity General**: System orchestrator for multi-tool coordination and IDE automation
@@ -9,6 +10,7 @@ A distributed task execution system where specialized "Generals" handle differen
 ## Architecture
 
 The system uses PostgreSQL tables for coordination:
+
 - `generals_tasks`: Task queue with status tracking
 - `generals_memory`: Shared memory between generals (key-value store with expiration)
 - `generals_activity`: Activity log for monitoring and debugging
@@ -16,6 +18,7 @@ The system uses PostgreSQL tables for coordination:
 ## Database Schema
 
 The schema is defined in `schema.sql` and includes:
+
 - Task queue with priority, status tracking, and result storage
 - Shared memory with expiration support
 - Activity logging for all operations
@@ -27,12 +30,14 @@ The schema is defined in `schema.sql` and includes:
 Polls `generals_tasks` for tasks with `task_type='code'` and executes them.
 
 **Features:**
+
 - Polls database for pending code tasks
 - Executes shell commands, Python scripts, or Python code strings
 - Updates task status and results
 - Logs all activities
 
 **Usage:**
+
 ```python
 from backend.generals import CodingGeneral
 
@@ -53,6 +58,7 @@ if task:
 Polls `generals_tasks` for tasks with `task_type='research'` and uses Gemini 3 Pro for analysis.
 
 **Features:**
+
 - Polls database for pending research tasks
 - Uses Gemini 3 Pro (gemini-2.0-pro-exp-02-05) for research
 - Reads/writes shared memory for context
@@ -60,6 +66,7 @@ Polls `generals_tasks` for tasks with `task_type='research'` and uses Gemini 3 P
 - Supports memory context in queries
 
 **Usage:**
+
 ```python
 from backend.generals import IntelligenceGeneral
 
@@ -76,6 +83,7 @@ if task:
 ```
 
 **Task Payload Options:**
+
 - `query`: Research query string
 - `context`: Additional context for the query
 - `memory_keys`: List of memory keys to read for context
@@ -91,6 +99,7 @@ if task:
 Polls `generals_tasks` for tasks with `task_type='orchestration'` and handles system-level coordination.
 
 **Features:**
+
 - Polls database for pending orchestration tasks
 - Controls Antigravity.app via AppleScript
 - Executes multi-tool workflows
@@ -98,6 +107,7 @@ Polls `generals_tasks` for tasks with `task_type='orchestration'` and handles sy
 - IDE coordination
 
 **Usage:**
+
 ```python
 from backend.generals import AntigravityGeneral
 
@@ -113,11 +123,13 @@ general = get_antigravity_general()
 ```
 
 **Task Payload Options:**
+
 - `app_command`: Control Antigravity app ('open' | 'quit' | 'activate' | 'status')
 - `applescript`: Raw AppleScript code to execute
 - `description`: Human-readable orchestration task description (for future LLM-based planning)
 
 **Examples:**
+
 ```python
 # Open Antigravity IDE
 await coordinator.submit_task(
@@ -148,6 +160,7 @@ await coordinator.submit_task(
 High-level API for ZANTARA to interact with the system.
 
 **Features:**
+
 - Submit tasks (code or research)
 - Monitor task status
 - Retrieve results
@@ -156,6 +169,7 @@ High-level API for ZANTARA to interact with the system.
 - Get system statistics
 
 **Usage:**
+
 ```python
 from backend.generals import TaskCoordinator
 
@@ -204,6 +218,7 @@ tasks = await coordinator.get_tasks(status="pending")
 ### Code Tasks (`task_type='code'`)
 
 Payload options:
+
 - `command`: Shell command to execute
 - `script_path`: Path to Python script to execute
 - `code`: Python code string to execute
@@ -215,6 +230,7 @@ Payload options:
 ### Research Tasks (`task_type='research'`)
 
 Payload options:
+
 - `query`: Research query (required)
 - `context`: Additional context
 - `memory_keys`: List of memory keys to read
@@ -228,11 +244,13 @@ Payload options:
 ### Orchestration Tasks (`task_type='orchestration'`)
 
 Payload options:
+
 - `app_command`: Control Antigravity app ('open' | 'quit' | 'activate' | 'status')
 - `applescript`: Raw AppleScript code to execute
 - `description`: Orchestration task description (for future LLM planning)
 
 Examples:
+
 ```python
 # Open Antigravity IDE
 {"app_command": "open"}
@@ -259,6 +277,7 @@ Examples:
 ## Priority System
 
 Tasks have priority 1-10 (higher = more important):
+
 - Default: 5
 - High priority: 8-10
 - Low priority: 1-3
@@ -268,6 +287,7 @@ Tasks are processed in priority order (highest first), then by creation time.
 ## Memory System
 
 Shared memory allows generals to share context:
+
 - Key-value store (JSONB values)
 - Optional expiration (TTL)
 - Automatic cleanup of expired entries
@@ -276,6 +296,7 @@ Shared memory allows generals to share context:
 ## Activity Logging
 
 All operations are logged to `generals_activity`:
+
 - `task_polled`: Task was polled by a general
 - `task_started`: Task execution started
 - `task_completed`: Task completed successfully
@@ -287,11 +308,13 @@ All operations are logged to `generals_activity`:
 ## Testing
 
 Run tests with:
+
 ```bash
 pytest backend/generals/test_generals.py -v
 ```
 
 Tests cover:
+
 - Task polling and assignment
 - Task execution (code and research)
 - Memory operations
@@ -302,6 +325,7 @@ Tests cover:
 ## Examples
 
 See `example_usage.py` for complete examples:
+
 - Submitting and waiting for tasks
 - Research tasks with memory
 - Running generals in background
@@ -311,6 +335,7 @@ See `example_usage.py` for complete examples:
 ## Integration with ZANTARA
 
 ZANTARA can use TaskCoordinator to:
+
 1. Submit tasks for execution
 2. Monitor task progress
 3. Retrieve results
@@ -318,6 +343,7 @@ ZANTARA can use TaskCoordinator to:
 5. Monitor system health
 
 Example integration:
+
 ```python
 from backend.generals import TaskCoordinator
 
@@ -347,6 +373,7 @@ result = await coordinator.wait_for_task(task_id)
 ## Configuration
 
 Set environment variables:
+
 - `DATABASE_URL`: PostgreSQL connection string
 - `GOOGLE_API_KEY` or `GOOGLE_CREDENTIALS_JSON`: For Gemini API access
 

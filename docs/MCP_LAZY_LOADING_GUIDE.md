@@ -80,7 +80,12 @@ These servers are configured with `alwaysAllow` for critical tools:
     "/Users/antonellosiano/Projects/nuzantara"
   ],
   "env": {},
-  "alwaysAllow": ["read_file", "read_multiple_files", "list_directory", "search_files"],
+  "alwaysAllow": [
+    "read_file",
+    "read_multiple_files",
+    "list_directory",
+    "search_files"
+  ],
   "instructions": "Use for reading, writing, editing files in the Nuzantara project, searching code, managing project structure, and accessing configuration files. Core tool for all file operations in the monorepo."
 }
 ```

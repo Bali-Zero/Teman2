@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server';
-import { QdrantClient } from '@qdrant/js-client-rest';
-import { logger } from '@/lib/logger';
+import { NextResponse } from "next/server";
+import { QdrantClient } from "@qdrant/js-client-rest";
+import { logger } from "@/lib/logger";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-const COLLECTION = 'legal_unified_hybrid';
+const COLLECTION = "legal_unified_hybrid";
 
 const client = new QdrantClient({
   url: process.env.QDRANT_URL,
@@ -21,7 +21,7 @@ export async function GET() {
     const sampleSize = 1000;
     const sample = await client.scroll(COLLECTION, {
       limit: sampleSize,
-      with_payload: ['regulation_type', 'year'],
+      with_payload: ["regulation_type", "year"],
       with_vector: false,
     });
 
@@ -31,10 +31,10 @@ export async function GET() {
     for (const point of sample.points) {
       const payload = point.payload as Record<string, any>;
 
-      const regType = payload?.regulation_type || 'UNKNOWN';
+      const regType = payload?.regulation_type || "UNKNOWN";
       byType[regType] = (byType[regType] || 0) + 1;
 
-      const year = payload?.year?.toString() || 'UNKNOWN';
+      const year = payload?.year?.toString() || "UNKNOWN";
       byYear[year] = (byYear[year] || 0) + 1;
     }
 
@@ -57,7 +57,10 @@ export async function GET() {
       },
     });
   } catch (error: any) {
-    logger.error('Legal Stats Error:', error);
-    return NextResponse.json({ error: error.message, collection: COLLECTION }, { status: 500 });
+    logger.error("Legal Stats Error:", error);
+    return NextResponse.json(
+      { error: error.message, collection: COLLECTION },
+      { status: 500 },
+    );
   }
 }

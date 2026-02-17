@@ -9,36 +9,42 @@
 ## 👥 Peran Tim & Tanggung Jawab
 
 ### Orang 1: **SPESIALIS VISA**
+
 - **Fokus:** Semua jenis visa + posisi pekerjaan Kemnaker
 - **Target:** 100-120 pertanyaan basic
 - **Notebook:** "Nuzantara - Visa & Immigration"
 - **Direktori:** `data/notebooklm_responses/visa/`
 
 ### Orang 2: **SPESIALIS KBLI**
+
 - **Fokus:** Kode KBLI (prioritas Tier 1 granitik) + izin usaha
 - **Target:** 150-200 pertanyaan basic
 - **Notebook:** "Nuzantara - KBLI & Licensing"
 - **Direktori:** `data/notebooklm_responses/kbli/`
 
 ### Orang 3: **SPESIALIS PAJAK**
+
 - **Fokus:** Semua jenis pajak (PPh, PPN, perjanjian pajak)
 - **Target:** 40-50 pertanyaan basic
 - **Notebook:** "Nuzantara - Tax & Compliance"
 - **Direktori:** `data/notebooklm_responses/tax/`
 
 ### Orang 4: **SPESIALIS PROPERTI**
+
 - **Fokus:** Sertifikat properti + aturan kepemilikan asing
 - **Target:** 30-40 pertanyaan basic
 - **Notebook:** "Nuzantara - Property & Real Estate"
 - **Direktori:** `data/notebooklm_responses/property/`
 
 ### Orang 5: **KOORDINATOR LINTAS DOMAIN**
+
 - **Fokus:** Skenario 2-topik (company+visa, visa+property, dll.)
 - **Target:** 100-150 pertanyaan level 2
 - **Notebook:** "Nuzantara - Cross Domain Level 2"
 - **Direktori:** `data/notebooklm_responses/cross_domain/`
 
 ### Orang 6: **ARSITEK SOTA**
+
 - **Fokus:** Skenario multi-domain kompleks (3+ topik)
 - **Target:** 50-80 pertanyaan level 3
 - **Notebook:** "Nuzantara - Multi-Domain SOTA"
@@ -142,17 +148,20 @@ Setiap orang memelihara `PROGRESS.md`:
 **Pending:** 65
 
 ## Completed (45)
+
 - [x] 001_kitas_investor.txt
 - [x] 002_kitas_work.txt
 - [x] 003_e33g_digital_nomad.txt
-...
+      ...
 
 ## In Progress (10)
+
 - [ ] 046_kemnaker_job_software_engineer.txt
 - [ ] 047_kemnaker_job_chef.txt
-...
+      ...
 
 ## Issues / Notes
+
 - Proses renewal KITAS: NotebookLM mengutip PP 31/2013, verifikasi pembaruan 2024
 - Timeline E-Visa: respons tidak jelas "7-14 hari", minta lebih spesifik
 ```
@@ -162,11 +171,13 @@ Setiap orang memelihara `PROGRESS.md`:
 ## 📚 Dokumen untuk NotebookLM (per domain)
 
 **STRATEGI HYBRID (DIREKOMENDASIKAN):**
+
 - **Domain KBLI (Orang 2):** Gunakan PDF yang sudah siap di `data/kb_sources/` ✅
 - **Domain lainnya (Orang 1, 3, 4):** Gunakan pengetahuan umum NotebookLM + kutipan regulasi
 - **Cross/Multi-domain (Orang 5, 6):** Kombinasikan PDF KBLI + pengetahuan umum domain lainnya
 
 **Mengapa hybrid?**
+
 - Spesialis KBLI dapat mulai SEGERA dengan dokumen lengkap
 - Spesialis lainnya tidak terhambat mencari PDF
 - Pengetahuan umum NotebookLM akurat jika Anda menentukan nomor regulasi
@@ -187,6 +198,7 @@ jelaskan apa itu KITAS Investor dan persyaratan lengkapnya..."
 ```
 
 **PDF Opsional** (jika tersedia):
+
 - PP 31/2013 (Immigration Law)
 - Permenkumham 28/2024 (E-Visa)
 - PP 34/2021 (IMTA/Work Permits)
@@ -239,11 +251,13 @@ jelaskan tarif PPh Badan untuk PT PMA..."
 ```
 
 **KRITIS:** Selalu verifikasi:
+
 - Tarif PPN: 11% (BUKAN 12%)
 - PPh Badan: 22%
 - Kutip UU 7/2021 di setiap respons
 
 **PDF Opsional** (jika tersedia):
+
 - UU 7/2021 (Tax Harmonization)
 - PP 55/2022 (Income Tax)
 - Panduan DJP 2024-2025
@@ -261,12 +275,14 @@ jelaskan persyaratan untuk orang asing membeli properti..."
 ```
 
 **KRITIS:** Selalu sebutkan:
+
 - Hak Pakai (asing) vs Hak Milik (hanya WNI)
 - Persyaratan KITAS
 - Minimum provinsi (Bali Rp 1-2M, Jakarta Rp 3-5M)
 - Risiko nominee (ILEGAL)
 
 **PDF Opsional** (jika tersedia):
+
 - PP 18/2021 (Hak Pakai)
 - UUPA (Undang-Undang Agraria 1960)
 
@@ -418,11 +434,13 @@ python scripts/caching/consolidate_team_responses.py \
 ## 🎯 Metrik Keberhasilan
 
 **Per Orang:**
+
 - [ ] 100% pertanyaan yang ditugaskan selesai
 - [ ] 90%+ lulus pemeriksaan kualitas mandiri
 - [ ] `PROGRESS.md` diupdate setiap hari
 
 **Per Tim:**
+
 - [ ] 500-800 respons total
 - [ ] 80%+ tingkat kelulusan validasi Damar
 - [ ] Timeline: 2-3 minggu
@@ -432,10 +450,12 @@ python scripts/caching/consolidate_team_responses.py \
 ## 📞 Komunikasi Tim
 
 **Daily Standup (15 menit):**
+
 - Masing-masing: "Kemarin: X selesai, Hari ini: Y direncanakan, Masalah: Z"
 - Sinkronisasi dependensi lintas domain
 
 **Weekly Review:**
+
 - Pemeriksaan kualitas sampel acak (10%)
 - Sesuaikan template jika diperlukan
 - Rayakan progres! 🎉

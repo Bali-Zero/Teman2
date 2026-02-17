@@ -18,6 +18,7 @@ Attempted to deploy FAQ caching system to reduce API costs by 60-80% through exa
 **Commit:** `4836ad06f` - "feat(caching): implement professional FAQ caching system for cost reduction"
 **Deployment:** Failed with recursive `merged_lifespan` errors
 **Symptoms:**
+
 - Health check timeout
 - App not listening on port 8080
 - Recursive error in merged_lifespan
@@ -32,6 +33,7 @@ Attempted to deploy FAQ caching system to reduce API costs by 60-80% through exa
 
 **Commit:** `8ab496211` - "refactor(backend): modernize FastAPI lifespan architecture"
 **Changes:**
+
 - Migrated from `@app.on_event("startup")` to `@asynccontextmanager` lifespan API
 - Consolidated startup/shutdown in single context manager
 - Removed deprecated event handlers
@@ -49,11 +51,13 @@ Attempted to deploy FAQ caching system to reduce API costs by 60-80% through exa
 **Test Deployments:**
 
 ### ❌ Attempt 1: FAQ Cache WITHOUT SSL
+
 **Commit:** `df426f40e` (modified)
 **Result:** CRASHED - Same symptoms (health check timeout)
 **Discovery:** SSL code was NOT the root cause
 
 ### ❌ Attempt 2: Feature Flag Test
+
 **Config:** `ENABLE_FAQ_CACHE=false`
 **Result:** CRASHED - Even with cache disabled
 **Discovery:** Bug is in **import or initialization**, not cache logic
@@ -66,14 +70,14 @@ Systematic elimination of components to isolate root cause.
 
 ### Test Matrix
 
-| Test | Files Deployed | Lines Added | Result | Version |
-|------|----------------|-------------|--------|---------|
-| **Baseline** | Modern lifespan only | 0 | ✅ STABLE | v1960 |
-| **STEP 1** | Redis import test | +17 debug | ✅ SUCCESS | v1971 |
-| **STEP 2** | Prometheus metrics | +19 metrics | ✅ SUCCESS | v1973 |
-| **STEP 3A** | orchestrator.py + metrics | +23 total | ✅ SUCCESS | v1975 |
-| **STEP 3B** | orchestrator_core.py | +105 total | ✅ SUCCESS | v1976 |
-| **FULL** | Complete FAQ cache | +421 total | ❌ CRASH | v1977 |
+| Test         | Files Deployed            | Lines Added | Result     | Version |
+| ------------ | ------------------------- | ----------- | ---------- | ------- |
+| **Baseline** | Modern lifespan only      | 0           | ✅ STABLE  | v1960   |
+| **STEP 1**   | Redis import test         | +17 debug   | ✅ SUCCESS | v1971   |
+| **STEP 2**   | Prometheus metrics        | +19 metrics | ✅ SUCCESS | v1973   |
+| **STEP 3A**  | orchestrator.py + metrics | +23 total   | ✅ SUCCESS | v1975   |
+| **STEP 3B**  | orchestrator_core.py      | +105 total  | ✅ SUCCESS | v1976   |
+| **FULL**     | Complete FAQ cache        | +421 total  | ❌ CRASH   | v1977   |
 
 ### STEP 1: Redis Import Test ✅
 
@@ -81,6 +85,7 @@ Systematic elimination of components to isolate root cause.
 **Files:** `service_initializer.py` (debug code only)
 
 **Code Deployed:**
+
 ```python
 import sys
 print("=" * 80, file=sys.stderr, flush=True)
@@ -103,6 +108,7 @@ except ImportError as e:
 **Files:** `backend/app/metrics.py`
 
 **Metrics Added:**
+
 ```python
 # FAQ Cache Metrics (exact match, < 1ms lookup)
 faq_cache_hits_total = safe_register_counter(...)
@@ -119,10 +125,12 @@ faq_cache_api_cost_saved_usd = safe_register_counter(...)
 
 **Goal:** Verify orchestrator.py changes work
 **Files:**
+
 - `backend/app/metrics.py` (19 lines)
 - `backend/services/rag/agentic/orchestrator.py` (4 lines)
 
 **Changes:**
+
 ```python
 # orchestrator.py
 def __init__(self, ..., faq_cache: Any = None):
@@ -137,11 +145,13 @@ def __init__(self, ..., faq_cache: Any = None):
 
 **Goal:** Verify orchestrator_core.py check_faq_cache() method works
 **Files:**
+
 - `backend/app/metrics.py`
 - `backend/services/rag/agentic/orchestrator.py`
 - `backend/services/rag/agentic/orchestrator_core.py` (+82 lines)
 
 **Key Code:**
+
 ```python
 async def check_faq_cache(self, query: str, ...) -> CoreResult | None:
     if not self.faq_cache:
@@ -170,6 +180,7 @@ async def check_faq_cache(self, query: str, ...) -> CoreResult | None:
 
 **Goal:** Deploy all FAQ cache components
 **Files:**
+
 - `backend/app/metrics.py` (+19 lines)
 - `backend/services/rag/agentic/orchestrator.py` (+4 lines)
 - `backend/services/rag/agentic/orchestrator_core.py` (+82 lines)
@@ -181,6 +192,7 @@ async def check_faq_cache(self, query: str, ...) -> CoreResult | None:
 
 **Result:** ❌ CRASH LOOP (v1977)
 **Symptoms:**
+
 ```
 INFO: Waiting for child process [722]
 INFO: Child process [722] died
@@ -209,11 +221,13 @@ INFO: Child process [723] died
 **Component:** `NotebookLMCacheService` initialization in `service_initializer.py`
 
 **Evidence:**
+
 - All orchestrator code works when FAQ cache service is NOT initialized
 - Full deployment crashes when `initialize_faq_cache_service()` is called
 - No Python error tracebacks (suggests import-time or very early crash)
 
 **Problematic Code Flow:**
+
 ```python
 # service_initializer.py:544-554
 cache_service = NotebookLMCacheService()
@@ -249,6 +263,7 @@ async for _ in self.redis_client.scan_iter(match=f"{self.cache_prefix}*"):
 **Commit:** `0d390795a` - "fix(caching): remove blocking get_stats() call"
 
 **Changes:**
+
 ```python
 # BEFORE
 logger.info("✅ FAQ Cache service initialized (Redis connected)")
@@ -278,12 +293,14 @@ logger.info("✅ FAQ Cache service initialized (Redis connected successfully)")
 **Downtime:** ~15 minutes (during investigation deployments)
 
 **Rollback Procedure:**
+
 ```bash
 git reset --hard 8ab496211
 fly deploy --strategy rolling
 ```
 
 **Lease Conflict Resolution:**
+
 - Initial rollback failed (lease held by previous deployment)
 - Waited 5 minutes for lease expiry
 - Retry successful
@@ -296,12 +313,14 @@ fly deploy --strategy rolling
 
 **Observation:** No error logs visible despite app crashing
 **Possible Causes:**
+
 - Crash happens before logging is configured
 - System-level crash (not Python exception)
 - Circular import causing silent failure
 - Signal handling issue (SIGTERM/SIGINT)
 
 **Investigation Needed:**
+
 - Add extensive debug logging to EVERY method
 - Test cache service in isolation (outside FastAPI)
 - Check for circular imports
@@ -312,7 +331,9 @@ fly deploy --strategy rolling
 **Unknown:** Specific code line or operation causing failure
 
 **Suspects:**
+
 1. **Redis Connection:**
+
    ```python
    self.redis_client = await redis.from_url(
        self.redis_url,
@@ -321,6 +342,7 @@ fly deploy --strategy rolling
    )
    await self.redis_client.ping()
    ```
+
    - Possible timeout on `ping()`?
    - Connection string format issue?
 
@@ -333,6 +355,7 @@ fly deploy --strategy rolling
    ```python
    from backend.services.caching import NotebookLMCacheService
    ```
+
    - Circular import with metrics?
    - Missing dependency?
 
@@ -341,6 +364,7 @@ fly deploy --strategy rolling
 **Mystery:** orchestrator_core.py with `check_faq_cache()` method works (v1976), but full FAQ cache crashes (v1977)
 
 **Key Difference:**
+
 - **STEP 3B:** `faq_cache=None` (cache service NOT initialized)
 - **FULL:** `faq_cache=cache_service` (cache service initialized)
 
@@ -355,6 +379,7 @@ fly deploy --strategy rolling
 **Goal:** Test `NotebookLMCacheService` outside FastAPI context
 
 **Approach:**
+
 ```python
 # scripts/test_cache_isolated.py
 import asyncio
@@ -378,6 +403,7 @@ asyncio.run(test())
 ```
 
 **Run:**
+
 ```bash
 cd apps/backend-rag
 PYTHONPATH=. python scripts/test_cache_isolated.py
@@ -388,6 +414,7 @@ PYTHONPATH=. python scripts/test_cache_isolated.py
 **Goal:** Capture exact failure point
 
 **Approach:**
+
 ```python
 # notebooklm_cache_service.py:57-70
 async def initialize(self):
@@ -415,12 +442,14 @@ async def initialize(self):
 **Goal:** Ensure Redis connection string is valid
 
 **Check Fly.io Secrets:**
+
 ```bash
 fly secrets list -a nuzantara-rag | grep REDIS
 # REDIS_URL exists ✅
 ```
 
 **Verify Format:**
+
 ```python
 # Expected: redis://default:password@hostname:port
 # Check for:
@@ -434,6 +463,7 @@ fly secrets list -a nuzantara-rag | grep REDIS
 If Redis issue persists, consider:
 
 1. **In-Memory LRU Cache:**
+
    ```python
    from functools import lru_cache
    from cachetools import TTLCache
@@ -456,11 +486,13 @@ If Redis issue persists, consider:
 
 **Investigation Duration:** 3 hours 30 minutes
 **Deployments:** 8 total
+
 - 5 diagnostic tests (STEP 1, 2, 3A, 3B, FULL)
 - 2 attempted fixes
 - 1 rollback
 
 **Commits Created:**
+
 - `cc9467a54` - STEP 1: Redis import test
 - `4e50cb6d2` - STEP 2: Metrics test
 - `b8c3e55a0` - STEP 3A: Orchestrator test
@@ -469,11 +501,13 @@ If Redis issue persists, consider:
 - `0d390795a` - Fix attempt: Remove get_stats()
 
 **Production Impact:**
+
 - ✅ Zero customer-facing downtime (rollback < 15 min)
 - ✅ All services remained operational
 - ⚠️ Deployment window extended (normal: 5 min, actual: 3.5 hours)
 
 **Key Learnings:**
+
 1. **Binary search is effective** - Isolated bug in 5 systematic tests
 2. **Hypothesis testing critical** - Eliminated 5 false root causes
 3. **Rollback discipline essential** - Quick recovery prevented extended outage
@@ -509,14 +543,14 @@ If Redis issue persists, consider:
 
 ## Files Modified This Session
 
-| File | Purpose | Status |
-|------|---------|--------|
-| `backend/app/metrics.py` | FAQ cache Prometheus metrics | ✅ Tested, works |
-| `backend/services/rag/agentic/orchestrator.py` | Add faq_cache parameter | ✅ Tested, works |
-| `backend/services/rag/agentic/orchestrator_core.py` | Add check_faq_cache method | ✅ Tested, works |
-| `backend/app/setup/service_initializer.py` | FAQ cache initialization | ❌ Causes crash |
-| `backend/services/caching/notebooklm_cache_service.py` | Cache service implementation | ❌ Suspected root cause |
-| `backend/services/caching/__init__.py` | Module exports | 🟡 Untested in isolation |
+| File                                                   | Purpose                      | Status                   |
+| ------------------------------------------------------ | ---------------------------- | ------------------------ |
+| `backend/app/metrics.py`                               | FAQ cache Prometheus metrics | ✅ Tested, works         |
+| `backend/services/rag/agentic/orchestrator.py`         | Add faq_cache parameter      | ✅ Tested, works         |
+| `backend/services/rag/agentic/orchestrator_core.py`    | Add check_faq_cache method   | ✅ Tested, works         |
+| `backend/app/setup/service_initializer.py`             | FAQ cache initialization     | ❌ Causes crash          |
+| `backend/services/caching/notebooklm_cache_service.py` | Cache service implementation | ❌ Suspected root cause  |
+| `backend/services/caching/__init__.py`                 | Module exports               | 🟡 Untested in isolation |
 
 ---
 

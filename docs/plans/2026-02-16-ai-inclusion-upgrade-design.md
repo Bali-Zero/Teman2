@@ -9,6 +9,7 @@
 ## Problema
 
 Il sistema multi-AI (Claude, Kimi, Gemini, Cursor, Windsurf) aveva un'integrazione disomogenea:
+
 - `.cursorrules` deprecato (sostituito da `.cursor/rules/*.mdc` in Cursor 0.45)
 - Windsurf senza rules, senza MCP, senza Cascade memories
 - Nessun `AGENTS.md` (file hub letto da Cursor + Augment + GitHub Copilot)
@@ -48,14 +49,14 @@ AGENTS.md                   ← hub: Cursor + Augment + GitHub Copilot
 
 ## Completamento Stack Multi-AI
 
-| AI | Config | MCP | Rules/Skill |
-|----|--------|-----|-------------|
-| Claude | `CLAUDE.md` ✅ | `.mcp.json` ✅ | `skills/nuzantara-member/` ✅ |
-| Kimi | `.kimi/NUZANTARA_IDENTITY.md` ✅ | `~/.kimi/config.toml` ✅ | `skills/kimi-nuzantara/` ✅ |
-| Gemini | `GEMINI.md` ✅ | — | — |
-| Cursor | `.cursor/rules/*.mdc` ✅ | `.cursor/mcp.json` ✅ | — |
-| Windsurf | `.windsurf/rules/*.md` ✅ | `~/.codeium/windsurf/mcp_config.json` ✅ | Cascade memories seeded ✅ |
-| OpenClaw | `docs/OPENCLAW_SYSTEM.md` ✅ | eredita da modelli | — |
+| AI       | Config                           | MCP                                      | Rules/Skill                   |
+| -------- | -------------------------------- | ---------------------------------------- | ----------------------------- |
+| Claude   | `CLAUDE.md` ✅                   | `.mcp.json` ✅                           | `skills/nuzantara-member/` ✅ |
+| Kimi     | `.kimi/NUZANTARA_IDENTITY.md` ✅ | `~/.kimi/config.toml` ✅                 | `skills/kimi-nuzantara/` ✅   |
+| Gemini   | `GEMINI.md` ✅                   | —                                        | —                             |
+| Cursor   | `.cursor/rules/*.mdc` ✅         | `.cursor/mcp.json` ✅                    | —                             |
+| Windsurf | `.windsurf/rules/*.md` ✅        | `~/.codeium/windsurf/mcp_config.json` ✅ | Cascade memories seeded ✅    |
+| OpenClaw | `docs/OPENCLAW_SYSTEM.md` ✅     | eredita da modelli                       | —                             |
 
 ## Note Implementazione
 
@@ -67,6 +68,7 @@ AGENTS.md                   ← hub: Cursor + Augment + GitHub Copilot
 ## Manutenzione
 
 Quando cambia architettura, aggiornare in questo ordine:
+
 1. `docs/AI_ONBOARDING.md` (fonte canonica)
 2. `CLAUDE.md`
 3. `AGENTS.md`

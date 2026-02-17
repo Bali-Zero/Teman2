@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server';
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { NextResponse } from "next/server";
+import { exec } from "child_process";
+import { promisify } from "util";
 
 const execAsync = promisify(exec);
-const GOG_PATH = '/opt/homebrew/bin/gog';
+const GOG_PATH = "/opt/homebrew/bin/gog";
 
 export async function GET() {
   try {
@@ -20,7 +20,10 @@ export async function GET() {
       })),
     });
   } catch (error: any) {
-    console.error('Calendars API error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error("Calendars API error:", error);
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 },
+    );
   }
 }
