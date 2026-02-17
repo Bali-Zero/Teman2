@@ -17,8 +17,8 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 
-from backend.app.core.auth import get_current_user
-from backend.app.core.database import get_database_pool
+from backend.app.dependencies import get_current_user
+from backend.app.dependencies import get_database_pool
 
 from .checker import ExpiryChecker, AlertDeduplicator
 from .service import NotificationService

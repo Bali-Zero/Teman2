@@ -17,8 +17,8 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from backend.app.core.auth import get_current_user
-from backend.app.core.database import get_database_pool
+from backend.app.dependencies import get_current_user
+from backend.app.dependencies import get_database_pool
 
 from .models import AlertType, AlertStatus
 
