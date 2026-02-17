@@ -372,16 +372,22 @@ def _get_llm_gateway():
 
 KBLI_MASTER_PROMPT = (
     "You are the Senior Legal Compliance Officer (Zantara AI). Your expertise is the Indonesian Business Classification System (KBLI 2025).\n\n"
+    "LANGUAGE RULES (ABSOLUTE PRIORITY):\n"
+    "- You MUST respond in the user's language: {lang}.\n"
+    "- Default language is English. Indonesian is your second language for technical data.\n"
+    "- NEVER respond in Italian, French, Spanish, or any other language unless the user explicitly wrote in that language.\n"
+    "- If you cannot detect the user's language, respond in English.\n\n"
     "CORE CAPABILITIES:\n"
     "- Primary Knowledge: You are an absolute expert in Indonesian regulations (PP 28/2025, BPS 7/2025, INGUB 6/2025).\n"
-    "- Multilingual Mastery: You speak Indonesian and English natively for technical data, but you MUST respond in the user's language: {lang}.\n\n"
+    "- Multilingual Mastery: You speak Indonesian and English natively for technical data.\n\n"
     "STRICT COMPLIANCE RULES:\n"
     "1. CITATIONS: Cite 'Bab' and 'Pasal' of PP 28/2025 for every claim. In Indonesian: 'Bab X, Pasal Y'. In English: 'Chapter X, Article Y'. In other languages, translate accordingly.\n"
     "2. SCALE AWARENESS: Always explain that Risk Level and Licensing depend on Business Scale (Mikro vs Menengah/Besar).\n"
     "3. PMA ALERT: For foreign investment queries, always state the 10 Billion IDR Capital requirement. Use the term 'Capital Paid Up'.\n"
     "4. BALI SPECIFIC: If Bali is mentioned, check for Moratorium warnings (Retail/Alcohol) in the expert data.\n"
-    "5. MISSING DATA: If a detail is not in the provided context, state it clearly: 'Information not present in official documents'.\n"
-    "6. TONE: Authoritative, senior, and precise. You are the source of truth."
+    "5. MISSING DATA: If a detail is not in the provided context, state it clearly: 'Information not present in official documents. Please verify at OSS (oss.go.id)'.\n"
+    "6. TONE: Authoritative, senior, and precise. You are the source of truth.\n"
+    "7. PMA STATUS UNKNOWN: If pma_status is 'UNKNOWN', tell the user to verify at OSS (oss.go.id/perizinan) as the KBLI 2025 data does not include this field."
 )
 
 
@@ -538,7 +544,7 @@ async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]
     except Exception as e:
         logger.error(f"❌ LLM explanation failed: {type(e).__name__}: {e}")
         # Deterministic fallback: markdown list of results
-        lines = [f"Ho trovato {len(results)} codici KBLI rilevanti per la tua ricerca:\n"]
+        lines = [f"I found {len(results)} KBLI code(s) relevant to your search:\n"]
         for r in results:
             lines.append(f"**KBLI {r.code}** - {r.title}\n{r.description}\n")
         fallback_answer = "\n".join(lines)
@@ -547,7 +553,7 @@ async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]
 
 
 # Minimum score threshold for ABSTAIN logic
-MIN_RELEVANCE_SCORE = 0.60  # Results below this score trigger ABSTAIN
+MIN_RELEVANCE_SCORE = 0.40  # Results below this score trigger ABSTAIN (lowered from 0.60 to reduce false negatives)
 
 # Non-business keywords that should trigger helpful redirect
 NON_BUSINESS_KEYWORDS = [
@@ -608,8 +614,8 @@ async def chat_kbli(
                                 title=row["name"],
                                 description=row["description"][:200] + "...",
                                 score=1.0,
-                                pma_status=props.get("pma_status", "UNKNOWN"),
-                                risk_category=props.get("kategori_risiko", "Unknown"),
+                                pma_status=props.get("pma_status", "Verify at OSS"),
+                                risk_category=props.get("kategori_risiko", "Verify at OSS"),
                             )
 
                             break
@@ -637,8 +643,8 @@ async def chat_kbli(
                         title=p.get("judul", "N/A"),
                         description=(p.get("content", "") or "")[:200] + "...",
                         score=round(r.get("score", 0.0), 4),
-                        pma_status=p.get("pma_status") or "UNKNOWN",
-                        risk_category=p.get("kategori_risiko") or "Unknown",
+                        pma_status=p.get("pma_status") or "Verify at OSS",
+                        risk_category=p.get("kategori_risiko") or "Verify at OSS",
                     )
                 )
                 if len(results) >= 5:
@@ -703,14 +709,14 @@ async def chat_kbli(
         if _is_non_business_query(kbli_request.query):
             logger.info(f"⚠️ Non-business query detected: '{kbli_request.query[:50]}'")
             abstain_answer = (
-                "Mi dispiace, ma questa richiesta non riguarda la classificazione delle attività economiche (KBLI).\n\n"
-                "Sono specializzato in KBLI (Klasifikasi Baku Lapangan Usaha Indonesia) - il sistema di classificazione "
-                "delle attività economiche in Indonesia secondo il regolamento BPS 7/2025.\n\n"
-                "Per informazioni su KITAS, visti e permessi di soggiorno, ti consiglio di consultare:\n"
-                "• Il sito ufficiale dell'immigrazione indonesiana: imigrasi.go.id\n"
-                "• Un agente immigrazione autorizzato\n\n"
-                "Posso aiutarti invece a trovare il codice KBLI corretto per la tua attività commerciale in Indonesia. "
-                "Descrivimi che tipo di business vuoi avviare!"
+                "This question is about immigration or visas, which is outside my area of expertise.\n\n"
+                "I am specialized in **KBLI** (Klasifikasi Baku Lapangan Usaha Indonesia) — the Indonesian Business "
+                "Classification System under BPS Regulation No. 7/2025. I can help you identify the right KBLI "
+                "code for your business activity and understand the associated licensing and investment requirements.\n\n"
+                "For visa and immigration information (KITAS, KITAP, Work Permit), please consult:\n"
+                "• Official Indonesian immigration website: imigrasi.go.id\n"
+                "• An authorized immigration agent\n\n"
+                "Can I help you find the right KBLI code for your business in Indonesia instead?"
             )
             return KBLINotebookChatResponse(
                 answer=abstain_answer,
@@ -718,9 +724,9 @@ async def chat_kbli(
                 results=[],
                 sources=[],
                 suggested_queries=[
-                    "Voglio aprire un ristorante a Bali",
-                    "Codice KBLI per import export",
-                    "Attività alberghiera KBLI"
+                    "I want to open a restaurant in Bali",
+                    "KBLI code for import export business",
+                    "Hotel and hospitality KBLI"
                 ],
             )
 
@@ -733,13 +739,14 @@ async def chat_kbli(
         if not has_direct_match and not filtered_results and results:
                 logger.warning(f"⚠️ All results below threshold {MIN_RELEVANCE_SCORE}. Triggering ABSTAIN.")
                 abstain_answer = (
-                    "Mi dispiace, ma non ho trovato codici KBLI rilevanti per la tua ricerca.\n\n"
-                    "Prova a:\n"
-                    "• Usare termini più specifici relativi all'attività commerciale\n"
-                    "• Descrivere il tipo di business che vuoi avviare\n"
-                    "• Verificare l'ortografia dei termini\n\n"
-                    "Sono specializzato in KBLI 2025 (BPS Regulation No. 7/2025) e posso aiutarti a trovare "
-                    "il codice corretto per la tua attività in Indonesia."
+                    "I could not find a strong KBLI match for your search. This may be because the business activity "
+                    "description needs to be more specific.\n\n"
+                    "**Try rephrasing your question:**\n"
+                    "• Describe the specific business activity (e.g. 'restaurant', 'villa rental', 'software development')\n"
+                    "• Include the type of service or product you plan to offer\n"
+                    "• If you know the KBLI code, enter it directly (e.g. '56101')\n\n"
+                    "I am specialized in KBLI 2025 (BPS Regulation No. 7/2025) and can help you find the right "
+                    "classification code for your business activity in Indonesia."
                 )
                 return KBLINotebookChatResponse(
                     answer=abstain_answer,
@@ -747,9 +754,9 @@ async def chat_kbli(
                     results=[],
                     sources=[],
                     suggested_queries=[
-                        "Ristorante a Bali",
+                        "Restaurant in Bali",
                         "Import export Indonesia",
-                        "Hotel e hospitality"
+                        "Hotel and hospitality"
                     ],
                 )
         
@@ -765,11 +772,11 @@ async def chat_kbli(
             logger.error("❌ CRITICAL: Answer is empty after _generate_kbli_explanation")
             # Ultimate fallback
             if results:
-                answer = f"Ho trovato {len(results)} codici KBLI rilevanti per la tua ricerca:\n\n"
+                answer = f"I found {len(results)} KBLI code(s) relevant to your search:\n\n"
                 for r in results:
                     answer += f"**KBLI {r.code}** - {r.title}\n{r.description}\n\n"
             else:
-                answer = "Mi dispiace, non sono riuscito a trovare informazioni rilevanti. Riprova con termini diversi."
+                answer = "I could not find relevant KBLI information. Please try rephrasing your question with more specific business activity terms."
 
         # Generate template-based follow-up suggestions
         suggested_queries = []
