@@ -129,17 +129,8 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-      {
-        // 103 Early Hints for critical resources
-        source: "/",
-        headers: [
-          {
-            key: "Link",
-            value:
-              "</_next/static/media/GeistVariableVF.woff2>; rel=preload; as=font; crossorigin, </_next/static/css/app/layout.css>; rel=preload; as=style, </assets/static/indonesian-flag-drape.jpg>; rel=preload; as=image",
-          },
-        ],
-      },
+      // Note: Font and CSS preloading handled automatically by next/font/google
+      // and Next.js build pipeline (filenames are content-hashed)
     ];
   },
 

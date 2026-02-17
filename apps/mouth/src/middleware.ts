@@ -229,17 +229,17 @@ export function middleware(request: NextRequest) {
       return redirectResponse;
     }
 
-    // Redirect /contact to public domain
-    if (pathname === "/contact") {
-      const publicUrl = new URL(pathname, `https://${PUBLIC_DOMAIN}`);
-      publicUrl.search = request.nextUrl.search;
-      const redirectResponse = NextResponse.redirect(publicUrl);
-      redirectResponse.headers.set("x-pathname", pathname);
-      return redirectResponse;
-    }
-
-    // Redirect /team to public domain (public team page, not /team-management)
-    if (pathname === "/team") {
+    // Redirect /contact and /team to public domain
+    // For RSC requests (_rsc param or RSC header), return 404 instead of cross-origin
+    // redirect to prevent CORS errors in the browser console
+    if (pathname === "/contact" || pathname === "/team") {
+      const isRSC =
+        request.nextUrl.searchParams.has("_rsc") ||
+        request.headers.get("RSC") === "1";
+      if (isRSC) {
+        // RSC prefetch: return 404 so Next.js falls back to full navigation
+        return new NextResponse(null, { status: 404 });
+      }
       const publicUrl = new URL(pathname, `https://${PUBLIC_DOMAIN}`);
       publicUrl.search = request.nextUrl.search;
       const redirectResponse = NextResponse.redirect(publicUrl);
