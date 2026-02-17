@@ -161,6 +161,7 @@ export interface ClientDocument {
   file_url?: string;
   google_drive_file_url?: string;
   status?: "pending" | "received" | "verified" | "rejected" | "expired";
+  issue_date?: string;
   expiry_date?: string;
   notes?: string;
   is_archived?: boolean;
@@ -240,6 +241,9 @@ export interface ClientProfile {
     id: number;
     status: string;
     expiry_date?: string;
+    start_date?: string;
+    completion_date?: string;
+    estimated_completion?: string;
     practice_type_code: string;
     practice_type_name: string;
     alert_color?: string;
