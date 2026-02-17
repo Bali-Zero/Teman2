@@ -61,6 +61,7 @@ class KBLISearchResult(BaseModel):
     score: float
     pma_status: str = "UNKNOWN"
     risk_category: str = "Unknown"
+    expert_legal: dict | None = None
 
 
 class KBLINotebookChatRequest(BaseModel):
@@ -181,8 +182,19 @@ async def _search_kbli_qdrant(query_embedding: list[float], limit: int) -> list[
         return resp.json().get("result", [])
 
 
+def get_kbli_ttl(code: str) -> int:
+    """Determine dynamic TTL based on NotebookLM's sector volatility analysis."""
+    # Red Zone: Retail, Alcohol, Clubs, Crypto (High Volatility)
+    if code.startswith(("471", "472", "563", "661", "62")):
+        return 43200  # 12 Hours
+    # Yellow Zone: Hospitality, Construction, Health
+    if code.startswith(("55", "41", "86", "05", "06", "07", "08", "09")):
+        return 604800  # 7 Days
+    # Green Zone: Manufacturing, Services, Agriculture
+    return 2592000  # 30 Days
+
+
 @router.get("/search", response_model=list[KBLISearchResult])
-@cached(ttl=86400)  # Cache search results for 24 hours
 async def search_kbli(query: str, limit: int = 10, search_service=Depends(get_search_service)):
     """Search for KBLI codes using semantic search (Qdrant)."""
     start_time = time.time()
@@ -217,10 +229,20 @@ async def search_kbli(query: str, limit: int = 10, search_service=Depends(get_se
 
 
 @router.get("/inspect/{code}", response_model=KBLIDetail)
-@cached(ttl=3600)  # Cache for 1 hour - KBLI data is relatively static
 async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)):
-    """Retrieve deep KG metadata for a specific KBLI code from PostgreSQL."""
-    logger.info(f"🧐 KBLI Inspection: {code}")
+    """Retrieve deep KG metadata with dynamic TTL based on sector volatility."""
+    from backend.core.cache import cache_manager # Assume we have access to the manager
+    
+    cache_key = f"kbli_inspect_{code}"
+    ttl = get_kbli_ttl(code)
+    
+    # Try manual cache check
+    if cache_manager:
+        cached_data = await cache_manager.get(cache_key)
+        if cached_data:
+            return KBLIDetail(**cached_data)
+
+    logger.info(f"🧐 KBLI Inspection (Dynamic TTL {ttl}s): {code}")
     if not pool:
         logger.error("❌ Database pool not available for KBLI inspection")
         raise HTTPException(status_code=500, detail="Database connection error")
@@ -310,7 +332,8 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)):
                         lic.risk_level = qdrant_risk
 
             logger.info(f"✅ KBLI {code} details retrieved (pma={pma_status}, risk={risk_profile})")
-            return KBLIDetail(
+            
+            result = KBLIDetail(
                 code=code,
                 title=node["name"].replace(f"KBLI {code}", "").strip() or node["name"],
                 description=props.get("uraian", node["description"]),
@@ -322,6 +345,12 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)):
                 related_codes=related_codes,
                 expert_legal=props.get("expert_legal")
             )
+            
+            # Save to cache with dynamic TTL
+            if cache_manager:
+                await cache_manager.set(cache_key, result.model_dump(), ttl=ttl)
+                
+            return result
     except HTTPException:
         raise
     except Exception as e:
@@ -341,21 +370,18 @@ def _get_llm_gateway():
     return _llm_gateway_instance
 
 
-KBLI_SYSTEM_PROMPT = (
-    "You are the Zantara AI KBLI Expert — a high-precision analytical tool specializing in the Indonesian Business Classification System (KBLI 2025). "
-    "Your goal is to provide 'NotebookLM-level' insights based ONLY on the provided KBLI data and regulations (PP 28/2025, BPS 7/2025).\n\n"
-    "STRICT ANALYTICAL RULES:\n"
-    "1. BE COMPREHENSIVE: Do not be brief. Explain the specific nuances of each KBLI code mentioned. "
-    "If multiple codes are relevant, compare them strategically.\n"
-    "2. CITATIONS: Always mention that the data is updated to BPS Regulation No. 7/2025 and licensing rules follow PP 28/2025 (the new regulation replacing parts of PP 5/2021).\n"
-    "3. STRUCTURE: Use bold headings, bullet points, and clear sections. Structure your response as an 'Executive Brief'.\n"
-    "4. FOREIGN INVESTMENT (PMA): Clearly explain the implications of 'TERBUKA' (100% Foreign), 'TERBATAS' (Restricted/Cap), or 'TERTUTUP' (Closed). "
-    "Translate these terms for the user: TERBUKA=Open, TERBATAS=Restricted, TERTUTUP=Closed.\n"
-    "5. RISK & LICENSING: Deeply explain what the Risk Level (Low, Medium, High) means for the specific activity. "
-    "Mention if it's 'NIB only' or requires a 'Standard Certificate' or 'Business License'.\n"
-    "6. LIMITATIONS: If the data is missing a specific detail, state: 'Based on current KBLI 2025 data and PP 28/2025, the exact requirement for X is not specified.'\n"
-    "7. LANGUAGE: Respond in the language detected in the query (usually Italian or English). Use professional, strategic tone.\n"
-    "8. BALI RETAIL MORATORIUM: If the query mentions Bali and the context contains data about 'Toko Modern' or retail chains (KBLI 47111, 47112, 47113, 47191), you MUST explicitly warn the user that INGUB No. 6/2025 has suspended all new licenses for these activities in Bali to protect local SMEs and traditional markets."
+KBLI_MASTER_PROMPT = (
+    "You are the Senior Legal Compliance Officer (Zantara AI). Your expertise is the Indonesian Business Classification System (KBLI 2025).\n\n"
+    "CORE CAPABILITIES:\n"
+    "- Primary Knowledge: You are an absolute expert in Indonesian regulations (PP 28/2025, BPS 7/2025, INGUB 6/2025).\n"
+    "- Multilingual Mastery: You speak Indonesian and English natively for technical data, but you MUST respond in the user's language: {lang}.\n\n"
+    "STRICT COMPLIANCE RULES:\n"
+    "1. CITATIONS: Cite 'Bab' and 'Pasal' of PP 28/2025 for every claim. In Indonesian: 'Bab X, Pasal Y'. In English: 'Chapter X, Article Y'. In other languages, translate accordingly.\n"
+    "2. SCALE AWARENESS: Always explain that Risk Level and Licensing depend on Business Scale (Mikro vs Menengah/Besar).\n"
+    "3. PMA ALERT: For foreign investment queries, always state the 10 Billion IDR Capital requirement. Use the term 'Capital Paid Up'.\n"
+    "4. BALI SPECIFIC: If Bali is mentioned, check for Moratorium warnings (Retail/Alcohol) in the expert data.\n"
+    "5. MISSING DATA: If a detail is not in the provided context, state it clearly: 'Information not present in official documents'.\n"
+    "6. TONE: Authoritative, senior, and precise. You are the source of truth."
 )
 
 
@@ -420,50 +446,26 @@ async def _translate_query_for_kbli(query: str) -> str:
 
 
 def _detect_language(query: str) -> str:
-    """Detect query language using keyword heuristics."""
+    """Detect query language using keyword heuristics including Indonesian."""
     words = set(query.lower().split())
+    # Indonesian markers
+    id_words = {
+        "apa", "bagaimana", "syarat", "usaha", "bisa", "saya", "mau", "buka",
+        "perizinan", "risiko", "modal", "asing", "pma", "lokal", "investasi"
+    }
+    if len(words & id_words) >= 2:
+        return "Indonesian"
     # Italian markers
     it_words = {
-        "voglio",
-        "aprire",
-        "quale",
-        "codice",
-        "serve",
-        "come",
-        "sono",
-        "che",
-        "per",
-        "una",
-        "della",
-        "questo",
-        "quanto",
-        "costa",
-        "cosa",
-        "posso",
-        "devo",
-        "fare",
-        "mio",
-        "bisogno",
-        "attivita",
-        "licenza",
-        "negozio",
+        "voglio", "aprire", "quale", "codice", "serve", "come", "sono", "che",
+        "per", "una", "della", "questo", "quanto", "costa", "cosa", "posso",
+        "devo", "fare", "mio", "bisogno", "attivita", "licenza", "negozio",
     }
     if len(words & it_words) >= 2:
         return "Italian"
     # French markers
     fr_words = {
-        "je",
-        "veux",
-        "ouvrir",
-        "quel",
-        "pour",
-        "une",
-        "est",
-        "les",
-        "des",
-        "mon",
-        "faire",
-        "comment",
+        "je", "veux", "ouvrir", "quel", "pour", "une", "est", "les", "des", "mon", "faire", "comment",
     }
     if len(words & fr_words) >= 2:
         return "French"
@@ -485,25 +487,19 @@ async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]
 
     context_parts = []
     for r in results:
+        # Check if we have deep metadata from Postgres/Expert injection
+        expert_info = ""
+        if hasattr(r, 'expert_legal') and r.expert_legal:
+            ex = r.expert_legal
+            expert_info = f"\n  Expert Data (PP 28/2025): Bab {ex.get('bab')}, Pasal {ex.get('pasal')}. PB-UMKU: {', '.join(ex.get('pb_umku', []))}. Note: {ex.get('pma_implications')}"
+        
         context_parts.append(
-            f"- KBLI {r.code}: {r.title}\n  Data: {r.description}\n  Score: {r.score:.0%}"
+            f"- KBLI {r.code}: {r.title}\n  Scope: {r.description}\n  PMA: {r.pma_status}, Risk: {r.risk_category}{expert_info}"
         )
     context = "\n".join(context_parts)
 
-    # Build language-specific system instruction
-    if lang.lower() == "italian":
-        lang_system = (
-            "Sei un notebook KBLI — uno strumento dati, NON un chatbot generico. "
-            "Rispondi SOLO in italiano. Ogni frase deve essere in italiano. "
-            "Usa SOLO i dati KBLI forniti nel contesto. NON inventare informazioni. "
-            "Per ogni codice KBLI spiega: cosa copre, status PMA se presente, categoria rischio. "
-            "NON suggerire mai di consultare un notaio o professionista. Tu sei l'esperto. "
-            "Traduci i termini indonesiani: TERBUKA=aperto a stranieri, TERBATAS=con restrizioni, TERTUTUP=chiuso. "
-            "Sii conciso: 2-3 frasi per codice."
-        )
-    else:
-        lang_system = KBLI_SYSTEM_PROMPT
-
+    # Use unified MASTER PROMPT formatted with detected language
+    lang_system = KBLI_MASTER_PROMPT.format(lang=lang)
     message = f"Question: {query}\n\nSource data:\n{context}"
 
     try:
@@ -524,6 +520,12 @@ async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]
         
         response_text, model_used, resp_obj, usage = await gateway.send_message(
             chat=chat,
+            message=message,
+            system_prompt=lang_system,
+            tier=TIER_FLASH,
+            enable_function_calling=False,
+            conversation_messages=[{"role": "user", "content": message}],
+        )
             message=message,
             system_prompt=lang_system,
             tier=TIER_FLASH,
@@ -648,6 +650,23 @@ async def chat_kbli(
                 if len(results) >= 5:
                     break
             
+            # Enrichment step: Fetch expert_legal from Postgres for all results
+            if pool:
+                async with pool.acquire() as conn:
+                    for i, r in enumerate(results):
+                        try:
+                            row = await conn.fetchrow(
+                                "SELECT properties FROM kg_nodes WHERE entity_id = $1",
+                                f"kbli:{r.code}"
+                            )
+                            if row:
+                                props = json.loads(row["properties"]) if isinstance(row["properties"], str) else row["properties"]
+                                if "expert_legal" in props:
+                                    results[i].expert_legal = props["expert_legal"]
+                                    logger.info(f"✨ Enriched result {r.code} with Expert Legal data")
+                        except Exception as enrich_err:
+                            logger.warning(f"Failed to enrich {r.code}: {enrich_err}")
+
             # Add direct match at the beginning if found
             if direct_kbli_match and direct_kbli_match.code not in seen_codes:
                 results.insert(0, direct_kbli_match)

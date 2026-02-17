@@ -263,3 +263,14 @@ async def send_pending_alerts(
     except Exception as e:
         logger.error("Failed to send pending alerts", exc_info=e)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# Include test endpoints (staging only)
+from .test_endpoint import router as test_router
+
+router.include_router(test_router)
+
+# Include admin router
+from .admin_router import router as admin_router
+
+router.include_router(admin_router)
