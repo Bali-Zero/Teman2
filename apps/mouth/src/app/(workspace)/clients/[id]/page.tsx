@@ -53,7 +53,6 @@ import type {
 import { COMMON_NATIONALITIES, CLIENT_STATUSES } from "@/lib/api/crm/crm.types";
 import { cropToSquare } from "@/lib/utils/imageResize";
 
-
 const STANDARD_FOLDERS: Record<string, { label: string; icon: string }> = {
   "00_Profile": { label: "Profile", icon: "👤" },
   "01_Immigration": { label: "Immigration", icon: "🛂" },
@@ -320,16 +319,25 @@ const formatPhoneNumber = (phone: string): string => {
 };
 
 // Calculate passport validity color based on months until expiry
-// Green: >14 months, Orange: 9-13 months, Red: <9 months
+// Green: >14 months, Yellow: 9-13 months (13 month alert), Red: <9 months (9 month urgent alert)
 const getPassportValidityColor = (
   expiryDate: string | undefined,
-): { color: string; label: string; bgClass: string; textClass: string } => {
+): {
+  color: string;
+  label: string;
+  bgClass: string;
+  textClass: string;
+  alertLevel: "ok" | "warning" | "critical" | "expired";
+  monthsUntil: number;
+} => {
   if (!expiryDate)
     return {
       color: "gray",
       label: "No expiry",
       bgClass: "bg-gray-500/20",
       textClass: "text-gray-400",
+      alertLevel: "ok",
+      monthsUntil: 999,
     };
 
   const now = new Date();
@@ -343,6 +351,8 @@ const getPassportValidityColor = (
       label: "EXPIRED",
       bgClass: "bg-red-600/30",
       textClass: "text-red-300",
+      alertLevel: "expired",
+      monthsUntil: monthsUntilExpiry,
     };
   } else if (monthsUntilExpiry < 9) {
     return {
@@ -350,13 +360,17 @@ const getPassportValidityColor = (
       label: `${Math.floor(monthsUntilExpiry)} months`,
       bgClass: "bg-red-500/20",
       textClass: "text-red-400",
+      alertLevel: "critical",
+      monthsUntil: monthsUntilExpiry,
     };
   } else if (monthsUntilExpiry < 14) {
     return {
-      color: "orange",
+      color: "yellow",
       label: `${Math.floor(monthsUntilExpiry)} months`,
-      bgClass: "bg-orange-500/20",
-      textClass: "text-orange-400",
+      bgClass: "bg-yellow-500/20",
+      textClass: "text-yellow-400",
+      alertLevel: "warning",
+      monthsUntil: monthsUntilExpiry,
     };
   } else {
     return {
@@ -364,8 +378,74 @@ const getPassportValidityColor = (
       label: `${Math.floor(monthsUntilExpiry)} months`,
       bgClass: "bg-green-500/20",
       textClass: "text-green-400",
+      alertLevel: "ok",
+      monthsUntil: monthsUntilExpiry,
     };
   }
+};
+
+// Check if today is client's birthday
+const isBirthdayToday = (dateOfBirth: string | undefined): boolean => {
+  if (!dateOfBirth) return false;
+  const today = new Date();
+  const dob = new Date(dateOfBirth);
+  return (
+    today.getDate() === dob.getDate() && today.getMonth() === dob.getMonth()
+  );
+};
+
+// Calculate visa expiry alert (2 months = red alert)
+const getVisaAlertStatus = (
+  expiryDate: string | undefined,
+): {
+  alertLevel: "ok" | "warning" | "critical";
+  monthsUntil: number;
+  bgClass: string;
+  textClass: string;
+} => {
+  if (!expiryDate) {
+    return {
+      alertLevel: "ok",
+      monthsUntil: 999,
+      bgClass: "",
+      textClass: "",
+    };
+  }
+
+  const now = new Date();
+  const expiry = new Date(expiryDate);
+  const monthsUntilExpiry =
+    (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30);
+
+  if (monthsUntilExpiry <= 0) {
+    return {
+      alertLevel: "critical",
+      monthsUntil: monthsUntilExpiry,
+      bgClass: "bg-red-600 text-white",
+      textClass: "text-white",
+    };
+  } else if (monthsUntilExpiry <= 2) {
+    return {
+      alertLevel: "critical",
+      monthsUntil: monthsUntilExpiry,
+      bgClass: "bg-red-500 text-white",
+      textClass: "text-white",
+    };
+  } else if (monthsUntilExpiry <= 4) {
+    return {
+      alertLevel: "warning",
+      monthsUntil: monthsUntilExpiry,
+      bgClass: "bg-yellow-500 text-black",
+      textClass: "text-black",
+    };
+  }
+
+  return {
+    alertLevel: "ok",
+    monthsUntil: monthsUntilExpiry,
+    bgClass: "",
+    textClass: "",
+  };
 };
 
 const INTERACTION_ICONS: Record<string, React.ReactNode> = {
@@ -641,7 +721,6 @@ export default function ClientDetailPage() {
               </Button>
             </>
           )}
-
         </div>
       </div>
 
@@ -844,7 +923,6 @@ function OverviewTab({
   const [quickNote, setQuickNote] = useState("");
   const [isAddingNote, setIsAddingNote] = useState(false);
 
-
   const handleAddNote = async () => {
     if (!quickNote.trim()) return;
     setIsAddingNote(true);
@@ -858,11 +936,102 @@ function OverviewTab({
     }
   };
 
+  const isClientBirthday = isBirthdayToday(client.date_of_birth);
+
   return (
     <div className="space-y-4">
-      {/* Row 1: Contact Info (2 cols) + Passport + Visa/Process */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Contact Info Card - DOUBLE WIDTH with all OCR data */}
+      {/* Row 1: Team Avatar + Passport + Visa - All in one row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Column 1: Team Member Card with Pastel Art */}
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+            <h3 className="text-base font-semibold text-[var(--foreground)] flex items-center gap-2">
+              <User className="w-5 h-5" />
+              Team Member
+            </h3>
+          </div>
+
+          {/* Content */}
+          <div className="p-4 space-y-4">
+            {/* Top: Team Member Avatar */}
+            <div className="flex items-center gap-3">
+              {client.assigned_to ? (
+                <>
+                  {getTeamMemberAvatar(client.assigned_to) ? (
+                    <img
+                      src={getTeamMemberAvatar(client.assigned_to)}
+                      alt={client.assigned_to.split("@")[0]}
+                      className="w-16 h-16 rounded-full object-cover ring-2 ring-[var(--accent)]/30"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-full bg-[var(--accent)]/20 flex items-center justify-center">
+                      <User className="w-8 h-8 text-[var(--accent)]" />
+                    </div>
+                  )}
+                  <div>
+                    <p className="font-medium text-[var(--foreground)]">
+                      {client.assigned_to.split("@")[0]}
+                    </p>
+                    <p className="text-xs text-[var(--foreground-muted)]">
+                      Case Manager
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <div className="w-16 h-16 rounded-full bg-[var(--border)] flex items-center justify-center">
+                    <User className="w-8 h-8 text-[var(--foreground-muted)]" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-[var(--foreground-muted)]">
+                      Unassigned
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Bottom: Pastel Art Placeholder (400×320 aspect ratio ~ 5:4) */}
+            <div className="relative rounded-xl overflow-hidden bg-gradient-to-br from-pink-200/50 via-purple-100/50 to-blue-200/50 dark:from-pink-900/20 dark:via-purple-900/20 dark:to-blue-900/20">
+              {/* Placeholder for pastel Bali landscape image */}
+              <div className="aspect-[5/4] w-full flex items-center justify-center">
+                <div className="text-center p-6">
+                  <div className="w-20 h-20 mx-auto mb-3 rounded-full bg-gradient-to-br from-yellow-200/60 to-pink-200/60 dark:from-yellow-700/30 dark:to-pink-700/30 flex items-center justify-center">
+                    <span className="text-3xl">🌴</span>
+                  </div>
+                  <p className="text-xs text-[var(--foreground-muted)]">
+                    Pastel Bali Landscape
+                  </p>
+                  <p className="text-[10px] text-[var(--foreground-muted)]/60 mt-1">
+                    400×320px • WEBP/AVIF
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Column 2: Passport Card */}
+        <PassportCard
+          client={client}
+          documents={documents}
+          formatDate={formatDate}
+        />
+
+        {/* Column 3: Visa Card */}
+        <ActualVisaCard
+          client={client}
+          documents={documents}
+          activePractices={activePractices}
+          formatDate={formatDate}
+          formatCurrency={formatCurrency}
+        />
+      </div>
+
+      {/* Row 2: Contact Info + Quick Actions */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Contact Info Card */}
         <div className="lg:col-span-2 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-[var(--foreground)]">
@@ -912,24 +1081,6 @@ function OverviewTab({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Left column: Contact details */}
             <div className="space-y-2.5 text-xs">
-              {client.assigned_to && (
-                <div className="flex items-center gap-2">
-                  {getTeamMemberAvatar(client.assigned_to) ? (
-                    <img
-                      src={getTeamMemberAvatar(client.assigned_to)}
-                      alt={client.assigned_to.split("@")[0]}
-                      className="w-6 h-6 rounded-full object-cover ring-1 ring-[var(--accent)]/30"
-                    />
-                  ) : (
-                    <div className="w-6 h-6 rounded-full bg-[var(--accent)]/20 flex items-center justify-center">
-                      <User className="w-3 h-3 text-[var(--accent)]" />
-                    </div>
-                  )}
-                  <span className="font-medium text-[var(--accent)]">
-                    {client.assigned_to.split("@")[0]}
-                  </span>
-                </div>
-              )}
               {client.email && (
                 <div className="flex items-center gap-2">
                   <Mail className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
@@ -989,18 +1140,29 @@ function OverviewTab({
                 </div>
               )}
               {client.date_of_birth && (
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
-                  <span className="text-[var(--foreground)]">
+                <div
+                  className={`flex items-center gap-2 rounded px-2 py-1 -mx-2 transition-all duration-500 ${
+                    isClientBirthday
+                      ? "bg-gradient-to-r from-yellow-400/30 via-amber-400/30 to-yellow-400/30 animate-pulse shadow-[0_0_20px_rgba(255,215,0,0.4)]"
+                      : ""
+                  }`}
+                >
+                  <Calendar
+                    className={`w-3.5 h-3.5 ${isClientBirthday ? "text-yellow-500" : "text-[var(--foreground-muted)]"}`}
+                  />
+                  <span
+                    className={`${isClientBirthday ? "font-semibold text-yellow-600 dark:text-yellow-400" : "text-[var(--foreground)]"}`}
+                  >
                     DOB: {formatDate(client.date_of_birth)}
+                    {isClientBirthday && " 🎂"}
                   </span>
                 </div>
               )}
               {client.gender && (
                 <div className="flex items-center gap-2">
                   <User className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
-                  <span className="text-[var(--foreground)]">
-                    {client.gender === "M" ? "Male" : "Female"}
+                  <span className="text-[var(--foreground)] font-medium">
+                    {client.gender === "M" ? "Male (M)" : "Female (F)"}
                   </span>
                 </div>
               )}
@@ -1025,14 +1187,8 @@ function OverviewTab({
           </div>
         </div>
 
-        {/* Column 3: Passport Card + Quick Note */}
+        {/* Quick Note + Process */}
         <div className="space-y-4">
-          <PassportCard
-            client={client}
-            documents={documents}
-            formatDate={formatDate}
-          />
-
           {/* Quick Note */}
           <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-3">
             <h3 className="text-xs font-semibold text-[var(--foreground)] mb-2 flex items-center gap-1.5">
@@ -1062,21 +1218,8 @@ function OverviewTab({
               )}
             </Button>
           </div>
-        </div>
 
-        {/* Column 4: Visa */}
-        <div className="self-start">
-          <ActualVisaCard
-            client={client}
-            documents={documents}
-            activePractices={activePractices}
-            formatDate={formatDate}
-            formatCurrency={formatCurrency}
-          />
-        </div>
-
-        {/* Column 5: Process */}
-        <div className="self-start">
+          {/* Process Card */}
           <ActiveProcessCard
             activePractices={activePractices}
             formatDate={formatDate}
@@ -1132,8 +1275,6 @@ function OverviewTab({
           </p>
         </div>
       </div>
-
-
     </div>
   );
 }
@@ -1163,9 +1304,12 @@ function PassportCard({
         doc.document_type?.toLowerCase() === "passport"),
   );
 
-  // Get passport validity color
+  // Get passport validity color and alert level
   const passportValidity = getPassportValidityColor(client.passport_expiry);
   const passportImageUrl = passportDoc?.google_drive_file_url;
+
+  // Check if birthday today
+  const isBirthday = isBirthdayToday(client.date_of_birth);
 
   // Convert Drive view URL to direct download URL
   const getDownloadUrl = (url: string) => {
@@ -1328,19 +1472,31 @@ function PassportCard({
   };
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden">
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
         <h3 className="text-base font-semibold text-[var(--foreground)] flex items-center gap-2">
           <CreditCard className="w-5 h-5" />
           Passport
         </h3>
+        {/* Gender Badge */}
+        {client.gender && (
+          <span
+            className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+              client.gender === "M"
+                ? "bg-blue-500/20 text-blue-400"
+                : "bg-pink-500/20 text-pink-400"
+            }`}
+          >
+            {client.gender === "M" ? "M" : "F"}
+          </span>
+        )}
       </div>
 
       {/* Content */}
-      <div className="p-4">
+      <div className="p-4 flex-1 flex flex-col">
         {passportImageUrl ? (
-          <div className="space-y-3">
+          <div className="space-y-3 flex-1 flex flex-col">
             <button
               onClick={handleDownload}
               className="w-full block relative group cursor-pointer"
@@ -1368,8 +1524,88 @@ function PassportCard({
                 </div>
               </div>
             </button>
+
+            {/* Passport Data with Alerts */}
+            <div className="space-y-2">
+              {/* Passport Number */}
+              {client.passport_number && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[var(--foreground-muted)]">
+                    Number:
+                  </span>
+                  <span className="font-mono text-[var(--foreground)]">
+                    {client.passport_number}
+                  </span>
+                </div>
+              )}
+
+              {/* Expiry Date with Alert */}
+              {client.passport_expiry && (
+                <div
+                  className={`rounded-lg p-2 ${passportValidity.bgClass} border ${
+                    passportValidity.alertLevel === "critical"
+                      ? "border-red-500/50 animate-pulse"
+                      : passportValidity.alertLevel === "warning"
+                        ? "border-yellow-500/50"
+                        : "border-transparent"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] uppercase tracking-wider opacity-80">
+                      Expiry:
+                    </span>
+                    <span
+                      className={`text-xs font-semibold ${passportValidity.textClass}`}
+                    >
+                      {formatDate(client.passport_expiry)}
+                    </span>
+                  </div>
+
+                  {/* Alert Messages */}
+                  {passportValidity.alertLevel === "warning" && (
+                    <div className="mt-1 text-[10px] text-yellow-600 dark:text-yellow-300">
+                      ⚠️ 13 month alert: Contact embassy soon
+                    </div>
+                  )}
+                  {passportValidity.alertLevel === "critical" && (
+                    <div className="mt-1 text-[10px] text-red-600 dark:text-red-300 font-bold">
+                      🚨 URGENT: Contact embassy immediately!
+                    </div>
+                  )}
+                  {passportValidity.alertLevel === "expired" && (
+                    <div className="mt-1 text-[10px] text-red-600 dark:text-red-300 font-bold">
+                      ⛔ PASSPORT EXPIRED!
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Date of Birth with Birthday Glow */}
+              {client.date_of_birth && (
+                <div
+                  className={`flex items-center justify-between text-xs p-2 rounded-lg transition-all duration-500 ${
+                    isBirthday
+                      ? "bg-gradient-to-r from-yellow-300/40 via-amber-300/40 to-yellow-300/40 animate-pulse shadow-[0_0_15px_rgba(255,215,0,0.5)]"
+                      : ""
+                  }`}
+                >
+                  <span
+                    className={`${isBirthday ? "text-yellow-700 dark:text-yellow-300 font-semibold" : "text-[var(--foreground-muted)]"}`}
+                  >
+                    {isBirthday ? "🎂 DOB:" : "DOB:"}
+                  </span>
+                  <span
+                    className={`${isBirthday ? "font-bold text-yellow-700 dark:text-yellow-300" : "text-[var(--foreground)]"}`}
+                  >
+                    {formatDate(client.date_of_birth)}
+                    {isBirthday && " (Today!)"}
+                  </span>
+                </div>
+              )}
+            </div>
+
             {/* Action Buttons */}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2 pt-2 mt-auto">
               <Button
                 variant="outline"
                 size="sm"
@@ -1381,7 +1617,7 @@ function PassportCard({
                 ) : (
                   <FileText className="w-4 h-4 mr-2" />
                 )}
-                {isExtracting ? "Extracting..." : "Extract Data"}
+                {isExtracting ? "Extracting..." : "Extract"}
               </Button>
               <Button
                 variant="outline"
@@ -1395,12 +1631,12 @@ function PassportCard({
                 ) : (
                   <Trash2 className="w-4 h-4 mr-2" />
                 )}
-                {isDeleting ? "Deleting..." : "Delete"}
+                {isDeleting ? "..." : "Del"}
               </Button>
             </div>
           </div>
         ) : (
-          <div>
+          <div className="flex-1 flex flex-col">
             <div className="aspect-[3/2] rounded-lg border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-2 bg-[var(--background)]/50">
               <CreditCard className="w-10 h-10 text-[var(--foreground-muted)] opacity-50" />
               <span className="text-sm text-[var(--foreground-muted)]">
@@ -1436,7 +1672,7 @@ function PassportCard({
         {/* Caption */}
         <p className="text-xs text-[var(--foreground-muted)] text-center mt-3">
           {passportImageUrl
-            ? "Passport document"
+            ? `${client.passport_number || "Passport"} • ${client.nationality || ""}`
             : "Upload passport (JPG, PNG, PDF - max 10MB)"}
         </p>
       </div>
@@ -1514,6 +1750,13 @@ function ActualVisaCard({
   };
 
   const visaPrice = getVisaPrice();
+
+  // Get visa alert status
+  const visaAlert = getVisaAlertStatus(latestVisa?.expiry_date);
+
+  // Get visa dates from document metadata or practice
+  const visaStartDate = latestVisa?.issue_date || visaProcess?.start_date;
+  const visaExpiryDate = latestVisa?.expiry_date;
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1598,7 +1841,7 @@ function ActualVisaCard({
   };
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden">
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
         <h3 className="text-base font-semibold text-[var(--foreground)] flex items-center gap-2">
@@ -1608,15 +1851,42 @@ function ActualVisaCard({
       </div>
 
       {/* Content */}
-      <div className="p-4">
-        {visaProcess ? (
+      <div className="p-4 flex-1 flex flex-col">
+        {visaProcess && !latestVisa?.google_drive_file_url ? (
           /* Visa in Process */
-          <div className="aspect-[3/2] rounded-lg bg-blue-500/10 border-2 border-dashed border-blue-500/30 flex flex-col items-center justify-center gap-2">
-            <Loader2 className="w-10 h-10 text-blue-400 animate-spin" />
-            <p className="text-sm font-medium text-blue-400">Visa on process</p>
+          <div className="flex-1 flex flex-col">
+            <div className="aspect-[3/2] rounded-lg bg-blue-500/10 border-2 border-dashed border-blue-500/30 flex flex-col items-center justify-center gap-2">
+              <Loader2 className="w-10 h-10 text-blue-400 animate-spin" />
+              <p className="text-sm font-medium text-blue-400">
+                Visa on process
+              </p>
+            </div>
+
+            {/* Process Dates */}
+            {visaProcess.start_date && (
+              <div className="mt-3 space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[var(--foreground-muted)]">Start:</span>
+                  <span className="text-[var(--foreground)]">
+                    {formatDate(visaProcess.start_date)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[var(--foreground-muted)]">
+                    Finish:
+                  </span>
+                  <span className="text-[var(--foreground)]">
+                    {visaProcess.completion_date
+                      ? formatDate(visaProcess.completion_date)
+                      : "TBD"}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         ) : latestVisa?.google_drive_file_url ? (
-          <div className="space-y-3">
+          <div className="space-y-3 flex-1 flex flex-col">
+            {/* Visa Image */}
             <a
               href={latestVisa.google_drive_file_url}
               target="_blank"
@@ -1647,11 +1917,83 @@ function ActualVisaCard({
                 </div>
               </div>
             </a>
+
+            {/* Visa Data with Start/Finish/Exp */}
+            <div className="space-y-2">
+              {/* Visa Type */}
+              {latestVisa.document_type && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[var(--foreground-muted)]">Type:</span>
+                  <span className="font-medium text-[var(--foreground)]">
+                    {latestVisa.document_type}
+                  </span>
+                </div>
+              )}
+
+              {/* Start Date */}
+              {visaStartDate && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[var(--foreground-muted)]">Start:</span>
+                  <span className="text-[var(--foreground)]">
+                    {formatDate(visaStartDate)}
+                  </span>
+                </div>
+              )}
+
+              {/* Expiry Date with Alert */}
+              {visaExpiryDate && (
+                <div
+                  className={`rounded-lg p-2 ${
+                    visaAlert.alertLevel === "critical"
+                      ? "bg-red-500 text-white border border-red-600 animate-pulse"
+                      : visaAlert.alertLevel === "warning"
+                        ? "bg-yellow-500 text-black border border-yellow-600"
+                        : "bg-[var(--background)] border border-[var(--border)]"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span
+                      className={`text-[10px] uppercase tracking-wider ${
+                        visaAlert.alertLevel === "critical" ||
+                        visaAlert.alertLevel === "warning"
+                          ? "opacity-90"
+                          : "text-[var(--foreground-muted)]"
+                      }`}
+                    >
+                      Exp Visa:
+                    </span>
+                    <span
+                      className={`text-xs font-semibold ${
+                        visaAlert.alertLevel === "critical" ||
+                        visaAlert.alertLevel === "warning"
+                          ? ""
+                          : "text-[var(--foreground)]"
+                      }`}
+                    >
+                      {formatDate(visaExpiryDate)}
+                    </span>
+                  </div>
+
+                  {/* Alert Messages */}
+                  {visaAlert.alertLevel === "critical" && (
+                    <div className="mt-1 text-[10px] font-bold">
+                      🚨 URGENT: Plan renewal or communicate departure!
+                    </div>
+                  )}
+                  {visaAlert.alertLevel === "warning" && (
+                    <div className="mt-1 text-[10px]">
+                      ⚠️ Start planning your visa renewal
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Delete Button */}
             <Button
               variant="outline"
               size="sm"
-              className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
+              className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 mt-auto"
               onClick={handleDelete}
               disabled={isDeleting}
             >
@@ -1660,11 +2002,11 @@ function ActualVisaCard({
               ) : (
                 <Trash2 className="w-4 h-4 mr-2" />
               )}
-              {isDeleting ? "Deleting..." : "Delete Visa"}
+              {isDeleting ? "..." : "Del"}
             </Button>
           </div>
         ) : (
-          <div>
+          <div className="flex-1 flex flex-col">
             <div className="aspect-[3/2] rounded-lg border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-2 bg-[var(--background)]/50">
               <FileText className="w-10 h-10 text-[var(--foreground-muted)] opacity-50" />
               <span className="text-sm text-[var(--foreground-muted)]">
@@ -1700,7 +2042,7 @@ function ActualVisaCard({
         {/* Caption */}
         <p className="text-xs text-[var(--foreground-muted)] text-center mt-3">
           {latestVisa?.google_drive_file_url
-            ? "Visa document"
+            ? `${latestVisa.document_type || "Visa"} • ${visaAlert.alertLevel !== "ok" ? "⚠️ Action needed" : "Valid"}`
             : "Upload visa (JPG, PNG, PDF - max 10MB)"}
         </p>
       </div>
@@ -3987,4 +4329,3 @@ function AddCompanyModal({
     </div>
   );
 }
-
