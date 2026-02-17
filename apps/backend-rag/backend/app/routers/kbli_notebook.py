@@ -438,7 +438,7 @@ _TRANSLATE_SYSTEM = (
 )
 
 
-@cached(ttl=604800, prefix="kbli_translate_v7")  # Cache translations for 7 days (v7: known codes fallback + online retail mapping)
+@cached(ttl=604800, prefix="kbli_translate_v8")  # Cache translations for 7 days (v8: keyword injection for online retail)
 async def _translate_query_for_kbli(query: str) -> str:
     """Translate any-language query to Indonesian KBLI search terms."""
     try:
@@ -733,7 +733,30 @@ async def chat_kbli(
                 )
                 logger.info(f"📖 Found KBLI {code} via hardcoded KNOWN_KBLI_CODES: {known['title']}")
 
-        
+        # P2 FIX: Keyword-to-code injection for activities not in Qdrant
+        # Detects activity keywords in query and injects a direct match BEFORE semantic search
+        # This prevents wrong codes (e.g. 47901 for online retail instead of 47911)
+        _activity_keyword_map: list[tuple[list[str], str]] = [
+            # Online retail / e-commerce: must mention online/digital/internet and retail/shop/store
+            (["online retail", "e-commerce", "ecommerce", "toko online", "online shop", "internet retail",
+              "digital retail", "online store", "jual online", "perdagangan online"], "47911"),
+        ]
+        if not direct_kbli_match:
+            query_lower_kw = kbli_request.query.lower()
+            for keywords, target_code in _activity_keyword_map:
+                if any(kw in query_lower_kw for kw in keywords) and target_code in KNOWN_KBLI_CODES:
+                    known = KNOWN_KBLI_CODES[target_code]
+                    direct_kbli_match = KBLISearchResult(
+                        code=target_code,
+                        title=known["title"],
+                        description=known["description"],
+                        score=1.0,
+                        pma_status=known["pma_status"],
+                        risk_category=known["risk_category"],
+                    )
+                    logger.info(f"🎯 Keyword injection: '{query_lower_kw[:40]}' → KBLI {target_code}")
+                    break
+
         # Search semantic context with translated query
         results = []
         try:
