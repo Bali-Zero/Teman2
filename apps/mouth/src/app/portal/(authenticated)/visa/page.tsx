@@ -13,6 +13,7 @@ import {
 import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 import type {
   VisaInfo,
   VisaHistoryItem,
@@ -35,7 +36,7 @@ export default function VisaPage() {
       setVisaInfo(data);
     } catch (err) {
       error("Failed to load visa information", "Please try again later");
-      console.error(err);
+      logger.error("Failed to load portal visa info", {}, err as Error);
     } finally {
       setIsLoading(false);
     }
@@ -108,38 +109,45 @@ export default function VisaPage() {
             </div>
           </div>
 
-          {/* Days Remaining Banner */}
+          {/* Days Remaining Banner with 2-month Alert */}
           {visaInfo.current.daysRemaining !== null && (
             <div
               className={cn(
-                "mt-4 p-4 rounded-lg flex items-center gap-3",
-                visaInfo.current.daysRemaining <= 30
-                  ? "bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800"
-                  : visaInfo.current.daysRemaining <= 60
-                    ? "bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800"
-                    : "bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800",
+                "mt-4 p-4 rounded-lg flex items-start gap-3",
+                visaInfo.current.daysRemaining <= 60
+                  ? "bg-red-100 dark:bg-red-900/30 border-2 border-red-300 dark:border-red-700 animate-pulse"
+                  : "bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800",
               )}
             >
               <Clock
                 className={cn(
-                  "w-5 h-5",
-                  visaInfo.current.daysRemaining <= 30
+                  "w-5 h-5 mt-0.5",
+                  visaInfo.current.daysRemaining <= 60
                     ? "text-red-600 dark:text-red-400"
-                    : visaInfo.current.daysRemaining <= 60
-                      ? "text-amber-600 dark:text-amber-400"
-                      : "text-emerald-600 dark:text-emerald-400",
+                    : "text-emerald-600 dark:text-emerald-400",
                 )}
               />
               <div className="flex-1">
-                <p className="text-sm font-semibold">
+                <p
+                  className={cn(
+                    "text-sm font-semibold",
+                    visaInfo.current.daysRemaining <= 60 &&
+                      "text-red-700 dark:text-red-400",
+                  )}
+                >
                   {visaInfo.current.daysRemaining} days remaining
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  {visaInfo.current.daysRemaining <= 30
-                    ? "Please contact us to renew your visa"
-                    : visaInfo.current.daysRemaining <= 60
-                      ? "Renewal recommended soon"
-                      : "Your visa is valid"}
+                <p
+                  className={cn(
+                    "text-xs mt-1",
+                    visaInfo.current.daysRemaining <= 60
+                      ? "text-red-600 dark:text-red-400 font-medium"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  {visaInfo.current.daysRemaining <= 60
+                    ? "🚨 URGENT: Your visa expires in less than 2 months. Please contact us immediately to begin renewal planning or communicate your departure date."
+                    : "Your visa is valid"}
                 </p>
               </div>
             </div>

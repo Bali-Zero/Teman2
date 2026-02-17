@@ -194,6 +194,9 @@ export interface PortalProfile {
   whatsapp?: string;
   nationality?: string;
   passportNumber?: string;
+  passportExpiry?: string;
+  dateOfBirth?: string;
+  gender?: "M" | "F";
   address?: string;
   memberSince: string;
 }

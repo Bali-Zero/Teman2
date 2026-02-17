@@ -1,8 +1,8 @@
 """
-Nuzantara MCP Server v2.0
+Nuzantara MCP Server v2.1
 Full-spectrum business automation for Bali Zero.
 
-72 tools | 10 prompts | 5 resources | 6 deterministic workflow chains
+96 tools | 10 prompts | 5 resources | 8 deterministic workflow chains
 
 Transport: stdio (for Claude Code / Cowork / OpenClaw local integration)
 """
@@ -76,6 +76,7 @@ async def _call_safe(
 
 
 # --- Register all tool modules ---
+# --- Core domain tools ---
 from nuzantara_mcp.tools.crm import register as register_crm
 from nuzantara_mcp.tools.portal import register as register_portal
 from nuzantara_mcp.tools.intel import register as register_intel
@@ -87,10 +88,20 @@ from nuzantara_mcp.tools.drive import register as register_drive
 from nuzantara_mcp.tools.workflows import register as register_workflows
 from nuzantara_mcp.tools.admin import register as register_admin
 from nuzantara_mcp.tools.health import register as register_health
+
+# --- Tier 1 expansion: Journey, Pricing, Invoicing, Compliance, Generals ---
+from nuzantara_mcp.tools.journey import register as register_journey
+from nuzantara_mcp.tools.pricing import register as register_pricing
+from nuzantara_mcp.tools.invoicing import register as register_invoicing
+from nuzantara_mcp.tools.compliance import register as register_compliance
+from nuzantara_mcp.tools.generals import register as register_generals
+
+# --- Prompts, Resources, Chains ---
 from nuzantara_mcp.prompts.templates import register as register_prompts
 from nuzantara_mcp.resources.config import register as register_resources
 from nuzantara_mcp.workflows.chains import register as register_chains
 
+# Core domain
 register_crm(mcp, _call, _call_safe)
 register_portal(mcp, _call, _call_safe)
 register_intel(mcp, _call, _call_safe)
@@ -102,6 +113,15 @@ register_drive(mcp, _call, _call_safe)
 register_workflows(mcp, _call, _call_safe)
 register_admin(mcp, _call, _call_safe)
 register_health(mcp, _call, _call_safe)
+
+# Tier 1 expansion
+register_journey(mcp, _call, _call_safe)
+register_pricing(mcp, _call, _call_safe)
+register_invoicing(mcp, _call, _call_safe)
+register_compliance(mcp, _call, _call_safe)
+register_generals(mcp, _call, _call_safe)
+
+# Prompts, resources, chains
 register_prompts(mcp)
 register_resources(mcp, _call_safe, BACKEND_URL, API_KEY, TIMEOUT)
 register_chains(mcp, _call, _call_safe, LONG_TIMEOUT)
