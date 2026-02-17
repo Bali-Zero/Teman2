@@ -11,6 +11,7 @@ import {
   dashboardApi,
   type DashboardData,
 } from "@/lib/api/dashboard/dashboard.api";
+import { useDashboardData } from "@/hooks/useDashboardData";
 import { logger } from "@/lib/logger";
 
 // Mock dependencies
@@ -18,6 +19,11 @@ vi.mock("@/lib/api/dashboard/dashboard.api", () => ({
   dashboardApi: {
     getDashboardSummary: vi.fn(),
   },
+}));
+
+// Mock useDashboardData hook
+vi.mock("@/hooks/useDashboardData", () => ({
+  useDashboardData: vi.fn(),
 }));
 vi.mock("@/lib/logger");
 vi.mock("next/link", () => ({
@@ -97,6 +103,9 @@ vi.mock("@/components/dashboard", () => ({
   FeaturedArticlesWidget: () => (
     <div data-testid="featured-articles-widget">Featured Articles</div>
   ),
+  HomepagePreviewWidget: () => (
+    <div data-testid="homepage-preview-widget">Homepage Preview</div>
+  ),
 }));
 
 // Create a wrapper with QueryClientProvider for tests
@@ -156,11 +165,28 @@ describe("DashboardPage - Unit Tests", () => {
     last_updated: Date.now(),
   };
 
+  const mockUseDashboardData = (overrides = {}) => ({
+    user: mockDashboardData.user,
+    stats: mockDashboardData.stats,
+    practices: mockDashboardData.data.practices,
+    interactions: mockDashboardData.data.interactions,
+    emailStats: { connected: false, unread_count: 0 },
+    systemStatus: "healthy" as const,
+    isZero: false,
+    isLoading: false,
+    isError: false,
+    error: null,
+    totalUnread: 4,
+    isHealthy: true,
+    revenue: null,
+    revenueGrowth: 0,
+    refetch: vi.fn(),
+    ...overrides,
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(dashboardApi.getDashboardSummary).mockResolvedValue(
-      mockDashboardData,
-    );
+    vi.mocked(useDashboardData).mockReturnValue(mockUseDashboardData());
   });
 
   afterEach(() => {
@@ -175,32 +201,46 @@ describe("DashboardPage - Unit Tests", () => {
         "Active Cases: 5",
       );
     });
-
-    expect(dashboardApi.getDashboardSummary).toHaveBeenCalledTimes(1);
   });
 
-  it("should handle API errors with logging", async () => {
-    vi.mocked(dashboardApi.getDashboardSummary).mockRejectedValue(
-      new Error("API Error"),
+  it("should handle loading state", async () => {
+    vi.mocked(useDashboardData).mockReturnValue(
+      mockUseDashboardData({ isLoading: true }),
     );
 
     render(<DashboardPage />, { wrapper: createWrapper() });
 
-    // Wait for error state - the component should still render with fallback data
+    // Should show loading skeleton
+    expect(document.querySelector(".animate-pulse")).toBeInTheDocument();
+  });
+
+  it("should handle API errors", async () => {
+    vi.mocked(useDashboardData).mockReturnValue(
+      mockUseDashboardData({
+        isError: true,
+        error: new Error("API Error"),
+      }),
+    );
+
+    render(<DashboardPage />, { wrapper: createWrapper() });
+
+    // Should show error state
     await waitFor(() => {
-      expect(dashboardApi.getDashboardSummary).toHaveBeenCalled();
+      expect(screen.getByText("Dashboard Error")).toBeInTheDocument();
     });
   });
 
   it("should display zero-only widgets for zero user", async () => {
-    vi.mocked(dashboardApi.getDashboardSummary).mockResolvedValue({
-      ...mockDashboardData,
-      user: {
-        email: "zero@balizero.com",
-        role: "admin",
-        is_admin: true,
-      },
-    });
+    vi.mocked(useDashboardData).mockReturnValue(
+      mockUseDashboardData({
+        user: {
+          email: "zero@balizero.com",
+          role: "admin",
+          is_admin: true,
+        },
+        isZero: true,
+      }),
+    );
 
     render(<DashboardPage />, { wrapper: createWrapper() });
 
