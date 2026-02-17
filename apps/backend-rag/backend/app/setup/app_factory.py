@@ -82,6 +82,14 @@ async def lifespan(app: FastAPI):
 
         await initialize_plugins(app)
 
+        # Initialize Notification Scheduler (automated email alerts)
+        try:
+            from backend.app.modules.notifications.scheduler import init_scheduler
+            app.state.notification_scheduler = await init_scheduler()
+            logger.info("✅ Notification Scheduler initialized")
+        except Exception as e:
+            logger.error(f"⚠️ Failed to initialize Notification Scheduler: {e}")
+
         logger.info("✅ ZANTARA startup complete - all services ready")
 
     # Schedule background initialization
@@ -144,6 +152,12 @@ async def lifespan(app: FastAPI):
         with suppress(asyncio.CancelledError):
             await metrics_pusher_task
         logger.info("✅ Metrics Pusher stopped")
+
+    # Shutdown Notification Scheduler
+    notification_scheduler = getattr(app.state, "notification_scheduler", None)
+    if notification_scheduler:
+        await notification_scheduler.stop()
+        logger.info("✅ Notification Scheduler stopped")
 
     # Shutdown Daily Check-in Notifier
     daily_notifier = getattr(app.state, "daily_notifier", None)
