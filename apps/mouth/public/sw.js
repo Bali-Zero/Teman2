@@ -5,16 +5,16 @@
  *            Cache-First per assets statici
  */
 
-const CACHE_NAME = "balizero-v1";
-const STATIC_CACHE = "balizero-static-v1";
-const API_CACHE = "balizero-api-v1";
+const CACHE_NAME = "balizero-v2";
+const STATIC_CACHE = "balizero-static-v2";
+const API_CACHE = "balizero-api-v2";
 
 // Assets da cacheare immediatamente
-const STATIC_ASSETS = ["/", "/offline", "/_next/static/css/_app.css"];
+const STATIC_ASSETS = ["/", "/offline"];
 
 // Install: Cache static assets
 self.addEventListener("install", (event) => {
-  console.log("[SW] Install");
+  console.log("[SW] Install v2");
 
   event.waitUntil(
     caches
@@ -34,7 +34,7 @@ self.addEventListener("install", (event) => {
 
 // Activate: Clean old caches
 self.addEventListener("activate", (event) => {
-  console.log("[SW] Activate");
+  console.log("[SW] Activate v2");
 
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -44,7 +44,8 @@ self.addEventListener("activate", (event) => {
             return (
               name.startsWith("balizero-") &&
               name !== STATIC_CACHE &&
-              name !== API_CACHE
+              name !== API_CACHE &&
+              name !== CACHE_NAME
             );
           })
           .map((name) => {
@@ -69,6 +70,12 @@ self.addEventListener("fetch", (event) => {
 
   // Skip chrome-extension requests
   if (url.protocol === "chrome-extension:") return;
+
+  // Skip cross-origin requests (prevents CORS redirect issues)
+  if (url.origin !== self.location.origin) return;
+
+  // Skip RSC navigation requests (these may redirect cross-origin)
+  if (url.searchParams.has("_rsc")) return;
 
   // 1. Static assets: Cache First
   if (isStaticAsset(url)) {
@@ -96,12 +103,10 @@ function isStaticAsset(url) {
 }
 
 function isAPIRequest(url) {
-  return (
-    url.pathname.startsWith("/api/") || url.hostname === "nuzantara-rag.fly.dev"
-  );
+  return url.pathname.startsWith("/api/");
 }
 
-// Cache First: Usa cache, se non c'è fetcha
+// Cache First: Usa cache, se non c'e' fetcha
 async function cacheFirst(request, cacheName) {
   const cache = await caches.open(cacheName);
   const cached = await cache.match(request);
@@ -181,4 +186,4 @@ self.addEventListener("message", (event) => {
   }
 });
 
-console.log("[SW] Service Worker loaded");
+console.log("[SW] Service Worker loaded v2");

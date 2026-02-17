@@ -51,7 +51,7 @@ export class WebhookChatApi {
     metadata?: Record<string, unknown>,
   ): Promise<WebhookChatResponse> {
     const response = await this.client.request<WebhookChatResponse>(
-      "/webhook/chat",
+      "/api/webhook/chat",
       {
         method: "POST",
         body: JSON.stringify({
@@ -108,7 +108,7 @@ export class WebhookChatApi {
   ): Promise<void> {
     try {
       const response = await fetch(
-        `${this.client.getBaseUrl()}/webhook/chat?stream=true`,
+        `${this.client.getBaseUrl()}/api/webhook/chat?stream=true`,
         {
           method: "POST",
           headers: {
@@ -209,7 +209,7 @@ export class WebhookChatApi {
       params.append("limit", limit.toString());
     }
 
-    const url = `/webhook/chat/history/${sessionId}${params.toString() ? `?${params.toString()}` : ""}`;
+    const url = `/api/webhook/chat/history/${sessionId}${params.toString() ? `?${params.toString()}` : ""}`;
 
     const response = await this.client.request<ConversationHistoryResponse>(
       url,

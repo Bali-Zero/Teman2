@@ -4,6 +4,7 @@ Provides /webhook/chat endpoint with automatic conversation persistence
 Integrates with RAG orchestrator for context-aware responses
 """
 
+import json
 import logging
 from datetime import datetime
 from typing import Any
@@ -26,7 +27,7 @@ from backend.services.rag.agentic import AgenticRAGOrchestrator
 
 logger = get_logger(__name__)
 
-router = APIRouter(prefix="/webhook", tags=["webhook-chat"])
+router = APIRouter(prefix="/api/webhook", tags=["webhook-chat"])
 
 
 class ChatRequest(BaseModel):

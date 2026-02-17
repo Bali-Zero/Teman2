@@ -29,8 +29,8 @@ class ConnectionManager:
         self.active_connections: dict[str, list[WebSocket]] = {}
         self.lock = asyncio.Lock()
 
-    async def connect(self, websocket: WebSocket, user_id: str):
-        await websocket.accept()
+    async def connect(self, websocket: WebSocket, user_id: str, subprotocol: str | None = None):
+        await websocket.accept(subprotocol=subprotocol)
         async with self.lock:
             if user_id not in self.active_connections:
                 self.active_connections[user_id] = []
@@ -136,7 +136,16 @@ async def websocket_endpoint(websocket: WebSocket):
         await websocket.close(code=4003, reason="Invalid token")  # Forbidden
         return
 
-    await manager.connect(websocket, user_id)
+    # Echo the subprotocol back to satisfy browser requirement
+    # (browser rejects connection if Sec-WebSocket-Protocol was sent but not echoed)
+    selected_subprotocol: str | None = None
+    if subprotocols:
+        for sp in subprotocols:
+            if sp.startswith("bearer."):
+                selected_subprotocol = sp
+                break
+
+    await manager.connect(websocket, user_id, subprotocol=selected_subprotocol)
 
     # Create a background task to send pings to keep the connection alive
     heartbeat_task = asyncio.create_task(send_heartbeat(websocket))

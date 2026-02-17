@@ -62,19 +62,12 @@ export function PreloadHints() {
 
 /**
  * PreloadCriticalResources - Componente SSR per risorse critiche
- * Usato in layout.tsx per precaricare font e CSS critici
+ * Note: Font preloading is handled automatically by next/font/google.
+ * Do NOT hardcode /_next/static/media paths - they use content hashes.
  */
 export function PreloadCriticalResources() {
   return (
     <>
-      {/* Preload font critico */}
-      <link
-        rel="preload"
-        href="/_next/static/media/GeistVariableVF.woff2"
-        as="font"
-        type="font/woff2"
-        crossOrigin="anonymous"
-      />
       {/* Preconnect a API */}
       <link rel="preconnect" href="https://nuzantara-rag.fly.dev" />
       <link rel="dns-prefetch" href="https://nuzantara-rag.fly.dev" />
