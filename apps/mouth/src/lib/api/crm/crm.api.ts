@@ -72,6 +72,13 @@ export class CrmApi {
   constructor(private client: IApiClient) {}
 
   /**
+   * Generic request passthrough for admin/notification endpoints
+   */
+  async request<T = unknown>(url: string, options?: Parameters<IApiClient['request']>[1]): Promise<T> {
+    return this.client.request<T>(url, options);
+  }
+
+  /**
    * Get all practices with optional filtering
    */
   async getPractices(

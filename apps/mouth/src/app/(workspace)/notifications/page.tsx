@@ -61,7 +61,7 @@ export default function NotificationsDashboardPage() {
   const loadDashboard = async () => {
     try {
       setIsLoading(true);
-      const data = await api.crm.request("/api/admin/notifications/dashboard");
+      const data = await api.crm.request<{ stats: typeof stats; recent_alerts: typeof alerts; system_status: typeof systemStatus }>("/api/admin/notifications/dashboard");
       setStats(data.stats);
       setAlerts(data.recent_alerts);
       setSystemStatus(data.system_status);
@@ -85,7 +85,7 @@ export default function NotificationsDashboardPage() {
         method: "POST",
         body: JSON.stringify({}),
       });
-      success("Retry completed", result.message);
+      success("Retry completed", (result as { message: string }).message);
       loadDashboard();
     } catch (err) {
       error("Retry failed", "Please try again");
