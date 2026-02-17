@@ -1,5 +1,5 @@
 """
-Deterministic Workflow Chains - 6 autopilot workflows.
+Deterministic Workflow Chains - 8 autopilot workflows.
 
 Each chain is a sequence of tool calls with IF/THEN/ELSE branching.
 NO LLM decisions — pure deterministic logic.
@@ -617,3 +617,244 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
             log.append({"step": "stalled_practices", "status": "error", "detail": str(e)})
 
         return {"chain": "client_health_monitor", "stats": stats, "log": log}
+
+    # =========================================================================
+    # CHAIN 7: Compliance Autopilot
+    # =========================================================================
+
+    @mcp.tool()
+    async def chain_compliance_autopilot(
+        notify_critical: bool = True,
+        auto_create_practices: bool = False,
+    ) -> dict:
+        """
+        AUTOPILOT: Scan all compliance deadlines and take proactive action.
+
+        Deterministic chain:
+        1. Fetch all compliance alerts (CRITICAL + URGENT)
+        2. For CRITICAL (<7 days): send WhatsApp + email + portal message
+        3. For URGENT (<30 days): send portal reminder
+        4. Optionally auto-create renewal practices for expiring items
+        5. Generate summary report
+
+        Args:
+            notify_critical: Send multi-channel notifications for critical items
+            auto_create_practices: Auto-create renewal practices for visa/license expiry
+
+        Returns:
+            Chain result with stats and action log.
+        """
+        log: list[dict] = []
+        stats = {
+            "critical_items": 0,
+            "urgent_items": 0,
+            "notifications_sent": 0,
+            "practices_created": 0,
+        }
+        now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+        # Step 1: Fetch critical alerts
+        critical = await _call_safe(
+            "/api/agents/compliance/alerts",
+            params={"severity": "CRITICAL"},
+        )
+        critical_list = critical.get("alerts") or critical.get("data") or []
+        stats["critical_items"] = len(critical_list)
+        log.append({"step": "fetch_critical", "status": "ok", "count": len(critical_list)})
+
+        # Step 2: Notify critical items (multi-channel)
+        if notify_critical:
+            for item in critical_list:
+                if not isinstance(item, dict):
+                    continue
+                c_id = item.get("client_id")
+                title = item.get("title", "Compliance deadline")
+                days = item.get("days_remaining", "?")
+
+                if c_id:
+                    # WhatsApp
+                    await _call_safe("/api/communications/whatsapp/send", method="POST", json={
+                        "client_id": c_id,
+                        "message": f"⚠️ URGENT: {title} expires in {days} days. Please contact us immediately.",
+                    })
+                    # Email
+                    await _call_safe("/api/communications/email/send", method="POST", json={
+                        "client_id": c_id,
+                        "subject": f"URGENT: {title} - Action Required",
+                        "body": f"Your {title} deadline is in {days} days. Please contact our team to ensure timely renewal.",
+                    })
+                    # Portal
+                    await _call_safe("/api/portal/messages", method="POST", json={
+                        "client_id": c_id,
+                        "subject": f"Action Required: {title}",
+                        "body": f"Your {title} is due in {days} days. Please check your portal for details.",
+                    })
+                    stats["notifications_sent"] += 1
+            log.append({"step": "notify_critical", "status": "ok", "sent": stats["notifications_sent"]})
+
+        # Step 3: Fetch urgent alerts
+        urgent = await _call_safe(
+            "/api/agents/compliance/alerts",
+            params={"severity": "URGENT"},
+        )
+        urgent_list = urgent.get("alerts") or urgent.get("data") or []
+        stats["urgent_items"] = len(urgent_list)
+
+        for item in urgent_list:
+            if not isinstance(item, dict):
+                continue
+            c_id = item.get("client_id")
+            title = item.get("title", "Upcoming deadline")
+            days = item.get("days_remaining", "?")
+            if c_id:
+                await _call_safe("/api/portal/messages", method="POST", json={
+                    "client_id": c_id,
+                    "subject": f"Reminder: {title}",
+                    "body": f"Friendly reminder: {title} is due in {days} days.",
+                })
+        log.append({"step": "notify_urgent", "status": "ok", "count": len(urgent_list)})
+
+        # Step 4: Auto-create renewal practices
+        if auto_create_practices:
+            for item in critical_list:
+                if not isinstance(item, dict):
+                    continue
+                comp_type = item.get("compliance_type", "")
+                c_id = item.get("client_id")
+                if comp_type in ("visa_expiry", "license_renewal") and c_id:
+                    result = await _call_safe("/api/crm/practices", method="POST", json={
+                        "client_id": c_id,
+                        "type": f"renewal_{comp_type}",
+                        "notes": f"Auto-created by compliance autopilot on {now_str}",
+                    })
+                    if not result.get("error"):
+                        stats["practices_created"] += 1
+            log.append({"step": "auto_practices", "status": "ok", "created": stats["practices_created"]})
+
+        return {"chain": "compliance_autopilot", "stats": stats, "log": log}
+
+    # =========================================================================
+    # CHAIN 8: Full Client Journey Accelerator
+    # =========================================================================
+
+    @mcp.tool()
+    async def chain_journey_accelerator(
+        client_id: str,
+        journey_type: str = "pt_pma_setup",
+    ) -> dict:
+        """
+        AUTOPILOT: Spin up a full client journey with all supporting assets.
+
+        Deterministic chain:
+        1. Create journey from template (pt_pma_setup / kitas_application / property_purchase)
+        2. Calculate pricing for the service
+        3. Create Google Drive folder for the client
+        4. Track compliance deadlines based on journey type
+        5. Send welcome message via portal + WhatsApp
+        6. Submit orchestration task to generals for ongoing monitoring
+
+        Args:
+            client_id: UUID of the client
+            journey_type: Journey template: pt_pma_setup, kitas_application, property_purchase
+
+        Returns:
+            Chain result with journey_id, pricing, folder, compliance items.
+        """
+        log: list[dict] = []
+        result_data: dict = {}
+        now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+        # Step 1: Create journey
+        journey = await _call_safe(
+            "/api/agents/journey/create",
+            method="POST",
+            json={"journey_type": journey_type, "client_id": client_id},
+            timeout=long_timeout,
+        )
+        journey_id = journey.get("journey_id") or journey.get("id")
+        result_data["journey"] = journey
+        log.append({"step": "create_journey", "status": "ok" if journey_id else "error", "journey_id": journey_id})
+
+        # Step 2: Calculate pricing
+        service_map = {
+            "pt_pma_setup": "pt_pma",
+            "kitas_application": "kitas",
+            "property_purchase": "property_due_diligence",
+        }
+        pricing = await _call_safe(
+            "/api/agents/pricing/calculate",
+            method="POST",
+            json={"service_type": service_map.get(journey_type, journey_type)},
+        )
+        result_data["pricing"] = pricing
+        log.append({"step": "calculate_pricing", "status": "ok" if not pricing.get("error") else "error"})
+
+        # Step 3: Create Drive folder
+        client = await _call_safe(f"/api/crm/clients/{client_id}")
+        client_name = client.get("name") or client.get("full_name") or "Client"
+        folder = await _call_safe(
+            "/api/google-drive/client-folder",
+            method="POST",
+            json={"client_id": client_id, "client_name": client_name},
+        )
+        result_data["drive_folder"] = folder
+        log.append({"step": "create_drive_folder", "status": "ok" if not folder.get("error") else "error"})
+
+        # Step 4: Track compliance deadlines
+        deadline_map = {
+            "pt_pma_setup": ("license_renewal", "NIB Registration Deadline", 90),
+            "kitas_application": ("visa_expiry", "KITAS Application Deadline", 60),
+            "property_purchase": ("regulatory_change", "Property Due Diligence Deadline", 45),
+        }
+        if journey_type in deadline_map:
+            comp_type, title, days_out = deadline_map[journey_type]
+            from datetime import timedelta
+            deadline = (datetime.now(timezone.utc) + timedelta(days=days_out)).strftime("%Y-%m-%d")
+            compliance = await _call_safe(
+                "/api/agents/compliance/track",
+                method="POST",
+                json={
+                    "client_id": client_id,
+                    "compliance_type": comp_type,
+                    "title": title,
+                    "description": f"Auto-tracked by journey accelerator for {journey_type}",
+                    "deadline": deadline,
+                },
+            )
+            result_data["compliance"] = compliance
+            log.append({"step": "track_compliance", "status": "ok" if not compliance.get("error") else "error"})
+
+        # Step 5: Welcome messages
+        welcome = f"Welcome! Your {journey_type.replace('_', ' ')} journey has been created. Track progress in your portal."
+        await _call_safe("/api/portal/messages", method="POST", json={
+            "client_id": client_id,
+            "subject": f"Journey Started: {journey_type.replace('_', ' ').title()}",
+            "body": welcome,
+        })
+        await _call_safe("/api/communications/whatsapp/send", method="POST", json={
+            "client_id": client_id,
+            "message": welcome,
+        })
+        log.append({"step": "welcome_messages", "status": "ok"})
+
+        # Step 6: Submit monitoring task to generals
+        task = await _call_safe(
+            "/api/generals/tasks",
+            method="POST",
+            json={
+                "task_type": "orchestration",
+                "title": f"Monitor {journey_type} for {client_name}",
+                "description": f"Track journey {journey_id} progress, send reminders if stalled >7 days.",
+                "payload": {"journey_id": journey_id, "client_id": client_id},
+                "priority": 7,
+            },
+        )
+        result_data["monitoring_task"] = task
+        log.append({"step": "submit_monitoring", "status": "ok" if not task.get("error") else "error"})
+
+        return {
+            "chain": "journey_accelerator",
+            "journey_id": journey_id,
+            "data": result_data,
+            "log": log,
+        }
