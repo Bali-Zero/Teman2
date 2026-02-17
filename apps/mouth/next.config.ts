@@ -40,34 +40,7 @@ const nextConfig: NextConfig = {
     // Turbopack for faster builds (when stable)
     // turbo: {},
   },
-  // Redirect 301: www/mo → balizero.com (canonical)
-  // SEO: Prevent duplicate content and consolidate domain authority
-  async redirects() {
-    return [
-      {
-        source: "/:path*",
-        has: [
-          {
-            type: "host",
-            value: "www.balizero.com",
-          },
-        ],
-        destination: "https://balizero.com/:path*",
-        permanent: true, // 301 redirect
-      },
-      {
-        source: "/:path*",
-        has: [
-          {
-            type: "host",
-            value: "mo.balizero.com",
-          },
-        ],
-        destination: "https://balizero.com/:path*",
-        permanent: true, // 301 redirect
-      },
-    ];
-  },
+  // NOTE: Domain redirects handled by Vercel Dashboard to avoid conflicts
   images: {
     // 🖼️ Image Optimization - Auto AVIF/WebP conversion
     formats: ["image/avif", "image/webp"], // Modern formats (70% smaller)
