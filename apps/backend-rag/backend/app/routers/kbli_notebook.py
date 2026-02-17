@@ -303,9 +303,16 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)):
 
             related_codes = []
             if sector_id:
+                # Filter by same 2-digit sector prefix to prevent cross-sector contamination
+                # e.g. 56210 (catering, sector I) should only relate to 56xxx codes
+                sector_prefix = code[:2]
                 others = await conn.fetch(
-                    "SELECT source_entity_id FROM kg_edges WHERE target_entity_id = $1 AND relationship_type = 'BELONGS_TO' LIMIT 6",
+                    "SELECT source_entity_id FROM kg_edges "
+                    "WHERE target_entity_id = $1 AND relationship_type = 'BELONGS_TO' "
+                    "AND source_entity_id LIKE $2 "
+                    "ORDER BY source_entity_id LIMIT 6",
                     sector_id,
+                    f"kbli:{sector_prefix}%",
                 )
                 related_codes = [
                     r["source_entity_id"].replace("kbli:", "")
