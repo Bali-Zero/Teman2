@@ -438,7 +438,7 @@ _TRANSLATE_SYSTEM = (
 )
 
 
-@cached(ttl=604800, prefix="kbli_translate_v8")  # Cache translations for 7 days (v8: keyword injection for online retail)
+@cached(ttl=604800, prefix="kbli_translate_v9")  # Cache translations for 7 days (v9: keyword injection forces single result)
 async def _translate_query_for_kbli(query: str) -> str:
     """Translate any-language query to Indonesian KBLI search terms."""
     try:
@@ -965,7 +965,12 @@ async def chat_kbli(
                 )
         
         # Use filtered results for explanation (unless we have direct match)
-        if not has_direct_match:
+        if has_direct_match and not codes_from_query:
+            # Keyword-injected match (no code in query): use ONLY the direct match
+            # Prevents LLM from preferring wrong Qdrant results (e.g. 47901 over 47911)
+            results = [direct_kbli_match]
+            logger.info(f"🎯 Keyword injection: restricting results to direct match only ({direct_kbli_match.code})")
+        elif not has_direct_match:
             results = filtered_results if filtered_results else results
 
         # Generate Italian explanation via LLM (with fallback)
