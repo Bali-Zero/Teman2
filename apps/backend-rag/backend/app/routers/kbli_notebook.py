@@ -509,7 +509,7 @@ def _detect_language(query: str) -> str:
     return "English"
 
 
-@cached(ttl=43200, prefix="kbli_explain")  # Cache explanations for 12 hours
+@cached(ttl=43200, prefix="kbli_explain_v9")  # Cache explanations for 12 hours (v9: bumped to invalidate stale)
 async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]) -> str:
     """Generate a grounded explanation of KBLI search results using LLM."""
     if not results:
