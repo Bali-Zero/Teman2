@@ -60,22 +60,22 @@ Infrastruktur lengkap telah dibuat untuk tim 6 orang dalam menghasilkan 640+ per
 
 6. **`kbli/questions_template.md`** (514 baris, 200 pertanyaan)
    - **Tier 1 GRANITICI (100)** ⭐ MULAI DI SINI
-     * F&B (15)
-     * Technology (20)
-     * Real Estate (15)
-     * Retail (10)
-     * Hospitality (15)
-     * Manufacturing (10)
-     * Services (15)
+     - F&B (15)
+     - Technology (20)
+     - Real Estate (15)
+     - Retail (10)
+     - Hospitality (15)
+     - Manufacturing (10)
+     - Services (15)
    - **Tier 2 IN ATTESA (50)** dengan template disclaimer wajib
    - **Tier 3 DNI VIETATI (20)**
    - **Business Licenses (30)**
-     * Health permits (5)
-     * Construction (5)
-     * Environmental (5)
-     * Food safety (5)
-     * Tourism (5)
-     * Import/Export (5)
+     - Health permits (5)
+     - Construction (5)
+     - Environmental (5)
+     - Food safety (5)
+     - Tourism (5)
+     - Import/Export (5)
 
 7. **`tax/questions_template.md`** (~400 baris, 50 pertanyaan)
    - PPh Badan Corporate Tax (8)
@@ -119,15 +119,15 @@ Infrastruktur lengkap telah dibuat untuk tim 6 orang dalam menghasilkan 640+ per
 
 ## 📊 Total Cakupan Pertanyaan
 
-| Domain | Pertanyaan | Kompleksitas | Person | Dokumen |
-|--------|-----------|------------|--------|-----------|
-| Visa | 120 | Basic | Person 1 | Pengetahuan umum |
-| KBLI | 200 | Basic | Person 2 | ✅ 4 PDF siap |
-| Tax | 50 | Basic | Person 3 | Pengetahuan umum |
-| Property | 40 | Basic | Person 4 | Pengetahuan umum |
-| Cross-Domain | 150 | Level 2 | Person 5 | PDF KBLI + umum |
-| Multi-Domain | 80 | Level 3 | Person 6 | Semua tersedia |
-| **TOTAL** | **640** | **Mixed** | **6 orang** | **Hybrid** |
+| Domain       | Pertanyaan | Kompleksitas | Person      | Dokumen          |
+| ------------ | ---------- | ------------ | ----------- | ---------------- |
+| Visa         | 120        | Basic        | Person 1    | Pengetahuan umum |
+| KBLI         | 200        | Basic        | Person 2    | ✅ 4 PDF siap    |
+| Tax          | 50         | Basic        | Person 3    | Pengetahuan umum |
+| Property     | 40         | Basic        | Person 4    | Pengetahuan umum |
+| Cross-Domain | 150        | Level 2      | Person 5    | PDF KBLI + umum  |
+| Multi-Domain | 80         | Level 3      | Person 6    | Semua tersedia   |
+| **TOTAL**    | **640**    | **Mixed**    | **6 orang** | **Hybrid**       |
 
 ---
 
@@ -136,17 +136,20 @@ Infrastruktur lengkap telah dibuat untuk tim 6 orang dalam menghasilkan 640+ per
 ### 1. Strategi Dokumen Hybrid ✅
 
 **Keputusan:**
+
 - Domain KBLI (Person 2): Gunakan 4 PDF yang sudah ada di `data/kb_sources/`
 - Domain lain: Gunakan pengetahuan umum NotebookLM + kutipan regulasi
 - Cross/Multi: Kombinasi kedua pendekatan
 
 **Rasionalisasi:**
+
 - KBLI memiliki dokumen lengkap siap → mulai langsung
 - Domain lain terblokir menunggu PDF → gunakan pengetahuan umum sebagai gantinya
 - Pengetahuan umum NotebookLM akurat ketika nomor regulasi dispesifikasikan
 - Tim dapat mulai HARI INI alih-alih menunggu berminggu-minggu untuk mencari dokumen
 
 **Dampak:**
+
 - Person 2 dapat mulai segera ✅
 - Person 1, 3, 4 dapat mulai segera ✅
 - Tidak ada pemblokiran untuk akuisisi PDF
@@ -157,6 +160,7 @@ Infrastruktur lengkap telah dibuat untuk tim 6 orang dalam menghasilkan 640+ per
 **Keputusan:** Disclaimer wajib untuk kode KBLI yang menunggu klarifikasi BKPM
 
 **Template:**
+
 ```
 ⚠️ ATTENZIONE: KBLI [CODE] - IN ATTESA DI CLARIFICATION BKPM
 
@@ -169,6 +173,7 @@ per conferma definitiva dello status PMA.
 ```
 
 **Dampak:**
+
 - Perlindungan hukum (tidak menjamin kode yang tidak pasti)
 - Transparansi pengguna
 - Tetap memberikan nilai dengan informasi sementara
@@ -178,12 +183,14 @@ per conferma definitiva dello status PMA.
 **Keputusan:** Tim bekerja secara manual (tempel pertanyaan → salin respons → simpan file .txt)
 
 **Rasionalisasi:**
+
 - Pengguna memiliki tim orang yang tersedia
 - Manual memastikan review kualitas
 - NotebookLM → .txt → validasi Damar (lewati polishing)
 - Lebih sederhana daripada setup otomasi
 
 **Dampak:**
+
 - 640 pertanyaan / 6 orang / 10-15 per hari = 2-3 minggu
 - Kualitas terverifikasi manusia
 - Mulai langsung (tidak ada waktu pengembangan script)
@@ -197,6 +204,7 @@ per conferma definitiva dello status PMA.
 - **SOTA (80 pertanyaan):** 3+ domain, Person 6, Minggu 3
 
 **Dampak:**
+
 - Eksekusi paralel (Person 1-4 bekerja simultan)
 - Progresi sekuensial (cross-domain butuh basic selesai)
 - Progresi keahlian (pertanyaan junior → senior)
@@ -206,23 +214,27 @@ per conferma definitiva dello status PMA.
 ## 🔑 Faktor Kesuksesan Kritis
 
 ### 1. Dokumen KBLI Siap ✅
+
 - 4 PDF di `data/kb_sources/` terverifikasi
 - Person 2 dapat upload segera
 - 200 pertanyaan (domain terbesar) tidak terblokir
 
 ### 2. Template Pertanyaan Komprehensif ✅
+
 - 640 pertanyaan dengan prompt detail
 - Instruksi format jelas
 - Persyaratan kutipan dispesifikasikan
 - Quality gates didefinisikan
 
 ### 3. Dokumentasi Workflow Jelas ✅
+
 - `TEAM_GUIDE.md` langkah demi langkah
 - Template workflow harian
 - Masalah umum & solusi
 - Sistem pelacakan progres
 
 ### 4. Strategi Dokumen Hybrid ✅
+
 - Keseimbangan pragmatis: PDF jika siap, pengetahuan umum jika tidak
 - Tidak ada pemblokiran tim
 - Kualitas dipertahankan melalui kutipan regulasi
@@ -232,18 +244,21 @@ per conferma definitiva dello status PMA.
 ## 📅 Timeline yang Diharapkan
 
 ### Minggu 1 (Target: 200 respons)
+
 - Hari 1-2: Tim setup notebook NotebookLM
 - Hari 3-7: Generasi Q&A aktif
-  * Person 1: 50 visa
-  * Person 2: 80 KBLI (fokus Tier 1)
-  * Person 3: 40 tax
-  * Person 4: 30 property
+  - Person 1: 50 visa
+  - Person 2: 80 KBLI (fokus Tier 1)
+  - Person 3: 40 tax
+  - Person 4: 30 property
 
 ### Minggu 2 (Target: 400 total)
+
 - Hari 8-10: Selesaikan domain basic
 - Hari 11-14: Person 5 mulai cross-domain (100 respons)
 
 ### Minggu 3 (Target: 640 total)
+
 - Hari 15-17: Person 5 selesaikan cross-domain
 - Hari 18-21: Person 6 hasilkan 80 respons SOTA
 - Hari 21: Konsolidasi & review tim
@@ -257,17 +272,20 @@ per conferma definitiva dello status PMA.
 ### Pipeline Tanpa Biaya ✅
 
 **Tools yang Digunakan:**
+
 - NotebookLM: Gratis (produk Google)
 - Tenaga kerja tim: Resource yang sudah ada
 - Storage: File lokal (.txt)
 - Validasi: Backend Damar (sudah dibangun)
 
 **vs Biaya API:**
+
 - 640 percakapan × ~2000 token rata-rata × $0.03/1K = ~$38
 - Tetapi menggunakan tier gratis NotebookLM = **$0**
 - Plus NotebookLM menyediakan kutipan yang berdasar (nilai tambah)
 
 **ROI:**
+
 - 640 percakapan tervalidasi
 - Cakupan multi-domain (basic → SOTA)
 - Kutipan regulasi nyata
@@ -280,21 +298,25 @@ per conferma definitiva dello status PMA.
 ## 🎓 Pembelajaran & Inovasi
 
 ### 1. Pendekatan Dokumen Hybrid
+
 - Tidak semua domain butuh PDF
 - Pengetahuan umum + kutipan regulasi = hasil berkualitas
 - Pragmatis vs perfeksionis
 
 ### 2. Disclaimer KBLI Tier 2
+
 - Transparansi tentang ketidakpastian
 - Perlindungan hukum
 - Tetap memberikan nilai sementara
 
 ### 3. Progresi Tingkat Kompleksitas
+
 - Basic → Cross → SOTA
 - Progresi skill tim
 - Basic paralel, advanced sekuensial
 
 ### 4. Self-Check Quality Gates
+
 - Validasi tim 90%+ sebelum Damar
 - Mengurangi tingkat penolakan Damar
 - Tim belajar standar kualitas
@@ -337,6 +359,7 @@ Total: 11 file, ~3,500+ baris, 640 pertanyaan
 ## 🎯 Langkah Selanjutnya (Aksi Tim)
 
 ### Segera (Hari Ini):
+
 1. ✅ Bagikan `READY_TO_START.md` ke semua 6 anggota tim
 2. ✅ Setiap orang baca `TEAM_GUIDE.md`
 3. ✅ Person 2: Upload 4 PDF KBLI ke NotebookLM, mulai Tier 1
@@ -344,12 +367,14 @@ Total: 11 file, ~3,500+ baris, 640 pertanyaan
 5. ✅ Setup standup harian 15 menit
 
 ### Minggu Ini:
+
 - Update progres harian di `PROGRESS_TEMPLATE.md`
 - Self-check quality gates sebelum menyimpan
 - Tandai masalah untuk review tim
 - Target: 200 respons pada Jumat
 
 ### Minggu 2-3:
+
 - Person 5 mulai cross-domain (ketika basic 50% selesai)
 - Person 6 mulai SOTA (ketika basic selesai + cross 50%)
 - Konsolidasi final & validasi Damar
@@ -376,6 +401,7 @@ Total: 11 file, ~3,500+ baris, 640 pertanyaan
 ## 🎉 Status: SIAP DILUNCURKAN
 
 **Tim dapat mulai bekerja HARI INI:**
+
 - Person 2: Mulai segera (memiliki semua dokumen)
 - Person 1, 3, 4: Mulai segera (pendekatan pengetahuan umum)
 - Person 5, 6: Template siap, tunggu sinyal

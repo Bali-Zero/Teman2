@@ -108,20 +108,20 @@ apps/admin-dashboard/
 ### Secure Logging
 
 ```typescript
-import { debug, error, createLogger } from '@/lib/utils';
+import { debug, error, createLogger } from "@/lib/utils";
 
-const logger = createLogger('Postgres');
-logger.debug('Fetching tables...');
-logger.error('Query failed:', err);
+const logger = createLogger("Postgres");
+logger.debug("Fetching tables...");
+logger.error("Query failed:", err);
 ```
 
 ### Input Validation
 
 ```typescript
-import { isValidTableName, isValidUUID } from '@/lib/utils';
+import { isValidTableName, isValidUUID } from "@/lib/utils";
 
 if (!isValidTableName(tableName)) {
-  throw new Error('Invalid table name');
+  throw new Error("Invalid table name");
 }
 ```
 
@@ -138,10 +138,10 @@ import { ErrorBoundary } from '@/components/optimization';
 ### Type-Safe API Calls
 
 ```typescript
-import { safeFetch } from '@/lib/api/error-handler';
-import type { TableInfo } from '@/lib/types';
+import { safeFetch } from "@/lib/api/error-handler";
+import type { TableInfo } from "@/lib/types";
 
-const tables = await safeFetch<TableInfo[]>('/api/postgres/tables');
+const tables = await safeFetch<TableInfo[]>("/api/postgres/tables");
 ```
 
 ## Statistics

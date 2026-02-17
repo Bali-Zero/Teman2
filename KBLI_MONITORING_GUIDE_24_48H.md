@@ -9,6 +9,7 @@
 ## 📈 Vercel Dashboard Monitoring
 
 ### Setup
+
 1. Vai a: **https://vercel.com/dashboard**
 2. Login con account Bali Zero
 3. Seleziona project: **mouth** (Nuzantara frontend)
@@ -17,31 +18,37 @@
 ### Metriche da Monitorare
 
 #### 1. Deployments Tab
+
 **URL:** `https://vercel.com/[username]/mouth/deployments`
 
 **Verifica:**
+
 - ✅ Latest deployment: Commit `254c009f5`
 - ✅ Status: **Ready** (verde)
 - ✅ Domain: `zantara.balizero.com`
 - ✅ Build time: Normale (~2-5 min)
 
 **Alert se:**
+
 - ❌ Status: Failed (rosso)
 - ❌ Build errors nel log
 - ❌ Deployment rolled back
 
 #### 2. Logs Tab
+
 **URL:** `https://vercel.com/[username]/mouth/logs`
 
 **Monitora ogni 6-8 ore:**
 
 **Filtri da usare:**
+
 ```
 Status: All
 Time: Last 24 hours
 ```
 
 **Cerca pattern problematici:**
+
 ```
 ❌ "Error: Failed to fetch"
 ❌ "TypeError"
@@ -52,6 +59,7 @@ Time: Last 24 hours
 ```
 
 **Accettabili (ignora):**
+
 ```
 ✅ "404" per asset non critici
 ✅ "Warning" non bloccanti
@@ -59,24 +67,27 @@ Time: Last 24 hours
 ```
 
 **Azioni:**
+
 - Se 0-5 errori/ora: ✅ OK, continua monitoring
 - Se 6-20 errori/ora: ⚠️ Investiga pattern
 - Se >20 errori/ora: 🚨 ALERT - possibile problema
 
 #### 3. Analytics Tab (se abilitato)
+
 **URL:** `https://vercel.com/[username]/mouth/analytics`
 
 **Metriche chiave:**
 
-| Metric | Target | Alert if |
-|--------|--------|----------|
-| Requests/hour | 10-1000+ | <5 (site down?) |
-| 2xx Success % | >95% | <90% |
-| 4xx Client Errors % | <3% | >10% |
-| 5xx Server Errors % | 0% | >1% |
-| Avg Response Time | <2s | >5s |
+| Metric              | Target   | Alert if        |
+| ------------------- | -------- | --------------- |
+| Requests/hour       | 10-1000+ | <5 (site down?) |
+| 2xx Success %       | >95%     | <90%            |
+| 4xx Client Errors % | <3%      | >10%            |
+| 5xx Server Errors % | 0%       | >1%             |
+| Avg Response Time   | <2s      | >5s             |
 
 **Focus su:**
+
 - `/kbli-navigator/` route specificamente
 - Device breakdown (mobile vs desktop)
 - Geography (Indonesia traffic)
@@ -95,6 +106,7 @@ vercel logs --app mouth --since 24h | grep -i "error\|exception\|failed"
 ```
 
 **Oppure via Dashboard:**
+
 1. Logs tab
 2. Filter: "Last 24 hours"
 3. Search box: `error OR exception OR failed`
@@ -102,6 +114,7 @@ vercel logs --app mouth --since 24h | grep -i "error\|exception\|failed"
 ### Classificazione Errori
 
 #### 🔴 CRITICAL (Fix immediato richiesto)
+
 - JavaScript errors che bloccano search
 - "K is not defined"
 - "Cannot read property of undefined" in search function
@@ -111,6 +124,7 @@ vercel logs --app mouth --since 24h | grep -i "error\|exception\|failed"
 **Azione:** Rollback immediato o hotfix entro 1 ora
 
 #### 🟡 WARNING (Monitora e pianifica fix)
+
 - Slowdown performance (>200ms per search)
 - Specific keyword searches failing
 - 40x errors su risorse non critiche
@@ -119,6 +133,7 @@ vercel logs --app mouth --since 24h | grep -i "error\|exception\|failed"
 **Azione:** Create GitHub issue, fix entro 24-48h
 
 #### 🟢 INFO (Log normale, no action)
+
 - Crawler/bot 404s
 - Asset cache misses
 - Deprecation warnings
@@ -133,17 +148,21 @@ vercel logs --app mouth --since 24h | grep -i "error\|exception\|failed"
 ### Fonti Feedback
 
 #### 1. Direct Channels
+
 - **Email:** support@balizero.com
 - **WhatsApp:** Team Bali Zero
 - **Slack:** #nuzantara-feedback (se disponibile)
 
 #### 2. Analytics (indiretti)
+
 - **Bounce rate:** Alta su `/kbli-navigator/` = problema
 - **Time on page:** Bassa = ricerca non funziona
 - **Search queries:** Pattern di ricerche fallite
 
 #### 3. Internal Testing
+
 Chiedi a 3-5 colleghi di testare:
+
 - "Prova a cercare [tech/food/construction] terms in inglese"
 - "C'è qualcosa che non funziona?"
 - "Velocità accettabile?"
@@ -151,6 +170,7 @@ Chiedi a 3-5 colleghi di testare:
 ### Domande Chiave per Users
 
 **Template messaggio:**
+
 ```
 Ciao! 👋
 
@@ -172,6 +192,7 @@ Grazie! 🙏
 Registra in: `apps/mouth/scripts/PHASE_1_USER_FEEDBACK.txt`
 
 **Format:**
+
 ```
 Date: 2026-02-16 15:30
 User: [Nome/ID]
@@ -188,19 +209,22 @@ Action: [Fix needed / Note for future / Resolved]
 ### Response Time Tracking
 
 **Metodo 1: Vercel Analytics**
+
 - Vai su Analytics tab
 - Filtra per `/kbli-navigator/` route
 - Verifica "Time to First Byte" (TTFB)
 
 **Target:**
+
 - ✅ TTFB: <500ms (p50)
 - ✅ TTFB: <2s (p95)
 - ⚠️ Se >3s: investiga (cache? size? server?)
 
 **Metodo 2: Browser DevTools (spot check)**
+
 ```javascript
 // In console su https://zantara.balizero.com/kbli-navigator/
-performance.timing.loadEventEnd - performance.timing.navigationStart
+performance.timing.loadEventEnd - performance.timing.navigationStart;
 ```
 
 **Target:** <3000ms (3 secondi)
@@ -208,6 +232,7 @@ performance.timing.loadEventEnd - performance.timing.navigationStart
 ### Client-Side Search Performance
 
 **Test manuale (ogni 24h):**
+
 1. Apri site in produzione
 2. Apri console
 3. Run:
@@ -216,10 +241,10 @@ performance.timing.loadEventEnd - performance.timing.navigationStart
 // Performance test
 const perfTest = () => {
   const queries = ["restaurant", "software", "hotel", "construction", "cafe"];
-  queries.forEach(q => {
+  queries.forEach((q) => {
     const start = performance.now();
-    const results = K.filter(item => 
-      item[7] && item[7].toLowerCase().includes(q.toLowerCase())
+    const results = K.filter(
+      (item) => item[7] && item[7].toLowerCase().includes(q.toLowerCase()),
     );
     const time = performance.now() - start;
     console.log(`${q}: ${results.length} results in ${time.toFixed(2)}ms`);
@@ -229,25 +254,29 @@ perfTest();
 ```
 
 **Target:**
+
 - ✅ <50ms per query (average)
 - ✅ >0 results per query testata
 
 **Alert se:**
+
 - ⚠️ >100ms per query
 - ❌ 0 results per query comune
 
 ### File Size Check
 
 **Vercel Dashboard:**
+
 - Deployments > Latest > Function Logs
 - Cerca "Static file size" o simile
 
 **Browser Check:**
+
 ```javascript
 // Console in produzione
-fetch('/kbli-navigator/')
-  .then(r => r.text())
-  .then(html => {
+fetch("/kbli-navigator/")
+  .then((r) => r.text())
+  .then((html) => {
     console.log(`HTML size: ${(html.length / 1024).toFixed(2)} KB`);
   });
 ```
@@ -263,22 +292,24 @@ fetch('/kbli-navigator/')
 
 **Google Sheets o simile:**
 
-| Date | Time | Vercel Errors | User Reports | Avg Response | Search Performance | Notes |
-|------|------|---------------|--------------|--------------|-------------------|-------|
-| 2026-02-16 | 14:00 | 0 | 0 | 1.2s | 35ms | Initial deploy ✅ |
-| 2026-02-16 | 20:00 | ? | ? | ? | ? | Evening check |
-| 2026-02-17 | 09:00 | ? | ? | ? | ? | Morning check |
-| 2026-02-17 | 20:00 | ? | ? | ? | ? | 24h post-deploy |
-| 2026-02-18 | 09:00 | ? | ? | ? | ? | 48h check |
+| Date       | Time  | Vercel Errors | User Reports | Avg Response | Search Performance | Notes             |
+| ---------- | ----- | ------------- | ------------ | ------------ | ------------------ | ----------------- |
+| 2026-02-16 | 14:00 | 0             | 0            | 1.2s         | 35ms               | Initial deploy ✅ |
+| 2026-02-16 | 20:00 | ?             | ?            | ?            | ?                  | Evening check     |
+| 2026-02-17 | 09:00 | ?             | ?            | ?            | ?                  | Morning check     |
+| 2026-02-17 | 20:00 | ?             | ?            | ?            | ?                  | 24h post-deploy   |
+| 2026-02-18 | 09:00 | ?             | ?            | ?            | ?                  | 48h check         |
 
 ### Traffic Patterns
 
 **Expected:**
+
 - **Day 1:** Normal traffic, early adopters testing
 - **Day 2:** Potential increase if word spreads
 - **Week 1:** Stable patterns emerge
 
 **Anomalies da notare:**
+
 - Spike inatteso (viral? bug exploit?)
 - Drop improvviso (site down? search broken?)
 - Geographic anomalies (all from one country?)
@@ -290,12 +321,14 @@ fetch('/kbli-navigator/')
 ### RED ALERT 🔴 (Immediate Action)
 
 Trigger se:
-- >50 errors/hour in Vercel logs
+
+- > 50 errors/hour in Vercel logs
 - Complete search failure (JavaScript error)
 - Site down (DNS/server error)
-- >5 critical user reports in 2 hours
+- > 5 critical user reports in 2 hours
 
 **Action:**
+
 1. Immediate rollback consideration
 2. Alert team lead
 3. Debug priority #1
@@ -304,12 +337,14 @@ Trigger se:
 ### YELLOW ALERT 🟡 (Investigate Soon)
 
 Trigger se:
+
 - 10-50 errors/hour
 - Search performance degraded (>100ms avg)
 - 2-5 user bug reports
 - Specific browser issues
 
 **Action:**
+
 1. Log issue in GitHub
 2. Schedule fix within 24-48h
 3. Continue monitoring
@@ -318,12 +353,14 @@ Trigger se:
 ### GREEN STATUS ✅ (All Good)
 
 Indicators:
+
 - <10 errors/24h
 - 0 user complaints
 - Performance within targets
 - Normal traffic patterns
 
 **Action:**
+
 - Continue routine monitoring
 - Document success
 - Celebrate! 🎉
@@ -340,6 +377,7 @@ Indicators:
 ### Status: ✅ GREEN / 🟡 YELLOW / 🔴 RED
 
 ### Metrics (Last 24h)
+
 - Vercel Errors: [X] (target: <10)
 - User Reports: [X bugs, Y feedback] (target: <3 bugs)
 - Avg Response Time: [X]s (target: <2s)
@@ -347,28 +385,34 @@ Indicators:
 - Traffic: [X] requests (baseline: [Y])
 
 ### Issues Found
+
 1. [Issue description] - Priority: [H/M/L] - Status: [Open/Fixed]
 2. ...
 
 ### User Feedback Highlights
+
 - [Positive feedback summary]
 - [Feature requests]
 - [Bug reports]
 
 ### Actions Taken
+
 - [Any fixes deployed]
 - [Investigations started]
 - [Issues closed]
 
 ### Next 24h Plan
+
 - [Monitoring continues]
 - [Scheduled checks]
 - [Pending fixes]
 
 ### Overall Assessment
+
 [2-3 sentences summary: Is Phase 1 stable? Any concerns? Recommendations?]
 
 ---
+
 Report by: [Your Name]
 Next report: [Date + Time]
 ```
@@ -404,16 +448,19 @@ Next report: [Date + Time]
 ## 📚 Resources
 
 **Vercel Docs:**
+
 - Logs: https://vercel.com/docs/observability/logging
 - Analytics: https://vercel.com/docs/analytics
 - Monitoring: https://vercel.com/docs/observability/monitoring
 
 **Internal:**
+
 - KBLI Guide: `FASE_1_ENGLISH_KEYWORDS_GUIDE.md`
 - Test Checklist: `KBLI_PRODUCTION_TEST_CHECKLIST.md`
 - Scripts: `apps/mouth/scripts/`
 
 **Contacts:**
+
 - Team Lead: [Name/Email]
 - DevOps: [Contact]
 - Support: support@balizero.com

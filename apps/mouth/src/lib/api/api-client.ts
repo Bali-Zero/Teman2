@@ -479,9 +479,7 @@ export class ApiClient extends ApiClientBase {
   // Media Services (delegated to UploadApi, AudioApi, ImageApi)
   // ============================================================================
 
-  async uploadFile(
-    file: File,
-  ): Promise<{
+  async uploadFile(file: File): Promise<{
     success: boolean;
     url: string;
     filename: string;

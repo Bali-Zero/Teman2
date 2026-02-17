@@ -10,6 +10,7 @@
 ## KITAS Work (10 domande)
 
 ### 001_kitas_work_definition
+
 ```
 Cos'è il KITAS Work per lavoratori stranieri in Indonesia?
 
@@ -28,6 +29,7 @@ Lunghezza: 300-400 parole.
 ```
 
 ### 002_kitas_work_imta_requirement
+
 ```
 Cos'è l'IMTA e perché è obbligatorio per KITAS Work?
 
@@ -45,6 +47,7 @@ Lunghezza: 250-350 parole.
 ```
 
 ### 003_kitas_work_renewal
+
 ```
 Come rinnovare KITAS Work prima della scadenza?
 
@@ -67,6 +70,7 @@ Lunghezza: 300-400 parole.
 ## KITAS Investor (10 domande)
 
 ### 011_kitas_investor_definition
+
 ```
 Cos'è il KITAS Investor e chi può ottenerlo?
 
@@ -84,6 +88,7 @@ Lunghezza: 350-450 parole.
 ```
 
 ### 012_kitas_investor_requirements
+
 ```
 Requisiti dettagliati per ottenere KITAS Investor in Indonesia?
 
@@ -107,6 +112,7 @@ Lunghezza: 300-400 parole.
 ## E-Visa System (15 domande)
 
 ### 021_e_visa_general
+
 ```
 Cos'è il sistema E-Visa Indonesia e come ha sostituito VITAS?
 
@@ -125,6 +131,7 @@ Lunghezza: 400-500 parole.
 ```
 
 ### 022_e_visa_business_c2_d2
+
 ```
 Differenza tra E-Visa Business C2 e D2?
 
@@ -153,6 +160,7 @@ Lunghezza: 300-400 parole.
 ## E33G Digital Nomad Visa (8 domande)
 
 ### 036_e33g_definition
+
 ```
 Cos'è il visto E33G Digital Nomad Indonesia?
 
@@ -177,6 +185,7 @@ Lunghezza: 350-450 parole.
 ## E33E Retirement Visa (6 domande)
 
 ### 044_e33e_retirement
+
 ```
 Visto retirement E33E per pensionati stranieri in Indonesia?
 
@@ -200,6 +209,7 @@ Lunghezza: 300-400 parole.
 ## Family Dependent Visas (8 domande)
 
 ### 050_kitas_dependent_spouse
+
 ```
 KITAS Dependent per spouse di KITAS Work/Investor holder?
 
@@ -223,6 +233,7 @@ Lunghezza: 300-400 parole.
 ## Kemnaker Job Positions (30 domande - HIGH PRIORITY)
 
 ### 058_kemnaker_job_list_overview
+
 ```
 Cos'è la Kemnaker Job Position List e come funziona?
 
@@ -243,6 +254,7 @@ Lunghezza: 400-500 parole.
 ```
 
 ### 059_kemnaker_software_engineer
+
 ```
 Requirements Kemnaker per job position "Software Engineer" straniero?
 
@@ -259,6 +271,7 @@ Lunghezza: 250-350 parole.
 ```
 
 ### 060_kemnaker_chef
+
 ```
 Requirements Kemnaker per job position "Chef" straniero?
 
@@ -266,6 +279,7 @@ Requirements Kemnaker per job position "Chef" straniero?
 ```
 
 [... altre 27 domande per job positions comuni:
+
 - General Manager
 - Financial Controller
 - Marketing Director
@@ -285,6 +299,7 @@ Requirements Kemnaker per job position "Chef" straniero?
 ## Tourism Visas (5 domande)
 
 ### 088_voa_b211a
+
 ```
 Visa on Arrival (B211A) Indonesia: come funziona?
 
@@ -307,6 +322,7 @@ Lunghezza: 200-300 parole.
 ## Visa Conversions & Transitions (10 domande)
 
 ### 093_kitas_work_to_investor
+
 ```
 Posso convertire KITAS Work in KITAS Investor senza uscire dall'Indonesia?
 
@@ -335,6 +351,7 @@ Lunghezza: 300-400 parole.
 ## Checklist
 
 Basic Topics:
+
 - [ ] KITAS Work (10)
 - [ ] KITAS Investor (10)
 - [ ] E-Visa System (15)

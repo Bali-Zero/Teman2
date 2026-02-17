@@ -65,14 +65,14 @@ cd /Users/antonellosiano/Projects/nuzantara
 
    ```yaml
    rule_files:
-     - 'config/prometheus/article_composer_alerts.yml'
+     - "config/prometheus/article_composer_alerts.yml"
 
    scrape_configs:
-     - job_name: 'nuzantara-rag'
+     - job_name: "nuzantara-rag"
        scheme: https
        static_configs:
-         - targets: ['nuzantara-rag.fly.dev']
-       metrics_path: '/metrics'
+         - targets: ["nuzantara-rag.fly.dev"]
+       metrics_path: "/metrics"
    ```
 
 3. **Verificare:**
@@ -159,18 +159,18 @@ cd /Users/antonellosiano/Projects/nuzantara
 
    ```yaml
    slack_configs:
-     - api_url: 'https://hooks.slack.com/services/YOUR/WEBHOOK/URL'
-       channel: '#alerts-article-composer'
+     - api_url: "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+       channel: "#alerts-article-composer"
    ```
 
 3. **Configurare Email:**
 
    ```yaml
    global:
-     smtp_smarthost: 'smtp.gmail.com:587'
-     smtp_from: 'alerts@example.com'
-     smtp_auth_username: 'alerts@example.com'
-     smtp_auth_password: 'your_password'
+     smtp_smarthost: "smtp.gmail.com:587"
+     smtp_from: "alerts@example.com"
+     smtp_auth_username: "alerts@example.com"
+     smtp_auth_password: "your_password"
    ```
 
 4. **Verificare:**

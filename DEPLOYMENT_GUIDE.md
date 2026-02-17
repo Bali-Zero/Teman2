@@ -9,6 +9,7 @@
 ## 🎯 Overview
 
 This guide covers deploying the conversation persistence system to production, including:
+
 - Backend deployment (Fly.io)
 - Frontend integration (Vercel)
 - Monitoring setup
@@ -19,6 +20,7 @@ This guide covers deploying the conversation persistence system to production, i
 ## 📋 Pre-Deployment Checklist
 
 ### Backend
+
 - [x] ConversationRepository created
 - [x] Webhook chat router implemented
 - [x] Cleanup cron job integrated
@@ -28,6 +30,7 @@ This guide covers deploying the conversation persistence system to production, i
 - [ ] Database indexes confirmed
 
 ### Frontend
+
 - [ ] WebhookChatApi client created
 - [ ] useConversationPersistence hook created
 - [ ] Chat component updated
@@ -121,7 +124,7 @@ export function ChatPage() {
 
       console.log('Conversation ID:', response.conversation_id);
       console.log('Persisted:', response.persisted);
-      
+
       // Update UI with response.answer
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -157,11 +160,11 @@ Add WebhookChatApi to your API client exports:
 
 ```typescript
 // src/lib/api/api-client.ts or similar
-import { WebhookChatApi } from './chat/webhook-chat.api';
+import { WebhookChatApi } from "./chat/webhook-chat.api";
 
 export class ApiClient {
   // ... existing code ...
-  
+
   get webhookChat() {
     return new WebhookChatApi(this);
   }
@@ -258,7 +261,7 @@ vercel logs
 psql $DATABASE_URL
 
 -- Check recent conversations
-SELECT 
+SELECT
     id,
     session_id,
     user_id,
@@ -269,7 +272,7 @@ ORDER BY created_at DESC
 LIMIT 10;
 
 -- Check specific session
-SELECT 
+SELECT
     messages,
     metadata
 FROM conversations
@@ -309,11 +312,13 @@ NEXT_PUBLIC_API_URL=https://nuzantara-rag.fly.dev
 ### Issue: "Message not persisted"
 
 **Check:**
+
 1. Database connection available
 2. JWT token valid
 3. session_id provided in request
 
 **Debug:**
+
 ```bash
 # Check backend logs
 flyctl logs -a nuzantara-rag | grep "Failed to save conversation"
@@ -326,25 +331,29 @@ psql $DATABASE_URL -c "SELECT 1"
 ### Issue: "Context not maintained"
 
 **Check:**
+
 1. Same session_id used across requests
 2. Conversation history retrieved (check logs)
 3. RAG orchestrator receiving history
 
 **Debug:**
+
 ```typescript
 // Add logging in frontend
-console.log('Session ID:', sessionId);
-console.log('History loaded:', history.messages.length);
+console.log("Session ID:", sessionId);
+console.log("History loaded:", history.messages.length);
 ```
 
 ### Issue: "Cleanup job not running"
 
 **Check:**
+
 1. AutonomousScheduler started
 2. conversation_cleanup_enabled=True
 3. Database pool available
 
 **Debug:**
+
 ```bash
 # Check scheduler logs
 flyctl logs -a nuzantara-rag | grep "Conversation cleanup"
@@ -364,8 +373,9 @@ python -m backend.jobs.conversation_cleanup
 Monitor these in production:
 
 1. **Persistence Rate**: Should be ~100%
+
    ```sql
-   SELECT 
+   SELECT
        COUNT(*) as total_requests,
        COUNT(DISTINCT conversation_id) as persisted
    FROM conversations
@@ -373,6 +383,7 @@ Monitor these in production:
    ```
 
 2. **Query Performance**: Should be < 50ms
+
    ```sql
    EXPLAIN ANALYZE
    SELECT messages FROM conversations
@@ -388,6 +399,7 @@ Monitor these in production:
 ### Alerts
 
 Set up alerts for:
+
 - Persistence rate drops below 95%
 - Query time exceeds 100ms
 - Table size exceeds 10GB
@@ -412,6 +424,7 @@ Set up alerts for:
 ## 🎉 Success Criteria
 
 ✅ **Deployment successful when:**
+
 1. Client sends message → receives response
 2. Client refreshes page → conversation persists
 3. Client sends follow-up → AI remembers context
@@ -424,16 +437,18 @@ Set up alerts for:
 ## 📞 Support
 
 **Issues?**
+
 - Check logs: `flyctl logs -a nuzantara-rag`
 - Run tests: `pytest tests/test_conversation_persistence.py`
 - Manual cleanup: `python -m backend.jobs.conversation_cleanup`
 
 **Documentation:**
+
 - Backend: `apps/backend-rag/backend/docs/CONVERSATION_PERSISTENCE.md`
 - Implementation: `apps/backend-rag/IMPLEMENTATION_SUMMARY.md`
 
 ---
 
-**Deployment Date**: _____________  
-**Deployed By**: _____________  
-**Verified By**: _____________
+**Deployment Date**: ******\_******  
+**Deployed By**: ******\_******  
+**Verified By**: ******\_******

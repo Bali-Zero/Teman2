@@ -7,17 +7,23 @@ The A/B Testing Framework enables comparing different retrieval strategies in pr
 ## Experiments Supported
 
 ### 1. `hybrid_vs_dense`
+
 Compares hybrid search (BM25 + vector) vs dense-only search.
+
 - **Variant A**: `dense_only` - Pure vector similarity search
 - **Variant B**: `hybrid` - BM25 + vector with RRF fusion
 
 ### 2. `reranking_on_off`
+
 Compares results with and without cross-encoder reranking.
+
 - **Variant A**: `no_rerank` - No reranking applied
 - **Variant B**: `with_rerank` - Cross-encoder reranking enabled
 
 ### 3. `query_expansion`
+
 Compares query expansion enabled vs disabled.
+
 - **Variant A**: `no_expansion` - Original query only
 - **Variant B**: `with_expansion` - Query expanded with synonyms
 
@@ -31,6 +37,7 @@ Compares query expansion enabled vs disabled.
 ## Configuration
 
 ### Default Settings
+
 - **Traffic Split**: 50/50 (configurable per experiment)
 - **Minimum Sample Size**: 100 queries per variant
 - **Confidence Level**: 95%
@@ -52,15 +59,18 @@ ab_manager.disable_experiment("hybrid_vs_dense")
 ## API Endpoints
 
 ### Query Endpoints (A/B Testing Integrated)
+
 - `POST /api/agentic-rag/query` - Synchronous query with A/B test assignment
 - `POST /api/agentic-rag/stream` - Streaming query with A/B test assignment
 
 ### A/B Testing Dashboard
+
 - `GET /api/agentic-rag/ab-test/dashboard` - Full dashboard with all experiments
 - `GET /api/agentic-rag/ab-test/experiments` - List available experiments
 - `GET /api/agentic-rag/ab-test/results/{experiment}` - Results for specific experiment
 
 ### Feedback & Control
+
 - `POST /api/agentic-rag/ab-test/feedback` - Record user feedback (thumbs up/down)
 - `POST /api/agentic-rag/ab-test/experiments/{experiment}/control` - Enable/disable experiment
 - `GET /api/agentic-rag/ab-test/user/{user_id}/exposure` - View user's experiment history
@@ -137,6 +147,7 @@ is_significant = await ab_manager.is_significant("hybrid_vs_dense", metric="ctr"
 ## Database Schema
 
 ### Main Table: `ab_test_metrics`
+
 ```sql
 CREATE TABLE ab_test_metrics (
     id SERIAL PRIMARY KEY,
@@ -153,16 +164,19 @@ CREATE TABLE ab_test_metrics (
 ```
 
 ### Summary Table: `ab_test_summaries`
+
 Pre-aggregated metrics for fast dashboard queries.
 
 ## Statistical Methods
 
 ### Variant Assignment
+
 - **Method**: Consistent hashing with MD5
 - **Sticky Assignment**: Same user always gets same variant
 - **Hash Input**: `{user_id}:{experiment}`
 
 ### Significance Testing
+
 - **Method**: Welch's t-test for unequal variances
 - **Confidence Level**: 95% (configurable)
 - **Minimum Sample**: 100 per variant (configurable)
@@ -171,12 +185,14 @@ Pre-aggregated metrics for fast dashboard queries.
 ## Testing
 
 Run the test suite:
+
 ```bash
 source .venv/bin/activate
 python -m pytest backend/tests/services/rag/evaluation/test_ab_testing.py -v
 ```
 
 45+ tests covering:
+
 - Variant assignment and caching
 - Metric recording and aggregation
 - Statistical significance calculations
@@ -211,12 +227,14 @@ python -m pytest backend/tests/services/rag/evaluation/test_ab_testing.py -v
 ## Monitoring & Alerts
 
 The framework automatically logs:
+
 - Variant assignments
 - Metric recordings
 - Statistical significance milestones
 - Experiment status changes
 
 Monitor via:
+
 ```python
 # Get active experiments
 active = await tracker.get_active_experiments(hours=24)

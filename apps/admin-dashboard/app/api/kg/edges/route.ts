@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
-import { Pool } from 'pg';
-import { logger } from '@/lib/logger';
+import { NextResponse } from "next/server";
+import { Pool } from "pg";
+import { logger } from "@/lib/logger";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -10,10 +10,10 @@ const pool = new Pool({
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const nodeId = searchParams.get('nodeId');
+  const nodeId = searchParams.get("nodeId");
 
   if (!nodeId) {
-    return NextResponse.json({ error: 'nodeId required' }, { status: 400 });
+    return NextResponse.json({ error: "nodeId required" }, { status: 400 });
   }
 
   try {
@@ -37,7 +37,7 @@ export async function GET(request: Request) {
       client.release();
     }
   } catch (error: any) {
-    logger.error('NKG Edges Error:', error);
+    logger.error("NKG Edges Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

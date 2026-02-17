@@ -413,10 +413,10 @@ class TestMultiAgentCoordinator:
 
 ## Files to Create
 
-| File | Purpose | Lines |
-|------|---------|-------|
-| `backend/services/rag/multi_agent_coordinator.py` | Coordinator + 3 agents | ~400 |
-| `backend/tests/services/rag/test_multi_agent.py` | Test suite | ~250 |
+| File                                              | Purpose                | Lines |
+| ------------------------------------------------- | ---------------------- | ----- |
+| `backend/services/rag/multi_agent_coordinator.py` | Coordinator + 3 agents | ~400  |
+| `backend/tests/services/rag/test_multi_agent.py`  | Test suite             | ~250  |
 
 **Total:** ~650 lines
 

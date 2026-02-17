@@ -5,31 +5,31 @@
 generals:
   coding_general:
     - name: "morning_tech_debt"
-      schedule: "0 4 * * *"       # 4:00 AM UTC
+      schedule: "0 4 * * *" # 4:00 AM UTC
       action: "scan_todos_and_create_issues"
       priority: 3
     - name: "stale_branch_cleanup"
-      schedule: "0 2 * * 1"       # 2:00 AM UTC every Monday
+      schedule: "0 2 * * 1" # 2:00 AM UTC every Monday
       action: "delete_stale_branches"
       priority: 2
 
   intelligence_general:
     - name: "daily_briefing"
-      schedule: "0 8 * * *"       # 8:00 AM UTC
+      schedule: "0 8 * * *" # 8:00 AM UTC
       action: "generate_market_briefing"
       priority: 8
     - name: "competitor_watch"
-      schedule: "0 */6 * * *"     # Every 6 hours
+      schedule: "0 */6 * * *" # Every 6 hours
       action: "scan_competitor_sites"
       priority: 5
 
   antigravity_general:
     - name: "health_check_deep"
-      schedule: "*/30 * * * *"    # Every 30 minutes
+      schedule: "*/30 * * * *" # Every 30 minutes
       action: "full_system_diagnostic"
       priority: 10
     - name: "lock_cleanup"
-      schedule: "*/5 * * * *"     # Every 5 minutes
+      schedule: "*/5 * * * *" # Every 5 minutes
       action: "release_expired_locks"
       priority: 10
 
@@ -39,12 +39,12 @@ generals:
       action: "check_trending_topics"
       priority: 6
     - name: "content_calendar_sync"
-      schedule: "0 0 * * *"       # Midnight UTC
+      schedule: "0 0 * * *" # Midnight UTC
       action: "sync_upcoming_posts"
       priority: 4
 
   perplexity_general:
     - name: "news_verification"
-      schedule: "0 * * * *"       # Every hour
+      schedule: "0 * * * *" # Every hour
       action: "verify_breaking_news"
       priority: 7

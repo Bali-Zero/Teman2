@@ -26,15 +26,15 @@ This command will:
 Import the generated types in your Frontend code:
 
 ```typescript
-import { components } from '@/lib/api/schema';
+import { components } from "@/lib/api/schema";
 
 // Use generated types for strict safety
-type UserProfile = components['schemas']['UserProfile'];
-type LoginResponse = components['schemas']['LoginResponse'];
+type UserProfile = components["schemas"]["UserProfile"];
+type LoginResponse = components["schemas"]["LoginResponse"];
 
 // Example API call
 async function getUser(): Promise<UserProfile> {
-  const res = await fetch('/api/auth/profile');
+  const res = await fetch("/api/auth/profile");
   return await res.json();
 }
 ```

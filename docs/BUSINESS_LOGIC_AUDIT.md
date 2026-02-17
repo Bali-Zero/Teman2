@@ -10,19 +10,20 @@
 
 This audit analyzed the Nuzantara CRM business logic across core flows: Client Onboarding, Practice Lifecycle, Invoice Generation, and Lead Assignment. **23 critical issues** were identified across 5 categories, with **7 high-priority revenue-impacting gaps** requiring immediate attention.
 
-| Category | Issues | Severity |
-|----------|--------|----------|
-| Revenue Impact | 7 | 🔴 Critical |
-| Workflow Breaks | 6 | 🟠 High |
-| Data Quality | 5 | 🟡 Medium |
-| Automation Gaps | 5 | 🟠 High |
-| **TOTAL** | **23** | - |
+| Category        | Issues | Severity    |
+| --------------- | ------ | ----------- |
+| Revenue Impact  | 7      | 🔴 Critical |
+| Workflow Breaks | 6      | 🟠 High     |
+| Data Quality    | 5      | 🟡 Medium   |
+| Automation Gaps | 5      | 🟠 High     |
+| **TOTAL**       | **23** | -           |
 
 ---
 
 ## 💰 1. REVENUE IMPACT ISSUES
 
 ### 1.1 Invoice Automation - Placeholder Implementations ⚠️ CRITICAL
+
 **Location:** `invoice_service.py:210-304`
 
 ```python
@@ -31,13 +32,14 @@ async def _send_email(self, ...):
     logger.info(f"[EMAIL PLACEHOLDER] Would send to {to_email}...")
 
 async def _send_whatsapp(self, ...):
-    # TODO: Implement actual WhatsApp sending  
+    # TODO: Implement actual WhatsApp sending
     logger.info(f"[WHATSAPP PLACEHOLDER] Would send to {phone}...")
 ```
 
 **Impact:** Invoices are generated and saved to Drive, but **never actually sent to clients**. Revenue collection depends on manual follow-up.
 
 **Recommendation:**
+
 - Integrate SendGrid/AWS SES for email
 - Integrate WhatsApp Business API (Twilio or direct)
 - Add retry logic with exponential backoff
@@ -45,9 +47,11 @@ async def _send_whatsapp(self, ...):
 ---
 
 ### 1.2 Payment Status Not Synchronized
+
 **Location:** `crm_practices.py:286-290`, `invoice_service.py:333`
 
 The `payment_status` field is manually set but:
+
 - No integration with payment gateways (Xendit, Midtrans)
 - No webhook handlers for payment confirmations
 - `paid_amount` can exceed `actual_price` without validation
@@ -55,6 +59,7 @@ The `payment_status` field is manually set but:
 **Impact:** Manual tracking leads to revenue leakage and incorrect financial reporting.
 
 **Missing Validation:**
+
 ```python
 # NO CHECK FOR:
 - paid_amount <= actual_price
@@ -65,9 +70,11 @@ The `payment_status` field is manually set but:
 ---
 
 ### 1.3 Missing Payment Reminder Automation
+
 **Location:** Practice status `payment_pending` handling
 
 When practice moves to `payment_pending`:
+
 - ✅ Invoice is generated (automated)
 - ❌ No automatic payment reminders
 - ❌ No escalation for overdue payments
@@ -85,6 +92,7 @@ When practice moves to `payment_pending`:
 ---
 
 ### 1.4 Quoted Price vs Actual Price Gap
+
 **Location:** `crm_practices.py:76-117` (PracticeCreate/Update)
 
 ```python
@@ -100,6 +108,7 @@ class PracticeCreate(BaseModel):
 ---
 
 ### 1.5 Invoice Number Collision Risk
+
 **Location:** `invoice_generator.py:70-73`
 
 ```python
@@ -115,9 +124,11 @@ def generate_invoice_number(self, practice_id: int) -> str:
 ---
 
 ### 1.6 Missing Revenue Recognition Logic
+
 **Location:** Practice completion workflow
 
 When `status = completed`:
+
 - No automatic revenue recognition
 - No integration with accounting system
 - `actual_price` may differ from what was actually collected
@@ -127,6 +138,7 @@ When `status = completed`:
 ---
 
 ### 1.7 Lost Lead Tracking
+
 **Location:** Client deletion handling
 
 ```python
@@ -143,6 +155,7 @@ async def delete_client(...):
 ## 🔄 2. WORKFLOW BREAKS
 
 ### 2.1 Lead Assignment Without Fallback
+
 **Location:** `lead_assignment_agent.py:175-282`
 
 ```python
@@ -163,6 +176,7 @@ else:
 ---
 
 ### 2.2 Practice Creation Without Client Validation
+
 **Location:** `crm_practices.py:184-312`
 
 ```python
@@ -177,6 +191,7 @@ async def create_practice(..., practice: PracticeCreate, ...):
 ---
 
 ### 2.3 Timeline Events May Fail Silently
+
 **Location:** `crm_practices.py:253-273`
 
 ```python
@@ -192,6 +207,7 @@ except Exception as e:
 ---
 
 ### 2.4 Interaction RBAC Inconsistency
+
 **Location:** `crm_interactions.py:230-319`
 
 ```python
@@ -208,9 +224,11 @@ if not user_is_admin:
 ---
 
 ### 2.5 Missing Practice Status Transition Rules
+
 **Location:** `crm_practices.py:535-793` (update_practice)
 
 No state machine validation for status transitions:
+
 ```
 Allowed: inquiry → quotation_sent → payment_pending → in_progress → completed
 
@@ -225,6 +243,7 @@ But current code allows:
 ---
 
 ### 2.6 Document Upload Without Virus Scan
+
 **Location:** `crm_enhanced.py:759-814`
 
 ```python
@@ -240,6 +259,7 @@ async def create_document(...):
 ## 📊 3. DATA QUALITY ISSUES
 
 ### 3.1 Client Email Not Unique
+
 **Location:** `007_crm_system_schema.sql:31-65`
 
 ```sql
@@ -257,6 +277,7 @@ CREATE TABLE IF NOT EXISTS clients (
 ---
 
 ### 3.2 Orphaned Interactions
+
 **Location:** `007_crm_system_schema.sql:545-575`
 
 ```sql
@@ -272,6 +293,7 @@ CREATE TABLE interactions (
 ---
 
 ### 3.3 Passport Number Format Inconsistency
+
 **Location:** Multiple validators
 
 - `validators.py:49-58`: Requires uppercase alphanumeric
@@ -283,9 +305,11 @@ CREATE TABLE interactions (
 ---
 
 ### 3.4 Missing Data Retention Policy
+
 **Location:** All tables
 
 No automatic cleanup for:
+
 - Soft-deleted clients (status = inactive > 2 years)
 - Cancelled practices (> 5 years)
 - Old interactions (> 3 years)
@@ -296,6 +320,7 @@ No automatic cleanup for:
 ---
 
 ### 3.5 Currency Inconsistency Risk
+
 **Location:** `crm_practices.py:119-160`
 
 ```python
@@ -313,6 +338,7 @@ Practice has `currency` field but it's not in Update model. Currency defaults to
 ## ⚙️ 4. AUTOMATION GAPS
 
 ### 4.1 Renewal Alerts Not Automated
+
 **Location:** `crm_practices.py:747-767`
 
 ```python
@@ -323,6 +349,7 @@ if updates.status == "completed" and updates.expiry_date:
 ```
 
 **Gap:** Alerts are created but:
+
 - No automated sending
 - No escalation if alert is dismissed without action
 - No tracking of renewal conversion rate
@@ -330,9 +357,11 @@ if updates.status == "completed" and updates.expiry_date:
 ---
 
 ### 4.2 Missing Deadline Monitoring
+
 **Status:** NOT IMPLEMENTED
 
 No automation for:
+
 - Government submission deadlines
 - Document expiry warnings
 - SLA breaches (client waiting too long)
@@ -342,6 +371,7 @@ No automation for:
 ---
 
 ### 4.3 No Automated Practice Progression
+
 **Gap:** Practices stay in same status until manually updated.
 
 Expected automation:
@@ -355,7 +385,9 @@ Expected automation:
 ---
 
 ### 4.4 Missing Report Generation
+
 **Gap:** No automated reports for:
+
 - Weekly sales pipeline
 - Monthly revenue forecast
 - Team member performance
@@ -366,7 +398,9 @@ All reports appear to be manual queries.
 ---
 
 ### 4.5 No AI-Powered Insights
+
 **Gap:** Despite having interaction data:
+
 - No sentiment trend analysis
 - No churn prediction
 - No upsell recommendations
@@ -408,23 +442,26 @@ All reports appear to be manual queries.
 ## 📋 6. APPENDIX: QUERIES TO VERIFY ISSUES
 
 ### Find Duplicate Clients
+
 ```sql
-SELECT email, COUNT(*) as count 
-FROM clients 
-WHERE email IS NOT NULL 
-GROUP BY email 
+SELECT email, COUNT(*) as count
+FROM clients
+WHERE email IS NOT NULL
+GROUP BY email
 HAVING COUNT(*) > 1;
 ```
 
 ### Find Orphaned Practices (if any)
+
 ```sql
-SELECT p.id, p.client_id 
-FROM practices p 
-LEFT JOIN clients c ON p.client_id = c.id 
+SELECT p.id, p.client_id
+FROM practices p
+LEFT JOIN clients c ON p.client_id = c.id
 WHERE c.id IS NULL;
 ```
 
 ### Find Practices with Payment Mismatch
+
 ```sql
 SELECT id, quoted_price, actual_price, paid_amount, payment_status
 FROM practices
@@ -433,6 +470,7 @@ WHERE paid_amount > actual_price
 ```
 
 ### Find Unassigned Active Clients
+
 ```sql
 SELECT id, full_name, status, created_at
 FROM clients
@@ -442,6 +480,7 @@ WHERE assigned_to IS NULL
 ```
 
 ### Find Overdue Renewals
+
 ```sql
 SELECT p.id, c.full_name, p.expiry_date, p.assigned_to
 FROM practices p
@@ -449,7 +488,7 @@ JOIN clients c ON p.client_id = c.id
 WHERE p.expiry_date < CURRENT_DATE
   AND p.status = 'completed'
   AND NOT EXISTS (
-    SELECT 1 FROM renewal_alerts ra 
+    SELECT 1 FROM renewal_alerts ra
     WHERE ra.practice_id = p.id AND ra.status = 'completed'
   );
 ```
@@ -466,5 +505,5 @@ The Nuzantara CRM has a solid foundation but **critical gaps in revenue automati
 
 ---
 
-*Report generated by Business Logic Analyzer Agent*  
-*For questions, contact the development team*
+_Report generated by Business Logic Analyzer Agent_  
+_For questions, contact the development team_

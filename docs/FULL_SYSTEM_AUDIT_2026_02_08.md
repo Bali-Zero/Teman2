@@ -9,15 +9,15 @@
 
 ## EXECUTIVE SUMMARY
 
-| Category | Grade | Critical Issues | High | Medium | Low |
-|----------|-------|-----------------|------|--------|-----|
-| **Security** | B | 3 | 3 | 3 | 0 |
-| **RAG Pipeline** | B- | 4 | 6 | 10 | 10 |
-| **Architecture** | C+ | 2 | 3 | 5 | 3 |
-| **Code Quality** | C | 43 | 1 | 7 | 2 |
-| **Test Coverage** | C | 0 | 65 untested services | 40 untested routers | 0 |
-| **Dependencies** | B+ | 1 | 0 | 4 | 3 |
-| **TOTAL** | **C+** | **53** | **78** | **69** | **18** |
+| Category          | Grade  | Critical Issues | High                 | Medium              | Low    |
+| ----------------- | ------ | --------------- | -------------------- | ------------------- | ------ |
+| **Security**      | B      | 3               | 3                    | 3                   | 0      |
+| **RAG Pipeline**  | B-     | 4               | 6                    | 10                  | 10     |
+| **Architecture**  | C+     | 2               | 3                    | 5                   | 3      |
+| **Code Quality**  | C      | 43              | 1                    | 7                   | 2      |
+| **Test Coverage** | C      | 0               | 65 untested services | 40 untested routers | 0      |
+| **Dependencies**  | B+     | 1               | 0                    | 4                   | 3      |
+| **TOTAL**         | **C+** | **53**          | **78**               | **69**              | **18** |
 
 **Total findings: 218**
 
@@ -31,6 +31,7 @@
 **Risk:** HIGH -- unauthorized access to customer conversations
 
 Three endpoints have **zero authentication**:
+
 - `GET /api/whatsapp/conversations` -- exposes all conversation history
 - `GET /api/whatsapp/messages/{phone}` -- exposes messages by phone number
 - `POST /api/whatsapp/send` -- allows sending WhatsApp messages to any number
@@ -127,6 +128,7 @@ The main `CacheService` uses `redis.from_url()` (synchronous), while `SemanticCa
 **Risk:** HIGH -- production errors invisible, debugging impossible
 
 43 instances where exceptions are caught with `except Exception:` but either silently `pass`ed or `return None` without logging. Critical paths affected:
+
 - `whatsapp_chat.py:274` -- context building silently fails
 - `whatsapp_chat.py:457` -- database pool errors hidden
 - `hybrid_auth.py:383` -- authentication failures hidden
@@ -148,11 +150,11 @@ Admin emails hardcoded in source code (4 CRM admins + 2 super admins). Requires 
 
 ### SEC-02: Missing Rate Limits on Expensive Public Endpoints
 
-| Endpoint | File | Issue |
-|----------|------|-------|
-| `/api/blog/ask` | `blog_ask.py` | LLM-powered, no specific rate limit |
-| `/api/kbli-notebook/chat` | `kbli_notebook.py` | LLM-powered, no specific rate limit |
-| `/api/whatsapp/send` | `whatsapp_conversations.py` | Message sending, no rate limit |
+| Endpoint                  | File                        | Issue                               |
+| ------------------------- | --------------------------- | ----------------------------------- |
+| `/api/blog/ask`           | `blog_ask.py`               | LLM-powered, no specific rate limit |
+| `/api/kbli-notebook/chat` | `kbli_notebook.py`          | LLM-powered, no specific rate limit |
+| `/api/whatsapp/send`      | `whatsapp_conversations.py` | Message sending, no rate limit      |
 
 Default is 200/min which is too high for LLM-powered endpoints.
 
@@ -284,6 +286,7 @@ First definitions are dead code. Python uses the second definition.
 | `reasoning.py` | 722 | `except Exception:` -- reasoning error |
 
 **Services (28 instances):**
+
 - `intel.py` -- 5 silent catches
 - `zoho_email_service.py` -- 3 silent catches
 - `vision_rag.py` -- 2 silent catches
@@ -291,17 +294,18 @@ First definitions are dead code. Python uses the second definition.
 - 13 more across various services
 
 **Agents (10 instances):**
+
 - `multi_ai_adapter.py` -- 3 silent catches
 - `test_maintainer.py` -- 3 silent catches
 - 4 more across agent services
 
 ### 3 print() Statements in Production Code
 
-| File | Count |
-|------|-------|
-| `verify_streaming.py` | 8 |
-| `verify_route.py` | 7 |
-| `verify_chat.py` | 12 |
+| File                  | Count |
+| --------------------- | ----- |
+| `verify_streaming.py` | 8     |
+| `verify_route.py`     | 7     |
+| `verify_chat.py`      | 12    |
 
 ### 1 Bare Except Clause
 
@@ -309,11 +313,11 @@ First definitions are dead code. Python uses the second definition.
 
 ### 4 console.log in Frontend Production Code
 
-| File | Line |
-|------|------|
-| `hooks/useCrmPractices.ts` | 46 |
-| `hooks/useCrmClients.ts` | 29 |
-| `lib/ai-insights.tsx` | 521 |
+| File                       | Line |
+| -------------------------- | ---- |
+| `hooks/useCrmPractices.ts` | 46   |
+| `hooks/useCrmClients.ts`   | 29   |
+| `lib/ai-insights.tsx`      | 521  |
 
 ### 2 Logging Patterns (Inconsistent)
 
@@ -374,23 +378,23 @@ First instance is discarded; second is used.
 
 ### Coverage Summary
 
-| Category | Total | Tested | Untested | Coverage |
-|----------|-------|--------|----------|----------|
-| **Services** | ~150 | ~85 | ~65 | **57%** |
-| **Routers** | 70 | ~30 | ~40 | **43%** |
-| **Overall** | ~220 | ~115 | ~105 | **52%** |
+| Category     | Total | Tested | Untested | Coverage |
+| ------------ | ----- | ------ | -------- | -------- |
+| **Services** | ~150  | ~85    | ~65      | **57%**  |
+| **Routers**  | 70    | ~30    | ~40      | **43%**  |
+| **Overall**  | ~220  | ~115   | ~105     | **52%**  |
 
 ### Highest-Priority Untested Modules
 
-| Module | Untested Files | Business Criticality |
-|--------|---------------|---------------------|
-| **Knowledge Graph** | 8/8 | Core RAG functionality |
-| **Memory Services** | 8/8 | User memory and context |
-| **Analytics** | 12/13 | Team productivity |
-| **Intel Services** | 4/4 | News pipeline |
-| **Journey Services** | 5/5 | Client journey |
-| **LLM Clients** | 5/5 | Provider integrations |
-| **Compliance** | 5/5 | Compliance monitoring |
+| Module               | Untested Files | Business Criticality    |
+| -------------------- | -------------- | ----------------------- |
+| **Knowledge Graph**  | 8/8            | Core RAG functionality  |
+| **Memory Services**  | 8/8            | User memory and context |
+| **Analytics**        | 12/13          | Team productivity       |
+| **Intel Services**   | 4/4            | News pipeline           |
+| **Journey Services** | 5/5            | Client journey          |
+| **LLM Clients**      | 5/5            | Provider integrations   |
+| **Compliance**       | 5/5            | Compliance monitoring   |
 
 ### Untested Critical Routers
 
@@ -406,13 +410,13 @@ First instance is discarded; second is used.
 
 ### 5 Unregistered Router Files
 
-| File | Purpose | Recommendation |
-|------|---------|---------------|
-| `article_composer_v2.py` | Article Composer v2 with retry/circuit breaker | Register if active, remove if obsolete |
-| `crm_drive_folders.py` | Google Drive folder management | Register if needed |
-| `crm_migration.py` | Migration status tracking | Register if needed |
-| `kg_agentic.py` | KG-Agentic RAG API | Register if needed (has crash bug, see CRIT-05) |
-| `memory_vector.py` | Semantic memory via Qdrant | Register if needed (may conflict with existing `/api/memory`) |
+| File                     | Purpose                                        | Recommendation                                                |
+| ------------------------ | ---------------------------------------------- | ------------------------------------------------------------- |
+| `article_composer_v2.py` | Article Composer v2 with retry/circuit breaker | Register if active, remove if obsolete                        |
+| `crm_drive_folders.py`   | Google Drive folder management                 | Register if needed                                            |
+| `crm_migration.py`       | Migration status tracking                      | Register if needed                                            |
+| `kg_agentic.py`          | KG-Agentic RAG API                             | Register if needed (has crash bug, see CRIT-05)               |
+| `memory_vector.py`       | Semantic memory via Qdrant                     | Register if needed (may conflict with existing `/api/memory`) |
 
 ### 1 Duplicate Registration
 
@@ -448,58 +452,58 @@ First instance is discarded; second is used.
 
 ### Week 1: Security & Correctness (Critical)
 
-| # | Action | Effort | Impact | Files |
-|---|--------|--------|--------|-------|
-| 1 | Protect WhatsApp endpoints | 30m | HIGH | `whatsapp_conversations.py` |
-| 2 | Fix VisionTool path traversal | 30m | HIGH | `tools.py:288` |
-| 3 | Remove public debug endpoint | 5m | MEDIUM | `debug.py:493` |
-| 4 | Fix trusted tools mismatch (streaming) | 15m | HIGH | `reasoning.py:1590-1596` |
-| 5 | Fix kg_orchestrator unpacking crash | 5m | HIGH | `kg_orchestrator.py:551` |
-| 6 | Delete deprecated `calculate_evidence_score` | 30m | HIGH | `reasoning.py:247-404` |
-| 7 | Add cache invalidation on CRM mutations | 1h | MEDIUM | CRM routers (7 endpoints) |
+| #   | Action                                       | Effort | Impact | Files                       |
+| --- | -------------------------------------------- | ------ | ------ | --------------------------- |
+| 1   | Protect WhatsApp endpoints                   | 30m    | HIGH   | `whatsapp_conversations.py` |
+| 2   | Fix VisionTool path traversal                | 30m    | HIGH   | `tools.py:288`              |
+| 3   | Remove public debug endpoint                 | 5m     | MEDIUM | `debug.py:493`              |
+| 4   | Fix trusted tools mismatch (streaming)       | 15m    | HIGH   | `reasoning.py:1590-1596`    |
+| 5   | Fix kg_orchestrator unpacking crash          | 5m     | HIGH   | `kg_orchestrator.py:551`    |
+| 6   | Delete deprecated `calculate_evidence_score` | 30m    | HIGH   | `reasoning.py:247-404`      |
+| 7   | Add cache invalidation on CRM mutations      | 1h     | MEDIUM | CRM routers (7 endpoints)   |
 
 ### Week 2: Performance & Reliability
 
-| # | Action | Effort | Impact | Files |
-|---|--------|--------|--------|-------|
-| 8 | Parallelize federated vector search | 1h | HIGH | `tools.py:130-158` |
-| 9 | Migrate CacheService to async Redis | 4h | HIGH | `core/cache.py` |
-| 10 | Fix LLM Gateway tier logic | 1h | MEDIUM | `llm_gateway.py:374-382` |
-| 11 | Add timeout to LLM generate_content | 30m | HIGH | `llm_gateway.py:857` |
-| 12 | Add Pillow to requirements.txt | 5m | HIGH | `requirements.txt` |
-| 13 | Remove duplicate redis entry | 5m | LOW | `requirements.txt` |
-| 14 | Add rate limits to expensive public endpoints | 1h | MEDIUM | `rate_limiter.py` |
+| #   | Action                                        | Effort | Impact | Files                    |
+| --- | --------------------------------------------- | ------ | ------ | ------------------------ |
+| 8   | Parallelize federated vector search           | 1h     | HIGH   | `tools.py:130-158`       |
+| 9   | Migrate CacheService to async Redis           | 4h     | HIGH   | `core/cache.py`          |
+| 10  | Fix LLM Gateway tier logic                    | 1h     | MEDIUM | `llm_gateway.py:374-382` |
+| 11  | Add timeout to LLM generate_content           | 30m    | HIGH   | `llm_gateway.py:857`     |
+| 12  | Add Pillow to requirements.txt                | 5m     | HIGH   | `requirements.txt`       |
+| 13  | Remove duplicate redis entry                  | 5m     | LOW    | `requirements.txt`       |
+| 14  | Add rate limits to expensive public endpoints | 1h     | MEDIUM | `rate_limiter.py`        |
 
 ### Week 3: Code Quality
 
-| # | Action | Effort | Impact | Files |
-|---|--------|--------|--------|-------|
-| 15 | Fix 43 silent exception swallows | 3h | HIGH | Multiple (see Section 4) |
-| 16 | Internationalize ABSTAIN messages | 1h | MEDIUM | `reasoning.py` (6 locations) |
-| 17 | Fix config.py duplicate fields | 30m | LOW | `config.py` |
-| 18 | Consolidate os.environ to settings | 3h | MEDIUM | 20 service files |
-| 19 | Remove duplicate analytics registration | 5m | LOW | `router_registration.py` |
-| 20 | Delete dead `graph_pathfinder.py` | 5m | LOW | `services/rag/graph_pathfinder.py` |
+| #   | Action                                  | Effort | Impact | Files                              |
+| --- | --------------------------------------- | ------ | ------ | ---------------------------------- |
+| 15  | Fix 43 silent exception swallows        | 3h     | HIGH   | Multiple (see Section 4)           |
+| 16  | Internationalize ABSTAIN messages       | 1h     | MEDIUM | `reasoning.py` (6 locations)       |
+| 17  | Fix config.py duplicate fields          | 30m    | LOW    | `config.py`                        |
+| 18  | Consolidate os.environ to settings      | 3h     | MEDIUM | 20 service files                   |
+| 19  | Remove duplicate analytics registration | 5m     | LOW    | `router_registration.py`           |
+| 20  | Delete dead `graph_pathfinder.py`       | 5m     | LOW    | `services/rag/graph_pathfinder.py` |
 
 ### Month 2: Architecture Refactoring
 
-| # | Action | Effort | Impact | Files |
-|---|--------|--------|--------|-------|
-| 21 | Refactor reasoning.py (deduplicate ReAct loops) | 8h | HIGH | `reasoning.py` |
-| 22 | Break circular dependencies with Protocols | 16h | HIGH | 46 deferred imports |
-| 23 | Consolidate Redis connections into shared pool | 4h | MEDIUM | 4 files |
-| 24 | Add background task supervision | 3h | MEDIUM | `service_initializer.py` |
-| 25 | Inject LLMGateway into VerificationService | 2h | MEDIUM | `verification_service.py` |
+| #   | Action                                          | Effort | Impact | Files                     |
+| --- | ----------------------------------------------- | ------ | ------ | ------------------------- |
+| 21  | Refactor reasoning.py (deduplicate ReAct loops) | 8h     | HIGH   | `reasoning.py`            |
+| 22  | Break circular dependencies with Protocols      | 16h    | HIGH   | 46 deferred imports       |
+| 23  | Consolidate Redis connections into shared pool  | 4h     | MEDIUM | 4 files                   |
+| 24  | Add background task supervision                 | 3h     | MEDIUM | `service_initializer.py`  |
+| 25  | Inject LLMGateway into VerificationService      | 2h     | MEDIUM | `verification_service.py` |
 
 ### Month 3: Test Coverage
 
-| # | Action | Effort | Impact | Files |
-|---|--------|--------|--------|-------|
-| 26 | Write tests for Knowledge Graph services (8) | 16h | HIGH | `services/knowledge_graph/` |
-| 27 | Write tests for Memory services (8) | 12h | HIGH | `services/memory/` |
-| 28 | Write tests for untested CRM routers (4) | 8h | HIGH | CRM routers |
-| 29 | Write tests for Intel services (4) | 8h | MEDIUM | `services/intel/` |
-| 30 | Build RAG quality benchmark (50-100 gold questions) | 16h | HIGH | `apps/evaluator/` |
+| #   | Action                                              | Effort | Impact | Files                       |
+| --- | --------------------------------------------------- | ------ | ------ | --------------------------- |
+| 26  | Write tests for Knowledge Graph services (8)        | 16h    | HIGH   | `services/knowledge_graph/` |
+| 27  | Write tests for Memory services (8)                 | 12h    | HIGH   | `services/memory/`          |
+| 28  | Write tests for untested CRM routers (4)            | 8h     | HIGH   | CRM routers                 |
+| 29  | Write tests for Intel services (4)                  | 8h     | MEDIUM | `services/intel/`           |
+| 30  | Build RAG quality benchmark (50-100 gold questions) | 16h    | HIGH   | `apps/evaluator/`           |
 
 ---
 
@@ -550,43 +554,51 @@ stream_query() [orchestrator.py:329]
 
 ## APPENDIX B: COMPLETE EVIDENCE SCORING MATRIX
 
-| Scenario | Sources | Score > 0.15? | Context | Keywords | Evidence | Decision |
-|----------|---------|---------------|---------|----------|----------|----------|
-| Perfect retrieval | 5 docs | Yes | Yes | 3+ | **1.0** | Normal |
-| Good retrieval | 2 docs | Yes | Yes | 2 | **0.85** | Normal |
-| Moderate retrieval | 2 docs | Yes | Yes | 0 | **0.5** | Warning |
-| Low score sources | 4 docs | No | Yes | 2 | **0.55** | Warning |
-| No sources, good ctx | 0 | N/A | >500ch | 2 | **0.70** | Normal |
-| No sources, short ctx | 0 | N/A | <500ch | 1 (short query) | **0.35** | Normal |
-| Empty retrieval | 0 | N/A | None | N/A | **0.0** | ABSTAIN/Tier-1 |
-| Trusted tools | 0 | N/A | Tool output | N/A | Bypassed | Normal |
+| Scenario              | Sources | Score > 0.15? | Context     | Keywords        | Evidence | Decision       |
+| --------------------- | ------- | ------------- | ----------- | --------------- | -------- | -------------- |
+| Perfect retrieval     | 5 docs  | Yes           | Yes         | 3+              | **1.0**  | Normal         |
+| Good retrieval        | 2 docs  | Yes           | Yes         | 2               | **0.85** | Normal         |
+| Moderate retrieval    | 2 docs  | Yes           | Yes         | 0               | **0.5**  | Warning        |
+| Low score sources     | 4 docs  | No            | Yes         | 2               | **0.55** | Warning        |
+| No sources, good ctx  | 0       | N/A           | >500ch      | 2               | **0.70** | Normal         |
+| No sources, short ctx | 0       | N/A           | <500ch      | 1 (short query) | **0.35** | Normal         |
+| Empty retrieval       | 0       | N/A           | None        | N/A             | **0.0**  | ABSTAIN/Tier-1 |
+| Trusted tools         | 0       | N/A           | Tool output | N/A             | Bypassed | Normal         |
 
 ---
 
 ## APPENDIX C: FULL PUBLIC ENDPOINTS LIST (29)
 
 ### Infrastructure (8)
+
 `/health`, `/health/`, `/docs`, `/docs/`, `/openapi.json`, `/api/v1/openapi.json`, `/redoc`, `/metrics`
 
 ### Auth (3)
+
 `/api/auth/team/login`, `/api/auth/login`, `/api/auth/csrf-token`
 
 ### Webhooks (5)
+
 `/webhook/whatsapp`, `/api/whatsapp/webhook`, `/webhook/instagram`, `/api/telegram/webhook`, `/api/voice/elevenlabs`
 
 ### OAuth (3)
+
 `/api/integrations/zoho/callback`, `/api/integrations/google-drive/callback`, `/api/integrations/google-drive/system/status`
 
 ### Portal (2)
+
 `/api/portal/invite/validate/`, `/api/portal/invite/complete`
 
 ### Knowledge (3)
+
 `/api/knowledge/visa`, `/api/oracle/health`, `/api/v1/kbli-notebook/`
 
 ### Blog (4)
+
 `/api/blog/newsletter/subscribe`, `/api/blog/newsletter/confirm`, `/api/blog/newsletter/unsubscribe`, `/api/blog/ask`
 
 ### Preview (1)
+
 `/preview/`
 
 ---

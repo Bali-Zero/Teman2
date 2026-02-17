@@ -9,6 +9,7 @@
 ## 🎯 Overview
 
 CloudFlare provides:
+
 - **Global CDN**: 300+ edge locations
 - **DDoS Protection**: Always-on mitigation
 - **WAF**: Web Application Firewall
@@ -19,11 +20,11 @@ CloudFlare provides:
 
 ## 📚 Documentazione Correlata
 
-| Documento | Scopo |
-|-----------|-------|
+| Documento                           | Scopo                             |
+| ----------------------------------- | --------------------------------- |
 | `CLOUDFLARE_IMPLEMENTATION_PLAN.md` | Piano dettagliato implementazione |
-| `CLOUDFLARE_DNS_SETUP.md` | Configurazione DNS base |
-| `CLOUDFLARE_DNS_SETUP_COMPLETE.md` | Stato configurazione DNS |
+| `CLOUDFLARE_DNS_SETUP.md`           | Configurazione DNS base           |
+| `CLOUDFLARE_DNS_SETUP_COMPLETE.md`  | Stato configurazione DNS          |
 
 ---
 
@@ -46,11 +47,11 @@ Vedi: `docs/CLOUDFLARE_IMPLEMENTATION_PLAN.md`
 
 ### DNS Records
 
-| Type | Name | Content | Proxy Status |
-|------|------|---------|--------------|
-| CNAME | @ | cname.vercel-dns.com | Proxied |
-| CNAME | api | nuzantara-rag.fly.dev | Proxied |
-| CNAME | ws | nuzantara-rag.fly.dev | Proxied |
+| Type  | Name | Content               | Proxy Status |
+| ----- | ---- | --------------------- | ------------ |
+| CNAME | @    | cname.vercel-dns.com  | Proxied      |
+| CNAME | api  | nuzantara-rag.fly.dev | Proxied      |
+| CNAME | ws   | nuzantara-rag.fly.dev | Proxied      |
 
 ### SSL/TLS
 
@@ -91,6 +92,7 @@ curl -I https://balizero.com/_next/static/test.js | grep CF-Cache-Status
 ## 📊 Monitoraggio
 
 Target metrics:
+
 - Cache Hit Ratio: >90%
 - Bandwidth Saved: >50%
 - Avg Response Time: <200ms
@@ -101,4 +103,4 @@ Target metrics:
 
 ---
 
-*Documentazione aggiornata il 2026-02-08*
+_Documentazione aggiornata il 2026-02-08_

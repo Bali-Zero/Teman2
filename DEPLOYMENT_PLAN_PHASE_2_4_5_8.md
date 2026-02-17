@@ -9,6 +9,7 @@
 ## Pre-Deployment Checklist
 
 ### 1. Database Backup ⚠️
+
 ```bash
 # Backup production database before migrations
 fly postgres connect -a nuzantara-rag-db
@@ -16,6 +17,7 @@ pg_dump -Fc nuzantara > backup_2026_02_09.dump
 ```
 
 ### 2. Test Migrations Locally
+
 ```bash
 cd apps/backend-rag
 psql -d nuzantara_local < backend/db/migrations_v2/004_query_analytics.sql
@@ -23,18 +25,21 @@ psql -d nuzantara_local < backend/db/migrations_v2/005_workflow_analytics.sql
 ```
 
 **Expected Output:**
+
 - ✅ ALTER TABLE x 9 (query_analytics extensions)
 - ✅ UPDATE x 3 (backfill queries)
 - ✅ CREATE INDEX x 11 (6 + 5)
 - ✅ CREATE TABLE x 1 (workflow_analytics)
 
 ### 3. Code Review
+
 ```bash
 git status
 git diff HEAD -- apps/backend-rag/backend/
 ```
 
 **Files to Commit:**
+
 - `backend/services/rag/confidence.py` (Phase 2)
 - `backend/services/rag/personalized_workflow.py` (Phase 5)
 - `backend/services/kg_monitoring/*.py` (Phase 8 - 5 files)
@@ -56,6 +61,7 @@ git diff HEAD -- apps/backend-rag/backend/
 ## Deployment Steps
 
 ### Step 1: Commit & Push
+
 ```bash
 git add apps/backend-rag/backend/services/rag/confidence.py
 git add apps/backend-rag/backend/services/rag/personalized_workflow.py
@@ -106,6 +112,7 @@ git push origin main
 ```
 
 ### Step 2: Run Migrations on Production
+
 ```bash
 # Connect to production DB
 fly postgres connect -a nuzantara-rag-db
@@ -120,6 +127,7 @@ fly postgres connect -a nuzantara-rag-db
 ```
 
 **Verification Queries:**
+
 ```sql
 -- Check new columns added
 SELECT column_name, data_type
@@ -135,22 +143,26 @@ SELECT indexname FROM pg_indexes WHERE tablename IN ('query_analytics', 'workflo
 ```
 
 **Expected Results:**
+
 - ✅ 9 new columns in `query_analytics`
 - ✅ `workflow_analytics` table exists (0 rows initially)
 - ✅ 11 indexes total
 
 ### Step 3: Deploy Backend to Fly.io
+
 ```bash
 cd apps/backend-rag
 fly deploy --strategy rolling
 ```
 
 **Deployment Config:**
+
 - Strategy: `rolling` (zero-downtime)
 - Machines: 2 (Singapore)
 - Health checks: `/health` endpoint
 
 **Monitoring During Deploy:**
+
 ```bash
 # Watch logs
 fly logs -a nuzantara-rag
@@ -160,6 +172,7 @@ fly status -a nuzantara-rag
 ```
 
 **Look for:**
+
 - ✅ "New release v1672 created"
 - ✅ "2 machines updated"
 - ✅ "Health checks passing"
@@ -167,9 +180,11 @@ fly status -a nuzantara-rag
 - ❌ No database connection errors
 
 ### Step 4: Register New Routers
+
 **File:** `apps/backend-rag/backend/app/setup/router_registration.py`
 
 **Add:**
+
 ```python
 from backend.app.routers import query_analytics, workflow_analytics
 
@@ -179,11 +194,13 @@ app.include_router(workflow_analytics.router)
 ```
 
 **If not auto-loaded, redeploy:**
+
 ```bash
 fly deploy --strategy rolling
 ```
 
 ### Step 5: Verify Endpoints Live
+
 ```bash
 # Health check
 curl https://nuzantara-rag.fly.dev/health
@@ -209,6 +226,7 @@ curl -X POST https://nuzantara-rag.fly.dev/api/v1/analytics/workflow-feedback \
 ```
 
 **Expected Responses:**
+
 - Query analytics: `{"total_queries": 0, "avg_response_time_ms": null, ...}` (initially empty)
 - Workflow analytics: `{"follow_rate": 0.0, "top_workflows": [], ...}` (initially empty)
 - Feedback submit: `{"status": "success", "workflow_id": "wf-test-123"}`
@@ -218,6 +236,7 @@ curl -X POST https://nuzantara-rag.fly.dev/api/v1/analytics/workflow-feedback \
 ## Feature Flags (Optional)
 
 ### Enable Phase 8 Monitoring (Cron Job)
+
 ```bash
 # Set feature flag
 fly secrets set ENABLE_KG_MONITORING=true -a nuzantara-rag
@@ -227,12 +246,14 @@ fly secrets set SCRAPER_SCHEDULE="0 3 * * *" -a nuzantara-rag
 ```
 
 ### Enable Phase 5 Personalization
+
 ```bash
 # Already enabled by default - no flag needed
 # Personalization activates when CRM data present
 ```
 
 ### Enable Phase 2 Confidence Warnings
+
 ```bash
 # Set confidence thresholds (optional override)
 fly secrets set CONFIDENCE_THRESHOLD_HIGH=0.80 -a nuzantara-rag
@@ -245,6 +266,7 @@ fly secrets set CONFIDENCE_THRESHOLD_LOW=0.35 -a nuzantara-rag
 ## Post-Deployment Verification
 
 ### 1. Test Confidence Scoring (Phase 2)
+
 ```bash
 # Use existing LangGraph endpoint
 curl -X POST https://nuzantara-rag.fly.dev/api/agentic/query \
@@ -260,6 +282,7 @@ curl -X POST https://nuzantara-rag.fly.dev/api/agentic/query \
 ```
 
 ### 2. Test Personalized Workflows (Phase 5)
+
 ```bash
 # Create test client in CRM with has_npwp = true
 # Then query for NPWP workflow
@@ -267,6 +290,7 @@ curl -X POST https://nuzantara-rag.fly.dev/api/agentic/query \
 ```
 
 ### 3. Test Feedback Loop (Phase 4)
+
 ```bash
 # Submit feedback
 curl -X POST https://nuzantara-rag.fly.dev/api/v1/analytics/workflow-feedback \
@@ -281,6 +305,7 @@ curl -H "Authorization: Bearer $FOUNDER_JWT" \
 ```
 
 ### 4. Test Monitoring (Phase 8 - Manual Trigger)
+
 ```bash
 # SSH into machine
 fly ssh console -a nuzantara-rag
@@ -298,6 +323,7 @@ python -m backend.services.kg_monitoring.scraper
 ## Rollback Plan (If Issues)
 
 ### Rollback Code
+
 ```bash
 # Revert to previous deploy
 fly releases --app nuzantara-rag
@@ -305,6 +331,7 @@ fly releases rollback v1671 --app nuzantara-rag
 ```
 
 ### Rollback Database (⚠️ DESTRUCTIVE)
+
 ```bash
 # Only if migrations cause issues
 fly postgres connect -a nuzantara-rag-db
@@ -341,6 +368,7 @@ DROP INDEX IF EXISTS idx_query_analytics_collections;
 ### Key Metrics to Watch
 
 **Prometheus Metrics:**
+
 ```promql
 # Confidence score distribution
 histogram_quantile(0.95, confidence_score_bucket)
@@ -357,12 +385,14 @@ scraper_changes_detected_total{change_type="NEW"}
 ```
 
 **Grafana Dashboard Queries:**
+
 - Avg confidence score over time
 - Workflow types by popularity
 - Feedback sentiment analysis
 - Scraper run frequency
 
 ### Alert Rules
+
 ```yaml
 - alert: LowConfidenceWorkflows
   expr: avg(confidence_score) < 0.55
@@ -400,15 +430,15 @@ scraper_changes_detected_total{change_type="NEW"}
 
 ## Timeline
 
-| Step | Duration | Status |
-|------|----------|--------|
-| Pre-deployment checks | 15 min | ⏳ |
-| Commit & push code | 5 min | ⏳ |
-| Run DB migrations | 10 min | ⏳ |
-| Deploy backend | 10 min | ⏳ |
-| Verify endpoints | 10 min | ⏳ |
-| Post-deployment tests | 15 min | ⏳ |
-| **Total** | **~65 min** | ⏳ |
+| Step                  | Duration    | Status |
+| --------------------- | ----------- | ------ |
+| Pre-deployment checks | 15 min      | ⏳     |
+| Commit & push code    | 5 min       | ⏳     |
+| Run DB migrations     | 10 min      | ⏳     |
+| Deploy backend        | 10 min      | ⏳     |
+| Verify endpoints      | 10 min      | ⏳     |
+| Post-deployment tests | 15 min      | ⏳     |
+| **Total**             | **~65 min** | ⏳     |
 
 ---
 

@@ -12,6 +12,7 @@
 ## COMPANY + VISA (35 domande)
 
 ### 001_pt_pma_setup_kitas_investor
+
 ```
 Setup PT PMA + ottenere KITAS Investor: processo completo?
 
@@ -53,6 +54,7 @@ Lunghezza: 600-800 parole.
 ```
 
 ### 002_pt_pma_hire_foreign_worker
+
 ```
 PT PMA già esistente + assumere lavoratore straniero (KITAS Work)?
 
@@ -95,6 +97,7 @@ Lunghezza: 500-700 parole.
 ```
 
 ### 003_change_kbli_visa_implications
+
 ```
 Se cambio KBLI della PT PMA, devo rifare KITAS Investor?
 
@@ -128,6 +131,7 @@ Lunghezza: 400-600 parole.
 ```
 
 [... altre 32 domande COMPANY + VISA scenarios:
+
 - Director change + KITAS implications
 - PT PMA closure + KITAS cancellation
 - Multiple KBLI codes + employee visa types
@@ -144,6 +148,7 @@ Lunghezza: 400-600 parole.
 ## VISA + PROPERTY (25 domande)
 
 ### 036_kitas_investor_buy_villa_hak_pakai
+
 ```
 Con KITAS Investor posso comprare villa (Hak Pakai)?
 
@@ -185,6 +190,7 @@ Lunghezza: 500-700 parole.
 ```
 
 ### 037_kitas_expires_hak_pakai_status
+
 ```
 Se KITAS scade, cosa succede a Hak Pakai property?
 
@@ -222,6 +228,7 @@ Lunghezza: 400-600 parole.
 ```
 
 ### 038_retirement_visa_e33e_buy_property
+
 ```
 Con Retirement Visa E33E posso comprare property (Hak Pakai)?
 
@@ -260,6 +267,7 @@ Lunghezza: 400-600 parole.
 ```
 
 [... altre 22 domande VISA + PROPERTY:
+
 - KITAS Work + rent villa (long-term sewa)
 - Digital Nomad E33G + property ownership (NOT allowed)
 - Family dependent KITAS + property purchase
@@ -276,6 +284,7 @@ Lunghezza: 400-600 parole.
 ## COMPANY + TAX (25 domande)
 
 ### 061_pt_pma_setup_tax_registration
+
 ```
 Setup PT PMA: quali tax registrations obbligatorie?
 
@@ -319,6 +328,7 @@ Lunghezza: 500-700 parole.
 ```
 
 ### 062_kbli_restaurant_tax_obligations
+
 ```
 PT PMA con KBLI 56101 (Restaurant): tutti gli obblighi fiscali?
 
@@ -358,6 +368,7 @@ Lunghezza: 500-700 parole.
 ```
 
 [... altre 23 domande COMPANY + TAX:
+
 - Dividend distribution to foreign shareholders (PPh 26)
 - Tax treaty benefits PT PMA Italian investor
 - Transfer pricing PT PMA + related parties
@@ -374,6 +385,7 @@ Lunghezza: 500-700 parole.
 ## VISA + TAX (15 domande)
 
 ### 086_kitas_investor_tax_residency
+
 ```
 Con KITAS Investor sono tax resident in Indonesia?
 
@@ -414,6 +426,7 @@ Lunghezza: 500-700 parole.
 ```
 
 [... altre 14 domande VISA + TAX:
+
 - KITAS Work salary taxation (PPh 21)
 - Retirement Visa E33E tax implications
 - Digital Nomad E33G tax exemptions
@@ -428,6 +441,7 @@ Lunghezza: 500-700 parole.
 ## PROPERTY + TAX (15 domande)
 
 ### 101_hak_pakai_property_tax_obligations
+
 ```
 Hak Pakai property: quali tasse devo pagare ogni anno?
 
@@ -468,6 +482,7 @@ Lunghezza: 400-600 parole.
 ```
 
 [... altre 14 domande PROPERTY + TAX:
+
 - Rental income taxation (short-term vs long-term)
 - Capital gains selling property
 - Property inheritance tax implications
@@ -486,6 +501,7 @@ Lunghezza: 400-600 parole.
 **Pending:** 150
 
 ### Breakdown:
+
 - [ ] COMPANY + VISA (35)
 - [ ] VISA + PROPERTY (25)
 - [ ] COMPANY + TAX (25)
@@ -524,9 +540,9 @@ Lunghezza: 400-600 parole.
 
 - Minimum 3 regulations (one per domain involved)
 - Example COMPANY+VISA:
-  * PP 28/2025 (KBLI)
-  * PP 31/2013 (Immigration)
-  * Permenkumham 28/2024 (E-Visa)
+  - PP 28/2025 (KBLI)
+  - PP 31/2013 (Immigration)
+  - Permenkumham 28/2024 (E-Visa)
 
 ### Quality Gates:
 

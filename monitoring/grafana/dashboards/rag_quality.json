@@ -82,9 +82,7 @@
         "minVizWidth": 75,
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -152,9 +150,7 @@
         "minVizWidth": 75,
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -222,9 +218,7 @@
         "minVizWidth": 75,
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -292,9 +286,7 @@
         "orientation": "auto",
         "percentChangeColorMode": "standard",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -387,10 +379,7 @@
       "id": 6,
       "options": {
         "legend": {
-          "calcs": [
-            "mean",
-            "lastNotNull"
-          ],
+          "calcs": ["mean", "lastNotNull"],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
@@ -788,9 +777,7 @@
         "footer": {
           "countRows": false,
           "fields": "",
-          "reducer": [
-            "sum"
-          ],
+          "reducer": ["sum"],
           "show": false
         },
         "showHeader": true,
@@ -891,9 +878,7 @@
         "footer": {
           "countRows": false,
           "fields": "",
-          "reducer": [
-            "sum"
-          ],
+          "reducer": ["sum"],
           "show": false
         },
         "showHeader": true
@@ -1099,9 +1084,7 @@
       "id": 16,
       "options": {
         "legend": {
-          "calcs": [
-            "mean"
-          ],
+          "calcs": ["mean"],
           "displayMode": "table",
           "placement": "right",
           "showLegend": true
@@ -1200,9 +1183,7 @@
       "id": 17,
       "options": {
         "legend": {
-          "calcs": [
-            "mean"
-          ],
+          "calcs": ["mean"],
           "displayMode": "table",
           "placement": "right",
           "showLegend": true
@@ -1239,12 +1220,7 @@
   ],
   "refresh": "30s",
   "schemaVersion": 39,
-  "tags": [
-    "rag",
-    "quality",
-    "monitoring",
-    "retrieval"
-  ],
+  "tags": ["rag", "quality", "monitoring", "retrieval"],
   "templating": {
     "list": [
       {

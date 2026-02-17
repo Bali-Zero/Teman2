@@ -3,6 +3,7 @@
 ## Overview
 
 HTTP/2 provides significant performance improvements over HTTP/1.1:
+
 - **Multiplexing**: Multiple requests over single connection
 - **Header Compression**: Reduced overhead (HPACK)
 - **Server Push**: Proactive resource delivery
@@ -53,11 +54,11 @@ server {
     listen 80;
     listen [::]:80;
     server_name nuzantara.com www.nuzantara.com;
-    
+
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
     }
-    
+
     location / {
         return 301 https://$server_name$request_uri;
     }
@@ -113,7 +114,7 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        
+
         # Timeouts
         proxy_connect_timeout 60s;
         proxy_send_timeout 60s;
@@ -129,7 +130,7 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        
+
         # Brotli support
         proxy_set_header Accept-Encoding $http_accept_encoding;
     }
@@ -144,7 +145,7 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        
+
         # WebSocket timeouts
         proxy_read_timeout 86400s;
         proxy_send_timeout 86400s;
@@ -214,12 +215,12 @@ websocat wss://nuzantara.com/ws/?client_id=test123
 
 ## Performance Impact
 
-| Metric | HTTP/1.1 | HTTP/2 | Improvement |
-|--------|----------|--------|-------------|
-| Load Time | 2.5s | 1.8s | 28% faster |
-| Requests | 6 connections | 1 connection | 6x reduction |
-| Header Size | ~1KB | ~100B | 90% smaller |
-| TTFB | 150ms | 120ms | 20% faster |
+| Metric      | HTTP/1.1      | HTTP/2       | Improvement  |
+| ----------- | ------------- | ------------ | ------------ |
+| Load Time   | 2.5s          | 1.8s         | 28% faster   |
+| Requests    | 6 connections | 1 connection | 6x reduction |
+| Header Size | ~1KB          | ~100B        | 90% smaller  |
+| TTFB        | 150ms         | 120ms        | 20% faster   |
 
 ## Troubleshooting
 

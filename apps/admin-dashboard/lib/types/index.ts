@@ -107,4 +107,4 @@ export interface ApiError {
 }
 
 // Utility types
-export type LoadingState = 'idle' | 'loading' | 'success' | 'error';
+export type LoadingState = "idle" | "loading" | "success" | "error";

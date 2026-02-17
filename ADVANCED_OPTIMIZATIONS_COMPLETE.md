@@ -24,16 +24,18 @@ Tutte le 4 fasi di ottimizzazione avanzata sono state completate con successo e 
 **Data Deploy:** 2026-02-08
 
 ### Servizi Online
-| Servizio | Stato | URL |
-|----------|-------|-----|
-| API | ✅ Healthy | http://localhost:8000 |
-| Database | ✅ Healthy | localhost:5433 |
-| Redis | ✅ Healthy | localhost:6380 |
-| Grafana | ✅ Up | http://localhost:3001 |
-| Prometheus | ✅ Up | http://localhost:9090 |
+
+| Servizio   | Stato      | URL                   |
+| ---------- | ---------- | --------------------- |
+| API        | ✅ Healthy | http://localhost:8000 |
+| Database   | ✅ Healthy | localhost:5433        |
+| Redis      | ✅ Healthy | localhost:6380        |
+| Grafana    | ✅ Up      | http://localhost:3001 |
+| Prometheus | ✅ Up      | http://localhost:9090 |
 
 ### Ottimizzazioni Attive
-- **Rate Limiting:** 100 req/min con headers X-RateLimit-*
+
+- **Rate Limiting:** 100 req/min con headers X-RateLimit-\*
 - **Brotli Compression:** Configurato (attivo per risposte >1KB)
 - **Docker Image:** 1.2GB (38% più piccola)
 - **Task Queue:** InMemoryTaskQueue integrato nell'API
@@ -43,9 +45,11 @@ Tutte le 4 fasi di ottimizzazione avanzata sono state completate con successo e 
 ## Bug Fixes (Post-Deploy)
 
 ### 1. CacheManager.redis Property
+
 **Problema:** RateLimitMiddleware dava errore `'CacheManager' object has no attribute 'redis'`
 
 **Fix:** Aggiunta property a `backend/core/cache.py`:
+
 ```python
 @property
 def redis(self) -> Optional[Redis]:
@@ -53,6 +57,7 @@ def redis(self) -> Optional[Redis]:
 ```
 
 ### 2. Worker/Scheduler Restart Loop
+
 **Problema:** Container worker/scheduler in loop di restart cercando Celery
 
 **Causa:** docker-compose.yml configurava comandi Celery, ma il progetto usa InMemoryTaskQueue
@@ -100,7 +105,7 @@ const { mutate } = useUpdateClientMutation();
 
 // Articles
 const { data } = useArticlesQuery(filters);
-const { data } = useNewsFeedQuery('latest');
+const { data } = useNewsFeedQuery("latest");
 const { mutate } = usePublishArticleMutation();
 ```
 

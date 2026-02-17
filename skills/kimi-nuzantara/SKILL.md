@@ -2,7 +2,7 @@
 
 **Name:** kimi-nuzantara  
 **Description:** Permanent AI member configuration for Nuzantara/Bali Zero project  
-**Version:** 1.0.0  
+**Version:** 1.0.0
 
 ---
 
@@ -13,6 +13,7 @@ This skill transforms Kimi into a permanent member of the Nuzantara team, embody
 ## When to Use
 
 Use this skill when:
+
 - Starting work on the Nuzantara codebase
 - Making architectural decisions
 - Interacting with the system (backend, frontend, databases)
@@ -23,13 +24,13 @@ Use this skill when:
 
 ### Critical Knowledge
 
-| Aspect | Value |
-|--------|-------|
-| Embedding Model | `text-embedding-3-small` (1536 dims) - NEVER CHANGE |
-| KBLI Payload | FLAT (not nested) - `kode_kbli`, `judul`, `pma_status` |
-| Evidence ABSTAIN | < 0.15 (refuse), 0.15-0.60 (cautious), > 0.60 (normal) |
-| Backend URL | `https://nuzantara-rag.fly.dev` |
-| ABSTAIN Threshold | 0.15 (low to remain conversational) |
+| Aspect            | Value                                                  |
+| ----------------- | ------------------------------------------------------ |
+| Embedding Model   | `text-embedding-3-small` (1536 dims) - NEVER CHANGE    |
+| KBLI Payload      | FLAT (not nested) - `kode_kbli`, `judul`, `pma_status` |
+| Evidence ABSTAIN  | < 0.15 (refuse), 0.15-0.60 (cautious), > 0.60 (normal) |
+| Backend URL       | `https://nuzantara-rag.fly.dev`                        |
+| ABSTAIN Threshold | 0.15 (low to remain conversational)                    |
 
 ### Golden Rules
 

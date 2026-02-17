@@ -19,6 +19,7 @@ cd apps/backend-rag
 ```
 
 **Questo verificherà:**
+
 - ✅ Endpoint `/webhook/chat` funziona
 - ✅ Messaggi vengono salvati in DB
 - ✅ History viene recuperata
@@ -29,15 +30,18 @@ cd apps/backend-rag
 ## 📋 Dopo Test Locale OK
 
 ### 1. Per Produzione
+
 Hai 2 opzioni:
 
 **A. Ottieni token valido da webapp**
+
 ```javascript
 // Login nella webapp → DevTools Console
-localStorage.getItem('auth_token')
+localStorage.getItem("auth_token");
 ```
 
 **B. Aggiungi `/webhook/chat` agli endpoint pubblici** (se appropriato)
+
 ```python
 # backend/middleware/hybrid_auth.py
 PUBLIC_PATHS = [
@@ -51,19 +55,17 @@ PUBLIC_PATHS = [
 **File da modificare**: Il tuo chat component (es. `apps/mouth/src/app/chat/page.tsx`)
 
 ```typescript
-import { useConversationPersistence } from '@/hooks/useConversationPersistence';
-import { WebhookChatApi } from '@/lib/api/chat/webhook-chat.api';
+import { useConversationPersistence } from "@/hooks/useConversationPersistence";
+import { WebhookChatApi } from "@/lib/api/chat/webhook-chat.api";
 
 export function ChatPage() {
   const { sessionId } = useConversationPersistence();
   const webhookApi = new WebhookChatApi(apiClient);
 
   const handleSend = async (message: string) => {
-    const response = await webhookApi.sendMessage(
-      message,
-      sessionId,
-      { source: 'webapp' }
-    );
+    const response = await webhookApi.sendMessage(message, sessionId, {
+      source: "webapp",
+    });
     // Usa response.answer per UI
     // response.persisted conferma salvataggio
   };
@@ -71,6 +73,7 @@ export function ChatPage() {
 ```
 
 ### 3. Deploy Frontend
+
 ```bash
 cd apps/mouth
 pnpm build
@@ -78,6 +81,7 @@ vercel --prod
 ```
 
 ### 4. Test End-to-End
+
 1. Invia messaggio
 2. Refresh pagina (F5)
 3. Invia follow-up
@@ -88,12 +92,14 @@ vercel --prod
 ## 📊 Stato Attuale
 
 ### ✅ Completato
+
 - Backend implementato (repository, router, cleanup)
 - Frontend API client e hook creati
 - Tests e documentazione pronti
 - Endpoint deployato in produzione
 
 ### ⏳ Da Fare
+
 - Test locale per verifica
 - Integrazione frontend
 - Deploy frontend
@@ -106,12 +112,14 @@ vercel --prod
 **È corretto!** Il `JWT_SECRET_KEY` in produzione è diverso da quello in `.env` locale per sicurezza.
 
 **Logs produzione**:
+
 ```
 "JWT validation failed: Signature verification failed."
 "Authentication failed for: /webhook/chat"
 ```
 
 Questo significa:
+
 - ✅ Endpoint esiste e risponde
 - ✅ Middleware auth funziona
 - ❌ Token generato con secret locale non valido per produzione

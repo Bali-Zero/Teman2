@@ -8,6 +8,7 @@
 ## ✅ Implementazione Completata
 
 ### Backend (100% FATTO)
+
 - ✅ `conversation_repository.py` - Repository per DB operations
 - ✅ `webhook_chat.py` - Endpoint `/webhook/chat` con auto-persistence
 - ✅ `conversation_cleanup.py` - Cleanup job giornaliero
@@ -17,6 +18,7 @@
 - ✅ Scripts di test (`test_local.sh`, `test_production.sh`)
 
 ### Frontend (Pronto per integrazione)
+
 - ✅ `webhook-chat.api.ts` - API client
 - ✅ `useConversationPersistence.ts` - Hook per session management
 - ⏳ Chat component da aggiornare (prossimo step)
@@ -26,17 +28,20 @@
 ## 🔴 Problema Attuale: Autenticazione Produzione
 
 ### Situazione
+
 Il backend in produzione **richiede autenticazione** per tutti gli endpoint, incluso `/webhook/chat`.
 
 **Errore ricevuto**: `{"detail": "Authentication required"}`
 
 ### Tentativi Fatti
+
 1. ✅ Generato JWT token con `JWT_SECRET_KEY` dal `.env`
 2. ❌ Token rifiutato dal backend in produzione
 3. ✅ Verificato che backend è attivo e funzionante
 4. ✅ Verificato che l'endpoint `/webhook/chat` esiste nel codice
 
 ### Possibili Cause
+
 1. **Sistema di auth diverso in produzione** - Il backend potrebbe usare un sistema di autenticazione più complesso (OAuth, cookie-based, etc.)
 2. **Endpoint non deployato** - `/webhook/chat` potrebbe non essere stato deployato
 3. **Middleware auth bloccante** - Il middleware di autenticazione potrebbe bloccare tutti gli endpoint
@@ -46,6 +51,7 @@ Il backend in produzione **richiede autenticazione** per tutti gli endpoint, inc
 ## 🎯 Soluzioni Disponibili
 
 ### Opzione 1: Test Locale (RACCOMANDATO)
+
 Testa il sistema in locale dove non serve autenticazione:
 
 ```bash
@@ -59,12 +65,14 @@ cd apps/backend-rag
 ```
 
 **Vantaggi:**
+
 - ✅ Verifica immediata che il codice funzioni
 - ✅ No problemi di autenticazione
 - ✅ Debug più facile
 - ✅ Feedback rapido
 
 ### Opzione 2: Deploy e Verifica Endpoint
+
 Re-deploy del backend per assicurarsi che `/webhook/chat` sia disponibile:
 
 ```bash
@@ -73,24 +81,27 @@ flyctl deploy --app nuzantara-rag --region sin
 ```
 
 Poi verifica che l'endpoint sia registrato:
+
 ```bash
 curl https://nuzantara-rag.fly.dev/docs
 # Cerca "/webhook/chat" nella documentazione OpenAPI
 ```
 
 ### Opzione 3: Ottieni Token Valido da Produzione
+
 Login nella webapp e estrai il token:
 
 ```javascript
 // In DevTools Console della webapp
-localStorage.getItem('auth_token')
+localStorage.getItem("auth_token");
 // oppure
-document.cookie
+document.cookie;
 ```
 
 Poi usa quel token per testare.
 
 ### Opzione 4: Modifica Middleware Auth
+
 Aggiungi `/webhook/chat` agli endpoint pubblici (se appropriato):
 
 ```python
@@ -108,6 +119,7 @@ PUBLIC_PATHS = [
 ## 📊 Stato Deployment
 
 ### Backend
+
 - **Status**: ✅ Deployed e running
 - **URL**: https://nuzantara-rag.fly.dev
 - **Macchina**: 7843e55cdd3ed8 (Singapore)
@@ -115,6 +127,7 @@ PUBLIC_PATHS = [
 - **Logs**: Nessun errore critico
 
 ### Codice
+
 - **Repository**: ✅ Tutto committato
 - **Router**: ✅ Registrato in `router_registration.py`
 - **Cleanup Job**: ✅ Integrato in scheduler
@@ -124,6 +137,7 @@ PUBLIC_PATHS = [
 ## 🚀 Next Steps Consigliati
 
 ### Step 1: Test Locale (ORA)
+
 ```bash
 # Verifica che il codice funzioni
 cd apps/backend-rag
@@ -131,12 +145,14 @@ cd apps/backend-rag
 ```
 
 ### Step 2: Verifica Deployment
+
 ```bash
 # Controlla se endpoint è disponibile
 curl https://nuzantara-rag.fly.dev/docs | grep webhook
 ```
 
 ### Step 3: Re-deploy se Necessario
+
 ```bash
 # Se endpoint non trovato
 cd apps/backend-rag
@@ -144,7 +160,9 @@ flyctl deploy --app nuzantara-rag
 ```
 
 ### Step 4: Integra Frontend
+
 Una volta verificato che il backend funziona:
+
 1. Aggiorna chat component per usare `WebhookChatApi`
 2. Implementa `useConversationPersistence` hook
 3. Deploy frontend a Vercel

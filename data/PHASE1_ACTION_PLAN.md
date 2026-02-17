@@ -175,6 +175,7 @@ python scripts/caching/transcribe_podcasts.py validate \
 ```
 
 Expected output:
+
 - 20 transcript files
 - Average 2,000-4,000 words per transcript
 - Total: 40,000-80,000 words
@@ -198,6 +199,7 @@ python scripts/caching/transcribe_podcasts.py prepare-batch \
 3. For each transcript:
 
    **Prompt:**
+
    ```
    POLISH THIS NOTEBOOKLM TRANSCRIPT INTO A GOLDEN SEED CONVERSATION
 
@@ -209,6 +211,7 @@ python scripts/caching/transcribe_podcasts.py prepare-batch \
 
 4. Review Claude Max output
 5. If quality score <90, iterate:
+
    ```
    POLISH AGAIN - Focus on:
    - Add more specific citations ([Source: PP 5/2021, Article 12])
@@ -347,6 +350,7 @@ This will generate 1,000 variations (20 seeds × 50 variations).
 **Issue:** NotebookLM podcast quality poor
 
 **Solution:** Improve prompt with more specific instructions:
+
 ```
 Focus on practical implementation steps, not theory.
 Cite specific regulation numbers (PP X/YEAR, Article Y).
@@ -360,6 +364,7 @@ Include real-world examples and timelines.
 **Issue:** Quality score <90
 
 **Solution:** Add iteration:
+
 ```
 POLISH AGAIN:
 1. Add 2-3 more citations per section

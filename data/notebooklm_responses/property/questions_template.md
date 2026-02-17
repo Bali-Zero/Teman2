@@ -10,6 +10,7 @@
 ## Hak Pakai (Foreign Usage Rights) (10 domande)
 
 ### 001_hak_pakai_definition
+
 ```
 Cos'è Hak Pakai per stranieri in Indonesia?
 
@@ -36,6 +37,7 @@ Lunghezza: 400-500 parole.
 ```
 
 ### 002_hak_pakai_requirements
+
 ```
 Requirements per ottenere Hak Pakai come straniero?
 
@@ -66,6 +68,7 @@ Lunghezza: 350-450 parole.
 ```
 
 ### 003_hak_pakai_renewal
+
 ```
 Hak Pakai renewal process prima della scadenza 30 anni?
 
@@ -97,6 +100,7 @@ Lunghezza: 300-400 parole.
 ## Hak Milik (Freehold - Citizens Only) (5 domande)
 
 ### 011_hak_milik_definition
+
 ```
 Cos'è Hak Milik e perché stranieri NON possono averlo?
 
@@ -125,6 +129,7 @@ Lunghezza: 350-450 parole.
 ```
 
 ### 012_nominee_arrangement_risks
+
 ```
 Nominee arrangements (prestanome) per property: legali? Rischi?
 
@@ -163,6 +168,7 @@ Lunghezza: 400-500 parole.
 ## HGB (Hak Guna Bangunan - Building Rights) (4 domande)
 
 ### 016_hgb_definition
+
 ```
 Cos'è HGB (Hak Guna Bangunan) e quando si usa?
 
@@ -199,6 +205,7 @@ Lunghezza: 300-400 parole.
 ## Rental & Lease (Hak Sewa) (6 domande)
 
 ### 020_long_term_rental
+
 ```
 Long-term rental agreements per villas/houses in Indonesia?
 
@@ -232,6 +239,7 @@ Lunghezza: 350-450 parole.
 ```
 
 ### 021_villa_rental_business
+
 ```
 Villa rental business (short-term rentals) come straniero?
 
@@ -269,6 +277,7 @@ Lunghezza: 400-500 parole.
 ## Property Taxes (5 domande)
 
 ### 026_pbb_land_building_tax
+
 ```
 PBB (Pajak Bumi dan Bangunan) - Land & Building Tax?
 
@@ -296,6 +305,7 @@ Lunghezza: 300-400 parole.
 ```
 
 ### 027_bphtb_transfer_tax
+
 ```
 BPHTB (Transfer Tax) quando si compra property?
 
@@ -330,6 +340,7 @@ Lunghezza: 300-400 parole.
 ## Property Purchase Process (5 domande)
 
 ### 031_property_purchase_steps
+
 ```
 Step-by-step process per comprare property come straniero (Hak Pakai)?
 
@@ -368,6 +379,7 @@ Lunghezza: 400-500 parole.
 ## Provincial Variations (5 domande)
 
 ### 036_bali_property_rules
+
 ```
 Regole specifiche Bali per property ownership stranieri?
 
@@ -407,6 +419,7 @@ Lunghezza: 350-450 parole.
 **Pending:** 40
 
 ### Breakdown:
+
 - [ ] Hak Pakai (10)
 - [ ] Hak Milik (5)
 - [ ] HGB Building Rights (4)

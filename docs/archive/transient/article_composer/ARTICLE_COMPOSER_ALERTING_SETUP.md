@@ -76,7 +76,7 @@ config/prometheus/article_composer_alerts.yml
 ```yaml
 # prometheus.yml
 rule_files:
-  - 'config/prometheus/article_composer_alerts.yml'
+  - "config/prometheus/article_composer_alerts.yml"
 ```
 
 **Per Prometheus su Fly.io/Kubernetes:**
@@ -115,7 +115,7 @@ route:
     - match:
         component: article_composer
       receiver: article-composer-team
-      group_by: ['alertname', 'severity']
+      group_by: ["alertname", "severity"]
       group_wait: 10s
       group_interval: 5m
       repeat_interval: 12h
@@ -123,18 +123,18 @@ route:
 receivers:
   - name: article-composer-team
     email_configs:
-      - to: 'devops@example.com'
-        from: 'alerts@example.com'
-        smarthost: 'smtp.example.com:587'
-        auth_username: 'alerts@example.com'
-        auth_password: 'password'
+      - to: "devops@example.com"
+        from: "alerts@example.com"
+        smarthost: "smtp.example.com:587"
+        auth_username: "alerts@example.com"
+        auth_password: "password"
         headers:
-          Subject: 'Article Composer Alert: {{ .GroupLabels.alertname }}'
+          Subject: "Article Composer Alert: {{ .GroupLabels.alertname }}"
     slack_configs:
-      - api_url: 'https://hooks.slack.com/services/YOUR/WEBHOOK/URL'
-        channel: '#alerts-article-composer'
-        title: 'Article Composer Alert'
-        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+      - api_url: "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+        channel: "#alerts-article-composer"
+        title: "Article Composer Alert"
+        text: "{{ range .Alerts }}{{ .Annotations.description }}{{ end }}"
 ```
 
 ### 2. Inibizioni (Inhibitions)
@@ -147,7 +147,7 @@ inhibit_rules:
       alertname: ArticleComposerAPIKeyMissing
     target_match:
       alertname: ArticleComposerHighErrorRate
-    equal: ['component']
+    equal: ["component"]
 ```
 
 ---

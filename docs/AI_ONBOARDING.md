@@ -143,6 +143,7 @@ The goal is pragmatic quality, not ceremony. A well-tested 50-line service beats
 **CRITICAL:** When analyzing data, answering questions, or making claims about the system:
 
 **WRONG:**
+
 ```python
 # Assuming without verification
 "The database contains outdated PT PMA data"
@@ -151,6 +152,7 @@ The goal is pragmatic quality, not ceremony. A well-tested 50-line service beats
 ```
 
 **CORRECT:**
+
 ```python
 # Verify first, then conclude
 # 1. Query the actual data source (Qdrant, Postgres, logs)
@@ -158,11 +160,12 @@ The goal is pragmatic quality, not ceremony. A well-tested 50-line service beats
 # 3. Check the context and metadata
 # 4. ONLY THEN make a conclusion with evidence
 
-# Example: "After checking Qdrant collection 'bali_zero_pricing_hybrid', 
+# Example: "After checking Qdrant collection 'bali_zero_pricing_hybrid',
 # document ID xyz contains: [actual content]. This shows..."
 ```
 
 **Never say "the database is wrong" without:**
+
 - [ ] Querying the actual collection
 - [ ] Reading the exact chunk/document
 - [ ] Checking metadata (source, date, version)
@@ -344,6 +347,7 @@ nuzantara-mcp  # starts stdio server
 ### Architecture Overview
 
 **5 Core Nodes:**
+
 1. `understand_query_node` - Extract intent, entities, citizenship (LLM)
 2. `resolve_entities_node` - Map entities to KG via fuzzy match (PostgreSQL similarity)
 3. `traverse_graph_node` - BFS graph traversal (REQUIRES, ENABLES, PART_OF)
@@ -351,6 +355,7 @@ nuzantara-mcp  # starts stdio server
 5. `synthesize_workflow_node` - Convert chains to executable workflow
 
 **4 Domain-Specific Subgraphs:**
+
 - **Company Subgraph:** PT PMA, Perorangan, CV setup workflows
 - **Visa Subgraph:** KITAS, KITAP, VITAS requirements
 - **Property Subgraph:** Hak Pakai, HGB, rental regulations
@@ -358,27 +363,29 @@ nuzantara-mcp  # starts stdio server
 
 ### Key Files
 
-| File | Purpose | Lines |
-|------|---------|-------|
-| `backend/services/rag/kg_graph_state.py` | TypedDict state definitions | 100 |
-| `backend/services/rag/kg_graph_nodes.py` | 5 core nodes + helpers | 550 |
-| `backend/services/rag/kg_langgraph_orchestrator.py` | StateGraph + routing | 500+ |
-| `backend/services/rag/kg_subgraph_company.py` | Company setup workflows | 420 |
-| `backend/services/rag/kg_subgraph_visa.py` | Visa workflows | 448 |
-| `backend/services/rag/kg_subgraph_property.py` | Property workflows | 163 |
-| `backend/services/rag/kg_subgraph_tax.py` | Tax compliance workflows | 475 |
-| `backend/services/rag/confidence.py` | 6-factor confidence scoring | 250 |
+| File                                                | Purpose                     | Lines |
+| --------------------------------------------------- | --------------------------- | ----- |
+| `backend/services/rag/kg_graph_state.py`            | TypedDict state definitions | 100   |
+| `backend/services/rag/kg_graph_nodes.py`            | 5 core nodes + helpers      | 550   |
+| `backend/services/rag/kg_langgraph_orchestrator.py` | StateGraph + routing        | 500+  |
+| `backend/services/rag/kg_subgraph_company.py`       | Company setup workflows     | 420   |
+| `backend/services/rag/kg_subgraph_visa.py`          | Visa workflows              | 448   |
+| `backend/services/rag/kg_subgraph_property.py`      | Property workflows          | 163   |
+| `backend/services/rag/kg_subgraph_tax.py`           | Tax compliance workflows    | 475   |
+| `backend/services/rag/confidence.py`                | 6-factor confidence scoring | 250   |
 
 ### Production Integration
 
 **Feature Flag:** `ENABLE_KG_LANGGRAPH` env var (default: disabled for backward compatibility)
 
 **Orchestrator Integration:**
+
 - 3-way parallel execution: Entity Extraction + KG Legacy + KG LangGraph
 - Workflow output formatted and added to system prompt as "SUGGESTED WORKFLOW"
 - File: `backend/services/rag/agentic/orchestrator_core.py` (lines 154-254)
 
 **Routing Priority:**
+
 1. Domain subgraphs (keyword match)
 2. Golden routes (high-confidence paths)
 3. Graph traversal (BFS)
@@ -386,21 +393,23 @@ nuzantara-mcp  # starts stdio server
 
 ### Performance
 
-| Metric | Value |
-|--------|-------|
+| Metric             | Value  |
+| ------------------ | ------ |
 | Subgraph execution | <350ms |
-| 3-hop traversal | <500ms |
-| LLM reasoning | <2s |
-| Full pipeline | <3s |
+| 3-hop traversal    | <500ms |
+| LLM reasoning      | <2s    |
+| Full pipeline      | <3s    |
 
 ### Test Coverage
 
 **Tests:** 82/82 passing (100%)
+
 - Phase 1: 35 tests (kg_graph_nodes, orchestrator)
 - Phase 3: 23 tests (subgraphs)
 - Phase 2: 24 tests (confidence scoring)
 
 **Files:**
+
 - `backend/tests/services/rag/test_kg_langgraph.py`
 - `backend/tests/services/rag/test_kg_subgraphs.py`
 - `backend/tests/services/rag/test_confidence.py`
@@ -414,6 +423,7 @@ nuzantara-mcp  # starts stdio server
 ### Confidence Scoring (Phase 2)
 
 **6-Factor Dynamic Scoring:**
+
 - Chain base confidence (30%)
 - Entity confidence (20%)
 - Relationship strength (20%)
@@ -422,6 +432,7 @@ nuzantara-mcp  # starts stdio server
 - Intent clarity (5%)
 
 **Warning Levels:**
+
 - High: ≥0.80
 - Medium: ≥0.55
 - Low: ≥0.35
@@ -516,6 +527,7 @@ fly ssh console -a nuzantara-rag
 ### Rogue Changes from Other AI Tools (CRITICAL - Updated 2026-02-16)
 
 Other AI tools (Gemini, Windsurf, Cursor) have **repeatedly** broken production code by:
+
 - Removing imports they consider "unused" (e.g., `Any` from typing — caused production crash 2026-02-16)
 - Renaming/deleting functions (e.g., `get_logger`, `db_retry`, `invalidate_cache`)
 - Deleting entire modules (e.g., `backend.services.integrations.service`)
@@ -628,18 +640,18 @@ npm run dev
 
 ## ESSENTIAL DOCUMENTATION
 
-| Document                  | Path                                                     | When to Read            |
-| ------------------------- | -------------------------------------------------------- | ----------------------- |
-| **AI Configuration Files**| `CLAUDE.md`, `.cursorrules`, `.antigravity/context.md`   | First session (AI setup)|
-| **AI Handover Protocol**  | `docs/ai/AI_HANDOVER_PROTOCOL.md`                        | Always (project brain)  |
-| **LangGraph KG Architecture** | `docs/KG_LANGGRAPH_ARCHITECTURE.md`                   | Knowledge Graph implementation |
-| **System Map 4D**         | `docs/SYSTEM_MAP_4D.md`                                  | Architecture overview   |
-| **Observability Guide**   | `docs/operations/OBSERVABILITY_GUIDE.md`                 | Debugging/monitoring    |
-| **Deploy Checklist**      | `docs/operations/DEPLOY_CHECKLIST.md`                    | Before deploying        |
-| **Database Architecture** | `docs/DATABASE_ARCHITECTURE_V2.md`                       | DB schema reference     |
-| **KG Value Assessment**   | `docs/KG_VALUE_ASSESSMENT_2026_01_18.md`                 | Knowledge Graph ROI     |
-| **Intel Pipeline**        | `apps/bali-intel-scraper/docs/PIPELINE_DOCUMENTATION.md` | News scraper            |
-| **Documentation Archive** | `docs/archive/MANIFEST.md`                               | Old docs & reports      |
+| Document                      | Path                                                     | When to Read                   |
+| ----------------------------- | -------------------------------------------------------- | ------------------------------ |
+| **AI Configuration Files**    | `CLAUDE.md`, `.cursorrules`, `.antigravity/context.md`   | First session (AI setup)       |
+| **AI Handover Protocol**      | `docs/ai/AI_HANDOVER_PROTOCOL.md`                        | Always (project brain)         |
+| **LangGraph KG Architecture** | `docs/KG_LANGGRAPH_ARCHITECTURE.md`                      | Knowledge Graph implementation |
+| **System Map 4D**             | `docs/SYSTEM_MAP_4D.md`                                  | Architecture overview          |
+| **Observability Guide**       | `docs/operations/OBSERVABILITY_GUIDE.md`                 | Debugging/monitoring           |
+| **Deploy Checklist**          | `docs/operations/DEPLOY_CHECKLIST.md`                    | Before deploying               |
+| **Database Architecture**     | `docs/DATABASE_ARCHITECTURE_V2.md`                       | DB schema reference            |
+| **KG Value Assessment**       | `docs/KG_VALUE_ASSESSMENT_2026_01_18.md`                 | Knowledge Graph ROI            |
+| **Intel Pipeline**            | `apps/bali-intel-scraper/docs/PIPELINE_DOCUMENTATION.md` | News scraper                   |
+| **Documentation Archive**     | `docs/archive/MANIFEST.md`                               | Old docs & reports             |
 
 ---
 

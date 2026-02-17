@@ -145,7 +145,7 @@ export function useOptimisticChat(...)
 **Prima:**
 
 ```typescript
-import { sendMessageStream } from '@/app/chat/actions';
+import { sendMessageStream } from "@/app/chat/actions";
 
 const stream = await sendMessageStream(messages, sessionId, userId);
 const reader = stream.getReader();
@@ -155,7 +155,7 @@ const reader = stream.getReader();
 **Dopo:**
 
 ```typescript
-import { api } from '@/lib/api';
+import { api } from "@/lib/api";
 
 await api.sendMessageStreaming(
   message,
@@ -171,7 +171,7 @@ await api.sendMessageStreaming(
   },
   (step) => {
     /* onStep */
-  }
+  },
 );
 ```
 
@@ -180,7 +180,7 @@ await api.sendMessageStreaming(
 **Prima:**
 
 ```typescript
-import { useOptimisticChat } from '@/hooks/useOptimisticChat';
+import { useOptimisticChat } from "@/hooks/useOptimisticChat";
 
 const { send, messages } = useOptimisticChat({ userId, onError });
 ```

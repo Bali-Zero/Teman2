@@ -41,6 +41,7 @@ Evidence scoring: <0.15 ABSTAIN, 0.15-0.60 CAUTIOUS, >0.60 NORMAL.
 ## Memory 4: Deploy e Pre-Deploy
 
 Pre-deploy obbligatorio:
+
 1. git diff --name-only HEAD -- apps/backend-rag/backend/ (verifica rogue changes)
 2. python -c "from backend.app.dependencies import get_current_user; print('OK')"
 3. PYTHONPATH=. pytest test_kg_langgraph.py test_kg_subgraphs.py test_confidence.py -q (82 test)

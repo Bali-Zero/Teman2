@@ -247,10 +247,10 @@ Error: No QueryClient set, use QueryClientProvider to set one
 
 ```typescript
 // QueryProvider DEVE inizializzare QueryClient
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 function getQueryClient() {
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     return new QueryClient();
   }
   // Singleton per browser

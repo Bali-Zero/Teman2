@@ -226,14 +226,14 @@ The `/api/agentic/query` endpoint is **protected** and requires authentication:
 
 ```javascript
 // After login on www.balizero.com
-fetch('https://nuzantara-rag.fly.dev/api/agentic/query', {
-  method: 'POST',
-  credentials: 'include', // Send JWT cookie
-  headers: { 'Content-Type': 'application/json' },
+fetch("https://nuzantara-rag.fly.dev/api/agentic/query", {
+  method: "POST",
+  credentials: "include", // Send JWT cookie
+  headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
-    query: 'Cosa richiede un PT PMA?',
-    user_id: '...',
-    session_id: '...',
+    query: "Cosa richiede un PT PMA?",
+    user_id: "...",
+    session_id: "...",
   }),
 });
 ```

@@ -43,24 +43,24 @@ Dopo il login, esegui nella Console del browser (F12 → Console):
 
 ```javascript
 // Verifica cookie sono presenti
-console.log('Cookies:', document.cookie);
+console.log("Cookies:", document.cookie);
 
 // Test API call con cookie
-fetch('/api/crm/clients', {
-  credentials: 'include',
+fetch("/api/crm/clients", {
+  credentials: "include",
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 })
   .then((r) => {
-    console.log('Status:', r.status);
+    console.log("Status:", r.status);
     return r.json();
   })
   .then((d) => {
-    console.log('✅ API Response:', d);
+    console.log("✅ API Response:", d);
   })
   .catch((e) => {
-    console.error('❌ API Error:', e);
+    console.error("❌ API Error:", e);
   });
 ```
 

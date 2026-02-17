@@ -18,6 +18,7 @@ Created comprehensive test infrastructure for Nuzantara RAG system with **1140+ 
 ### ✅ Test Files Created (8 files)
 
 #### Phase 2: Advanced RAG Features (4 files)
+
 1. **`test_confidence_scoring.py`** - 20 tests
    - Evidence score calculation
    - Critical domain detection
@@ -43,6 +44,7 @@ Created comprehensive test infrastructure for Nuzantara RAG system with **1140+ 
    - Adaptive behavior
 
 #### Phase 3: Multi-Agent (1 file)
+
 5. **`test_multi_agent.py`** - 38 tests
    - Agent coordination
    - Parallel execution
@@ -50,6 +52,7 @@ Created comprehensive test infrastructure for Nuzantara RAG system with **1140+ 
    - Load balancing
 
 #### Knowledge Graph Monitoring (3 files)
+
 6. **`test_kg_health.py`** - 30 tests
    - Connectivity & availability
    - Data integrity
@@ -95,25 +98,26 @@ Created comprehensive test infrastructure for Nuzantara RAG system with **1140+ 
 
 ## Test Statistics
 
-| Category | Files | Test Cases | Status |
-|----------|-------|------------|--------|
-| Confidence Scoring | 1 | 20 | ✅ Passing |
-| Conditional Workflows | 1 | 25 | ⚠️ 1 minor fix needed |
-| Feedback Loop | 1 | 30 | ✅ Ready |
-| Personalization | 1 | 32 | ✅ Ready |
-| Multi-Agent | 1 | 38 | ✅ Ready |
-| KG Health | 1 | 30 | ✅ Ready |
-| KG Performance | 1 | 28 | ✅ Ready |
-| KG Data Quality | 1 | 15 | ✅ Ready |
-| **TOTAL** | **8** | **218+** | **✅ 98% Ready** |
+| Category              | Files | Test Cases | Status                |
+| --------------------- | ----- | ---------- | --------------------- |
+| Confidence Scoring    | 1     | 20         | ✅ Passing            |
+| Conditional Workflows | 1     | 25         | ⚠️ 1 minor fix needed |
+| Feedback Loop         | 1     | 30         | ✅ Ready              |
+| Personalization       | 1     | 32         | ✅ Ready              |
+| Multi-Agent           | 1     | 38         | ✅ Ready              |
+| KG Health             | 1     | 30         | ✅ Ready              |
+| KG Performance        | 1     | 28         | ✅ Ready              |
+| KG Data Quality       | 1     | 15         | ✅ Ready              |
+| **TOTAL**             | **8** | **218+**   | **✅ 98% Ready**      |
 
-*Note: Test count includes both unit and integration tests. Integration tests are marked with `@pytest.mark.integration` and skip until services are available.*
+_Note: Test count includes both unit and integration tests. Integration tests are marked with `@pytest.mark.integration` and skip until services are available._
 
 ---
 
 ## Quick Start
 
 ### Run All New Tests
+
 ```bash
 cd apps/backend-rag
 
@@ -135,6 +139,7 @@ pytest backend/tests/services/rag/test_*.py \
 ```
 
 ### Run with Coverage
+
 ```bash
 pytest backend/tests/services/rag/ \
        backend/tests/services/kg_monitoring/ \
@@ -144,6 +149,7 @@ pytest backend/tests/services/rag/ \
 ```
 
 ### Skip Integration Tests (Faster)
+
 ```bash
 pytest -m "not integration" backend/tests/services/rag/ -v
 ```
@@ -153,9 +159,11 @@ pytest -m "not integration" backend/tests/services/rag/ -v
 ## Test Coverage by Phase
 
 ### Phase 2: Advanced RAG Features
+
 **Coverage:** Confidence scoring, conditional workflows, feedback loops, personalization
 
 **Test Classes:**
+
 - `TestConfidenceScoring` - Evidence calculation
 - `TestCriticalDomainDetection` - Domain classification
 - `TestAbstainDecision` - Abstain logic
@@ -168,9 +176,11 @@ pytest -m "not integration" backend/tests/services/rag/ -v
 - `TestPersonalizedResponses` - Response customization
 
 ### Phase 3: Multi-Agent Coordination
+
 **Coverage:** Agent orchestration, parallel execution, task delegation
 
 **Test Classes:**
+
 - `TestAgentCoordination` - Agent management
 - `TestParallelExecution` - Concurrent tasks
 - `TestAgentCommunication` - Inter-agent messaging
@@ -179,9 +189,11 @@ pytest -m "not integration" backend/tests/services/rag/ -v
 - `TestAgentLoadBalancing` - Load distribution
 
 ### Knowledge Graph Monitoring
+
 **Coverage:** Health, performance, data quality
 
 **Test Classes:**
+
 - `TestKGConnectivity` - Connection management
 - `TestKGDataIntegrity` - Data validation
 - `TestKGPerformanceMetrics` - Performance tracking
@@ -201,6 +213,7 @@ The new test suite integrates seamlessly with existing tests:
 **Total:** 5478+ tests
 
 **Coverage Improvement:**
+
 - Before: 38.75% (generals only)
 - Target: >85% (full RAG system)
 - New tests cover previously untested RAG features
@@ -210,14 +223,17 @@ The new test suite integrates seamlessly with existing tests:
 ## CI/CD Integration
 
 ### GitHub Actions Workflow
+
 See `WINDSURF_QA_TESTING_GUIDE.md` for complete workflow configuration.
 
 **Triggers:**
+
 - Pull requests to `main` or `develop`
 - Pushes to `windsurf/tests-*` branches
 - Changes to RAG services or tests
 
 **Actions:**
+
 - Run full test suite
 - Generate coverage reports
 - Upload to Codecov
@@ -227,21 +243,22 @@ See `WINDSURF_QA_TESTING_GUIDE.md` for complete workflow configuration.
 
 ## Weekly Testing Schedule
 
-| Week | Phase | Activity | Status |
-|------|-------|----------|--------|
-| W2 | Phase 2 | Test after Opus completes | Pending |
-| W4 | Phase 4 | Test after Sonnet completes | Pending |
-| W6 | Phase 3b | Test after Opus completes | Pending |
-| W8 | Integration | Combined Phase 2+3b+4 | Pending |
-| W12 | Phase 5 | Test after Gemini completes | Pending |
-| W16 | E2E | Multi-phase workflows | Pending |
-| W20 | Regression | All 8 phases | Pending |
+| Week | Phase       | Activity                    | Status  |
+| ---- | ----------- | --------------------------- | ------- |
+| W2   | Phase 2     | Test after Opus completes   | Pending |
+| W4   | Phase 4     | Test after Sonnet completes | Pending |
+| W6   | Phase 3b    | Test after Opus completes   | Pending |
+| W8   | Integration | Combined Phase 2+3b+4       | Pending |
+| W12  | Phase 5     | Test after Gemini completes | Pending |
+| W16  | E2E         | Multi-phase workflows       | Pending |
+| W20  | Regression  | All 8 phases                | Pending |
 
 ---
 
 ## Next Steps
 
 ### Immediate (Week 1-2)
+
 1. ✅ Test suite created
 2. ✅ Documentation complete
 3. ⚠️ Fix minor test issue in `test_conditional_workflows.py`
@@ -249,6 +266,7 @@ See `WINDSURF_QA_TESTING_GUIDE.md` for complete workflow configuration.
 5. ⏳ Run tests against Phase 2 code
 
 ### Short-term (Week 2-8)
+
 1. Test Phase 2 features as implemented
 2. Add integration tests when services available
 3. Test Phase 4 (Sonnet) and Phase 3b (Opus)
@@ -256,6 +274,7 @@ See `WINDSURF_QA_TESTING_GUIDE.md` for complete workflow configuration.
 5. Measure coverage and identify gaps
 
 ### Long-term (Week 8-20)
+
 1. Test Phase 5 (Gemini)
 2. E2E multi-phase testing
 3. Performance benchmarking
@@ -303,7 +322,7 @@ apps/backend-rag/
 - [x] Integration test framework
 - [x] CI/CD pipeline design
 - [x] Comprehensive documentation
-- [ ] >85% coverage (pending implementation)
+- [ ] > 85% coverage (pending implementation)
 - [ ] All tests passing (pending implementation)
 
 ---
@@ -315,6 +334,7 @@ apps/backend-rag/
 **Track:** 5 (Continuous)
 
 **For Questions:**
+
 - Update `memory/YYYY-MM-DD.md` with testing issues
 - Document bugs in test results
 - Update `AGENTS.md` for process improvements
@@ -326,10 +346,11 @@ apps/backend-rag/
 This test suite was created as part of the Nuzantara AI platform development, following the multi-AI collaboration model with Opus, Sonnet, Gemini, and Windsurf working on different phases.
 
 **Testing Philosophy:**
+
 - Test early, test often
 - Mock external dependencies
 - Integration tests for critical paths
-- >85% coverage target
+- > 85% coverage target
 - Continuous testing throughout development
 
 ---

@@ -10,6 +10,7 @@
 ### Architecture
 
 **Monorepo structure:**
+
 - `apps/mouth/` - Next.js frontend (Vercel)
 - `apps/backend-rag/` - Python FastAPI RAG backend (Fly.io)
 - `apps/admin-dashboard/` - Admin UI
@@ -133,6 +134,7 @@ apps/mouth/
 **Fields:** `code`, `title_id`, `title_en`, `description`, `category`, `section`
 
 ❌ **WRONG:**
+
 ```json
 {
   "code": "47911",
@@ -144,6 +146,7 @@ apps/mouth/
 ```
 
 ✅ **CORRECT:**
+
 ```json
 {
   "code": "47911",
@@ -180,16 +183,18 @@ Classification confidence thresholds:
 
 **Location:** `apps/nuzantara-mcp/`  
 **Capabilities:**
+
 - **7 Tools:** Query routing, pricing lookup, visa info, KBLI search, etc.
 - **3 Prompts:** Business setup, visa consultation, pricing inquiry
 - **1 Resource:** Knowledge base access
 
 **Usage:**
+
 ```typescript
 // Tool invocation example
 const result = await mcpServer.callTool("pricing-lookup", {
   serviceType: "kitas",
-  visaType: "investor"
+  visaType: "investor",
 });
 ```
 
@@ -207,6 +212,7 @@ const result = await mcpServer.callTool("pricing-lookup", {
 ### Environment Variables
 
 **Required:**
+
 - `OPENAI_API_KEY` - For embeddings
 - `DATABASE_URL` - PostgreSQL connection
 - `QDRANT_URL`, `QDRANT_API_KEY` - Vector DB
@@ -231,6 +237,7 @@ PYTHONPATH=. pytest --cov=backend --cov-report=html tests/
 ```
 
 **Standards:**
+
 - Unit tests: > 80% coverage
 - Critical paths: 100% coverage
 - All new features: tests required before merge
@@ -277,7 +284,7 @@ async function fetchKBLI(code: string): Promise<KBLIResponse | null> {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return await response.json();
   } catch (error) {
-    console.error('KBLI fetch failed:', error);
+    console.error("KBLI fetch failed:", error);
     return null;
   }
 }
@@ -286,6 +293,7 @@ async function fetchKBLI(code: string): Promise<KBLIResponse | null> {
 ## 10. Common Pitfalls
 
 ❌ **AVOID:**
+
 - Running Python without virtualenv
 - Using `requests` instead of `httpx`
 - Nested payload structures in Qdrant
@@ -296,6 +304,7 @@ async function fetchKBLI(code: string): Promise<KBLIResponse | null> {
 - Missing type hints
 
 ✅ **DO:**
+
 - Always activate venv first
 - Use `httpx` for all HTTP calls
 - Flat payloads in Qdrant

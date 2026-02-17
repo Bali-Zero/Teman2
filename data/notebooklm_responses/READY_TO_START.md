@@ -10,17 +10,17 @@
 
 ### 1. Documentation Complete
 
-| File | Lines | Status |
-|------|-------|--------|
-| `TEAM_GUIDE.md` | 404 | ✅ Complete |
-| `DOCUMENTS_MAPPING.md` | 383 | ✅ Complete |
-| `PROGRESS_TEMPLATE.md` | 241 | ✅ Complete |
-| `visa/questions_template.md` | 358 | ✅ Complete (120 questions) |
-| `kbli/questions_template.md` | 514 | ✅ Complete (200 questions) |
-| `tax/questions_template.md` | N/A | ✅ Complete (50 questions) |
-| `property/questions_template.md` | N/A | ✅ Complete (40 questions) |
-| `cross_domain/questions_template.md` | N/A | ✅ Complete (150 questions) |
-| `multi_domain/questions_template.md` | N/A | ✅ Complete (80 questions) |
+| File                                 | Lines | Status                      |
+| ------------------------------------ | ----- | --------------------------- |
+| `TEAM_GUIDE.md`                      | 404   | ✅ Complete                 |
+| `DOCUMENTS_MAPPING.md`               | 383   | ✅ Complete                 |
+| `PROGRESS_TEMPLATE.md`               | 241   | ✅ Complete                 |
+| `visa/questions_template.md`         | 358   | ✅ Complete (120 questions) |
+| `kbli/questions_template.md`         | 514   | ✅ Complete (200 questions) |
+| `tax/questions_template.md`          | N/A   | ✅ Complete (50 questions)  |
+| `property/questions_template.md`     | N/A   | ✅ Complete (40 questions)  |
+| `cross_domain/questions_template.md` | N/A   | ✅ Complete (150 questions) |
+| `multi_domain/questions_template.md` | N/A   | ✅ Complete (80 questions)  |
 
 **Total Question Templates:** 640 questions ready
 
@@ -70,6 +70,7 @@ data/notebooklm_responses/
 ## 🎯 Team Assignments
 
 ### Person 1: VISA SPECIALIST
+
 - **Target:** 120 questions
 - **Notebook:** "Nuzantara - Visa & Immigration"
 - **Template:** `visa/questions_template.md`
@@ -78,6 +79,7 @@ data/notebooklm_responses/
 - **Status:** ✅ Ready to start
 
 ### Person 2: KBLI SPECIALIST
+
 - **Target:** 200 questions
 - **Notebook:** "Nuzantara - KBLI & Licensing"
 - **Template:** `kbli/questions_template.md`
@@ -86,6 +88,7 @@ data/notebooklm_responses/
 - **Status:** ✅ Ready to start NOW (has all documents!)
 
 ### Person 3: TAX SPECIALIST
+
 - **Target:** 50 questions
 - **Notebook:** "Nuzantara - Tax & Compliance"
 - **Template:** `tax/questions_template.md`
@@ -94,6 +97,7 @@ data/notebooklm_responses/
 - **Status:** ✅ Ready to start
 
 ### Person 4: PROPERTY SPECIALIST
+
 - **Target:** 40 questions
 - **Notebook:** "Nuzantara - Property & Real Estate"
 - **Template:** `property/questions_template.md`
@@ -102,6 +106,7 @@ data/notebooklm_responses/
 - **Status:** ✅ Ready to start
 
 ### Person 5: CROSS-DOMAIN COORDINATOR
+
 - **Target:** 150 questions
 - **Notebook:** "Nuzantara - Cross Domain Level 2"
 - **Template:** `cross_domain/questions_template.md`
@@ -110,6 +115,7 @@ data/notebooklm_responses/
 - **Status:** ⏳ Template ready, wait for basic domains
 
 ### Person 6: MULTI-DOMAIN SOTA
+
 - **Target:** 80 questions
 - **Notebook:** "Nuzantara - Multi-Domain SOTA"
 - **Template:** `multi_domain/questions_template.md`
@@ -159,17 +165,20 @@ data/notebooklm_responses/
 ## 📊 Expected Timeline
 
 ### Week 1 (Target: 200 responses)
+
 - Person 1: 50 visa responses
 - Person 2: 80 KBLI responses (focus Tier 1)
 - Person 3: 40 tax responses
 - Person 4: 30 property responses
 
 ### Week 2 (Target: 400 total)
+
 - Persons 1-4: Complete basic domains
 - Person 5: Start cross-domain (100 responses)
 - Person 6: Planning
 
 ### Week 3 (Target: 640 total)
+
 - Person 5: Complete cross-domain
 - Person 6: 80 SOTA responses
 - Team review & consolidation
@@ -233,6 +242,7 @@ multi_domain/003_family_relocation_full.txt
 ## 📞 Daily Workflow
 
 ### Morning (2 hours):
+
 1. Review your `PROGRESS.md`
 2. Prioritize 10-15 questions for today
 3. Open NotebookLM notebook
@@ -240,12 +250,14 @@ multi_domain/003_family_relocation_full.txt
 5. Save responses to `.txt` files
 
 ### Afternoon (1 hour):
+
 6. Self-check responses (quality gates)
 7. Split long responses if needed (>1000 words)
 8. Update `PROGRESS.md`
 9. Flag issues for team review
 
 ### Expected Output:
+
 - **Per person per day:** 10-15 validated responses
 - **Per person per week:** 50-75 responses
 - **Full team per week:** 300-450 responses
@@ -255,16 +267,21 @@ multi_domain/003_family_relocation_full.txt
 ## 🚨 Common Issues & Quick Solutions
 
 ### Issue: NotebookLM risposta troppo generica
+
 **Soluzione:** Riformula con più contesto + regulation citations
 
 ### Issue: NotebookLM non cita documenti caricati
+
 **Soluzione:** Esplicita "Basandoti sui documenti caricati (PP 28/2025...)..."
 
 ### Issue: Risposta contraddittoria o obsoleta
+
 **Soluzione:** Flag in `PROGRESS.md` → team review
 
 ### Issue: Risposta troppo lunga (>2000 parole)
+
 **Soluzione:** Split in parti:
+
 ```
 001_topic_part1.txt (Definizione + Requisiti)
 001_topic_part2.txt (Processo + Timeline)
@@ -285,15 +302,18 @@ Each person updates their section daily:
 ### Progress: 45/120 (37.5%)
 
 #### Completed (45)
+
 - [x] 001_kitas_investor.txt
 - [x] 002_kitas_work.txt
-...
+      ...
 
 #### In Progress (10)
+
 - [ ] 046_kemnaker_software_engineer.txt
-...
+      ...
 
 #### Issues / Notes
+
 - Question 023: NotebookLM mentioned VITAS 211 (OBSOLETE) - regenerate
 ```
 
@@ -302,11 +322,13 @@ Each person updates their section daily:
 ## 🎉 Success Metrics
 
 ### Individual Success:
+
 - ✅ 100% assigned questions completed
 - ✅ 90%+ pass quality self-check
 - ✅ Daily `PROGRESS.md` updates
 
 ### Team Success:
+
 - ✅ 640+ responses total
 - ✅ 80%+ Damar validation pass rate
 - ✅ Timeline: 2-3 weeks completion
@@ -320,6 +342,7 @@ Each person updates their section daily:
 **Persons 5, 6:** Templates ready, wait for signal
 
 **Next Actions:**
+
 1. Each person: Read `TEAM_GUIDE.md`
 2. Each person: Setup NotebookLM notebook
 3. Person 2: Upload PDFs and start Tier 1 questions

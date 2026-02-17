@@ -9,34 +9,30 @@
 **Stato:** ✅ INSTALLATO E CONFIGURATO
 
 ### Configurazione Attuale
+
 ```json
 {
   "playwright": {
     "type": "stdio",
     "command": "npx",
-    "args": [
-      "-y",
-      "@playwright/mcp@latest",
-      "--browser",
-      "chrome"
-    ]
+    "args": ["-y", "@playwright/mcp@latest", "--browser", "chrome"]
   }
 }
 ```
 
 ### Tool Disponibili
 
-| Tool | Descrizione | Uso Tipico |
-|------|-------------|------------|
-| `browser_navigate` | Naviga a un URL | Andare su zantara.balizero.com |
-| `browser_click` | Clicca un elemento | Cliccare bottoni, link |
-| `browser_type` | Scrive in input | Compilare form |
-| `browser_take_screenshot` | Fa screenshot | Documentazione, verifica UI |
-| `browser_eval` | Esegue JavaScript | Estrarre dati, verificare stato |
-| `browser_get_text` | Estrae testo | Scraping contenuto |
-| `browser_select` | Seleziona opzione | Dropdown menu |
-| `browser_hover` | Hover su elemento | Tooltips, menu a tendina |
-| `browser_close` | Chiude browser | Pulizia |
+| Tool                      | Descrizione        | Uso Tipico                      |
+| ------------------------- | ------------------ | ------------------------------- |
+| `browser_navigate`        | Naviga a un URL    | Andare su zantara.balizero.com  |
+| `browser_click`           | Clicca un elemento | Cliccare bottoni, link          |
+| `browser_type`            | Scrive in input    | Compilare form                  |
+| `browser_take_screenshot` | Fa screenshot      | Documentazione, verifica UI     |
+| `browser_eval`            | Esegue JavaScript  | Estrarre dati, verificare stato |
+| `browser_get_text`        | Estrae testo       | Scraping contenuto              |
+| `browser_select`          | Seleziona opzione  | Dropdown menu                   |
+| `browser_hover`           | Hover su elemento  | Tooltips, menu a tendina        |
+| `browser_close`           | Chiude browser     | Pulizia                         |
 
 ### Esempi d'Uso
 
@@ -58,22 +54,30 @@ const title = await browser_eval({ script: "document.title" });
 ## 🔧 MCP NATIVI E PERFETTI PER KIMI
 
 ### 1. **Filesystem** ⭐ ESSENZIALE
+
 ```json
 {
   "filesystem": {
     "type": "stdio",
     "command": "npx",
-    "args": ["-y", "@modelcontextprotocol/server-filesystem", "/Users/nuzantara"]
+    "args": [
+      "-y",
+      "@modelcontextprotocol/server-filesystem",
+      "/Users/nuzantara"
+    ]
   }
 }
 ```
+
 **Tool:** `read_file`, `write_file`, `list_directory`, `search_files`
 **Uso:** Lettura/scrittura file nel progetto
 
 ### 2. **Playwright** ⭐ BROWSER (già configurato)
+
 Come descritto sopra.
 
 ### 3. **Fetch** ⭐ HTTP REQUESTS
+
 ```json
 {
   "fetch": {
@@ -83,10 +87,12 @@ Come descritto sopra.
   }
 }
 ```
+
 **Tool:** `fetch`
 **Uso:** Chiamate HTTP dirette (GET, POST, etc.)
 
 ### 4. **Sequential Thinking** 🧠 RAGIONAMENTO
+
 ```json
 {
   "sequential-thinking": {
@@ -96,10 +102,12 @@ Come descritto sopra.
   }
 }
 ```
+
 **Tool:** `sequentialthinking`
 **Uso:** Ragionamento passo-passo, problem solving complesso
 
 ### 5. **Memory** 💾 MEMORIA PERSISTENTE
+
 ```json
 {
   "memory": {
@@ -109,10 +117,12 @@ Come descritto sopra.
   }
 }
 ```
+
 **Tool:** `create_entities`, `add_observations`, `search_nodes`
 **Uso:** Memoria persistente tra sessioni
 
 ### 6. **Context7** 📚 DOCUMENTAZIONE
+
 ```json
 {
   "context7": {
@@ -122,6 +132,7 @@ Come descritto sopra.
   }
 }
 ```
+
 **Tool:** `resolve`, `search`
 **Uso:** Ricerca in documentazione tecnica
 
@@ -130,6 +141,7 @@ Come descritto sopra.
 ## 🔌 MCP CONDIZIONALI (Solo quando necessario)
 
 ### 7. **Brave Search** 🌐 RICERCA WEB
+
 ```json
 {
   "brave-search": {
@@ -140,10 +152,12 @@ Come descritto sopra.
   }
 }
 ```
+
 **Tool:** `brave_web_search`, `brave_local_search`
 **Uso:** Ricerche web, notizie, informazioni aggiornate
 
 ### 8. **Perplexity** 🤖 AI SEARCH
+
 ```json
 {
   "perplexity": {
@@ -154,10 +168,12 @@ Come descritto sopra.
   }
 }
 ```
+
 **Tool:** `perplexity_search`, `perplexity_chat`
 **Uso:** Ricerca con risposte AI-generated
 
 ### 9. **GitHub** 🐙 VERSION CONTROL
+
 ```json
 {
   "github": {
@@ -168,10 +184,12 @@ Come descritto sopra.
   }
 }
 ```
+
 **Tool:** `create_issue`, `create_pull_request`, `search_code`
 **Uso:** Operazioni GitHub
 
 ### 10. **PostgreSQL** 🐘 DATABASE
+
 ```json
 {
   "postgres": {
@@ -185,6 +203,7 @@ Come descritto sopra.
   }
 }
 ```
+
 **Tool:** `query`, `execute`
 **Uso:** Query database Nuzantara
 
@@ -193,6 +212,7 @@ Come descritto sopra.
 ## 🎨 MCP CUSTOM (Creati per Nuzantara)
 
 ### 11. **Nuzantara RAG** 🏛️ (già esistente)
+
 ```json
 {
   "nuzantara-rag": {
@@ -202,10 +222,12 @@ Come descritto sopra.
   }
 }
 ```
+
 **Tool:** `search_kbli`, `inspect_kbli`, `ask_legal`, `check_health`
 **Uso:** Interrogazione backend Nuzantara
 
 ### 12. **Nuzantara Advanced** 🔧 (creato da noi)
+
 ```json
 {
   "nuzantara-advanced": {
@@ -215,6 +237,7 @@ Come descritto sopra.
   }
 }
 ```
+
 **Tool:** `check_fly_status`, `run_backend_tests`, `search_codebase`
 **Uso:** Operazioni DevOps per Nuzantara
 
@@ -224,17 +247,17 @@ Come descritto sopra.
 
 ### Skill Nuzantara (Create)
 
-| Skill | Path | Descrizione |
-|-------|------|-------------|
-| **kimi-nuzantara** | `skills/kimi-nuzantara/` | Identità e conoscenza Nuzantara |
-| **nuzantara-domain-knowledge** | `skills/nuzantara-domain-knowledge/` | Conoscenza dominio Bali Zero |
-| **git-commit-helper** | `skills/git-commit-helper/` | Helper per commit Git |
+| Skill                          | Path                                 | Descrizione                     |
+| ------------------------------ | ------------------------------------ | ------------------------------- |
+| **kimi-nuzantara**             | `skills/kimi-nuzantara/`             | Identità e conoscenza Nuzantara |
+| **nuzantara-domain-knowledge** | `skills/nuzantara-domain-knowledge/` | Conoscenza dominio Bali Zero    |
+| **git-commit-helper**          | `skills/git-commit-helper/`          | Helper per commit Git           |
 
 ### Skill System (Disponibili)
 
-| Skill | Path | Descrizione |
-|-------|------|-------------|
-| **kimi-cli-help** | Skill di sistema | Aiuto per Kimi CLI |
+| Skill             | Path             | Descrizione           |
+| ----------------- | ---------------- | --------------------- |
+| **kimi-cli-help** | Skill di sistema | Aiuto per Kimi CLI    |
 | **skill-creator** | Skill di sistema | Creazione nuovi skill |
 
 ---
@@ -245,18 +268,18 @@ Come descritto sopra.
 
 Configurati in `.vscode/`:
 
-| Plugin | ID | Utilità |
-|--------|-----|---------|
-| Python | `ms-python.python` | Python language support |
-| Pylance | `ms-python.vscode-pylance` | Type checking |
-| Ruff | `charliermarsh.ruff` | Linting e formatting |
-| MyPy | `matangover.mypy` | Type checking |
-| Tailwind CSS | `bradlc.vscode-tailwindcss` | CSS support |
-| Prettier | `esbenp.prettier-vscode` | Code formatting |
-| ESLint | `dbaeumer.vscode-eslint` | JS/TS linting |
-| GitLens | `eamodio.gitlens` | Git integration |
-| Markdown All-in-One | `yzhang.markdown-all-in-one` | MD support |
-| Todo Tree | `gruntfuggly.todo-tree` | TODO tracking |
+| Plugin              | ID                           | Utilità                 |
+| ------------------- | ---------------------------- | ----------------------- |
+| Python              | `ms-python.python`           | Python language support |
+| Pylance             | `ms-python.vscode-pylance`   | Type checking           |
+| Ruff                | `charliermarsh.ruff`         | Linting e formatting    |
+| MyPy                | `matangover.mypy`            | Type checking           |
+| Tailwind CSS        | `bradlc.vscode-tailwindcss`  | CSS support             |
+| Prettier            | `esbenp.prettier-vscode`     | Code formatting         |
+| ESLint              | `dbaeumer.vscode-eslint`     | JS/TS linting           |
+| GitLens             | `eamodio.gitlens`            | Git integration         |
+| Markdown All-in-One | `yzhang.markdown-all-in-one` | MD support              |
+| Todo Tree           | `gruntfuggly.todo-tree`      | TODO tracking           |
 
 ### Configurazione IDE
 
@@ -268,17 +291,20 @@ Configurati in `.vscode/`:
 ## 📋 RIEpilogo MCP Prioritari per Nuzantara
 
 ### Tier 1: Essenziali (Sempre attivi)
+
 1. ✅ **filesystem** - File operations
 2. ✅ **playwright** - Browser automation
 3. ✅ **nuzantara-rag** - Backend Nuzantara
 4. ✅ **nuzantara-advanced** - DevOps Nuzantara
 
 ### Tier 2: Importanti (Caricati spesso)
+
 5. 🔄 **fetch** - HTTP requests
 6. 🔄 **sequential-thinking** - Problem solving
 7. 🔄 **memory** - Memoria persistente
 
 ### Tier 3: Specializzati (Caricati on-demand)
+
 8. ⚡ **brave-search** - Web search
 9. ⚡ **perplexity** - AI search
 10. ⚡ **github** - Git operations
@@ -290,11 +316,13 @@ Configurati in `.vscode/`:
 ## 🚀 Come Aggiungere un Nuovo MCP
 
 1. **Installa il pacchetto:**
+
 ```bash
 npm install -g @nome/pacchetto-mcp
 ```
 
 2. **Aggiungi a `~/.claude.json`:**
+
 ```json
 {
   "mcpServers": {
@@ -321,4 +349,4 @@ npm install -g @nome/pacchetto-mcp
 
 ---
 
-*Configurazione mantenuta da Kimi - Nuzantara AI Team* 🤖
+_Configurazione mantenuta da Kimi - Nuzantara AI Team_ 🤖

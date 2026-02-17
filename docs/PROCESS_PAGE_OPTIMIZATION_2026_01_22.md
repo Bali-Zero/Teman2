@@ -392,15 +392,15 @@ const existingPractices = await api.crm.getClientPractices(formData.client_id);
 const duplicateCheck = existingPractices.find(
   (p) =>
     p.practice_type_code === formData.practice_type_code &&
-    !['completed', 'cancelled'].includes(p.status)
+    !["completed", "cancelled"].includes(p.status),
 );
 
 if (duplicateCheck) {
   toast.error(
-    'Duplicate Process',
+    "Duplicate Process",
     `Client already has an active ${formData.practice_type_code} process ` +
       `(ID: #${duplicateCheck.id}, Status: ${duplicateCheck.status}). ` +
-      `Please complete or cancel it first.`
+      `Please complete or cancel it first.`,
   );
   return;
 }
@@ -465,15 +465,17 @@ if client_data.get("email"):
 ```typescript
 // Duplicate validation with metrics
 try {
-  const existingPractices = await api.crm.getClientPractices(formData.client_id);
+  const existingPractices = await api.crm.getClientPractices(
+    formData.client_id,
+  );
   // ... validation logic
 } catch (error) {
   casesMetrics.trackError(
-    'Duplicate Check Failed',
+    "Duplicate Check Failed",
     (error as Error).message,
-    'CasesNewPage',
+    "CasesNewPage",
     undefined,
-    user.email
+    user.email,
   );
   // Still allow creation if check fails (fail-open)
 }

@@ -4,15 +4,15 @@ on:
   push:
     branches: [main]
     paths:
-      - 'apps/backend-rag/backend/app/routers/intel.py'
-      - 'apps/backend-rag/backend/services/intel/**'
-      - 'apps/backend-rag/backend/tests/unit/services/intel/**'
+      - "apps/backend-rag/backend/app/routers/intel.py"
+      - "apps/backend-rag/backend/services/intel/**"
+      - "apps/backend-rag/backend/tests/unit/services/intel/**"
   pull_request:
     branches: [main]
     paths:
-      - 'apps/backend-rag/backend/app/routers/intel.py'
-      - 'apps/backend-rag/backend/services/intel/**'
-      - 'apps/backend-rag/backend/tests/unit/services/intel/**'
+      - "apps/backend-rag/backend/app/routers/intel.py"
+      - "apps/backend-rag/backend/services/intel/**"
+      - "apps/backend-rag/backend/tests/unit/services/intel/**"
   workflow_dispatch:
 
 jobs:
@@ -41,8 +41,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          python-version: "3.11"
+          cache: "pip"
 
       - name: Install dependencies
         working-directory: apps/backend-rag
@@ -98,7 +98,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install linting tools
         run: |

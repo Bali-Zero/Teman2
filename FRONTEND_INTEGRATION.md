@@ -8,6 +8,7 @@
 ## 🎯 Obiettivo
 
 Aggiornare il chat component per usare il nuovo sistema di persistenza che:
+
 - Salva automaticamente ogni messaggio
 - Mantiene la conversazione dopo page refresh
 - Carica history all'avvio
@@ -19,6 +20,7 @@ Aggiornare il chat component per usare il nuovo sistema di persistenza che:
 ### 1. Trova il Chat Component
 
 Cerca il file principale del chat (probabilmente uno di questi):
+
 ```
 apps/mouth/src/app/chat/page.tsx
 apps/mouth/src/app/(workspace)/chat/page.tsx
@@ -28,9 +30,9 @@ apps/mouth/src/components/chat/ChatInterface.tsx
 ### 2. Aggiungi gli Import
 
 ```typescript
-import { useConversationPersistence } from '@/hooks/useConversationPersistence';
-import { WebhookChatApi } from '@/lib/api/chat/webhook-chat.api';
-import { useApiClient } from '@/hooks/useApiClient'; // o il tuo hook per API client
+import { useConversationPersistence } from "@/hooks/useConversationPersistence";
+import { WebhookChatApi } from "@/lib/api/chat/webhook-chat.api";
+import { useApiClient } from "@/hooks/useApiClient"; // o il tuo hook per API client
 ```
 
 ### 3. Inizializza nel Component
@@ -39,13 +41,15 @@ import { useApiClient } from '@/hooks/useApiClient'; // o il tuo hook per API cl
 export function ChatPage() {
   // Session management (auto-genera e persiste session_id)
   const { sessionId, isLoading, resetSession } = useConversationPersistence();
-  
+
   // API client
   const apiClient = useApiClient();
   const webhookApi = new WebhookChatApi(apiClient);
-  
+
   // State per messaggi
-  const [messages, setMessages] = useState<Array<{role: string, content: string}>>([]);
+  const [messages, setMessages] = useState<
+    Array<{ role: string; content: string }>
+  >([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
 
   // ... resto del component
@@ -63,13 +67,15 @@ useEffect(() => {
     try {
       setIsLoadingHistory(true);
       const history = await webhookApi.getHistory(sessionId, 20);
-      
+
       if (history.success && history.messages.length > 0) {
         setMessages(history.messages);
-        console.log(`✅ Loaded ${history.total_messages} messages from history`);
+        console.log(
+          `✅ Loaded ${history.total_messages} messages from history`,
+        );
       }
     } catch (error) {
-      console.error('Failed to load history:', error);
+      console.error("Failed to load history:", error);
     } finally {
       setIsLoadingHistory(false);
     }
@@ -87,30 +93,28 @@ const handleSendMessage = async (userMessage: string) => {
 
   try {
     // Aggiungi messaggio utente alla UI
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
 
     // Invia al backend con persistence
-    const response = await webhookApi.sendMessage(
-      userMessage,
-      sessionId,
-      { 
-        source: 'webapp',
-        timestamp: new Date().toISOString()
-      }
-    );
+    const response = await webhookApi.sendMessage(userMessage, sessionId, {
+      source: "webapp",
+      timestamp: new Date().toISOString(),
+    });
 
     // Aggiungi risposta AI alla UI
-    setMessages(prev => [...prev, { 
-      role: 'assistant', 
-      content: response.answer 
-    }]);
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "assistant",
+        content: response.answer,
+      },
+    ]);
 
     // Log persistence status
-    console.log('✅ Message persisted:', response.persisted);
-    console.log('📊 Conversation ID:', response.conversation_id);
-
+    console.log("✅ Message persisted:", response.persisted);
+    console.log("📊 Conversation ID:", response.conversation_id);
   } catch (error) {
-    console.error('Failed to send message:', error);
+    console.error("Failed to send message:", error);
     // Handle error (mostra toast, etc.)
   }
 };
@@ -119,7 +123,7 @@ const handleSendMessage = async (userMessage: string) => {
 ### 6. Aggiungi Pulsante "New Conversation"
 
 ```typescript
-<button 
+<button
   onClick={() => {
     resetSession();
     setMessages([]);
@@ -161,7 +165,7 @@ export function ChatPage() {
       try {
         setIsLoadingHistory(true);
         const history = await webhookApi.getHistory(sessionId, 20);
-        
+
         if (history.success && history.messages.length > 0) {
           setMessages(history.messages);
         }
@@ -181,7 +185,7 @@ export function ChatPage() {
 
     try {
       setIsSending(true);
-      
+
       // Add user message to UI
       setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
 
@@ -193,9 +197,9 @@ export function ChatPage() {
       );
 
       // Add AI response to UI
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: response.answer 
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: response.answer
       }]);
 
     } catch (error) {
@@ -287,7 +291,7 @@ Dopo il deploy, monitora:
 
 ```javascript
 // In DevTools Console
-localStorage.getItem('zantara_session_id')  // Verifica session_id
+localStorage.getItem("zantara_session_id"); // Verifica session_id
 ```
 
 ```bash

@@ -72,6 +72,7 @@ curl -I https://mo.balizero.com
 ### Nuovo Piano CDN
 
 Creato piano completo per implementazione CloudFlare CDN:
+
 - **Documento:** `docs/CLOUDFLARE_IMPLEMENTATION_PLAN.md`
 - **Script verifica:** `scripts/check_cloudflare_status.sh`
 

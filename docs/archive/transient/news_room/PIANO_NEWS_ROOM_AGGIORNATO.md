@@ -260,35 +260,38 @@ async def upload_cover_image(
 
 ```typescript
 editItem: async (
-  type: 'visa' | 'news',
+  type: "visa" | "news",
   id: string,
   edits: {
     title?: string;
     content?: string;
     category?: string;
-  }
+  },
 ): Promise<ApproveResponse> => {
   const endpoint = `/api/intel/staging/${type}/${id}`;
   return await api.request<ApproveResponse>(endpoint, {
-    method: 'PUT',
+    method: "PUT",
     body: JSON.stringify(edits),
   });
 };
 
 uploadCoverImage: async (
-  type: 'visa' | 'news',
+  type: "visa" | "news",
   id: string,
   imageBase64: string,
-  filename?: string
+  filename?: string,
 ): Promise<{ success: boolean; cover_image: string }> => {
   const endpoint = `/api/intel/staging/${type}/${id}/cover`;
-  return await api.request<{ success: boolean; cover_image: string }>(endpoint, {
-    method: 'POST',
-    body: JSON.stringify({
-      cover_image_base64: imageBase64,
-      filename,
-    }),
-  });
+  return await api.request<{ success: boolean; cover_image: string }>(
+    endpoint,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        cover_image_base64: imageBase64,
+        filename,
+      }),
+    },
+  );
 };
 ```
 

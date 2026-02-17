@@ -1,22 +1,22 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { NextRequest, NextResponse } from "next/server";
+import { exec } from "child_process";
+import { promisify } from "util";
 
 const execAsync = promisify(exec);
 
-const GOG_PATH = '/opt/homebrew/bin/gog';
+const GOG_PATH = "/opt/homebrew/bin/gog";
 const TEAM_CALENDAR_ID =
-  'ec0863e7c14ac6bf414ec23e2aab81960ecb26823c6a8f397c664fc64901d617@group.calendar.google.com';
+  "ec0863e7c14ac6bf414ec23e2aab81960ecb26823c6a8f397c664fc64901d617@group.calendar.google.com";
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const calendarId = searchParams.get('calendarId') || TEAM_CALENDAR_ID;
-    const days = searchParams.get('days') || '30';
-    const max = searchParams.get('max') || '50';
+    const calendarId = searchParams.get("calendarId") || TEAM_CALENDAR_ID;
+    const days = searchParams.get("days") || "30";
+    const max = searchParams.get("max") || "50";
 
     const { stdout } = await execAsync(
-      `${GOG_PATH} calendar events "${calendarId}" --days ${days} --max ${max} --json`
+      `${GOG_PATH} calendar events "${calendarId}" --days ${days} --max ${max} --json`,
     );
 
     const data = JSON.parse(stdout || '{"events":[]}');
@@ -38,12 +38,19 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     // If no events, return empty array
-    if (error.message?.includes('No events')) {
-      return NextResponse.json({ success: true, events: [], calendarId: TEAM_CALENDAR_ID });
+    if (error.message?.includes("No events")) {
+      return NextResponse.json({
+        success: true,
+        events: [],
+        calendarId: TEAM_CALENDAR_ID,
+      });
     }
 
-    console.error('Calendar API error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error("Calendar API error:", error);
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 },
+    );
   }
 }
 
@@ -63,8 +70,8 @@ export async function POST(request: NextRequest) {
 
     if (!summary || !from || !to) {
       return NextResponse.json(
-        { success: false, error: 'summary, from, and to are required' },
-        { status: 400 }
+        { success: false, error: "summary, from, and to are required" },
+        { status: 400 },
       );
     }
 
@@ -75,33 +82,44 @@ export async function POST(request: NextRequest) {
     if (attendees) cmd += ` --attendees "${attendees}"`;
     if (withMeet) cmd += ` --with-meet`;
 
-    cmd += ' --json';
+    cmd += " --json";
 
     const { stdout } = await execAsync(cmd);
-    const event = JSON.parse(stdout || '{}');
+    const event = JSON.parse(stdout || "{}");
 
     return NextResponse.json({ success: true, event });
   } catch (error: any) {
-    console.error('Calendar create error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error("Calendar create error:", error);
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 },
+    );
   }
 }
 
 export async function DELETE(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const eventId = searchParams.get('eventId');
-    const calendarId = searchParams.get('calendarId') || TEAM_CALENDAR_ID;
+    const eventId = searchParams.get("eventId");
+    const calendarId = searchParams.get("calendarId") || TEAM_CALENDAR_ID;
 
     if (!eventId) {
-      return NextResponse.json({ success: false, error: 'eventId is required' }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: "eventId is required" },
+        { status: 400 },
+      );
     }
 
-    await execAsync(`${GOG_PATH} calendar delete "${calendarId}" "${eventId}" --force`);
+    await execAsync(
+      `${GOG_PATH} calendar delete "${calendarId}" "${eventId}" --force`,
+    );
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error('Calendar delete error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error("Calendar delete error:", error);
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 },
+    );
   }
 }

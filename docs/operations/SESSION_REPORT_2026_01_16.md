@@ -155,7 +155,7 @@ Export encountered an error on /chat/page: /chat
 ```typescript
 // 65 righe - Implementazione completa
 function getQueryClient() {
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     return createQueryClient(); // Server
   } else {
     if (!browserQueryClient) {

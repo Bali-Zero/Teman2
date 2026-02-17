@@ -27,6 +27,7 @@ cd apps/backend-rag
 ```
 
 **Vantaggi:**
+
 - No autenticazione richiesta
 - Feedback immediato
 - Debug più facile
@@ -39,6 +40,7 @@ cd apps/backend-rag
 ### Come ottenere un JWT token valido:
 
 #### A. Via Login Frontend
+
 1. Apri la webapp in produzione
 2. Fai login con le tue credenziali
 3. Apri DevTools (F12) → Console
@@ -46,6 +48,7 @@ cd apps/backend-rag
 5. Copia il token JWT
 
 #### B. Via API Login
+
 ```bash
 # Login endpoint (se disponibile)
 curl -X POST https://nuzantara-rag.fly.dev/api/auth/login \
@@ -56,6 +59,7 @@ curl -X POST https://nuzantara-rag.fly.dev/api/auth/login \
 ```
 
 #### C. Via Database (Admin)
+
 ```bash
 # SSH nel backend
 flyctl ssh console -a nuzantara-rag
@@ -145,7 +149,7 @@ flyctl ssh console -a nuzantara-rag
 psql $DATABASE_URL
 
 # Query conversazioni recenti
-SELECT 
+SELECT
     id,
     session_id,
     user_id,
@@ -156,7 +160,7 @@ ORDER BY created_at DESC
 LIMIT 10;
 
 # Cerca la tua sessione di test
-SELECT 
+SELECT
     messages,
     metadata
 FROM conversations
@@ -171,6 +175,7 @@ LIMIT 5;
 ## ✅ Criteri di Successo
 
 Il test passa quando:
+
 - [x] Backend deployed e attivo
 - [ ] Messaggio inviato → `persisted: true`
 - [ ] `conversation_id` ritornato (numero)
@@ -183,17 +188,21 @@ Il test passa quando:
 ## 🐛 Troubleshooting
 
 ### "Authentication required"
+
 **Causa**: Token JWT non valido o mancante
 
 **Soluzione**:
+
 1. Ottieni token valido (vedi sopra)
 2. Verifica formato: `Bearer <token>`
 3. Controlla scadenza token
 
 ### "404 Not Found"
+
 **Causa**: Endpoint non deployato
 
 **Soluzione**:
+
 ```bash
 # Verifica deployment
 flyctl status -a nuzantara-rag
@@ -204,9 +213,11 @@ flyctl deploy --app nuzantara-rag
 ```
 
 ### "persisted: false"
+
 **Causa**: Database connection issue
 
 **Soluzione**:
+
 ```bash
 # Controlla logs
 flyctl logs -a nuzantara-rag | grep "Failed to save"
@@ -221,12 +232,14 @@ echo $DATABASE_URL
 ## 📝 Prossimi Passi
 
 ### Dopo Test Locale OK:
+
 1. ✅ Codice funziona
 2. Deploy a produzione (già fatto)
 3. Test con token valido
 4. Integra frontend
 
 ### Dopo Test Produzione OK:
+
 1. Aggiorna chat component frontend
 2. Deploy frontend a Vercel
 3. Test end-to-end con utenti reali
@@ -243,6 +256,7 @@ Il sistema è già deployato e pronto, serve solo autenticazione valida per test
 ---
 
 **Script disponibili:**
+
 - `scripts/test_local.sh` - Test locale (no auth)
 - `scripts/test_production.sh` - Test produzione (richiede JWT)
 - `scripts/generate_test_token.py` - Genera token (non accettato in prod)

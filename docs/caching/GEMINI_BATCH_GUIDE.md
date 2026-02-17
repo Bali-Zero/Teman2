@@ -129,10 +129,10 @@ Output format:
 
 **CSV Format:**
 
-| Prompt | Response |
-|--------|----------|
+| Prompt                   | Response                                                |
+| ------------------------ | ------------------------------------------------------- |
 | Create a conversation... | ## Query<br>Come aprire PT PMA...<br>## Response<br>... |
-| Create a conversation... | ## Query<br>Procedura PT PMA...<br>## Response<br>... |
+| Create a conversation... | ## Query<br>Procedura PT PMA...<br>## Response<br>...   |
 
 ### 3.2 Parse CSV to JSON
 
@@ -173,6 +173,7 @@ python scripts/caching/parse_gemini_responses.py parse-csv \
 **Free tier limits:** 1,500 requests/day
 
 **Strategy:**
+
 - Day 1: Process 30 batches × 50 prompts = 1,500 variations
 - Day 2: Process next 30 batches
 - Day 3: Remaining batches
@@ -355,16 +356,19 @@ python scripts/caching/master_pipeline.py phase3 \
 ### Gemini AI Studio Free Tier
 
 **Limits:**
+
 - 1,500 requests/day
 - No monetary cost
 
 **Capacity:**
+
 - 1,500 variations/day × 3 days = 4,500 total
 - Enough for 30 golden seeds × 150 variations each
 
 **Alternative (if free tier insufficient):**
 
 Upgrade to Gemini API paid tier:
+
 - Cost: $0.00125/request (Gemini 2.5 Pro)
 - 3,000 variations × $0.00125 = **$3.75 total**
 
@@ -375,20 +379,25 @@ Still 98% cheaper than OpenAI Batch API ($150).
 ## Summary
 
 **Inputs:**
+
 - 30 golden seeds (from Phase 1)
 
 **Outputs:**
+
 - 1,500-3,000 conversation variations
 - Average 50-100 variations per seed
 - ~10 citations per variation
 
 **Timeline:**
+
 - 2-3 days (limited by 1,500 requests/day quota)
 
 **Cost:**
+
 - €0 (free tier)
 
 **Next Step:**
+
 - Phase 3: ChatGPT verification (15% sample = ~300 verifications)
 
 ---

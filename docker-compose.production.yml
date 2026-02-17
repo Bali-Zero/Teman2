@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 # Production Docker Compose for Nuzantara
 # Includes: Bali Intel Scraper backend, PostgreSQL, Redis
@@ -12,7 +12,7 @@ services:
     container_name: bali-intel-backend
     restart: unless-stopped
     ports:
-      - '8000:8000'
+      - "8000:8000"
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
@@ -32,7 +32,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:8000/health/live']
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -40,10 +40,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2'
+          cpus: "2"
           memory: 2G
         reservations:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 512M
     networks:
       - nuzantara-network
@@ -58,19 +58,19 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
       POSTGRES_DB: bali_intel
     ports:
-      - '5433:5432'
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./apps/bali-intel-scraper/migrations:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
     deploy:
       resources:
         limits:
-          cpus: '1'
+          cpus: "1"
           memory: 1G
     networks:
       - nuzantara-network
@@ -81,19 +81,19 @@ services:
     container_name: bali-intel-redis
     restart: unless-stopped
     ports:
-      - '6380:6379'
+      - "6380:6379"
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
     healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 3s
       retries: 5
     deploy:
       resources:
         limits:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 512M
     networks:
       - nuzantara-network
@@ -104,15 +104,15 @@ services:
     container_name: bali-intel-prometheus
     restart: unless-stopped
     ports:
-      - '9091:9090'
+      - "9091:9090"
     volumes:
       - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
     networks:
       - nuzantara-network
     profiles:
@@ -124,7 +124,7 @@ services:
     container_name: bali-intel-grafana
     restart: unless-stopped
     ports:
-      - '3001:3000'
+      - "3001:3000"
     volumes:
       - grafana_data:/var/lib/grafana
     environment:

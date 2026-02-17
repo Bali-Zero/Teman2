@@ -202,7 +202,7 @@ Instead of:
 
 ```typescript
 // ❌ OLD: Query CRM directly
-const client = await fetch('/api/crm/clients/123');
+const client = await fetch("/api/crm/clients/123");
 ```
 
 Use:

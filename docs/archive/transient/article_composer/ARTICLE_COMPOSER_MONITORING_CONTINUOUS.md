@@ -390,9 +390,9 @@ View Dashboard: https://grafana.example.com/d/article-composer
 3. Verificare configurazione Prometheus:
    ```yaml
    scrape_configs:
-     - job_name: 'nuzantara-rag'
+     - job_name: "nuzantara-rag"
        static_configs:
-         - targets: ['nuzantara-rag.fly.dev:443']
+         - targets: ["nuzantara-rag.fly.dev:443"]
        scheme: https
    ```
 

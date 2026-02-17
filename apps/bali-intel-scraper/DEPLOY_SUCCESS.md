@@ -149,7 +149,7 @@ If you see "port already allocated" errors, modify `docker-compose.yml` to use d
 
 ```yaml
 ports:
-  - '8001:8000' # Change 8001 to any available port
+  - "8001:8000" # Change 8001 to any available port
 ```
 
 ### Container Won't Start

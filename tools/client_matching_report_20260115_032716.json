@@ -247,7 +247,11 @@
       "YOYOK",
       "YUDI"
     ],
-    "process_folders": ["###PERPANJANAN...A LANSIA###", "###DRAFT PROCESS###", "###ON PROCESS###"],
+    "process_folders": [
+      "###PERPANJANAN...A LANSIA###",
+      "###DRAFT PROCESS###",
+      "###ON PROCESS###"
+    ],
     "utility_folders": [
       "Data Scan",
       "Driver",

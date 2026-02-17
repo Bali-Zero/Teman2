@@ -64,16 +64,16 @@ pytest -v
 
 ## Documentation
 
-| Document                                                                   | Description                                  |
-| -------------------------------------------------------------------------- | -------------------------------------------- |
-| [docs/README.md](docs/README.md)                                           | Backend docs index and quick links           |
-| [docs/OPENAPI.md](docs/OPENAPI.md)                                         | OpenAPI / Swagger usage and regeneration     |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)                               | Architecture diagrams (Mermaid)              |
-| [docs/DOCSTRINGS.md](docs/DOCSTRINGS.md)                                   | Docstring standards for endpoints/services   |
-| [CLAUDE.md](CLAUDE.md)                                                     | AI assistant context and guidelines          |
-| [NUZANTARA_COMPLETE_DOCUMENTATION.md](NUZANTARA_COMPLETE_DOCUMENTATION.md) | Full project documentation                   |
-| [docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md)                             | Testing best practices                       |
-| [docs/ai/](docs/ai/)                                                       | AI-specific documentation                    |
+| Document                                                                   | Description                                |
+| -------------------------------------------------------------------------- | ------------------------------------------ |
+| [docs/README.md](docs/README.md)                                           | Backend docs index and quick links         |
+| [docs/OPENAPI.md](docs/OPENAPI.md)                                         | OpenAPI / Swagger usage and regeneration   |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)                               | Architecture diagrams (Mermaid)            |
+| [docs/DOCSTRINGS.md](docs/DOCSTRINGS.md)                                   | Docstring standards for endpoints/services |
+| [CLAUDE.md](CLAUDE.md)                                                     | AI assistant context and guidelines        |
+| [NUZANTARA_COMPLETE_DOCUMENTATION.md](NUZANTARA_COMPLETE_DOCUMENTATION.md) | Full project documentation                 |
+| [docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md)                             | Testing best practices                     |
+| [docs/ai/](docs/ai/)                                                       | AI-specific documentation                  |
 
 ## API Endpoints
 

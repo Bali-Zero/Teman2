@@ -1,4 +1,5 @@
 # Phase B - Retrieval Quality Enhancement Report
+
 ## 2026-02-16
 
 ---
@@ -16,6 +17,7 @@
 **File:** `backend/services/rag/hybrid_search.py` (647 linee)
 
 #### Features:
+
 - **BM25 Sparse Vectors**: Keyword-based search using Qdrant's sparse vector support
 - **Dense Vectors**: Existing `text-embedding-3-small` embeddings
 - **RRF Fusion**: Reciprocal Rank Fusion combining both result sets
@@ -23,6 +25,7 @@
 - **Indonesian Support**: Native BM25 tokenization for Bahasa Indonesia
 
 #### API:
+
 ```python
 from backend.services.rag.hybrid_search import get_hybrid_search_service
 
@@ -36,6 +39,7 @@ results = await service.search_hybrid(
 ```
 
 #### Tests: **42 tests** ✅ Tutti passati
+
 - BM25 Vector Computation (7 test)
 - Reciprocal Rank Fusion (7 test)
 - Hybrid Search Integration (6 test)
@@ -48,10 +52,12 @@ results = await service.search_hybrid(
 ### 2. Cross-Encoder Reranking
 
 **Files:**
+
 - `backend/services/rag/reranker.py` (core implementation)
 - `backend/services/rag/reranker_integration.py` (SearchService integration)
 
 #### Features:
+
 - **Model**: `cross-encoder/ms-marco-MiniLM-L-6-v2` (fast, high quality)
 - **Pipeline**: Retrieve top-20 → Rerank → Return top-5
 - **Async**: Runs in thread pool to avoid blocking
@@ -59,6 +65,7 @@ results = await service.search_hybrid(
 - **Fallback**: Returns original order if reranking fails
 
 #### API:
+
 ```python
 from backend.services.rag.reranker import CrossEncoderReranker
 from backend.services.rag.reranker_integration import SearchServiceWithCrossEncoder
@@ -80,6 +87,7 @@ results = await service.search_with_cross_encoder_reranking(
 ```
 
 #### Tests: **47 tests** ✅ Tutti passati
+
 - Model Loading (4 test)
 - Score Computation (6 test)
 - Reranking Logic (8 test)
@@ -94,6 +102,7 @@ results = await service.search_with_cross_encoder_reranking(
 **File:** `backend/services/rag/query_expansion.py` (652 linee)
 
 #### Features:
+
 - **Synonym Expansion**: 63 Indonesian business terms mapped
 - **LLM Rephrasing**: Gemini Flash for query variants (< 100ms)
 - **Filter Relaxation**: Removes restrictive words
@@ -101,6 +110,7 @@ results = await service.search_with_cross_encoder_reranking(
 - **Caching**: Common expansions cached
 
 #### Indonesian Business Terms Dictionary (63 terms):
+
 ```python
 "PT PMA" ↔ "foreign investment company"
 "KITAS" ↔ "residence permit"
@@ -113,6 +123,7 @@ results = await service.search_with_cross_encoder_reranking(
 ```
 
 #### API:
+
 ```python
 from backend.services.rag.query_expansion import get_query_expander
 
@@ -121,12 +132,13 @@ variants = await expander.expand(
     "How to apply for KITAS?",
     num_variants=3
 )
-# Returns: ['How to apply for KITAS?', 
+# Returns: ['How to apply for KITAS?',
 #           'How to apply for residence permit?',
 #           'Cara apply for KITAS?']
 ```
 
 #### Tests: **44 tests** ✅ Tutti passati
+
 - Synonym Generation (9 test)
 - Translation Variants (5 test)
 - Filter Relaxation (6 test)
@@ -139,26 +151,28 @@ variants = await expander.expand(
 
 ## 📊 Benchmark Performance
 
-| Component | Target | Actual | Status |
-|-----------|--------|--------|--------|
-| Query Expansion | < 100ms | 4.7ms | ✅ 21x faster |
-| BM25 Vectors | < 50ms | 0.2ms | ✅ 250x faster |
-| RRF Fusion | < 10ms | 0.01ms | ✅ 1000x faster |
-| **Total New Latency** | ~160ms | ~5ms | ✅ Negligible |
+| Component             | Target  | Actual | Status          |
+| --------------------- | ------- | ------ | --------------- |
+| Query Expansion       | < 100ms | 4.7ms  | ✅ 21x faster   |
+| BM25 Vectors          | < 50ms  | 0.2ms  | ✅ 250x faster  |
+| RRF Fusion            | < 10ms  | 0.01ms | ✅ 1000x faster |
+| **Total New Latency** | ~160ms  | ~5ms   | ✅ Negligible   |
 
 ---
 
 ## 📈 Expected Improvements
 
 ### Retrieval Accuracy
-| Technique | Expected Gain |
-|-----------|--------------|
-| Hybrid Search (BM25 + Vector) | +15-25% |
-| Cross-Encoder Reranking | +10-20% |
-| Query Expansion | +5-15% recall |
-| **Combined** | **+30-60%** |
+
+| Technique                     | Expected Gain |
+| ----------------------------- | ------------- |
+| Hybrid Search (BM25 + Vector) | +15-25%       |
+| Cross-Encoder Reranking       | +10-20%       |
+| Query Expansion               | +5-15% recall |
+| **Combined**                  | **+30-60%**   |
 
 ### Use Cases Improved
+
 1. **Keyword-heavy queries**: "PT PMA requirements 2025" → BM25 boost
 2. **Semantic queries**: "How to live in Bali long-term" → Dense vector
 3. **Mixed queries**: "KITAS for digital nomads" → Hybrid fusion
@@ -168,12 +182,12 @@ variants = await expander.expand(
 
 ## 🧪 Test Suite Summary
 
-| Suite | Tests | Status |
-|-------|-------|--------|
-| Hybrid Search | 42 | ✅ 42 passed |
-| Cross-Encoder Reranking | 47 | ✅ 47 passed |
-| Query Expansion | 44 | ✅ 44 passed |
-| **TOTAL Phase B** | **133** | ✅ **133 passed** |
+| Suite                   | Tests   | Status            |
+| ----------------------- | ------- | ----------------- |
+| Hybrid Search           | 42      | ✅ 42 passed      |
+| Cross-Encoder Reranking | 47      | ✅ 47 passed      |
+| Query Expansion         | 44      | ✅ 44 passed      |
+| **TOTAL Phase B**       | **133** | ✅ **133 passed** |
 
 ---
 
@@ -214,6 +228,7 @@ query_expansion_max_variants: int = 3
 ## 📋 Files Creati/Modificati
 
 ### New Files:
+
 1. `backend/services/rag/hybrid_search.py` (647 lines)
 2. `backend/services/rag/reranker.py` (reranker core)
 3. `backend/services/rag/reranker_integration.py` (SearchService mixin)
@@ -224,6 +239,7 @@ query_expansion_max_variants: int = 3
 8. `backend/tests/services/rag/test_query_expansion.py` (600 lines, 44 tests)
 
 ### Modified Files:
+
 1. `backend/services/rag/__init__.py` - Export new classes
 2. `backend/services/search/search_service.py` - Hybrid search integration
 
@@ -250,14 +266,14 @@ query_expansion_max_variants: int = 3
 
 ## ✅ Golden Rules Verified
 
-| Rule | Status |
-|------|--------|
-| Absolute imports | ✅ All files use `from backend.xxx` |
-| Type hints | ✅ Every function typed |
-| Async/await | ✅ All I/O operations async |
-| Logger (not print) | ✅ Structured logging throughout |
-| Error handling | ✅ Graceful degradation |
-| Tests | ✅ 133 new tests, all passing |
+| Rule               | Status                              |
+| ------------------ | ----------------------------------- |
+| Absolute imports   | ✅ All files use `from backend.xxx` |
+| Type hints         | ✅ Every function typed             |
+| Async/await        | ✅ All I/O operations async         |
+| Logger (not print) | ✅ Structured logging throughout    |
+| Error handling     | ✅ Graceful degradation             |
+| Tests              | ✅ 133 new tests, all passing       |
 
 ---
 
@@ -266,6 +282,7 @@ query_expansion_max_variants: int = 3
 **🎯 Phase B completata con successo.**
 
 Tre componenti di retrieval quality implementati:
+
 1. ✅ Hybrid Search (BM25 + Vector)
 2. ✅ Cross-Encoder Reranking
 3. ✅ Query Expansion
@@ -277,5 +294,6 @@ Tre componenti di retrieval quality implementati:
 **Expected Improvement**: +30-60% retrieval accuracy quando abilitato in produzione.
 
 ---
+
 **Report generato:** 2026-02-16
 **Test eseguiti da:** AI Agent Team

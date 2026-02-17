@@ -80,13 +80,13 @@ Should display:
 ```typescript
 // Add helper function
 function decodeHtmlEntities(text: string): string {
-  const textarea = document.createElement('textarea');
+  const textarea = document.createElement("textarea");
   textarea.innerHTML = text;
   return textarea.value;
 }
 
 // Use in EmailViewer.tsx when rendering recipients
-const decodedTo = decodeHtmlEntities(email.to_address || '');
+const decodedTo = decodeHtmlEntities(email.to_address || "");
 ```
 
 ### 3.2 Reply Date Bug (MEDIUM PRIORITY)
@@ -101,9 +101,9 @@ const decodedTo = decodeHtmlEntities(email.to_address || '');
 
 ```typescript
 const emailDate = new Date(originalEmail.received_time || originalEmail.date);
-const formattedDate = emailDate.toLocaleString('it-IT', {
-  dateStyle: 'full',
-  timeStyle: 'short',
+const formattedDate = emailDate.toLocaleString("it-IT", {
+  dateStyle: "full",
+  timeStyle: "short",
 });
 ```
 

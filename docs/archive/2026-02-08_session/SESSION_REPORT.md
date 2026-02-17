@@ -13,11 +13,11 @@ Configurare CloudFlare CDN per il progetto Nuzantara (balizero.com).
 
 ### Documentazione Creata
 
-| Documento | Righe | Descrizione |
-|-----------|-------|-------------|
-| `docs/CLOUDFLARE_IMPLEMENTATION_PLAN.md` | 74 | Piano completo implementazione CDN |
-| `scripts/check_cloudflare_status.sh` | 45 | Script verifica stato CloudFlare |
-| `docs/CLOUDFLARE_CDN_SETUP.md` | 74 | Quick start guide CDN |
+| Documento                                | Righe | Descrizione                        |
+| ---------------------------------------- | ----- | ---------------------------------- |
+| `docs/CLOUDFLARE_IMPLEMENTATION_PLAN.md` | 74    | Piano completo implementazione CDN |
+| `scripts/check_cloudflare_status.sh`     | 45    | Script verifica stato CloudFlare   |
+| `docs/CLOUDFLARE_CDN_SETUP.md`           | 74    | Quick start guide CDN              |
 
 ### Documenti Aggiornati
 
@@ -29,16 +29,20 @@ Configurare CloudFlare CDN per il progetto Nuzantara (balizero.com).
 ## 📋 Prossimi Passi (Pending User Input)
 
 ### 1. Dominio Principale
+
 Quale dominio configurare?
+
 - **balizero.com** ← Primary (consigliato)
 - **nuzantara.com** ← Backup
 - Altro?
 
 ### 2. Account CloudFlare
+
 - Verificare se esiste già un account
 - Selezionare piano (Free/Pro/Business)
 
 ### 3. Scope Configurazione
+
 - **Frontend Vercel** → CDN caching
 - **Backend Fly.io** → WAF + DDoS protection
 - **Entrambi** → Full stack protection
@@ -61,12 +65,12 @@ Quando pronto per implementare:
 
 ## 📚 Risorse
 
-| Risorsa | Path |
-|---------|------|
+| Risorsa               | Path                                     |
+| --------------------- | ---------------------------------------- |
 | Piano Implementazione | `docs/CLOUDFLARE_IMPLEMENTATION_PLAN.md` |
-| Quick Start | `docs/CLOUDFLARE_CDN_SETUP.md` |
-| DNS Base | `docs/CLOUDFLARE_DNS_SETUP.md` |
-| Verifica Script | `scripts/check_cloudflare_status.sh` |
+| Quick Start           | `docs/CLOUDFLARE_CDN_SETUP.md`           |
+| DNS Base              | `docs/CLOUDFLARE_DNS_SETUP.md`           |
+| Verifica Script       | `scripts/check_cloudflare_status.sh`     |
 
 ---
 

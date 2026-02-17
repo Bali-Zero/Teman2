@@ -132,8 +132,8 @@ for: 5m
 labels:
   severity: critical
 annotations:
-  summary: 'Article Composer error rate > 10%'
-  description: 'Error rate is {{ $value | humanizePercentage }}'
+  summary: "Article Composer error rate > 10%"
+  description: "Error rate is {{ $value | humanizePercentage }}"
 ```
 
 #### 2. API Key Missing
@@ -147,7 +147,7 @@ for: 1m
 labels:
   severity: critical
 annotations:
-  summary: 'Article Composer API key may be missing'
+  summary: "Article Composer API key may be missing"
 ```
 
 #### 3. Circuit Breaker Open
@@ -161,7 +161,7 @@ for: 2m
 labels:
   severity: warning
 annotations:
-  summary: 'Claude API circuit breaker is OPEN'
+  summary: "Claude API circuit breaker is OPEN"
 ```
 
 ### Warning Alerts
@@ -177,7 +177,7 @@ for: 15m
 labels:
   severity: warning
 annotations:
-  summary: 'Cache hit rate < 20%'
+  summary: "Cache hit rate < 20%"
 ```
 
 #### 5. High API Costs
@@ -190,8 +190,8 @@ for: 1h
 labels:
   severity: warning
 annotations:
-  summary: 'API costs > $10/hour'
-  description: 'Current cost: ${{ $value }}'
+  summary: "API costs > $10/hour"
+  description: "Current cost: ${{ $value }}"
 ```
 
 #### 6. Slow Response Time
@@ -204,7 +204,7 @@ for: 10m
 labels:
   severity: warning
 annotations:
-  summary: '95th percentile response time > 10s'
+  summary: "95th percentile response time > 10s"
 ```
 
 ---

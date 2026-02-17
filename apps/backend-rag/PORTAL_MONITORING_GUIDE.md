@@ -358,7 +358,7 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: 'Portal tax endpoint error rate > 5%'
+          summary: "Portal tax endpoint error rate > 5%"
 
       # High latency
       - alert: PortalHighLatency
@@ -370,7 +370,7 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: 'Portal tax endpoint p95 latency > 2s'
+          summary: "Portal tax endpoint p95 latency > 2s"
 
       # Deadline checker not running
       - alert: DeadlineCheckerStale

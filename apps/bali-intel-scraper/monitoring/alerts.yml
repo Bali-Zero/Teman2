@@ -10,8 +10,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: 'High error rate detected'
-          description: 'Error rate is above 10% for 5 minutes'
+          summary: "High error rate detected"
+          description: "Error rate is above 10% for 5 minutes"
 
       # Scraper down
       - alert: ScraperDown
@@ -20,8 +20,8 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: 'Scraper is down'
-          description: 'Bali Intel Scraper has been down for more than 1 minute'
+          summary: "Scraper is down"
+          description: "Bali Intel Scraper has been down for more than 1 minute"
 
       # Database connection issues
       - alert: DatabaseConnectionError
@@ -30,8 +30,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: 'Database connection issues'
-          description: 'Multiple database connection errors detected'
+          summary: "Database connection issues"
+          description: "Multiple database connection errors detected"
 
       # Low success rate
       - alert: LowSuccessRate
@@ -44,8 +44,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: 'Low scraper success rate'
-          description: 'Success rate is below 80%'
+          summary: "Low scraper success rate"
+          description: "Success rate is below 80%"
 
       # Queue backlog
       - alert: QueueBacklog
@@ -54,8 +54,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: 'Task queue backlog'
-          description: 'More than 1000 tasks pending in queue'
+          summary: "Task queue backlog"
+          description: "More than 1000 tasks pending in queue"
 
       # Memory usage
       - alert: HighMemoryUsage
@@ -68,5 +68,5 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: 'High memory usage'
-          description: 'Memory usage is above 4GB'
+          summary: "High memory usage"
+          description: "Memory usage is above 4GB"

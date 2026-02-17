@@ -28,6 +28,7 @@
 ### Fase 2: DNS Configuration
 
 #### Per Frontend (Vercel)
+
 ```
 Type: CNAME
 Name: @
@@ -37,8 +38,9 @@ TTL: Auto
 ```
 
 #### Per Backend (Fly.io)
+
 ```
-Type: CNAME  
+Type: CNAME
 Name: api
 Target: nuzantara-rag.fly.dev
 Proxy: Proxied (🟠)
@@ -69,12 +71,12 @@ Rocket Loader: OFF (React compatibility)
 
 ### Fase 5: Page Rules (Priorità)
 
-| Priority | URL Pattern | Settings |
-|----------|-------------|----------|
-| 1 | `*balizero.com/_next/static/*` | Cache Everything, 1 month TTL |
-| 2 | `*balizero.com/api/*` | Bypass Cache |
-| 3 | `*balizero.com/ws/*` | Bypass Cache |
-| 4 | `*balizero.com/health` | Bypass Cache |
+| Priority | URL Pattern                    | Settings                      |
+| -------- | ------------------------------ | ----------------------------- |
+| 1        | `*balizero.com/_next/static/*` | Cache Everything, 1 month TTL |
+| 2        | `*balizero.com/api/*`          | Bypass Cache                  |
+| 3        | `*balizero.com/ws/*`           | Bypass Cache                  |
+| 4        | `*balizero.com/health`         | Bypass Cache                  |
 
 ### Fase 6: Security
 
@@ -111,11 +113,11 @@ const nextConfig = {
   async headers() {
     return [
       {
-        source: '/_next/static/:path*',
+        source: "/_next/static/:path*",
         headers: [
           {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
           },
         ],
       },
@@ -139,6 +141,7 @@ app.add_middleware(
 ### 3. WebSocket Configuration
 
 CloudFlare supporta WebSocket su tutti i piani:
+
 - Automatico su proxied records
 - Nessuna configurazione aggiuntiva necessaria
 
@@ -169,13 +172,13 @@ openssl s_client -connect balizero.com:443 -servername balizero.com
 
 ### Metriche da tracciare:
 
-| Metrica | Target | Alert |
-|---------|--------|-------|
-| Cache Hit Ratio | >90% | <80% |
-| Avg Response Time | <200ms | >500ms |
-| Bandwidth Saved | >50% | <30% |
-| Security Events | <100/day | >500/day |
-| Origin Error Rate | <1% | >5% |
+| Metrica           | Target   | Alert    |
+| ----------------- | -------- | -------- |
+| Cache Hit Ratio   | >90%     | <80%     |
+| Avg Response Time | <200ms   | >500ms   |
+| Bandwidth Saved   | >50%     | <30%     |
+| Security Events   | <100/day | >500/day |
+| Origin Error Rate | <1%      | >5%      |
 
 ### Alert da configurare:
 
@@ -189,11 +192,11 @@ openssl s_client -connect balizero.com:443 -servername balizero.com
 
 ## 💰 Costi Stimati
 
-| Piano | Costo | Caratteristiche |
-|-------|-------|-----------------|
-| **Free** | $0 | CDN base, DDoS, SSL |
-| **Pro** | $20/mese | WAF, Page Rules (20), Analytics |
-| **Business** | $200/mese | SLA 100%, Supporto prioritario |
+| Piano        | Costo     | Caratteristiche                 |
+| ------------ | --------- | ------------------------------- |
+| **Free**     | $0        | CDN base, DDoS, SSL             |
+| **Pro**      | $20/mese  | WAF, Page Rules (20), Analytics |
+| **Business** | $200/mese | SLA 100%, Supporto prioritario  |
 
 **Raccomandazione:** Iniziare con piano Pro per produzione.
 
@@ -202,15 +205,18 @@ openssl s_client -connect balizero.com:443 -servername balizero.com
 ## ⚠️ Considerazioni Importanti
 
 ### 1. WebSocket e Real-time
+
 - CloudFlare supporta WebSocket su tutti i piani
 - Timeout: 100 secondi di inattività
 - Per sessioni lunghe: implementare ping/pong
 
 ### 2. Streaming
+
 - Response Buffering: OFF per streaming SSE
 - Max upload: 100MB (Business: 500MB)
 
 ### 3. Cache Invalidation
+
 ```bash
 # Purge via API
 curl -X POST "https://api.cloudflare.com/client/v4/zones/ZONE_ID/purge_cache" \
@@ -220,7 +226,9 @@ curl -X POST "https://api.cloudflare.com/client/v4/zones/ZONE_ID/purge_cache" \
 ```
 
 ### 4. Rate Limiting (Pro+)
+
 Configurare per API endpoints:
+
 ```
 100 richieste / 10 secondi / IP
 ```
@@ -258,4 +266,4 @@ Configurare per API endpoints:
 
 ---
 
-*Questo piano verrà aggiornato dopo aver definito i domini specifici da configurare.*
+_Questo piano verrà aggiornato dopo aver definito i domini specifici da configurare._

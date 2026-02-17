@@ -82,7 +82,7 @@ images: {
 <img src="/static/news/cover.jpg" alt="Cover" />;
 
 // ✅ NUOVO - Next.js Image con ottimizzazione
-import Image from 'next/image';
+import Image from "next/image";
 
 <Image
   src="/static/news/cover.jpg"
@@ -252,8 +252,8 @@ npm install sharp --save-dev
 
 ```javascript
 const IMAGES_TO_OPTIMIZE = [
-  'dengue-alert.jpg',
-  'maritime-chaos.jpg',
+  "dengue-alert.jpg",
+  "maritime-chaos.jpg",
   // Add your images here
 ];
 

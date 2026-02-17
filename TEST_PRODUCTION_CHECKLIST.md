@@ -8,6 +8,7 @@
 ## ✅ Implementazione Completata
 
 ### Backend
+
 - [x] `conversation_repository.py` creato
 - [x] Integrato in `webhook_chat.py` (lines 17, 89, 193, 227)
 - [x] Table `conversations` in baseline migration
@@ -16,6 +17,7 @@
 - [x] Tests creati
 
 ### Frontend (Da integrare)
+
 - [x] `webhook-chat.api.ts` creato
 - [x] `useConversationPersistence.ts` creato
 - [ ] Chat component aggiornato
@@ -87,7 +89,7 @@ flyctl ssh console -a nuzantara-rag
 psql $DATABASE_URL
 
 # Verifica conversazioni recenti
-SELECT 
+SELECT
     id,
     session_id,
     user_id,
@@ -98,7 +100,7 @@ ORDER BY created_at DESC
 LIMIT 10;
 
 # Verifica sessione specifica
-SELECT 
+SELECT
     messages,
     metadata
 FROM conversations
@@ -110,17 +112,20 @@ WHERE session_id = 'test-session-123';
 ## 📊 Metriche da Verificare
 
 ### Performance
+
 - [ ] Query time < 50ms
 - [ ] Persistence rate = 100%
 - [ ] No errors in logs
 
 ### Funzionalità
+
 - [ ] Messaggio salvato in DB
 - [ ] conversation_id ritornato
 - [ ] History recuperabile
 - [ ] Context mantenuto tra richieste
 
 ### Cleanup Job
+
 ```bash
 # Verifica che il job sia attivo
 flyctl logs -a nuzantara-rag | grep "Conversation cleanup"
@@ -136,11 +141,13 @@ flyctl logs -a nuzantara-rag | grep "Conversation cleanup"
 ### "persisted": false
 
 **Causa possibile:**
+
 - Database connection issue
 - JWT token invalido
 - session_id mancante
 
 **Debug:**
+
 ```bash
 flyctl logs -a nuzantara-rag | grep "Failed to save"
 ```
@@ -148,10 +155,12 @@ flyctl logs -a nuzantara-rag | grep "Failed to save"
 ### Context non mantenuto
 
 **Causa possibile:**
+
 - session_id diverso tra richieste
 - History non recuperata
 
 **Debug:**
+
 ```bash
 flyctl logs -a nuzantara-rag | grep "Retrieved.*messages"
 ```
@@ -159,6 +168,7 @@ flyctl logs -a nuzantara-rag | grep "Retrieved.*messages"
 ### Cleanup job non attivo
 
 **Debug:**
+
 ```bash
 # Verifica scheduler
 flyctl logs -a nuzantara-rag | grep "autonomous"
@@ -173,16 +183,18 @@ python -m backend.jobs.conversation_cleanup
 ## 📝 Prossimi Passi
 
 ### 1. Test Backend (ADESSO)
+
 ```bash
 export JWT_TOKEN="your-token"
 ./scripts/test_production.sh
 ```
 
 ### 2. Aggiorna Frontend
+
 ```typescript
 // Nel tuo chat component
-import { useConversationPersistence } from '@/hooks/useConversationPersistence';
-import { WebhookChatApi } from '@/lib/api/chat/webhook-chat.api';
+import { useConversationPersistence } from "@/hooks/useConversationPersistence";
+import { WebhookChatApi } from "@/lib/api/chat/webhook-chat.api";
 
 const { sessionId } = useConversationPersistence();
 const webhookApi = new WebhookChatApi(apiClient);
@@ -191,6 +203,7 @@ const webhookApi = new WebhookChatApi(apiClient);
 ```
 
 ### 3. Deploy Frontend
+
 ```bash
 cd apps/mouth
 pnpm build
@@ -198,6 +211,7 @@ vercel --prod
 ```
 
 ### 4. Test End-to-End
+
 1. Apri webapp
 2. Invia messaggio
 3. Refresh pagina (F5)
@@ -209,6 +223,7 @@ vercel --prod
 ## ✅ Criteri di Successo
 
 Il sistema funziona quando:
+
 - [x] Backend deployed
 - [ ] Test produzione passati
 - [ ] Database mostra conversazioni
@@ -235,17 +250,20 @@ cd apps/backend-rag && \
 ## 📞 Support
 
 **Logs:**
+
 ```bash
 flyctl logs -a nuzantara-rag
 ```
 
 **Database:**
+
 ```bash
 flyctl ssh console -a nuzantara-rag
 psql $DATABASE_URL
 ```
 
 **Docs:**
+
 - `DEPLOYMENT_GUIDE.md` - Guida completa
 - `QUICK_START.md` - 3 passi rapidi
 - `apps/backend-rag/backend/docs/CONVERSATION_PERSISTENCE.md` - API docs

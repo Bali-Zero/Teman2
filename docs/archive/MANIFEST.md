@@ -38,14 +38,15 @@ docs/archive/
 
 Report di sessione AI organizzati per tema.
 
-| Sottocartella | File | Descrizione |
-|--------------|------|-------------|
-| `cleanup_streaming/` | 4 | Cleanup e consolidamento streaming |
-| `deploy_reports/` | 13 | Report deploy multipli |
-| `monitoring_reports/` | 6 | Setup e report monitoring |
-| `type_safety/` | 6 | Migrazione type safety |
+| Sottocartella         | File | Descrizione                        |
+| --------------------- | ---- | ---------------------------------- |
+| `cleanup_streaming/`  | 4    | Cleanup e consolidamento streaming |
+| `deploy_reports/`     | 13   | Report deploy multipli             |
+| `monitoring_reports/` | 6    | Setup e report monitoring          |
+| `type_safety/`        | 6    | Migrazione type safety             |
 
 **File chiave mantenuti in docs/ principale:**
+
 - `docs/operations/DEPLOY_CHECKLIST.md` ← Usare questo per deploy
 - `docs/operations/OBSERVABILITY_GUIDE.md` ← Guida monitoring ufficiale
 
@@ -55,11 +56,11 @@ Report di sessione AI organizzati per tema.
 
 Documenti obsoleti o sostituiti.
 
-| File | Motivo |
-|------|--------|
+| File                         | Motivo                                     |
+| ---------------------------- | ------------------------------------------ |
 | `DOCUMENTATION_CHANGELOG.md` | Sostituito da nuovo sistema documentazione |
-| `DOCUMENTATION_UPDATE_*.md` | Transient, aggiornamenti specifici |
-| `WINDSURF_PHASE2_PATCH.md` | Specifico tool AI esterno |
+| `DOCUMENTATION_UPDATE_*.md`  | Transient, aggiornamenti specifici         |
+| `WINDSURF_PHASE2_PATCH.md`   | Specifico tool AI esterno                  |
 
 ---
 
@@ -67,11 +68,11 @@ Documenti obsoleti o sostituiti.
 
 Documenti duplicati rispetto a docs/ai/ o altre locazioni.
 
-| File | Duplicato di |
-|------|-------------|
-| `DEPLOY_STATUS.md` | docs/ai/DEPLOY_STATUS.md (spostato in session/) |
-| `DEPLOY_COMPLETE.md` | docs/ai/DEPLOY_COMPLETED.md (spostato in session/) |
-| `DEPLOYMENT_STATUS.md` | docs/DEPLOYMENT_STATUS.md |
+| File                   | Duplicato di                                       |
+| ---------------------- | -------------------------------------------------- |
+| `DEPLOY_STATUS.md`     | docs/ai/DEPLOY_STATUS.md (spostato in session/)    |
+| `DEPLOY_COMPLETE.md`   | docs/ai/DEPLOY_COMPLETED.md (spostato in session/) |
+| `DEPLOYMENT_STATUS.md` | docs/DEPLOYMENT_STATUS.md                          |
 
 ---
 
@@ -80,45 +81,55 @@ Documenti duplicati rispetto a docs/ai/ o altre locazioni.
 Documenti temporanei di sessioni passate.
 
 #### 4.1 Article Composer (16 file)
+
 Documentazione feature Article Composer - la maggior parte sono report intermedi.
 
 **Mantenuti in docs/ principale:**
+
 - `docs/ARTICLE_COMPOSER_API.md` ← API reference
 - `docs/ARTICLE_COMPOSER_BEST_PRACTICES_2026.md` ← Best practices
 - `docs/ARTICLE_COMPOSER_QUICK_START.md` ← Quick start
 
 #### 4.2 Intel Scraper (14 file)
+
 Documentazione Intel Scraper - cron, fix, configurazioni.
 
 **Mantenuti in docs/ principale:**
+
 - `docs/INTEL_ROUTER_API.md` ← API reference
 - `docs/INTEL_DEPLOYMENT_GUIDE.md` ← Deployment
 - `docs/INTEL_SCRAPER_ANALYSIS_REPORT.md` ← Analisi
 
 #### 4.3 News Room (20 file)
+
 Piani, analisi e report per la News Room.
 
 **Nota:** Tutti i piani sono stati eseguiti. Per lo stato attuale vedere:
+
 - `docs/operations/LOCAL_TESTING_GUIDE.md`
 - `docs/operations/OBSERVABILITY_GUIDE.md`
 
 #### 4.4 Session Reports (3 file)
+
 Report specifici di sessione.
 
 #### 4.5 Telegram (10 file)
+
 Setup e fix Telegram Bot. La maggior parte sono stati di configurazione.
 
 **Mantenuto in docs/ principale:**
+
 - `docs/TELEGRAM_BOT_START_GUIDE.md` ← Guida avvio bot
 
 #### 4.6 Root Transient (7 file)
-| File | Categoria |
-|------|-----------|
-| `ANALISI_ARTICLE_COMPOSER.md` | Analisi |
-| `CLEANUP_SUMMARY.md` | Transient |
-| `SENTRY_*.txt` | Log non-markdown |
-| `VERCEL_*.md` | Fix specifici Vercel |
-| `WORKSPACE_CLEANUP_COMPLETE.md` | Transient |
+
+| File                            | Categoria            |
+| ------------------------------- | -------------------- |
+| `ANALISI_ARTICLE_COMPOSER.md`   | Analisi              |
+| `CLEANUP_SUMMARY.md`            | Transient            |
+| `SENTRY_*.txt`                  | Log non-markdown     |
+| `VERCEL_*.md`                   | Fix specifici Vercel |
+| `WORKSPACE_CLEANUP_COMPLETE.md` | Transient            |
 
 ---
 
@@ -126,54 +137,59 @@ Setup e fix Telegram Bot. La maggior parte sono stati di configurazione.
 
 ### Se cerchi informazioni su...
 
-| Argomento | Vai a |
-|-----------|-------|
-| **Deploy** | `docs/operations/DEPLOY_CHECKLIST.md` |
-| **Monitoring** | `docs/operations/OBSERVABILITY_GUIDE.md` |
-| **Architettura** | `docs/SYSTEM_MAP_4D.md` |
-| **Database** | `docs/DATABASE_ARCHITECTURE_V2.md` |
-| **Onboarding** | `docs/AI_ONBOARDING.md` |
-| **API Article Composer** | `docs/ARTICLE_COMPOSER_API.md` |
-| **API Intel** | `docs/INTEL_ROUTER_API.md` |
-| **CRM** | `docs/CRM_SYSTEM.md` |
-| **KBLI** | `docs/features/KBLI_NOTEBOOK_EXPLORER.md` |
+| Argomento                | Vai a                                     |
+| ------------------------ | ----------------------------------------- |
+| **Deploy**               | `docs/operations/DEPLOY_CHECKLIST.md`     |
+| **Monitoring**           | `docs/operations/OBSERVABILITY_GUIDE.md`  |
+| **Architettura**         | `docs/SYSTEM_MAP_4D.md`                   |
+| **Database**             | `docs/DATABASE_ARCHITECTURE_V2.md`        |
+| **Onboarding**           | `docs/AI_ONBOARDING.md`                   |
+| **API Article Composer** | `docs/ARTICLE_COMPOSER_API.md`            |
+| **API Intel**            | `docs/INTEL_ROUTER_API.md`                |
+| **CRM**                  | `docs/CRM_SYSTEM.md`                      |
+| **KBLI**                 | `docs/features/KBLI_NOTEBOOK_EXPLORER.md` |
 
 ---
 
 ## ⚠️ NOTE IMPORTANTI
 
-### Documenti con "*_COMPLETE.md", "*_SUCCESS.md", "*_FINAL.md"
+### Documenti con "_\_COMPLETE.md", "_\_SUCCESS.md", "\*\_FINAL.md"
+
 Questi sono stati di completamento temporanei. Lo stato attuale del sistema è documentato in:
+
 - `docs/AI_ONBOARDING.md` (ultimo aggiornamento: 2026-02-07)
 - `docs/SYSTEM_MAP_4D.md` (auto-generated: 2026-02-02)
 - `docs/LIVING_ARCHITECTURE.md` (auto-generated)
 
 ### Documenti tool-specifici
+
 File come `WINDSURF_*.md`, `VERCEL_*_FIX_*.md` sono relativi a problemi specifici risolti.
 
 ---
 
 ## 📊 STATISTICHE
 
-| Categoria | Count | % Totale |
-|-----------|-------|----------|
-| Sessione 2026-02-07 | 26 | 23.9% |
-| Transient | 70 | 64.2% |
-| Duplicati | 3 | 2.8% |
-| Deprecated | 4 | 3.7% |
-| **TOTALE** | **109** | **100%** |
+| Categoria           | Count   | % Totale |
+| ------------------- | ------- | -------- |
+| Sessione 2026-02-07 | 26      | 23.9%    |
+| Transient           | 70      | 64.2%    |
+| Duplicati           | 3       | 2.8%     |
+| Deprecated          | 4       | 3.7%     |
+| **TOTALE**          | **109** | **100%** |
 
 ---
 
 ## 🔄 PROCESSO DI ARCHIVIAZIONE
 
 ### Criteri utilizzati:
+
 1. **Duplicati** → Identici o con contenuto sovrapposto
 2. **Transient** → Report di sessione, stati intermedi, fix specifici
 3. **Deprecated** → Sostituiti da documentazione più recente
 4. **Sessione** → Report AI raggruppati per data e tema
 
 ### Documenti mantenuti in docs/ principale:
+
 - Documentazione architetturale stabile
 - Guide operative attuali
 - API reference
@@ -192,9 +208,9 @@ File come `WINDSURF_*.md`, `VERCEL_*_FIX_*.md` sono relativi a problemi specific
 
 ### Documenti CRM Consolidati
 
-| File Originale | Archiviato Come | Motivo |
-|----------------|-----------------|--------|
-| `docs/CRM_SYSTEM.md` | `transient/CRM_SYSTEM_v2.0.md` | Consolidato in `CRM_COMPLETE.md` |
+| File Originale                     | Archiviato Come                              | Motivo                           |
+| ---------------------------------- | -------------------------------------------- | -------------------------------- |
+| `docs/CRM_SYSTEM.md`               | `transient/CRM_SYSTEM_v2.0.md`               | Consolidato in `CRM_COMPLETE.md` |
 | `docs/CRM_SYSTEM_DOCUMENTATION.md` | `transient/CRM_SYSTEM_DOCUMENTATION_v2.0.md` | Consolidato in `CRM_COMPLETE.md` |
 
 ### Nuovo Documento Unificato

@@ -28,25 +28,31 @@ Quando questa skill è attiva, Claude:
 ## Protocolli attivi
 
 ### Quando modifichi backend Python
+
 1. Verifica che il venv sia attivo
 2. Usa import assoluti (`from backend.X import Y`)
 3. Dopo ogni modifica, suggerisci il test specifico da girare
 4. Avverti se stai rimuovendo un import che potrebbe essere usato runtime
 
 ### Quando proponi un deploy
+
 Esegui mentalmente la checklist:
+
 - [ ] `git diff --name-only HEAD -- apps/backend-rag/backend/` — nessuna modifica inaspettata
 - [ ] Import chain: `python -c "from backend.app.dependencies import get_current_user"`
 - [ ] Core tests 82/82 pass
 - [ ] `fly deploy --strategy rolling`
 
 ### Quando parli di prezzi
+
 **MAI** citare prezzi hardcoded. Rimandare sempre a `PricingTool`.
 
 ### Quando parli di KBLI
+
 Payload **FLAT** obbligatorio. Mai strutture nested.
 
 ### Evidence scoring
+
 - < 0.15 → ASTIENITI, dichiara incertezza
 - 0.15–0.60 → rispondi con disclaimer
 - > 0.60 → risposta normale
@@ -56,12 +62,14 @@ Payload **FLAT** obbligatorio. Mai strutture nested.
 ## MCP Tools disponibili in questo workspace
 
 **`nuzantara-rag`** (dominio):
+
 - `search_kbli(query, limit)` — cerca codici KBLI
 - `inspect_kbli(code)` — dettagli codice KBLI
 - `ask_legal(question, user_id, session_id)` — RAG legale
 - `check_health()` / `check_health_detailed()` — stato backend
 
 **`nuzantara-ops`** (operativo):
+
 - `check_fly_status()` — stato Fly.io
 - `get_fly_logs(lines, filter_str)` — log produzione
 - `check_deployment_readiness()` — pre-deploy automatico
@@ -89,13 +97,13 @@ Mouth (Next.js)  →  Backend (FastAPI)  →  Qdrant + Postgres + Redis
 
 Questi sono i sabotage più comuni commessi da altri AI su questo codebase:
 
-| Pattern | Conseguenza | Azione |
-|---------|-------------|--------|
-| Rimuovere `Any` da `typing` imports | Runtime crash su tutti i router | Segnala e blocca |
-| Cambiare `httpx` con `requests` | Viola golden rule #4 | Correggi |
-| Aggiungere `nested.payload` in Qdrant | KBLI search rotta | Correggi in FLAT |
-| `--workers 2` nel Dockerfile | OOM kill su Fly.io 4GB VM | Lascia a 1 |
-| `relative imports` | Import error runtime | Correggi in assoluti |
+| Pattern                               | Conseguenza                     | Azione               |
+| ------------------------------------- | ------------------------------- | -------------------- |
+| Rimuovere `Any` da `typing` imports   | Runtime crash su tutti i router | Segnala e blocca     |
+| Cambiare `httpx` con `requests`       | Viola golden rule #4            | Correggi             |
+| Aggiungere `nested.payload` in Qdrant | KBLI search rotta               | Correggi in FLAT     |
+| `--workers 2` nel Dockerfile          | OOM kill su Fly.io 4GB VM       | Lascia a 1           |
+| `relative imports`                    | Import error runtime            | Correggi in assoluti |
 
 ---
 

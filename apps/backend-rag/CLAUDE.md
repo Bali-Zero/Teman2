@@ -9,10 +9,12 @@
 **Critical file:** `backend/app/dependencies.py` — imported by EVERY router. Missing `Any` at line 381 (`def get_orchestrator(request: Request) -> Any:`) crashed the entire app at startup.
 
 **Fix Commits:**
+
 1. `bdf83fc54` — Restored `Any` in 7 service files + 1 test fix
 2. `b4abe9108` — Restored `Any` in 3 more files (PRODUCTION HOTFIX)
 
 **Files Fixed (10 total):**
+
 - `backend/app/dependencies.py:22` — `Annotated` → `Annotated, Any`
 - `backend/services/crm/lead_assignment_agent.py:15`
 - `backend/services/crm/auto_crm_service.py:25`
@@ -30,16 +32,17 @@
 
 ### Comprehensive Test Results
 
-| Suite | Passed | Failed | Notes |
-|-------|--------|--------|-------|
-| KG LangGraph + Subgraphs | 58/58 | 0 | All 4 domains |
-| Dynamic Confidence | 24/24 | 0 | 6-factor scoring |
-| Channels | 43/43 | 0 | Telegram, Web, WhatsApp |
-| Full KG + RAG | 244/244 | 16* | *pre-existing |
-| Main Unit Suite | 3,675 | 448* | *pre-existing rogue AI debt |
-| Production API | 7/7 | 0 | health, agent, KBLI |
+| Suite                    | Passed  | Failed | Notes                        |
+| ------------------------ | ------- | ------ | ---------------------------- |
+| KG LangGraph + Subgraphs | 58/58   | 0      | All 4 domains                |
+| Dynamic Confidence       | 24/24   | 0      | 6-factor scoring             |
+| Channels                 | 43/43   | 0      | Telegram, Web, WhatsApp      |
+| Full KG + RAG            | 244/244 | 16\*   | \*pre-existing               |
+| Main Unit Suite          | 3,675   | 448\*  | \*pre-existing rogue AI debt |
+| Production API           | 7/7     | 0      | health, agent, KBLI          |
 
 **Pre-existing test debt (~448 failures):**
+
 - `invalidate_cache` removed from `backend.core.cache` (~30 errors)
 - `backend.services.integrations.service` module missing (~40 errors)
 - `reasoning.py` functions removed (16 failures)
@@ -49,6 +52,7 @@
 ### Prevention Checklist (NEW)
 
 Before any deploy:
+
 ```bash
 # 1. Check for rogue changes
 git diff --name-only HEAD -- apps/backend-rag/backend/
@@ -78,7 +82,9 @@ Successfully implemented and deployed **LangGraph-based agentic RAG layer** on t
 ### Implementation Phases
 
 #### Phase 1: Foundation ✅ COMPLETE
+
 **Created:**
+
 - `backend/app/agents/__init__.py` (20 lines) - Package initialization
 - `backend/app/agents/state.py` (100 lines) - 4 TypedDict state classes
 - `backend/app/agents/graph.py` (300 lines stub) - LangGraph workflow skeleton
@@ -86,6 +92,7 @@ Successfully implemented and deployed **LangGraph-based agentic RAG layer** on t
 - `docs/LANGGRAPH_AGENTIC_LAYER.md` (1,500+ lines) - Complete documentation
 
 **Modified:**
+
 - `backend/app/setup/router_registration.py` (+2 lines) - Router registration
 
 **Workflow:** Start → Retrieve → Grade → Generate → End
@@ -109,13 +116,16 @@ Successfully implemented and deployed **LangGraph-based agentic RAG layer** on t
    - Implementation: `grade_node` (graph.py:150-292) + `generate_node` (graph.py:294-400)
 
 **Modified:**
+
 - `backend/app/agents/graph.py` (520 lines total) - Real service integration
 - `backend/app/setup/service_initializer.py` (+28 lines) - Service injection hook
 
 **Created:**
+
 - `backend/tests/manual_test_agent.py` (400+ lines) - Manual test suite
 
 **Service Injection Pattern:**
+
 ```python
 # Global module-level variables with setter functions
 _search_service = None
@@ -127,6 +137,7 @@ def set_search_service(service):
 ```
 
 **Critical Bug Fixed:** ChatSession initialization error
+
 - **Error:** `ChatSession.__init__() missing 2 required positional arguments: 'client' and 'model'`
 - **Fix:** Changed from `chat = ChatSession()` to `chat=None` in `send_message()` calls
 - **Reason:** LLMGateway creates session internally when chat=None
@@ -137,13 +148,14 @@ def set_search_service(service):
 
 **Test Results (2026-02-14 with Gemini 2.5 Flash):**
 
-| Test | Status | Details |
-|------|--------|---------|
-| TEST 1: Mocked Services | ✅ PASSED | Validates state transitions with mock data |
-| TEST 2: Real Services | ✅ PASSED | 5 docs retrieved → 2 filtered → 430 char answer generated |
-| TEST 3: Error Handling | ✅ PASSED | Graceful fallbacks work correctly |
+| Test                    | Status    | Details                                                   |
+| ----------------------- | --------- | --------------------------------------------------------- |
+| TEST 1: Mocked Services | ✅ PASSED | Validates state transitions with mock data                |
+| TEST 2: Real Services   | ✅ PASSED | 5 docs retrieved → 2 filtered → 430 char answer generated |
+| TEST 3: Error Handling  | ✅ PASSED | Graceful fallbacks work correctly                         |
 
 **Real Service Test Details:**
+
 - **Retrieved:** 5 documents from Qdrant (scores: [0.67, 0.67, 0.60])
 - **Graded:** LLM filtered to 2 high-relevance docs (scores: [1.0, 0.9])
 - **Generated:** Professional 430-character RAG answer about KITAS requirements
@@ -168,11 +180,13 @@ def set_search_service(service):
    - Issue: `/api/agent/health` was requiring auth, should be public
 
 **Deployment Command:**
+
 ```bash
 fly deploy --app nuzantara-rag --strategy rolling
 ```
 
 **Deployment Details:**
+
 - Image: `registry.fly.io/nuzantara-rag:deployment-01KHDFWJ61VSNG2RC9KJGPAC1Z`
 - Size: 444 MB
 - Build Time: ~60 seconds (Depot builder)
@@ -181,11 +195,11 @@ fly deploy --app nuzantara-rag --strategy rolling
 
 **Verification Tests (Production):**
 
-| Test | Endpoint | Result | Details |
-|------|----------|--------|---------|
-| ✅ | `GET /health` | 200 OK | Main health: healthy, v100-qdrant |
-| ✅ | `GET /api/agent/health` | 200 OK | Graph loaded: true, operational |
-| ✅ | `POST /api/agent/invoke` | 401 Unauthorized | Auth required (as expected) |
+| Test | Endpoint                 | Result           | Details                           |
+| ---- | ------------------------ | ---------------- | --------------------------------- |
+| ✅   | `GET /health`            | 200 OK           | Main health: healthy, v100-qdrant |
+| ✅   | `GET /api/agent/health`  | 200 OK           | Graph loaded: true, operational   |
+| ✅   | `POST /api/agent/invoke` | 401 Unauthorized | Auth required (as expected)       |
 
 **Overall:** 3/3 tests passed (100%) ← **PRODUCTION READY** 🎉
 
@@ -194,10 +208,12 @@ fly deploy --app nuzantara-rag --strategy rolling
 ### API Endpoints
 
 #### 1. POST /api/agent/invoke
+
 **Auth:** Required (JWT token)
 **Description:** Invoke the RAG workflow
 
 **Example:**
+
 ```bash
 curl -X POST https://nuzantara-rag.fly.dev/api/agent/invoke \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
@@ -209,6 +225,7 @@ curl -X POST https://nuzantara-rag.fly.dev/api/agent/invoke \
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -217,7 +234,7 @@ curl -X POST https://nuzantara-rag.fly.dev/api/agent/invoke \
   "execution_path": ["retrieve", "grade", "generate"],
   "step_count": 3,
   "timestamp": "2026-02-14T07:14:22.108034",
-  "metadata": {"user_id": "user_123"},
+  "metadata": { "user_id": "user_123" },
   "errors": null
 }
 ```
@@ -225,15 +242,18 @@ curl -X POST https://nuzantara-rag.fly.dev/api/agent/invoke \
 ---
 
 #### 2. GET /api/agent/health
+
 **Auth:** Not required (public)
 **Description:** Check agent system health
 
 **Example:**
+
 ```bash
 curl https://nuzantara-rag.fly.dev/api/agent/health
 ```
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
@@ -247,30 +267,30 @@ curl https://nuzantara-rag.fly.dev/api/agent/health
 
 ### Performance Metrics (Real Services)
 
-| Metric | Value |
-|--------|-------|
-| **Retrieve Node** | ~500ms (Qdrant, 5 docs) |
-| **Grade Node** | ~1.5s (LLM relevance scoring) |
-| **Generate Node** | ~2.5s (LLM answer generation) |
-| **Total End-to-End** | ~4.5s (full RAG pipeline) |
-| **Token Usage** | 1,569 tokens (~$0.002/request) |
+| Metric               | Value                          |
+| -------------------- | ------------------------------ |
+| **Retrieve Node**    | ~500ms (Qdrant, 5 docs)        |
+| **Grade Node**       | ~1.5s (LLM relevance scoring)  |
+| **Generate Node**    | ~2.5s (LLM answer generation)  |
+| **Total End-to-End** | ~4.5s (full RAG pipeline)      |
+| **Token Usage**      | 1,569 tokens (~$0.002/request) |
 
 ---
 
 ### Files Summary
 
-| File | Lines | Type |
-|------|-------|------|
-| `backend/app/agents/__init__.py` | 20 | Created |
-| `backend/app/agents/state.py` | 100 | Created |
-| `backend/app/agents/graph.py` | 520 | Created |
-| `backend/app/routers/agent.py` | 280 | Created |
-| `backend/app/setup/service_initializer.py` | +28 | Modified |
-| `backend/app/setup/router_registration.py` | +2 | Modified |
-| `backend/middleware/hybrid_auth.py` | +1 | Modified |
-| `docs/LANGGRAPH_AGENTIC_LAYER.md` | 1,500+ | Created |
-| `docs/LANGGRAPH_DEPLOYMENT_SUMMARY.md` | 700+ | Created |
-| `backend/tests/manual_test_agent.py` | 400+ | Created |
+| File                                       | Lines  | Type     |
+| ------------------------------------------ | ------ | -------- |
+| `backend/app/agents/__init__.py`           | 20     | Created  |
+| `backend/app/agents/state.py`              | 100    | Created  |
+| `backend/app/agents/graph.py`              | 520    | Created  |
+| `backend/app/routers/agent.py`             | 280    | Created  |
+| `backend/app/setup/service_initializer.py` | +28    | Modified |
+| `backend/app/setup/router_registration.py` | +2     | Modified |
+| `backend/middleware/hybrid_auth.py`        | +1     | Modified |
+| `docs/LANGGRAPH_AGENTIC_LAYER.md`          | 1,500+ | Created  |
+| `docs/LANGGRAPH_DEPLOYMENT_SUMMARY.md`     | 700+   | Created  |
+| `backend/tests/manual_test_agent.py`       | 400+   | Created  |
 
 **Total:** 10 files, 2,850+ lines added
 
@@ -328,16 +348,19 @@ curl https://nuzantara-rag.fly.dev/api/agent/health
 ### Next Steps (Recommended)
 
 **Priority 1: Monitoring**
+
 - Add Grafana dashboard for agent metrics
 - Prometheus metrics: requests/min, success rate, latency
 - Sentry integration for error tracking
 
 **Priority 2: Advanced Features**
+
 - Streaming support (SSE endpoint)
 - Checkpointing (state persistence)
 - Human-in-the-loop (approval step)
 
 **Priority 3: Performance**
+
 - Parallel execution (retrieve + grading)
 - Redis caching (frequent questions)
 - Model selection (tier-based)
@@ -360,20 +383,21 @@ FAQ caching system deployment caused production crash with child process death l
 
 **Binary Search Investigation (3.5 hours, 8 deployments):**
 
-| Test | Component | Result | Version |
-|------|-----------|--------|---------|
-| Baseline | Modern lifespan only | ✅ STABLE | v1960 |
-| STEP 1 | Redis import test | ✅ SUCCESS | v1971 |
-| STEP 2 | Prometheus metrics | ✅ SUCCESS | v1973 |
-| STEP 3A | orchestrator.py + metrics | ✅ SUCCESS | v1975 |
-| STEP 3B | orchestrator_core.py | ✅ SUCCESS | v1976 |
-| FULL | Complete FAQ cache | ❌ CRASH | v1977 |
-| Fix Attempt | Remove get_stats() | ❌ CRASH | v1979 |
-| Rollback | Stable base | ✅ RESTORED | v1982 |
+| Test        | Component                 | Result      | Version |
+| ----------- | ------------------------- | ----------- | ------- |
+| Baseline    | Modern lifespan only      | ✅ STABLE   | v1960   |
+| STEP 1      | Redis import test         | ✅ SUCCESS  | v1971   |
+| STEP 2      | Prometheus metrics        | ✅ SUCCESS  | v1973   |
+| STEP 3A     | orchestrator.py + metrics | ✅ SUCCESS  | v1975   |
+| STEP 3B     | orchestrator_core.py      | ✅ SUCCESS  | v1976   |
+| FULL        | Complete FAQ cache        | ❌ CRASH    | v1977   |
+| Fix Attempt | Remove get_stats()        | ❌ CRASH    | v1979   |
+| Rollback    | Stable base               | ✅ RESTORED | v1982   |
 
 **Root Cause:** Bug is in `NotebookLMCacheService` initialization (`service_initializer.py:544-554`), NOT in orchestrator code or metrics.
 
 **Symptoms:**
+
 - Child process crash loop (5-second intervals)
 - No Python tracebacks visible (suggests import-time or very early crash)
 - Health check status: 1 critical
@@ -382,11 +406,13 @@ FAQ caching system deployment caused production crash with child process death l
 Removed blocking `await cache_service.get_stats()` call (hypothesis: Redis scan_iter blocks startup) → Still crashed
 
 **Production Recovery:**
+
 - Emergency rollback to `8ab496211` (modern lifespan, no FAQ cache)
 - Status: ✅ HEALTHY (v1982, 1 passing health check)
 - Downtime: ~15 minutes (during investigation)
 
 **Next Steps:**
+
 1. Isolate cache service testing (outside FastAPI context)
 2. Add extensive debug logging to NotebookLMCacheService
 3. Verify Redis connection string format and accessibility
@@ -395,6 +421,7 @@ Removed blocking `await cache_service.get_stats()` call (hypothesis: Redis scan_
 **Documentation:** `docs/FAQ_CACHE_INVESTIGATION_2026_02_12.md` (527 lines)
 
 **Key Learnings:**
+
 - Binary search effective for isolating complex bugs
 - Import-time crashes leave no Python tracebacks
 - Quick rollback discipline prevented extended outage

@@ -100,14 +100,14 @@ cd /Users/antonellosiano/Projects/nuzantara
 
    ```yaml
    rule_files:
-     - 'config/prometheus/article_composer_alerts.yml'
+     - "config/prometheus/article_composer_alerts.yml"
 
    scrape_configs:
-     - job_name: 'nuzantara-rag'
+     - job_name: "nuzantara-rag"
        scheme: https
        static_configs:
-         - targets: ['nuzantara-rag.fly.dev']
-       metrics_path: '/metrics'
+         - targets: ["nuzantara-rag.fly.dev"]
+       metrics_path: "/metrics"
    ```
 
 3. **Verificare syntax:**
@@ -146,7 +146,7 @@ cd /Users/antonellosiano/Projects/nuzantara
 3. **Aggiornare prometheus.yml:**
    ```yaml
    rule_files:
-     - '/etc/prometheus/rules/article_composer_alerts.yml'
+     - "/etc/prometheus/rules/article_composer_alerts.yml"
    ```
 
 #### Opzione 3: Prometheus su Docker Compose
@@ -160,8 +160,8 @@ services:
       - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - ./config/prometheus/article_composer_alerts.yml:/etc/prometheus/rules/article_composer_alerts.yml
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
 ```
 
 ### Verificare Regole
@@ -213,9 +213,9 @@ curl -X POST \
 apiVersion: 1
 
 providers:
-  - name: 'Article Composer'
+  - name: "Article Composer"
     orgId: 1
-    folder: 'Monitoring'
+    folder: "Monitoring"
     type: file
     disableDeletion: false
     updateIntervalSeconds: 10
@@ -298,7 +298,7 @@ services:
     volumes:
       - ./config/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
     command:
-      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
 ```
 
 ### Configurare Slack
@@ -312,8 +312,8 @@ services:
 2. **Aggiornare alertmanager.yml:**
    ```yaml
    slack_configs:
-     - api_url: 'https://hooks.slack.com/services/YOUR/WEBHOOK/URL'
-       channel: '#alerts-article-composer'
+     - api_url: "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+       channel: "#alerts-article-composer"
    ```
 
 ### Configurare Email
@@ -322,10 +322,10 @@ services:
 
    ```yaml
    global:
-     smtp_smarthost: 'smtp.gmail.com:587'
-     smtp_from: 'alerts@example.com'
-     smtp_auth_username: 'alerts@example.com'
-     smtp_auth_password: 'your_password'
+     smtp_smarthost: "smtp.gmail.com:587"
+     smtp_from: "alerts@example.com"
+     smtp_auth_username: "alerts@example.com"
+     smtp_auth_password: "your_password"
    ```
 
 2. **Per Gmail:**

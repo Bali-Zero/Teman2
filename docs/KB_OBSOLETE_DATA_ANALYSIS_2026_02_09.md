@@ -1,4 +1,5 @@
 # Knowledge Base Obsolete Data Analysis
+
 **Date:** 2026-02-09
 **Status:** ✅ ANALYSIS COMPLETE - CORRECTIONS APPLIED
 **Analyst:** Claude Sonnet 4.5
@@ -10,11 +11,13 @@
 Following the deployment of LangGraph KG implementation, a comprehensive analysis of the Knowledge Base revealed **significant obsolete data** (4-8 years old) across visa/immigration and business registration workflows.
 
 **Impact:**
+
 - ✅ **32 corrections** applied across 3 files
 - ✅ **2 commits** pushed to production
 - ⚠️ **1 tax rate** flagged for manual verification
 
 **Trigger:** User discovered obsolete visa procedures in browser testing:
+
 - "VITAS 211 non esiste da 4 anni" (VITAS 211 doesn't exist for 4 years)
 - "rptka non si applica in oss" (RPTKA not applied via OSS)
 - "non si fa piu il telex (vai in embassy) da 8 anni" (telex/embassy obsolete 8 years)
@@ -23,13 +26,13 @@ Following the deployment of LangGraph KG implementation, a comprehensive analysi
 
 ## Files Analyzed
 
-| File | Status | Issues Found | Corrections |
-|------|--------|--------------|-------------|
-| **kg_subgraph_visa.py** | ✅ FIXED | 3 major obsolete procedures | Commit 703b2484 |
+| File                         | Status   | Issues Found                            | Corrections     |
+| ---------------------------- | -------- | --------------------------------------- | --------------- |
+| **kg_subgraph_visa.py**      | ✅ FIXED | 3 major obsolete procedures             | Commit 703b2484 |
 | **kg_enhanced_retrieval.py** | ✅ FIXED | 29 obsolete references in golden routes | Commit 23b33830 |
-| **kg_subgraph_tax.py** | ⚠️ TODO | 1 potential outdated tax rate | Commit 00394944 |
-| **kg_subgraph_company.py** | ✅ OK | No obsolete data found | - |
-| **kg_subgraph_property.py** | ✅ OK | No obsolete data found | - |
+| **kg_subgraph_tax.py**       | ⚠️ TODO  | 1 potential outdated tax rate           | Commit 00394944 |
+| **kg_subgraph_company.py**   | ✅ OK    | No obsolete data found                  | -               |
+| **kg_subgraph_property.py**  | ✅ OK    | No obsolete data found                  | -               |
 
 ---
 
@@ -42,7 +45,9 @@ Following the deployment of LangGraph KG implementation, a comprehensive analysi
 ### Obsolete References Found:
 
 #### 1. VITAS 211/212 (OBSOLETE - 4 years)
+
 **Before:**
+
 ```python
 "documents": [
     "VITAS (211/212)",  # ❌ Obsolete terminology
@@ -52,6 +57,7 @@ Following the deployment of LangGraph KG implementation, a comprehensive analysi
 ```
 
 **After:**
+
 ```python
 "documents": [
     "E-Visa approval",  # ✅ Current (2026)
@@ -65,7 +71,9 @@ Following the deployment of LangGraph KG implementation, a comprehensive analysi
 ---
 
 #### 2. RPTKA via OSS (OBSOLETE - 6+ years)
+
 **Before:**
+
 ```python
 "steps": [
     "Submit RPTKA application via OSS",  # ❌ Wrong system
@@ -73,6 +81,7 @@ Following the deployment of LangGraph KG implementation, a comprehensive analysi
 ```
 
 **After:**
+
 ```python
 "steps": [
     "Submit TKA allocation quota application to Kementerian Ketenagakerjaan",
@@ -85,7 +94,9 @@ Following the deployment of LangGraph KG implementation, a comprehensive analysi
 ---
 
 #### 3. Embassy/Telex System (OBSOLETE - 8 years)
+
 **Before:**
+
 ```python
 "details": {
     "location": "Indonesian embassy in home country",  # ❌ Obsolete process
@@ -93,6 +104,7 @@ Following the deployment of LangGraph KG implementation, a comprehensive analysi
 ```
 
 **After:**
+
 ```python
 "details": {
     "system": "Online application via immigration portal",  # ✅ Current
@@ -113,18 +125,18 @@ Following the deployment of LangGraph KG implementation, a comprehensive analysi
 
 #### A. Visa/Immigration Routes (10 routes, 19 corrections)
 
-| Route ID | Corrections | Key Changes |
-|----------|-------------|-------------|
-| `kitas_work` | 3 | RPTKA→IMTA/SPKP, VITAS→E-Visa, embassy→online |
-| `hire_foreign_worker` | 3 | RPTKA→IMTA, VITAS→E-Visa, IMTA validity not RPTKA |
-| `investor_kitas_retirement` | 2 | VITAS→E-Visa, RPTKA→IMTA approval |
-| `restaurant_foreigner` | 2 | RPTKA→IMTA/SPKP, E-Visa online |
-| `visa_pre_investment_d12` | 1 | embassy or e-Visa → e-Visa online |
-| `visa_digital_nomad_e33g` | 1 | VITAS→E-Visa |
-| `visa_spouse_family_e31` | 1 | VITAS→E-Visa |
-| `visa_retirement_e33e` | 1 | VITAS→E-Visa |
-| `visa_second_home` | 1 | embassy or e-Visa → e-Visa online |
-| `visa_performing_event_c7_c10_c11` | 1 | embassy or e-Visa → e-Visa online |
+| Route ID                           | Corrections | Key Changes                                       |
+| ---------------------------------- | ----------- | ------------------------------------------------- |
+| `kitas_work`                       | 3           | RPTKA→IMTA/SPKP, VITAS→E-Visa, embassy→online     |
+| `hire_foreign_worker`              | 3           | RPTKA→IMTA, VITAS→E-Visa, IMTA validity not RPTKA |
+| `investor_kitas_retirement`        | 2           | VITAS→E-Visa, RPTKA→IMTA approval                 |
+| `restaurant_foreigner`             | 2           | RPTKA→IMTA/SPKP, E-Visa online                    |
+| `visa_pre_investment_d12`          | 1           | embassy or e-Visa → e-Visa online                 |
+| `visa_digital_nomad_e33g`          | 1           | VITAS→E-Visa                                      |
+| `visa_spouse_family_e31`           | 1           | VITAS→E-Visa                                      |
+| `visa_retirement_e33e`             | 1           | VITAS→E-Visa                                      |
+| `visa_second_home`                 | 1           | embassy or e-Visa → e-Visa online                 |
+| `visa_performing_event_c7_c10_c11` | 1           | embassy or e-Visa → e-Visa online                 |
 
 **Pattern:** All visa routes now prioritize **E-Visa online application** over embassy visits.
 
@@ -132,17 +144,17 @@ Following the deployment of LangGraph KG implementation, a comprehensive analysi
 
 #### B. Business Registration Routes (8 routes, 13 corrections)
 
-| Route ID | Corrections | Key Changes |
-|----------|-------------|-------------|
-| `pt_pma_setup` | 1 | OSS RBA → OSS (Online Single Submission) |
-| `nib_oss` | 1 | OSS RBA → OSS |
-| `restaurant_foreigner` | 2 | OSS RBA → OSS |
-| `import_export_business` | 1 | OSS RBA → OSS |
-| `tech_company_digital` | 1 | OSS RBA → OSS |
-| `villa_rental_business` | 1 | OSS RBA → OSS |
-| `hotel_business` | 1 | OSS RBA → OSS |
-| `real_estate_developer` | 1 | OSS RBA → OSS |
-| `property_management` | 1 | OSS RBA → OSS |
+| Route ID                 | Corrections | Key Changes                              |
+| ------------------------ | ----------- | ---------------------------------------- |
+| `pt_pma_setup`           | 1           | OSS RBA → OSS (Online Single Submission) |
+| `nib_oss`                | 1           | OSS RBA → OSS                            |
+| `restaurant_foreigner`   | 2           | OSS RBA → OSS                            |
+| `import_export_business` | 1           | OSS RBA → OSS                            |
+| `tech_company_digital`   | 1           | OSS RBA → OSS                            |
+| `villa_rental_business`  | 1           | OSS RBA → OSS                            |
+| `hotel_business`         | 1           | OSS RBA → OSS                            |
+| `real_estate_developer`  | 1           | OSS RBA → OSS                            |
+| `property_management`    | 1           | OSS RBA → OSS                            |
 
 **Pattern:** Removed "RBA" (Risk-Based Approach) qualifier from OSS references. "RBA" may have been a specific implementation phase that's no longer emphasized; simplified to just "OSS (Online Single Submission)" for consistency with company subgraph.
 
@@ -153,6 +165,7 @@ Following the deployment of LangGraph KG implementation, a comprehensive analysi
 **Decision:** ✅ Kept `"rptka"` in `ROUTE_KEYWORDS` section (line 942)
 
 **Reason:**
+
 - Keywords are for **search matching**, not workflows
 - Users may still search using old terminology ("rptka")
 - Keyword will route them to **corrected workflow** with IMTA/SPKP
@@ -169,6 +182,7 @@ Following the deployment of LangGraph KG implementation, a comprehensive analysi
 ### Potential Outdated Tax Rate
 
 **Current Code:**
+
 ```python
 "ppn": {
     "rate": 0.11,  # 11% VAT (effective 2022)
@@ -180,11 +194,13 @@ vat_payable = revenue * 0.11  # Hardcoded 11%
 ```
 
 **Issue:**
+
 - Indonesian PPN was **11%** from April 2022
 - Was planned to increase to **12%** on January 1, 2025
 - **For 2026**, rate needs official verification
 
 **Action Taken:**
+
 ```python
 # TODO: VERIFY PPN RATE FOR 2026 - Was 11% in 2022-2024, planned increase to 12% in Jan 2025
 # Current rate needs verification from official sources (Direktorat Jenderal Pajak)
@@ -192,11 +208,13 @@ vat_payable = revenue * 0.11  # Hardcoded 11%
 ```
 
 **Why TODO Instead of Direct Fix:**
+
 - Tax rates are **legal/financial data** requiring official verification
 - Incorrect rates could lead to wrong client advice
 - Better to flag for **manual verification** than make assumptions
 
 **Next Steps:**
+
 1. Verify current PPN rate from [djp.go.id](https://www.djp.go.id)
 2. Update rate if confirmed at 12%
 3. Consider dynamic tax rate lookup from authoritative API
@@ -212,14 +230,16 @@ vat_payable = revenue * 0.11  # Hardcoded 11%
 **Example Query:** "Come funziona il KITAS per lavoro?"
 
 **LangGraph Output (Before Fix):**
+
 ```markdown
 SUGGESTED WORKFLOW:
 Step 1: Apply for RPTKA (foreign worker plan)
-Step 2: Apply for VITAS at Indonesian embassy  ❌ OBSOLETE
+Step 2: Apply for VITAS at Indonesian embassy ❌ OBSOLETE
 Step 3: Enter Indonesia and convert VITAS to KITAS
 ```
 
 **User Feedback:**
+
 - "visa 211 non esiste da 4 anni"
 - "rptka non si applica in oss"
 - "non si fa piu il telex (vai in embassy) da 8 anni"
@@ -229,6 +249,7 @@ Step 3: Enter Indonesia and convert VITAS to KITAS
 ### Post-Correction Verification
 
 **Grep Verification:**
+
 ```bash
 # ✅ No "VITAS at Indonesian embassy" references remain
 grep -r "VITAS at Indonesian embassy" apps/backend-rag/backend/services/rag/
@@ -246,11 +267,12 @@ grep -r "IMTA via SPKP" apps/backend-rag/backend/services/rag/
 ```
 
 **Expected Browser Output (After Fix):**
+
 ```markdown
 SUGGESTED WORKFLOW:
-Step 1: Apply for TKA allocation quota and IMTA via SPKP system  ✅ CURRENT
-Step 2: Apply for E-Visa online via imigrasi.go.id  ✅ CURRENT
-Step 3: Enter Indonesia with approved visa  ✅ CURRENT
+Step 1: Apply for TKA allocation quota and IMTA via SPKP system ✅ CURRENT
+Step 2: Apply for E-Visa online via imigrasi.go.id ✅ CURRENT
+Step 3: Enter Indonesia with approved visa ✅ CURRENT
 ```
 
 ---
@@ -260,16 +282,19 @@ Step 3: Enter Indonesia with approved visa  ✅ CURRENT
 ### How Did Obsolete Data Enter the KB?
 
 **1. Gemini API Extraction (37M calls, €230 EUR)**
+
 - KG built from **source documents** (legal PDFs, regulations)
 - Source documents may have been from 2018-2020 (pre-E-Visa era)
 - Gemini extracted entities/relationships **as written**, without fact-checking
 
 **2. Hardcoded Workflows in Subgraphs**
+
 - Domain-specific subgraphs (Phase 3) hardcoded workflows based on **known patterns**
 - Patterns may have come from older knowledge or outdated sources
 - No automated fact-checking or recency verification
 
 **3. Golden Routes from Historic Data**
+
 - Golden routes in `kg_enhanced_retrieval.py` likely copied from older documentation
 - 18 routes, some dating back to 2018 (e.g., VITAS 211 system)
 
@@ -278,12 +303,14 @@ Step 3: Enter Indonesia with approved visa  ✅ CURRENT
 ### Why Wasn't This Caught Earlier?
 
 **Lack of Validation:**
+
 - ❌ No timestamp or last_updated_at on KG nodes
 - ❌ No automated recency checks
 - ❌ No comparison against authoritative sources (e.g., imigrasi.go.id APIs)
 - ❌ No user feedback loop during ingestion
 
 **Manual Testing Required:**
+
 - ✅ User browser testing revealed issues
 - ✅ Domain expert (user) flagged obsolete procedures
 
@@ -294,16 +321,19 @@ Step 3: Enter Indonesia with approved visa  ✅ CURRENT
 ### Priority 1: Prevent Future Obsolescence
 
 **1. Add Timestamps to KG Nodes**
+
 ```sql
 ALTER TABLE kg_nodes ADD COLUMN last_verified_at TIMESTAMP;
 ALTER TABLE kg_nodes ADD COLUMN source_document_date DATE;
 ```
 
 **2. Automated Recency Checks**
+
 - Flag entities older than 2 years for review
 - Periodic re-validation against official sources
 
 **3. User Feedback Loop**
+
 - "Report Incorrect Information" button in chat UI
 - Feedback collected → flagged entities for review
 
@@ -312,14 +342,17 @@ ALTER TABLE kg_nodes ADD COLUMN source_document_date DATE;
 ### Priority 2: Dynamic Data Sources
 
 **Tax Rates:**
+
 - Integrate with Direktorat Jenderal Pajak API (if available)
 - Or: Monthly manual verification + update script
 
 **Immigration Procedures:**
+
 - Scrape imigrasi.go.id for latest procedures
 - Or: Quarterly manual review by domain expert
 
 **Business Registration:**
+
 - Monitor OSS portal for system changes
 - Quarterly review of NIB/licensing processes
 
@@ -328,10 +361,12 @@ ALTER TABLE kg_nodes ADD COLUMN source_document_date DATE;
 ### Priority 3: Confidence Scoring Enhancements
 
 **Current Issue:**
+
 - All KG nodes have `confidence = 0.9` HARDCODED
 - No differentiation between single-source vs multi-source entities
 
 **Proposed:**
+
 ```python
 def calculate_confidence(entity):
     base = 0.5
@@ -342,6 +377,7 @@ def calculate_confidence(entity):
 ```
 
 **Benefit:**
+
 - Workflows built from high-confidence entities are more reliable
 - Low-confidence entities trigger "da verificare" responses
 
@@ -350,11 +386,13 @@ def calculate_confidence(entity):
 ### Priority 4: Versioned Knowledge Base
 
 **Concept:**
+
 - Tag KG snapshots with version (e.g., `v2024-01`, `v2026-02`)
 - Allow rollback to previous version if new version has issues
 - Diff tool to compare versions and see what changed
 
 **Implementation:**
+
 ```sql
 CREATE TABLE kg_versions (
     version_id UUID PRIMARY KEY,
@@ -366,6 +404,7 @@ CREATE TABLE kg_versions (
 ```
 
 **Benefit:**
+
 - Audit trail of knowledge changes
 - Rollback capability if errors introduced
 
@@ -379,14 +418,14 @@ CREATE TABLE kg_versions (
 **Commits:** 3
 **Total Corrections:** 32
 
-| Metric | Count |
-|--------|-------|
-| **Obsolete visa procedures corrected** | 19 |
-| **Obsolete business registration refs corrected** | 13 |
-| **Tax rates flagged for verification** | 1 |
-| **Golden routes updated** | 18 |
-| **Visa subgraph workflows fixed** | 4 |
-| **Lines changed** | ~70 |
+| Metric                                            | Count |
+| ------------------------------------------------- | ----- |
+| **Obsolete visa procedures corrected**            | 19    |
+| **Obsolete business registration refs corrected** | 13    |
+| **Tax rates flagged for verification**            | 1     |
+| **Golden routes updated**                         | 18    |
+| **Visa subgraph workflows fixed**                 | 4     |
+| **Lines changed**                                 | ~70   |
 
 ---
 
@@ -409,6 +448,7 @@ CREATE TABLE kg_versions (
 **Why:** Indonesian regulations change frequently (new systems, new procedures).
 
 **Solution:**
+
 - Dynamic workflows from database (not hardcoded)
 - Regular ingestion of official sources
 - Automated staleness detection
@@ -422,6 +462,7 @@ CREATE TABLE kg_versions (
 **Why:** Unit tests verify **code logic**, not **data accuracy**.
 
 **Solution:**
+
 - "Report Issue" button in chat UI
 - User feedback → priority queue for KB review
 - Monthly review of reported issues
@@ -435,6 +476,7 @@ CREATE TABLE kg_versions (
 **Why:** Learning curve for new systems takes years.
 
 **Solution:**
+
 - Keep old terms in **search keywords** (for matching)
 - Route to **corrected workflows** (with new terminology)
 - Educate users: "RPTKA is now called IMTA" in response
@@ -446,6 +488,7 @@ CREATE TABLE kg_versions (
 **Status:** ✅ ALL CORRECTIONS DEPLOYED
 
 **Commits Pushed:**
+
 1. `703b24845` - Visa subgraph corrections (2026-02-09)
 2. `23b33830a` - Golden routes corrections (2026-02-09)
 3. `00394944c` - Tax rate TODO (2026-02-09)
@@ -454,6 +497,7 @@ CREATE TABLE kg_versions (
 **Deployed to:** Fly.io nuzantara-rag (2 machines, Singapore)
 
 **Verification:**
+
 ```bash
 # Deployed version
 fly status -a nuzantara-rag
@@ -469,16 +513,19 @@ curl https://nuzantara-rag.fly.dev/health
 ## Next Actions
 
 **Immediate (This Week):**
+
 - [ ] Verify PPN rate for 2026 from djp.go.id → Update if 12%
 - [ ] Test corrected workflows in browser (all 18 golden routes)
 - [ ] Document testing results in follow-up session notes
 
 **Short-Term (This Month):**
+
 - [ ] Add last_verified_at column to kg_nodes
 - [ ] Create automated staleness detection script
 - [ ] Quarterly KB review schedule with domain experts
 
 **Long-Term (This Quarter):**
+
 - [ ] Implement confidence scoring (multi-source boost)
 - [ ] "Report Issue" button in chat UI
 - [ ] Integrate with official APIs (djp.go.id, imigrasi.go.id)
@@ -522,6 +569,7 @@ curl https://nuzantara-rag.fly.dev/health
 **Root Cause:** Regulatory reforms simplify permit naming.
 
 **Solution:**
+
 - Track permit name changes in changelog
 - Maintain synonym mappings (old term → new term)
 
@@ -534,6 +582,7 @@ curl https://nuzantara-rag.fly.dev/health
 **Root Cause:** Periodic tax reforms (every 3-5 years).
 
 **Solution:**
+
 - Subscribe to tax authority newsletters
 - Automated checks against official rate tables
 - Dynamic rate lookup instead of hardcoding

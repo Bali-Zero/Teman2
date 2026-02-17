@@ -9,36 +9,42 @@
 ## 👥 Team Roles & Responsabilità
 
 ### Person 1: **VISA SPECIALIST**
+
 - **Focus:** Tutti i visa types + Kemnaker job positions
 - **Target:** 100-120 domande basic
 - **Notebook:** "Nuzantara - Visa & Immigration"
 - **Directory:** `data/notebooklm_responses/visa/`
 
 ### Person 2: **KBLI SPECIALIST**
+
 - **Focus:** KBLI codes (priorità Tier 1 granitici) + business licenses
 - **Target:** 150-200 domande basic
 - **Notebook:** "Nuzantara - KBLI & Licensing"
 - **Directory:** `data/notebooklm_responses/kbli/`
 
 ### Person 3: **TAX SPECIALIST**
+
 - **Focus:** Tutti i tax types (PPh, PPN, treaties)
 - **Target:** 40-50 domande basic
 - **Notebook:** "Nuzantara - Tax & Compliance"
 - **Directory:** `data/notebooklm_responses/tax/`
 
 ### Person 4: **PROPERTY SPECIALIST**
+
 - **Focus:** Property titles + foreign ownership rules
 - **Target:** 30-40 domande basic
 - **Notebook:** "Nuzantara - Property & Real Estate"
 - **Directory:** `data/notebooklm_responses/property/`
 
 ### Person 5: **CROSS-DOMAIN COORDINATOR**
+
 - **Focus:** Scenari 2-topic (company+visa, visa+property, etc.)
 - **Target:** 100-150 domande level 2
 - **Notebook:** "Nuzantara - Cross Domain Level 2"
 - **Directory:** `data/notebooklm_responses/cross_domain/`
 
 ### Person 6: **SOTA ARCHITECT**
+
 - **Focus:** Scenari multi-domain complessi (3+ topics)
 - **Target:** 50-80 domande level 3
 - **Notebook:** "Nuzantara - Multi-Domain SOTA"
@@ -142,17 +148,20 @@ Ogni persona mantiene `PROGRESS.md`:
 **Pending:** 65
 
 ## Completed (45)
+
 - [x] 001_kitas_investor.txt
 - [x] 002_kitas_work.txt
 - [x] 003_e33g_digital_nomad.txt
-...
+      ...
 
 ## In Progress (10)
+
 - [ ] 046_kemnaker_job_software_engineer.txt
 - [ ] 047_kemnaker_job_chef.txt
-...
+      ...
 
 ## Issues / Notes
+
 - KITAS renewal process: NotebookLM cita PP 31/2013, verificare aggiornamenti 2024
 - E-Visa timeline: risposta vaga "7-14 giorni", chiedere more specific
 ```
@@ -162,11 +171,13 @@ Ogni persona mantiene `PROGRESS.md`:
 ## 📚 Documenti per NotebookLM (per dominio)
 
 **STRATEGIA HYBRID (RACCOMANDATO):**
+
 - **KBLI domain (Person 2):** Use PDFs già pronti in `data/kb_sources/` ✅
 - **Altri domains (Person 1, 3, 4):** Use NotebookLM general knowledge + regulation citations
 - **Cross/Multi-domain (Person 5, 6):** Combina PDFs KBLI + general knowledge altri domini
 
 **Perché hybrid?**
+
 - KBLI specialist può iniziare SUBITO con documenti completi
 - Altri specialists non bloccati cercando PDFs
 - NotebookLM general knowledge è accurata se specifichi regulation numbers
@@ -187,6 +198,7 @@ spiega cos'è KITAS Investor e requisiti completi..."
 ```
 
 **Optional PDFs** (se disponibili):
+
 - PP 31/2013 (Immigration Law)
 - Permenkumham 28/2024 (E-Visa)
 - PP 34/2021 (IMTA/Work Permits)
@@ -239,11 +251,13 @@ spiega aliquota PPh Badan per PT PMA..."
 ```
 
 **CRITICAL:** Sempre verificare:
+
 - PPN rate: 11% (NOT 12%)
 - PPh Badan: 22%
 - Cite UU 7/2021 in ogni risposta
 
 **Optional PDFs** (se disponibili):
+
 - UU 7/2021 (Tax Harmonization)
 - PP 55/2022 (Income Tax)
 - DJP Guidelines 2024-2025
@@ -261,12 +275,14 @@ spiega requisiti per stranieri comprare property..."
 ```
 
 **CRITICAL:** Sempre menzionare:
+
 - Hak Pakai (foreigners) vs Hak Milik (Indonesians only)
 - KITAS requirement
 - Provincial minimums (Bali Rp 1-2B, Jakarta Rp 3-5B)
 - Nominee risks (ILLEGAL)
 
 **Optional PDFs** (se disponibili):
+
 - PP 18/2021 (Hak Pakai)
 - UUPA (Agrarian Law 1960)
 
@@ -418,11 +434,13 @@ python scripts/caching/consolidate_team_responses.py \
 ## 🎯 Success Metrics
 
 **Per Person:**
+
 - [ ] 100% domande assegnate completate
 - [ ] 90%+ pass quality self-check
 - [ ] `PROGRESS.md` aggiornato daily
 
 **Per Team:**
+
 - [ ] 500-800 responses totali
 - [ ] 80%+ Damar validation pass rate
 - [ ] Timeline: 2-3 settimane
@@ -432,10 +450,12 @@ python scripts/caching/consolidate_team_responses.py \
 ## 📞 Team Communication
 
 **Daily Standup (15 min):**
+
 - Ognuno: "Ieri: X done, Oggi: Y planned, Issues: Z"
 - Sync su cross-domain dependencies
 
 **Weekly Review:**
+
 - Quality check campione casuale (10%)
 - Adjust templates se needed
 - Celebrate progress! 🎉

@@ -3,7 +3,7 @@
  * Strips logs in production
  */
 
-const isProduction = process.env.NODE_ENV === 'production';
+const isProduction = process.env.NODE_ENV === "production";
 
 /**
  * Development-only log
@@ -38,9 +38,12 @@ export function error(message: string, ...args: unknown[]): void {
  */
 export function createLogger(namespace: string) {
   return {
-    debug: (msg: string, ...args: unknown[]) => debug(`[${namespace}] ${msg}`, ...args),
-    warn: (msg: string, ...args: unknown[]) => warn(`[${namespace}] ${msg}`, ...args),
-    error: (msg: string, ...args: unknown[]) => error(`[${namespace}] ${msg}`, ...args),
+    debug: (msg: string, ...args: unknown[]) =>
+      debug(`[${namespace}] ${msg}`, ...args),
+    warn: (msg: string, ...args: unknown[]) =>
+      warn(`[${namespace}] ${msg}`, ...args),
+    error: (msg: string, ...args: unknown[]) =>
+      error(`[${namespace}] ${msg}`, ...args),
   };
 }
 
@@ -48,7 +51,7 @@ export function createLogger(namespace: string) {
  * Strip console in production
  */
 export function stripConsoleInProduction(): void {
-  if (isProduction && typeof window !== 'undefined') {
+  if (isProduction && typeof window !== "undefined") {
     // eslint-disable-next-line @typescript-eslint/no-empty-function
     const noop = () => {};
     console.log = noop;
@@ -58,7 +61,7 @@ export function stripConsoleInProduction(): void {
     // Keep error but with prefix
     const originalError = console.error;
     console.error = (...args: unknown[]) => {
-      originalError('[Dashboard Error]', ...args);
+      originalError("[Dashboard Error]", ...args);
     };
   }
 }

@@ -10,15 +10,19 @@
 ## 🎯 PRIORITY STRUCTURE
 
 ### Tier 1: GRANITICI (100 domande) ⭐ START HERE
+
 KBLI codes con PMA status confermato al 100%
 
 ### Tier 2: IN ATTESA BKPM (50 domande)
+
 KBLI codes pending clarification - usa disclaimer
 
 ### Tier 3: VIETATI DNI (20 domande)
+
 Negative Investment List - documenta restrictions
 
 ### Business Licenses (30 domande)
+
 Health, construction, environmental, food safety, etc.
 
 ---
@@ -28,6 +32,7 @@ Health, construction, environmental, food safety, etc.
 ### Food & Beverage (15 domande)
 
 #### 001_kbli_56101_restaurant
+
 ```
 KBLI 56101 - Ristorante: PMA allowed? Requirements?
 
@@ -64,6 +69,7 @@ Lunghezza: 400-500 parole.
 ```
 
 #### 002_kbli_56210_catering
+
 ```
 KBLI 56210 - Catering Service: PMA status e requirements?
 
@@ -75,6 +81,7 @@ Domanda aggiuntiva:
 ```
 
 #### 003_kbli_56301_coffee_shop
+
 ```
 KBLI 56301 - Coffee Shop/Café: PMA allowed?
 
@@ -88,6 +95,7 @@ KBLI 56301 - Coffee Shop/Café: PMA allowed?
 ### Technology & IT (20 domande)
 
 #### 016_kbli_62010_software_development
+
 ```
 KBLI 62010 - Software Development: PMA 100% allowed?
 
@@ -121,6 +129,7 @@ Lunghezza: 400-500 parole.
 ```
 
 #### 017_kbli_62020_it_consulting
+
 ```
 KBLI 62020 - IT Consulting & Management: PMA status?
 
@@ -134,6 +143,7 @@ KBLI 62020 - IT Consulting & Management: PMA status?
 ### Real Estate & Property (15 domande)
 
 #### 036_kbli_68100_real_estate_leasing
+
 ```
 KBLI 68100 - Real Estate Leasing/Rental: PMA allowed?
 
@@ -168,6 +178,7 @@ Lunghezza: 400-500 parole.
 ### Retail & Wholesale (10 domande)
 
 #### 051_kbli_47xxx_retail_restrictions
+
 ```
 KBLI 47xxx - Retail: Quali codes permettono PMA?
 
@@ -198,6 +209,7 @@ Lunghezza: 300-400 parole.
 ### Hospitality & Tourism (15 domande)
 
 #### 061_kbli_55101_hotel_business
+
 ```
 KBLI 55101 - Hotel Business: PMA requirements?
 
@@ -277,6 +289,7 @@ Data ultimo aggiornamento: [DATE]
 ### Tier 2 Examples:
 
 #### 101_kbli_68210_real_estate_developer_tier2
+
 ```
 KBLI 68210 - Real Estate Developer: PMA status?
 
@@ -299,6 +312,7 @@ Cita PP 28/2025 limitations se disponibili.
 ### Template per DNI (Negative Investment List):
 
 #### 151_kbli_DNI_small_retail
+
 ```
 Perché small-scale retail è vietato (DNI) per stranieri?
 
@@ -337,6 +351,7 @@ Lunghezza: 300-400 parole.
 ### Health Permits (5 domande)
 
 #### 171_health_permit_dinkes
+
 ```
 Health Permit (Izin Kesehatan Dinkes) per F&B business?
 
@@ -359,6 +374,7 @@ Lunghezza: 250-350 parole.
 ### Construction Permits (5 domande)
 
 #### 176_imb_building_permit
+
 ```
 IMB (Izin Mendirikan Bangunan) - Building Permit process?
 
@@ -381,6 +397,7 @@ Lunghezza: 300-400 parole.
 ### Environmental Permits (5 domande)
 
 #### 181_amdal_environmental
+
 ```
 AMDAL (Environmental Impact Analysis) - quando richiesto?
 
@@ -403,6 +420,7 @@ Lunghezza: 300-400 parole.
 ### Food Safety (5 domande)
 
 #### 186_bpom_registration
+
 ```
 BPOM (Food Safety Registration) per food products?
 
@@ -425,6 +443,7 @@ Lunghezza: 250-350 parole.
 ### Tourism Licenses (5 domande)
 
 #### 191_tdup_tourism
+
 ```
 TDUP (Tourism Business Registration) process?
 
@@ -458,6 +477,7 @@ Lunghezza: 300-400 parole.
 **Pending:** 200
 
 ### Breakdown:
+
 - [ ] Tier 1 GRANITICI (100) ⭐ START HERE
   - [ ] F&B (15)
   - [ ] Technology (20)

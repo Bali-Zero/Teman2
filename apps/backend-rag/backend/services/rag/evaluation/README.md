@@ -118,30 +118,35 @@ print(f"Best score: {result.comparison['best_overall_score']:.3f}")
 ## RAGAS Metrics
 
 ### 1. Faithfulness (0.0 - 1.0)
+
 Measures whether the answer is grounded in the retrieved context.
 
 - **High score**: Answer contains only facts from context
 - **Low score**: Answer contains hallucinations or unsupported claims
 
 ### 2. Answer Relevance (0.0 - 1.0)
+
 Measures whether the answer addresses the question.
 
 - **High score**: Answer directly addresses the query
 - **Low score**: Answer is off-topic or incomplete
 
 ### 3. Context Precision (0.0 - 1.0)
+
 Measures whether retrieved context is relevant to the question.
 
 - **High score**: All retrieved chunks are relevant
 - **Low score**: Many retrieved chunks are irrelevant
 
 ### 4. Context Recall (0.0 - 1.0)
+
 Measures whether all relevant context was retrieved.
 
 - **High score**: All information needed is in context
 - **Low score**: Important information is missing from context
 
 ### 5. Context Entity Recall (0.0 - 1.0)
+
 Measures whether entities in the answer appear in the context.
 
 - **High score**: All entities are found in context
@@ -175,14 +180,14 @@ from backend.services.rag.evaluation import get_ragas_evaluator
 @router.post("/evaluate")
 async def evaluate_rag(request: EvaluationRequest):
     evaluator = get_ragas_evaluator()
-    
+
     result = await evaluator.evaluate(
         query=request.query,
         context=request.context,
         answer=request.answer,
         ground_truth=request.ground_truth,
     )
-    
+
     return {
         "metrics": result.metrics,
         "overall_score": result.overall_score,
@@ -195,17 +200,17 @@ async def evaluate_rag(request: EvaluationRequest):
 @router.post("/benchmark")
 async def run_benchmark(config: BenchmarkConfig):
     benchmark = RAGBenchmark()
-    
+
     # Load or build dataset
     builder = DatasetBuilder()
     dataset = await builder.build_dataset(target_size=50)
-    
+
     # Run benchmark
     result = await benchmark.run_benchmark(dataset, config)
-    
+
     # Save results
     await benchmark.save_results(result)
-    
+
     return result.to_dict()
 ```
 
@@ -294,16 +299,19 @@ backend/tests/services/rag/evaluation/
 ### Common Issues
 
 **LLM Response Parsing Error**
+
 ```
 Solution: Lower temperature (0.1) for more consistent JSON output
 ```
 
 **Cache Not Working**
+
 ```
 Check: Ensure enable_cache=True and cache_ttl is set correctly
 ```
 
 **Database Connection Error**
+
 ```
 Solution: Verify DATABASE_URL and ensure PostgreSQL is running
 ```
