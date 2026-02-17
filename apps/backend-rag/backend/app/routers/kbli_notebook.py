@@ -408,7 +408,8 @@ KBLI_MASTER_PROMPT = (
     "7. PMA STATUS UNKNOWN: If pma_status is 'Verify at OSS', tell the user to check at oss.go.id/perizinan as status varies by business scale.\n"
     "8. COLLOQUIAL TERMS: Know that 'katering/catering' = jasa boga (KBLI 56210/56290), 'tato/tattoo studio' = perawatan kecantikan (KBLI 96021/96022/96090), "
     "'co-working space' = penyewaan ruang kantor (KBLI 68200/82110), 'mobile app/aplikasi' = aktivitas pemrograman komputer (KBLI 62199/62191), "
-    "'galeri seni/art gallery' = aktivitas kesenian (KBLI 90001/90002/90003), 'fotografer/photography' = aktivitas fotografi (KBLI 74200). "
+    "'galeri seni/art gallery' = aktivitas kesenian (KBLI 90001/90002/90003), 'fotografer/photography' = aktivitas fotografi (KBLI 74200), "
+    "'online retail/e-commerce/toko online/online shop' = perdagangan eceran melalui media internet (KBLI 47911). "
     "If user asks about these, map them to the correct KBLI code in your response."
 )
 
@@ -432,10 +433,12 @@ _TRANSLATE_SYSTEM = (
     "   co-working space → penyewaan ruang kantor\n"
     "   mobile app/aplikasi → pemrograman komputer aplikasi\n"
     "   surf school/sekolah surfing → pendidikan olahraga rekreasi\n"
+    "   online retail/e-commerce/online shop/toko online → perdagangan eceran melalui media internet\n"
+    "   online store/digital retail/internet retail → perdagangan eceran melalui media internet\n"
 )
 
 
-@cached(ttl=604800, prefix="kbli_translate_v6")  # Cache translations for 7 days (v6: known codes + citation fix)
+@cached(ttl=604800, prefix="kbli_translate_v7")  # Cache translations for 7 days (v7: known codes fallback + online retail mapping)
 async def _translate_query_for_kbli(query: str) -> str:
     """Translate any-language query to Indonesian KBLI search terms."""
     try:
@@ -582,6 +585,59 @@ async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]
 # Minimum score threshold for ABSTAIN logic
 MIN_RELEVANCE_SCORE = 0.40  # Results below this score trigger ABSTAIN (lowered from 0.60 to reduce false negatives)
 
+# Hardcoded known KBLI codes not present in Qdrant collection (1,562 points only)
+# Used as synthetic fallback when code lookup fails via both PostgreSQL and Qdrant
+KNOWN_KBLI_CODES: dict[str, dict] = {
+    "47911": {
+        "title": "PERDAGANGAN ECERAN MELALUI MEDIA UNTUK BERBAGAI MACAM BARANG",
+        "description": "Retail trade of various consumer goods via internet or other digital media platforms (e-commerce, online shop). Includes online marketplaces and direct-to-consumer digital retail.",
+        "pma_status": "TERBATAS",
+        "risk_category": "Verify at OSS",
+    },
+    "56101": {
+        "title": "RESTORAN",
+        "description": "Restaurant and food service activities in a permanent building. Includes full-service restaurants, fast food outlets, and cafes with permanent premises.",
+        "pma_status": "TERBATAS",
+        "risk_category": "Verify at OSS",
+    },
+    "56210": {
+        "title": "AKTIVITAS JASA BOGA UNTUK ACARA TERTENTU (EVENT CATERING)",
+        "description": "Food preparation and provision under contract for specific events. Includes wedding catering, corporate event catering, and other occasion-based food services (katering).",
+        "pma_status": "TERBATAS",
+        "risk_category": "Verify at OSS",
+    },
+    "56290": {
+        "title": "AKTIVITAS JASA BOGA LAINNYA",
+        "description": "Other food service and catering activities not elsewhere classified. Includes canteen management, institutional catering, and similar food services.",
+        "pma_status": "TERBATAS",
+        "risk_category": "Verify at OSS",
+    },
+    "74200": {
+        "title": "AKTIVITAS FOTOGRAFI",
+        "description": "Photography services including portrait photography, commercial photography, event photography, and photographic processing. Includes photo studios.",
+        "pma_status": "TERBUKA",
+        "risk_category": "Verify at OSS",
+    },
+    "90001": {
+        "title": "AKTIVITAS SENI PERTUNJUKAN",
+        "description": "Performing arts activities including theater, dance, music concerts, and other live performance arts. Includes production and staging of live performances.",
+        "pma_status": "TERBATAS",
+        "risk_category": "Verify at OSS",
+    },
+    "90002": {
+        "title": "PENGELOLAAN GEDUNG DAN FASILITAS KESENIAN",
+        "description": "Management of arts and cultural facilities including art galleries, concert halls, theaters, and cultural centers.",
+        "pma_status": "TERBATAS",
+        "risk_category": "Verify at OSS",
+    },
+    "96090": {
+        "title": "AKTIVITAS PERAWATAN TUBUH LAINNYA",
+        "description": "Other personal care activities not elsewhere classified. Includes tattoo studios, body piercing, and other personal aesthetic services.",
+        "pma_status": "TERBATAS",
+        "risk_category": "Verify at OSS",
+    },
+}
+
 # Non-business keywords that should trigger helpful redirect
 NON_BUSINESS_KEYWORDS = [
     "kitas", "kitap", "visa", "immigration", "imigrasi", "passport", "paspor",
@@ -661,6 +717,21 @@ async def chat_kbli(
                     risk_category=qdrant_payload.get("kategori_risiko") or "Verify at OSS",
                 )
                 logger.info(f"✅ Found KBLI {code} via Qdrant payload filter: {direct_kbli_match.title}")
+
+        # P1 FIX: If still no direct match, check KNOWN_KBLI_CODES hardcoded fallback
+        if codes_from_query and not direct_kbli_match:
+            code = codes_from_query[0]
+            if code in KNOWN_KBLI_CODES:
+                known = KNOWN_KBLI_CODES[code]
+                direct_kbli_match = KBLISearchResult(
+                    code=code,
+                    title=known["title"],
+                    description=known["description"],
+                    score=1.0,
+                    pma_status=known["pma_status"],
+                    risk_category=known["risk_category"],
+                )
+                logger.info(f"📖 Found KBLI {code} via hardcoded KNOWN_KBLI_CODES: {known['title']}")
 
         
         # Search semantic context with translated query
