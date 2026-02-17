@@ -416,7 +416,11 @@ KBLI_MASTER_PROMPT = (
     "8. COLLOQUIAL TERMS: Know that 'katering/catering' = jasa boga (KBLI 56210/56290), 'tato/tattoo studio' = perawatan kecantikan (KBLI 96021/96022/96090), "
     "'co-working space' = penyewaan ruang kantor (KBLI 68200/82110), 'mobile app/aplikasi' = aktivitas pemrograman komputer (KBLI 62199/62191), "
     "'galeri seni/art gallery' = aktivitas kesenian (KBLI 90001/90002/90003), 'fotografer/photography' = aktivitas fotografi (KBLI 74200), "
-    "'online retail/e-commerce/toko online/online shop' = perdagangan eceran melalui media internet (KBLI 47911). "
+    "'online retail/e-commerce/toko online/online shop' = perdagangan eceran melalui media internet (KBLI 47911), "
+    "'yoga studio/yoga class' = aktivitas kebugaran jasmani (KBLI 93192 or 93199), "
+    "'IT consulting/konsultan IT/software consultant' = aktivitas konsultasi manajemen (KBLI 70209/62099), "
+    "'villa rental/sewa villa' = penyediaan akomodasi jangka pendek (KBLI 55194/55110), "
+    "'travel agency/agen perjalanan/tour operator' = aktivitas agen perjalanan (KBLI 79111/79120). "
     "If user asks about these, map them to the correct KBLI code in your response."
 )
 
@@ -442,10 +446,15 @@ _TRANSLATE_SYSTEM = (
     "   surf school/sekolah surfing → pendidikan olahraga rekreasi\n"
     "   online retail/e-commerce/online shop/toko online → perdagangan eceran melalui media internet\n"
     "   online store/digital retail/internet retail → perdagangan eceran melalui media internet\n"
+    "   yoga studio/yoga class/studio yoga → aktivitas olahraga kebugaran\n"
+    "   IT consulting/IT consultant/konsultan IT → konsultasi manajemen teknologi informasi\n"
+    "   villa rental/sewa villa/penginapan villa → penyediaan akomodasi vila\n"
+    "   travel agency/agen perjalanan/tour operator → agen perjalanan wisata\n"
+    "   coffee shop/café/kafe/kedai kopi → restoran dan kafe\n"
 )
 
 
-@cached(ttl=604800, prefix="kbli_translate_v9")  # Cache translations for 7 days (v9: keyword injection forces single result)
+@cached(ttl=604800, prefix="kbli_translate_v10")  # Cache translations for 7 days (v10: more keyword injections)
 async def _translate_query_for_kbli(query: str) -> str:
     """Translate any-language query to Indonesian KBLI search terms."""
     try:
@@ -516,7 +525,7 @@ def _detect_language(query: str) -> str:
     return "English"
 
 
-@cached(ttl=43200, prefix="kbli_explain_v9")  # Cache explanations for 12 hours (v9: bumped to invalidate stale)
+@cached(ttl=43200, prefix="kbli_explain_v10")  # Cache explanations for 12 hours (v10: more colloquial mappings)
 async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]) -> str:
     """Generate a grounded explanation of KBLI search results using LLM."""
     if not results:
@@ -744,9 +753,20 @@ async def chat_kbli(
         # Detects activity keywords in query and injects a direct match BEFORE semantic search
         # This prevents wrong codes (e.g. 47901 for online retail instead of 47911)
         _activity_keyword_map: list[tuple[list[str], str]] = [
-            # Online retail / e-commerce: must mention online/digital/internet and retail/shop/store
+            # Online retail / e-commerce
             (["online retail", "e-commerce", "ecommerce", "toko online", "online shop", "internet retail",
               "digital retail", "online store", "jual online", "perdagangan online"], "47911"),
+            # Photography
+            (["photography", "fotografer", "foto studio", "photo studio", "photographer",
+              "fotografi", "wedding photo", "photo service"], "74200"),
+            # Event catering / catering
+            (["event catering", "katering", "catering service", "wedding catering",
+              "jasa boga", "food catering", "corporate catering"], "56210"),
+            # Restaurant / coffee shop / cafe
+            (["coffee shop", "café", "cafe ", "kafe ", "kedai kopi", "warung kopi"], "56101"),
+            # Performing arts / art gallery
+            (["art gallery", "galeri seni", "seni pertunjukan", "performing art",
+              "art venue", "cultural center", "pusat kesenian"], "90001"),
         ]
         if not direct_kbli_match:
             query_lower_kw = kbli_request.query.lower()
