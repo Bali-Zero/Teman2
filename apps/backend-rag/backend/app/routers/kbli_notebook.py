@@ -525,7 +525,7 @@ def _detect_language(query: str) -> str:
     return "English"
 
 
-@cached(ttl=43200, prefix="kbli_explain_v10")  # Cache explanations for 12 hours (v10: more colloquial mappings)
+@cached(ttl=43200, prefix="kbli_explain_v11")  # Cache explanations for 12 hours (v11: sector-filtered results)
 async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]) -> str:
     """Generate a grounded explanation of KBLI search results using LLM."""
     if not results:
@@ -828,8 +828,17 @@ async def chat_kbli(
                         except Exception as enrich_err:
                             logger.warning(f"Failed to enrich {r.code}: {enrich_err}")
 
+            # When a specific code is in the query, filter Qdrant results to same 2-digit sector prefix
+            # This prevents cross-sector contamination (e.g. 64954 Syariah pawn in catering results)
+            if codes_from_query and direct_kbli_match:
+                query_prefix = direct_kbli_match.code[:2]
+                before = len(results)
+                results = [r for r in results if r.code.startswith(query_prefix)]
+                if len(results) < before:
+                    logger.info(f"🧹 Filtered Qdrant results by sector prefix '{query_prefix}': {before} → {len(results)}")
+
             # Add direct match at the beginning if found
-            if direct_kbli_match and direct_kbli_match.code not in seen_codes:
+            if direct_kbli_match and direct_kbli_match.code not in {r.code for r in results}:
                 results.insert(0, direct_kbli_match)
                 logger.info(f"✅ Added direct KBLI match: {direct_kbli_match.code}")
             
