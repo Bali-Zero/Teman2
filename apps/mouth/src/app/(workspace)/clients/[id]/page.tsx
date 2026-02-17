@@ -52,8 +52,7 @@ import type {
 } from "@/lib/api/crm/crm.types";
 import { COMMON_NATIONALITIES, CLIENT_STATUSES } from "@/lib/api/crm/crm.types";
 import { cropToSquare } from "@/lib/utils/imageResize";
-import { DriveFolderStructure } from "@/components/crm/DriveFolderStructure";
-import { FolderFilesBrowser } from "@/components/crm/FolderFilesBrowser";
+
 
 const STANDARD_FOLDERS: Record<string, { label: string; icon: string }> = {
   "00_Profile": { label: "Profile", icon: "👤" },
@@ -642,23 +641,7 @@ export default function ClientDetailPage() {
               </Button>
             </>
           )}
-          {client.google_drive_folder_id && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 text-blue-500 border-blue-500/30 hover:bg-blue-500/10"
-              onClick={() => {
-                // Scroll to Drive Folder section instead of opening Drive
-                const element = document.querySelector(
-                  "[data-drive-folder-section]",
-                );
-                element?.scrollIntoView({ behavior: "smooth", block: "start" });
-              }}
-            >
-              <FolderOpen className="w-4 h-4" />
-              View Documents
-            </Button>
-          )}
+
         </div>
       </div>
 
@@ -860,7 +843,7 @@ function OverviewTab({
 }) {
   const [quickNote, setQuickNote] = useState("");
   const [isAddingNote, setIsAddingNote] = useState(false);
-  const [viewingFolder, setViewingFolder] = useState<string | null>(null);
+
 
   const handleAddNote = async () => {
     if (!quickNote.trim()) return;
@@ -1150,37 +1133,7 @@ function OverviewTab({
         </div>
       </div>
 
-      {/* Row 3: Google Drive Folder Structure or Browser */}
-      <div data-drive-folder-section>
-        {viewingFolder ? (
-          <FolderFilesBrowser
-            clientId={clientId}
-            clientName={client.full_name}
-            folderName={viewingFolder}
-            folderLabel={
-              STANDARD_FOLDERS[viewingFolder]?.label || viewingFolder
-            }
-            onBack={() => setViewingFolder(null)}
-          />
-        ) : (
-          <DriveFolderStructure
-            clientId={clientId}
-            clientName={client.full_name}
-            existingFolderId={client.google_drive_folder_id}
-            onFolderCreated={(folderId) => {
-              // Refresh client data to update google_drive_folder_id
-              router.refresh();
-            }}
-            onFolderLinked={(folderId) => {
-              // Refresh client data to update google_drive_folder_id
-              router.refresh();
-            }}
-            onViewFolder={(folderName) => {
-              setViewingFolder(folderName);
-            }}
-          />
-        )}
-      </div>
+
     </div>
   );
 }
