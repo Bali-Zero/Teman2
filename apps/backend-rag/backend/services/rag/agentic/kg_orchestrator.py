@@ -517,14 +517,40 @@ class KGAgenticOrchestrator:
 
             context = "\n\n---\n\n".join(context_parts)
 
-            # Build prompt
+            # Build prompt (KBLI-centric for business queries)
+            # Detect if query involves business activity (KBLI should be primary)
+            business_keywords = ["restaurant", "cafe", "hotel", "business", "company", "open", "start", 
+                                 "restoran", "kafe", "usaha", "bisnis", "buka", "pt", "pma"]
+            is_business_query = any(kw in query.lower() for kw in business_keywords)
+            
             system_prompt = (
-                "You are Zantara, an expert AI assistant for Indonesian business and immigration law. "
-                "Provide accurate, well-cited answers based on the provided context. "
-                "Always cite your sources and indicate confidence level."
+                "You are Zantara AI, expert in Indonesian business regulations (KBLI 2025) and immigration law. "
+                "For business-related questions, ALWAYS structure your answer with the KBLI code as the foundation. "
+                "Provide accurate, well-cited answers based on the provided context."
             )
 
-            user_message = f"""Query: {query}
+            if is_business_query:
+                user_message = f"""Query: {query}
+
+Context:
+{context}
+
+IMPORTANT - Answer Structure for Business Queries:
+1. START with the primary KBLI code and its full details:
+   - Code number and name (Indonesian + English)
+   - PMA status (TERBUKA/TERBATAS/TERTUTUP) and what it means
+   - Capital requirements if PMA relevant
+   - Licensing requirements by business scale
+   
+2. THEN address visa/immigration constraints if relevant to the query
+
+3. THEN explain practical options/solutions (PT PMA, PT biasa with partner, etc.)
+
+4. Cite specific sources and indicate uncertainties
+
+Answer:"""
+            else:
+                user_message = f"""Query: {query}
 
 Context:
 {context}
