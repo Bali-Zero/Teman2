@@ -46,22 +46,22 @@ export default function NewsPageClient({
   // Fallback a MOCK_ARTICLES se il server non fornisce articoli
   const articles = serverArticles?.length > 0 ? serverArticles : MOCK_ARTICLES;
 
-  // Get specific articles for the asymmetric collage - CONSTITUTIONAL CLASH FEATURED
+  // Get specific articles for the asymmetric collage - KBLI 2025 GREAT TRANSITION FEATURED
   const mainNews1 = articles.find(
-    (a) => a.slug === "constitutional-clash-bank-statements",
+    (a) => a.slug === "kbli-2025-great-transition",
   ); // RIGHT - large - MAIN FEATURE
   const mainNews2 = articles.find(
-    (a) => a.slug === "kbli-2025-bali-transformation",
-  ); // LEFT top - KBLI Bali
+    (a) => a.slug === "constitutional-clash-bank-statements",
+  ); // LEFT top
   const mainNews3 = articles.find(
-    (a) => a.slug === "art-of-strategic-patience",
-  ); // MIDDLE top - Strategic Patience
+    (a) => a.slug === "kbli-2025-bali-transformation",
+  ); // MIDDLE top - KBLI Bali
   const mainNews4 = articles.find(
-    (a) => a.slug === "ota-data-crackdown-bali-2026",
-  ); // MIDDLE bottom - OTA TAX CRACKDOWN
+    (a) => a.slug === "art-of-strategic-patience",
+  ); // MIDDLE bottom - Strategic Patience
   const mainNews5 = articles.find(
-    (a) => a.slug === "property-green-zone-alert",
-  ); // LEFT bottom - Property Alert
+    (a) => a.slug === "ota-data-crackdown-bali-2026",
+  ); // LEFT bottom - OTA TAX CRACKDOWN
 
   // Get KBLI Navigator articles for Latest Insights section
   const kbliInsight1 = articles.find(

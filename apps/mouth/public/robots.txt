@@ -70,9 +70,25 @@ Crawl-delay: 2
 User-agent: Google-Extended
 Allow: /
 
-# Microsoft Copilot
+# Apple AI Training (Applebot-Extended)
 User-agent: Applebot-Extended
 Allow: /
+Crawl-delay: 2
+
+# Bytespider (TikTok/ByteDance AI)
+User-agent: Bytespider
+Allow: /
+Crawl-delay: 2
+
+# Amazon AI
+User-agent: Amazonbot
+Allow: /
+Crawl-delay: 2
+
+# You.com AI
+User-agent: YouBot
+Allow: /
+Crawl-delay: 2
 
 # Meta AI
 User-agent: FacebookBot
