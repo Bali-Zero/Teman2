@@ -1007,6 +1007,21 @@ function OverviewTab({
                   </div>
                 </div>
               )}
+              
+              {/* Gender */}
+              {client.gender && (
+                <div className="flex items-start gap-3">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${client.gender === 'M' ? 'bg-blue-500/10' : 'bg-pink-500/10'}`}>
+                    <span className={`text-sm font-bold ${client.gender === 'M' ? 'text-blue-500' : 'text-pink-500'}`}>
+                      {client.gender === 'M' ? '♂' : '♀'}
+                    </span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs text-[var(--foreground-muted)]">Gender</p>
+                    <p className="text-sm font-medium">{client.gender === 'M' ? 'Male' : 'Female'}</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
