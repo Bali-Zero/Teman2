@@ -8,6 +8,7 @@ import {
   Mail,
   Phone,
   MessageCircle,
+  MessageCircle as WhatsAppIcon,
   MapPin,
   Calendar,
   FileText,
@@ -646,7 +647,7 @@ export default function ClientDetailPage() {
               <div className="w-full h-full rounded-full bg-white dark:bg-gray-300" />
             )}
           </div>
-          <div>
+          <div className="flex-1">
             <h1 className="text-2xl font-bold text-[var(--foreground)]">
               {client.full_name}
             </h1>
@@ -655,6 +656,39 @@ export default function ClientDetailPage() {
               {client.company_name && ` • ${client.company_name}`}
             </p>
           </div>
+          
+          {/* Leader Avatar - Next to client name */}
+          {client.assigned_to && (
+            <a
+              href={`https://wa.me/${(() => {
+                const phone = client.phone?.replace(/\D/g, '') || '';
+                return phone.startsWith('0') ? '62' + phone.slice(1) : phone;
+              })()}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 group px-3 py-1.5 rounded-lg bg-[var(--background-secondary)] border border-[var(--border)] hover:border-green-500/50 transition-all"
+              title={`Assigned to: ${client.assigned_to.split("@")[0]}`}
+            >
+              {getTeamMemberAvatar(client.assigned_to) ? (
+                <img
+                  src={getTeamMemberAvatar(client.assigned_to)}
+                  alt={client.assigned_to.split("@")[0]}
+                  className="w-8 h-8 rounded-full object-cover ring-2 ring-green-500/30 group-hover:ring-green-500 transition-all"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center group-hover:bg-green-500/30 transition-all">
+                  <User className="w-4 h-4 text-green-500" />
+                </div>
+              )}
+              <div className="flex flex-col">
+                <span className="text-xs text-[var(--foreground-muted)]">Assigned to</span>
+                <span className="text-sm font-medium text-[var(--foreground)] capitalize">
+                  {client.assigned_to.split("@")[0]}
+                </span>
+              </div>
+              <MessageCircle className="w-4 h-4 text-green-500 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
+            </a>
+          )}
         </div>
 
         {/* Alert badges */}
@@ -768,28 +802,10 @@ export default function ClientDetailPage() {
           documents={documents}
           activePractices={activePractices}
           completedPractices={completedPractices}
-          recentInteractions={interactions}
           formatDate={formatDate}
           formatCurrency={formatCurrency}
-          formatTime={formatTime}
           router={router}
-          clientId={clientId}
           onEditClick={() => setActiveModal("edit_client")}
-          onAddNote={async (note: string) => {
-            const user = await api.getProfile();
-            await api.crm.createInteraction({
-              client_id: clientId,
-              interaction_type: "note",
-              summary: note,
-              team_member: user.email,
-            });
-            const interactionsData = await api.crm.getClientTimeline(
-              clientId,
-              20,
-            );
-            setInteractions(interactionsData);
-            toast.success("Note Added");
-          }}
         />
       )}
 
@@ -889,7 +905,7 @@ export default function ClientDetailPage() {
 }
 
 // ============================================
-// OVERVIEW TAB
+// OVERVIEW TAB - 3 COLUMNS LAYOUT (Mirror Portal)
 // ============================================
 function OverviewTab({
   client,
@@ -897,382 +913,136 @@ function OverviewTab({
   documents,
   activePractices,
   completedPractices,
-  recentInteractions,
   formatDate,
   formatCurrency,
-  formatTime,
   router,
-  clientId,
   onEditClick,
-  onAddNote,
 }: {
   client: ClientProfile["client"];
   stats: ClientProfile["stats"];
   documents: ClientDocument[];
   activePractices: ClientProfile["practices"];
   completedPractices: ClientProfile["practices"];
-  recentInteractions: Interaction[];
   formatDate: (d: string) => string;
   formatCurrency: (n: number) => string;
-  formatTime: (d: string) => string;
   router: ReturnType<typeof useRouter>;
-  clientId: number;
   onEditClick: () => void;
-  onAddNote: (note: string) => Promise<void>;
 }) {
-  const [quickNote, setQuickNote] = useState("");
-  const [isAddingNote, setIsAddingNote] = useState(false);
-
-  const handleAddNote = async () => {
-    if (!quickNote.trim()) return;
-    setIsAddingNote(true);
-    try {
-      await onAddNote(quickNote);
-      setQuickNote("");
-    } catch (err) {
-      toast.error("Failed", { description: (err as Error).message });
-    } finally {
-      setIsAddingNote(false);
-    }
-  };
-
   const isClientBirthday = isBirthdayToday(client.date_of_birth);
 
   return (
-    <div className="space-y-4">
-      {/* Row 1: Team Avatar + Passport + Visa - All in one row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Column 1: Team Member Card with Pastel Art */}
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden">
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
-            <h3 className="text-base font-semibold text-[var(--foreground)] flex items-center gap-2">
-              <User className="w-5 h-5" />
-              Team Member
-            </h3>
-          </div>
-
-          {/* Content */}
-          <div className="p-4 space-y-4">
-            {/* Top: Team Member Avatar */}
-            <div className="flex items-center gap-3">
-              {client.assigned_to ? (
-                <>
-                  {getTeamMemberAvatar(client.assigned_to) ? (
-                    <img
-                      src={getTeamMemberAvatar(client.assigned_to)}
-                      alt={client.assigned_to.split("@")[0]}
-                      className="w-16 h-16 rounded-full object-cover ring-2 ring-[var(--accent)]/30"
-                    />
-                  ) : (
-                    <div className="w-16 h-16 rounded-full bg-[var(--accent)]/20 flex items-center justify-center">
-                      <User className="w-8 h-8 text-[var(--accent)]" />
-                    </div>
-                  )}
-                  <div>
-                    <p className="font-medium text-[var(--foreground)]">
-                      {client.assigned_to.split("@")[0]}
-                    </p>
-                    <p className="text-xs text-[var(--foreground-muted)]">
-                      Case Manager
-                    </p>
-                  </div>
-                </>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <div className="w-16 h-16 rounded-full bg-[var(--border)] flex items-center justify-center">
-                    <User className="w-8 h-8 text-[var(--foreground-muted)]" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-[var(--foreground-muted)]">
-                      Unassigned
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Bottom: Pastel Art Placeholder (400×320 aspect ratio ~ 5:4) */}
-            <div className="relative rounded-xl overflow-hidden bg-gradient-to-br from-pink-200/50 via-purple-100/50 to-blue-200/50 dark:from-pink-900/20 dark:via-purple-900/20 dark:to-blue-900/20">
-              {/* Placeholder for pastel Bali landscape image */}
-              <div className="aspect-[5/4] w-full flex items-center justify-center">
-                <div className="text-center p-6">
-                  <div className="w-20 h-20 mx-auto mb-3 rounded-full bg-gradient-to-br from-yellow-200/60 to-pink-200/60 dark:from-yellow-700/30 dark:to-pink-700/30 flex items-center justify-center">
-                    <span className="text-3xl">🌴</span>
-                  </div>
-                  <p className="text-xs text-[var(--foreground-muted)]">
-                    Pastel Bali Landscape
-                  </p>
-                  <p className="text-[10px] text-[var(--foreground-muted)]/60 mt-1">
-                    400×320px • WEBP/AVIF
-                  </p>
-                </div>
+    <div className="space-y-6">
+      {/* 3 Columns Layout - Team Member | Passport | Visa */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+        {/* COLUMN 1: Client Info */}
+        <div className="flex flex-col h-full">
+          {/* Client Info Card */}
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden flex-1 flex flex-col h-full">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+              <h3 className="font-semibold text-[var(--foreground)]">Client Info</h3>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onEditClick}>
+                  <Edit2 className="w-3.5 h-3.5" />
+                </Button>
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Column 2: Passport Card */}
-        <PassportCard
-          client={client}
-          documents={documents}
-          formatDate={formatDate}
-        />
-
-        {/* Column 3: Visa Card */}
-        <ActualVisaCard
-          client={client}
-          documents={documents}
-          activePractices={activePractices}
-          formatDate={formatDate}
-          formatCurrency={formatCurrency}
-        />
-      </div>
-
-      {/* Row 2: Contact Info + Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Contact Info Card */}
-        <div className="lg:col-span-2 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-[var(--foreground)]">
-              Contact Info
-            </h3>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0 text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-                onClick={onEditClick}
-              >
-                <Edit2 className="w-3.5 h-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0 text-[var(--foreground-muted)] hover:text-red-500"
-                onClick={async () => {
-                  if (
-                    confirm(
-                      `⚠️ Delete client "${client.full_name}"?\n\nThis will mark the client as inactive. All process and documents remain in the system.\n\nContinue?`,
-                    )
-                  ) {
-                    try {
-                      const user = await api.getProfile();
-                      await api.crm.deleteClient(client.id, user.email);
-                      toast.success("Client deleted", {
-                        description: "Marked as inactive",
-                      });
-                      router.push("/clients");
-                      router.refresh();
-                    } catch (err) {
-                      toast.error("Error deleting client", {
-                        description: (err as Error).message,
-                      });
-                    }
-                  }
-                }}
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Two-column grid for contact + passport info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Left column: Contact details */}
-            <div className="space-y-2.5 text-xs">
+            <div className="p-4 space-y-4 flex-1">
+              {/* Full Name */}
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-[var(--accent)]/10 flex items-center justify-center">
+                  <User className="w-4 h-4 text-[var(--accent)]" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-[var(--foreground-muted)]">Full Name</p>
+                  <p className="text-base font-semibold">{client.full_name}</p>
+                </div>
+              </div>
+              
+              <div className="border-t border-[var(--border)]" />
+              {/* Email */}
               {client.email && (
-                <div className="flex items-center gap-2">
-                  <Mail className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
-                  <a
-                    href={`mailto:${client.email}`}
-                    className="text-[var(--foreground)] hover:underline truncate"
-                  >
-                    {client.email}
-                  </a>
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
+                    <Mail className="w-4 h-4 text-blue-500" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-[var(--foreground-muted)]">Email</p>
+                    <p className="text-sm font-medium truncate">{client.email}</p>
+                  </div>
                 </div>
               )}
+              {/* Phone */}
               {client.phone && (
-                <div className="flex items-center gap-2">
-                  <Phone className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
-                  <span className="text-[var(--foreground)]">
-                    {formatPhoneNumber(client.phone)}
-                  </span>
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center">
+                    <Phone className="w-4 h-4 text-green-500" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs text-[var(--foreground-muted)]">Phone</p>
+                    <p className="text-sm font-medium">{formatPhoneNumber(client.phone)}</p>
+                  </div>
                 </div>
               )}
+              {/* Nationality */}
               {client.nationality && (
-                <div className="flex items-center gap-2">
-                  <Globe className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
-                  <span className="text-[var(--foreground)]">
-                    {client.nationality}
-                  </span>
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center">
+                    <Globe className="w-4 h-4 text-purple-500" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs text-[var(--foreground-muted)]">Nationality</p>
+                    <p className="text-sm font-medium">{client.nationality}</p>
+                  </div>
                 </div>
               )}
-              {client.company_name && (
-                <div className="flex items-center gap-2">
-                  <Building2 className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
-                  <span className="text-[var(--foreground)]">
-                    {client.company_name}
-                  </span>
+              {/* Address */}
+              {client.address && (
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center">
+                    <MapPin className="w-4 h-4 text-orange-500" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs text-[var(--foreground-muted)]">Address</p>
+                    <p className="text-sm font-medium">{client.address}</p>
+                  </div>
                 </div>
               )}
             </div>
+          </div>
 
-            {/* Right column: Passport/OCR extracted data */}
-            <div className="space-y-2.5 text-xs border-l border-[var(--border)] pl-4">
-              <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)] font-semibold mb-2">
-                Passport Data
-              </p>
-              {client.passport_number && (
-                <div className="flex items-center gap-2">
-                  <CreditCard className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
-                  <span className="text-[var(--foreground)] font-mono">
-                    {client.passport_number}
-                  </span>
-                </div>
-              )}
-              {client.passport_expiry && (
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
-                  <span className="text-[var(--foreground)]">
-                    Exp: {formatDate(client.passport_expiry)}
-                  </span>
-                </div>
-              )}
-              {client.date_of_birth && (
-                <div
-                  className={`flex items-center gap-2 rounded px-2 py-1 -mx-2 transition-all duration-500 ${
-                    isClientBirthday
-                      ? "bg-gradient-to-r from-yellow-400/30 via-amber-400/30 to-yellow-400/30 animate-pulse shadow-[0_0_20px_rgba(255,215,0,0.4)]"
-                      : ""
-                  }`}
-                >
-                  <Calendar
-                    className={`w-3.5 h-3.5 ${isClientBirthday ? "text-yellow-500" : "text-[var(--foreground-muted)]"}`}
-                  />
-                  <span
-                    className={`${isClientBirthday ? "font-semibold text-yellow-600 dark:text-yellow-400" : "text-[var(--foreground)]"}`}
-                  >
-                    DOB: {formatDate(client.date_of_birth)}
-                    {isClientBirthday && " 🎂"}
-                  </span>
-                </div>
-              )}
-              {client.gender && (
-                <div className="flex items-center gap-2">
-                  <User className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
-                  <span className="text-[var(--foreground)] font-medium">
-                    {client.gender === "M" ? "Male (M)" : "Female (F)"}
-                  </span>
-                </div>
-              )}
-              {client.birthplace && (
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-3.5 h-3.5 text-[var(--foreground-muted)]" />
-                  <span className="text-[var(--foreground)]">
-                    {client.birthplace}
-                  </span>
-                </div>
-              )}
-              {!client.passport_number &&
-                !client.passport_expiry &&
-                !client.date_of_birth &&
-                !client.gender &&
-                !client.birthplace && (
-                  <p className="text-[var(--foreground-muted)] italic">
-                    No passport data yet. Use OCR to extract.
-                  </p>
-                )}
+          {/* Stats Row */}
+          <div className="grid grid-cols-2 gap-3 mt-4">
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Users className="w-3.5 h-3.5 text-blue-500" />
+                <span className="text-[10px] text-[var(--foreground-muted)]">Family</span>
+              </div>
+              <p className="text-lg font-bold">{stats.family_count}</p>
+            </div>
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <FileText className="w-3.5 h-3.5 text-purple-500" />
+                <span className="text-[10px] text-[var(--foreground-muted)]">Docs</span>
+              </div>
+              <p className="text-lg font-bold">{stats.documents_count}</p>
             </div>
           </div>
         </div>
 
-        {/* Quick Note + Process */}
-        <div className="space-y-4">
-          {/* Quick Note */}
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-3">
-            <h3 className="text-xs font-semibold text-[var(--foreground)] mb-2 flex items-center gap-1.5">
-              <FileText className="w-3.5 h-3.5" />
-              Quick Note
-            </h3>
-            <textarea
-              value={quickNote}
-              onChange={(e) => setQuickNote(e.target.value)}
-              placeholder="Add note..."
-              rows={2}
-              className="w-full px-2 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 resize-none text-xs"
-            />
-            <Button
-              size="sm"
-              onClick={handleAddNote}
-              disabled={!quickNote.trim() || isAddingNote}
-              className="w-full mt-2 h-7 text-xs"
-            >
-              {isAddingNote ? (
-                <Loader2 className="w-3 h-3 animate-spin" />
-              ) : (
-                <>
-                  <Plus className="w-3 h-3 mr-1" />
-                  Add
-                </>
-              )}
-            </Button>
-          </div>
+        {/* COLUMN 2: Passport */}
+        <div className="flex flex-col h-full">
+          <PassportCard client={client} documents={documents} formatDate={formatDate} />
+        </div>
 
-          {/* Process Card */}
-          <ActiveProcessCard
+        {/* COLUMN 3: Visa */}
+        <div className="flex flex-col h-full">
+          <VisaCard 
+            client={client} 
+            documents={documents} 
             activePractices={activePractices}
             formatDate={formatDate}
-            router={router}
+            formatCurrency={formatCurrency}
           />
-        </div>
-      </div>
-
-      {/* Row 2: Stats Cards - 4 columns */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-3">
-          <div className="flex items-center gap-1.5 mb-1">
-            <Users className="w-3.5 h-3.5 text-blue-500" />
-            <span className="text-[10px] text-[var(--foreground-muted)]">
-              Family
-            </span>
-          </div>
-          <p className="text-xl font-bold text-[var(--foreground)]">
-            {stats.family_count}
-          </p>
-        </div>
-        <div className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-3">
-          <div className="flex items-center gap-1.5 mb-1">
-            <FileText className="w-3.5 h-3.5 text-purple-500" />
-            <span className="text-[10px] text-[var(--foreground-muted)]">
-              Docs
-            </span>
-          </div>
-          <p className="text-xl font-bold text-[var(--foreground)]">
-            {stats.documents_count}
-          </p>
-        </div>
-        <div className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-3">
-          <div className="flex items-center gap-1.5 mb-1">
-            <Clock className="w-3.5 h-3.5 text-orange-500" />
-            <span className="text-[10px] text-[var(--foreground-muted)]">
-              Active
-            </span>
-          </div>
-          <p className="text-xl font-bold text-[var(--foreground)]">
-            {activePractices.length}
-          </p>
-        </div>
-        <div className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-3">
-          <div className="flex items-center gap-1.5 mb-1">
-            <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
-            <span className="text-[10px] text-[var(--foreground-muted)]">
-              Done
-            </span>
-          </div>
-          <p className="text-xl font-bold text-[var(--foreground)]">
-            {completedPractices.length}
-          </p>
         </div>
       </div>
     </div>
@@ -1472,7 +1242,7 @@ function PassportCard({
   };
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden flex flex-col">
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
         <h3 className="text-base font-semibold text-[var(--foreground)] flex items-center gap-2">
@@ -1696,7 +1466,7 @@ const VISA_PRICES: Record<string, { name: string; price: number }> = {
   kitap: { name: "KITAP", price: 20000000 },
 };
 
-function ActualVisaCard({
+function VisaCard({
   client,
   documents,
   activePractices,
@@ -1841,7 +1611,7 @@ function ActualVisaCard({
   };
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden flex flex-col">
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
         <h3 className="text-base font-semibold text-[var(--foreground)] flex items-center gap-2">
@@ -2046,96 +1816,6 @@ function ActualVisaCard({
             : "Upload visa (JPG, PNG, PDF - max 10MB)"}
         </p>
       </div>
-    </div>
-  );
-}
-
-// ============================================
-// ACTIVE PROCESS CARD COMPONENT (Same size as others)
-// ============================================
-function ActiveProcessCard({
-  activePractices,
-  formatDate,
-  router,
-}: {
-  activePractices: ClientProfile["practices"];
-  formatDate: (d: string) => string;
-  router: ReturnType<typeof useRouter>;
-}) {
-  const mainProcess = activePractices[0];
-
-  // Calculate estimated issue date (+7 days from now as fallback)
-  const getEstimatedDate = () => {
-    return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-  };
-
-  return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
-        <h3 className="text-base font-semibold text-[var(--foreground)] flex items-center gap-2">
-          <FolderOpen className="w-5 h-5" />
-          Process
-        </h3>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-7 px-2 text-xs"
-          onClick={() => router.push("/process/new")}
-        >
-          <Plus className="w-3 h-3 mr-1" />
-          New
-        </Button>
-      </div>
-
-      {/* Content */}
-      <div className="p-4">
-        {mainProcess ? (
-          <div
-            className="aspect-[3/2] rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 border-2 border-dashed border-blue-500/40 flex flex-col items-center justify-center cursor-pointer relative overflow-hidden group"
-            onClick={() => router.push(`/process/${mainProcess.id}`)}
-            style={{
-              animation: "pulse-glow 2s ease-in-out infinite",
-            }}
-          >
-            {/* Pulsing overlay */}
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 animate-pulse" />
-
-            <div className="relative text-center z-10">
-              <p className="text-sm font-semibold text-blue-400">
-                {mainProcess.practice_type_name ||
-                  mainProcess.practice_type_code?.toUpperCase()}
-              </p>
-              <p className="text-xs text-blue-300 mt-1">on process</p>
-            </div>
-          </div>
-        ) : (
-          <div className="aspect-[3/2] rounded-lg border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-2 bg-[var(--background)]/50">
-            <FolderOpen className="w-10 h-10 text-[var(--foreground-muted)] opacity-50" />
-            <span className="text-sm text-[var(--foreground-muted)]">
-              No process
-            </span>
-          </div>
-        )}
-
-        {/* Caption */}
-        <p className="text-xs text-[var(--foreground-muted)] text-center mt-3">
-          Click "New" to start
-        </p>
-      </div>
-
-      {/* Pulsing animation keyframes */}
-      <style jsx>{`
-        @keyframes pulse-glow {
-          0%,
-          100% {
-            box-shadow: 0 0 15px rgba(59, 130, 246, 0.15);
-          }
-          50% {
-            box-shadow: 0 0 25px rgba(59, 130, 246, 0.25);
-          }
-        }
-      `}</style>
     </div>
   );
 }

@@ -203,15 +203,29 @@ describe("PortalApi", () => {
 
   describe("getProfile", () => {
     it("should fetch profile data successfully", async () => {
-      const mockProfile = createMockProfile();
-      mockRequest.mockResolvedValue({ data: mockProfile });
+      // Backend returns snake_case
+      const mockBackendProfile = {
+        id: 1,
+        full_name: "Test User",
+        email: "test@example.com",
+        phone: "+62812345678",
+        whatsapp: "+62812345678",
+        nationality: "US",
+        passport_number: "ABC123456",
+        address: "123 Test Street",
+        member_since: "2024-01-01",
+      };
+      mockRequest.mockResolvedValue({ data: mockBackendProfile });
 
       const result = await portalApi.getProfile();
 
       expect(mockRequest).toHaveBeenCalledWith("/api/portal/profile", {
         method: "GET",
       });
-      expect(result).toEqual(mockProfile);
+      // Result should be camelCase
+      expect(result.fullName).toBe("Test User");
+      expect(result.passportNumber).toBe("ABC123456");
+      expect(result.memberSince).toBe("2024-01-01");
     });
   });
 
