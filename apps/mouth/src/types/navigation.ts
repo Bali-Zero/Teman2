@@ -78,6 +78,7 @@ export const portalNavigation: NavSection[] = [
   {
     title: "Services",
     items: [
+      { title: "Companies", href: "/portal/companies", icon: "Building2" },
       { title: "Visa", href: "/portal/visa", icon: "Briefcase" },
       { title: "Taxes", href: "/portal/taxes", icon: "FileText" },
     ],
