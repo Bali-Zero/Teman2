@@ -173,9 +173,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if request.url.path in ["/health", "/docs", "/openapi.json"]:
             return await call_next(request)
 
-        # Get client identifier (IP or user)
+        # Get client identifier from authenticated state (set by HybridAuthMiddleware)
         client_ip = request.client.host if request.client else "unknown"
-        user_id = request.headers.get("X-User-ID", client_ip)
+        authenticated_user = getattr(request.state, "user", None)
+        if authenticated_user and isinstance(authenticated_user, dict):
+            user_id = authenticated_user.get("email") or authenticated_user.get("sub") or client_ip
+        else:
+            user_id = client_ip
 
         # Find matching rate limit
         limit, window = self._get_rate_limit(request.url.path)

@@ -11,6 +11,7 @@ SECURITY POLICY: Fail-Closed - any authentication system error denies access
 """
 
 import logging
+import os
 from datetime import datetime, timezone
 from typing import Any
 
@@ -98,13 +99,8 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             # ========================================================================
             "/health",  # BUSINESS: Health checks required by load balancers, monitoring systems
             "/health/",  # BUSINESS: Alternative health check path (common pattern)
-            "/docs",  # BUSINESS: API documentation for developers (dev/staging only via router config)
-            "/docs/",  # BUSINESS: Alternative docs path
-            "/openapi.json",  # BUSINESS: OpenAPI spec for API contract verification and client generation
-            "/api/v1/openapi.json",  # BUSINESS: Versioned OpenAPI spec for backward compatibility
-            "/redoc",  # BUSINESS: Alternative API documentation UI (dev/staging only)
-            "/metrics",  # BUSINESS: Prometheus metrics endpoint for observability (should be IP-restricted in production)
-            "/metrics/",  # BUSINESS: Alternative metrics path
+            # SECURITY: /docs, /openapi.json, /redoc, /metrics moved to _is_protected_infra_endpoint()
+            # They require admin API key in production, are unrestricted in dev/staging
             # ========================================================================
             # AUTHENTICATION ENDPOINTS (Must be public for initial login)
             # ========================================================================
@@ -180,9 +176,53 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             f"Bypass DB: {self.api_auth_bypass_db}, Public Endpoints: {len(self.public_endpoints)}"
         )
 
+    # Paths that require admin API key in production (docs, metrics)
+    _PROTECTED_INFRA_PATHS = frozenset({
+        "/docs", "/docs/", "/openapi.json", "/api/v1/openapi.json", "/redoc",
+    })
+    _METRICS_PATHS = frozenset({"/metrics", "/metrics/"})
+
+    def _is_protected_infra_endpoint(self, request: Request) -> bool:
+        """
+        Check if request is for docs/metrics endpoints.
+        In production: requires admin API key (or Fly.io internal network for metrics).
+        In dev/staging: always allowed.
+        """
+        path = request.url.path
+        is_docs = path in self._PROTECTED_INFRA_PATHS or path.startswith("/docs")
+        is_metrics = path in self._METRICS_PATHS
+
+        if not is_docs and not is_metrics:
+            return False
+
+        # Non-production: always allow
+        env = os.getenv("ENVIRONMENT", "production")
+        if env != "production":
+            return True
+
+        # Metrics: allow from Fly.io internal network or localhost
+        if is_metrics:
+            client_ip = request.client.host if request.client else ""
+            if client_ip.startswith("fdaa:") or client_ip in ("127.0.0.1", "::1"):
+                return True
+
+        # Production: require admin API key
+        api_key = request.headers.get("X-API-Key")
+        if api_key:
+            user_ctx = self.api_key_auth.validate_api_key(api_key)
+            if user_ctx and user_ctx.get("role") in ("admin", "internal"):
+                return True
+
+        return False
+
     def is_public_endpoint(self, request: Request) -> bool:
         """Check if the requested endpoint is public (no auth required)"""
         path = request.url.path
+
+        # Check protected infrastructure endpoints (docs, metrics)
+        if self._is_protected_infra_endpoint(request):
+            return True
+
         is_public = any(path.startswith(endpoint) for endpoint in self.public_endpoints)
 
         # Debug log for KBLI endpoints
@@ -463,12 +503,11 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             logger.debug(f"Cookie JWT authentication attempt from {client_host}")
 
             # Validate CSRF for state-changing requests (POST, PUT, DELETE, PATCH)
-            if settings.csrf_enabled and not is_csrf_exempt(request):
-                if not validate_csrf(request):
-                    logger.warning(
-                        f"CSRF validation failed for {request.method} {request.url.path} from {client_host}"
-                    )
-                    return None
+            if settings.csrf_enabled and not is_csrf_exempt(request) and not validate_csrf(request):
+                logger.warning(
+                    f"CSRF validation failed for {request.method} {request.url.path} from {client_host}"
+                )
+                return None
 
             jwt_user = await self.authenticate_jwt_token(cookie_token)
             if jwt_user:

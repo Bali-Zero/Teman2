@@ -170,6 +170,9 @@ export function ArticleJsonLd({
     wordCount: readingTime ? readingTime * 200 : undefined, // Approximate
     articleSection: category,
     inLanguage: "en-US",
+    copyrightHolder: { "@type": "Organization", name: "Bali Zero" },
+    copyrightYear: new Date(publishedAt).getFullYear(),
+    license: "https://balizero.com/terms",
   };
 
   return (
