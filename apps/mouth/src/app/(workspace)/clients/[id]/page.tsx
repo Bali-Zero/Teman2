@@ -3480,6 +3480,66 @@ function CompanyTab({
 // ============================================
 // TAX TAB (Company-Centric CRM)
 // ============================================
+// ============================================
+// TAX TYPES AND INTERFACES
+// ============================================
+type TaxYear = 2024 | 2025 | 2026;
+type TaxSection = 'personal' | 'annual' | 'monthly' | 'lkpm';
+
+interface TaxDocument {
+  id?: string;
+  file?: File;
+  fileName?: string;
+  uploadedAt?: string;
+  status: 'pending' | 'uploaded' | 'verified';
+}
+
+interface PersonalTaxData {
+  npwp: string;
+  annualIncome: string;
+  documents: {
+    form1770?: TaxDocument;
+    buktiPotong?: TaxDocument;
+    sptTahunan?: TaxDocument;
+  };
+}
+
+interface AnnualCompanyTaxData {
+  companyId: string;
+  companyName: string;
+  npwp: string;
+  documents: {
+    sptTahunan?: TaxDocument;
+    laporanKeuangan?: TaxDocument;
+    buktiPembayaran?: TaxDocument;
+    formTaxAmnesty?: TaxDocument;
+  };
+}
+
+interface MonthlyReportData {
+  month: string;
+  year: number;
+  pph21: TaxDocument;
+  pph23: TaxDocument;
+  ppn: TaxDocument;
+  pph25: TaxDocument;
+}
+
+interface LKPMQuarterData {
+  quarter: 1 | 2 | 3 | 4;
+  year: number;
+  realization: string;
+  documents: {
+    lkpmReport?: TaxDocument;
+    investmentRealization?: TaxDocument;
+    employeeReport?: TaxDocument;
+    productionReport?: TaxDocument;
+  };
+}
+
+// ============================================
+// TAX TAB COMPONENT
+// ============================================
 function TaxTab({
   clientId,
   formatDate,
@@ -3487,147 +3547,324 @@ function TaxTab({
   clientId: number;
   formatDate: (d: string) => string;
 }) {
-  const [companies, setCompanies] = useState<ClientCompanyLink[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [selectedYear, setSelectedYear] = useState<TaxYear>(2025);
+  const [activeSection, setActiveSection] = useState<TaxSection>('personal');
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, [clientId]);
+  // Calculate deadlines based on selected year
+  const deadlines = {
+    personalTax: new Date(selectedYear, 2, 31), // March 31
+    annualCompany: new Date(selectedYear, 3, 30), // April 30
+  };
 
-  const loadData = async () => {
+  const handleFileUpload = async (section: TaxSection, docType: string, file: File) => {
+    setIsUploading(true);
+    setUploadError(null);
     try {
-      setIsLoading(true);
-      const data = await api.crm.getClientCompanies(clientId);
-      setCompanies(data);
+      const base64 = await fileToBase64(file);
+      await api.post(`/api/crm/clients/${clientId}/tax-documents`, {
+        file: base64,
+        file_name: file.name,
+        document_type: docType,
+        section: section,
+        year: selectedYear,
+      });
+      toast.success(`${docType} uploaded successfully`);
     } catch (err) {
-      logger.error("Failed to load tax data:", {}, err as Error);
+      setUploadError(`Failed to upload ${docType}: ${(err as Error).message}`);
+      toast.error("Upload failed", { description: (err as Error).message });
     } finally {
-      setIsLoading(false);
+      setIsUploading(false);
     }
   };
 
-  if (isLoading) {
+  // Year selector buttons
+  const YearSelector = () => (
+    <div className="flex items-center gap-2">
+      {[2024, 2025, 2026].map((year) => (
+        <Button
+          key={year}
+          variant={selectedYear === year ? "default" : "outline"}
+          size="sm"
+          onClick={() => setSelectedYear(year as TaxYear)}
+        >
+          {year}
+        </Button>
+      ))}
+    </div>
+  );
+
+  // File upload workspace component
+  const UploadWorkspace = ({ 
+    section, 
+    title, 
+    description,
+    docTypes 
+  }: { 
+    section: TaxSection; 
+    title: string; 
+    description: string;
+    docTypes: { key: string; label: string; hint: string }[];
+  }) => (
+    <div className="bg-[var(--background-secondary)] border border-[var(--border)] rounded-xl p-4 space-y-4">
+      <div>
+        <h4 className="font-semibold text-[var(--foreground)]">{title}</h4>
+        <p className="text-xs text-[var(--foreground-muted)]">{description}</p>
+      </div>
+      
+      <div className="space-y-3">
+        {docTypes.map((doc) => (
+          <div key={doc.key} className="border border-dashed border-[var(--border)] rounded-lg p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium">{doc.label}</span>
+              <span className="text-xs text-[var(--foreground-muted)]">{doc.hint}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="file"
+                id={`${section}-${doc.key}`}
+                accept=".pdf,.jpg,.jpeg,.png"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFileUpload(section, doc.key, file);
+                }}
+                disabled={isUploading}
+              />
+              <label
+                htmlFor={`${section}-${doc.key}`}
+                className="flex-1 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
+              >
+                {isUploading ? 'Uploading...' : `Select ${doc.label} file`}
+              </label>
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      {uploadError && (
+        <p className="text-xs text-red-500">{uploadError}</p>
+      )}
+    </div>
+  );
+
+  // Side panel for upload workspace
+  const SideWorkspace = () => {
+    const configs = {
+      personal: {
+        title: "Personal Tax Documents",
+        description: `Deadline: March 31, ${selectedYear}`,
+        docTypes: [
+          { key: 'form1770', label: 'Form 1770', hint: 'Annual Tax Return' },
+          { key: 'buktiPotong', label: 'Bukti Potong', hint: 'Withholding Tax Slips' },
+          { key: 'sptTahunan', label: 'SPT Tahunan', hint: 'Annual Tax Report' },
+          { key: 'bupot1721', label: 'Bukti Potong 1721', hint: 'Employment Income' },
+          { key: 'bupot1721A1', label: 'Bukti Potong 1721-A1', hint: 'Annual Tax Slip' },
+        ]
+      },
+      annual: {
+        title: "Annual Company Tax",
+        description: `Deadline: April 30, ${selectedYear}`,
+        docTypes: [
+          { key: 'sptTahunanBadan', label: 'SPT Tahunan Badan', hint: 'Corporate Annual Tax Return' },
+          { key: 'laporanKeuangan', label: 'Laporan Keuangan', hint: 'Financial Statements' },
+          { key: 'buktiPembayaran', label: 'Bukti Pembayaran', hint: 'Payment Receipts' },
+          { key: 'formTaxAmnesty', label: 'Form Tax Amnesty', hint: 'If applicable' },
+          { key: 'neraca', label: 'Neraca', hint: 'Balance Sheet' },
+          { key: 'labaRugi', label: 'Laba Rugi', hint: 'Profit & Loss' },
+        ]
+      },
+      monthly: {
+        title: "Monthly Company Reports",
+        description: "Due monthly by the 20th",
+        docTypes: [
+          { key: 'pph21', label: 'PPH 21', hint: 'Employee Income Tax' },
+          { key: 'pph23', label: 'PPH 23', hint: 'Services Withholding Tax' },
+          { key: 'ppn', label: 'PPN', hint: 'VAT Return' },
+          { key: 'pph25', label: 'PPH 25', hint: 'Installment Tax' },
+          { key: 'pph4ayat2', label: 'PPH 4(2)', hint: 'Final Income Tax' },
+          { key: 'pph26', label: 'PPH 26', hint: 'Foreign Tax' },
+        ]
+      },
+      lkpm: {
+        title: "LKPM Quarterly Reports",
+        description: "Investment Activity Reports",
+        docTypes: [
+          { key: 'lkpmReport', label: 'LKPM Report', hint: 'Main Investment Report' },
+          { key: 'realisasiInvestasi', label: 'Realisasi Investasi', hint: 'Investment Realization' },
+          { key: 'laporanTenagaKerja', label: 'Laporan Tenaga Kerja', hint: 'Employment Report' },
+          { key: 'laporanProduksi', label: 'Laporan Produksi', hint: 'Production Report' },
+          { key: 'rawMaterial', label: 'Raw Material Usage', hint: 'Import/Local breakdown' },
+          { key: 'exportValue', label: 'Export Value', hint: 'Export realization' },
+        ]
+      }
+    };
+
+    const config = configs[activeSection];
+    return <UploadWorkspace section={activeSection} {...config} />;
+  };
+
+  // Tax cards
+  const TaxCard = ({ 
+    title, 
+    subtitle, 
+    deadline, 
+    icon: Icon, 
+    color,
+    section,
+    onClick 
+  }: { 
+    title: string; 
+    subtitle: string; 
+    deadline: Date; 
+    icon: any; 
+    color: string;
+    section: TaxSection;
+    onClick: () => void;
+  }) => {
+    const isOverdue = new Date() > deadline;
+    const daysUntil = Math.ceil((deadline.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+    
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-[var(--accent)]" />
+      <div 
+        onClick={onClick}
+        className={`rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-5 cursor-pointer transition-all hover:border-[var(--accent)] ${
+          activeSection === section ? 'ring-2 ring-[var(--accent)]' : ''
+        }`}
+      >
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`w-12 h-12 rounded-xl ${color} flex items-center justify-center`}>
+              <Icon className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h4 className="font-semibold text-[var(--foreground)]">{title}</h4>
+              <p className="text-xs text-[var(--foreground-muted)]">{subtitle}</p>
+            </div>
+          </div>
+          {isOverdue ? (
+            <span className="px-2 py-1 rounded-full bg-red-500/20 text-red-400 text-xs font-medium">
+              Overdue
+            </span>
+          ) : daysUntil <= 30 ? (
+            <span className="px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-400 text-xs font-medium">
+              {daysUntil}d left
+            </span>
+          ) : (
+            <span className="px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-medium">
+              On Track
+            </span>
+          )}
+        </div>
+
+        <div className="mt-4 pt-4 border-t border-[var(--border)]">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-[var(--foreground-muted)]">Deadline</span>
+            <span className={`text-sm font-medium ${isOverdue ? 'text-red-400' : daysUntil <= 30 ? 'text-yellow-400' : 'text-emerald-400'}`}>
+              {formatDate(deadline.toISOString())}
+            </span>
+          </div>
+        </div>
       </div>
     );
-  }
+  };
 
   return (
     <div className="space-y-6">
+      {/* Header with year selector */}
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-[var(--foreground)]">
             Tax Overview
           </h3>
           <p className="text-sm text-[var(--foreground-muted)]">
-            Tax obligations and filings for linked companies
+            Manage tax obligations and filings
           </p>
         </div>
+        <YearSelector />
       </div>
 
-      {/* Personal Tax Card */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-5">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center">
-            <User className="w-5 h-5 text-emerald-400" />
-          </div>
-          <div>
-            <h4 className="font-semibold text-[var(--foreground)]">
-              Personal Tax
-            </h4>
-            <p className="text-xs text-[var(--foreground-muted)]">
-              Individual NPWP & obligations
-            </p>
-          </div>
-        </div>
-        <div className="text-sm text-[var(--foreground-muted)]">
-          Personal tax management will be available in the next update.
-        </div>
-      </div>
-
-      {/* Company Tax Cards */}
-      {companies.length > 0 && (
-        <div className="space-y-4">
-          <h4 className="font-medium text-[var(--foreground)]">Company Tax</h4>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {companies.map((company) => (
-              <div
-                key={company.company_id}
-                className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-5"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center">
-                      <Building2 className="w-5 h-5 text-blue-400" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-[var(--foreground)]">
-                        {company.company_name}
-                      </h4>
-                      <p className="text-xs text-[var(--foreground-muted)]">
-                        {company.npwp_company || "NPWP pending"}
-                      </p>
-                    </div>
-                  </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main content - Tax cards */}
+        <div className="lg:col-span-2 space-y-4">
+          <TaxCard
+            title="Personal Tax"
+            subtitle="Individual SPT Tahunan"
+            deadline={deadlines.personalTax}
+            icon={User}
+            color="bg-gradient-to-br from-emerald-500 to-teal-600"
+            section="personal"
+            onClick={() => setActiveSection('personal')}
+          />
+          
+          <TaxCard
+            title="Annual Company Tax"
+            subtitle="Corporate SPT Tahunan Badan"
+            deadline={deadlines.annualCompany}
+            icon={Building2}
+            color="bg-gradient-to-br from-blue-500 to-cyan-600"
+            section="annual"
+            onClick={() => setActiveSection('annual')}
+          />
+          
+          <TaxCard
+            title="Monthly Reports"
+            subtitle="PPH 21, 23, PPN, PPH 25"
+            deadline={new Date(selectedYear, 11, 20)} // Dec 20 as example
+            icon={Calendar}
+            color="bg-gradient-to-br from-purple-500 to-pink-600"
+            section="monthly"
+            onClick={() => setActiveSection('monthly')}
+          />
+          
+          {/* LKPM with 4 quarters */}
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
+                  <FileText className="w-6 h-6 text-white" />
                 </div>
-
-                <div className="mt-4 space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-[var(--foreground-muted)]">
-                      Status
-                    </span>
-                    <span className="text-emerald-400">Compliant</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-[var(--foreground-muted)]">
-                      Last Filing
-                    </span>
-                    <span className="text-[var(--foreground-muted)]">-</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-[var(--foreground-muted)]">
-                      Next Deadline
-                    </span>
-                    <span className="text-[var(--foreground-muted)]">-</span>
-                  </div>
-                </div>
-
-                <div className="mt-4 pt-4 border-t border-[var(--border)]">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full text-xs"
-                    onClick={() => {
-                      toast.info("Tax details", {
-                        description: "Full tax management coming soon",
-                      });
-                    }}
-                  >
-                    View Tax Details
-                  </Button>
+                <div>
+                  <h4 className="font-semibold text-[var(--foreground)]">LKPM</h4>
+                  <p className="text-xs text-[var(--foreground-muted)]">Laporan Kegiatan Penanaman Modal</p>
                 </div>
               </div>
-            ))}
+              <Button
+                variant={activeSection === 'lkpm' ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveSection('lkpm')}
+              >
+                Manage
+              </Button>
+            </div>
+            
+            <div className="grid grid-cols-4 gap-2">
+              {[1, 2, 3, 4].map((q) => (
+                <div 
+                  key={q}
+                  className={`text-center p-3 rounded-lg border ${
+                    activeSection === 'lkpm' 
+                      ? 'border-[var(--accent)] bg-[var(--accent)]/10' 
+                      : 'border-[var(--border)]'
+                  }`}
+                >
+                  <p className="text-lg font-bold">Q{q}</p>
+                  <p className="text-xs text-[var(--foreground-muted)]">
+                    {q === 1 && 'Jan-Mar'}
+                    {q === 2 && 'Apr-Jun'}
+                    {q === 3 && 'Jul-Sep'}
+                    {q === 4 && 'Oct-Dec'}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-      )}
 
-      {/* Info Card */}
-      <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background-secondary)]/50 p-6">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-[var(--foreground-muted)] mt-0.5" />
-          <div>
-            <h4 className="font-medium text-[var(--foreground)]">
-              Tax Management
-            </h4>
-            <p className="text-sm text-[var(--foreground-muted)] mt-1">
-              Tax document tracking and filing deadlines will be integrated
-              here. For now, tax documents are stored in the 03_Tax folder in
-              Google Drive.
-            </p>
-          </div>
+        {/* Side workspace for uploads */}
+        <div className="lg:col-span-1">
+          <SideWorkspace />
         </div>
       </div>
     </div>
@@ -3742,6 +3979,7 @@ const FileUploadField = memo(function FileUploadField({
 function useCompanyForm(clientId: number, onSuccess: () => void) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isExtractingNpwp, setIsExtractingNpwp] = useState(false);
+  const [isExtractingNib, setIsExtractingNib] = useState(false);
   const [uploadErrors, setUploadErrors] = useState<Partial<Record<DocumentType, string>>>({});
   const [errors, setErrors] = useState<FormErrors>({});
   const [documents, setDocuments] = useState<CompanyDocuments>({});
@@ -3842,6 +4080,43 @@ function useCompanyForm(clientId: number, onSuccess: () => void) {
     }
   }, [documents.npwp]);
 
+  const extractNib = useCallback(async (): Promise<boolean> => {
+    if (!documents.nib) {
+      toast.error("Please upload NIB file first");
+      return false;
+    }
+
+    setIsExtractingNib(true);
+    try {
+      const base64 = await fileToBase64(documents.nib);
+      const response = await api.post("/api/crm/clients/extract-nib", {
+        file: base64,
+        file_name: documents.nib.name,
+      }) as { success: boolean; nib?: string; company_name?: string; kbli_code?: string; message?: string };
+
+      if (response.success) {
+        setFormData(prev => ({
+          ...prev,
+          nib: response.nib || prev.nib,
+          company_name: response.company_name || prev.company_name,
+          kbli_code: response.kbli_code || prev.kbli_code,
+        }));
+        toast.success("NIB data extracted", {
+          description: "NIB number auto-filled",
+        });
+        return true;
+      } else {
+        toast.warning("OCR failed", { description: response.message });
+        return false;
+      }
+    } catch (err) {
+      toast.error("Extraction failed", { description: (err as Error).message });
+      return false;
+    } finally {
+      setIsExtractingNib(false);
+    }
+  }, [documents.nib]);
+
   const submit = useCallback(async (): Promise<boolean> => {
     if (!validateForm()) {
       toast.error("Please fix form errors");
@@ -3921,10 +4196,12 @@ function useCompanyForm(clientId: number, onSuccess: () => void) {
     uploadErrors,
     isSubmitting,
     isExtractingNpwp,
+    isExtractingNib,
     updateField,
     updateDocument,
     validateForm,
     extractNpwp,
+    extractNib,
     submit,
     reset,
   };
@@ -4001,9 +4278,11 @@ function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps)
     uploadErrors,
     isSubmitting,
     isExtractingNpwp,
+    isExtractingNib,
     updateField,
     updateDocument,
     extractNpwp,
+    extractNib,
     submit,
     reset,
   } = useCompanyForm(clientId, onSuccess);
@@ -4119,7 +4398,7 @@ function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps)
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1.5">
-                  NIB Document <span className="text-[var(--foreground-muted)]">- Upload file</span>
+                  NIB Document <span className="text-[var(--foreground-muted)]">- Upload + OCR</span>
                 </label>
                 <div className="flex items-center gap-2">
                   <input
@@ -4136,15 +4415,32 @@ function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps)
                     {documents.nib ? documents.nib.name : "Upload NIB file"}
                   </label>
                   {documents.nib && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 text-red-500"
-                      onClick={() => updateDocument('nib', undefined)}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="gap-1 text-xs"
+                        onClick={extractNib}
+                        disabled={isExtractingNib}
+                      >
+                        {isExtractingNib ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <FileText className="w-3 h-3" />
+                        )}
+                        Extract
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-red-500"
+                        onClick={() => updateDocument('nib', undefined)}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </>
                   )}
                 </div>
               </div>
