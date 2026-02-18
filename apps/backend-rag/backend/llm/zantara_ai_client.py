@@ -388,6 +388,9 @@ class ZantaraAIClient:
         logger.debug(f"System Prompt ({len(system)} chars):\n{system}")
         logger.debug(f"Messages ({len(messages)} messages):")
         for i, msg in enumerate(messages):
+            if not isinstance(msg, dict):
+                logger.debug(f"  [{i}] (skipped non-dict: {type(msg).__name__})")
+                continue
             role = msg.get("role", "unknown")
             content_preview = msg.get("content", "")[:200] + (
                 "..." if len(msg.get("content", "")) > 200 else ""
@@ -502,6 +505,9 @@ class ZantaraAIClient:
         if conversation_history:
             logger.debug(f"Conversation History ({len(conversation_history)} messages):")
             for i, msg in enumerate(conversation_history):
+                if not isinstance(msg, dict):
+                    logger.debug(f"  [{i}] (skipped non-dict: {type(msg).__name__})")
+                    continue
                 role = msg.get("role", "unknown")
                 content_preview = msg.get("content", "")[:200] + (
                     "..." if len(msg.get("content", "")) > 200 else ""
@@ -539,6 +545,8 @@ class ZantaraAIClient:
                 gemini_history = []
                 if conversation_history:
                     for msg in conversation_history:
+                        if not isinstance(msg, dict):
+                            continue
                         gemini_history.append(
                             {
                                 "role": msg.get("role", "user"),
