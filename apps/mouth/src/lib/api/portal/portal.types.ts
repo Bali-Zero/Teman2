@@ -186,6 +186,12 @@ export interface PortalPreferences {
   timezone: string;
 }
 
+export interface AssignedTeamMember {
+  email: string;
+  name: string;
+  avatarUrl?: string;
+}
+
 export interface PortalProfile {
   id: number;
   fullName: string;
@@ -199,6 +205,7 @@ export interface PortalProfile {
   gender?: "M" | "F";
   address?: string;
   memberSince: string;
+  assignedTo?: AssignedTeamMember;
 }
 
 // ============================================================================
