@@ -48,6 +48,25 @@ const APP_DOMAIN = "zantara.balizero.com";
 const PORTAL_DOMAIN = "my.balizero.com";
 const MOBILE_DOMAIN = "mo.balizero.com";
 
+// Scraper detection — classify requests as human, welcome bot, or suspicious
+const WELCOME_BOTS =
+  /Googlebot|Bingbot|GPTBot|ClaudeBot|anthropic|PerplexityBot|Applebot|DuckDuckBot|Bytespider|Amazonbot|YouBot|FacebookBot|CCBot/i;
+const SCRAPER_SIGNATURES =
+  /python-requests|scrapy|curl\/|wget\/|Go-http-client|node-fetch|axios\/\d|PhantomJS|HeadlessChrome|Selenium|Nightmare|puppeteer/i;
+
+function classifyRequest(
+  request: NextRequest,
+): "human" | "welcome-bot" | "suspicious" {
+  const ua = request.headers.get("user-agent") || "";
+  const accept = request.headers.get("accept") || "";
+
+  if (WELCOME_BOTS.test(ua)) return "welcome-bot";
+  if (!ua || !accept) return "suspicious";
+  if (SCRAPER_SIGNATURES.test(ua)) return "suspicious";
+
+  return "human";
+}
+
 export function middleware(request: NextRequest) {
   const hostname = request.headers.get("host") || "";
   const pathname = request.nextUrl.pathname;
@@ -65,9 +84,21 @@ export function middleware(request: NextRequest) {
     return response;
   }
 
+  // Classify request for scraper detection
+  const requestClass = classifyRequest(request);
+
   // Create response and add pathname header for Server Components
   const response = NextResponse.next();
   response.headers.set("x-pathname", pathname);
+
+  // Tag suspicious requests on public content routes
+  if (requestClass === "suspicious") {
+    const firstSegment = pathname.split("/")[1];
+    if (PUBLIC_CATEGORIES.includes(firstSegment) || pathname === "/news") {
+      response.headers.set("X-Robots-Tag", "noindex");
+      response.headers.set("x-request-class", "suspicious");
+    }
+  }
 
   // === REDIRECT 301: mo.balizero.com → balizero.com ===
   // SEO: Prevent duplicate content and consolidate domain authority
