@@ -554,7 +554,7 @@ def _detect_language(query: str) -> str:
     return "English"
 
 
-@cached(ttl=43200, prefix="kbli_explain_v24")  # Cache explanations for 12 hours (v24: added sector 96: 96100/96210/96220/96230/96900; tattoo permanent note; 47690 art gallery)
+@cached(ttl=43200, prefix="kbli_explain_v25")  # Cache explanations for 12 hours (v25: 96100 risk scale-dependent: Rendah Mikro-Menengah / Tinggi Besar; all sector 96 PMA=TERBUKA)
 async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]) -> str:
     """Generate a grounded explanation of KBLI search results using LLM."""
     if not results:
@@ -655,37 +655,37 @@ KNOWN_KBLI_CODES: dict[str, dict] = {
     "47690": {
         "title": "PERDAGANGAN ECERAN KHUSUS BARANG KESENIAN DAN REKREASI YTDL",
         "description": "Retail trade of art, recreation and collectibles, including: recorded media, musical instruments and accessories, philately/numismatics/collectibles, commercial art gallery activities (selling paintings/sculptures). Also includes art supplies (beads, clay, canvas, oils, watercolors).",
-        "pma_status": "Verify at OSS",
-        "risk_category": "Verify at OSS",
+        "pma_status": "TERBUKA",
+        "risk_category": "Rendah",
     },
     "96210": {
         "title": "AKTIVITAS PENATAAN DAN PANGKAS RAMBUT",
         "description": "Hair salon and barbershop activities: hair washing, cutting, styling, coloring, perming, straightening; shaving and grooming beards/mustaches.",
-        "pma_status": "Verify at OSS",
-        "risk_category": "Verify at OSS",
+        "pma_status": "TERBUKA",
+        "risk_category": "Rendah",
     },
     "96220": {
         "title": "AKTIVITAS PERAWATAN KECANTIKAN DAN PERAWATAN KECANTIKAN LAINNYA",
         "description": "Beauty care activities not performed by doctors: nail studio (nail art, manicure/pedicure), eyelash studio (eyelash extension, lash lift), brow studio (sulam alis, brow lamination), wax studio, make-up artist (MUA), facial massage, skin tanning.",
-        "pma_status": "Verify at OSS",
+        "pma_status": "TERBUKA",
         "risk_category": "Verify at OSS",
     },
     "96230": {
         "title": "AKTIVITAS SANTE PAR AQUA (SPA) HARIAN, SAUNA, DAN PEMANDIAN UAP",
         "description": "Day spa, sauna, steam bath activities providing wellness and beauty treatments combining traditional and modern holistic methods using water, massage with herbal preparations, aromatherapy, physical therapy. Turkish bath, solarium, slimming salon.",
-        "pma_status": "Verify at OSS",
+        "pma_status": "TERBUKA",
         "risk_category": "Verify at OSS",
     },
     "96100": {
         "title": "AKTIVITAS PENCUCIAN DAN PEMBERSIHAN PRODUK TEKSTIL DAN BULU",
-        "description": "Laundry and dry cleaning services: washing, ironing, dry cleaning of clothing and textiles including fur; pick-up and delivery; carpet and curtain cleaning; coin-operated laundromat; reusable diaper service.",
-        "pma_status": "Verify at OSS",
-        "risk_category": "Verify at OSS",
+        "description": "Laundry and dry cleaning services: washing, ironing, dry cleaning of clothing and textiles including fur; pick-up and delivery; carpet and curtain cleaning; coin-operated laundromat; reusable diaper service. PMA: TERBUKA (open to foreigners, 100%). Risk level is SCALE-DEPENDENT: Mikro/Kecil/Menengah = Rendah (NIB only); Besar = Tinggi (NIB + Izin required).",
+        "pma_status": "TERBUKA",
+        "risk_category": "Rendah (Mikro/Kecil/Menengah) — Tinggi (Besar)",
     },
     "96900": {
         "title": "AKTIVITAS JASA PERORANGAN LAINNYA YTDL",
         "description": "Other personal service activities: astrology/spiritualism, social services (dating/matchmaking/escort), genealogy, pet care (boarding/grooming/training), shoe shiners/porters/valet parking, coin-operated personal service machines, photo booth. IMPORTANT: Also includes temporary henna/biological ink body decoration — BPS 2025 does NOT have a dedicated code for PERMANENT tattoo studios.",
-        "pma_status": "Verify at OSS",
+        "pma_status": "TERBUKA",
         "risk_category": "Verify at OSS",
     },
 }
