@@ -15,6 +15,19 @@ Disallow: /register
 Disallow: /clients/
 Disallow: /cases/
 Disallow: /settings/
+Disallow: /omnichannel/
+Disallow: /calendar/
+Disallow: /notifications/
+Disallow: /documents/
+Disallow: /email/
+Disallow: /knowledge/
+Disallow: /whatsapp/
+Disallow: /team-management/
+Disallow: /process/
+Disallow: /analytics/
+Disallow: /intelligence/
+Disallow: /agents/
+Disallow: /chat/
 
 # Google
 User-agent: Googlebot

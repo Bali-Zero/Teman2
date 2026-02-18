@@ -238,24 +238,36 @@ class KGIncrementalExtractor:
         self, collection_name: str, document_id: str = None, limit: int = None
     ) -> list[dict]:
         """
-        Fetch chunks from Qdrant collection, optionally filtered by document_id.
-
-        Args:
-            collection_name: Qdrant collection name
-            document_id: Optional document_id filter (from metadata.document_id)
-            limit: Max chunks to process
-
-        Returns:
-            List of chunk dicts with id, text, collection, metadata
+        Fetch chunks from Qdrant collection using native filters.
         """
         chunks = []
         batch_size = 100
         next_offset = None
 
+        # Build native filter if document_id provided
+        filter_data = None
+        if document_id:
+            filter_data = {
+                "must": [
+                    {
+                        "key": "metadata.document_id",
+                        "match": {"value": document_id}
+                    }
+                ]
+            }
+
         while True:
-            scroll_data = {"limit": batch_size, "with_payload": True, "with_vector": False}
+            # Build scroll request
+            scroll_data = {
+                "limit": batch_size,
+                "with_payload": True,
+                "with_vector": False
+            }
             if next_offset is not None:
                 scroll_data["offset"] = next_offset
+            
+            if filter_data:
+                scroll_data["filter"] = filter_data
 
             result = self._qdrant_request(
                 "POST", f"/collections/{collection_name}/points/scroll", scroll_data
@@ -270,13 +282,6 @@ class KGIncrementalExtractor:
             for point in points:
                 chunk_id = str(point.get("id", ""))
                 payload = point.get("payload", {})
-
-                # Filter by document_id if provided
-                if document_id:
-                    chunk_doc_id = payload.get("document_id")
-                    if chunk_doc_id != document_id:
-                        continue
-
                 text = payload.get("text", "") or payload.get("content", "")
                 if text:
                     chunks.append(
@@ -334,7 +339,7 @@ class KGIncrementalExtractor:
                 "relationships_extracted": 0,
             }
 
-        if not self.gemini or not self.gemini.is_available:
+        if not self.gemini or not getattr(self.gemini, "is_available", True):
             logger.warning("Gemini client not available - skipping extraction")
             return {"chunks_processed": 0, "entities_extracted": 0, "relationships_extracted": 0}
 
@@ -372,7 +377,7 @@ class KGIncrementalExtractor:
 
     async def extract_with_gemini(self, text: str) -> dict:
         """Extract entities using Gemini."""
-        if not self.gemini or not self.gemini.is_available:
+        if not self.gemini or not getattr(self.gemini, "is_available", True):
             return {"entities": [], "relationships": []}
 
         prompt = EXTRACTION_PROMPT.format(text=text[:8000])
@@ -627,8 +632,8 @@ async def main():
     if not args.dry_run:
         try:
             gemini = get_genai_client()
-            if gemini.is_available:
-                logger.info(f"✅ GenAI Client initialized (auth: {gemini._auth_method})")
+            if getattr(gemini, "is_available", True):
+                logger.info(f"✅ GenAI Client initialized")
             else:
                 logger.warning("⚠️ GenAI Client initialized but not available")
         except Exception as e:

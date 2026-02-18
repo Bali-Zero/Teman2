@@ -1440,3 +1440,321 @@ async def delete_client_document(
     except Exception as e:
         logger.error(f"Document deletion failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Deletion failed: {str(e)}") from e
+
+
+# ================================================
+# NPWP OCR ENDPOINT
+# ================================================
+
+class NpwpExtractRequest(BaseModel):
+    file: str  # base64 encoded file
+    file_name: str
+
+
+class NpwpExtractResponse(BaseModel):
+    success: bool
+    npwp: str | None = None
+    address: str | None = None
+    city: str | None = None
+    message: str | None = None
+
+
+@router.post("/extract-npwp", response_model=NpwpExtractResponse)
+async def extract_npwp(
+    request: NpwpExtractRequest,
+    _current_user: dict = Depends(get_current_user),
+):
+    """
+    Extract NPWP data from uploaded NPWP card image using Gemini Vision.
+    
+    Extracts:
+    - NPWP number (15 digits)
+    - Registered address
+    - City
+    """
+    import base64
+    import json
+    import re
+
+    from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
+
+    try:
+        if not GENAI_AVAILABLE:
+            return NpwpExtractResponse(success=False, message="Vision service not available")
+
+        genai_client = GenAIClient()
+        if not genai_client.is_available:
+            return NpwpExtractResponse(success=False, message="Gemini Vision not configured")
+
+        # Decode base64 file
+        try:
+            file_data = base64.b64decode(request.file.split(",")[-1] if "," in request.file else request.file)
+        except Exception as e:
+            logger.error(f"Failed to decode base64 file: {e}")
+            return NpwpExtractResponse(success=False, message="Invalid file format")
+
+        # Determine mime type from file extension
+        file_ext = request.file_name.lower().split(".")[-1] if "." in request.file_name else "jpg"
+        mime_type_map = {
+            "jpg": "image/jpeg",
+            "jpeg": "image/jpeg",
+            "png": "image/png",
+            "pdf": "application/pdf",
+        }
+        mime_type = mime_type_map.get(file_ext, "image/jpeg")
+
+        # OCR Prompt for NPWP
+        ocr_prompt = """Extract NPWP (Indonesian Tax ID) information from this image.
+
+Return ONLY this JSON format:
+{
+  "npwp": "12.345.678.9-012.345" or "123456789012345",
+  "address": "Full street address",
+  "city": "City name",
+  "confidence": 0.95
+}
+
+Rules:
+- NPWP is a 15-digit number, usually formatted as XX.XXX.XXX.X-XXX.XXX
+- Address should be the complete registered address
+- City should be just the city name (e.g., "Denpasar", "Jakarta", "Surabaya")
+- Use null for fields that are not visible or unclear
+- Return ONLY valid JSON, no markdown, no explanations"""
+
+        # Call Gemini Vision
+        contents = [
+            ocr_prompt,
+            {
+                "inline_data": {
+                    "mime_type": mime_type,
+                    "data": base64.b64encode(file_data).decode(),
+                }
+            },
+        ]
+
+        result = await genai_client.generate_content(
+            contents=contents,
+            model="gemini-2.0-flash-001",
+            max_output_tokens=2000,
+        )
+
+        response_text = result.get("text", "")
+        logger.info(f"NPWP OCR response: {response_text[:300]}...")
+
+        # Parse JSON response
+        extracted = extract_json_from_llm_response(response_text)
+        if not extracted:
+            logger.error(f"NPWP OCR JSON parsing failed. Raw: {response_text[:500]}")
+            return NpwpExtractResponse(success=False, message="Could not parse OCR response")
+
+        # Clean NPWP (remove dots, keep only digits)
+        npwp = extracted.get("npwp", "")
+        if npwp:
+            npwp_clean = re.sub(r"\D", "", npwp)
+            # Validate 15 digits
+            if len(npwp_clean) != 15:
+                logger.warning(f"NPWP doesn't have 15 digits: {npwp_clean}")
+                npwp = npwp_clean  # Keep original but cleaned
+            else:
+                npwp = npwp_clean
+
+        return NpwpExtractResponse(
+            success=True,
+            npwp=npwp if npwp else None,
+            address=extracted.get("address"),
+            city=extracted.get("city"),
+            message=f"OCR completed with confidence {extracted.get('confidence', 'unknown')}"
+        )
+
+    except Exception as e:
+        logger.error(f"NPWP extraction failed: {e}", exc_info=True)
+        return NpwpExtractResponse(success=False, message=f"Extraction failed: {str(e)}")
+
+
+# ================================================
+# NIB OCR ENDPOINT
+# ================================================
+
+class NibExtractRequest(BaseModel):
+    file: str  # base64 encoded file
+    file_name: str
+
+
+class NibExtractResponse(BaseModel):
+    success: bool
+    nib: str | None = None
+    company_name: str | None = None
+    kbli_code: str | None = None
+    message: str | None = None
+
+
+@router.post("/extract-nib", response_model=NibExtractResponse)
+async def extract_nib(
+    request: NibExtractRequest,
+    _current_user: dict = Depends(get_current_user),
+):
+    """
+    Extract NIB (Nomor Induk Berusaha) data from uploaded NIB document using Gemini Vision.
+    
+    Extracts:
+    - NIB number (13 digits)
+    - Company name
+    - KBLI code
+    """
+    import base64
+    import re
+
+    from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
+
+    try:
+        if not GENAI_AVAILABLE:
+            return NibExtractResponse(success=False, message="Vision service not available")
+
+        genai_client = GenAIClient()
+        if not genai_client.is_available:
+            return NibExtractResponse(success=False, message="Gemini Vision not configured")
+
+        # Decode base64 file
+        try:
+            file_data = base64.b64decode(request.file.split(",")[-1] if "," in request.file else request.file)
+        except Exception as e:
+            logger.error(f"Failed to decode base64 file: {e}")
+            return NibExtractResponse(success=False, message="Invalid file format")
+
+        # Determine mime type from file extension
+        file_ext = request.file_name.lower().split(".")[-1] if "." in request.file_name else "jpg"
+        mime_type_map = {
+            "jpg": "image/jpeg",
+            "jpeg": "image/jpeg",
+            "png": "image/png",
+            "pdf": "application/pdf",
+        }
+        mime_type = mime_type_map.get(file_ext, "image/jpeg")
+
+        # OCR Prompt for NIB
+        ocr_prompt = """Extract NIB (Nomor Induk Berusaha) information from this Indonesian business document.
+
+Return ONLY this JSON format:
+{
+  "nib": "13 digit NIB number",
+  "company_name": "Full company name as written",
+  "kbli_code": "5 digit KBLI code",
+  "confidence": 0.95
+}
+
+Rules:
+- NIB is a 13-digit number
+- Company name should be the full legal name
+- KBLI code is usually a 5-digit number representing business classification
+- Use null for fields that are not visible or unclear
+- Return ONLY valid JSON, no markdown, no explanations"""
+
+        # Call Gemini Vision
+        contents = [
+            ocr_prompt,
+            {
+                "inline_data": {
+                    "mime_type": mime_type,
+                    "data": base64.b64encode(file_data).decode(),
+                }
+            },
+        ]
+
+        result = await genai_client.generate_content(
+            contents=contents,
+            model="gemini-2.0-flash-001",
+            max_output_tokens=2000,
+        )
+
+        response_text = result.get("text", "")
+        logger.info(f"NIB OCR response: {response_text[:300]}...")
+
+        # Parse JSON response
+        extracted = extract_json_from_llm_response(response_text)
+        if not extracted:
+            logger.error(f"NIB OCR JSON parsing failed. Raw: {response_text[:500]}")
+            return NibExtractResponse(success=False, message="Could not parse OCR response")
+
+        # Clean NIB (keep only digits)
+        nib = extracted.get("nib", "")
+        if nib:
+            nib_clean = re.sub(r"\D", "", nib)
+            # Validate 13 digits
+            if len(nib_clean) != 13:
+                logger.warning(f"NIB doesn't have 13 digits: {nib_clean}")
+                nib = nib_clean
+            else:
+                nib = nib_clean
+
+        return NibExtractResponse(
+            success=True,
+            nib=nib if nib else None,
+            company_name=extracted.get("company_name"),
+            kbli_code=extracted.get("kbli_code"),
+            message=f"OCR completed with confidence {extracted.get('confidence', 'unknown')}"
+        )
+
+    except Exception as e:
+        logger.error(f"NIB extraction failed: {e}", exc_info=True)
+        return NibExtractResponse(success=False, message=f"Extraction failed: {str(e)}")
+
+
+# ================================================
+@router.get("/client/{client_id}/required-documents")
+async def get_client_required_documents(
+    client_id: int,
+    current_user: dict = Depends(get_current_user),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+):
+    """Get all required documents for a client across all their practices (for Portal)."""
+    try:
+        async with db_pool.acquire() as conn:
+            # Verify client is viewing their own data
+            client = await conn.fetchrow(
+                "SELECT id FROM clients WHERE email = $1",
+                current_user["email"]
+            )
+            
+            if not client or client["id"] != client_id:
+                if not await is_crm_admin(current_user["email"], conn):
+                    raise HTTPException(status_code=403, detail="Not authorized")
+            
+            rows = await conn.fetch(
+                """
+                SELECT 
+                    prd.id, prd.practice_id, prd.document_type, prd.document_label,
+                    prd.description, prd.is_required, prd.uploaded_by_client,
+                    prd.status, prd.client_notes, prd.team_member_notes,
+                    p.practice_type_name as process_name,
+                    p.status as process_status
+                FROM practice_required_documents prd
+                JOIN practices p ON prd.practice_id = p.id
+                WHERE p.client_id = $1 AND p.status NOT IN ('completed', 'cancelled')
+                ORDER BY prd.is_required DESC, prd.created_at DESC
+                """,
+                client_id
+            )
+            
+            return [
+                {
+                    "id": row["id"],
+                    "practice_id": row["practice_id"],
+                    "process_name": row["process_name"],
+                    "process_status": row["process_status"],
+                    "document_type": row["document_type"],
+                    "document_label": row["document_label"],
+                    "description": row["description"],
+                    "is_required": row["is_required"],
+                    "uploaded_by_client": row["uploaded_by_client"],
+                    "status": row["status"],
+                    "client_notes": row["client_notes"],
+                    "team_member_notes": row["team_member_notes"],
+                }
+                for row in rows
+            ]
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get client required documents: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to get documents: {str(e)}")

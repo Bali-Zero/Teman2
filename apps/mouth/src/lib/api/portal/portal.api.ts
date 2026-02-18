@@ -48,10 +48,11 @@ export class PortalApi {
   // ============================================================================
 
   async getProfile(): Promise<PortalProfile> {
-    const response = await this.client.request<
-      PortalApiResponse<any>
-    >("/api/portal/profile", { method: "GET" });
-    
+    const response = await this.client.request<PortalApiResponse<any>>(
+      "/api/portal/profile",
+      { method: "GET" },
+    );
+
     // Map snake_case backend response to camelCase frontend types
     const data = response.data!;
     return {
@@ -67,11 +68,13 @@ export class PortalApi {
       gender: data.gender,
       address: data.address,
       memberSince: data.member_since,
-      assignedTo: data.assigned_to ? {
-        email: data.assigned_to.email,
-        name: data.assigned_to.name,
-        avatarUrl: data.assigned_to.avatar_url,
-      } : undefined,
+      assignedTo: data.assigned_to
+        ? {
+            email: data.assigned_to.email,
+            name: data.assigned_to.name,
+            avatarUrl: data.assigned_to.avatar_url,
+          }
+        : undefined,
     };
   }
 

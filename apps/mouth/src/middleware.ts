@@ -26,6 +26,9 @@ const INTERNAL_ROUTES = [
   "/portal",
   "/analytics",
   "/intelligence",
+  "/omnichannel",
+  "/calendar",
+  "/notifications",
 ];
 
 // Public routes for balizero.com
@@ -116,7 +119,7 @@ export function middleware(request: NextRequest) {
     // Redirect non-portal routes to public domain
     const publicUrl = new URL(pathname, `https://${PUBLIC_DOMAIN}`);
     publicUrl.search = request.nextUrl.search;
-    const redirectResponse = NextResponse.redirect(publicUrl);
+    const redirectResponse = NextResponse.redirect(publicUrl, 301);
     redirectResponse.headers.set("x-pathname", pathname);
     return redirectResponse;
   }
@@ -141,7 +144,7 @@ export function middleware(request: NextRequest) {
       // Redirect to app domain
       const appUrl = new URL(pathname, `https://${APP_DOMAIN}`);
       appUrl.search = request.nextUrl.search;
-      const redirectResponse = NextResponse.redirect(appUrl);
+      const redirectResponse = NextResponse.redirect(appUrl, 301);
       redirectResponse.headers.set("x-pathname", pathname);
       return redirectResponse;
     }
@@ -150,7 +153,7 @@ export function middleware(request: NextRequest) {
     if (pathname === "/chat" || pathname.startsWith("/chat/")) {
       const appUrl = new URL(pathname, `https://${APP_DOMAIN}`);
       appUrl.search = request.nextUrl.search;
-      const redirectResponse = NextResponse.redirect(appUrl);
+      const redirectResponse = NextResponse.redirect(appUrl, 301);
       redirectResponse.headers.set("x-pathname", pathname);
       return redirectResponse;
     }
@@ -160,7 +163,7 @@ export function middleware(request: NextRequest) {
       const newPath = pathname.replace("/insights", "") || "/";
       const url = request.nextUrl.clone();
       url.pathname = newPath;
-      const redirectResponse = NextResponse.redirect(url);
+      const redirectResponse = NextResponse.redirect(url, 301);
       redirectResponse.headers.set("x-pathname", pathname);
       return redirectResponse;
     }
@@ -212,7 +215,7 @@ export function middleware(request: NextRequest) {
       // Redirect category pages to public domain
       const publicUrl = new URL(pathname, `https://${PUBLIC_DOMAIN}`);
       publicUrl.search = request.nextUrl.search;
-      const redirectResponse = NextResponse.redirect(publicUrl);
+      const redirectResponse = NextResponse.redirect(publicUrl, 301);
       redirectResponse.headers.set("x-pathname", pathname);
       return redirectResponse;
     }
@@ -224,7 +227,7 @@ export function middleware(request: NextRequest) {
     ) {
       const publicUrl = new URL(pathname, `https://${PUBLIC_DOMAIN}`);
       publicUrl.search = request.nextUrl.search;
-      const redirectResponse = NextResponse.redirect(publicUrl);
+      const redirectResponse = NextResponse.redirect(publicUrl, 301);
       redirectResponse.headers.set("x-pathname", pathname);
       return redirectResponse;
     }
@@ -245,7 +248,7 @@ export function middleware(request: NextRequest) {
       }
       const publicUrl = new URL(pathname, `https://${PUBLIC_DOMAIN}`);
       publicUrl.search = request.nextUrl.search;
-      const redirectResponse = NextResponse.redirect(publicUrl);
+      const redirectResponse = NextResponse.redirect(publicUrl, 301);
       redirectResponse.headers.set("x-pathname", pathname);
       return redirectResponse;
     }

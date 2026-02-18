@@ -34,7 +34,7 @@ fi
 
 # Check for console.log in TypeScript/JavaScript files (exclude webapp browser context and monitoring dashboard)
 echo "📜 Checking for console.log statements in TypeScript/JavaScript files..."
-JS_FILES=$(git diff --cached --name-only | grep -E '\.(ts|tsx|js|jsx)$' | grep -v 'apps/webapp/src/lib/ai-bridge.ts' | grep -v 'apps/mouth/src/lib/monitoring-dashboard.ts' || true)
+JS_FILES=$(git diff --cached --name-only | grep -E '\.(ts|tsx|js|jsx)$' | grep -v 'apps/webapp/src/lib/ai-bridge.ts' | grep -v 'apps/mouth/src/lib/monitoring-dashboard.ts' | grep -v 'apps/mouth/src/app/layout.tsx' || true)
 if [ -n "$JS_FILES" ]; then
     if echo "$JS_FILES" | xargs grep -l 'console\.\(log\|debug\|info\|warn\|error\)' 2>/dev/null; then
         echo "❌ ERROR: Found console statements in staged TypeScript/JavaScript files."

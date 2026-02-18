@@ -50,11 +50,12 @@ class HierarchicalIndexer:
     Ogni chunk mantiene riferimenti al parent per retrieval espanso.
     """
 
-    def __init__(self, structure_parser, qdrant_client, embeddings, chunker=None):
+    def __init__(self, structure_parser, qdrant_client, embeddings, chunker=None, sparse_vectorizer=None):
         self.parser = structure_parser
         self.qdrant = qdrant_client
         self.embeddings = embeddings
         self.chunker = chunker
+        self.sparse_vectorizer = sparse_vectorizer
         self.db_pool = None
 
     async def _get_db_pool(self):
@@ -126,7 +127,7 @@ class HierarchicalIndexer:
 
                 # 3. Processa ogni Pasal nel BAB
                 for pasal in bab.get("pasal", []):
-                    self._add_pasal_to_chunks(
+                    await self._add_pasal_to_chunks(
                         pasal=pasal,
                         document_id=document_id,
                         bab_id=bab_id,
@@ -141,7 +142,7 @@ class HierarchicalIndexer:
                 f"No BAB found for {document_id}, but found {len(structure['pasal_list'])} Pasals. Processing as root Pasals."
             )
             for pasal in structure.get("pasal_list", []):
-                self._add_pasal_to_chunks(
+                await self._add_pasal_to_chunks(
                     pasal=pasal,
                     document_id=document_id,
                     bab_id=None,
@@ -153,7 +154,7 @@ class HierarchicalIndexer:
         # 5. Fallback for unstructured text (if no chunks created from structure)
         if not chunks_to_index and self.chunker:
             logger.info(f"No structure found for {document_id}. Using fallback chunking.")
-            flat_chunks = self.chunker.chunk(document_text, metadata)
+            flat_chunks = await self.chunker.chunk(document_text, metadata)
 
             for i, fc in enumerate(flat_chunks):
                 chunk_id = f"{document_id}_chunk_{i}"
@@ -177,10 +178,16 @@ class HierarchicalIndexer:
         # 6. Genera embeddings solo per i chunk (Pasal)
         if chunks_to_index:
             chunk_texts = [c.text for c in chunks_to_index]
-            embeddings = self.embeddings.generate_embeddings(chunk_texts)
+            embeddings = await self.embeddings.generate_embeddings(chunk_texts)
+
+            # 6.1 Genera vettori BM25 se abilitato
+            sparse_vectors = None
+            if self.sparse_vectorizer:
+                logger.info(f"Generating BM25 sparse vectors for {len(chunk_texts)} chunks")
+                sparse_vectors = self.sparse_vectorizer.generate_batch_sparse_vectors(chunk_texts)
 
             # 7. Upsert chunks con struttura gerarchica
-            await self._upsert_hierarchical_chunks(chunks_to_index, embeddings)
+            await self._upsert_hierarchical_chunks(chunks_to_index, embeddings, sparse_vectors)
 
         # 8. Upsert parent documents (BAB completi) - NO embedding, solo storage
         if parent_documents:
@@ -194,7 +201,7 @@ class HierarchicalIndexer:
             "total_pasal": len(structure.get("pasal_list", [])),
         }
 
-    def _add_pasal_to_chunks(
+    async def _add_pasal_to_chunks(
         self, pasal, document_id, bab_id, bab_title, metadata, chunks_to_index
     ):
         """Helper to process a single Pasal and add it to chunks list"""
@@ -217,7 +224,7 @@ class HierarchicalIndexer:
             )
             # Create sub-metadata for chunker
             sub_metadata = {**metadata, "pasal_number": pasal["number"]}
-            sub_chunks = self.chunker.chunk(pasal_text, sub_metadata)
+            sub_chunks = await self.chunker.chunk(pasal_text, sub_metadata)
 
             for i, sc in enumerate(sub_chunks):
                 sc_id = f"{pasal_id}_{i}"
@@ -269,7 +276,9 @@ class HierarchicalIndexer:
         )
         chunks_to_index.append(chunk)
 
-    async def _upsert_hierarchical_chunks(self, chunks: list[HierarchicalChunk], embeddings):
+    async def _upsert_hierarchical_chunks(
+        self, chunks: list[HierarchicalChunk], embeddings, sparse_vectors=None
+    ):
         """Upsert chunks con payload gerarchico"""
         import uuid
 
@@ -296,32 +305,31 @@ class HierarchicalIndexer:
             metadatas.append(payload)
 
             # Generate deterministic UUID from chunk_id via uuid5 (hash-based)
-            # Idempotent: same chunk_id → same UUID → upsert overwrites instead of duplicating
             deterministic_uuid = str(uuid.uuid5(NAMESPACE_LEGAL, chunk.chunk_id))
             ids.append(deterministic_uuid)
 
-        # Upsert batch via QdrantClient
-        # Note: QdrantClient.upsert_documents handles batching and ID generation if needed,
-        # but here we provide specific IDs.
-        # We need to check if QdrantClient supports custom IDs in upsert_documents.
-        # Looking at legal_ingestion_service.py, it calls upsert_documents(chunks, embeddings, metadatas)
-        # It doesn't seem to take IDs. We might need to modify QdrantClient or rely on auto-generated IDs
-        # but store our custom ID in metadata.
-        # However, for retrieval, we need to link back.
-        # Let's check QdrantClient implementation in core/qdrant_db.py
-
-        # For now, I will assume I can pass IDs or I will store chunk_id in metadata.
-        # Storing chunk_id in metadata is safer if the client doesn't support explicit IDs.
         # CRITICAL: Overwrite chunk_id with deterministic UUID5
         for meta, cid in zip(metadatas, ids, strict=False):
-            original_chunk_id = meta.get("chunk_id", "NONE")
             meta["chunk_id"] = cid
-            logger.info(f"UUID5: {original_chunk_id} → {cid}")
 
-        logger.info(f"Upserting {len(ids)} chunks with deterministic UUID5 IDs")
-        await self.qdrant.upsert_documents(
-            chunks=chunk_texts, embeddings=embeddings, metadatas=metadatas, ids=ids
-        )
+        if sparse_vectors and hasattr(self.qdrant, "upsert_documents_with_sparse"):
+            logger.info(f"Upserting {len(ids)} chunks with Hybrid (Dense + BM25) vectors")
+            res = await self.qdrant.upsert_documents_with_sparse(
+                chunks=chunk_texts,
+                embeddings=embeddings,
+                sparse_vectors=sparse_vectors,
+                metadatas=metadatas,
+                ids=ids,
+            )
+            if not res.get("success"):
+                raise RuntimeError(f"Qdrant hybrid upsert failed: {res.get('error')}")
+        else:
+            logger.info(f"Upserting {len(ids)} chunks with Dense vectors only")
+            res = await self.qdrant.upsert_documents(
+                chunks=chunk_texts, embeddings=embeddings, metadatas=metadatas, ids=ids
+            )
+            if not res.get("success"):
+                raise RuntimeError(f"Qdrant dense upsert failed: {res.get('error')}")
 
     async def _upsert_parent_documents(self, parent_docs: list[dict]):
         """

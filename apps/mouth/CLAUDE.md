@@ -1,5 +1,47 @@
 # Claude Memory - Mouth (Frontend)
 
+## Session Update (2026-02-17 - Console Error Cleanup & Middleware CORS Fix)
+
+### Task Overview
+
+Final cleanup of all production console errors on `zantara.balizero.com`. Fixed CORS errors from `/team` and `/contact` prefetch redirects.
+
+---
+
+### Issues Fixed
+
+**1. CORS Console Errors from /team and /contact Prefetch**
+
+- **Root cause:** Next.js `<Link>` in sidebar and dashboard prefetches `/team` and `/contact` via RSC. Middleware redirects these cross-origin to `balizero.com`, causing CORS errors.
+- **Fix:** Enhanced RSC/prefetch detection in `middleware.ts` to also check `Next-Router-Prefetch` and `Purpose: prefetch` headers. Returns 204 (No Content) instead of cross-origin redirect for prefetch requests.
+- **Commit:** `8b1a9caea`
+
+**2. 404s for layout.css and GeistVariableVF.woff2** — Already fixed (previous session)
+**3. Service Worker errors** — Already fixed (previous session)
+
+### Files Modified
+
+| File                        | Change                                                                                        |
+| --------------------------- | --------------------------------------------------------------------------------------------- |
+| `src/middleware.ts:235-248` | Added `Next-Router-Prefetch` + `Purpose: prefetch` header detection, changed 404→204 response |
+
+### Middleware RSC Detection Pattern
+
+```typescript
+const isRSC =
+  request.nextUrl.searchParams.has("_rsc") ||
+  request.headers.get("RSC") === "1" ||
+  request.headers.get("Next-Router-Prefetch") === "1" ||
+  request.headers.get("Purpose") === "prefetch";
+if (isRSC) {
+  return new NextResponse(null, { status: 204 });
+}
+```
+
+Use this pattern for any future cross-domain redirects that could be triggered by Link prefetch.
+
+---
+
 ## Session Update (2026-02-12 - Console Logging Fix for Omnichannel Page)
 
 ### Task Overview

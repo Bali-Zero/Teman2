@@ -40,9 +40,7 @@ class PDFVisionService:
         self.ai_client = ai_client
         self.api_key = api_key or settings.google_api_key
         self._genai_client: GenAIClient | None = None
-        self._available = False
         self.model_name = "gemini-2.0-flash-001"
-        self._genai_client = None
 
         if not self.api_key:
             logger.warning("⚠️ No Gemini API key found for Vision Service")
