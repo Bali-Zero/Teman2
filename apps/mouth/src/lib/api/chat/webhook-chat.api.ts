@@ -168,7 +168,11 @@ export class WebhookChatApi {
                 executionTime = data.data.execution_time;
               if (data.data.persisted) persisted = data.data.persisted;
             } else if (data.type === "error") {
-              throw new Error(data.data);
+              throw new Error(
+                typeof data.data === "string"
+                  ? data.data
+                  : JSON.stringify(data.data),
+              );
             }
           } catch (e) {
             logger.error(

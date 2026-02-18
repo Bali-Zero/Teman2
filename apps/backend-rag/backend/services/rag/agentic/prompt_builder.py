@@ -429,6 +429,8 @@ class SystemPromptBuilder:
             return False
 
         for msg in conversation_history:
+            if not isinstance(msg, dict):
+                continue
             if msg.get("role") == "assistant":
                 content = msg.get("content", "").strip().lower()
                 for pattern in self.GREETING_PATTERNS:
