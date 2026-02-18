@@ -597,10 +597,38 @@ class ReasoningEngine:
                         )
                         break
 
+        # ==================== ANSWER CONTENT CHECK ====================
+        # If the LLM produced an answer with specific factual data (prices, numbers),
+        # it likely used tool results or system context. Don't override it.
+        if not trusted_tools_used and state.final_answer:
+            answer_lower = state.final_answer.lower()
+            has_pricing_data = any(marker in answer_lower for marker in [
+                "rp ", "rp.", "idr ", "usd ", "$",
+                "20.000.000", "15.000.000", "10.000.000", "5.000.000",
+                "juta", "million",
+            ])
+            if has_pricing_data:
+                trusted_tools_used = True
+                logger.info(
+                    "🔍 [Answer Content] Final answer contains pricing data, "
+                    "bypassing evidence check"
+                )
+
         # ==================== POLICY ENFORCEMENT ====================
         # If final_answer already exists but evidence is weak, override it
         # Skip evidence check for general tasks (translation, summarization, etc.)
         # Also skip if trusted tools were used successfully
+        #
+        # FIX: Also skip if LLM had tools available — it was given the opportunity
+        # to call tools and chose to answer directly. Trust its judgment.
+        has_tools = hasattr(llm_gateway, '_gemini_tools') and bool(llm_gateway._gemini_tools)
+        if has_tools and state.final_answer:
+            logger.info(
+                f"🔍 [Tools Available] LLM had {len(llm_gateway._gemini_tools)} tools "
+                f"and produced answer, skipping strict evidence check"
+            )
+            trusted_tools_used = True
+
         if (
             state.final_answer
             and evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD
@@ -1279,15 +1307,16 @@ Do not invent information. If the context is insufficient, admit it.
             "team_knowledge",
             "timesheet",
         }
-        logger.debug(f"Checking {len(state.steps)} steps for trusted tools")
+        logger.info(f"🔍 [Trusted Tools] Checking {len(state.steps)} steps for trusted tools")
         for step in state.steps:
             tool_name = (
                 step.action.tool_name
                 if step.action and hasattr(step.action, "tool_name")
                 else "no_action"
             )
-            obs_preview = step.observation[:50] if step.observation else "None"
-            logger.debug(f"Step debug: tool={tool_name}, obs={obs_preview}")
+            obs_preview = step.observation[:100] if step.observation else "None"
+            has_error = "error" in step.observation.lower() if step.observation else False
+            logger.info(f"🔍 [Trusted Tools] Step: tool={tool_name}, obs_len={len(step.observation) if step.observation else 0}, has_error={has_error}, obs_preview={obs_preview}")
             if step.action and hasattr(step.action, "tool_name"):
                 if step.action.tool_name in trusted_tool_names and step.observation:
                     # Tool was used and produced output
@@ -1298,10 +1327,74 @@ Do not invent information. If the context is insufficient, admit it.
                         )
                         break
 
+        # FIX: Also check context_gathered for tool output patterns
+        # When Gemini calls tools, context_gathered gets populated even if step.action
+        # isn't set correctly (e.g., when text_response is empty but function_call exists)
+        if not trusted_tools_used and state.context_gathered:
+            context_text = " ".join(state.context_gathered).lower()
+            # Check for pricing tool output patterns
+            if any(marker in context_text for marker in [
+                "bali_zero_official_prices", "service_type", "total_price",
+                "pricing", "rp ", "idr ", "harga",
+            ]):
+                trusted_tools_used = True
+                logger.info("🔍 [Trusted Tools] Pricing data found in context_gathered, bypassing evidence check")
+            # Check for team knowledge tool output
+            elif any(marker in context_text for marker in [
+                "team_member", "specialties", "role:", "department",
+            ]):
+                trusted_tools_used = True
+                logger.info("🔍 [Trusted Tools] Team data found in context_gathered, bypassing evidence check")
+            # Check for KG tool output
+            elif any(marker in context_text for marker in [
+                "subgraph", "nodes,", "edges)", "focus]", "knowledge graph",
+            ]):
+                trusted_tools_used = True
+                logger.info("🔍 [Trusted Tools] KG data found in context_gathered, bypassing evidence check")
+
+        # FIX: Also bypass evidence check when context_gathered has substantial content
+        # from ANY tool. If the ReAct loop gathered context, the LLM had evidence to work with.
+        if not trusted_tools_used and state.context_gathered:
+            total_context_len = sum(len(c) for c in state.context_gathered)
+            if total_context_len > 200:
+                trusted_tools_used = True
+                logger.info(
+                    f"🔍 [Context Evidence] Substantial context gathered ({total_context_len} chars), "
+                    f"bypassing strict evidence check"
+                )
+
+        # ==================== ANSWER CONTENT CHECK ====================
+        # If the LLM produced an answer with specific factual data (prices, numbers),
+        # it likely used tool results or system context. Don't override it.
+        if not trusted_tools_used and state.final_answer:
+            answer_lower = state.final_answer.lower()
+            has_pricing_data = any(marker in answer_lower for marker in [
+                "rp ", "rp.", "idr ", "usd ", "$",
+                "20.000.000", "15.000.000", "10.000.000", "5.000.000",
+                "juta", "million",
+            ])
+            if has_pricing_data:
+                trusted_tools_used = True
+                logger.info(
+                    "🔍 [Answer Content] Final answer contains pricing data, "
+                    "bypassing evidence check"
+                )
+
         # ==================== POLICY ENFORCEMENT ====================
         # If final_answer already exists but evidence is weak, override it
         # Skip evidence check for general tasks (translation, summarization, etc.)
         # Also skip if trusted tools were used successfully
+        #
+        # FIX: Also skip if LLM had tools available — it was given the opportunity
+        # to call tools and chose to answer directly. Trust its judgment.
+        has_tools = hasattr(llm_gateway, '_gemini_tools') and bool(llm_gateway._gemini_tools)
+        if has_tools and state.final_answer:
+            logger.info(
+                f"🔍 [Tools Available] LLM had {len(llm_gateway._gemini_tools)} tools "
+                f"and produced answer, skipping strict evidence check"
+            )
+            trusted_tools_used = True
+
         if (
             state.final_answer
             and evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD
