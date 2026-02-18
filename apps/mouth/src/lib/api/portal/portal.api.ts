@@ -49,9 +49,30 @@ export class PortalApi {
 
   async getProfile(): Promise<PortalProfile> {
     const response = await this.client.request<
-      PortalApiResponse<PortalProfile>
+      PortalApiResponse<any>
     >("/api/portal/profile", { method: "GET" });
-    return response.data!;
+    
+    // Map snake_case backend response to camelCase frontend types
+    const data = response.data!;
+    return {
+      id: data.id,
+      fullName: data.full_name,
+      email: data.email,
+      phone: data.phone,
+      whatsapp: data.whatsapp,
+      nationality: data.nationality,
+      passportNumber: data.passport_number,
+      passportExpiry: data.passport_expiry,
+      dateOfBirth: data.date_of_birth,
+      gender: data.gender,
+      address: data.address,
+      memberSince: data.member_since,
+      assignedTo: data.assigned_to ? {
+        email: data.assigned_to.email,
+        name: data.assigned_to.name,
+        avatarUrl: data.assigned_to.avatar_url,
+      } : undefined,
+    };
   }
 
   // ============================================================================
