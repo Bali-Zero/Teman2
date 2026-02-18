@@ -370,3 +370,4 @@ ZANTARA_RESPONSE_QUALITY_ISSUES_*.md
 
 # One-off verification scripts
 verify_homepage.mjs
+apps/backend-rag/.venv/
