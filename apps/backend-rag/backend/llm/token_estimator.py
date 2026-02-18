@@ -90,6 +90,8 @@ class TokenEstimator:
         """
         total = 0
         for msg in messages:
+            if not isinstance(msg, dict):
+                continue
             content = msg.get("content", "")
             role = msg.get("role", "")
             # Add tokens for role and content

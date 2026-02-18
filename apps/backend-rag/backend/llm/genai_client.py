@@ -501,6 +501,8 @@ class ChatSession:
         # Add history
         # Add history
         for msg in self._history:
+            if not isinstance(msg, dict):
+                continue
             role = msg.get("role", "user")
             content = msg.get("content", "")
 
