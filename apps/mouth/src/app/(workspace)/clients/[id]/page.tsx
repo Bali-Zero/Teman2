@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback, memo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
@@ -3635,63 +3635,190 @@ function TaxTab({
 }
 
 // ============================================
-// ADD COMPANY MODAL
+// FILE UPLOAD COMPONENT
 // ============================================
-function AddCompanyModal({
-  clientId,
-  onClose,
-  onSuccess,
-}: {
-  clientId: number;
-  onClose: () => void;
-  onSuccess: () => void;
-}) {
+interface FileUploadFieldProps {
+  id: string;
+  label: string;
+  subLabel?: string;
+  file?: File;
+  error?: string;
+  accept?: string;
+  onChange: (file: File | undefined) => void;
+  onClear: () => void;
+  extraButton?: React.ReactNode;
+  className?: string;
+}
+
+const FileUploadField = memo(function FileUploadField({
+  id,
+  label,
+  subLabel,
+  file,
+  error,
+  accept = ".pdf,.jpg,.jpeg,.png",
+  onChange,
+  onClear,
+  extraButton,
+  className = "",
+}: FileUploadFieldProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      // Validate file size (10MB max)
+      if (selectedFile.size > 10 * 1024 * 1024) {
+        toast.error("File too large", { description: "Maximum size is 10MB" });
+        return;
+      }
+      // Validate file type
+      const allowedTypes = ["application/pdf", "image/jpeg", "image/jpg", "image/png"];
+      if (!allowedTypes.includes(selectedFile.type)) {
+        toast.error("Invalid file type", { description: "Please upload PDF, JPG, or PNG" });
+        return;
+      }
+      onChange(selectedFile);
+    }
+  }, [onChange]);
+
+  const handleClear = useCallback(() => {
+    onClear();
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
+  }, [onClear]);
+
+  return (
+    <div className={className}>
+      <label className="block text-xs font-medium mb-1.5">
+        {label}
+        {subLabel && <span className="text-[var(--foreground-muted)]"> {subLabel}</span>}
+      </label>
+      <div className="flex items-center gap-2">
+        <input
+          ref={inputRef}
+          type="file"
+          id={id}
+          accept={accept}
+          onChange={handleChange}
+          className="hidden"
+        />
+        <label
+          htmlFor={id}
+          className={`
+            flex-1 px-3 py-2 rounded-lg border border-dashed cursor-pointer transition-colors text-sm truncate
+            ${error 
+              ? "border-red-500 bg-red-500/10 text-red-500" 
+              : "border-[var(--border)] bg-[var(--background-secondary)] hover:border-[var(--accent)]"
+            }
+          `}
+        >
+          {file ? file.name : `Upload ${label}`}
+        </label>
+        {file && (
+          <>
+            {extraButton}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-red-500 hover:text-red-600"
+              onClick={handleClear}
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </>
+        )}
+      </div>
+      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+    </div>
+  );
+});
+
+// ============================================
+// CUSTOM HOOK: useCompanyForm
+// ============================================
+function useCompanyForm(clientId: number, onSuccess: () => void) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isExtractingNpwp, setIsExtractingNpwp] = useState(false);
-  const [documents, setDocuments] = useState<{
-    akta?: File;
-    sk?: File;
-    businessId?: File;
-    nib?: File;
-    npwp?: File;
-    profilePerseroan?: File;
-  }>({});
-  const [formData, setFormData] = useState({
-    company_name: "",
-    company_type: "PT PMA",
-    kbli_code: "",
-    nib: "",
-    npwp_company: "",
-    registered_address: "",
-    city: "",
-    province: "",
-    company_email: "",
-    company_phone: "",
-    role: "Director",
-    is_primary: false,
-    ownership_percentage: "",
-  });
+  const [uploadErrors, setUploadErrors] = useState<Partial<Record<DocumentType, string>>>({});
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [documents, setDocuments] = useState<CompanyDocuments>({});
+  const [formData, setFormData] = useState<CompanyFormData>(INITIAL_FORM_DATA);
 
-  const handleFileSelect = (docType: keyof typeof documents) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setDocuments(prev => ({ ...prev, [docType]: file }));
+  const updateField = useCallback(<K extends keyof CompanyFormData>(
+    field: K, 
+    value: CompanyFormData[K]
+  ) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear error when field is updated
+    if (errors[field as keyof FormErrors]) {
+      setErrors(prev => ({ ...prev, [field]: undefined }));
     }
-  };
+  }, [errors]);
 
-  const handleExtractNpwp = async () => {
+  const updateDocument = useCallback((type: DocumentType, file: File | undefined) => {
+    setDocuments(prev => ({ ...prev, [type]: file }));
+    if (uploadErrors[type]) {
+      setUploadErrors(prev => ({ ...prev, [type]: undefined }));
+    }
+  }, [uploadErrors]);
+
+  const validateForm = useCallback((): boolean => {
+    const newErrors: FormErrors = {};
+
+    if (!formData.company_name.trim()) {
+      newErrors.company_name = "Company name is required";
+    } else if (formData.company_name.length < 3) {
+      newErrors.company_name = "Company name must be at least 3 characters";
+    } else if (formData.company_name.length > 200) {
+      newErrors.company_name = "Company name must be less than 200 characters";
+    }
+
+    if (formData.company_email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.company_email)) {
+        newErrors.company_email = "Invalid email format";
+      }
+    }
+
+    if (formData.ownership_percentage) {
+      const percentage = parseFloat(formData.ownership_percentage);
+      if (isNaN(percentage) || percentage < 0 || percentage > 100) {
+        newErrors.ownership_percentage = "Ownership must be between 0 and 100";
+      }
+    }
+
+    if (formData.nib && !/^\d+$/.test(formData.nib)) {
+      newErrors.nib = "NIB should contain only numbers";
+    }
+
+    if (formData.npwp_company) {
+      const npwpClean = formData.npwp_company.replace(/\D/g, "");
+      if (npwpClean.length !== 15) {
+        newErrors.npwp_company = "NPWP must be 15 digits";
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }, [formData]);
+
+  const extractNpwp = useCallback(async (): Promise<boolean> => {
     if (!documents.npwp) {
       toast.error("Please upload NPWP file first");
-      return;
+      return false;
     }
+
     setIsExtractingNpwp(true);
     try {
       const base64 = await fileToBase64(documents.npwp);
-      const response = await api.post("/api/crm/documents/extract-npwp", {
+      const response = await api.post("/api/crm/clients/extract-npwp", {
         file: base64,
         file_name: documents.npwp.name,
       }) as { success: boolean; npwp?: string; address?: string; city?: string; message?: string };
-      
+
       if (response.success) {
         setFormData(prev => ({
           ...prev,
@@ -3702,26 +3829,27 @@ function AddCompanyModal({
         toast.success("NPWP data extracted", {
           description: "Address and NPWP number auto-filled",
         });
+        return true;
       } else {
         toast.warning("OCR failed", { description: response.message });
+        return false;
       }
     } catch (err) {
       toast.error("Extraction failed", { description: (err as Error).message });
+      return false;
     } finally {
       setIsExtractingNpwp(false);
     }
-  };
+  }, [documents.npwp]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.company_name.trim()) {
-      toast.error("Company name is required");
-      return;
+  const submit = useCallback(async (): Promise<boolean> => {
+    if (!validateForm()) {
+      toast.error("Please fix form errors");
+      return false;
     }
 
     setIsSubmitting(true);
     try {
-      // 1. Create the company
       const company = await api.crm.createCompany({
         company_name: formData.company_name,
         company_type: formData.company_type,
@@ -3735,7 +3863,6 @@ function AddCompanyModal({
         company_phone: formData.company_phone || undefined,
       });
 
-      // 2. Link the client to the company
       await api.crm.linkClientToCompany(clientId, company.id, {
         role: formData.role,
         is_primary: formData.is_primary,
@@ -3744,17 +3871,148 @@ function AddCompanyModal({
           : undefined,
       });
 
+      // Upload documents if any
+      const uploadPromises = Object.entries(documents)
+        .filter(([, file]) => file !== undefined)
+        .map(async ([type, file]) => {
+          try {
+            const base64 = await fileToBase64(file!);
+            await api.post(`/api/crm/companies/${company.id}/documents`, {
+              file: base64,
+              file_name: file!.name,
+              document_type: type,
+            });
+          } catch (err) {
+            logger.error(`Failed to upload ${type}:`, {}, err as Error);
+            setUploadErrors(prev => ({ 
+              ...prev, 
+              [type as DocumentType]: "Upload failed" 
+            }));
+          }
+        });
+
+      await Promise.all(uploadPromises);
+
       toast.success("Company created and linked successfully");
       onSuccess();
+      return true;
     } catch (err) {
       logger.error("Failed to create company:", {}, err as Error);
       toast.error("Failed to create company", {
         description: (err as Error).message,
       });
+      return false;
     } finally {
       setIsSubmitting(false);
     }
+  }, [formData, documents, clientId, onSuccess, validateForm]);
+
+  const reset = useCallback(() => {
+    setFormData(INITIAL_FORM_DATA);
+    setDocuments({});
+    setErrors({});
+    setUploadErrors({});
+  }, []);
+
+  return {
+    formData,
+    documents,
+    errors,
+    uploadErrors,
+    isSubmitting,
+    isExtractingNpwp,
+    updateField,
+    updateDocument,
+    validateForm,
+    extractNpwp,
+    submit,
+    reset,
   };
+}
+
+// ============================================
+// ADD COMPANY MODAL - TYPES
+// ============================================
+type DocumentType = 'akta' | 'sk' | 'businessId' | 'nib' | 'npwp' | 'profilePerseroan';
+
+interface CompanyDocuments {
+  akta?: File;
+  sk?: File;
+  businessId?: File;
+  nib?: File;
+  npwp?: File;
+  profilePerseroan?: File;
+}
+
+interface CompanyFormData {
+  company_name: string;
+  company_type: string;
+  kbli_code: string;
+  nib: string;
+  npwp_company: string;
+  registered_address: string;
+  city: string;
+  province: string;
+  company_email: string;
+  company_phone: string;
+  role: string;
+  is_primary: boolean;
+  ownership_percentage: string;
+}
+
+interface AddCompanyModalProps {
+  clientId: number;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+interface FormErrors {
+  company_name?: string;
+  company_email?: string;
+  ownership_percentage?: string;
+  nib?: string;
+  npwp_company?: string;
+}
+
+const INITIAL_FORM_DATA: CompanyFormData = {
+  company_name: "",
+  company_type: "PT PMA",
+  kbli_code: "",
+  nib: "",
+  npwp_company: "",
+  registered_address: "",
+  city: "",
+  province: "",
+  company_email: "",
+  company_phone: "",
+  role: "Director",
+  is_primary: false,
+  ownership_percentage: "",
+};
+
+// ============================================
+// ADD COMPANY MODAL
+// ============================================
+function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps) {
+  const {
+    formData,
+    documents,
+    errors,
+    uploadErrors,
+    isSubmitting,
+    isExtractingNpwp,
+    updateField,
+    updateDocument,
+    extractNpwp,
+    submit,
+    reset,
+  } = useCompanyForm(clientId, onSuccess);
+
+  // Handle close with cleanup
+  const handleClose = useCallback(() => {
+    reset();
+    onClose();
+  }, [reset, onClose]);
 
   const inputClass =
     "w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 text-sm";
@@ -3776,7 +4034,7 @@ function AddCompanyModal({
           </Button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="space-y-4">
           {/* Company Basic Info */}
           <div className="space-y-3">
             <h4 className="text-sm font-medium text-[var(--foreground)] flex items-center gap-2">
@@ -3793,7 +4051,7 @@ function AddCompanyModal({
                   type="text"
                   value={formData.company_name}
                   onChange={(e) =>
-                    setFormData({ ...formData, company_name: e.target.value })
+                    updateField('company_name', e.target.value)
                   }
                   className={inputClass}
                   placeholder="e.g. PT Bali Investment Mandiri"
@@ -3808,7 +4066,7 @@ function AddCompanyModal({
                 <select
                   value={formData.company_type}
                   onChange={(e) =>
-                    setFormData({ ...formData, company_type: e.target.value })
+                    updateField('company_type', e.target.value)
                   }
                   className={inputClass}
                 >
@@ -3827,7 +4085,7 @@ function AddCompanyModal({
                   type="text"
                   value={formData.kbli_code}
                   onChange={(e) =>
-                    setFormData({ ...formData, kbli_code: e.target.value })
+                    updateField('kbli_code', e.target.value)
                   }
                   className={inputClass}
                   placeholder="e.g. 68111"
@@ -3853,7 +4111,7 @@ function AddCompanyModal({
                   type="text"
                   value={formData.nib}
                   onChange={(e) =>
-                    setFormData({ ...formData, nib: e.target.value })
+                    updateField('nib', e.target.value)
                   }
                   className={inputClass}
                   placeholder="Nomor Induk Berusaha"
@@ -3867,7 +4125,7 @@ function AddCompanyModal({
                   <input
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={handleFileSelect('nib')}
+                    onChange={(e) => updateDocument('nib', e.target.files?.[0])}
                     className="hidden"
                     id="nib-doc-upload"
                   />
@@ -3883,7 +4141,7 @@ function AddCompanyModal({
                       variant="ghost"
                       size="sm"
                       className="h-8 w-8 p-0 text-red-500"
-                      onClick={() => setDocuments(prev => ({ ...prev, nib: undefined }))}
+                      onClick={() => updateDocument('nib', undefined)}
                     >
                       <X className="w-4 h-4" />
                     </Button>
@@ -3902,7 +4160,7 @@ function AddCompanyModal({
                   type="text"
                   value={formData.npwp_company}
                   onChange={(e) =>
-                    setFormData({ ...formData, npwp_company: e.target.value })
+                    updateField('npwp_company', e.target.value)
                   }
                   className={inputClass}
                   placeholder="Company Tax ID"
@@ -3916,7 +4174,7 @@ function AddCompanyModal({
                   <input
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={handleFileSelect('npwp')}
+                    onChange={(e) => updateDocument('npwp', e.target.files?.[0])}
                     className="hidden"
                     id="npwp-upload"
                   />
@@ -3933,7 +4191,7 @@ function AddCompanyModal({
                         variant="outline"
                         size="sm"
                         className="gap-1 text-xs"
-                        onClick={handleExtractNpwp}
+                        onClick={extractNpwp}
                         disabled={isExtractingNpwp}
                       >
                         {isExtractingNpwp ? (
@@ -3948,7 +4206,7 @@ function AddCompanyModal({
                         variant="ghost"
                         size="sm"
                         className="h-8 w-8 p-0 text-red-500"
-                        onClick={() => setDocuments(prev => ({ ...prev, npwp: undefined }))}
+                        onClick={() => updateDocument('npwp', undefined)}
                       >
                         <X className="w-4 h-4" />
                       </Button>
@@ -3976,7 +4234,7 @@ function AddCompanyModal({
                   <input
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={handleFileSelect('akta')}
+                    onChange={(e) => updateDocument('akta', e.target.files?.[0])}
                     className="hidden"
                     id="akta-upload"
                   />
@@ -3992,7 +4250,7 @@ function AddCompanyModal({
                       variant="ghost"
                       size="sm"
                       className="h-8 w-8 p-0 text-red-500"
-                      onClick={() => setDocuments(prev => ({ ...prev, akta: undefined }))}
+                      onClick={() => updateDocument('akta', undefined)}
                     >
                       <X className="w-4 h-4" />
                     </Button>
@@ -4009,7 +4267,7 @@ function AddCompanyModal({
                   <input
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={handleFileSelect('sk')}
+                    onChange={(e) => updateDocument('sk', e.target.files?.[0])}
                     className="hidden"
                     id="sk-upload"
                   />
@@ -4025,7 +4283,7 @@ function AddCompanyModal({
                       variant="ghost"
                       size="sm"
                       className="h-8 w-8 p-0 text-red-500"
-                      onClick={() => setDocuments(prev => ({ ...prev, sk: undefined }))}
+                      onClick={() => updateDocument('sk', undefined)}
                     >
                       <X className="w-4 h-4" />
                     </Button>
@@ -4042,7 +4300,7 @@ function AddCompanyModal({
                   <input
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={handleFileSelect('businessId')}
+                    onChange={(e) => updateDocument('businessId', e.target.files?.[0])}
                     className="hidden"
                     id="business-id-upload"
                   />
@@ -4058,7 +4316,7 @@ function AddCompanyModal({
                       variant="ghost"
                       size="sm"
                       className="h-8 w-8 p-0 text-red-500"
-                      onClick={() => setDocuments(prev => ({ ...prev, businessId: undefined }))}
+                      onClick={() => updateDocument('businessId', undefined)}
                     >
                       <X className="w-4 h-4" />
                     </Button>
@@ -4075,7 +4333,7 @@ function AddCompanyModal({
                   <input
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={handleFileSelect('profilePerseroan')}
+                    onChange={(e) => updateDocument('profilePerseroan', e.target.files?.[0])}
                     className="hidden"
                     id="profile-perseroan-upload"
                   />
@@ -4091,7 +4349,7 @@ function AddCompanyModal({
                       variant="ghost"
                       size="sm"
                       className="h-8 w-8 p-0 text-red-500"
-                      onClick={() => setDocuments(prev => ({ ...prev, profilePerseroan: undefined }))}
+                      onClick={() => updateDocument('profilePerseroan', undefined)}
                     >
                       <X className="w-4 h-4" />
                     </Button>
@@ -4116,10 +4374,7 @@ function AddCompanyModal({
                 <textarea
                   value={formData.registered_address}
                   onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      registered_address: e.target.value,
-                    })
+                    updateField('registered_address', e.target.value)
                   }
                   className={inputClass}
                   rows={2}
@@ -4136,7 +4391,7 @@ function AddCompanyModal({
                     type="text"
                     value={formData.city}
                     onChange={(e) =>
-                      setFormData({ ...formData, city: e.target.value })
+                      updateField('city', e.target.value)
                     }
                     className={inputClass}
                     placeholder="e.g. Denpasar"
@@ -4151,7 +4406,7 @@ function AddCompanyModal({
                     type="text"
                     value={formData.province}
                     onChange={(e) =>
-                      setFormData({ ...formData, province: e.target.value })
+                      updateField('province', e.target.value)
                     }
                     className={inputClass}
                     placeholder="e.g. Bali"
@@ -4166,10 +4421,7 @@ function AddCompanyModal({
                     type="email"
                     value={formData.company_email}
                     onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        company_email: e.target.value,
-                      })
+                      updateField('company_email', e.target.value)
                     }
                     className={inputClass}
                     placeholder="company@email.com"
@@ -4185,7 +4437,7 @@ function AddCompanyModal({
                   type="tel"
                   value={formData.company_phone}
                   onChange={(e) =>
-                    setFormData({ ...formData, company_phone: e.target.value })
+                    updateField('company_phone', e.target.value)
                   }
                   className={inputClass}
                   placeholder="+62 xxx xxxx xxxx"
@@ -4209,7 +4461,7 @@ function AddCompanyModal({
                 <select
                   value={formData.role}
                   onChange={(e) =>
-                    setFormData({ ...formData, role: e.target.value })
+                    updateField('role', e.target.value)
                   }
                   className={inputClass}
                 >
@@ -4233,10 +4485,7 @@ function AddCompanyModal({
                   step="0.01"
                   value={formData.ownership_percentage}
                   onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      ownership_percentage: e.target.value,
-                    })
+                    updateField('ownership_percentage', e.target.value)
                   }
                   className={inputClass}
                   placeholder="e.g. 51"
@@ -4250,7 +4499,7 @@ function AddCompanyModal({
                 id="is_primary"
                 checked={formData.is_primary}
                 onChange={(e) =>
-                  setFormData({ ...formData, is_primary: e.target.checked })
+                  updateField('is_primary', e.target.checked)
                 }
                 className="rounded border-[var(--border)] bg-[var(--background-secondary)]"
               />
