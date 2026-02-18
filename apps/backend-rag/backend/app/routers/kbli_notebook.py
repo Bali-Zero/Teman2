@@ -10,9 +10,11 @@ Date: 2026-02-05
 
 import json
 import logging
+import os
 import re
 import time
 
+import anthropic
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
@@ -377,6 +379,27 @@ def _get_llm_gateway():
     return _llm_gateway_instance
 
 
+# Claude Opus client for KBLI Navigator (clean, direct responses)
+_anthropic_client = None
+
+
+def _get_anthropic_client():
+    """Get or create Anthropic client (lazy initialization) - Claude Opus 4.6."""
+    global _anthropic_client
+    if _anthropic_client is None:
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+        if not api_key:
+            logger.error("❌ ANTHROPIC_API_KEY not set - falling back to Gemini")
+            return None
+        try:
+            _anthropic_client = anthropic.AsyncAnthropic(api_key=api_key)
+            logger.info("✅ Anthropic client initialized (Claude Opus 4.6)")
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize Anthropic client: {e}")
+            return None
+    return _anthropic_client
+
+
 KBLI_MASTER_PROMPT = (
     "You are the Senior Legal Compliance Officer (Zantara AI). Your expertise is the Indonesian Business Classification System (KBLI 2025).\n\n"
     "LANGUAGE RULES (ABSOLUTE PRIORITY):\n"
@@ -552,6 +575,95 @@ def _detect_language(query: str) -> str:
     if len(words & es_words) >= 2:
         return "Spanish"
     return "English"
+
+
+async def _generate_kbli_explanation_claude(
+    query: str, 
+    results: list[KBLISearchResult],
+    parent_docs: dict[str, str] = None
+) -> str:
+    """Generate KBLI explanation using Claude Opus 4.6 - Clean, Direct, No Excessive Rules.
+    
+    This version uses Anthropic Claude Opus 4.6 with a simplified prompt that focuses on
+    clarity and accuracy without overwhelming the model with compliance rules.
+    Falls back to Gemini Flash if Claude is unavailable.
+    """
+    if not results:
+        return "No matching KBLI codes found for your search. Try different keywords or describe your business activity in more detail."
+
+    lang = _detect_language(query)
+    logger.info(f"🌐 Language: {lang} | 🎯 Using Claude Opus 4.6 (MAX subscription)")
+
+    # Build context from full parent documents
+    context_parts = []
+    for r in results:
+        if parent_docs and r.code in parent_docs:
+            full_content = parent_docs[r.code]
+            logger.debug(f"  Using full parent doc for {r.code}: {len(full_content)} chars")
+            context_parts.append(f"=== KBLI {r.code} - {r.title} ===\n\n{full_content}\n")
+        else:
+            logger.debug(f"  Using truncated description for {r.code}")
+            context_parts.append(f"=== KBLI {r.code} - {r.title} ===\n{r.description}\nPMA: {r.pma_status}, Risk: {r.risk_category}\n")
+    
+    context = "\n---\n".join(context_parts)
+
+    # CLEAN, SIMPLE SYSTEM PROMPT (No excessive rules)
+    system_prompt = f"""You are Zantara AI, an expert on Indonesian business classification (KBLI) based on BPS Regulation No. 7/2025.
+
+Your role:
+- Explain KBLI codes clearly and accurately
+- Answer in {lang} (match the user's language)
+- Use only the data provided - don't make up information
+- Be direct and helpful
+
+Key terms:
+- TERBUKA = Open to 100% foreign ownership
+- TERBATAS = Restricted foreign ownership (max percentage varies)
+- TERTUTUP = Closed to foreigners (Indonesian nationals only)
+- PMA = Foreign investment (minimum Rp 10 billion capital required)
+- OSS = oss.go.id (official licensing portal)
+
+When data says "Verify at OSS", tell the user directly - don't invent details."""
+
+    user_message = f"""Question: {query}
+
+Available KBLI data:
+
+{context}
+
+Provide a clear, accurate answer based on this data."""
+
+    try:
+        client = _get_anthropic_client()
+        if not client:
+            logger.warning("⚠️ Anthropic client unavailable - falling back to Gemini")
+            return await _generate_kbli_explanation(query, results, parent_docs)
+        
+        response = await client.messages.create(
+            model="claude-opus-4-20250514",  # Latest Opus 4.6
+            max_tokens=2500,
+            temperature=0.3,  # Slightly creative but grounded
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_message}]
+        )
+        
+        answer = response.content[0].text
+        
+        # Log usage (for Anthropic MAX monitoring)
+        logger.info(
+            f"✅ Claude Opus 4.6 response | "
+            f"Length: {len(answer)} chars | "
+            f"Model: {response.model} | "
+            f"Tokens: {response.usage.input_tokens}→{response.usage.output_tokens} | "
+            f"Stop: {response.stop_reason}"
+        )
+        
+        return answer
+        
+    except Exception as e:
+        logger.error(f"❌ Claude Opus failed: {type(e).__name__}: {e}")
+        logger.info("⚠️ Falling back to Gemini Flash")
+        return await _generate_kbli_explanation(query, results, parent_docs)
 
 
 @cached(ttl=43200, prefix="kbli_explain_v25")  # Cache explanations for 12 hours (v25: 96100 risk scale-dependent: Rendah Mikro-Menengah / Tinggi Besar; all sector 96 PMA=TERBUKA)
@@ -1150,8 +1262,9 @@ async def chat_kbli(
         codes_to_fetch = [r.code for r in results if r.code != "N/A"]
         parent_docs = await _fetch_parent_documents_from_kbli_table(codes_to_fetch, pool)
 
-        # Generate Italian explanation via LLM (with full parent content)
-        answer = await _generate_kbli_explanation(kbli_request.query, results, parent_docs)
+        # Generate explanation via Claude Opus 4.6 (MAX subscription, clean prompt)
+        # Falls back to Gemini Flash if Claude unavailable
+        answer = await _generate_kbli_explanation_claude(kbli_request.query, results, parent_docs)
         
         # CRITICAL: Ensure answer is never empty
         if not answer or not answer.strip():
