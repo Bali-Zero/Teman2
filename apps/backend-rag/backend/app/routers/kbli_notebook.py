@@ -429,8 +429,13 @@ KBLI_MASTER_PROMPT = (
     "'travel agency/agen perjalanan' = aktivitas agen perjalanan (KBLI 79110 — intermediary selling packages), "
     "'tour operator/biro perjalanan/tour organizer' = aktivitas biro perjalanan wisata (KBLI 79121 — organizes and sells tours directly), "
     "'tour guide/pemandu wisata/pramuwisata' = jasa pramuwisata (KBLI 79903), "
+    "'photography/foto studio/fotografer/wedding photographer/commercial photo' = aktivitas fotografi lainnya (KBLI 74209), "
+    "'drone photography/aerial photo/foto udara' = aktivitas fotografi udara (KBLI 74201), "
+    "'graphic design/desain grafis/logo design/branding' = aktivitas desain grafis/komunikasi visual (KBLI 74192), "
+    "'interior design/desain interior' = aktivitas desain interior (KBLI 74191), "
+    "'fashion design/desain mode/desain tekstil' = aktivitas desain tekstil mode dan garmen (KBLI 74113), "
     "'bar/wine bar/cocktail bar/beach club' = aktivitas bar (KBLI 56301, PMA TERTUTUP — foreigners CANNOT own a bar). "
-    "For other activities not listed here (tattoo studio, photography, art gallery), "
+    "For other activities not listed here (tattoo studio, art gallery), "
     "do NOT guess KBLI codes — search the database and present what is found. "
     "If user asks about these, map them to the correct KBLI code in your response."
 )
@@ -536,7 +541,7 @@ def _detect_language(query: str) -> str:
     return "English"
 
 
-@cached(ttl=43200, prefix="kbli_explain_v21")  # Cache explanations for 12 hours (v17: removed fake colloquial mappings 68200/82110/55194/55110/79111/79120/93192/93199/62099)
+@cached(ttl=43200, prefix="kbli_explain_v22")  # Cache explanations for 12 hours (v17: removed fake colloquial mappings 68200/82110/55194/55110/79111/79120/93192/93199/62099)
 async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]) -> str:
     """Generate a grounded explanation of KBLI search results using LLM."""
     if not results:
