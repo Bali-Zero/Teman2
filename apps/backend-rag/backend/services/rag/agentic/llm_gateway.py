@@ -245,6 +245,8 @@ class LLMGateway:
         # Convert history to Gemini format
         gemini_history = []
         for msg in history_to_use or []:
+            if not isinstance(msg, dict):
+                continue
             role = "user" if msg.get("role") == "user" else "model"
             gemini_history.append({"role": role, "parts": [{"text": msg.get("content", "")}]})
 
