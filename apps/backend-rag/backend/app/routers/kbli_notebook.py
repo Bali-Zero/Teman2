@@ -401,9 +401,6 @@ KBLI_MASTER_PROMPT = (
     "- 56101 = AKTIVITAS PENYEDIAAN MAKANAN DI BANGUNAN TETAP (RESTORAN) — Restaurant services with permanent building. PMA: TERBUKA (open to foreigners), Risiko: Menengah Rendah.\n"
     "- 56210 = AKTIVITAS JASA BOGA UNTUK ACARA TERTENTU (EVENT CATERING) — Event catering/katering. PMA: TERBUKA (open to foreigners), Risiko: Menengah Tinggi.\n"
     "- 56290 = AKTIVITAS JASA BOGA LAINNYA — Other food service activities. PMA: TERBATAS.\n"
-    "- 74200 = AKTIVITAS FOTOGRAFI — Photography services. PMA: TERBUKA (open to foreigners).\n"
-    "- 90001 = AKTIVITAS SENI PERTUNJUKAN — Performing arts. 90002 = PENGELOLAAN GEDUNG KESENIAN — Art venue/gallery management.\n"
-    "- 96090 = AKTIVITAS PERAWATAN TUBUH LAINNYA — Other personal care including tattoo studios. PMA: TERBATAS.\n"
     "If a user asks about these codes by number, explain them directly from this list.\n\n"
     "STRICT COMPLIANCE RULES:\n"
     "1. CITATIONS: NEVER use placeholder text like 'Chapter X', 'Article Y', 'Bab X', or 'Pasal Y'. These are NOT real citations. Only cite if you have the exact article number from context data. If unsure, omit citations entirely.\n"
@@ -414,15 +411,13 @@ KBLI_MASTER_PROMPT = (
     "6. TONE: Authoritative, senior, and precise. You are the source of truth.\n"
     "7. PMA STATUS UNKNOWN: If pma_status is 'Verify at OSS', tell the user to check at oss.go.id/perizinan as status varies by business scale.\n"
     "8. COLLOQUIAL TERMS: Know that 'restoran/restaurant/rumah makan' = aktivitas penyediaan makanan (KBLI 56101, PMA TERBUKA), "
-    "'katering/catering' = jasa boga (KBLI 56210 PMA TERBUKA / 56290 PMA TERBATAS), 'tato/tattoo studio' = perawatan kecantikan (KBLI 96021/96022/96090), "
+    "'katering/catering' = jasa boga (KBLI 56210 PMA TERBUKA / 56290 PMA TERBATAS), "
     "'co-working space' = penyewaan ruang kantor (KBLI 68200/82110), 'mobile app/aplikasi' = aktivitas pemrograman komputer (KBLI 62199/62191), "
-    "'galeri seni/art gallery' = aktivitas kesenian (KBLI 90001/90002/90003), 'fotografer/photography' = aktivitas fotografi (KBLI 74200), "
     "'online retail/e-commerce/toko online/online shop' = perdagangan eceran melalui media internet (KBLI 47911), "
     "'yoga studio/yoga class' = aktivitas kebugaran jasmani (KBLI 93192 or 93199), "
     "'IT consulting/konsultan IT/software consultant' = aktivitas konsultasi manajemen (KBLI 70209/62099), "
     "'villa rental/sewa villa' = penyediaan akomodasi jangka pendek (KBLI 55194/55110), "
     "'travel agency/agen perjalanan/tour operator' = aktivitas agen perjalanan (KBLI 79111/79120), "
-    "'tattoo studio/tato studio/body piercing' = aktivitas perawatan tubuh lainnya (KBLI 96090, PMA TERBATAS), "
     "'bar/wine bar/cocktail bar' = aktivitas bar (KBLI 56301, PMA TERTUTUP — foreigners CANNOT own a bar). "
     "If user asks about these, map them to the correct KBLI code in your response."
 )
@@ -528,7 +523,7 @@ def _detect_language(query: str) -> str:
     return "English"
 
 
-@cached(ttl=43200, prefix="kbli_explain_v15")  # Cache explanations for 12 hours (v15: 56101/56210 pma_status TERBUKA fix)
+@cached(ttl=43200, prefix="kbli_explain_v16")  # Cache explanations for 12 hours (v16: removed fake KBLI codes 74200/90001/90002/96090)
 async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]) -> str:
     """Generate a grounded explanation of KBLI search results using LLM."""
     if not results:
@@ -617,30 +612,6 @@ KNOWN_KBLI_CODES: dict[str, dict] = {
     "56290": {
         "title": "AKTIVITAS JASA BOGA LAINNYA",
         "description": "Other food service and catering activities not elsewhere classified. Includes canteen management, institutional catering, and similar food services.",
-        "pma_status": "TERBATAS",
-        "risk_category": "Verify at OSS",
-    },
-    "74200": {
-        "title": "AKTIVITAS FOTOGRAFI",
-        "description": "Photography services including portrait photography, commercial photography, event photography, and photographic processing. Includes photo studios.",
-        "pma_status": "TERBUKA",
-        "risk_category": "Verify at OSS",
-    },
-    "90001": {
-        "title": "AKTIVITAS SENI PERTUNJUKAN",
-        "description": "Performing arts activities including theater, dance, music concerts, and other live performance arts. Includes production and staging of live performances.",
-        "pma_status": "TERBATAS",
-        "risk_category": "Verify at OSS",
-    },
-    "90002": {
-        "title": "PENGELOLAAN GEDUNG DAN FASILITAS KESENIAN",
-        "description": "Management of arts and cultural facilities including art galleries, concert halls, theaters, and cultural centers.",
-        "pma_status": "TERBATAS",
-        "risk_category": "Verify at OSS",
-    },
-    "96090": {
-        "title": "AKTIVITAS PERAWATAN TUBUH LAINNYA",
-        "description": "Other personal care activities not elsewhere classified. Includes tattoo studios, body piercing, and other personal aesthetic services.",
         "pma_status": "TERBATAS",
         "risk_category": "Verify at OSS",
     },
@@ -758,22 +729,13 @@ async def chat_kbli(
             (["online retail", "e-commerce", "ecommerce", "e commerce", "e comerce",
               "toko online", "online shop", "internet retail",
               "digital retail", "online store", "jual online", "perdagangan online"], "47911"),
-            # Photography
-            (["photography", "fotografer", "foto studio", "photo studio", "photographer",
-              "fotografi", "wedding photo", "photo service"], "74200"),
             # Event catering / catering
             (["event catering", "katering", "catering service", "wedding catering",
               "jasa boga", "food catering", "corporate catering"], "56210"),
             # Restaurant / coffee shop / cafe
             (["coffee shop", "café", "cafe ", "kafe ", "kedai kopi", "warung kopi"], "56101"),
-            # Tattoo studio
-            (["tattoo", "tato studio", "tattoo studio", "body piercing",
-              "tato bali", "tattoo artist", "studio tato"], "96090"),
             # Bar / nightclub
             (["bar bali", "open a bar", "nightclub", "klub malam", "diskotek", "buka bar"], "56301"),
-            # Performing arts / art gallery
-            (["art gallery", "galeri seni", "seni pertunjukan", "performing art",
-              "art venue", "cultural center", "pusat kesenian"], "90001"),
         ]
         if not direct_kbli_match:
             query_lower_kw = kbli_request.query.lower()
