@@ -193,7 +193,35 @@ class KBLI2025Ingestion:
         """Create child chunks for each KBLI + Scala combination."""
         code = item["kode_kbli_2025"]
         judul = item["judul"]
+        uraian = item.get("uraian", "")
         chunks = []
+        
+        # ALWAYS create uraian chunk FIRST for semantic search
+        if uraian:
+            uraian_content = f"""[KBLI {code}] {judul}
+
+{uraian}
+
+Sektor: {item.get("sektor_id", "N/A")}
+Status PMA: {item.get("pma_status", "N/A")} (Max {item.get("pma_max_asing", 0)}%)
+"""
+            chunks.append({
+                "id": f"kbli_{code}_uraian",
+                "kode_kbli": code,
+                "content": uraian_content,
+                "metadata": {
+                    "kode_kbli": code,
+                    "judul": judul,
+                    "sektor_id": item.get("sektor_id"),
+                    "pma_status": item.get("pma_status"),
+                    "pma_max_asing": item.get("pma_max_asing"),
+                    "licensing_status": item.get("licensing_status"),
+                    "skala_usaha": None,
+                    "kategori_risiko": None,
+                    "doc_type": "kbli_child",
+                    "chunk_type": "uraian",
+                },
+            })
 
         per_skala = item.get("per_skala", [])
 

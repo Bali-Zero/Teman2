@@ -43,6 +43,54 @@ backend/
 - **Agentic RAG**: Multi-step reasoning with tool usage
 - **Verification Service**: Draft-verify pattern for hallucination prevention
 
+## Infrastructure
+
+### Vector Database: Qdrant Cloud
+
+**Production:** Qdrant Cloud (GCP us-east4-0)
+- URL: `https://5575d2b7-d895-4697-86e5-5c7ceae3ca74.us-east4-0.gcp.cloud.qdrant.io:6333`
+- Collections: 7 (legal, tax, training, kbli_2025_final, immigration, visa, pricing)
+- Architecture: Parent Document Retriever pattern
+  - Child chunks → Qdrant (semantic search with metadata filters)
+  - Parent docs → PostgreSQL (full context retrieval)
+
+**Local Development:** Docker Qdrant (`localhost:6333`)
+
+```bash
+# Start local Qdrant
+docker run -d -p 6333:6333 -v $(pwd)/qdrant_storage:/qdrant/storage qdrant/qdrant:latest
+
+# Verify connection
+curl http://localhost:6333/collections
+```
+
+### Database: PostgreSQL
+
+**Production:** Fly.io Postgres
+- URL: Configured via `DATABASE_URL` env var
+- Tables: `kbli_documents` (parent docs), `kg_nodes`, `kg_edges` (knowledge graph)
+
+**Local Development:** Homebrew PostgreSQL
+- Database: `nuzantara`
+- User: `nuzantara`
+
+### Deployment: Fly.io
+
+**Backend API:** `nuzantara-rag` app (https://nuzantara-rag.fly.dev)
+
+**Environment Variables:**
+```bash
+# Required
+QDRANT_URL=https://5575d2b7-d895-4697-86e5-5c7ceae3ca74.us-east4-0.gcp.cloud.qdrant.io:6333
+QDRANT_API_KEY=<jwt-token>
+DATABASE_URL=<postgres-url>
+OPENAI_API_KEY=<key>
+GOOGLE_API_KEY=<key>
+
+# Optional
+QDRANT_COLLECTION_NAME=kbli_2025_final
+```
+
 ## Quick Start
 
 ```bash
