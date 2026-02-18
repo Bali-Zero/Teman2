@@ -435,9 +435,15 @@ KBLI_MASTER_PROMPT = (
     "'interior design/desain interior' = aktivitas desain interior (KBLI 74191), "
     "'fashion design/desain mode/desain tekstil' = aktivitas desain tekstil mode dan garmen (KBLI 74113), "
     "'bar/wine bar/cocktail bar/beach club' = aktivitas bar (KBLI 56301, PMA TERTUTUP — foreigners CANNOT own a bar), "
+    "'salon/hair salon/barbershop/pangkas rambut/hair studio' = aktivitas penataan dan pangkas rambut (KBLI 96210), "
+    "'beauty salon/nail studio/nail art/eyelash extension/brow studio/wax studio/make-up artist/MUA/perawatan kecantikan' = aktivitas perawatan kecantikan (KBLI 96220), "
+    "'spa/day spa/wellness/spa harian/sauna/steam bath/pemandian uap/solarium' = aktivitas SPA harian sauna dan pemandian uap (KBLI 96230), "
+    "'laundry/dry cleaning/cuci pakaian/laundromat' = aktivitas pencucian dan pembersihan produk tekstil (KBLI 96100), "
     "'art gallery/galeri seni komersial/commercial art gallery/art shop' = perdagangan eceran khusus barang kesenian dan rekreasi (KBLI 47690 — includes commercial art gallery selling paintings/sculptures/art), "
     "'art venue/art center/performance space/venue kesenian/pusat kebudayaan' = aktivitas operasional tempat dan fasilitas kesenian (KBLI 90310 — NOTE: 90310 exists in BPS 2025 but verify in OSS as it may not have PMA data). "
-    "For tattoo studio, do NOT guess KBLI codes — search the database and present what is found. "
+    "'tattoo studio permanente/permanent tattoo/tattoo artist' = IMPORTANT: BPS 2025 does NOT have a dedicated KBLI code for permanent tattoo. "
+    "KBLI 96900 (AKTIVITAS JASA PERORANGAN LAINNYA YTDL) covers only temporary henna/biological ink decoration — NOT permanent tattoo. "
+    "Tell the user: permanent tattoo studios in Indonesia operate under KBLI 96900 by convention, but must verify with OSS as there is no dedicated code. "
     "If user asks about these, map them to the correct KBLI code in your response."
 )
 
@@ -455,7 +461,12 @@ _TRANSLATE_SYSTEM = (
     "7. Prefer specific activity descriptions over generic sector names when the query is about a specific business.\n"
     "8. Known colloquial mappings — use these exact Indonesian phrases:\n"
     "   catering/katering → jasa boga acara tertentu\n"
-    "   tattoo/tato studio → perawatan kecantikan tubuh\n"
+    "   tattoo permanente/permanent tattoo/tattoo studio → jasa perorangan lainnya (NOTE: no dedicated BPS code)\n"
+    "   henna/tato henna/temporary tattoo → jasa perorangan lainnya\n"
+    "   salon/hair salon/barbershop/pangkas rambut → aktivitas penataan dan pangkas rambut\n"
+    "   beauty salon/nail studio/nail art/eyelash extension/brow studio/MUA → aktivitas perawatan kecantikan\n"
+    "   spa/day spa/wellness spa/spa harian/sauna/steam bath → aktivitas SPA harian sauna pemandian uap\n"
+    "   laundry/dry cleaning/cuci pakaian → aktivitas pencucian pembersihan tekstil\n"
     "   art gallery/galeri seni komersial/commercial art gallery → perdagangan eceran barang kesenian\n"
     "   art venue/art center/venue pertunjukan/pusat kebudayaan → aktivitas operasional tempat fasilitas kesenian\n"
     "   photography/fotografer → aktivitas fotografi\n"
@@ -543,7 +554,7 @@ def _detect_language(query: str) -> str:
     return "English"
 
 
-@cached(ttl=43200, prefix="kbli_explain_v23")  # Cache explanations for 12 hours (v23: added 47690 art gallery, 90310 art venue; removed fake 74200/90001/90002/96090/68200/93192)
+@cached(ttl=43200, prefix="kbli_explain_v24")  # Cache explanations for 12 hours (v24: added sector 96: 96100/96210/96220/96230/96900; tattoo permanent note; 47690 art gallery)
 async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]) -> str:
     """Generate a grounded explanation of KBLI search results using LLM."""
     if not results:
@@ -644,6 +655,36 @@ KNOWN_KBLI_CODES: dict[str, dict] = {
     "47690": {
         "title": "PERDAGANGAN ECERAN KHUSUS BARANG KESENIAN DAN REKREASI YTDL",
         "description": "Retail trade of art, recreation and collectibles, including: recorded media, musical instruments and accessories, philately/numismatics/collectibles, commercial art gallery activities (selling paintings/sculptures). Also includes art supplies (beads, clay, canvas, oils, watercolors).",
+        "pma_status": "Verify at OSS",
+        "risk_category": "Verify at OSS",
+    },
+    "96210": {
+        "title": "AKTIVITAS PENATAAN DAN PANGKAS RAMBUT",
+        "description": "Hair salon and barbershop activities: hair washing, cutting, styling, coloring, perming, straightening; shaving and grooming beards/mustaches.",
+        "pma_status": "Verify at OSS",
+        "risk_category": "Verify at OSS",
+    },
+    "96220": {
+        "title": "AKTIVITAS PERAWATAN KECANTIKAN DAN PERAWATAN KECANTIKAN LAINNYA",
+        "description": "Beauty care activities not performed by doctors: nail studio (nail art, manicure/pedicure), eyelash studio (eyelash extension, lash lift), brow studio (sulam alis, brow lamination), wax studio, make-up artist (MUA), facial massage, skin tanning.",
+        "pma_status": "Verify at OSS",
+        "risk_category": "Verify at OSS",
+    },
+    "96230": {
+        "title": "AKTIVITAS SANTE PAR AQUA (SPA) HARIAN, SAUNA, DAN PEMANDIAN UAP",
+        "description": "Day spa, sauna, steam bath activities providing wellness and beauty treatments combining traditional and modern holistic methods using water, massage with herbal preparations, aromatherapy, physical therapy. Turkish bath, solarium, slimming salon.",
+        "pma_status": "Verify at OSS",
+        "risk_category": "Verify at OSS",
+    },
+    "96100": {
+        "title": "AKTIVITAS PENCUCIAN DAN PEMBERSIHAN PRODUK TEKSTIL DAN BULU",
+        "description": "Laundry and dry cleaning services: washing, ironing, dry cleaning of clothing and textiles including fur; pick-up and delivery; carpet and curtain cleaning; coin-operated laundromat; reusable diaper service.",
+        "pma_status": "Verify at OSS",
+        "risk_category": "Verify at OSS",
+    },
+    "96900": {
+        "title": "AKTIVITAS JASA PERORANGAN LAINNYA YTDL",
+        "description": "Other personal service activities: astrology/spiritualism, social services (dating/matchmaking/escort), genealogy, pet care (boarding/grooming/training), shoe shiners/porters/valet parking, coin-operated personal service machines, photo booth. IMPORTANT: Also includes temporary henna/biological ink body decoration — BPS 2025 does NOT have a dedicated code for PERMANENT tattoo studios.",
         "pma_status": "Verify at OSS",
         "risk_category": "Verify at OSS",
     },
@@ -765,6 +806,22 @@ async def chat_kbli(
             # Art gallery (commercial — selling art)
             (["art gallery", "galeri seni", "galeri lukisan", "commercial art gallery",
               "sell paintings", "art shop", "toko seni", "jual lukisan"], "47690"),
+            # Hair salon / barbershop
+            (["hair salon", "hair studio", "barbershop", "pangkas rambut", "potong rambut",
+              "salon rambut", "barber shop"], "96210"),
+            # Beauty salon / nail / lash / brow
+            (["nail studio", "nail art", "manicure", "pedicure", "eyelash extension", "lash lift",
+              "brow studio", "sulam alis", "wax studio", "make-up artist", "mua ", "beauty salon",
+              "salon kecantikan", "perawatan kecantikan"], "96220"),
+            # Day spa / sauna
+            (["day spa", "spa harian", "sauna", "steam bath", "pemandian uap", "solarium",
+              "wellness center", "spa bali", "open a spa"], "96230"),
+            # Laundry
+            (["laundry", "dry cleaning", "cuci baju", "cuci pakaian", "laundromat",
+              "jasa cuci", "dobi"], "96100"),
+            # Tattoo studio (permanent — no dedicated BPS code)
+            (["tattoo studio", "tattoo artist", "tato studio", "tattoo shop",
+              "buka tattoo", "open tattoo"], "96900"),
         ]
         if not direct_kbli_match:
             query_lower_kw = kbli_request.query.lower()
