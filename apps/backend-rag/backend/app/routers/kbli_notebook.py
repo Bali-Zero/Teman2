@@ -643,7 +643,17 @@ Available KBLI data:
 
 {context}
 
-Provide a clear, accurate answer based on this data."""
+IMPORTANT - Response Format:
+Write your answer in TWO parts:
+
+Part 1 (Opening - friendly & conversational, 2-3 sentences):
+Start with a warm, helpful intro that directly answers the question in simple terms.
+Example: "Great question! For a restaurant in Bali, you'll use KBLI code 56101 - great news, it's fully open to foreign investors. Let me walk you through what you'll need..."
+
+Part 2 (Details - organized with clear headings):
+Then provide all technical details organized clearly with headings and bullet points.
+
+Now provide your answer following this structure."""
 
     try:
         client = _get_anthropic_client()
