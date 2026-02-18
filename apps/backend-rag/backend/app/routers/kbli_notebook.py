@@ -555,8 +555,18 @@ def _detect_language(query: str) -> str:
 
 
 @cached(ttl=43200, prefix="kbli_explain_v25")  # Cache explanations for 12 hours (v25: 96100 risk scale-dependent: Rendah Mikro-Menengah / Tinggi Besar; all sector 96 PMA=TERBUKA)
-async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]) -> str:
-    """Generate a grounded explanation of KBLI search results using LLM."""
+async def _generate_kbli_explanation(
+    query: str, 
+    results: list[KBLISearchResult],
+    parent_docs: dict[str, str] = None
+) -> str:
+    """Generate a grounded explanation of KBLI search results using LLM.
+    
+    Args:
+        query: User query
+        results: Search results with codes and metadata
+        parent_docs: Dict mapping KBLI code -> full parent document content from kbli_documents table
+    """
     if not results:
         return "No matching KBLI codes found for your search. Try different keywords or describe your business activity in more detail."
 
@@ -571,9 +581,18 @@ async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]
             ex = r.expert_legal
             expert_info = f"\n  Expert Data (PP 28/2025): Bab {ex.get('bab')}, Pasal {ex.get('pasal')}. PB-UMKU: {', '.join(ex.get('pb_umku', []))}. Note: {ex.get('pma_implications')}"
         
-        context_parts.append(
-            f"- KBLI {r.code}: {r.title}\n  Scope: {r.description}\n  PMA: {r.pma_status}, Risk: {r.risk_category}{expert_info}"
-        )
+        # Use full parent document content if available, otherwise fall back to truncated description
+        if parent_docs and r.code in parent_docs:
+            full_content = parent_docs[r.code]
+            logger.debug(f"  Using full parent doc for {r.code}: {len(full_content)} chars")
+            context_parts.append(
+                f"- KBLI {r.code}: {r.title}\n  Full details:\n{full_content}{expert_info}"
+            )
+        else:
+            logger.debug(f"  Using truncated description for {r.code}")
+            context_parts.append(
+                f"- KBLI {r.code}: {r.title}\n  Scope: {r.description}\n  PMA: {r.pma_status}, Risk: {r.risk_category}{expert_info}"
+            )
     context = "\n".join(context_parts)
 
     # Use unified MASTER PROMPT formatted with detected language
@@ -707,6 +726,35 @@ def _is_non_business_query(query: str) -> bool:
     return any(keyword in query_lower for keyword in NON_BUSINESS_KEYWORDS)
 
 
+async def _fetch_parent_documents_from_kbli_table(codes: list[str], pool) -> dict[str, str]:
+    """Fetch full parent documents from kbli_documents table for given KBLI codes.
+    
+    Returns dict mapping code -> full content from kbli_documents.
+    This replaces truncated descriptions with complete parent document content.
+    """
+    if not codes or not pool:
+        return {}
+    
+    parent_docs = {}
+    try:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT kode_kbli, content FROM kbli_documents WHERE kode_kbli = ANY($1)",
+                codes
+            )
+            for row in rows:
+                parent_docs[row["kode_kbli"]] = row["content"]
+            
+            if rows:
+                logger.info(f"✅ Fetched {len(rows)} parent documents from kbli_documents (avg {sum(len(d) for d in parent_docs.values()) // len(parent_docs)} chars)")
+            else:
+                logger.warning(f"⚠️ No parent documents found in kbli_documents for codes: {codes}")
+    except Exception as e:
+        logger.error(f"❌ Failed to fetch parent documents: {e}")
+    
+    return parent_docs
+
+
 @router.post("/chat", response_model=KBLINotebookChatResponse)
 async def chat_kbli(
     http_request: Request,  # Iniezione corretta dell'oggetto Request di FastAPI
@@ -732,28 +780,49 @@ async def chat_kbli(
         codes_from_query = re.findall(r"\b\d{5}\b", kbli_request.query)
         direct_kbli_match = None
 
-        # Try direct KBLI lookup from PostgreSQL (bypasses semantic search)
+        # Try direct KBLI lookup from kbli_documents table (NEW: uses parent docs)
         if codes_from_query and pool:
             for code in codes_from_query:
                 try:
                     async with pool.acquire() as conn:
-                        entity_id = f"kbli:{code}"
                         row = await conn.fetchrow(
-                            "SELECT entity_id, name, description, properties FROM kg_nodes WHERE entity_id = $1",
-                            entity_id
+                            "SELECT kode_kbli, judul, content, metadata FROM kbli_documents WHERE kode_kbli = $1",
+                            code
                         )
 
                         if row:
-                            props = json.loads(row["properties"]) if isinstance(row["properties"], str) else row["properties"]
+                            metadata = row["metadata"] if isinstance(row["metadata"], dict) else json.loads(row["metadata"])
+                            # Extract first ~200 chars from content for preview
+                            content_preview = row["content"][:200] + "..." if len(row["content"]) > 200 else row["content"]
                             direct_kbli_match = KBLISearchResult(
                                 code=code,
-                                title=row["name"],
-                                description=row["description"][:200] + "...",
+                                title=row["judul"],
+                                description=content_preview,
                                 score=1.0,
-                                pma_status=props.get("pma_status", "Verify at OSS"),
-                                risk_category=props.get("kategori_risiko", "Verify at OSS"),
+                                pma_status=metadata.get("pma_status", "Verify at OSS"),
+                                risk_category="Verify at OSS",  # Will be enriched from full content
                             )
+                            logger.info(f"✅ Direct lookup from kbli_documents: {code} ({len(row['content'])} chars)")
                             break
+                        else:
+                            # Fallback to kg_nodes for backward compatibility
+                            entity_id = f"kbli:{code}"
+                            kg_row = await conn.fetchrow(
+                                "SELECT entity_id, name, description, properties FROM kg_nodes WHERE entity_id = $1",
+                                entity_id
+                            )
+                            if kg_row:
+                                props = json.loads(kg_row["properties"]) if isinstance(kg_row["properties"], str) else kg_row["properties"]
+                                direct_kbli_match = KBLISearchResult(
+                                    code=code,
+                                    title=kg_row["name"],
+                                    description=kg_row["description"][:200] + "...",
+                                    score=1.0,
+                                    pma_status=props.get("pma_status", "Verify at OSS"),
+                                    risk_category=props.get("kategori_risiko", "Verify at OSS"),
+                                )
+                                logger.info(f"⚠️ Direct lookup fallback to kg_nodes: {code}")
+                                break
                 except Exception as lookup_err:
                     logger.warning(f"Direct lookup failed for {code}: {lookup_err}")
 
@@ -1077,8 +1146,12 @@ async def chat_kbli(
         elif not has_direct_match:
             results = filtered_results if filtered_results else results
 
-        # Generate Italian explanation via LLM (with fallback)
-        answer = await _generate_kbli_explanation(kbli_request.query, results)
+        # Fetch full parent documents from kbli_documents table for complete context
+        codes_to_fetch = [r.code for r in results if r.code != "N/A"]
+        parent_docs = await _fetch_parent_documents_from_kbli_table(codes_to_fetch, pool)
+
+        # Generate Italian explanation via LLM (with full parent content)
+        answer = await _generate_kbli_explanation(kbli_request.query, results, parent_docs)
         
         # CRITICAL: Ensure answer is never empty
         if not answer or not answer.strip():
