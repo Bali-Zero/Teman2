@@ -21,79 +21,6 @@ import { Button } from "@/components/ui/button";
 import type { PortalProfile } from "@/lib/api/portal/portal.types";
 import type { VisaInfo } from "@/lib/api/portal/portal.types";
 
-// ============================================================================
-// MOCK DATA FOR VISUAL TESTING
-// ============================================================================
-const MOCK_PROFILE: PortalProfile = {
-  id: 123,
-  fullName: "Marco Rossi",
-  email: "marco.rossi@example.com",
-  phone: "+39 333 123 4567",
-  whatsapp: "+39 333 123 4567",
-  nationality: "Italian",
-  passportNumber: "YA123456",
-  passportExpiry: "2026-08-15", // ~6 mesi (alert giallo)
-  dateOfBirth: "1985-03-20",
-  gender: "M",
-  address: "Jl. Pantai Batu Bolong No. 88, Canggu, Bali",
-  memberSince: "2024-01-15T00:00:00Z",
-  assignedTo: {
-    email: "damar@nuzantara.com",
-    name: "Damar",
-    avatarUrl: undefined, // Test senza avatar
-  },
-};
-
-const MOCK_VISA_PROCESS: VisaInfo = {
-  current: null,
-  history: [],
-  documents: [],
-};
-
-const MOCK_VISA_ELECTRONIC: VisaInfo = {
-  current: null,
-  history: [],
-  documents: [
-    { id: "evisa-1", name: "E-Visa Approval", type: "PDF", category: "electronic_visa", status: "verified", uploadDate: "2025-02-01", size: "245 KB" }
-  ],
-};
-
-const MOCK_VISA_ACTUAL: VisaInfo = {
-  current: {
-    type: "KITAS (ITAS)",
-    status: "active",
-    issueDate: "2025-02-01",
-    expiryDate: "2026-02-01", // ~11 mesi (ok)
-    daysRemaining: 349,
-    permitNumber: "A1234567",
-    sponsor: "PT Nuzantara Solutions",
-  },
-  history: [
-    { id: "h1", type: "B211A (Visitor Visa)", period: "2024-08 - 2025-02", status: "completed" },
-  ],
-  documents: [
-    { id: "v1", name: "KITAS Card", type: "JPEG", category: "visa", status: "verified", uploadDate: "2025-02-05", size: "1.2 MB" },
-    { id: "v2", name: "IMK (Re-entry Permit)", type: "JPEG", category: "visa", status: "verified", uploadDate: "2025-02-05", size: "890 KB" },
-  ],
-};
-
-const MOCK_VISA_CRITICAL: VisaInfo = {
-  current: {
-    type: "KITAS (ITAS)",
-    status: "active",
-    issueDate: "2024-06-01",
-    expiryDate: "2025-04-15", // ~2 mesi (alert critico!)
-    daysRemaining: 58,
-    permitNumber: "A7654321",
-    sponsor: "PT Nuzantara Solutions",
-  },
-  history: [],
-  documents: [],
-};
-
-// Cambia questo per testare stati diversi: "process" | "electronic" | "actual" | "actual_critical"
-const MOCK_STATUS: "process" | "electronic" | "actual" | "actual_critical" = "actual";
-
 interface PassportValidityInfo {
   color: string;
   label: string;
@@ -187,30 +114,34 @@ export default function PortalDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // SIMULAZIONE: Carica mock data invece di chiamare API
-    const timer = setTimeout(() => {
-      setProfile(MOCK_PROFILE);
-      
-      // Determina quale mock visa usare
-      if (MOCK_STATUS === "process") {
-        setVisaInfo(MOCK_VISA_PROCESS);
-        setProcessStatus("process");
-      } else if (MOCK_STATUS === "electronic") {
-        setVisaInfo(MOCK_VISA_ELECTRONIC);
-        setProcessStatus("electronic");
-      } else if (MOCK_STATUS === "actual_critical") {
-        setVisaInfo(MOCK_VISA_CRITICAL);
-        setProcessStatus("actual");
-      } else {
-        setVisaInfo(MOCK_VISA_ACTUAL);
-        setProcessStatus("actual");
-      }
-      
-      setIsLoading(false);
-    }, 500);
-
-    return () => clearTimeout(timer);
+    loadData();
   }, []);
+
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      const [profileData, visaData] = await Promise.all([
+        api.portal.getProfile(),
+        api.portal.getVisaStatus(),
+      ]);
+      setProfile(profileData);
+      setVisaInfo(visaData);
+      
+      // Determine which visa status to show
+      if (visaData?.current) {
+        setProcessStatus("actual");
+      } else if (visaData?.documents?.some(d => d.category === "electronic_visa")) {
+        setProcessStatus("electronic");
+      } else {
+        setProcessStatus("process");
+      }
+    } catch (err) {
+      error("Failed to load data", "Please try again later");
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -516,7 +447,7 @@ function VisaProcessCard({
 }) {
   const currentVisa = visaInfo?.current;
   const daysRemaining = currentVisa?.daysRemaining;
-  const isCritical = daysRemaining !== null && daysRemaining <= 60;
+  const isCritical = daysRemaining != null && daysRemaining <= 60;
 
   // Render based on status
   if (status === "process") {
