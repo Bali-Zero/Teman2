@@ -398,8 +398,8 @@ KBLI_MASTER_PROMPT = (
     "If a user asks what these terms mean, explain them directly using this glossary.\n\n"
     "KNOWN KBLI CODES (use these exact definitions when asked):\n"
     "- 47911 = PERDAGANGAN ECERAN MELALUI MEDIA UNTUK BERBAGAI MACAM BARANG — Retail trade of various consumer goods via internet/digital media platforms. PMA: TERBATAS (restricted).\n"
-    "- 56101 = RESTORAN — Restaurant services with permanent building. PMA: TERBATAS.\n"
-    "- 56210 = AKTIVITAS JASA BOGA UNTUK ACARA TERTENTU (EVENT CATERING) — Event catering/katering. PMA: TERBATAS.\n"
+    "- 56101 = AKTIVITAS PENYEDIAAN MAKANAN DI BANGUNAN TETAP (RESTORAN) — Restaurant services with permanent building. PMA: TERBUKA (open to foreigners), Risiko: Menengah Rendah.\n"
+    "- 56210 = AKTIVITAS JASA BOGA UNTUK ACARA TERTENTU (EVENT CATERING) — Event catering/katering. PMA: TERBUKA (open to foreigners), Risiko: Menengah Tinggi.\n"
     "- 56290 = AKTIVITAS JASA BOGA LAINNYA — Other food service activities. PMA: TERBATAS.\n"
     "- 74200 = AKTIVITAS FOTOGRAFI — Photography services. PMA: TERBUKA (open to foreigners).\n"
     "- 90001 = AKTIVITAS SENI PERTUNJUKAN — Performing arts. 90002 = PENGELOLAAN GEDUNG KESENIAN — Art venue/gallery management.\n"
@@ -413,7 +413,8 @@ KBLI_MASTER_PROMPT = (
     "5. MISSING DATA: If a detail is not in the provided context, state it clearly: 'Information not present in official documents. Please verify at OSS (oss.go.id)'.\n"
     "6. TONE: Authoritative, senior, and precise. You are the source of truth.\n"
     "7. PMA STATUS UNKNOWN: If pma_status is 'Verify at OSS', tell the user to check at oss.go.id/perizinan as status varies by business scale.\n"
-    "8. COLLOQUIAL TERMS: Know that 'katering/catering' = jasa boga (KBLI 56210/56290), 'tato/tattoo studio' = perawatan kecantikan (KBLI 96021/96022/96090), "
+    "8. COLLOQUIAL TERMS: Know that 'restoran/restaurant/rumah makan' = aktivitas penyediaan makanan (KBLI 56101, PMA TERBUKA), "
+    "'katering/catering' = jasa boga (KBLI 56210 PMA TERBUKA / 56290 PMA TERBATAS), 'tato/tattoo studio' = perawatan kecantikan (KBLI 96021/96022/96090), "
     "'co-working space' = penyewaan ruang kantor (KBLI 68200/82110), 'mobile app/aplikasi' = aktivitas pemrograman komputer (KBLI 62199/62191), "
     "'galeri seni/art gallery' = aktivitas kesenian (KBLI 90001/90002/90003), 'fotografer/photography' = aktivitas fotografi (KBLI 74200), "
     "'online retail/e-commerce/toko online/online shop' = perdagangan eceran melalui media internet (KBLI 47911), "
@@ -456,7 +457,7 @@ _TRANSLATE_SYSTEM = (
 )
 
 
-@cached(ttl=604800, prefix="kbli_translate_v13")  # Cache translations for 7 days (v13: recommendation redirect fix)
+@cached(ttl=604800, prefix="kbli_translate_v14")  # Cache translations for 7 days (v13: recommendation redirect fix)
 async def _translate_query_for_kbli(query: str) -> str:
     """Translate any-language query to Indonesian KBLI search terms."""
     try:
@@ -527,7 +528,7 @@ def _detect_language(query: str) -> str:
     return "English"
 
 
-@cached(ttl=43200, prefix="kbli_explain_v12")  # Cache explanations for 12 hours (v12: tattoo/bar/typo fixes)
+@cached(ttl=43200, prefix="kbli_explain_v14")  # Cache explanations for 12 hours (v12: tattoo/bar/typo fixes)
 async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]) -> str:
     """Generate a grounded explanation of KBLI search results using LLM."""
     if not results:
@@ -603,24 +604,13 @@ async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]
 # Minimum score threshold for ABSTAIN logic
 MIN_RELEVANCE_SCORE = 0.40  # Results below this score trigger ABSTAIN (lowered from 0.60 to reduce false negatives)
 
-# Hardcoded known KBLI codes not present in Qdrant collection (1,562 points only)
+# Hardcoded known KBLI codes not present in Qdrant collection
 # Used as synthetic fallback when code lookup fails via both PostgreSQL and Qdrant
+# NOTE: 56101 and 56210 removed — now present in Qdrant with correct BPS data (TERBUKA)
 KNOWN_KBLI_CODES: dict[str, dict] = {
     "47911": {
         "title": "PERDAGANGAN ECERAN MELALUI MEDIA UNTUK BERBAGAI MACAM BARANG",
         "description": "Retail trade of various consumer goods via internet or other digital media platforms (e-commerce, online shop). Includes online marketplaces and direct-to-consumer digital retail.",
-        "pma_status": "TERBATAS",
-        "risk_category": "Verify at OSS",
-    },
-    "56101": {
-        "title": "RESTORAN",
-        "description": "Restaurant and food service activities in a permanent building. Includes full-service restaurants, fast food outlets, and cafes with permanent premises.",
-        "pma_status": "TERBATAS",
-        "risk_category": "Verify at OSS",
-    },
-    "56210": {
-        "title": "AKTIVITAS JASA BOGA UNTUK ACARA TERTENTU (EVENT CATERING)",
-        "description": "Food preparation and provision under contract for specific events. Includes wedding catering, corporate event catering, and other occasion-based food services (katering).",
         "pma_status": "TERBATAS",
         "risk_category": "Verify at OSS",
     },
