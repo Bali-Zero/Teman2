@@ -1117,3 +1117,372 @@ async def regenerate_invoice(
     except Exception as e:
         logger.error(f"Failed to regenerate invoice for practice {practice_id}: {e}", exc_info=True)
         raise handle_database_error(e)
+
+
+
+# ================================================
+# REQUIRED DOCUMENTS FOR PRACTICES
+# ================================================
+
+class RequiredDocumentCreate(BaseModel):
+    document_type: str
+    document_label: str
+    description: str | None = None
+    is_required: bool = True
+
+
+class RequiredDocumentUpdate(BaseModel):
+    status: str | None = None  # pending, uploaded, verified, rejected
+    team_member_notes: str | None = None
+
+
+class RequiredDocumentResponse(BaseModel):
+    id: int
+    practice_id: int
+    document_type: str
+    document_label: str
+    description: str | None
+    is_required: bool
+    uploaded_by_client: bool
+    uploaded_file_id: int | None
+    uploaded_at: str | None
+    client_notes: str | None
+    team_member_notes: str | None
+    status: str
+    created_at: str
+    updated_at: str
+
+
+class ClientDocumentUploadRequest(BaseModel):
+    required_doc_id: int
+    file: str  # base64 encoded
+    file_name: str
+    notes: str | None = None
+
+
+@router.get("/{practice_id}/required-documents", response_model=list[RequiredDocumentResponse])
+async def get_required_documents(
+    practice_id: int = Path(..., gt=0),
+    current_user: dict = Depends(get_current_user),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+):
+    """Get all required documents for a practice (for team members)."""
+    try:
+        async with db_pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT 
+                    id, practice_id, document_type, document_label, description,
+                    is_required, uploaded_by_client, uploaded_file_id, uploaded_at,
+                    client_notes, team_member_notes, status, created_at, updated_at
+                FROM practice_required_documents
+                WHERE practice_id = $1
+                ORDER BY is_required DESC, document_label ASC
+                """,
+                practice_id
+            )
+            
+            return [
+                {
+                    "id": row["id"],
+                    "practice_id": row["practice_id"],
+                    "document_type": row["document_type"],
+                    "document_label": row["document_label"],
+                    "description": row["description"],
+                    "is_required": row["is_required"],
+                    "uploaded_by_client": row["uploaded_by_client"],
+                    "uploaded_file_id": row["uploaded_file_id"],
+                    "uploaded_at": row["uploaded_at"].isoformat() if row["uploaded_at"] else None,
+                    "client_notes": row["client_notes"],
+                    "team_member_notes": row["team_member_notes"],
+                    "status": row["status"],
+                    "created_at": row["created_at"].isoformat(),
+                    "updated_at": row["updated_at"].isoformat(),
+                }
+                for row in rows
+            ]
+    except Exception as e:
+        logger.error(f"Failed to get required documents: {e}", exc_info=True)
+        raise handle_database_error(e)
+
+
+@router.post("/{practice_id}/required-documents", response_model=RequiredDocumentResponse)
+async def add_required_document(
+    practice_id: int = Path(..., gt=0),
+    doc: RequiredDocumentCreate = Body(...),
+    current_user: dict = Depends(get_current_user),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+):
+    """Add a required document to a practice (team member only)."""
+    try:
+        async with db_pool.acquire() as conn:
+            # Check if practice exists
+            practice = await conn.fetchrow(
+                "SELECT id, client_id FROM practices WHERE id = $1",
+                practice_id
+            )
+            if not practice:
+                raise HTTPException(status_code=404, detail="Practice not found")
+            
+            # Insert required document
+            row = await conn.fetchrow(
+                """
+                INSERT INTO practice_required_documents
+                (practice_id, document_type, document_label, description, is_required, created_by)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (practice_id, document_type) DO UPDATE SET
+                    document_label = EXCLUDED.document_label,
+                    description = EXCLUDED.description,
+                    is_required = EXCLUDED.is_required,
+                    updated_at = NOW()
+                RETURNING *
+                """,
+                practice_id, doc.document_type, doc.document_label, 
+                doc.description, doc.is_required, current_user.get("email", "system")
+            )
+            
+            # Mark practice as needing client notification
+            await conn.execute(
+                """
+                UPDATE practices 
+                SET client_notification_sent = FALSE,
+                    updated_at = NOW()
+                WHERE id = $1
+                """,
+                practice_id
+            )
+            
+            logger.info(
+                f"Added required document {doc.document_type} to practice {practice_id}",
+                extra={"practice_id": practice_id, "document_type": doc.document_type, "user": current_user.get("email")}
+            )
+            
+            return {
+                "id": row["id"],
+                "practice_id": row["practice_id"],
+                "document_type": row["document_type"],
+                "document_label": row["document_label"],
+                "description": row["description"],
+                "is_required": row["is_required"],
+                "uploaded_by_client": row["uploaded_by_client"],
+                "uploaded_file_id": row["uploaded_file_id"],
+                "uploaded_at": row["uploaded_at"].isoformat() if row["uploaded_at"] else None,
+                "client_notes": row["client_notes"],
+                "team_member_notes": row["team_member_notes"],
+                "status": row["status"],
+                "created_at": row["created_at"].isoformat(),
+                "updated_at": row["updated_at"].isoformat(),
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to add required document: {e}", exc_info=True)
+        raise handle_database_error(e)
+
+
+@router.delete("/{practice_id}/required-documents/{doc_id}")
+async def delete_required_document(
+    practice_id: int = Path(..., gt=0),
+    doc_id: int = Path(..., gt=0),
+    current_user: dict = Depends(get_current_user),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+):
+    """Delete a required document from a practice."""
+    try:
+        async with db_pool.acquire() as conn:
+            result = await conn.execute(
+                "DELETE FROM practice_required_documents WHERE id = $1 AND practice_id = $2",
+                doc_id, practice_id
+            )
+            
+            if result == "DELETE 0":
+                raise HTTPException(status_code=404, detail="Document not found")
+            
+            logger.info(
+                f"Deleted required document {doc_id} from practice {practice_id}",
+                extra={"practice_id": practice_id, "doc_id": doc_id, "user": current_user.get("email")}
+            )
+            
+            return {"success": True, "message": "Document requirement deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete required document: {e}", exc_info=True)
+        raise handle_database_error(e)
+
+
+@router.patch("/{practice_id}/required-documents/{doc_id}", response_model=RequiredDocumentResponse)
+async def update_required_document(
+    practice_id: int = Path(..., gt=0),
+    doc_id: int = Path(..., gt=0),
+    update: RequiredDocumentUpdate = Body(...),
+    current_user: dict = Depends(get_current_user),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+):
+    """Update a required document (team member review)."""
+    try:
+        async with db_pool.acquire() as conn:
+            # Build update query dynamically
+            updates = []
+            params = []
+            param_idx = 1
+            
+            if update.status:
+                updates.append(f"status = ${param_idx}")
+                params.append(update.status)
+                param_idx += 1
+            
+            if update.team_member_notes is not None:
+                updates.append(f"team_member_notes = ${param_idx}")
+                params.append(update.team_member_notes)
+                param_idx += 1
+            
+            if not updates:
+                raise HTTPException(status_code=400, detail="No fields to update")
+            
+            updates.append("updated_at = NOW()")
+            params.extend([doc_id, practice_id])
+            
+            query = f"""
+                UPDATE practice_required_documents 
+                SET {', '.join(updates)}
+                WHERE id = ${param_idx} AND practice_id = ${param_idx + 1}
+                RETURNING *
+            """
+            
+            row = await conn.fetchrow(query, *params)
+            
+            if not row:
+                raise HTTPException(status_code=404, detail="Document not found")
+            
+            logger.info(
+                f"Updated required document {doc_id} for practice {practice_id}",
+                extra={"practice_id": practice_id, "doc_id": doc_id, "status": update.status, "user": current_user.get("email")}
+            )
+            
+            return {
+                "id": row["id"],
+                "practice_id": row["practice_id"],
+                "document_type": row["document_type"],
+                "document_label": row["document_label"],
+                "description": row["description"],
+                "is_required": row["is_required"],
+                "uploaded_by_client": row["uploaded_by_client"],
+                "uploaded_file_id": row["uploaded_file_id"],
+                "uploaded_at": row["uploaded_at"].isoformat() if row["uploaded_at"] else None,
+                "client_notes": row["client_notes"],
+                "team_member_notes": row["team_member_notes"],
+                "status": row["status"],
+                "created_at": row["created_at"].isoformat(),
+                "updated_at": row["updated_at"].isoformat(),
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update required document: {e}", exc_info=True)
+        raise handle_database_error(e)
+
+
+@router.post("/{practice_id}/upload-client-document")
+async def upload_client_document(
+    practice_id: int = Path(..., gt=0),
+    request: ClientDocumentUploadRequest = Body(...),
+    current_user: dict = Depends(get_current_user),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+):
+    """Client uploads a document for a required field."""
+    try:
+        from backend.services.integrations.google_drive_service import GoogleDriveService
+        import base64
+        
+        async with db_pool.acquire() as conn:
+            # Get required document info
+            req_doc = await conn.fetchrow(
+                """
+                SELECT prd.*, p.client_id, c.full_name as client_name
+                FROM practice_required_documents prd
+                JOIN practices p ON prd.practice_id = p.id
+                JOIN clients c ON p.client_id = c.id
+                WHERE prd.id = $1 AND prd.practice_id = $2
+                """,
+                request.required_doc_id, practice_id
+            )
+            
+            if not req_doc:
+                raise HTTPException(status_code=404, detail="Required document not found")
+            
+            # Verify client is uploading their own document
+            client = await conn.fetchrow(
+                "SELECT id FROM clients WHERE email = $1",
+                current_user.get("email")
+            )
+            
+            if not client or client["id"] != req_doc["client_id"]:
+                # Allow team members to upload on behalf of client
+                if not is_crm_admin(current_user):
+                    raise HTTPException(status_code=403, detail="Not authorized")
+            
+            # Decode and upload file to Google Drive
+            file_data = base64.b64decode(request.file.split(",")[-1] if "," in request.file else request.file)
+            
+            drive_service = GoogleDriveService(db_pool)
+            folder_id = await drive_service.get_or_create_client_folder(req_doc["client_id"])
+            
+            file_ext = request.file_name.split(".")[-1] if "." in request.file_name else "pdf"
+            drive_filename = f"{req_doc['document_type']}_{practice_id}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.{file_ext}"
+            
+            uploaded_file = await drive_service.upload_file(
+                file_data, drive_filename, folder_id
+            )
+            
+            # Create document record
+            doc_row = await conn.fetchrow(
+                """
+                INSERT INTO documents 
+                (client_id, document_type, file_name, google_drive_file_url, mime_type, status)
+                VALUES ($1, $2, $3, $4, $5, 'active')
+                RETURNING id
+                """,
+                req_doc["client_id"],
+                req_doc["document_type"],
+                request.file_name,
+                uploaded_file.get("webViewLink", ""),
+                uploaded_file.get("mimeType", "application/pdf")
+            )
+            
+            # Update required document record
+            await conn.execute(
+                """
+                UPDATE practice_required_documents
+                SET uploaded_by_client = TRUE,
+                    uploaded_file_id = $1,
+                    uploaded_at = NOW(),
+                    client_notes = COALESCE($2, client_notes),
+                    status = 'uploaded',
+                    updated_at = NOW()
+                WHERE id = $3
+                """,
+                doc_row["id"], request.notes, request.required_doc_id
+            )
+            
+            logger.info(
+                f"Client uploaded document for practice {practice_id}",
+                extra={
+                    "practice_id": practice_id,
+                    "required_doc_id": request.required_doc_id,
+                    "document_id": doc_row["id"],
+                    "user": current_user.get("email")
+                }
+            )
+            
+            return {
+                "success": True,
+                "document_id": doc_row["id"],
+                "message": "Document uploaded successfully"
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to upload client document: {e}", exc_info=True)
+        raise handle_database_error(e)

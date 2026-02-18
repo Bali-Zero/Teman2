@@ -24,7 +24,7 @@ class SemanticSplitter:
         self.embedder = embeddings_generator
         self.threshold = similarity_threshold
 
-    def split_text(self, text: str, max_tokens: int) -> list[str]:
+    async def split_text(self, text: str, max_tokens: int) -> list[str]:
         """
         Split text into semantically coherent chunks.
         """
@@ -37,7 +37,7 @@ class SemanticSplitter:
             return sentences
 
         # 2. Generate embeddings for all sentences
-        embeddings = self.embedder.generate_embeddings(sentences)
+        embeddings = await self.embedder.generate_embeddings(sentences)
 
         # 3. Group sentences
         chunks = []
@@ -102,7 +102,7 @@ class LegalChunker:
 
         logger.info(f"LegalChunker initialized (max_pasal_tokens={self.max_pasal_tokens})")
 
-    def chunk(
+    async def chunk(
         self,
         text: str,
         metadata: dict[str, Any],
@@ -139,7 +139,7 @@ class LegalChunker:
 
         if not has_pasal_structure:
             logger.info("No Pasal structure detected, using fallback semantic chunking")
-            return self._fallback_chunking(text, metadata)
+            return await self._fallback_chunking(text, metadata)
 
         for pasal_chunk in pasal_chunks:
             # Check if this is a Pasal or just a block of text (like preamble)
@@ -156,7 +156,7 @@ class LegalChunker:
                     logger.debug(
                         f"Non-Pasal block too large ({len(chunk_text)} chars), splitting semantically"
                     )
-                    semantic_subchunks = self.semantic_splitter.split_text(
+                    semantic_subchunks = await self.semantic_splitter.split_text(
                         chunk_text, self.max_pasal_tokens
                     )
                     for sub in semantic_subchunks:
@@ -189,7 +189,7 @@ class LegalChunker:
                 for ayat_chunk in ayat_chunks:
                     # If Ayat itself is still huge (or no Ayat were found), use Semantic Splitting
                     if len(ayat_chunk) > char_limit:
-                        semantic_subchunks = self.semantic_splitter.split_text(
+                        semantic_subchunks = await self.semantic_splitter.split_text(
                             ayat_chunk, self.max_pasal_tokens
                         )
                         for sub in semantic_subchunks:
@@ -216,7 +216,7 @@ class LegalChunker:
 
         return chunks
 
-    def _fallback_chunking(self, text: str, metadata: dict[str, Any]) -> list[dict[str, Any]]:
+    async def _fallback_chunking(self, text: str, metadata: dict[str, Any]) -> list[dict[str, Any]]:
         """
         Fallback chunking for unstructured text (non-Pasal).
         Uses Semantic Splitting instead of arbitrary paragraphs.
@@ -224,7 +224,7 @@ class LegalChunker:
         chunks = []
 
         # Use Semantic Splitter
-        semantic_chunks = self.semantic_splitter.split_text(text, self.max_pasal_tokens)
+        semantic_chunks = await self.semantic_splitter.split_text(text, self.max_pasal_tokens)
 
         for chunk_text in semantic_chunks:
             context = self._build_context(metadata)

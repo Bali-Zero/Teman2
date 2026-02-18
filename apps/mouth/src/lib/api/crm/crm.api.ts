@@ -23,6 +23,13 @@ import type {
   CompanyDocument,
   TaxRecord,
 } from "./crm.types";
+import type {
+  RequiredDocument,
+  RequiredDocumentCreate,
+  RequiredDocumentUpdate,
+  ClientDocumentUpload,
+  ClientRequiredDocument,
+} from "@/lib/types/required-documents";
 
 /**
  * Revenue growth statistics response
@@ -74,7 +81,10 @@ export class CrmApi {
   /**
    * Generic request passthrough for admin/notification endpoints
    */
-  async request<T = unknown>(url: string, options?: Parameters<IApiClient['request']>[1]): Promise<T> {
+  async request<T = unknown>(
+    url: string,
+    options?: Parameters<IApiClient["request"]>[1],
+  ): Promise<T> {
     return this.client.request<T>(url, options);
   }
 
@@ -951,6 +961,90 @@ export class CrmApi {
   async getCompanyTax(companyId: number): Promise<TaxRecord> {
     return this.client.request<TaxRecord>(
       `/api/crm/companies/${companyId}/tax`,
+    );
+  }
+
+  // ============================================
+  // REQUIRED DOCUMENTS
+  // ============================================
+
+  /**
+   * Get required documents for a practice (CRM view)
+   */
+  async getRequiredDocuments(practiceId: number): Promise<RequiredDocument[]> {
+    return this.client.request<RequiredDocument[]>(
+      `/api/crm/practices/${practiceId}/required-documents`,
+    );
+  }
+
+  /**
+   * Add a required document to a practice
+   */
+  async addRequiredDocument(
+    practiceId: number,
+    data: RequiredDocumentCreate,
+  ): Promise<RequiredDocument> {
+    return this.client.request<RequiredDocument>(
+      `/api/crm/practices/${practiceId}/required-documents`,
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      },
+    );
+  }
+
+  /**
+   * Update a required document (team member review)
+   */
+  async updateRequiredDocument(
+    practiceId: number,
+    docId: number,
+    data: RequiredDocumentUpdate,
+  ): Promise<RequiredDocument> {
+    return this.client.request<RequiredDocument>(
+      `/api/crm/practices/${practiceId}/required-documents/${docId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      },
+    );
+  }
+
+  /**
+   * Delete a required document
+   */
+  async deleteRequiredDocument(
+    practiceId: number,
+    docId: number,
+  ): Promise<{ success: boolean; message: string }> {
+    return this.client.request<{ success: boolean; message: string }>(
+      `/api/crm/practices/${practiceId}/required-documents/${docId}`,
+      { method: "DELETE" },
+    );
+  }
+
+  /**
+   * Client: Get required documents across all practices (Portal view)
+   */
+  async getClientRequiredDocuments(clientId: number): Promise<ClientRequiredDocument[]> {
+    return this.client.request<ClientRequiredDocument[]>(
+      `/api/crm/clients/client/${clientId}/required-documents`,
+    );
+  }
+
+  /**
+   * Client: Upload a document for a required field
+   */
+  async uploadClientDocument(
+    practiceId: number,
+    data: ClientDocumentUpload,
+  ): Promise<{ success: boolean; document_id: number; message: string }> {
+    return this.client.request<{ success: boolean; document_id: number; message: string }>(
+      `/api/crm/practices/${practiceId}/upload-client-document`,
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      },
     );
   }
 }

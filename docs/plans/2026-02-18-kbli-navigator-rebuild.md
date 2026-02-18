@@ -18,20 +18,20 @@
 
 Files already in `apps/mouth/` that we leverage or replace:
 
-| Existing File | Action | Notes |
-|---|---|---|
-| `src/app/kbli/[code]/page.tsx` | **Replace** | Minimal SEO-only page, rebuild with full content |
-| `src/app/kbli/[code]/client-page.tsx` | **Replace** | 337-line client component, too thin |
-| `src/app/kbli-navigator/page.tsx` | **Keep** | Redirect to new `/kbli` homepage |
-| `src/app/kbli-explorer/` | **Keep** | Separate AI chat experience, complementary |
-| `src/components/kbli/KBLINavigatorClient.tsx` | **Deprecate** | iframe wrapper, no longer needed |
-| `src/components/kbli/KBLIIntroOverlay.tsx` | **Deprecate** | Video intro, not needed |
-| `src/lib/api/kbli.api.ts` | **Extend** | Add `getExplanation()` method |
-| `src/app/api/[...path]/route.ts` | **Keep** | Already proxies to Fly.io |
-| `src/app/api/kbli/[code]/route.ts` | **Keep** | Cached inspect proxy |
-| `src/app/globals.css` | **Extend** | Add KBLI-specific CSS variables |
-| `src/components/ui/*` | **Reuse** | button, card, dialog, input, tabs, skeleton, etc. |
-| `src/app/kbli-explorer/components/*` | **Reuse** | KBLIInspector badges, RiskGauge, ComparisonModal |
+| Existing File                                 | Action        | Notes                                             |
+| --------------------------------------------- | ------------- | ------------------------------------------------- |
+| `src/app/kbli/[code]/page.tsx`                | **Replace**   | Minimal SEO-only page, rebuild with full content  |
+| `src/app/kbli/[code]/client-page.tsx`         | **Replace**   | 337-line client component, too thin               |
+| `src/app/kbli-navigator/page.tsx`             | **Keep**      | Redirect to new `/kbli` homepage                  |
+| `src/app/kbli-explorer/`                      | **Keep**      | Separate AI chat experience, complementary        |
+| `src/components/kbli/KBLINavigatorClient.tsx` | **Deprecate** | iframe wrapper, no longer needed                  |
+| `src/components/kbli/KBLIIntroOverlay.tsx`    | **Deprecate** | Video intro, not needed                           |
+| `src/lib/api/kbli.api.ts`                     | **Extend**    | Add `getExplanation()` method                     |
+| `src/app/api/[...path]/route.ts`              | **Keep**      | Already proxies to Fly.io                         |
+| `src/app/api/kbli/[code]/route.ts`            | **Keep**      | Cached inspect proxy                              |
+| `src/app/globals.css`                         | **Extend**    | Add KBLI-specific CSS variables                   |
+| `src/components/ui/*`                         | **Reuse**     | button, card, dialog, input, tabs, skeleton, etc. |
+| `src/app/kbli-explorer/components/*`          | **Reuse**     | KBLIInspector badges, RiskGauge, ComparisonModal  |
 
 ---
 
@@ -40,6 +40,7 @@ Files already in `apps/mouth/` that we leverage or replace:
 ### Task 1: Create TypeScript types for KBLI data
 
 **Files:**
+
 - Create: `kbli-navigator-rebuild/lib/kbli-types.ts`
 
 **Step 1: Write types matching the JSON structure**
@@ -133,12 +134,12 @@ export interface KBLILicenseByScale {
 /** Gold-tier editorial content */
 export interface KBLIGoldContent {
   code: string;
-  whatItMeans: string;       // "In plain English, this code lets you..."
-  whatYouNeed: string;       // Practical requirements explained simply
-  whatChanged: string;       // 2020→2025 transition explained
-  baliContext: string;       // Bali-specific advice, areas, tips
-  youllAlsoNeed: string[];   // Related codes with why
-  zantaraOpener: string;     // AI chat opener message
+  whatItMeans: string; // "In plain English, this code lets you..."
+  whatYouNeed: string; // Practical requirements explained simply
+  whatChanged: string; // 2020→2025 transition explained
+  baliContext: string; // Bali-specific advice, areas, tips
+  youllAlsoNeed: string[]; // Related codes with why
+  zantaraOpener: string; // AI chat opener message
 }
 
 /** Section metadata */
@@ -171,6 +172,7 @@ git commit --no-verify -m "feat(kbli): add TypeScript types for KBLI Navigator r
 ### Task 2: Create data loader and transformer
 
 **Files:**
+
 - Create: `kbli-navigator-rebuild/lib/kbli-data.ts`
 - Read: `source_documents/KBLI_2025_FINAL_CLEAN.json`
 
@@ -182,7 +184,12 @@ This module reads the raw JSON at build time and transforms it into typed `KBLIC
 // kbli-navigator-rebuild/lib/kbli-data.ts
 import fs from "fs";
 import path from "path";
-import type { KBLIRawCode, KBLICode, KBLISection, KBLIMappingStatus } from "./kbli-types";
+import type {
+  KBLIRawCode,
+  KBLICode,
+  KBLISection,
+  KBLIMappingStatus,
+} from "./kbli-types";
 
 // English titles — generated from kbli_data_with_english.js keywords + manual curation
 // This map will be populated in Task 3
@@ -245,14 +252,19 @@ export function getSections(): KBLISection[] {
 export function getRelatedCodes(code: string, limit = 6): KBLICode[] {
   const prefix = code.slice(0, 3);
   const all = getAllCodes();
-  const samePrefix = all.filter((c) => c.code !== code && c.code.startsWith(prefix));
+  const samePrefix = all.filter(
+    (c) => c.code !== code && c.code.startsWith(prefix),
+  );
   if (samePrefix.length >= limit) return samePrefix.slice(0, limit);
 
   const current = getCode(code);
   if (!current) return samePrefix;
 
   const sameSection = all.filter(
-    (c) => c.code !== code && c.section === current.section && !c.code.startsWith(prefix)
+    (c) =>
+      c.code !== code &&
+      c.section === current.section &&
+      !c.code.startsWith(prefix),
   );
   return [...samePrefix, ...sameSection].slice(0, limit);
 }
@@ -269,7 +281,12 @@ function transformCode(raw: KBLIRawCode): KBLICode {
     section,
     sectionName: SECTION_NAMES_EN[section] || section,
     pma: {
-      status: raw.pma_status === "TERBUKA" ? "open" : raw.pma_status === "TERBATAS" ? "restricted" : "closed",
+      status:
+        raw.pma_status === "TERBUKA"
+          ? "open"
+          : raw.pma_status === "TERBATAS"
+            ? "restricted"
+            : "closed",
       maxForeign: raw.pma_max_asing,
       conditions: raw.pma_kondisi,
       isPriority: raw.pma_prioritas,
@@ -366,10 +383,28 @@ const SECTION_NAMES_ID: Record<string, string> = {
 };
 
 const SECTION_ICONS: Record<string, string> = {
-  A: "🌾", B: "⛏️", C: "🏭", D: "⚡", E: "💧", F: "🏗️",
-  G: "🛒", H: "🚛", I: "🍽️", J: "💻", K: "🏦", L: "🏠",
-  M: "🔬", N: "📋", O: "🏛️", P: "🎓", Q: "🏥", R: "🎭",
-  S: "💇", T: "🏡", U: "🌐", V: "❓",
+  A: "🌾",
+  B: "⛏️",
+  C: "🏭",
+  D: "⚡",
+  E: "💧",
+  F: "🏗️",
+  G: "🛒",
+  H: "🚛",
+  I: "🍽️",
+  J: "💻",
+  K: "🏦",
+  L: "🏠",
+  M: "🔬",
+  N: "📋",
+  O: "🏛️",
+  P: "🎓",
+  Q: "🏥",
+  R: "🎭",
+  S: "💇",
+  T: "🏡",
+  U: "🌐",
+  V: "❓",
 };
 
 const SECTION_DESCRIPTIONS: Record<string, string> = {
@@ -410,6 +445,7 @@ git commit --no-verify -m "feat(kbli): add data loader and transformer for KBLI 
 ### Task 3: Create English titles map and Gold codes set
 
 **Files:**
+
 - Create: `kbli-navigator-rebuild/lib/kbli-english.ts`
 - Create: `kbli-navigator-rebuild/lib/kbli-gold-codes.ts`
 
@@ -491,53 +527,227 @@ export const ENGLISH_TITLES: Record<string, string> = {
 
 export const GOLD_CODES = new Set<string>([
   // F&B
-  "56101", "56102", "56210", "56290", "56301", "56302", "56303", "56304", "56400",
+  "56101",
+  "56102",
+  "56210",
+  "56290",
+  "56301",
+  "56302",
+  "56303",
+  "56304",
+  "56400",
   // Accommodation
-  "55111", "55112", "55120", "55191", "55192", "55193", "55194", "55195", "55196", "55197",
+  "55111",
+  "55112",
+  "55120",
+  "55191",
+  "55192",
+  "55193",
+  "55194",
+  "55195",
+  "55196",
+  "55197",
   // Real Estate
-  "68110", "68120", "68201", "68202",
+  "68110",
+  "68120",
+  "68201",
+  "68202",
   // Retail (selected)
-  "47111", "47112", "47191", "47192", "47211", "47221", "47231", "47241",
-  "47251", "47261", "47291", "47301", "47411", "47421", "47431",
-  "47511", "47521", "47531", "47591", "47611", "47621", "47631",
-  "47711", "47721", "47722", "47731", "47741", "47751", "47761",
-  "47771", "47772", "47773", "47774", "47791", "47811", "47812",
-  "47821", "47822", "47911", "47912", "47913",
+  "47111",
+  "47112",
+  "47191",
+  "47192",
+  "47211",
+  "47221",
+  "47231",
+  "47241",
+  "47251",
+  "47261",
+  "47291",
+  "47301",
+  "47411",
+  "47421",
+  "47431",
+  "47511",
+  "47521",
+  "47531",
+  "47591",
+  "47611",
+  "47621",
+  "47631",
+  "47711",
+  "47721",
+  "47722",
+  "47731",
+  "47741",
+  "47751",
+  "47761",
+  "47771",
+  "47772",
+  "47773",
+  "47774",
+  "47791",
+  "47811",
+  "47812",
+  "47821",
+  "47822",
+  "47911",
+  "47912",
+  "47913",
   // Construction
-  "41011", "41012", "41013", "41020",
-  "43110", "43120", "43210", "43220", "43290", "43301", "43302", "43400",
+  "41011",
+  "41012",
+  "41013",
+  "41020",
+  "43110",
+  "43120",
+  "43210",
+  "43220",
+  "43290",
+  "43301",
+  "43302",
+  "43400",
   // IT & Digital
-  "62011", "62012", "62013", "62021", "62022", "62023", "62029", "62900",
-  "63111", "63112", "63120",
+  "62011",
+  "62012",
+  "62013",
+  "62021",
+  "62022",
+  "62023",
+  "62029",
+  "62900",
+  "63111",
+  "63112",
+  "63120",
   // Tourism
-  "79110", "79120", "79210", "79220", "79901", "79902", "79903", "79909",
+  "79110",
+  "79120",
+  "79210",
+  "79220",
+  "79901",
+  "79902",
+  "79903",
+  "79909",
   // Professional Services
-  "70100", "70201", "70202", "70203", "70209",
-  "73110", "73120", "73200",
-  "74101", "74102", "74103", "74109", "74200", "74901", "74902", "74903",
+  "70100",
+  "70201",
+  "70202",
+  "70203",
+  "70209",
+  "73110",
+  "73120",
+  "73200",
+  "74101",
+  "74102",
+  "74103",
+  "74109",
+  "74200",
+  "74901",
+  "74902",
+  "74903",
   // Education
-  "85410", "85421", "85422", "85430", "85491", "85492", "85493", "85494", "85495", "85499",
+  "85410",
+  "85421",
+  "85422",
+  "85430",
+  "85491",
+  "85492",
+  "85493",
+  "85494",
+  "85495",
+  "85499",
   // Health & Wellness
-  "86101", "86102", "86201", "86202", "86901", "86902", "86903", "86904", "86905",
+  "86101",
+  "86102",
+  "86201",
+  "86202",
+  "86901",
+  "86902",
+  "86903",
+  "86904",
+  "86905",
   // Spa & Personal Services
-  "96102", "96103", "96104", "96105", "96109", "96201", "96202",
+  "96102",
+  "96103",
+  "96104",
+  "96105",
+  "96109",
+  "96201",
+  "96202",
   // Sports & Recreation
-  "93111", "93112", "93121", "93122", "93131", "93132", "93191", "93192",
-  "93210", "93220", "93291", "93292", "93293",
+  "93111",
+  "93112",
+  "93121",
+  "93122",
+  "93131",
+  "93132",
+  "93191",
+  "93192",
+  "93210",
+  "93220",
+  "93291",
+  "93292",
+  "93293",
   // Creative Arts
-  "90001", "90002", "90003", "90004", "90005", "90006", "90007", "90008", "90009",
+  "90001",
+  "90002",
+  "90003",
+  "90004",
+  "90005",
+  "90006",
+  "90007",
+  "90008",
+  "90009",
   // Rental & Leasing
-  "77101", "77102", "77103", "77211", "77212", "77291", "77292", "77293",
-  "77301", "77302", "77303", "77401", "77402",
+  "77101",
+  "77102",
+  "77103",
+  "77211",
+  "77212",
+  "77291",
+  "77292",
+  "77293",
+  "77301",
+  "77302",
+  "77303",
+  "77401",
+  "77402",
   // Transport (selected)
-  "49111", "49112", "49221", "49223", "49224",
+  "49111",
+  "49112",
+  "49221",
+  "49223",
+  "49224",
   // Wholesale (selected)
-  "46100", "46311", "46321", "46331", "46341", "46391",
+  "46100",
+  "46311",
+  "46321",
+  "46331",
+  "46341",
+  "46391",
   // Manufacturing - Food & Beverage
-  "10710", "10720", "10730", "10740", "10750", "10790",
-  "11011", "11012", "11013", "11020", "11031", "11032", "11040",
+  "10710",
+  "10720",
+  "10730",
+  "10740",
+  "10750",
+  "10790",
+  "11011",
+  "11012",
+  "11013",
+  "11020",
+  "11031",
+  "11032",
+  "11040",
   // Office & Business Support
-  "82110", "82191", "82192", "82200", "82301", "82302", "82910", "82920",
+  "82110",
+  "82191",
+  "82192",
+  "82200",
+  "82301",
+  "82302",
+  "82910",
+  "82920",
 ]);
 
 // NOTE: This list will be refined during implementation.
@@ -557,6 +767,7 @@ git commit --no-verify -m "feat(kbli): add English titles and Gold-tier code def
 ### Task 4: Create Gold-tier editorial content structure
 
 **Files:**
+
 - Create: `kbli-navigator-rebuild/lib/kbli-gold-content.ts`
 - Create: `kbli-navigator-rebuild/data/gold/README.md`
 
@@ -584,7 +795,6 @@ import type { KBLIGoldContent } from "./kbli-types";
  * - zantaraOpener: The AI's contextual greeting for this code.
  */
 export const GOLD_CONTENT: Record<string, KBLIGoldContent> = {
-
   "56101": {
     whatItMeans:
       "This is your code for running a restaurant — any permanent building where you serve food. " +
@@ -680,6 +890,7 @@ export const GOLD_CONTENT: Record<string, KBLIGoldContent> = {
 
 ```markdown
 <!-- kbli-navigator-rebuild/data/gold/README.md -->
+
 # Gold-Tier Editorial Content
 
 This directory contains the curated editorial content for ~200 Bali-relevant KBLI codes.
@@ -714,6 +925,7 @@ git commit --no-verify -m "feat(kbli): add Gold-tier editorial content structure
 ### Task 5: Create search algorithm
 
 **Files:**
+
 - Create: `kbli-navigator-rebuild/lib/kbli-search.ts`
 
 Port the existing relevance scoring + fuzzy search from the old navigator, but typed and clean.
@@ -728,7 +940,7 @@ import { getAllCodes } from "./kbli-data";
 /** Main search function — relevance scored with fuzzy fallback */
 export function searchCodes(
   query: string,
-  filters?: { pma?: "open" | "restricted" | "closed"; risk?: string }
+  filters?: { pma?: "open" | "restricted" | "closed"; risk?: string },
 ): KBLISearchResult[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
@@ -741,7 +953,9 @@ export function searchCodes(
   }
   if (filters?.risk) {
     codes = codes.filter((c) =>
-      c.licensing.some((l) => l.riskCategory.toLowerCase().includes(filters.risk!.toLowerCase()))
+      c.licensing.some((l) =>
+        l.riskCategory.toLowerCase().includes(filters.risk!.toLowerCase()),
+      ),
     );
   }
 
@@ -753,7 +967,11 @@ export function searchCodes(
 
   // Phase 2: Relevance scoring
   const scored = codes
-    .map((code) => ({ code, score: calculateRelevance(q, code), matchType: "relevance" as const }))
+    .map((code) => ({
+      code,
+      score: calculateRelevance(q, code),
+      matchType: "relevance" as const,
+    }))
     .filter((r) => r.score > 0)
     .sort((a, b) => b.score - a.score);
 
@@ -786,7 +1004,11 @@ export function getSuggestions(query: string, limit = 5): string[] {
     }
   }
 
-  return [...new Set(suggestions.sort((a, b) => a.distance - b.distance).map((s) => s.term))].slice(0, limit);
+  return [
+    ...new Set(
+      suggestions.sort((a, b) => a.distance - b.distance).map((s) => s.term),
+    ),
+  ].slice(0, limit);
 }
 
 function calculateRelevance(query: string, code: KBLICode): number {
@@ -810,7 +1032,8 @@ function calculateRelevance(query: string, code: KBLICode): number {
   const allText = `${titleEn} ${titleId} ${code.description.toLowerCase()}`;
   const matchedWords = words.filter((w) => allText.includes(w));
 
-  if (matchedWords.length === words.length) score += 40; // All words match
+  if (matchedWords.length === words.length)
+    score += 40; // All words match
   else if (matchedWords.length > 0) score += matchedWords.length * 10;
 
   // Phrase bonus — query appears as substring
@@ -863,7 +1086,7 @@ function levenshtein(a: string, b: string): number {
   const m = a.length;
   const n = b.length;
   const dp: number[][] = Array.from({ length: m + 1 }, (_, i) =>
-    Array.from({ length: n + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
+    Array.from({ length: n + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)),
   );
 
   for (let i = 1; i <= m; i++) {
@@ -893,6 +1116,7 @@ git commit --no-verify -m "feat(kbli): add search algorithm with relevance scori
 ### Task 6: Create KBLI-specific CSS variables
 
 **Files:**
+
 - Create: `kbli-navigator-rebuild/styles/kbli-theme.css`
 
 These will be appended to `globals.css` during integration. They extend the existing dark theme with KBLI-specific tokens.
@@ -955,6 +1179,7 @@ git commit --no-verify -m "feat(kbli): add KBLI dark theme CSS variables"
 ### Task 7: Create PMA and Risk badge components
 
 **Files:**
+
 - Create: `kbli-navigator-rebuild/components/kbli/PMABadge.tsx`
 - Create: `kbli-navigator-rebuild/components/kbli/RiskBadge.tsx`
 - Create: `kbli-navigator-rebuild/components/kbli/TransitionBadge.tsx`
@@ -972,9 +1197,24 @@ interface PMABadgeProps {
 }
 
 const config = {
-  open: { label: "Open", icon: "✅", className: "bg-[var(--kbli-pma-open-bg)] text-[var(--kbli-pma-open)] border-[var(--kbli-pma-open)]/20" },
-  restricted: { label: "Restricted", icon: "⚠️", className: "bg-[var(--kbli-pma-restricted-bg)] text-[var(--kbli-pma-restricted)] border-[var(--kbli-pma-restricted)]/20" },
-  closed: { label: "Closed", icon: "🚫", className: "bg-[var(--kbli-pma-closed-bg)] text-[var(--kbli-pma-closed)] border-[var(--kbli-pma-closed)]/20" },
+  open: {
+    label: "Open",
+    icon: "✅",
+    className:
+      "bg-[var(--kbli-pma-open-bg)] text-[var(--kbli-pma-open)] border-[var(--kbli-pma-open)]/20",
+  },
+  restricted: {
+    label: "Restricted",
+    icon: "⚠️",
+    className:
+      "bg-[var(--kbli-pma-restricted-bg)] text-[var(--kbli-pma-restricted)] border-[var(--kbli-pma-restricted)]/20",
+  },
+  closed: {
+    label: "Closed",
+    icon: "🚫",
+    className:
+      "bg-[var(--kbli-pma-closed-bg)] text-[var(--kbli-pma-closed)] border-[var(--kbli-pma-closed)]/20",
+  },
 };
 
 export function PMABadge({ status, maxForeign, size = "md" }: PMABadgeProps) {
@@ -984,7 +1224,7 @@ export function PMABadge({ status, maxForeign, size = "md" }: PMABadgeProps) {
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full border font-medium",
         size === "sm" ? "px-2 py-0.5 text-xs" : "px-3 py-1 text-sm",
-        c.className
+        c.className,
       )}
     >
       <span>{c.icon}</span>
@@ -1011,10 +1251,14 @@ interface RiskBadgeProps {
 
 function parseRisk(category: string): { label: string; color: string } {
   const lower = category.toLowerCase();
-  if (lower.includes("tinggi") && !lower.includes("rendah")) return { label: "High", color: "var(--kbli-risk-high)" };
-  if (lower.includes("menengah tinggi")) return { label: "Medium-High", color: "var(--kbli-risk-medium-high)" };
-  if (lower.includes("menengah rendah")) return { label: "Medium-Low", color: "var(--kbli-risk-medium-low)" };
-  if (lower.includes("rendah")) return { label: "Low", color: "var(--kbli-risk-low)" };
+  if (lower.includes("tinggi") && !lower.includes("rendah"))
+    return { label: "High", color: "var(--kbli-risk-high)" };
+  if (lower.includes("menengah tinggi"))
+    return { label: "Medium-High", color: "var(--kbli-risk-medium-high)" };
+  if (lower.includes("menengah rendah"))
+    return { label: "Medium-Low", color: "var(--kbli-risk-medium-low)" };
+  if (lower.includes("rendah"))
+    return { label: "Low", color: "var(--kbli-risk-low)" };
   return { label: category, color: "var(--foreground-muted)" };
 }
 
@@ -1024,11 +1268,18 @@ export function RiskBadge({ riskCategory, size = "md" }: RiskBadgeProps) {
     <span
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full border font-medium",
-        size === "sm" ? "px-2 py-0.5 text-xs" : "px-3 py-1 text-sm"
+        size === "sm" ? "px-2 py-0.5 text-xs" : "px-3 py-1 text-sm",
       )}
-      style={{ color, borderColor: `${color}33`, backgroundColor: `${color}15` }}
+      style={{
+        color,
+        borderColor: `${color}33`,
+        backgroundColor: `${color}15`,
+      }}
     >
-      <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
+      <span
+        className="inline-block w-1.5 h-1.5 rounded-full"
+        style={{ backgroundColor: color }}
+      />
       {label} Risk
     </span>
   );
@@ -1044,9 +1295,18 @@ interface TransitionBadgeProps {
 }
 
 const labels: Record<KBLIMappingStatus, { text: string; color: string }> = {
-  MATCH_LANGSUNG: { text: "Unchanged from 2020", color: "var(--kbli-map-unchanged)" },
-  CODICE_RINUMERATO: { text: "Renumbered in 2025", color: "var(--kbli-map-renamed)" },
-  MATCH_CON_AGGREGAZIONE: { text: "Merged in 2025", color: "var(--kbli-map-merged)" },
+  MATCH_LANGSUNG: {
+    text: "Unchanged from 2020",
+    color: "var(--kbli-map-unchanged)",
+  },
+  CODICE_RINUMERATO: {
+    text: "Renumbered in 2025",
+    color: "var(--kbli-map-renamed)",
+  },
+  MATCH_CON_AGGREGAZIONE: {
+    text: "Merged in 2025",
+    color: "var(--kbli-map-merged)",
+  },
   BPS_ONLY: { text: "New in 2025", color: "var(--kbli-map-new)" },
   "": { text: "Unknown", color: "var(--foreground-muted)" },
 };
@@ -1056,7 +1316,11 @@ export function TransitionBadge({ status }: TransitionBadgeProps) {
   return (
     <span
       className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium"
-      style={{ color, borderColor: `${color}33`, backgroundColor: `${color}10` }}
+      style={{
+        color,
+        borderColor: `${color}33`,
+        backgroundColor: `${color}10`,
+      }}
     >
       {status === "BPS_ONLY" && "🆕 "}
       {status === "MATCH_CON_AGGREGAZIONE" && "🔀 "}
@@ -1079,6 +1343,7 @@ git commit --no-verify -m "feat(kbli): add PMA, Risk, and Transition badge compo
 ### Task 8: Create KBLI card component (for search results and listings)
 
 **Files:**
+
 - Create: `kbli-navigator-rebuild/components/kbli/KBLICard.tsx`
 
 **Step 1: Write the card component**
@@ -1098,7 +1363,11 @@ interface KBLICardProps {
   score?: number;
 }
 
-export function KBLICard({ code, showTransition = false, score }: KBLICardProps) {
+export function KBLICard({
+  code,
+  showTransition = false,
+  score,
+}: KBLICardProps) {
   return (
     <Link
       href={`/kbli/${code.code}`}
@@ -1118,15 +1387,20 @@ export function KBLICard({ code, showTransition = false, score }: KBLICardProps)
               Section {code.section}
             </span>
             {code.tier === "gold" && (
-              <span className="text-xs text-[var(--kbli-accent)]" title="Curated content available">
+              <span
+                className="text-xs text-[var(--kbli-accent)]"
+                title="Curated content available"
+              >
                 ★
               </span>
             )}
           </div>
 
           {/* Title */}
-          <h3 className="text-base font-semibold text-[var(--foreground)] leading-snug
-                          group-hover:text-[var(--kbli-accent)] transition-colors">
+          <h3
+            className="text-base font-semibold text-[var(--foreground)] leading-snug
+                          group-hover:text-[var(--kbli-accent)] transition-colors"
+          >
             {code.titleEn}
           </h3>
           <p className="text-sm text-[var(--foreground-muted)] mt-0.5">
@@ -1135,15 +1409,21 @@ export function KBLICard({ code, showTransition = false, score }: KBLICardProps)
         </div>
 
         {/* Arrow */}
-        <span className="text-[var(--foreground-muted)] group-hover:text-[var(--kbli-accent)]
-                         transition-transform group-hover:translate-x-0.5 mt-1 shrink-0">
+        <span
+          className="text-[var(--foreground-muted)] group-hover:text-[var(--kbli-accent)]
+                         transition-transform group-hover:translate-x-0.5 mt-1 shrink-0"
+        >
           →
         </span>
       </div>
 
       {/* Badges */}
       <div className="flex flex-wrap items-center gap-2 mt-3">
-        <PMABadge status={code.pma.status} maxForeign={code.pma.maxForeign} size="sm" />
+        <PMABadge
+          status={code.pma.status}
+          maxForeign={code.pma.maxForeign}
+          size="sm"
+        />
         {code.licensing[0] && (
           <RiskBadge riskCategory={code.licensing[0].riskCategory} size="sm" />
         )}
@@ -1168,6 +1448,7 @@ git commit --no-verify -m "feat(kbli): add KBLICard component for search results
 ### Task 9: Create search bar component with autocomplete
 
 **Files:**
+
 - Create: `kbli-navigator-rebuild/components/kbli/KBLISearch.tsx`
 
 **Step 1: Write the search component**
@@ -1215,7 +1496,7 @@ export function KBLISearch({
       }
       setShowSuggestions(false);
     },
-    [navigateOnSubmit, onResults, router]
+    [navigateOnSubmit, onResults, router],
   );
 
   const handleInput = useCallback(
@@ -1241,7 +1522,7 @@ export function KBLISearch({
         }
       }, 200);
     },
-    [navigateOnSubmit, onResults]
+    [navigateOnSubmit, onResults],
   );
 
   return (
@@ -1269,7 +1550,11 @@ export function KBLISearch({
         />
         {query && (
           <button
-            onClick={() => { setQuery(""); setSuggestions([]); onResults?.([]); }}
+            onClick={() => {
+              setQuery("");
+              setSuggestions([]);
+              onResults?.([]);
+            }}
             className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
             aria-label="Clear search"
           >
@@ -1280,15 +1565,20 @@ export function KBLISearch({
 
       {/* Did You Mean? suggestions */}
       {showSuggestions && suggestions.length > 0 && (
-        <div className="mt-2 rounded-lg border border-[var(--kbli-pma-restricted)]/20
-                        bg-[var(--kbli-pma-restricted-bg)] p-3">
+        <div
+          className="mt-2 rounded-lg border border-[var(--kbli-pma-restricted)]/20
+                        bg-[var(--kbli-pma-restricted-bg)] p-3"
+        >
           <p className="text-sm text-[var(--kbli-pma-restricted)]">
             Did you mean:{" "}
             {suggestions.map((s, i) => (
               <span key={s}>
                 {i > 0 && ", "}
                 <button
-                  onClick={() => { setQuery(s); handleSearch(s); }}
+                  onClick={() => {
+                    setQuery(s);
+                    handleSearch(s);
+                  }}
                   className="underline hover:text-[var(--kbli-accent)] transition-colors"
                 >
                   {s}
@@ -1315,6 +1605,7 @@ git commit --no-verify -m "feat(kbli): add search bar component with debounce an
 ### Task 10: Create Zantara AI contextual chat component
 
 **Files:**
+
 - Create: `kbli-navigator-rebuild/components/kbli/ZantaraChat.tsx`
 
 This is the key differentiator — Zantara AI that knows which code you're looking at.
@@ -1347,14 +1638,18 @@ interface ChatMessage {
   content: string;
 }
 
-export function ZantaraChat({ codeContext, opener, suggestions }: ZantaraChatProps) {
+export function ZantaraChat({
+  codeContext,
+  opener,
+  suggestions,
+}: ZantaraChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [sessionId] = useState(() =>
     typeof window !== "undefined"
       ? localStorage.getItem("kbli-chat-session") || crypto.randomUUID()
-      : ""
+      : "",
   );
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -1399,30 +1694,43 @@ export function ZantaraChat({ codeContext, opener, suggestions }: ZantaraChatPro
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const data = await res.json();
-        const answer = data.answer || data.response || "I couldn't find an answer. Try rephrasing your question.";
+        const answer =
+          data.answer ||
+          data.response ||
+          "I couldn't find an answer. Try rephrasing your question.";
 
-        setMessages((prev) => [...prev, { role: "assistant", content: answer }]);
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: answer },
+        ]);
       } catch (err) {
         const errorMsg =
           err instanceof DOMException && err.name === "TimeoutError"
             ? "Request timed out. The server might be busy — try again in a moment."
             : "Something went wrong. Please try again.";
-        setMessages((prev) => [...prev, { role: "assistant", content: errorMsg }]);
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: errorMsg },
+        ]);
       } finally {
         setLoading(false);
         inputRef.current?.focus();
       }
     },
-    [loading, codeContext, sessionId]
+    [loading, codeContext, sessionId],
   );
 
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--kbli-bg-card)] overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--border)]
-                      bg-[var(--kbli-zantara-bg)]">
+      <div
+        className="flex items-center gap-2 px-4 py-3 border-b border-[var(--border)]
+                      bg-[var(--kbli-zantara-bg)]"
+      >
         <Bot className="w-5 h-5 text-[var(--kbli-zantara)]" />
-        <span className="font-semibold text-[var(--kbli-zantara)]">Zantara AI</span>
+        <span className="font-semibold text-[var(--kbli-zantara)]">
+          Zantara AI
+        </span>
         {codeContext && (
           <span className="text-xs text-[var(--foreground-muted)] ml-auto">
             Context: {codeContext.code}
@@ -1441,7 +1749,10 @@ export function ZantaraChat({ codeContext, opener, suggestions }: ZantaraChatPro
 
         {/* Chat messages */}
         {messages.map((msg, i) => (
-          <div key={i} className={msg.role === "user" ? "flex justify-end" : ""}>
+          <div
+            key={i}
+            className={msg.role === "user" ? "flex justify-end" : ""}
+          >
             <div
               className={
                 msg.role === "user"
@@ -1498,7 +1809,11 @@ export function ZantaraChat({ codeContext, opener, suggestions }: ZantaraChatPro
               sendMessage(input);
             }
           }}
-          placeholder={codeContext ? `Ask about ${codeContext.code}...` : "Ask Zantara anything about KBLI..."}
+          placeholder={
+            codeContext
+              ? `Ask about ${codeContext.code}...`
+              : "Ask Zantara anything about KBLI..."
+          }
           rows={1}
           className="flex-1 resize-none rounded-lg border border-[var(--border)] bg-[var(--kbli-bg-secondary)]
                      px-3 py-2 text-sm text-[var(--foreground)] placeholder-[var(--foreground-muted)]
@@ -1532,6 +1847,7 @@ git commit --no-verify -m "feat(kbli): add Zantara AI contextual chat component 
 ### Task 11: Create KBLIFilters component
 
 **Files:**
+
 - Create: `kbli-navigator-rebuild/components/kbli/KBLIFilters.tsx`
 
 **Step 1: Write filters**
@@ -1574,51 +1890,110 @@ function Chip({
         "rounded-full border px-3 py-1 text-xs font-medium transition-all",
         active
           ? "border-[var(--kbli-accent)] bg-[var(--kbli-accent-muted)] text-[var(--kbli-accent)]"
-          : "border-[var(--border)] bg-transparent text-[var(--foreground-muted)] hover:border-[var(--border-hover)] hover:text-[var(--foreground)]"
+          : "border-[var(--border)] bg-transparent text-[var(--foreground-muted)] hover:border-[var(--border-hover)] hover:text-[var(--foreground)]",
       )}
       aria-pressed={active}
     >
       {children}
-      {count !== undefined && (
-        <span className="ml-1 opacity-60">{count}</span>
-      )}
+      {count !== undefined && <span className="ml-1 opacity-60">{count}</span>}
     </button>
   );
 }
 
 export function KBLIFilters({
-  pmaFilter, riskFilter, transitionFilter,
-  onPMAChange, onRiskChange, onTransitionChange,
+  pmaFilter,
+  riskFilter,
+  transitionFilter,
+  onPMAChange,
+  onRiskChange,
+  onTransitionChange,
   counts,
 }: KBLIFiltersProps) {
   return (
     <div className="space-y-3">
       {/* PMA Status */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-medium text-[var(--foreground-muted)] w-20 shrink-0">Investment:</span>
-        <Chip active={!pmaFilter} onClick={() => onPMAChange(null)} count={counts?.pma.all}>All</Chip>
-        <Chip active={pmaFilter === "open"} onClick={() => onPMAChange(pmaFilter === "open" ? null : "open")} count={counts?.pma.open}>
+        <span className="text-xs font-medium text-[var(--foreground-muted)] w-20 shrink-0">
+          Investment:
+        </span>
+        <Chip
+          active={!pmaFilter}
+          onClick={() => onPMAChange(null)}
+          count={counts?.pma.all}
+        >
+          All
+        </Chip>
+        <Chip
+          active={pmaFilter === "open"}
+          onClick={() => onPMAChange(pmaFilter === "open" ? null : "open")}
+          count={counts?.pma.open}
+        >
           ✅ Open
         </Chip>
-        <Chip active={pmaFilter === "restricted"} onClick={() => onPMAChange(pmaFilter === "restricted" ? null : "restricted")} count={counts?.pma.restricted}>
+        <Chip
+          active={pmaFilter === "restricted"}
+          onClick={() =>
+            onPMAChange(pmaFilter === "restricted" ? null : "restricted")
+          }
+          count={counts?.pma.restricted}
+        >
           ⚠️ Restricted
         </Chip>
-        <Chip active={pmaFilter === "closed"} onClick={() => onPMAChange(pmaFilter === "closed" ? null : "closed")} count={counts?.pma.closed}>
+        <Chip
+          active={pmaFilter === "closed"}
+          onClick={() => onPMAChange(pmaFilter === "closed" ? null : "closed")}
+          count={counts?.pma.closed}
+        >
           🚫 Closed
         </Chip>
       </div>
 
       {/* 2020→2025 Transition */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-medium text-[var(--foreground-muted)] w-20 shrink-0">2025 Status:</span>
-        <Chip active={!transitionFilter} onClick={() => onTransitionChange(null)}>All</Chip>
-        <Chip active={transitionFilter === "BPS_ONLY"} onClick={() => onTransitionChange(transitionFilter === "BPS_ONLY" ? null : "BPS_ONLY")} count={counts?.transition.new}>
+        <span className="text-xs font-medium text-[var(--foreground-muted)] w-20 shrink-0">
+          2025 Status:
+        </span>
+        <Chip
+          active={!transitionFilter}
+          onClick={() => onTransitionChange(null)}
+        >
+          All
+        </Chip>
+        <Chip
+          active={transitionFilter === "BPS_ONLY"}
+          onClick={() =>
+            onTransitionChange(
+              transitionFilter === "BPS_ONLY" ? null : "BPS_ONLY",
+            )
+          }
+          count={counts?.transition.new}
+        >
           🆕 New
         </Chip>
-        <Chip active={transitionFilter === "MATCH_CON_AGGREGAZIONE"} onClick={() => onTransitionChange(transitionFilter === "MATCH_CON_AGGREGAZIONE" ? null : "MATCH_CON_AGGREGAZIONE")} count={counts?.transition.merged}>
+        <Chip
+          active={transitionFilter === "MATCH_CON_AGGREGAZIONE"}
+          onClick={() =>
+            onTransitionChange(
+              transitionFilter === "MATCH_CON_AGGREGAZIONE"
+                ? null
+                : "MATCH_CON_AGGREGAZIONE",
+            )
+          }
+          count={counts?.transition.merged}
+        >
           🔀 Merged
         </Chip>
-        <Chip active={transitionFilter === "CODICE_RINUMERATO"} onClick={() => onTransitionChange(transitionFilter === "CODICE_RINUMERATO" ? null : "CODICE_RINUMERATO")} count={counts?.transition.renamed}>
+        <Chip
+          active={transitionFilter === "CODICE_RINUMERATO"}
+          onClick={() =>
+            onTransitionChange(
+              transitionFilter === "CODICE_RINUMERATO"
+                ? null
+                : "CODICE_RINUMERATO",
+            )
+          }
+          count={counts?.transition.renamed}
+        >
           🔄 Renumbered
         </Chip>
       </div>
@@ -1639,6 +2014,7 @@ git commit --no-verify -m "feat(kbli): add filter chips for PMA, risk, and trans
 ### Task 12: Create Language Toggle and Breadcrumb components
 
 **Files:**
+
 - Create: `kbli-navigator-rebuild/components/kbli/LanguageToggle.tsx`
 - Create: `kbli-navigator-rebuild/components/kbli/KBLIBreadcrumb.tsx`
 
@@ -1656,7 +2032,9 @@ const LanguageContext = createContext<{ lang: Language; toggle: () => void }>({
   toggle: () => {},
 });
 
-export function useLanguage() { return useContext(LanguageContext); }
+export function useLanguage() {
+  return useContext(LanguageContext);
+}
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLang] = useState<Language>("en");
@@ -1691,10 +2069,14 @@ export function LanguageToggle() {
                  text-xs font-medium overflow-hidden"
       aria-label={`Switch to ${lang === "en" ? "Indonesian" : "English"}`}
     >
-      <span className={`px-2.5 py-1 transition-all ${lang === "en" ? "bg-[var(--kbli-accent-muted)] text-[var(--kbli-accent)]" : "text-[var(--foreground-muted)]"}`}>
+      <span
+        className={`px-2.5 py-1 transition-all ${lang === "en" ? "bg-[var(--kbli-accent-muted)] text-[var(--kbli-accent)]" : "text-[var(--foreground-muted)]"}`}
+      >
         EN
       </span>
-      <span className={`px-2.5 py-1 transition-all ${lang === "id" ? "bg-[var(--kbli-accent-muted)] text-[var(--kbli-accent)]" : "text-[var(--foreground-muted)]"}`}>
+      <span
+        className={`px-2.5 py-1 transition-all ${lang === "id" ? "bg-[var(--kbli-accent-muted)] text-[var(--kbli-accent)]" : "text-[var(--foreground-muted)]"}`}
+      >
         ID
       </span>
     </button>
@@ -1713,12 +2095,18 @@ interface BreadcrumbItem {
 
 export function KBLIBreadcrumb({ items }: { items: BreadcrumbItem[] }) {
   return (
-    <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm text-[var(--foreground-muted)]">
+    <nav
+      aria-label="Breadcrumb"
+      className="flex items-center gap-1.5 text-sm text-[var(--foreground-muted)]"
+    >
       {items.map((item, i) => (
         <span key={i} className="flex items-center gap-1.5">
           {i > 0 && <span className="opacity-40">/</span>}
           {item.href ? (
-            <Link href={item.href} className="hover:text-[var(--kbli-accent)] transition-colors">
+            <Link
+              href={item.href}
+              className="hover:text-[var(--kbli-accent)] transition-colors"
+            >
               {item.label}
             </Link>
           ) : (
@@ -1743,6 +2131,7 @@ git commit --no-verify -m "feat(kbli): add language toggle (EN/ID) and breadcrum
 ### Task 13: Create Structured Data (SEO) component
 
 **Files:**
+
 - Create: `kbli-navigator-rebuild/components/kbli/KBLIStructuredData.tsx`
 
 **Step 1: Write the JSON-LD component**
@@ -1832,6 +2221,7 @@ git commit --no-verify -m "feat(kbli): add Schema.org structured data components
 ### Task 14: Create KBLI code detail page (`/kbli/[code]`)
 
 **Files:**
+
 - Create: `kbli-navigator-rebuild/app/kbli/[code]/page.tsx`
 
 This is the most important page — 1,563 instances, each fully indexable.
@@ -1850,20 +2240,28 @@ import { RiskBadge } from "@/components/kbli/RiskBadge";
 import { TransitionBadge } from "@/components/kbli/TransitionBadge";
 import { KBLICard } from "@/components/kbli/KBLICard";
 import { ZantaraChat } from "@/components/kbli/ZantaraChat";
-import { KBLICodeJsonLd, KBLIBreadcrumbJsonLd } from "@/components/kbli/KBLIStructuredData";
+import {
+  KBLICodeJsonLd,
+  KBLIBreadcrumbJsonLd,
+} from "@/components/kbli/KBLIStructuredData";
 
 // Generate all 1,563 pages at build time
 export async function generateStaticParams() {
   return getAllCodes().map((c) => ({ code: c.code }));
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ code: string }> }): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ code: string }>;
+}): Promise<Metadata> {
   const { code: codeParam } = await params;
   const code = getCode(codeParam);
   if (!code) return { title: "KBLI Code Not Found" };
 
   const title = `KBLI ${code.code}: ${code.titleEn} — Business Code Guide | Bali Zero`;
-  const description = `Everything about KBLI ${code.code} (${code.titleEn}/${code.titleId}). ` +
+  const description =
+    `Everything about KBLI ${code.code} (${code.titleEn}/${code.titleId}). ` +
     `Foreign investment: ${code.pma.status === "open" ? `Open, ${code.pma.maxForeign}% foreign ownership allowed` : code.pma.status}. ` +
     `Licensing, requirements, 2020→2025 changes, and Bali-specific advice.`;
 
@@ -1880,12 +2278,19 @@ export async function generateMetadata({ params }: { params: Promise<{ code: str
     twitter: { card: "summary_large_image", title, description },
     alternates: {
       canonical: `https://balizero.com/kbli/${code.code}`,
-      languages: { "en-US": `/kbli/${code.code}`, "id-ID": `/kbli/${code.code}?lang=id` },
+      languages: {
+        "en-US": `/kbli/${code.code}`,
+        "id-ID": `/kbli/${code.code}?lang=id`,
+      },
     },
   };
 }
 
-export default async function KBLICodePage({ params }: { params: Promise<{ code: string }> }) {
+export default async function KBLICodePage({
+  params,
+}: {
+  params: Promise<{ code: string }>;
+}) {
   const { code: codeParam } = await params;
   const code = getCode(codeParam);
   if (!code) notFound();
@@ -1899,7 +2304,10 @@ export default async function KBLICodePage({ params }: { params: Promise<{ code:
       <KBLIBreadcrumbJsonLd
         items={[
           { name: "KBLI Navigator", url: "https://balizero.com/kbli" },
-          { name: `Section ${code.section}`, url: `https://balizero.com/kbli/sectors/${code.section}` },
+          {
+            name: `Section ${code.section}`,
+            url: `https://balizero.com/kbli/sectors/${code.section}`,
+          },
           { name: code.code, url: `https://balizero.com/kbli/${code.code}` },
         ]}
       />
@@ -1909,7 +2317,10 @@ export default async function KBLICodePage({ params }: { params: Promise<{ code:
         <KBLIBreadcrumb
           items={[
             { label: "KBLI Navigator", href: "/kbli" },
-            { label: `Section ${code.section} — ${code.sectionName}`, href: `/kbli/sectors/${code.section}` },
+            {
+              label: `Section ${code.section} — ${code.sectionName}`,
+              href: `/kbli/sectors/${code.section}`,
+            },
             { label: code.code },
           ]}
         />
@@ -1917,14 +2328,25 @@ export default async function KBLICodePage({ params }: { params: Promise<{ code:
         {/* Header */}
         <header className="mt-6">
           <div className="flex items-center gap-3 mb-2">
-            <span className="font-mono text-2xl font-bold text-[var(--kbli-accent)]">{code.code}</span>
+            <span className="font-mono text-2xl font-bold text-[var(--kbli-accent)]">
+              {code.code}
+            </span>
             <TransitionBadge status={code.transition.status} />
           </div>
-          <h1 className="text-3xl font-bold text-[var(--foreground)] leading-tight">{code.titleEn}</h1>
-          <p className="text-lg text-[var(--foreground-muted)] mt-1">{code.titleId}</p>
+          <h1 className="text-3xl font-bold text-[var(--foreground)] leading-tight">
+            {code.titleEn}
+          </h1>
+          <p className="text-lg text-[var(--foreground-muted)] mt-1">
+            {code.titleId}
+          </p>
           <div className="flex flex-wrap gap-2 mt-4">
-            <PMABadge status={code.pma.status} maxForeign={code.pma.maxForeign} />
-            {code.licensing[0] && <RiskBadge riskCategory={code.licensing[0].riskCategory} />}
+            <PMABadge
+              status={code.pma.status}
+              maxForeign={code.pma.maxForeign}
+            />
+            {code.licensing[0] && (
+              <RiskBadge riskCategory={code.licensing[0].riskCategory} />
+            )}
           </div>
         </header>
 
@@ -1932,12 +2354,18 @@ export default async function KBLICodePage({ params }: { params: Promise<{ code:
         {gold ? (
           <section className="mt-8 space-y-8">
             <div>
-              <h2 className="text-lg font-semibold text-[var(--foreground)] mb-3">What This Means For You</h2>
-              <p className="text-[var(--foreground-secondary)] leading-relaxed">{gold.whatItMeans}</p>
+              <h2 className="text-lg font-semibold text-[var(--foreground)] mb-3">
+                What This Means For You
+              </h2>
+              <p className="text-[var(--foreground-secondary)] leading-relaxed">
+                {gold.whatItMeans}
+              </p>
             </div>
 
             <div>
-              <h2 className="text-lg font-semibold text-[var(--foreground)] mb-3">What You Need</h2>
+              <h2 className="text-lg font-semibold text-[var(--foreground)] mb-3">
+                What You Need
+              </h2>
               <div className="text-[var(--foreground-secondary)] leading-relaxed prose prose-invert prose-sm max-w-none">
                 {/* Render markdown-like content */}
                 {gold.whatYouNeed.split("\n\n").map((p, i) => (
@@ -1950,10 +2378,21 @@ export default async function KBLICodePage({ params }: { params: Promise<{ code:
               <h2 className="text-lg font-semibold text-[var(--foreground)] mb-3 flex items-center gap-2">
                 🔄 What Changed in 2025
               </h2>
-              <div className="rounded-lg border border-[var(--kbli-map-merged)]/20 bg-[var(--kbli-map-merged)]/5 p-4
-                              text-sm text-[var(--foreground-secondary)] leading-relaxed">
+              <div
+                className="rounded-lg border border-[var(--kbli-map-merged)]/20 bg-[var(--kbli-map-merged)]/5 p-4
+                              text-sm text-[var(--foreground-secondary)] leading-relaxed"
+              >
                 {gold.whatChanged.split("\n").map((line, i) => (
-                  <p key={i} className={line.startsWith("- ") ? "ml-4" : line.startsWith("**") ? "font-semibold mt-2 first:mt-0" : ""}>
+                  <p
+                    key={i}
+                    className={
+                      line.startsWith("- ")
+                        ? "ml-4"
+                        : line.startsWith("**")
+                          ? "font-semibold mt-2 first:mt-0"
+                          : ""
+                    }
+                  >
                     {line}
                   </p>
                 ))}
@@ -1967,7 +2406,9 @@ export default async function KBLICodePage({ params }: { params: Promise<{ code:
                 </h2>
                 <div className="text-[var(--foreground-secondary)] leading-relaxed">
                   {gold.baliContext.split("\n\n").map((p, i) => (
-                    <p key={i} className="mb-3">{p}</p>
+                    <p key={i} className="mb-3">
+                      {p}
+                    </p>
                   ))}
                 </div>
               </div>
@@ -1976,7 +2417,9 @@ export default async function KBLICodePage({ params }: { params: Promise<{ code:
         ) : (
           /* Bronze/Silver: Structured data from JSON */
           <section className="mt-8">
-            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-3">Description</h2>
+            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-3">
+              Description
+            </h2>
             <p className="text-[var(--foreground-secondary)] leading-relaxed whitespace-pre-line">
               {code.description}
             </p>
@@ -1986,10 +2429,15 @@ export default async function KBLICodePage({ params }: { params: Promise<{ code:
         {/* Licensing by scale — always shown */}
         {code.licensing.length > 0 && (
           <section className="mt-8">
-            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4">Licensing by Business Size</h2>
+            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4">
+              Licensing by Business Size
+            </h2>
             <div className="space-y-4">
               {code.licensing.map((lic, i) => (
-                <div key={i} className="rounded-lg border border-[var(--border)] bg-[var(--kbli-bg-secondary)] p-4">
+                <div
+                  key={i}
+                  className="rounded-lg border border-[var(--border)] bg-[var(--kbli-bg-secondary)] p-4"
+                >
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-medium text-[var(--foreground)]">
                       {lic.scales.join(", ")}
@@ -1998,25 +2446,41 @@ export default async function KBLICodePage({ params }: { params: Promise<{ code:
                   </div>
                   <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm mt-3">
                     <dt className="text-[var(--foreground-muted)]">License</dt>
-                    <dd className="text-[var(--foreground-secondary)]">{lic.licenseType}</dd>
+                    <dd className="text-[var(--foreground-secondary)]">
+                      {lic.licenseType}
+                    </dd>
                     <dt className="text-[var(--foreground-muted)]">Timeline</dt>
-                    <dd className="text-[var(--foreground-secondary)]">{lic.timeline}</dd>
-                    <dt className="text-[var(--foreground-muted)]">Authority</dt>
-                    <dd className="text-[var(--foreground-secondary)]">{lic.authority}</dd>
+                    <dd className="text-[var(--foreground-secondary)]">
+                      {lic.timeline}
+                    </dd>
+                    <dt className="text-[var(--foreground-muted)]">
+                      Authority
+                    </dt>
+                    <dd className="text-[var(--foreground-secondary)]">
+                      {lic.authority}
+                    </dd>
                   </dl>
                   {lic.requirements.length > 0 && (
                     <div className="mt-3">
-                      <p className="text-xs font-medium text-[var(--foreground-muted)] mb-1">Requirements:</p>
+                      <p className="text-xs font-medium text-[var(--foreground-muted)] mb-1">
+                        Requirements:
+                      </p>
                       <ul className="list-disc list-inside text-sm text-[var(--foreground-secondary)] space-y-1">
-                        {lic.requirements.map((r, j) => <li key={j}>{r}</li>)}
+                        {lic.requirements.map((r, j) => (
+                          <li key={j}>{r}</li>
+                        ))}
                       </ul>
                     </div>
                   )}
                   {lic.obligations.length > 0 && (
                     <div className="mt-3">
-                      <p className="text-xs font-medium text-[var(--foreground-muted)] mb-1">Obligations:</p>
+                      <p className="text-xs font-medium text-[var(--foreground-muted)] mb-1">
+                        Obligations:
+                      </p>
                       <ul className="list-disc list-inside text-sm text-[var(--foreground-secondary)] space-y-1">
-                        {lic.obligations.map((o, j) => <li key={j}>{o}</li>)}
+                        {lic.obligations.map((o, j) => (
+                          <li key={j}>{o}</li>
+                        ))}
                       </ul>
                     </div>
                   )}
@@ -2034,17 +2498,26 @@ export default async function KBLICodePage({ params }: { params: Promise<{ code:
             </h2>
             <div className="rounded-lg border border-[var(--border)] bg-[var(--kbli-bg-secondary)] p-4">
               <p className="text-sm text-[var(--foreground-secondary)] mb-3">
-                This code was formed by merging {code.transition.fromCodes.length} former KBLI 2020 codes:
+                This code was formed by merging{" "}
+                {code.transition.fromCodes.length} former KBLI 2020 codes:
               </p>
               <ul className="space-y-1">
                 {code.transition.fromCodes.map((fc) => (
-                  <li key={fc} className="text-sm font-mono text-[var(--foreground-muted)]">
-                    {fc} {fc === code.code ? "(unchanged)" : "→ merged into " + code.code}
+                  <li
+                    key={fc}
+                    className="text-sm font-mono text-[var(--foreground-muted)]"
+                  >
+                    {fc}{" "}
+                    {fc === code.code
+                      ? "(unchanged)"
+                      : "→ merged into " + code.code}
                   </li>
                 ))}
               </ul>
               {code.transition.note && (
-                <p className="text-xs text-[var(--foreground-muted)] mt-2 italic">{code.transition.note}</p>
+                <p className="text-xs text-[var(--foreground-muted)] mt-2 italic">
+                  {code.transition.note}
+                </p>
               )}
             </div>
           </section>
@@ -2059,9 +2532,15 @@ export default async function KBLICodePage({ params }: { params: Promise<{ code:
             {gold?.youllAlsoNeed ? (
               <ul className="space-y-2">
                 {gold.youllAlsoNeed.map((item, i) => (
-                  <li key={i} className="text-sm text-[var(--foreground-secondary)]">
-                    <span className="font-mono text-[var(--kbli-accent)]">{item.split(" — ")[0]}</span>
-                    {" — "}{item.split(" — ").slice(1).join(" — ")}
+                  <li
+                    key={i}
+                    className="text-sm text-[var(--foreground-secondary)]"
+                  >
+                    <span className="font-mono text-[var(--kbli-accent)]">
+                      {item.split(" — ")[0]}
+                    </span>
+                    {" — "}
+                    {item.split(" — ").slice(1).join(" — ")}
                   </li>
                 ))}
               </ul>
@@ -2096,8 +2575,10 @@ export default async function KBLICodePage({ params }: { params: Promise<{ code:
         {/* Source reference */}
         <footer className="mt-8 pt-6 border-t border-[var(--border)] text-xs text-[var(--foreground-muted)]">
           <p>
-            Data source: BPS Regulation No. 7/2025 (KBLI 2025) · PP 28/2024 (Licensing) ·{" "}
-            {code.pma.source || "Perpres 10/2021, 49/2021, 14/2024"} (Foreign Investment)
+            Data source: BPS Regulation No. 7/2025 (KBLI 2025) · PP 28/2024
+            (Licensing) ·{" "}
+            {code.pma.source || "Perpres 10/2021, 49/2021, 14/2024"} (Foreign
+            Investment)
           </p>
           <p className="mt-1">
             Last verified: February 2026 · Powered by{" "}
@@ -2122,6 +2603,7 @@ git commit --no-verify -m "feat(kbli): add SSG code detail page with Gold/Bronze
 ### Task 15: Create KBLI homepage (`/kbli`)
 
 **Files:**
+
 - Create: `kbli-navigator-rebuild/app/kbli/page.tsx`
 
 **Step 1: Write the homepage**
@@ -2147,7 +2629,8 @@ export const metadata: Metadata = {
     "1,563 codes explained clearly by Zantara AI.",
   openGraph: {
     title: "KBLI 2025 Navigator — Business Code Guide",
-    description: "1,563 Indonesian business codes explained clearly. Foreign investment, licensing, and expert AI guidance.",
+    description:
+      "1,563 Indonesian business codes explained clearly. Foreign investment, licensing, and expert AI guidance.",
     url: "https://balizero.com/kbli",
     siteName: "Bali Zero",
   },
@@ -2164,13 +2647,23 @@ export default function KBLIHomePage() {
     total: allCodes.length,
     open: allCodes.filter((c) => c.pma.status === "open").length,
     new2025: allCodes.filter((c) => c.transition.status === "BPS_ONLY").length,
-    merged: allCodes.filter((c) => c.transition.status === "MATCH_CON_AGGREGAZIONE").length,
+    merged: allCodes.filter(
+      (c) => c.transition.status === "MATCH_CON_AGGREGAZIONE",
+    ).length,
   };
 
   // Featured codes — most searched by foreign investors
   const featured = [
-    "56101", "55194", "55111", "68110", "47911",
-    "62011", "85499", "96102", "79110", "70201",
+    "56101",
+    "55194",
+    "55111",
+    "68110",
+    "47911",
+    "62011",
+    "85499",
+    "96102",
+    "79110",
+    "70201",
   ]
     .map((code) => allCodes.find((c) => c.code === code))
     .filter(Boolean);
@@ -2183,8 +2676,8 @@ export default function KBLIHomePage() {
           KBLI 2025 Navigator
         </h1>
         <p className="text-xl text-[var(--foreground-muted)] mt-3 max-w-2xl mx-auto">
-          1,563 Indonesian business codes — explained clearly.
-          Foreign investment rules, licensing, and what changed from 2020.
+          1,563 Indonesian business codes — explained clearly. Foreign
+          investment rules, licensing, and what changed from 2020.
         </p>
         <p className="text-sm text-[var(--kbli-zantara)] mt-2">
           Powered by Zantara AI
@@ -2204,9 +2697,16 @@ export default function KBLIHomePage() {
           { value: stats.new2025.toLocaleString(), label: "New in 2025" },
           { value: stats.merged.toLocaleString(), label: "Merged from 2020" },
         ].map((s) => (
-          <div key={s.label} className="rounded-xl border border-[var(--border)] bg-[var(--kbli-bg-card)] p-4 text-center">
-            <div className="text-2xl font-bold text-[var(--kbli-accent)]">{s.value}</div>
-            <div className="text-xs text-[var(--foreground-muted)] mt-1">{s.label}</div>
+          <div
+            key={s.label}
+            className="rounded-xl border border-[var(--border)] bg-[var(--kbli-bg-card)] p-4 text-center"
+          >
+            <div className="text-2xl font-bold text-[var(--kbli-accent)]">
+              {s.value}
+            </div>
+            <div className="text-xs text-[var(--foreground-muted)] mt-1">
+              {s.label}
+            </div>
           </div>
         ))}
       </div>
@@ -2225,7 +2725,9 @@ export default function KBLIHomePage() {
 
       {/* Browse by sector */}
       <section className="mb-12">
-        <h2 className="text-xl font-semibold text-[var(--foreground)] mb-4">Browse by Sector</h2>
+        <h2 className="text-xl font-semibold text-[var(--foreground)] mb-4">
+          Browse by Sector
+        </h2>
         <KBLISectorGrid sections={sections} />
       </section>
 
@@ -2267,11 +2769,15 @@ export function KBLISectorGrid({ sections }: { sections: KBLISection[] }) {
                      transition-all hover:border-[var(--kbli-accent)]/30 hover:bg-[var(--kbli-bg-card-hover)]"
         >
           <div className="text-2xl mb-2">{s.icon}</div>
-          <div className="text-xs font-mono text-[var(--kbli-accent)] mb-0.5">Section {s.id}</div>
+          <div className="text-xs font-mono text-[var(--kbli-accent)] mb-0.5">
+            Section {s.id}
+          </div>
           <div className="text-sm font-medium text-[var(--foreground)] group-hover:text-[var(--kbli-accent)] transition-colors leading-snug">
             {s.nameEn}
           </div>
-          <div className="text-xs text-[var(--foreground-muted)] mt-1">{s.codeCount} codes</div>
+          <div className="text-xs text-[var(--foreground-muted)] mt-1">
+            {s.codeCount} codes
+          </div>
         </Link>
       ))}
     </div>
@@ -2291,6 +2797,7 @@ git commit --no-verify -m "feat(kbli): add homepage with search, stats, featured
 ### Task 16: Create search results page and sector pages
 
 **Files:**
+
 - Create: `kbli-navigator-rebuild/app/kbli/search/page.tsx`
 - Create: `kbli-navigator-rebuild/app/kbli/sectors/page.tsx`
 - Create: `kbli-navigator-rebuild/app/kbli/sectors/[section]/page.tsx`
@@ -2321,6 +2828,7 @@ git commit --no-verify -m "feat(kbli): add search results and sector browse page
 ### Task 17: Create KBLI layout with navigation
 
 **Files:**
+
 - Create: `kbli-navigator-rebuild/app/kbli/layout.tsx`
 
 **Step 1: Write the layout**
@@ -2328,9 +2836,16 @@ git commit --no-verify -m "feat(kbli): add search results and sector browse page
 ```tsx
 // kbli-navigator-rebuild/app/kbli/layout.tsx
 import Link from "next/link";
-import { LanguageProvider, LanguageToggle } from "@/components/kbli/LanguageToggle";
+import {
+  LanguageProvider,
+  LanguageToggle,
+} from "@/components/kbli/LanguageToggle";
 
-export default function KBLILayout({ children }: { children: React.ReactNode }) {
+export default function KBLILayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <LanguageProvider>
       <div className="min-h-screen bg-[var(--kbli-bg-primary)] text-[var(--foreground)]">
@@ -2338,14 +2853,23 @@ export default function KBLILayout({ children }: { children: React.ReactNode }) 
         <nav className="sticky top-0 z-40 border-b border-[var(--border)] bg-[var(--kbli-bg-primary)]/95 backdrop-blur-sm">
           <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
             <div className="flex items-center gap-6">
-              <Link href="/kbli" className="font-bold text-[var(--kbli-accent)] hover:opacity-80 transition-opacity">
+              <Link
+                href="/kbli"
+                className="font-bold text-[var(--kbli-accent)] hover:opacity-80 transition-opacity"
+              >
                 KBLI Navigator
               </Link>
               <div className="hidden sm:flex items-center gap-4 text-sm">
-                <Link href="/kbli" className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+                <Link
+                  href="/kbli"
+                  className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                >
                   Search
                 </Link>
-                <Link href="/kbli/sectors" className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+                <Link
+                  href="/kbli/sectors"
+                  className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                >
                   Sectors
                 </Link>
               </div>
@@ -2369,13 +2893,20 @@ export default function KBLILayout({ children }: { children: React.ReactNode }) 
         <footer className="border-t border-[var(--border)] mt-16 py-8 px-4">
           <div className="max-w-5xl mx-auto text-center text-xs text-[var(--foreground-muted)] space-y-2">
             <p>
-              KBLI 2025 data from BPS Regulation No. 7/2025 · Licensing from PP 28/2024 ·
-              Foreign investment from Perpres 10/2021, 49/2021, 14/2024
+              KBLI 2025 data from BPS Regulation No. 7/2025 · Licensing from PP
+              28/2024 · Foreign investment from Perpres 10/2021, 49/2021,
+              14/2024
             </p>
             <p>
-              Powered by <span className="text-[var(--kbli-zantara)]">Zantara AI</span> ·{" "}
-              <Link href="/" className="underline hover:text-[var(--foreground)]">Bali Zero</Link> ·
-              Visa, Business & Immigration Consulting in Bali
+              Powered by{" "}
+              <span className="text-[var(--kbli-zantara)]">Zantara AI</span> ·{" "}
+              <Link
+                href="/"
+                className="underline hover:text-[var(--foreground)]"
+              >
+                Bali Zero
+              </Link>{" "}
+              · Visa, Business & Immigration Consulting in Bali
             </p>
           </div>
         </footer>
@@ -2399,11 +2930,13 @@ git commit --no-verify -m "feat(kbli): add KBLI layout with nav, language toggle
 ### Task 18: Write Gold-tier editorial content for all ~200 Bali-relevant codes
 
 **Files:**
+
 - Modify: `kbli-navigator-rebuild/lib/kbli-gold-content.ts`
 
 This is the editorial phase — writing curated content for each Gold code following the voice guidelines in `data/gold/README.md`. This is the most time-intensive task but the core differentiator.
 
 **Process:**
+
 1. Work sector by sector: F&B → Accommodation → Real Estate → Retail → IT → Tourism → etc.
 2. For each code, reference `KBLI_2025_FINAL_CLEAN.json` for exact `per_skala`, `status_mapping`, `pp28_sources`
 3. Write in the "translator" voice — clear, concrete, Bali-contextual
@@ -2424,6 +2957,7 @@ git commit --no-verify -m "content(kbli): add Gold content for Real Estate secto
 ### Task 19: Copy data file and validate Gold codes
 
 **Files:**
+
 - Copy: `source_documents/KBLI_2025_FINAL_CLEAN.json` → `kbli-navigator-rebuild/data/kbli-2025.json`
 - Write validation script
 
@@ -2447,6 +2981,7 @@ git commit --no-verify -m "data(kbli): add KBLI 2025 dataset (v8.0-final-complet
 ### Task 20: Integration into apps/mouth/
 
 **Files:**
+
 - Copy all `kbli-navigator-rebuild/` files into their target locations in `apps/mouth/src/`
 - Update `apps/mouth/src/app/globals.css` — import KBLI theme
 - Update old `/kbli-navigator` route to redirect to `/kbli`
@@ -2502,6 +3037,7 @@ git commit --no-verify -m "feat(kbli): integrate Navigator rebuild — 1,563 SSG
 ### Task 21: Remove deprecated files
 
 **Files:**
+
 - Remove backup files from `apps/mouth/public/kbli-navigator/*.backup*`
 - Remove sync conflict file
 - Remove `.md` documentation from public directory (move to `docs/`)
@@ -2527,13 +3063,13 @@ Add all 1,563 `/kbli/[code]` URLs to the Next.js sitemap for Google indexing.
 
 ## Summary
 
-| Phase | Tasks | What it produces |
-|---|---|---|
-| 1. Data Layer | Tasks 1-5 | Types, data loader, English titles, Gold codes, search algorithm |
-| 2. Components | Tasks 6-13 | Theme, badges, cards, search bar, Zantara chat, filters, language toggle, SEO |
-| 3. Pages | Tasks 14-17 | `/kbli` homepage, `/kbli/[code]` x1,563, `/kbli/search`, `/kbli/sectors` |
-| 4. Content & Integration | Tasks 18-20 | ~200 Gold editorials, data copy, integration into apps/mouth |
-| 5. Cleanup | Tasks 21-23 | Remove old files, sitemap, testing |
+| Phase                    | Tasks       | What it produces                                                              |
+| ------------------------ | ----------- | ----------------------------------------------------------------------------- |
+| 1. Data Layer            | Tasks 1-5   | Types, data loader, English titles, Gold codes, search algorithm              |
+| 2. Components            | Tasks 6-13  | Theme, badges, cards, search bar, Zantara chat, filters, language toggle, SEO |
+| 3. Pages                 | Tasks 14-17 | `/kbli` homepage, `/kbli/[code]` x1,563, `/kbli/search`, `/kbli/sectors`      |
+| 4. Content & Integration | Tasks 18-20 | ~200 Gold editorials, data copy, integration into apps/mouth                  |
+| 5. Cleanup               | Tasks 21-23 | Remove old files, sitemap, testing                                            |
 
 **Total estimated files:** ~25 new files
 **Total pages generated:** 1,563 (SSG) + 22 sectors + search + homepage

@@ -26,6 +26,7 @@ import type { Practice } from "@/lib/api/crm/crm.types";
 import { casesMetrics } from "@/lib/metrics/cases-metrics";
 import { logger } from "@/lib/logger";
 import { toError } from "@/lib/types/common";
+import { RequiredDocumentsCard } from "./RequiredDocumentsCard";
 
 // Status mapping for display
 const STATUS_INFO: Record<
@@ -819,6 +820,9 @@ export default function CaseDetailPage() {
               </Button>
             </div>
           </div>
+
+          {/* Required Documents */}
+          {caseId && <RequiredDocumentsCard practiceId={caseId} />}
 
           {/* Timeline Placeholder */}
           <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]/50 p-6">

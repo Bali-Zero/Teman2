@@ -10,6 +10,7 @@ from typing import Any
 
 from backend.app.metrics import metrics_collector
 from backend.app.models import TierLevel
+from backend.core.bm25_vectorizer import BM25Vectorizer
 from backend.core.embeddings import create_embeddings_generator
 from backend.core.legal import (
     HierarchicalIndexer,
@@ -44,6 +45,7 @@ class LegalIngestionService:
         self.metadata_extractor = LegalMetadataExtractor()
         self.structure_parser = LegalStructureParser()
         self.chunker = LegalChunker()
+        self.sparse_vectorizer = BM25Vectorizer()
         self.embedder = create_embeddings_generator()
         self.vector_db = QdrantClient(collection_name=collection_name)
         self.classifier = TierClassifier()
@@ -54,6 +56,7 @@ class LegalIngestionService:
             qdrant_client=self.vector_db,
             embeddings=self.embedder,
             chunker=self.chunker,
+            sparse_vectorizer=self.sparse_vectorizer,
         )
 
         # Initialize KG Extractor (lazy init per evitare costi se non usato)

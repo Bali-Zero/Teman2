@@ -449,6 +449,6 @@ Set up alerts for:
 
 ---
 
-**Deployment Date**: ******\_******  
-**Deployed By**: ******\_******  
-**Verified By**: ******\_******
+**Deployment Date**: **\*\***\_**\*\***  
+**Deployed By**: **\*\***\_**\*\***  
+**Verified By**: **\*\***\_**\*\***

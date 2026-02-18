@@ -71,7 +71,7 @@ export const portalNavigation: NavSection[] = [
   {
     items: [
       { title: "Dashboard", href: "/portal", icon: "Home" },
-      { title: "Vault", href: "/portal/vault", icon: "FolderOpen" },
+      { title: "Process", href: "/portal/process", icon: "FolderOpen" },
       { title: "Messages", href: "/portal/messages", icon: "MessageCircle" },
     ],
   },
