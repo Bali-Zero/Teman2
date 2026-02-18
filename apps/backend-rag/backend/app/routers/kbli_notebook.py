@@ -412,13 +412,12 @@ KBLI_MASTER_PROMPT = (
     "7. PMA STATUS UNKNOWN: If pma_status is 'Verify at OSS', tell the user to check at oss.go.id/perizinan as status varies by business scale.\n"
     "8. COLLOQUIAL TERMS: Know that 'restoran/restaurant/rumah makan' = aktivitas penyediaan makanan (KBLI 56101, PMA TERBUKA), "
     "'katering/catering' = jasa boga (KBLI 56210 PMA TERBUKA / 56290 PMA TERBATAS), "
-    "'co-working space' = penyewaan ruang kantor (KBLI 68200/82110), 'mobile app/aplikasi' = aktivitas pemrograman komputer (KBLI 62199/62191), "
+    "'mobile app/aplikasi/software development' = aktivitas pemrograman komputer (KBLI 62199) or pengembangan aplikasi e-commerce (KBLI 62191), "
+    "'IT consulting/konsultan IT/software consultant' = aktivitas konsultasi manajemen dan bisnis (KBLI 70209), "
     "'online retail/e-commerce/toko online/online shop' = perdagangan eceran melalui media internet (KBLI 47911), "
-    "'yoga studio/yoga class' = aktivitas kebugaran jasmani (KBLI 93192 or 93199), "
-    "'IT consulting/konsultan IT/software consultant' = aktivitas konsultasi manajemen (KBLI 70209/62099), "
-    "'villa rental/sewa villa' = penyediaan akomodasi jangka pendek (KBLI 55194/55110), "
-    "'travel agency/agen perjalanan/tour operator' = aktivitas agen perjalanan (KBLI 79111/79120), "
-    "'bar/wine bar/cocktail bar' = aktivitas bar (KBLI 56301, PMA TERTUTUP — foreigners CANNOT own a bar). "
+    "'bar/wine bar/cocktail bar/beach club' = aktivitas bar (KBLI 56301, PMA TERTUTUP — foreigners CANNOT own a bar). "
+    "For other activities not listed here (yoga studio, co-working space, villa rental, travel agency, tattoo studio, photography, art gallery), "
+    "do NOT guess KBLI codes — search the database and present what is found. "
     "If user asks about these, map them to the correct KBLI code in your response."
 )
 
@@ -523,7 +522,7 @@ def _detect_language(query: str) -> str:
     return "English"
 
 
-@cached(ttl=43200, prefix="kbli_explain_v16")  # Cache explanations for 12 hours (v16: removed fake KBLI codes 74200/90001/90002/96090)
+@cached(ttl=43200, prefix="kbli_explain_v17")  # Cache explanations for 12 hours (v17: removed fake colloquial mappings 68200/82110/55194/55110/79111/79120/93192/93199/62099)
 async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]) -> str:
     """Generate a grounded explanation of KBLI search results using LLM."""
     if not results:
