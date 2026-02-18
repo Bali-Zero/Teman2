@@ -434,9 +434,10 @@ KBLI_MASTER_PROMPT = (
     "'graphic design/desain grafis/logo design/branding' = aktivitas desain grafis/komunikasi visual (KBLI 74192), "
     "'interior design/desain interior' = aktivitas desain interior (KBLI 74191), "
     "'fashion design/desain mode/desain tekstil' = aktivitas desain tekstil mode dan garmen (KBLI 74113), "
-    "'bar/wine bar/cocktail bar/beach club' = aktivitas bar (KBLI 56301, PMA TERTUTUP — foreigners CANNOT own a bar). "
-    "For other activities not listed here (tattoo studio, art gallery), "
-    "do NOT guess KBLI codes — search the database and present what is found. "
+    "'bar/wine bar/cocktail bar/beach club' = aktivitas bar (KBLI 56301, PMA TERTUTUP — foreigners CANNOT own a bar), "
+    "'art gallery/galeri seni komersial/commercial art gallery/art shop' = perdagangan eceran khusus barang kesenian dan rekreasi (KBLI 47690 — includes commercial art gallery selling paintings/sculptures/art), "
+    "'art venue/art center/performance space/venue kesenian/pusat kebudayaan' = aktivitas operasional tempat dan fasilitas kesenian (KBLI 90310 — NOTE: 90310 exists in BPS 2025 but verify in OSS as it may not have PMA data). "
+    "For tattoo studio, do NOT guess KBLI codes — search the database and present what is found. "
     "If user asks about these, map them to the correct KBLI code in your response."
 )
 
@@ -455,7 +456,8 @@ _TRANSLATE_SYSTEM = (
     "8. Known colloquial mappings — use these exact Indonesian phrases:\n"
     "   catering/katering → jasa boga acara tertentu\n"
     "   tattoo/tato studio → perawatan kecantikan tubuh\n"
-    "   art gallery/galeri seni → aktivitas kesenian budaya\n"
+    "   art gallery/galeri seni komersial/commercial art gallery → perdagangan eceran barang kesenian\n"
+    "   art venue/art center/venue pertunjukan/pusat kebudayaan → aktivitas operasional tempat fasilitas kesenian\n"
     "   photography/fotografer → aktivitas fotografi\n"
     "   co-working space → penyewaan ruang kantor\n"
     "   mobile app/aplikasi → pemrograman komputer aplikasi\n"
@@ -541,7 +543,7 @@ def _detect_language(query: str) -> str:
     return "English"
 
 
-@cached(ttl=43200, prefix="kbli_explain_v22")  # Cache explanations for 12 hours (v17: removed fake colloquial mappings 68200/82110/55194/55110/79111/79120/93192/93199/62099)
+@cached(ttl=43200, prefix="kbli_explain_v23")  # Cache explanations for 12 hours (v23: added 47690 art gallery, 90310 art venue; removed fake 74200/90001/90002/96090/68200/93192)
 async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]) -> str:
     """Generate a grounded explanation of KBLI search results using LLM."""
     if not results:
@@ -637,6 +639,12 @@ KNOWN_KBLI_CODES: dict[str, dict] = {
         "title": "AKTIVITAS BAR",
         "description": "Bar activities serving alcoholic and non-alcoholic beverages for on-premises consumption. Includes cocktail bars, wine bars, and other licensed drinking establishments.",
         "pma_status": "TERTUTUP",
+        "risk_category": "Verify at OSS",
+    },
+    "47690": {
+        "title": "PERDAGANGAN ECERAN KHUSUS BARANG KESENIAN DAN REKREASI YTDL",
+        "description": "Retail trade of art, recreation and collectibles, including: recorded media, musical instruments and accessories, philately/numismatics/collectibles, commercial art gallery activities (selling paintings/sculptures). Also includes art supplies (beads, clay, canvas, oils, watercolors).",
+        "pma_status": "Verify at OSS",
         "risk_category": "Verify at OSS",
     },
 }
@@ -754,6 +762,9 @@ async def chat_kbli(
             (["coffee shop", "café", "cafe ", "kafe ", "kedai kopi", "warung kopi"], "56101"),
             # Bar / nightclub
             (["bar bali", "open a bar", "nightclub", "klub malam", "diskotek", "buka bar"], "56301"),
+            # Art gallery (commercial — selling art)
+            (["art gallery", "galeri seni", "galeri lukisan", "commercial art gallery",
+              "sell paintings", "art shop", "toko seni", "jual lukisan"], "47690"),
         ]
         if not direct_kbli_match:
             query_lower_kw = kbli_request.query.lower()
