@@ -3843,10 +3843,11 @@ function AddCompanyModal({
               Business Identification
             </h4>
 
+            {/* NIB - Combined text + upload */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium mb-1.5">
-                  NIB (Business ID)
+                  NIB (Business ID) <span className="text-[var(--foreground-muted)]">- Number</span>
                 </label>
                 <input
                   type="text"
@@ -3858,10 +3859,44 @@ function AddCompanyModal({
                   placeholder="Nomor Induk Berusaha"
                 />
               </div>
-
               <div>
                 <label className="block text-xs font-medium mb-1.5">
-                  NPWP Company
+                  NIB Document <span className="text-[var(--foreground-muted)]">- Upload file</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={handleFileSelect('nib')}
+                    className="hidden"
+                    id="nib-doc-upload"
+                  />
+                  <label
+                    htmlFor="nib-doc-upload"
+                    className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--background-secondary)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
+                  >
+                    {documents.nib ? documents.nib.name : "Upload NIB file"}
+                  </label>
+                  {documents.nib && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-red-500"
+                      onClick={() => setDocuments(prev => ({ ...prev, nib: undefined }))}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* NPWP - Combined text + upload with OCR */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium mb-1.5">
+                  NPWP Company <span className="text-[var(--foreground-muted)]">- Number (auto from OCR)</span>
                 </label>
                 <input
                   type="text"
@@ -3873,10 +3908,58 @@ function AddCompanyModal({
                   placeholder="Company Tax ID"
                 />
               </div>
+              <div>
+                <label className="block text-xs font-medium mb-1.5">
+                  NPWP Document <span className="text-[var(--foreground-muted)]">- Upload + OCR</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={handleFileSelect('npwp')}
+                    className="hidden"
+                    id="npwp-upload"
+                  />
+                  <label
+                    htmlFor="npwp-upload"
+                    className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--background-secondary)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
+                  >
+                    {documents.npwp ? documents.npwp.name : "Upload NPWP"}
+                  </label>
+                  {documents.npwp && (
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="gap-1 text-xs"
+                        onClick={handleExtractNpwp}
+                        disabled={isExtractingNpwp}
+                      >
+                        {isExtractingNpwp ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <FileText className="w-3 h-3" />
+                        )}
+                        Extract
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-red-500"
+                        onClick={() => setDocuments(prev => ({ ...prev, npwp: undefined }))}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Document Uploads */}
+          {/* Document Uploads - Other docs only (AKTA, SK, Business ID, Profile Perseroan) */}
           <div className="space-y-3 pt-4 border-t border-[var(--border)]">
             <h4 className="text-sm font-medium text-[var(--foreground)] flex items-center gap-2">
               <Upload className="w-4 h-4" />
@@ -3901,7 +3984,7 @@ function AddCompanyModal({
                     htmlFor="akta-upload"
                     className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--background-secondary)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
                   >
-                    {documents.akta ? documents.akta.name : "Click to upload AKTA"}
+                    {documents.akta ? documents.akta.name : "Upload AKTA"}
                   </label>
                   {documents.akta && (
                     <Button
@@ -3934,7 +4017,7 @@ function AddCompanyModal({
                     htmlFor="sk-upload"
                     className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--background-secondary)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
                   >
-                    {documents.sk ? documents.sk.name : "Click to upload SK"}
+                    {documents.sk ? documents.sk.name : "Upload SK"}
                   </label>
                   {documents.sk && (
                     <Button
@@ -3967,7 +4050,7 @@ function AddCompanyModal({
                     htmlFor="business-id-upload"
                     className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--background-secondary)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
                   >
-                    {documents.businessId ? documents.businessId.name : "Click to upload Business ID"}
+                    {documents.businessId ? documents.businessId.name : "Upload Business ID"}
                   </label>
                   {documents.businessId && (
                     <Button
@@ -3983,91 +4066,8 @@ function AddCompanyModal({
                 </div>
               </div>
 
-              {/* NIB Document */}
-              <div>
-                <label className="block text-xs font-medium mb-1.5">
-                  NIB Document
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={handleFileSelect('nib')}
-                    className="hidden"
-                    id="nib-doc-upload"
-                  />
-                  <label
-                    htmlFor="nib-doc-upload"
-                    className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--background-secondary)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
-                  >
-                    {documents.nib ? documents.nib.name : "Click to upload NIB"}
-                  </label>
-                  {documents.nib && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 text-red-500"
-                      onClick={() => setDocuments(prev => ({ ...prev, nib: undefined }))}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              {/* NPWP Document with OCR */}
-              <div className="md:col-span-2">
-                <label className="block text-xs font-medium mb-1.5">
-                  NPWP Document <span className="text-[var(--foreground-muted)]">(OCR auto-extracts address)</span>
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={handleFileSelect('npwp')}
-                    className="hidden"
-                    id="npwp-upload"
-                  />
-                  <label
-                    htmlFor="npwp-upload"
-                    className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--background-secondary)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
-                  >
-                    {documents.npwp ? documents.npwp.name : "Click to upload NPWP"}
-                  </label>
-                  {documents.npwp && (
-                    <>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="gap-1 text-xs"
-                        onClick={handleExtractNpwp}
-                        disabled={isExtractingNpwp}
-                      >
-                        {isExtractingNpwp ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : (
-                          <FileText className="w-3 h-3" />
-                        )}
-                        Extract
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 text-red-500"
-                        onClick={() => setDocuments(prev => ({ ...prev, npwp: undefined }))}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </div>
-
               {/* Profile Perseroan */}
-              <div className="md:col-span-2">
+              <div>
                 <label className="block text-xs font-medium mb-1.5">
                   Profile Perseroan
                 </label>
@@ -4083,7 +4083,7 @@ function AddCompanyModal({
                     htmlFor="profile-perseroan-upload"
                     className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--background-secondary)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
                   >
-                    {documents.profilePerseroan ? documents.profilePerseroan.name : "Click to upload Profile Perseroan"}
+                    {documents.profilePerseroan ? documents.profilePerseroan.name : "Upload Profile Perseroan"}
                   </label>
                   {documents.profilePerseroan && (
                     <Button
