@@ -456,7 +456,7 @@ _TRANSLATE_SYSTEM = (
 )
 
 
-@cached(ttl=604800, prefix="kbli_translate_v12")  # Cache translations for 7 days (v12: tattoo/bar/typo fixes)
+@cached(ttl=604800, prefix="kbli_translate_v13")  # Cache translations for 7 days (v13: recommendation redirect fix)
 async def _translate_query_for_kbli(query: str) -> str:
     """Translate any-language query to Indonesian KBLI search terms."""
     try:
@@ -892,11 +892,24 @@ async def chat_kbli(
         codes_from_results = [r.code for r in results if r.code != "N/A"]
         detected_kbli = list(dict.fromkeys(codes_from_query + codes_from_results))
 
-        # Check for non-business queries (KITAS/visa/immigration)
+        # Check for non-business queries (KITAS/visa/immigration OR recommendations)
         if _is_non_business_query(kbli_request.query):
             logger.info(f"⚠️ Non-business query detected: '{kbli_request.query[:50]}'")
             query_lang = _detect_language(kbli_request.query)
-            if query_lang == "Indonesian":
+            query_lower_nb = kbli_request.query.lower()
+            _recommendation_keywords = ["best ", "recommend", "where to eat", "mana makan", "terbaik"]
+            is_recommendation = any(kw in query_lower_nb for kw in _recommendation_keywords)
+
+            if is_recommendation:
+                abstain_answer = (
+                    "I can't recommend specific restaurants or businesses — that's not my specialty.\n\n"
+                    "I am **Zantara AI**, specialized in **KBLI** (Klasifikasi Baku Lapangan Usaha Indonesia) — "
+                    "the Indonesian Business Classification System. I help you find the right KBLI code for your "
+                    "business and understand licensing, investment status (PMA), and regulatory requirements.\n\n"
+                    "Are you perhaps looking to **open** a restaurant or food business in Bali? I can help with that!"
+                )
+                suggested = ["I want to open a restaurant in Bali", "KBLI code for a cafe or coffee shop", "What KBLI for catering?"]
+            elif query_lang == "Indonesian":
                 abstain_answer = (
                     "Pertanyaan ini berkaitan dengan imigrasi atau visa, yang berada di luar keahlian saya.\n\n"
                     "Saya spesialis dalam **KBLI** (Klasifikasi Baku Lapangan Usaha Indonesia) — sistem klasifikasi "
