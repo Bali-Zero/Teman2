@@ -15,6 +15,7 @@ import {
   Plane,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { logger } from "@/lib/logger";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -137,7 +138,7 @@ export default function PortalDashboardPage() {
       }
     } catch (err) {
       error("Failed to load data", "Please try again later");
-      console.error(err);
+      logger.error("Failed to load dashboard data", {}, err as Error);
     } finally {
       setIsLoading(false);
     }
@@ -246,31 +247,27 @@ function TeamMemberCard({
             <div className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0 text-xs">@</div>
             <div className="min-w-0">
               <p className="text-xs text-muted-foreground">Email</p>
-              <p className="text-sm truncate">{profile.email}</p>
+              <p className="text-sm truncate">{profile.email || <span className="italic text-muted-foreground/60">Not provided</span>}</p>
             </div>
           </div>
 
           {/* Phone */}
-          {profile.phone && (
-            <div className="flex items-start gap-2">
-              <div className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0 text-xs">📞</div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">Phone</p>
-                <p className="text-sm">{profile.phone}</p>
-              </div>
+          <div className="flex items-start gap-2">
+            <div className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0 text-xs">📞</div>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Phone</p>
+              <p className="text-sm">{profile.phone || <span className="italic text-muted-foreground/60">Not provided</span>}</p>
             </div>
-          )}
+          </div>
 
           {/* Nationality */}
-          {profile.nationality && (
-            <div className="flex items-start gap-2">
-              <div className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0 text-xs">🌍</div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">Nationality</p>
-                <p className="text-sm">{profile.nationality}</p>
-              </div>
+          <div className="flex items-start gap-2">
+            <div className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0 text-xs">🌍</div>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Nationality</p>
+              <p className="text-sm">{profile.nationality || <span className="italic text-muted-foreground/60">Not provided</span>}</p>
             </div>
-          )}
+          </div>
 
           {/* Date of Birth with Birthday Highlight */}
           {profile.dateOfBirth && (
@@ -294,15 +291,27 @@ function TeamMemberCard({
           )}
 
           {/* Address */}
-          {profile.address && (
-            <div className="flex items-start gap-2">
-              <div className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0 text-xs">📍</div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">Address</p>
-                <p className="text-sm">{profile.address}</p>
-              </div>
+          <div className="flex items-start gap-2">
+            <div className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0 text-xs">📍</div>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Address</p>
+              <p className="text-sm">{profile.address || <span className="italic text-muted-foreground/60">Not provided</span>}</p>
             </div>
-          )}
+          </div>
+
+          {/* Gender */}
+          <div className="flex items-start gap-2">
+            <div className={cn(
+              "w-4 h-4 mt-0.5 flex-shrink-0 text-xs font-bold flex items-center justify-center rounded",
+              profile.gender === 'M' ? "text-blue-500" : profile.gender === 'F' ? "text-pink-500" : "text-muted-foreground"
+            )}>
+              {profile.gender === 'M' ? '♂' : profile.gender === 'F' ? '♀' : '—'}
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Gender</p>
+              <p className="text-sm">{profile.gender === 'M' ? 'Male' : profile.gender === 'F' ? 'Female' : <span className="italic text-muted-foreground/60">Not provided</span>}</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
