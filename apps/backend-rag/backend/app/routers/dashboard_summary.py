@@ -423,7 +423,7 @@ async def get_neural_pulse(
         # 2. Get knowledge docs count (from Qdrant)
         knowledge_docs = 0
         try:
-            qdrant = QdrantClient(qdrant_url=settings.qdrant_url, collection_name="knowledge_base")
+            qdrant = QdrantClient(qdrant_url=settings.qdrant_url, collection_name="kbli_2025_final")
             qdrant_stats = await qdrant.get_stats()
             knowledge_docs = qdrant_stats.get("total_documents", 0)
             await qdrant.close()

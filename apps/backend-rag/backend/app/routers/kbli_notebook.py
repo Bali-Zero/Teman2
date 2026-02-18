@@ -25,6 +25,7 @@ from backend.app.dependencies import (
     get_search_service,
 )
 from backend.core.cache import cached
+from backend.services.rag.agentic.kg_orchestrator import KGAgenticOrchestrator
 
 logger = logging.getLogger(__name__)
 
@@ -401,15 +402,16 @@ def _get_anthropic_client():
 
 
 KBLI_MASTER_PROMPT = (
-    "You are the Senior Legal Compliance Officer (Zantara AI). Your expertise is the Indonesian Business Classification System (KBLI 2025).\n\n"
-    "LANGUAGE RULES (ABSOLUTE PRIORITY):\n"
-    "- You MUST respond in the user's language: {lang}.\n"
-    "- Default language is English. Indonesian is your second language for technical data.\n"
-    "- NEVER respond in Italian, French, Spanish, or any other language unless the user explicitly wrote in that language.\n"
-    "- If you cannot detect the user's language, respond in English.\n\n"
-    "CORE CAPABILITIES:\n"
-    "- Primary Knowledge: You are an absolute expert in Indonesian regulations (PP 28/2025, BPS 7/2025, INGUB 6/2025).\n"
-    "- Multilingual Mastery: You speak Indonesian and English natively for technical data.\n\n"
+    "You are Zantara AI, helping people navigate Indonesian business regulations. Your expertise is KBLI 2025 (Indonesian Business Classification), and you can also answer questions about visa, legal, and tax matters when relevant.\n\n"
+    "LANGUAGE RULES:\n"
+    "- Respond in the user's language: {lang}\n"
+    "- If Indonesian query → answer in Indonesian. If English → answer in English.\n"
+    "- Never respond in Italian, French, or Spanish unless explicitly asked.\n\n"
+    "YOUR APPROACH:\n"
+    "- Be conversational, clear, and helpful — like talking to a knowledgeable friend, not reading a legal document.\n"
+    "- Start with a direct answer to the user's question, then provide supporting details.\n"
+    "- Use the full context data provided — don't leave out important licensing, PMA status, or requirements information.\n"
+    "- Explain trade-offs, options, and practical next steps when relevant.\n\n"
     "PMA STATUS GLOSSARY (answer these directly without needing source data):\n"
     "- TERBUKA = Open to 100% foreign ownership (PMA diperbolehkan penuh)\n"
     "- TERBATAS = Open with restrictions — max foreign ownership percentage applies (PMA dengan batasan kepemilikan)\n"
@@ -425,14 +427,12 @@ KBLI_MASTER_PROMPT = (
     "- 56210 = AKTIVITAS JASA BOGA UNTUK ACARA TERTENTU (EVENT CATERING) — Event catering/katering. PMA: TERBUKA (open to foreigners), Risiko: Menengah Tinggi.\n"
     "- 56290 = AKTIVITAS JASA BOGA LAINNYA — Other food service activities. PMA: TERBATAS.\n"
     "If a user asks about these codes by number, explain them directly from this list.\n\n"
-    "STRICT COMPLIANCE RULES:\n"
-    "1. CITATIONS: NEVER use placeholder text like 'Chapter X', 'Article Y', 'Bab X', or 'Pasal Y'. These are NOT real citations. Only cite if you have the exact article number from context data. If unsure, omit citations entirely.\n"
-    "2. SCALE AWARENESS: Always explain that Risk Level and Licensing depend on Business Scale (Mikro vs Menengah/Besar).\n"
-    "3. PMA ALERT: For foreign investment queries, always state the 10 Billion IDR Capital requirement. Use the term 'Capital Paid Up'.\n"
-    "4. BALI SPECIFIC: If Bali is mentioned, check for Moratorium warnings (Retail/Alcohol) in the expert data.\n"
-    "5. MISSING DATA: If a detail is not in the provided context, state it clearly: 'Information not present in official documents. Please verify at OSS (oss.go.id)'.\n"
-    "6. TONE: Authoritative, senior, and precise. You are the source of truth.\n"
-    "7. PMA STATUS UNKNOWN: If pma_status is 'Verify at OSS', tell the user to check at oss.go.id/perizinan as status varies by business scale.\n"
+    "ACCURACY GUIDELINES:\n"
+    "1. Use only real citations from the context data. Don't make up placeholder references like 'Chapter X' or 'Bab Y'.\n"
+    "2. Always explain how licensing and risk levels vary by business scale (Mikro/Kecil/Menengah/Besar) — this is critical.\n"
+    "3. For foreign investment (PMA) questions, mention the Rp 10 Billion minimum Capital Paid Up requirement when relevant.\n"
+    "4. If data is missing from context, say so clearly: 'This detail isn't in the official documents — please verify at oss.go.id'.\n"
+    "5. When PMA status shows 'Verify at OSS', explain that it varies by business scale and they should check oss.go.id/perizinan.\n"
     "8. COLLOQUIAL TERMS: Know that 'restoran/restaurant/rumah makan' = aktivitas penyediaan makanan (KBLI 56101, PMA TERBUKA), "
     "'katering/catering' = jasa boga (KBLI 56210 PMA TERBUKA / 56290 PMA TERBATAS), "
     "'mobile app/aplikasi/software development' = aktivitas pemrograman komputer (KBLI 62199) or pengembangan aplikasi e-commerce (KBLI 62191), "
@@ -467,7 +467,18 @@ KBLI_MASTER_PROMPT = (
     "'tattoo studio permanente/permanent tattoo/tattoo artist' = IMPORTANT: BPS 2025 does NOT have a dedicated KBLI code for permanent tattoo. "
     "KBLI 96900 (AKTIVITAS JASA PERORANGAN LAINNYA YTDL) covers only temporary henna/biological ink decoration — NOT permanent tattoo. "
     "Tell the user: permanent tattoo studios in Indonesia operate under KBLI 96900 by convention, but must verify with OSS as there is no dedicated code. "
-    "If user asks about these, map them to the correct KBLI code in your response."
+    "If user asks about these, map them to the correct KBLI code in your response.\n\n"
+    "\n"
+    "RESPONSE STRUCTURE:\n"
+    "Write a complete, helpful answer that covers:\n"
+    "- The main KBLI code(s) that answer the user's question\n"
+    "- PMA status (TERBUKA/TERBATAS/TERTUTUP) and what it means for foreign investors\n"
+    "- Key requirements, licensing steps, or business scale considerations\n"
+    "- Practical guidance or next steps when relevant\n"
+    "\n"
+    "DO NOT append lists of related KBLI codes at the end (like 'Verify at OSS KBLI 56101...') — the UI shows those separately.\n"
+    "Only mention additional codes if they directly clarify the answer (e.g., comparing restaurant vs catering).\n"
+    "Be thorough but conversational — explain everything they need to know without being robotic."
 )
 
 
@@ -592,7 +603,7 @@ async def _generate_kbli_explanation_claude(
         return "No matching KBLI codes found for your search. Try different keywords or describe your business activity in more detail."
 
     lang = _detect_language(query)
-    logger.info(f"🌐 Language: {lang} | 🎯 Using Claude Opus 4.6 (MAX subscription)")
+    logger.info(f"🌐 Language: {lang} | 🎯 Using Gemini Flash (Claude Opus disabled)")
 
     # Build context from full parent documents
     context_parts = []
@@ -655,37 +666,10 @@ Then provide all technical details organized clearly with headings and bullet po
 
 Now provide your answer following this structure."""
 
-    try:
-        client = _get_anthropic_client()
-        if not client:
-            logger.warning("⚠️ Anthropic client unavailable - falling back to Gemini")
-            return await _generate_kbli_explanation(query, results, parent_docs)
-        
-        response = await client.messages.create(
-            model="claude-opus-4-20250514",  # Latest Opus 4.6
-            max_tokens=2500,
-            temperature=0.3,  # Slightly creative but grounded
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_message}]
-        )
-        
-        answer = response.content[0].text
-        
-        # Log usage (for Anthropic MAX monitoring)
-        logger.info(
-            f"✅ Claude Opus 4.6 response | "
-            f"Length: {len(answer)} chars | "
-            f"Model: {response.model} | "
-            f"Tokens: {response.usage.input_tokens}→{response.usage.output_tokens} | "
-            f"Stop: {response.stop_reason}"
-        )
-        
-        return answer
-        
-    except Exception as e:
-        logger.error(f"❌ Claude Opus failed: {type(e).__name__}: {e}")
-        logger.info("⚠️ Falling back to Gemini Flash")
-        return await _generate_kbli_explanation(query, results, parent_docs)
+    # DISABLED: Claude Opus requires valid API key (not OAuth token)
+    # Using Gemini Flash directly instead
+    logger.info("🔄 Claude Opus disabled, using Gemini Flash directly")
+    return await _generate_kbli_explanation(query, results, parent_docs)
 
 
 @cached(ttl=43200, prefix="kbli_explain_v25")  # Cache explanations for 12 hours (v25: 96100 risk scale-dependent: Rendah Mikro-Menengah / Tinggi Besar; all sector 96 PMA=TERBUKA)
@@ -731,7 +715,20 @@ async def _generate_kbli_explanation(
 
     # Use unified MASTER PROMPT formatted with detected language
     lang_system = KBLI_MASTER_PROMPT.format(lang=lang)
-    message = f"Question: {query}\n\nSource data:\n{context}"
+    
+    # Build a structured, detailed message that guides comprehensive responses
+    message = (
+        f"User question: {query}\n\n"
+        f"Relevant KBLI data from official sources (BPS 2025, PP 28/2025):\n{context}\n\n"
+        f"Task: Write a comprehensive, conversational answer covering:\n\n"
+        f"1. PRIMARY KBLI CODE(S): State the main code(s), full Indonesian name, and English translation\n"
+        f"2. PMA STATUS: Explain TERBUKA/TERBATAS/TERTUTUP clearly and what it means for foreign investors\n"
+        f"3. CAPITAL REQUIREMENTS: If PMA relevant, mention the Rp 10 Billion minimum paid-up capital\n"
+        f"4. LICENSING & RISK: Explain how requirements vary by business scale (Mikro/Kecil/Menengah/Besar)\n"
+        f"5. PRACTICAL GUIDANCE: Include next steps, where to register (OSS), or any Bali-specific considerations\n\n"
+        f"Be thorough and use all the detailed information provided in the context data above. "
+        f"Don't just summarize — explain what each requirement means and how it applies to their situation."
+    )
 
     try:
         from backend.services.rag.agentic.llm_gateway import TIER_FLASH
@@ -858,6 +855,50 @@ def _is_non_business_query(query: str) -> bool:
     """Check if query is about immigration/visa rather than business classification."""
     query_lower = query.lower()
     return any(keyword in query_lower for keyword in NON_BUSINESS_KEYWORDS)
+
+
+def _is_multi_domain_query(query: str) -> bool:
+    """
+    Check if query spans multiple knowledge domains (KBLI + visa/immigration/legal/tax).
+    
+    Examples:
+    - "Can I open a restaurant with retirement KITAS?" → True (KBLI + visa)
+    - "What KBLI code for restaurant?" → False (pure KBLI)
+    - "KITAS requirements for foreigners" → False (pure visa, will be deflected)
+    
+    Returns True only if query mentions BOTH business/KBLI AND visa/legal/tax.
+    """
+    query_lower = query.lower()
+    
+    # Domain 1: Business/KBLI indicators
+    business_keywords = [
+        "kbli", "business", "open", "start", "restaurant", "cafe", "villa", 
+        "hotel", "company", "pt", "pma", "usaha", "bisnis", "buka", 
+        "restoran", "kafe", "perusahaan", "investor", "investment"
+    ]
+    has_business = any(kw in query_lower for kw in business_keywords)
+    
+    # Domain 2: Visa/immigration indicators
+    visa_keywords = [
+        "kitas", "kitap", "visa", "retirement", "work permit", "imta", 
+        "rptka", "tka", "izin kerja", "izin tinggal", "pensiunan"
+    ]
+    has_visa = any(kw in query_lower for kw in visa_keywords)
+    
+    # Domain 3: Legal/tax indicators
+    legal_keywords = [
+        "law", "regulation", "tax", "uu ", "pp ", "permen", 
+        "pajak", "hukum", "peraturan", "ppn", "pph"
+    ]
+    has_legal = any(kw in query_lower for kw in legal_keywords)
+    
+    # Multi-domain = business + (visa OR legal)
+    is_multi_domain = has_business and (has_visa or has_legal)
+    
+    if is_multi_domain:
+        logger.info(f"🌐 Multi-domain query detected: business={has_business}, visa={has_visa}, legal={has_legal}")
+    
+    return is_multi_domain
 
 
 async def _fetch_parent_documents_from_kbli_table(codes: list[str], pool) -> dict[str, str]:
@@ -1134,6 +1175,54 @@ async def chat_kbli(
         codes_from_results = [r.code for r in results if r.code != "N/A"]
         detected_kbli = list(dict.fromkeys(codes_from_query + codes_from_results))
 
+        # MULTI-DOMAIN ROUTING: If query spans KBLI + visa/legal, use KG Orchestrator
+        if _is_multi_domain_query(kbli_request.query):
+            logger.info("🌐 Multi-domain query detected → routing to KG Orchestrator")
+            try:
+                # Initialize KG Orchestrator with db_pool and search_service
+                if not pool:
+                    logger.warning("⚠️ Database pool unavailable, falling back to KBLI-only mode")
+                else:
+                    orchestrator = KGAgenticOrchestrator(
+                        db_pool=pool,
+                        retriever=search_service
+                    )
+                    
+                    # Process query with full KG-enhanced reasoning
+                    kg_response = await orchestrator.process(
+                        query=kbli_request.query,
+                        session_id=kbli_request.session_id or "kbli-notebook",
+                        user_id=None
+                    )
+                    
+                    logger.info(f"✅ KG Orchestrator response: {len(kg_response.answer)} chars, {len(kg_response.sources)} sources")
+                    logger.info(f"📊 Reasoning trace: {kg_response.reasoning_trace[:2]}")
+                    
+                    # Map KG response to KBLI chat response format
+                    # Extract KBLI codes from KG entities if available
+                    kg_detected_kbli = detected_kbli.copy()
+                    if kg_response.golden_route_matched:
+                        logger.info(f"🎯 Golden route matched: {kg_response.golden_route_matched}")
+                    
+                    # Build suggested queries from KG context
+                    suggested_kg = []
+                    if detected_kbli:
+                        suggested_kg.append(f"What licenses do I need for KBLI {detected_kbli[0]}?")
+                    if "visa" in kbli_request.query.lower() or "kitas" in kbli_request.query.lower():
+                        suggested_kg.append("What are the legal business structures for foreigners in Indonesia?")
+                        suggested_kg.append("Contact Bali Zero for visa consultation")
+                    
+                    return KBLINotebookChatResponse(
+                        answer=kg_response.answer,
+                        detected_kbli=kg_detected_kbli,
+                        results=[],  # Don't show KBLI cards (info in answer)
+                        sources=kg_response.sources if kg_response.sources else [{"title": "Multi-domain KG reasoning", "relevance": "High"}],
+                        suggested_queries=suggested_kg or ["Explore more KBLI codes", "Contact Bali Zero team"]
+                    )
+            except Exception as kg_err:
+                logger.error(f"❌ KG Orchestrator failed, falling back to KBLI-only: {kg_err}")
+                # Fall through to standard KBLI processing
+
         # Check for non-business queries (KITAS/visa/immigration OR recommendations)
         if _is_non_business_query(kbli_request.query):
             logger.info(f"⚠️ Non-business query detected: '{kbli_request.query[:50]}'")
@@ -1323,7 +1412,7 @@ async def chat_kbli(
         return KBLINotebookChatResponse(
             answer=answer,
             detected_kbli=detected_kbli,
-            results=results,
+            results=[],  # Don't show KBLI cards in UI (info already in answer text)
             sources=[{"title": "PP 28/2025", "relevance": "High"}],
             suggested_queries=suggested_queries,
         )
