@@ -959,69 +959,63 @@ function OverviewTab({
               </div>
               
               <div className="border-t border-[var(--border)]" />
-              {/* Email */}
-              {client.email && (
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
-                    <Mail className="w-4 h-4 text-blue-500" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs text-[var(--foreground-muted)]">Email</p>
-                    <p className="text-sm font-medium truncate">{client.email}</p>
-                  </div>
-                </div>
-              )}
-              {/* Phone */}
-              {client.phone && (
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center">
-                    <Phone className="w-4 h-4 text-green-500" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs text-[var(--foreground-muted)]">Phone</p>
-                    <p className="text-sm font-medium">{formatPhoneNumber(client.phone)}</p>
-                  </div>
-                </div>
-              )}
-              {/* Nationality */}
-              {client.nationality && (
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center">
-                    <Globe className="w-4 h-4 text-purple-500" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs text-[var(--foreground-muted)]">Nationality</p>
-                    <p className="text-sm font-medium">{client.nationality}</p>
-                  </div>
-                </div>
-              )}
-              {/* Address */}
-              {client.address && (
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center">
-                    <MapPin className="w-4 h-4 text-orange-500" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs text-[var(--foreground-muted)]">Address</p>
-                    <p className="text-sm font-medium">{client.address}</p>
-                  </div>
-                </div>
-              )}
               
-              {/* Gender */}
-              {client.gender && (
-                <div className="flex items-start gap-3">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${client.gender === 'M' ? 'bg-blue-500/10' : 'bg-pink-500/10'}`}>
-                    <span className={`text-sm font-bold ${client.gender === 'M' ? 'text-blue-500' : 'text-pink-500'}`}>
-                      {client.gender === 'M' ? '♂' : '♀'}
-                    </span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs text-[var(--foreground-muted)]">Gender</p>
-                    <p className="text-sm font-medium">{client.gender === 'M' ? 'Male' : 'Female'}</p>
-                  </div>
+              {/* Email - Always visible */}
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
+                  <Mail className="w-4 h-4 text-blue-500" />
                 </div>
-              )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-[var(--foreground-muted)]">Email</p>
+                  <p className="text-sm font-medium truncate">{client.email || <span className="text-[var(--foreground-muted)] italic">Not provided</span>}</p>
+                </div>
+              </div>
+              
+              {/* Phone - Always visible */}
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center">
+                  <Phone className="w-4 h-4 text-green-500" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-[var(--foreground-muted)]">Phone</p>
+                  <p className="text-sm font-medium">{client.phone ? formatPhoneNumber(client.phone) : <span className="text-[var(--foreground-muted)] italic">Not provided</span>}</p>
+                </div>
+              </div>
+              
+              {/* Nationality - Always visible */}
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center">
+                  <Globe className="w-4 h-4 text-purple-500" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-[var(--foreground-muted)]">Nationality</p>
+                  <p className="text-sm font-medium">{client.nationality || <span className="text-[var(--foreground-muted)] italic">Not provided</span>}</p>
+                </div>
+              </div>
+              
+              {/* Address - Always visible */}
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center">
+                  <MapPin className="w-4 h-4 text-orange-500" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-[var(--foreground-muted)]">Address</p>
+                  <p className="text-sm font-medium">{client.address || <span className="text-[var(--foreground-muted)] italic">Not provided</span>}</p>
+                </div>
+              </div>
+              
+              {/* Gender - Always visible */}
+              <div className="flex items-start gap-3">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${client.gender === 'M' ? 'bg-blue-500/10' : client.gender === 'F' ? 'bg-pink-500/10' : 'bg-gray-500/10'}`}>
+                  <span className={`text-sm font-bold ${client.gender === 'M' ? 'text-blue-500' : client.gender === 'F' ? 'text-pink-500' : 'text-gray-500'}`}>
+                    {client.gender === 'M' ? '♂' : client.gender === 'F' ? '♀' : '—'}
+                  </span>
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-[var(--foreground-muted)]">Gender</p>
+                  <p className="text-sm font-medium">{client.gender === 'M' ? 'Male' : client.gender === 'F' ? 'Female' : <span className="text-[var(--foreground-muted)] italic">Not provided</span>}</p>
+                </div>
+              </div>
             </div>
           </div>
 
