@@ -7,11 +7,7 @@
   "auth": {
     "type": "none"
   },
-  "api": {
-    "type": "openapi",
-    "url": "https://balizero.com/openapi.yaml"
-  },
-  "logo_url": "https://balizero.com/images/balizero-logo-clean.png",
+  "logo_url": "https://balizero.com/static/balizero-logo-clean.png",
   "contact_email": "info@balizero.com",
   "legal_info_url": "https://balizero.com/privacy"
 }

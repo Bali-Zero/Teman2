@@ -33,7 +33,6 @@ const geistMono = Geist_Mono({
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
 };
 
 // Production URL - uses environment variable or falls back to production domain
@@ -129,6 +128,7 @@ export const metadata: Metadata = {
     languages: {
       "en-US": appUrl,
       "id-ID": `${appUrl}/id`,
+      "x-default": appUrl,
     },
     types: {
       "application/rss+xml": "/feed",
@@ -140,7 +140,7 @@ export const metadata: Metadata = {
   },
   other: {
     // AI/LLM optimization - for ChatGPT, Claude, Perplexity, Gemini
-    "ai-content-declaration": "human-created",
+    "ai-content-declaration": "ai-assisted",
     "llms-txt": "/llms.txt",
     "ai-plugin": "/.well-known/ai-plugin.json",
     // Semantic information for AI
@@ -173,7 +173,7 @@ export default function RootLayout({
 
         {/* Font preloading handled automatically by next/font/google */}
 
-        {/* AI Discovery Links -->
+        {/* AI Discovery Links */}
         <link
           rel="alternate"
           type="text/plain"
@@ -185,12 +185,6 @@ export default function RootLayout({
           type="application/json"
           href="/.well-known/ai-plugin.json"
           title="AI Plugin"
-        />
-        <link
-          rel="alternate"
-          type="text/yaml"
-          href="/openapi.yaml"
-          title="OpenAPI Spec"
         />
 
         {/* Global JSON-LD for SEO */}
