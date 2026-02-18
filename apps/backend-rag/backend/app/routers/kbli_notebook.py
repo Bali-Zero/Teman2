@@ -426,8 +426,11 @@ KBLI_MASTER_PROMPT = (
     "'gym/fitness center/pusat kebugaran' = fasilitas pusat kebugaran (KBLI 93116), "
     "'surf school/sekolah surfing/olahraga air' = pengelolaan fasilitas olahraga lainnya (KBLI 93119), "
     "'gambling/casino/perjudian' = aktivitas perjudian dan pertaruhan (KBLI 92000 — NOTE: heavily restricted in Indonesia), "
+    "'travel agency/agen perjalanan' = aktivitas agen perjalanan (KBLI 79110 — intermediary selling packages), "
+    "'tour operator/biro perjalanan/tour organizer' = aktivitas biro perjalanan wisata (KBLI 79121 — organizes and sells tours directly), "
+    "'tour guide/pemandu wisata/pramuwisata' = jasa pramuwisata (KBLI 79903), "
     "'bar/wine bar/cocktail bar/beach club' = aktivitas bar (KBLI 56301, PMA TERTUTUP — foreigners CANNOT own a bar). "
-    "For other activities not listed here (travel agency, tattoo studio, photography, art gallery), "
+    "For other activities not listed here (tattoo studio, photography, art gallery), "
     "do NOT guess KBLI codes — search the database and present what is found. "
     "If user asks about these, map them to the correct KBLI code in your response."
 )
@@ -533,7 +536,7 @@ def _detect_language(query: str) -> str:
     return "English"
 
 
-@cached(ttl=43200, prefix="kbli_explain_v20")  # Cache explanations for 12 hours (v17: removed fake colloquial mappings 68200/82110/55194/55110/79111/79120/93192/93199/62099)
+@cached(ttl=43200, prefix="kbli_explain_v21")  # Cache explanations for 12 hours (v17: removed fake colloquial mappings 68200/82110/55194/55110/79111/79120/93192/93199/62099)
 async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]) -> str:
     """Generate a grounded explanation of KBLI search results using LLM."""
     if not results:
