@@ -981,7 +981,8 @@ async def chat_kbli(
             (["event catering", "katering", "catering service", "wedding catering",
               "jasa boga", "food catering", "corporate catering"], "56210"),
             # Restaurant / coffee shop / cafe
-            (["coffee shop", "café", "cafe ", "kafe ", "kedai kopi", "warung kopi"], "56101"),
+            (["restaurant", "restoran", "coffee shop", "café", "cafe ", "kafe ", 
+              "kedai kopi", "warung kopi", "tempat makan", "rumah makan"], "56101"),
             # Bar / nightclub
             (["bar bali", "open a bar", "nightclub", "klub malam", "diskotek", "buka bar"], "56301"),
             # Art gallery (commercial — selling art)
