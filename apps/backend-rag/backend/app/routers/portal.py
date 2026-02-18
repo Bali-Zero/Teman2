@@ -626,15 +626,38 @@ async def get_profile(
 ) -> dict[str, Any]:
     """
     Get client profile information.
+    
+    Returns complete profile including:
+    - Personal info (name, email, phone, DOB, gender, nationality)
+    - Passport info (number, expiry)
+    - Address
+    - Assigned team member
+    - Member since date
     """
     try:
         async with db_pool.acquire() as conn:
+            # Get client data with assigned team member
             row = await conn.fetchrow(
                 """
-                SELECT id, full_name, email, phone, whatsapp, nationality,
-                       passport_number, address, created_at
-                FROM clients
-                WHERE id = $1
+                SELECT 
+                    c.id,
+                    c.full_name,
+                    c.email,
+                    c.phone,
+                    c.whatsapp,
+                    c.nationality,
+                    c.passport_number,
+                    c.passport_expiry,
+                    c.date_of_birth,
+                    c.gender,
+                    c.address,
+                    c.created_at,
+                    c.assigned_to,
+                    tm.full_name as assigned_to_name,
+                    tm.avatar_url as assigned_to_avatar
+                FROM clients c
+                LEFT JOIN team_members tm ON c.assigned_to = tm.email
+                WHERE c.id = $1
                 """,
                 client["client_id"],
             )
@@ -652,8 +675,16 @@ async def get_profile(
                     "whatsapp": row["whatsapp"],
                     "nationality": row["nationality"],
                     "passport_number": row["passport_number"],
+                    "passport_expiry": row["passport_expiry"].isoformat() if row["passport_expiry"] else None,
+                    "date_of_birth": row["date_of_birth"].isoformat() if row["date_of_birth"] else None,
+                    "gender": row["gender"],
                     "address": row["address"],
                     "member_since": row["created_at"].isoformat() if row["created_at"] else None,
+                    "assigned_to": {
+                        "email": row["assigned_to"],
+                        "name": row["assigned_to_name"] or row["assigned_to"],
+                        "avatar_url": row["assigned_to_avatar"],
+                    } if row["assigned_to"] else None,
                 },
             }
     except HTTPException:
