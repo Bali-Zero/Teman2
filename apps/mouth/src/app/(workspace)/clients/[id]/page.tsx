@@ -3647,6 +3647,15 @@ function AddCompanyModal({
   onSuccess: () => void;
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isExtractingNpwp, setIsExtractingNpwp] = useState(false);
+  const [documents, setDocuments] = useState<{
+    akta?: File;
+    sk?: File;
+    businessId?: File;
+    nib?: File;
+    npwp?: File;
+    profilePerseroan?: File;
+  }>({});
   const [formData, setFormData] = useState({
     company_name: "",
     company_type: "PT PMA",
@@ -3662,6 +3671,46 @@ function AddCompanyModal({
     is_primary: false,
     ownership_percentage: "",
   });
+
+  const handleFileSelect = (docType: keyof typeof documents) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setDocuments(prev => ({ ...prev, [docType]: file }));
+    }
+  };
+
+  const handleExtractNpwp = async () => {
+    if (!documents.npwp) {
+      toast.error("Please upload NPWP file first");
+      return;
+    }
+    setIsExtractingNpwp(true);
+    try {
+      const base64 = await fileToBase64(documents.npwp);
+      const response = await api.post("/api/crm/documents/extract-npwp", {
+        file: base64,
+        file_name: documents.npwp.name,
+      }) as { success: boolean; npwp?: string; address?: string; city?: string; message?: string };
+      
+      if (response.success) {
+        setFormData(prev => ({
+          ...prev,
+          npwp_company: response.npwp || prev.npwp_company,
+          registered_address: response.address || prev.registered_address,
+          city: response.city || prev.city,
+        }));
+        toast.success("NPWP data extracted", {
+          description: "Address and NPWP number auto-filled",
+        });
+      } else {
+        toast.warning("OCR failed", { description: response.message });
+      }
+    } catch (err) {
+      toast.error("Extraction failed", { description: (err as Error).message });
+    } finally {
+      setIsExtractingNpwp(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -3823,6 +3872,231 @@ function AddCompanyModal({
                   className={inputClass}
                   placeholder="Company Tax ID"
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* Document Uploads */}
+          <div className="space-y-3 pt-4 border-t border-[var(--border)]">
+            <h4 className="text-sm font-medium text-[var(--foreground)] flex items-center gap-2">
+              <Upload className="w-4 h-4" />
+              Document Uploads
+            </h4>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* AKTA */}
+              <div>
+                <label className="block text-xs font-medium mb-1.5">
+                  AKTA
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={handleFileSelect('akta')}
+                    className="hidden"
+                    id="akta-upload"
+                  />
+                  <label
+                    htmlFor="akta-upload"
+                    className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--background-secondary)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
+                  >
+                    {documents.akta ? documents.akta.name : "Click to upload AKTA"}
+                  </label>
+                  {documents.akta && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-red-500"
+                      onClick={() => setDocuments(prev => ({ ...prev, akta: undefined }))}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* SK */}
+              <div>
+                <label className="block text-xs font-medium mb-1.5">
+                  SK
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={handleFileSelect('sk')}
+                    className="hidden"
+                    id="sk-upload"
+                  />
+                  <label
+                    htmlFor="sk-upload"
+                    className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--background-secondary)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
+                  >
+                    {documents.sk ? documents.sk.name : "Click to upload SK"}
+                  </label>
+                  {documents.sk && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-red-500"
+                      onClick={() => setDocuments(prev => ({ ...prev, sk: undefined }))}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Business Identification */}
+              <div>
+                <label className="block text-xs font-medium mb-1.5">
+                  Business Identification
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={handleFileSelect('businessId')}
+                    className="hidden"
+                    id="business-id-upload"
+                  />
+                  <label
+                    htmlFor="business-id-upload"
+                    className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--background-secondary)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
+                  >
+                    {documents.businessId ? documents.businessId.name : "Click to upload Business ID"}
+                  </label>
+                  {documents.businessId && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-red-500"
+                      onClick={() => setDocuments(prev => ({ ...prev, businessId: undefined }))}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* NIB Document */}
+              <div>
+                <label className="block text-xs font-medium mb-1.5">
+                  NIB Document
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={handleFileSelect('nib')}
+                    className="hidden"
+                    id="nib-doc-upload"
+                  />
+                  <label
+                    htmlFor="nib-doc-upload"
+                    className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--background-secondary)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
+                  >
+                    {documents.nib ? documents.nib.name : "Click to upload NIB"}
+                  </label>
+                  {documents.nib && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-red-500"
+                      onClick={() => setDocuments(prev => ({ ...prev, nib: undefined }))}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* NPWP Document with OCR */}
+              <div className="md:col-span-2">
+                <label className="block text-xs font-medium mb-1.5">
+                  NPWP Document <span className="text-[var(--foreground-muted)]">(OCR auto-extracts address)</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={handleFileSelect('npwp')}
+                    className="hidden"
+                    id="npwp-upload"
+                  />
+                  <label
+                    htmlFor="npwp-upload"
+                    className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--background-secondary)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
+                  >
+                    {documents.npwp ? documents.npwp.name : "Click to upload NPWP"}
+                  </label>
+                  {documents.npwp && (
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="gap-1 text-xs"
+                        onClick={handleExtractNpwp}
+                        disabled={isExtractingNpwp}
+                      >
+                        {isExtractingNpwp ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <FileText className="w-3 h-3" />
+                        )}
+                        Extract
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-red-500"
+                        onClick={() => setDocuments(prev => ({ ...prev, npwp: undefined }))}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Profile Perseroan */}
+              <div className="md:col-span-2">
+                <label className="block text-xs font-medium mb-1.5">
+                  Profile Perseroan
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={handleFileSelect('profilePerseroan')}
+                    className="hidden"
+                    id="profile-perseroan-upload"
+                  />
+                  <label
+                    htmlFor="profile-perseroan-upload"
+                    className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--background-secondary)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
+                  >
+                    {documents.profilePerseroan ? documents.profilePerseroan.name : "Click to upload Profile Perseroan"}
+                  </label>
+                  {documents.profilePerseroan && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-red-500"
+                      onClick={() => setDocuments(prev => ({ ...prev, profilePerseroan: undefined }))}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
