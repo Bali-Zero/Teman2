@@ -233,7 +233,7 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)):
     """Retrieve deep KG metadata with dynamic TTL based on sector volatility."""
     from backend.core.cache import cache_manager # Assume we have access to the manager
     
-    cache_key = f"kbli_inspect_{code}"
+    cache_key = f"kbli_inspect_v2_{code}"
     ttl = get_kbli_ttl(code)
     
     # Try manual cache check
@@ -528,7 +528,7 @@ def _detect_language(query: str) -> str:
     return "English"
 
 
-@cached(ttl=43200, prefix="kbli_explain_v14")  # Cache explanations for 12 hours (v12: tattoo/bar/typo fixes)
+@cached(ttl=43200, prefix="kbli_explain_v15")  # Cache explanations for 12 hours (v15: 56101/56210 pma_status TERBUKA fix)
 async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]) -> str:
     """Generate a grounded explanation of KBLI search results using LLM."""
     if not results:
