@@ -420,7 +420,9 @@ KBLI_MASTER_PROMPT = (
     "'yoga studio/yoga class' = aktivitas kebugaran jasmani (KBLI 93192 or 93199), "
     "'IT consulting/konsultan IT/software consultant' = aktivitas konsultasi manajemen (KBLI 70209/62099), "
     "'villa rental/sewa villa' = penyediaan akomodasi jangka pendek (KBLI 55194/55110), "
-    "'travel agency/agen perjalanan/tour operator' = aktivitas agen perjalanan (KBLI 79111/79120). "
+    "'travel agency/agen perjalanan/tour operator' = aktivitas agen perjalanan (KBLI 79111/79120), "
+    "'tattoo studio/tato studio/body piercing' = aktivitas perawatan tubuh lainnya (KBLI 96090, PMA TERBATAS), "
+    "'bar/wine bar/cocktail bar' = aktivitas bar (KBLI 56301, PMA TERTUTUP — foreigners CANNOT own a bar). "
     "If user asks about these, map them to the correct KBLI code in your response."
 )
 
@@ -454,7 +456,7 @@ _TRANSLATE_SYSTEM = (
 )
 
 
-@cached(ttl=604800, prefix="kbli_translate_v10")  # Cache translations for 7 days (v10: more keyword injections)
+@cached(ttl=604800, prefix="kbli_translate_v12")  # Cache translations for 7 days (v12: tattoo/bar/typo fixes)
 async def _translate_query_for_kbli(query: str) -> str:
     """Translate any-language query to Indonesian KBLI search terms."""
     try:
@@ -525,7 +527,7 @@ def _detect_language(query: str) -> str:
     return "English"
 
 
-@cached(ttl=43200, prefix="kbli_explain_v11")  # Cache explanations for 12 hours (v11: sector-filtered results)
+@cached(ttl=43200, prefix="kbli_explain_v12")  # Cache explanations for 12 hours (v12: tattoo/bar/typo fixes)
 async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]) -> str:
     """Generate a grounded explanation of KBLI search results using LLM."""
     if not results:
@@ -652,13 +654,22 @@ KNOWN_KBLI_CODES: dict[str, dict] = {
         "pma_status": "TERBATAS",
         "risk_category": "Verify at OSS",
     },
+    "56301": {
+        "title": "AKTIVITAS BAR",
+        "description": "Bar activities serving alcoholic and non-alcoholic beverages for on-premises consumption. Includes cocktail bars, wine bars, and other licensed drinking establishments.",
+        "pma_status": "TERTUTUP",
+        "risk_category": "Verify at OSS",
+    },
 }
 
 # Non-business keywords that should trigger helpful redirect
 NON_BUSINESS_KEYWORDS = [
     "kitas", "kitap", "visa", "immigration", "imigrasi", "passport", "paspor",
     "stay permit", "work permit", "izin tinggal", "izin kerja", "renewal",
-    "agente immigrazione", "visto", "permesso di soggiorno", "immigrazione"
+    "agente immigrazione", "visto", "permesso di soggiorno", "immigrazione",
+    # Recommendation/opinion queries (not KBLI classification)
+    "best restaurant", "best cafe", "best coffee shop", "recommend restaurant",
+    "where to eat", "mana makan", "restoran terbaik", "tempat makan terbaik",
 ]
 
 
@@ -753,8 +764,9 @@ async def chat_kbli(
         # Detects activity keywords in query and injects a direct match BEFORE semantic search
         # This prevents wrong codes (e.g. 47901 for online retail instead of 47911)
         _activity_keyword_map: list[tuple[list[str], str]] = [
-            # Online retail / e-commerce
-            (["online retail", "e-commerce", "ecommerce", "toko online", "online shop", "internet retail",
+            # Online retail / e-commerce (handle spaced variants like "e comerce", "e commerce")
+            (["online retail", "e-commerce", "ecommerce", "e commerce", "e comerce",
+              "toko online", "online shop", "internet retail",
               "digital retail", "online store", "jual online", "perdagangan online"], "47911"),
             # Photography
             (["photography", "fotografer", "foto studio", "photo studio", "photographer",
@@ -764,6 +776,11 @@ async def chat_kbli(
               "jasa boga", "food catering", "corporate catering"], "56210"),
             # Restaurant / coffee shop / cafe
             (["coffee shop", "café", "cafe ", "kafe ", "kedai kopi", "warung kopi"], "56101"),
+            # Tattoo studio
+            (["tattoo", "tato studio", "tattoo studio", "body piercing",
+              "tato bali", "tattoo artist", "studio tato"], "96090"),
+            # Bar / nightclub
+            (["bar bali", "open a bar", "nightclub", "klub malam", "diskotek", "buka bar"], "56301"),
             # Performing arts / art gallery
             (["art gallery", "galeri seni", "seni pertunjukan", "performing art",
               "art venue", "cultural center", "pusat kesenian"], "90001"),
