@@ -235,10 +235,13 @@ export function middleware(request: NextRequest) {
     if (pathname === "/contact" || pathname === "/team") {
       const isRSC =
         request.nextUrl.searchParams.has("_rsc") ||
-        request.headers.get("RSC") === "1";
+        request.headers.get("RSC") === "1" ||
+        request.headers.get("Next-Router-Prefetch") === "1" ||
+        request.headers.get("Purpose") === "prefetch";
       if (isRSC) {
-        // RSC prefetch: return 404 so Next.js falls back to full navigation
-        return new NextResponse(null, { status: 404 });
+        // RSC/prefetch: return 204 to silently skip cross-origin redirect
+        // This prevents CORS errors from Next.js client-side navigation prefetches
+        return new NextResponse(null, { status: 204 });
       }
       const publicUrl = new URL(pathname, `https://${PUBLIC_DOMAIN}`);
       publicUrl.search = request.nextUrl.search;
