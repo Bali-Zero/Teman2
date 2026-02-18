@@ -536,9 +536,21 @@ export default function CaseDetailPage() {
                 <label className="text-sm text-[var(--foreground-muted)] mb-1 block">
                   Client Name
                 </label>
-                <p className="text-[var(--foreground)] font-medium">
+                <button
+                  onClick={() => {
+                    casesMetrics.trackButtonClick(
+                      "Client Name Link",
+                      "CasesDetailPage",
+                      caseId || undefined,
+                      `/clients/${practice.client_id}`,
+                      userEmail.current || undefined,
+                    );
+                    router.push(`/clients/${practice.client_id}`);
+                  }}
+                  className="text-[var(--foreground)] hover:text-[var(--accent)] hover:underline font-medium text-left"
+                >
                   {practice.client_name || "Not specified"}
-                </p>
+                </button>
               </div>
 
               <div>
