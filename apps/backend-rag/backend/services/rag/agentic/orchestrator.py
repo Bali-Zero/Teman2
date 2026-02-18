@@ -556,6 +556,7 @@ Answer directly. Example: "Zainal Abidin è il CEO di {settings.COMPANY_NAME}."
                 [
                     f"{'USER' if msg.get('role') == 'user' else 'ASSISTANT'}: {msg.get('content', '')}"
                     for msg in history_to_use[-20:]  # Last 20 messages
+                    if isinstance(msg, dict)
                 ]
             )
 
