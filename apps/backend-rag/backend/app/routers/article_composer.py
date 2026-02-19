@@ -776,6 +776,53 @@ async def publish_article(request: PublishRequest):
         logger.info(f"✅ Article published: {article_url}")
         logger.info(f"   Commit: {result.get('commit_sha', 'N/A')[:7]}")
 
+        # Trigger IndexNow for faster search engine indexing
+        try:
+            import httpx
+
+            async with httpx.AsyncClient(timeout=10.0) as http_client:
+                indexnow_resp = await http_client.post(
+                    "https://api.indexnow.org/indexnow",
+                    json={
+                        "host": "balizero.com",
+                        "key": "2633309a0003ec408c59ec48c952604f",
+                        "keyLocation": "https://balizero.com/2633309a0003ec408c59ec48c952604f.txt",
+                        "urlList": [article_url],
+                    },
+                )
+                logger.info(f"   IndexNow: {indexnow_resp.status_code}")
+        except Exception as e:
+            logger.warning(f"   IndexNow failed (non-blocking): {e}")
+
+        # Trigger Google Indexing API for faster Google indexing
+        try:
+            google_credentials = os.getenv("GOOGLE_INDEXING_CREDENTIALS")
+            if google_credentials:
+                from google.oauth2 import service_account
+                from google.auth.transport.requests import Request
+                import json
+
+                credentials = service_account.Credentials.from_service_account_info(
+                    json.loads(google_credentials),
+                    scopes=["https://www.googleapis.com/auth/indexing"],
+                )
+                credentials.refresh(Request())
+
+                async with httpx.AsyncClient(timeout=10.0) as http_client:
+                    google_resp = await http_client.post(
+                        "https://indexing.googleapis.com/v3/urlNotifications:publish",
+                        headers={"Authorization": f"Bearer {credentials.token}"},
+                        json={
+                            "url": article_url,
+                            "type": "URL_UPDATED",
+                        },
+                    )
+                    logger.info(f"   Google Indexing API: {google_resp.status_code}")
+            else:
+                logger.info("   Google Indexing API: skipped (no credentials)")
+        except Exception as e:
+            logger.warning(f"   Google Indexing API failed (non-blocking): {e}")
+
         # Track metrics
         article_publish_requests.labels(
             status="success", has_cover_image=str(has_cover_image)
