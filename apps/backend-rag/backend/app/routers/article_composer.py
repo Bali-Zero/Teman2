@@ -300,25 +300,24 @@ async def compose_article(
     request_id: str = Depends(get_request_id),
 ):
     """
-    Compose/enrich an article with Bali Zero style using Anthropic API.
+    Compose/enrich an article with Bali Zero style.
 
-    Best Practices 2026:
-    - Rate limiting (10 req/min)
-    - Retry logic with exponential backoff
-    - Circuit breaker protection
-    - Caching for duplicate requests
-    - Structured error handling
-    - Input validation
-    - Request tracing
-
-    Transforms raw content into a complete BaliZero Executive Brief with:
-    - Strategic headline
-    - TL;DR section
-    - Facts (pure journalism)
-    - BaliZero Take (strategic analysis)
-    - Next steps by profile
-    - AI tags and summary
+    NOTE: This endpoint is currently disabled. Article composition with Claude/Anthropic
+    has been removed. Use alternative enrichment methods.
     """
+    raise HTTPException(
+        status_code=501,
+        detail={
+            "success": False,
+            "error": {
+                "code": "SERVICE_DISABLED",
+                "message": "Article composer service has been disabled. Claude/Anthropic integration removed.",
+            },
+            "request_id": request_id,
+        },
+    )
+
+    # Original implementation disabled - Anthropic/Claude removed
     start_time = time.time()
 
     # Validate API key

@@ -235,6 +235,7 @@ async def test_resolve_entities_node_fuzzy_match(sample_state, mock_db_pool):
             "name": "Restauran",
             "confidence": 0.9,
             "sim_score": 0.85,
+            "entity_type": "kbli",
         }
     ]
 

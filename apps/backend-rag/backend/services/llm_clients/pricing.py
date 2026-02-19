@@ -115,14 +115,6 @@ LLM_PRICING: dict[str, dict[str, float]] = {
         "output": 0.0,
     },
     # OpenRouter Models (via OpenRouter, includes markup)
-    "anthropic/claude-3.5-sonnet": {
-        "input": 3.00,
-        "output": 15.00,
-    },
-    "anthropic/claude-3-haiku": {
-        "input": 0.25,
-        "output": 1.25,
-    },
     "meta-llama/llama-3.1-70b-instruct": {
         "input": 0.52,
         "output": 0.75,

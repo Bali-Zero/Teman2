@@ -2,19 +2,19 @@
 Conversation Title Generator Service
 
 Generates concise, meaningful titles for chat conversations using LLM.
-Uses Anthropic Claude for title generation with cost optimization.
+Uses Google Gemini Flash for title generation.
 
-Cost: ~$0.000006 per title (Claude Haiku)
+Cost: ~$0.000003 per title (Gemini Flash)
 Latency: <2s (non-blocking async)
 
 Author: Nuzantara Team
-Date: 2026-01-22
+Date: 2026-02-19
 """
 
 import logging
 import os
 
-import anthropic
+from backend.llm.genai_client import get_genai_client
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ async def generate_conversation_title(
     """
     Generate concise title from first user message.
 
-    Uses Claude Haiku for cost-effective title generation.
+    Uses Gemini Flash for cost-effective title generation.
     Fails gracefully - returns None if generation fails.
 
     Args:
@@ -39,8 +39,8 @@ async def generate_conversation_title(
     Cost Analysis:
         - Input: ~100 tokens (prompt + message)
         - Output: ~20 tokens (title)
-        - Model: Claude Haiku ($0.25/$1.25 per MTok)
-        - Total: ~$0.000006 per title
+        - Model: Gemini Flash (included in free tier / very low cost)
+        - Total: ~$0.000003 per title
 
     Example:
         >>> title = await generate_conversation_title(
@@ -55,12 +55,6 @@ async def generate_conversation_title(
             f"Skipping title generation for conv {conversation_id}: "
             f"message too short ({len(first_user_message)} chars)"
         )
-        return None
-
-    # Get API key
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        logger.warning("ANTHROPIC_API_KEY not set, skipping title generation")
         return None
 
     # Build prompt
@@ -78,37 +72,33 @@ Requirements:
 Return ONLY the title text, nothing else."""
 
     try:
-        # Create Anthropic client
-        client = anthropic.Anthropic(api_key=api_key)
+        client = get_genai_client()
+        if not client or not client.is_available:
+            logger.warning("GenAI client not available, skipping title generation")
+            return None
 
         logger.info(f"Generating title for conversation {conversation_id}...")
 
-        # Call Claude Haiku (cost-effective)
-        message = client.messages.create(
-            model="claude-haiku-4-20250514",  # Haiku for cost optimization
-            max_tokens=30,  # Short output expected
-            temperature=0.3,  # Low creativity for consistency
-            messages=[{"role": "user", "content": prompt}],
+        # Call Gemini Flash
+        result = await client.generate_content(
+            contents=prompt,
+            model="gemini-2.0-flash-001",
+            max_output_tokens=30,
+            temperature=0.3,
         )
+
+        if not result or not result.get("text"):
+            logger.warning(f"Empty response from Gemini for conv {conversation_id}")
+            return None
 
         # Extract title
-        title = message.content[0].text.strip()[:max_length]
+        title = result["text"].strip()[:max_length]
 
         # Log success
-        logger.info(
-            f'✅ Generated title for conv {conversation_id}: "{title}" '
-            f"(input: {message.usage.input_tokens} tokens, "
-            f"output: {message.usage.output_tokens} tokens)"
-        )
+        logger.info(f'✅ Generated title for conv {conversation_id}: "{title}"')
 
         return title
 
-    except anthropic.APIError as e:
-        logger.warning(f"Anthropic API error generating title for conv {conversation_id}: {e}")
-        return None
-
     except Exception as e:
-        logger.error(
-            f"Unexpected error generating title for conv {conversation_id}: {e}", exc_info=True
-        )
+        logger.warning(f"Error generating title for conv {conversation_id}: {e}")
         return None

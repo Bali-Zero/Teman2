@@ -35,6 +35,7 @@ def include_routers(api: FastAPI) -> None:
         blog_ask,
         collective_memory,
         conversations,
+        crm_analytics,  # [NEW] CRM Analytics dashboard
         crm_auto,
         crm_clients,
         crm_company,  # [NEW] Company-Centric CRM
@@ -132,6 +133,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(crm_interactions.router)
     api.include_router(crm_practices.router)
     api.include_router(crm_shared_memory.router)
+    api.include_router(crm_analytics.router)  # [NEW] CRM Analytics dashboard
     api.include_router(crm_auto.router)
     api.include_router(crm_portal_integration.router)  # Team ↔ Portal integration
 

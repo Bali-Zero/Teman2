@@ -63,9 +63,9 @@ class PluginMetadata(BaseModel):
     estimated_time: float = Field(1.0, description="Estimated execution time (seconds)")
     rate_limit: int | None = Field(None, description="Max calls per minute")
 
-    # Model filtering (for Haiku vs Sonnet)
+    # Model filtering (for Gemini model selection)
     allowed_models: list[str] = Field(
-        default_factory=lambda: ["haiku", "sonnet", "opus"],
+        default_factory=lambda: ["gemini-flash", "gemini-pro"],
         description="Which AI models can use this plugin",
     )
 
