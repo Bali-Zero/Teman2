@@ -8,6 +8,7 @@ import {
   Building2,
   Sparkles,
 } from "lucide-react";
+import { KBLISearch } from "@/components/kbli/KBLISearch";
 
 export default function KBLINavigatorSection() {
   return (
@@ -34,11 +35,18 @@ export default function KBLINavigatorSection() {
             <h2 className="font-serif text-3xl lg:text-4xl text-white mb-4 leading-tight">
               KBLI 2025 Navigator
             </h2>
-            <p className="text-white/70 text-lg mb-6 leading-relaxed">
+            <p className="text-white/70 text-lg mb-8 leading-relaxed">
               Instant access to all 1,563 KBLI 2025 codes with intelligent
               search, 4-level risk assessment, PMA status tracking, and
               AI-powered guidance.
             </p>
+
+            <div className="mb-8">
+              <KBLISearch 
+                className="max-w-md"
+                placeholder="Search KBLI (e.g. villa, restaurant)..."
+              />
+            </div>
 
             <div className="flex flex-wrap gap-3 mb-8 text-sm text-white/60">
               <span className="flex items-center gap-1.5">

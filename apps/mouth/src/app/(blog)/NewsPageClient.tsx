@@ -260,17 +260,23 @@ export default function NewsPageClient({
                   <Link href="/kbli-navigator">
                     <article className="group">
                       <div className="aspect-[16/10] relative overflow-hidden rounded-lg mb-5 bg-[#0a1628]">
-                        <Image
-                          src={article.coverImage}
-                          alt={article.title}
-                          fill
-                          className="object-cover group-hover:scale-[1.05] transition-transform duration-700"
-                          style={{
-                            objectPosition: "center 25%", // Show only top portion with graphs
-                            transform: "scale(1.8)", // Zoom in to crop out text at bottom
-                            transformOrigin: "center 25%",
-                          }}
-                        />
+                        {article.coverImage && typeof article.coverImage === "string" ? (
+                          <Image
+                            src={article.coverImage}
+                            alt={article.title || ""}
+                            fill
+                            className="object-cover group-hover:scale-[1.05] transition-transform duration-700"
+                            style={{
+                              objectPosition: "center 25%", // Show only top portion with graphs
+                              transform: "scale(1.8)", // Zoom in to crop out text at bottom
+                              transformOrigin: "center 25%",
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-white/20">
+                            <Building2 className="w-12 h-12" />
+                          </div>
+                        )}
                       </div>
 
                       <span className="text-[#2251ff] text-xs font-semibold uppercase tracking-wider mb-2 block">
