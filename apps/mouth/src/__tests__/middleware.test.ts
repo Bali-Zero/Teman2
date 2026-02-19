@@ -132,7 +132,7 @@ describe("Middleware - Multi-domain Routing", () => {
       );
       const response = middleware(request);
 
-      expect(response.status).toBe(307);
+      expect(response.status).toBe(301);
       expect(response.headers.get("location")).toBe(
         "https://balizero.com/immigration/kitas",
       );
@@ -144,7 +144,7 @@ describe("Middleware - Multi-domain Routing", () => {
       );
       const response = middleware(request);
 
-      expect(response.status).toBe(307);
+      expect(response.status).toBe(301);
       expect(response.headers.get("location")).toBe(
         "https://balizero.com/services?type=visa",
       );
@@ -166,7 +166,7 @@ describe("Middleware - Multi-domain Routing", () => {
       const request = createRequest("https://balizero.com/login");
       const response = middleware(request);
 
-      expect(response.status).toBe(307);
+      expect(response.status).toBe(301);
       expect(response.headers.get("location")).toBe(
         "https://zantara.balizero.com/login",
       );
@@ -176,7 +176,7 @@ describe("Middleware - Multi-domain Routing", () => {
       const request = createRequest("https://balizero.com/dashboard");
       const response = middleware(request);
 
-      expect(response.status).toBe(307);
+      expect(response.status).toBe(301);
       expect(response.headers.get("location")).toBe(
         "https://zantara.balizero.com/dashboard",
       );
@@ -186,7 +186,7 @@ describe("Middleware - Multi-domain Routing", () => {
       const request = createRequest("https://balizero.com/clients");
       const response = middleware(request);
 
-      expect(response.status).toBe(307);
+      expect(response.status).toBe(301);
       expect(response.headers.get("location")).toBe(
         "https://zantara.balizero.com/clients",
       );
@@ -196,7 +196,7 @@ describe("Middleware - Multi-domain Routing", () => {
       const request = createRequest("https://balizero.com/chat");
       const response = middleware(request);
 
-      expect(response.status).toBe(307);
+      expect(response.status).toBe(301);
       expect(response.headers.get("location")).toBe(
         "https://zantara.balizero.com/chat",
       );
@@ -206,7 +206,7 @@ describe("Middleware - Multi-domain Routing", () => {
       const request = createRequest("https://balizero.com/admin");
       const response = middleware(request);
 
-      expect(response.status).toBe(307);
+      expect(response.status).toBe(301);
       expect(response.headers.get("location")).toBe(
         "https://zantara.balizero.com/admin",
       );
@@ -218,7 +218,7 @@ describe("Middleware - Multi-domain Routing", () => {
       );
       const response = middleware(request);
 
-      expect(response.status).toBe(307);
+      expect(response.status).toBe(301);
       expect(response.headers.get("location")).toContain("/immigration");
     });
 
@@ -257,7 +257,7 @@ describe("Middleware - Multi-domain Routing", () => {
       );
       const response = middleware(request);
 
-      expect(response.status).toBe(307);
+      expect(response.status).toBe(301);
       expect(response.headers.get("location")).toBe(
         "https://zantara.balizero.com/dashboard?tab=analytics",
       );
@@ -291,7 +291,7 @@ describe("Middleware - Multi-domain Routing", () => {
       );
       const response = middleware(request);
 
-      expect(response.status).toBe(307);
+      expect(response.status).toBe(301);
       expect(response.headers.get("location")).toBe(
         "https://balizero.com/immigration/kitas",
       );
@@ -301,7 +301,7 @@ describe("Middleware - Multi-domain Routing", () => {
       const request = createRequest("https://zantara.balizero.com/services");
       const response = middleware(request);
 
-      expect(response.status).toBe(307);
+      expect(response.status).toBe(301);
       expect(response.headers.get("location")).toBe(
         "https://balizero.com/services",
       );
@@ -321,7 +321,7 @@ describe("Middleware - Multi-domain Routing", () => {
       const request = createRequest("https://zantara.balizero.com/contact");
       const response = middleware(request);
 
-      expect(response.status).toBe(307);
+      expect(response.status).toBe(301);
       expect(response.headers.get("location")).toBe(
         "https://balizero.com/contact",
       );
@@ -331,7 +331,7 @@ describe("Middleware - Multi-domain Routing", () => {
       const request = createRequest("https://zantara.balizero.com/team");
       const response = middleware(request);
 
-      expect(response.status).toBe(307);
+      expect(response.status).toBe(301);
       expect(response.headers.get("location")).toBe(
         "https://balizero.com/team",
       );
@@ -378,7 +378,7 @@ describe("Middleware - Multi-domain Routing", () => {
       );
       const response = middleware(request);
 
-      expect(response.status).toBe(307);
+      expect(response.status).toBe(301);
       expect(response.headers.get("location")).toBe(
         "https://balizero.com/immigration?lang=en",
       );
@@ -398,7 +398,7 @@ describe("Middleware - Multi-domain Routing", () => {
       const response = middleware(request);
 
       expect(response.headers.get("x-pathname")).toBe("/login");
-      expect(response.status).toBe(307);
+      expect(response.status).toBe(301);
     });
   });
 
@@ -416,7 +416,7 @@ describe("Middleware - Multi-domain Routing", () => {
       );
       const response = middleware(request);
 
-      expect(response.status).toBe(307);
+      expect(response.status).toBe(301);
       expect(response.headers.get("location")).toBe(
         "https://zantara.balizero.com/dashboard/analytics/reports",
       );
@@ -428,7 +428,7 @@ describe("Middleware - Multi-domain Routing", () => {
       );
       const response = middleware(request);
 
-      expect(response.status).toBe(307);
+      expect(response.status).toBe(301);
       expect(response.headers.get("location")).toBe(
         "https://zantara.balizero.com/chat/conversation/123",
       );
