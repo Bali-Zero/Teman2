@@ -155,6 +155,23 @@ const nextConfig: NextConfig = {
     ];
   },
 
+  // KBLI Navigator 2025: Proxy /kbli-navigator/* to the standalone Vercel app
+  // The new app uses basePath=/kbli-navigator, so paths match 1:1
+  async rewrites() {
+    return [
+      {
+        source: "/kbli-navigator",
+        destination:
+          "https://kbli-navigator-rebuild.vercel.app/kbli-navigator",
+      },
+      {
+        source: "/kbli-navigator/:path*",
+        destination:
+          "https://kbli-navigator-rebuild.vercel.app/kbli-navigator/:path*",
+      },
+    ];
+  },
+
   // NOTE: API proxying is handled by src/app/api/[...path]/route.ts
   // Do NOT add rewrites for /api/* here as they conflict with the API route handler
   // and can cause Mixed Content issues in production.
