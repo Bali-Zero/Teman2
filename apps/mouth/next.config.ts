@@ -161,8 +161,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/kbli-navigator",
-        destination:
-          "https://kbli-navigator-rebuild.vercel.app/kbli-navigator",
+        destination: "https://kbli-navigator-rebuild.vercel.app/kbli-navigator",
       },
       {
         source: "/kbli-navigator/:path*",
