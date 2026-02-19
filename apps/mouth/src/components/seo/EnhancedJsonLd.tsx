@@ -136,7 +136,7 @@ export function ArticleWithFAQJsonLd({
         breadcrumb: { "@id": `${baseUrl}/#breadcrumb` },
       },
       {
-        "@type": "Article",
+        "@type": ["Article", "NewsArticle"],
         "@id": `${articleUrl}#article`,
         isPartOf: { "@id": `${baseUrl}/#website` },
         headline: title,
@@ -249,7 +249,7 @@ export function EnhancedArticleJsonLd({
         inLanguage: "en-US",
       },
       {
-        "@type": "Article",
+        "@type": ["Article", "NewsArticle"],
         "@id": `${articleUrl}#article`,
         isPartOf: { "@id": `${baseUrl}/#website` },
         headline: title,

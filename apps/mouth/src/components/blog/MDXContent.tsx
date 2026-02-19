@@ -16,6 +16,8 @@ import {
   Checklist,
   InfoCard,
   GlossaryTerm,
+  AnswerBox,
+  KeyTakeaway,
 } from "@/components/blog/interactive";
 
 // Custom components for MDX
@@ -31,6 +33,8 @@ const mdxComponents = {
   Checklist,
   InfoCard,
   GlossaryTerm,
+  AnswerBox,
+  KeyTakeaway,
 
   // Override default HTML elements with styled versions (30% larger text)
   h1: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
