@@ -140,7 +140,7 @@ jobs:
           key: ${{ runner.os }}-node-${{ matrix.app }}-${{ hashFiles('package-lock.json') }}
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Run tests
         run: |
