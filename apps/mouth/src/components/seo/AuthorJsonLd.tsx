@@ -1,9 +1,9 @@
 /**
  * AuthorJsonLd Component
- * 
+ *
  * Generates Person schema markup for article authors.
  * Include sameAs links to social profiles for entity recognition.
- * 
+ *
  * Usage:
  * <AuthorJsonLd
  *   name="John Doe"
@@ -39,7 +39,8 @@ export function AuthorJsonLd({
   url,
 }: AuthorJsonLdProps) {
   const baseUrl = process.env.NEXT_PUBLIC_PUBLIC_URL || "https://balizero.com";
-  const authorUrl = url || `${baseUrl}/author/${name.toLowerCase().replace(/\s+/g, "-")}`;
+  const authorUrl =
+    url || `${baseUrl}/author/${name.toLowerCase().replace(/\s+/g, "-")}`;
 
   const schema = {
     "@context": "https://schema.org",
@@ -73,15 +74,15 @@ export function AuthorJsonLd({
 export const BALI_ZERO_AUTHORS = {
   zero: {
     name: "Zero",
-    description: "Founder & Lead Consultant at Bali Zero. 10+ years expertise in Indonesian immigration and business setup.",
+    description:
+      "Founder & Lead Consultant at Bali Zero. 10+ years expertise in Indonesian immigration and business setup.",
     jobTitle: "Founder & Lead Consultant",
-    sameAs: [
-      "https://www.linkedin.com/company/bali-zero",
-    ],
+    sameAs: ["https://www.linkedin.com/company/bali-zero"],
   },
   baliZeroTeam: {
     name: "Bali Zero Team",
-    description: "Expert consultants specializing in Indonesian visa, business setup, and legal compliance.",
+    description:
+      "Expert consultants specializing in Indonesian visa, business setup, and legal compliance.",
     jobTitle: "Expert Consultants",
     sameAs: [
       "https://www.linkedin.com/company/bali-zero",

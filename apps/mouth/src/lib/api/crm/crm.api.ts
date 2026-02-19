@@ -1026,7 +1026,9 @@ export class CrmApi {
   /**
    * Client: Get required documents across all practices (Portal view)
    */
-  async getClientRequiredDocuments(clientId: number): Promise<ClientRequiredDocument[]> {
+  async getClientRequiredDocuments(
+    clientId: number,
+  ): Promise<ClientRequiredDocument[]> {
     return this.client.request<ClientRequiredDocument[]>(
       `/api/crm/clients/client/${clientId}/required-documents`,
     );
@@ -1039,12 +1041,13 @@ export class CrmApi {
     practiceId: number,
     data: ClientDocumentUpload,
   ): Promise<{ success: boolean; document_id: number; message: string }> {
-    return this.client.request<{ success: boolean; document_id: number; message: string }>(
-      `/api/crm/practices/${practiceId}/upload-client-document`,
-      {
-        method: "POST",
-        body: JSON.stringify(data),
-      },
-    );
+    return this.client.request<{
+      success: boolean;
+      document_id: number;
+      message: string;
+    }>(`/api/crm/practices/${practiceId}/upload-client-document`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
   }
 }

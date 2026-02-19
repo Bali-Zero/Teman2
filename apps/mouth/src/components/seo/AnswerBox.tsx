@@ -1,9 +1,9 @@
 /**
  * AnswerBox Component
- * 
+ *
  * Displays a concise answer (40-60 words) optimized for AI citations.
  * Place immediately after H1 for maximum AI discoverability.
- * 
+ *
  * Usage in MDX:
  * <AnswerBox>
  *   Your concise answer here (40-60 words).
@@ -39,7 +39,7 @@ export function AnswerBox({ children, className = "" }: AnswerBoxProps) {
 
 /**
  * KeyTakeaway Component
- * 
+ *
  * Bullet-point key takeaways for AI extraction.
  * Use for complex topics that need structured summarization.
  */

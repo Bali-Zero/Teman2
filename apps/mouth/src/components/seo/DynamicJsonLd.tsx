@@ -275,7 +275,9 @@ export function DynamicJsonLd() {
     <>
       {pageSchemas.map((schema, index) => {
         const schemaType = schema["@type"] || "schema";
-        const schemaTypeStr = Array.isArray(schemaType) ? schemaType[0] : schemaType;
+        const schemaTypeStr = Array.isArray(schemaType)
+          ? schemaType[0]
+          : schemaType;
         const uniqueId = `json-ld-${schemaTypeStr.toLowerCase()}-${index}`;
         return (
           <script
