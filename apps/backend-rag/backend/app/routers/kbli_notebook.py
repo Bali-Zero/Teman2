@@ -14,7 +14,7 @@ import os
 import re
 import time
 
-import anthropic
+
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
@@ -380,27 +380,6 @@ def _get_llm_gateway():
     return _llm_gateway_instance
 
 
-# Claude Opus client for KBLI Navigator (clean, direct responses)
-_anthropic_client = None
-
-
-def _get_anthropic_client():
-    """Get or create Anthropic client (lazy initialization) - Claude Haiku 4.5."""
-    global _anthropic_client
-    if _anthropic_client is None:
-        api_key = os.getenv("ANTHROPIC_API_KEY")
-        if not api_key:
-            logger.error("❌ ANTHROPIC_API_KEY not set - falling back to Gemini")
-            return None
-        try:
-            _anthropic_client = anthropic.AsyncAnthropic(api_key=api_key)
-            logger.info("✅ Anthropic client initialized (Claude Haiku 4.5)")
-        except Exception as e:
-            logger.error(f"❌ Failed to initialize Anthropic client: {e}")
-            return None
-    return _anthropic_client
-
-
 KBLI_MASTER_PROMPT = (
     "You are Zantara AI, helping people navigate Indonesian business regulations. Your expertise is KBLI 2025 (Indonesian Business Classification), and you can also answer questions about visa, legal, and tax matters when relevant.\n\n"
     "LANGUAGE RULES:\n"
@@ -588,103 +567,17 @@ def _detect_language(query: str) -> str:
     return "English"
 
 
-async def _generate_kbli_explanation_claude(
+async def _generate_kbli_explanation_gemini(
     query: str, 
     results: list[KBLISearchResult],
     parent_docs: dict[str, str] = None
 ) -> str:
-    """Generate KBLI explanation using Claude Haiku 4.5 - Fast, Cost-Effective.
+    """Generate KBLI explanation using Gemini Flash - Fast, Cost-Effective.
 
-    Uses Anthropic Claude Haiku 4.5 with a simplified prompt focused on
-    clarity and accuracy. Falls back to Gemini Flash if Claude is unavailable.
+    Uses Google Gemini 2.0 Flash with a simplified prompt focused on
+    clarity and accuracy.
     """
-    if not results:
-        return "No matching KBLI codes found for your search. Try different keywords or describe your business activity in more detail."
-
-    lang = _detect_language(query)
-    logger.info(f"🌐 Language: {lang} | 🎯 Attempting Claude Haiku 4.5")
-
-    # Build context from full parent documents
-    context_parts = []
-    for r in results:
-        if parent_docs and r.code in parent_docs:
-            full_content = parent_docs[r.code]
-            logger.debug(f"  Using full parent doc for {r.code}: {len(full_content)} chars")
-            context_parts.append(f"=== KBLI {r.code} - {r.title} ===\n\n{full_content}\n")
-        else:
-            logger.debug(f"  Using truncated description for {r.code}")
-            context_parts.append(f"=== KBLI {r.code} - {r.title} ===\n{r.description}\nPMA: {r.pma_status}, Risk: {r.risk_category}\n")
-    
-    context = "\n---\n".join(context_parts)
-
-    # CLEAN, CONVERSATIONAL PROMPT (Natural first, details after)
-    system_prompt = f"""You are Zantara AI, an expert on Indonesian business classification (KBLI) based on BPS Regulation No. 7/2025.
-
-Response Structure (IMPORTANT):
-1. START with a friendly, conversational answer (2-3 sentences) - answer the question directly in simple terms
-2. THEN provide detailed technical information organized clearly with headings
-
-Your role:
-- Be warm and helpful like talking to a friend
-- Answer in {lang} (match the user's language)
-- Use only the data provided - don't make up information
-- Make complex regulations easy to understand
-
-Key terms:
-- TERBUKA = Open to 100% foreign ownership
-- TERBATAS = Restricted foreign ownership (max percentage varies)
-- TERTUTUP = Closed to foreigners (Indonesian nationals only)
-- PMA = Foreign investment (minimum Rp 10 billion capital required)
-- OSS = oss.go.id (official licensing portal)
-
-When data says "Verify at OSS", tell the user directly - don't invent details.
-
-Example good opening:
-"Great question! For a restaurant business in Bali, you'll use KBLI code 56101. Good news - it's open to foreign investors with 100% ownership allowed. Let me break down what you'll need..."
-
-Example bad opening:
-"KBLI 56101 - AKTIVITAS PENYEDIAAN MAKANAN DI BANGUNAN TETAP..."
-
-Remember: Human and friendly first, then technical details."""
-
-    user_message = f"""Question: {query}
-
-Available KBLI data:
-
-{context}
-
-IMPORTANT - Response Format:
-Write your answer in TWO parts:
-
-Part 1 (Opening - friendly & conversational, 2-3 sentences):
-Start with a warm, helpful intro that directly answers the question in simple terms.
-Example: "Great question! For a restaurant in Bali, you'll use KBLI code 56101 - great news, it's fully open to foreign investors. Let me walk you through what you'll need..."
-
-Part 2 (Details - organized with clear headings):
-Then provide all technical details organized clearly with headings and bullet points.
-
-Now provide your answer following this structure."""
-
-    # Try Claude Haiku 4.5 first, fall back to Gemini Flash if unavailable
-    client = _get_anthropic_client()
-    if client is not None:
-        try:
-            logger.info("🤖 Using Claude Haiku 4.5 for KBLI explanation")
-            response = await client.messages.create(
-                model="claude-haiku-4-5-20251001",
-                max_tokens=1024,
-                system=system_prompt,
-                messages=[{"role": "user", "content": user_message}],
-            )
-            answer = response.content[0].text
-            if answer and answer.strip():
-                logger.info(f"✅ Claude Haiku 4.5 response: {len(answer)} chars")
-                return answer
-            logger.warning("⚠️ Claude Haiku returned empty response, falling back to Gemini")
-        except Exception as e:
-            logger.warning(f"⚠️ Claude Haiku 4.5 failed: {e}, falling back to Gemini Flash")
-
-    logger.info("🔄 Falling back to Gemini Flash")
+    logger.info("🤖 Using Gemini Flash for KBLI explanation")
     return await _generate_kbli_explanation(query, results, parent_docs)
 
 
@@ -1392,7 +1285,7 @@ async def chat_kbli(
 
         # Generate explanation via Claude Haiku 4.5 (fast, cost-effective)
         # Falls back to Gemini Flash if Claude unavailable
-        answer = await _generate_kbli_explanation_claude(kbli_request.query, results, parent_docs)
+        answer = await _generate_kbli_explanation_gemini(kbli_request.query, results, parent_docs)
         
         # CRITICAL: Ensure answer is never empty
         if not answer or not answer.strip():

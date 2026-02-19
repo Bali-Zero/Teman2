@@ -1,11 +1,10 @@
 """
-LLM-based Knowledge Graph Extractor
-Uses Claude/GPT for entity and relation extraction from Indonesian legal documents
+LLM-based Knowledge Graph Extractor (DEPRECATED - ANTHROPIC/CLAUDE REMOVED)
 
-Based on:
-- KGGen (Stanford, NeurIPS 2025)
-- CORE-KG (arXiv 2025) for legal documents
-- LLM-IE best practices
+WARNING: This module used Claude/GPT for entity and relation extraction.
+Anthropic/Claude integration has been removed from the codebase.
+
+USE INSTEAD: extractor_gemini.py (GeminiKGExtractor)
 """
 
 import json
@@ -100,7 +99,7 @@ class KGExtractor:
         # Build schema prompt
         self.schema_prompt = self._build_schema_prompt()
 
-        logger.info(f"KGExtractor initialized with model={model}")
+        logger.warning(f"KGExtractor (Anthropic) initialized with model={model} - DEPRECATED: Use GeminiKGExtractor instead")
 
     def _build_schema_prompt(self) -> str:
         """Build the schema description for prompts"""

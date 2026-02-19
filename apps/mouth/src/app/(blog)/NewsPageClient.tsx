@@ -648,7 +648,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     slug: "kbli-2025-changes-foreign-investors",
     title: "KBLI 2025: What Changed for Foreign Investors",
     excerpt:
-      "The new KBLI 2025 classification system brings significant changes for foreign businesses operating in Indonesia. From restructured categories to updated PMA restrictions, understand what the 1,562 codes mean for your business strategy.",
+      "The new KBLI 2025 classification system brings significant changes for foreign businesses operating in Indonesia. From restructured categories to updated PMA restrictions, understand what the 1,563 codes mean for your business strategy.",
     coverImage: "/images/kbli-changes-vibrant.jpg",
     category: "business",
     author: {
@@ -692,7 +692,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     slug: "finding-kbli-code-fast",
     title: "Finding Your Perfect KBLI Code in 30 Seconds",
     excerpt:
-      "With 1,562 codes to choose from, finding the right classification can feel overwhelming. Our KBLI Navigator uses AI-powered search and intelligent categorization to help you identify the perfect code—fast.",
+      "With 1,563 codes to choose from, finding the right classification can feel overwhelming. Our KBLI Navigator uses AI-powered search and intelligent categorization to help you identify the perfect code—fast.",
     coverImage: "/images/kbli-search-vibrant.jpg",
     category: "business",
     author: {

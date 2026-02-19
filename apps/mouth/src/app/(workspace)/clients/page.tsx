@@ -23,6 +23,7 @@ import {
   SortAsc,
   SortDesc,
   AlertCircle,
+  BarChart3,
 } from "lucide-react";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -427,6 +428,15 @@ function ClientsListContent() {
               <LayoutGrid className="w-4 h-4" />
             </button>
           </div>
+
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => router.push("/clients/analytics")}
+          >
+            <BarChart3 className="w-4 h-4" />
+            Analytics
+          </Button>
 
           <Button className="gap-2" onClick={handleNewClient}>
             <UserPlus className="w-4 h-4" />

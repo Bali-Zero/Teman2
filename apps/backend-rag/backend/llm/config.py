@@ -22,7 +22,6 @@ class OpenRouterModel:
 
     GEMINI_FLASH = "google/gemini-2.0-flash-001"
     DEEPSEEK_CHAT = "deepseek/deepseek-chat"
-    CLAUDE_SONNET = "anthropic/claude-3.5-sonnet"
 
 
 # Generation Parameters

@@ -59,7 +59,7 @@ class TeamMemberSearchPlugin(Plugin):
             requires_auth=False,
             estimated_time=0.3,
             rate_limit=60,  # 60 calls per minute
-            allowed_models=["haiku", "sonnet", "opus"],
+            allowed_models=["gemini-flash", "gemini-pro"],
             legacy_handler_key="search_team_member",
         )
 

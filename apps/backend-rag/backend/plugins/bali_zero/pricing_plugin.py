@@ -73,7 +73,7 @@ class PricingPlugin(Plugin):
             requires_auth=False,
             estimated_time=0.5,
             rate_limit=30,  # 30 calls per minute
-            allowed_models=["haiku", "sonnet", "opus"],
+            allowed_models=["gemini-flash", "gemini-pro"],
             legacy_handler_key="get_pricing",
         )
 
