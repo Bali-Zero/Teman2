@@ -60,7 +60,7 @@ export default function KBLINavigatorSection() {
             </div>
 
             <Link
-              href="/kbli-navigator"
+              href="/kbli-explorer"
               className="inline-flex items-center gap-3 text-white group w-fit"
             >
               <span className="text-lg font-medium">Explore Navigator</span>
