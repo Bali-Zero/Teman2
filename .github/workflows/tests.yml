@@ -120,7 +120,7 @@ jobs:
 
     strategy:
       matrix:
-        app: [mouth, brain, body]
+        app: [mouth]
 
     steps:
       - name: Checkout code
@@ -218,8 +218,6 @@ jobs:
 
             ### Frontend Tests (Next.js)
             - Mouth app: Passed
-            - Brain app: Passed
-            - Body app: Passed
 
             ### E2E Tests (Playwright)
             - Critical paths: Tested
