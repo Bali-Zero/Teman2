@@ -385,7 +385,7 @@ _anthropic_client = None
 
 
 def _get_anthropic_client():
-    """Get or create Anthropic client (lazy initialization) - Claude Opus 4.6."""
+    """Get or create Anthropic client (lazy initialization) - Claude Haiku 4.5."""
     global _anthropic_client
     if _anthropic_client is None:
         api_key = os.getenv("ANTHROPIC_API_KEY")
@@ -394,7 +394,7 @@ def _get_anthropic_client():
             return None
         try:
             _anthropic_client = anthropic.AsyncAnthropic(api_key=api_key)
-            logger.info("✅ Anthropic client initialized (Claude Opus 4.6)")
+            logger.info("✅ Anthropic client initialized (Claude Haiku 4.5)")
         except Exception as e:
             logger.error(f"❌ Failed to initialize Anthropic client: {e}")
             return None
@@ -593,17 +593,16 @@ async def _generate_kbli_explanation_claude(
     results: list[KBLISearchResult],
     parent_docs: dict[str, str] = None
 ) -> str:
-    """Generate KBLI explanation using Claude Opus 4.6 - Clean, Direct, No Excessive Rules.
-    
-    This version uses Anthropic Claude Opus 4.6 with a simplified prompt that focuses on
-    clarity and accuracy without overwhelming the model with compliance rules.
-    Falls back to Gemini Flash if Claude is unavailable.
+    """Generate KBLI explanation using Claude Haiku 4.5 - Fast, Cost-Effective.
+
+    Uses Anthropic Claude Haiku 4.5 with a simplified prompt focused on
+    clarity and accuracy. Falls back to Gemini Flash if Claude is unavailable.
     """
     if not results:
         return "No matching KBLI codes found for your search. Try different keywords or describe your business activity in more detail."
 
     lang = _detect_language(query)
-    logger.info(f"🌐 Language: {lang} | 🎯 Using Gemini Flash (Claude Opus disabled)")
+    logger.info(f"🌐 Language: {lang} | 🎯 Attempting Claude Haiku 4.5")
 
     # Build context from full parent documents
     context_parts = []
@@ -666,9 +665,26 @@ Then provide all technical details organized clearly with headings and bullet po
 
 Now provide your answer following this structure."""
 
-    # DISABLED: Claude Opus requires valid API key (not OAuth token)
-    # Using Gemini Flash directly instead
-    logger.info("🔄 Claude Opus disabled, using Gemini Flash directly")
+    # Try Claude Haiku 4.5 first, fall back to Gemini Flash if unavailable
+    client = _get_anthropic_client()
+    if client is not None:
+        try:
+            logger.info("🤖 Using Claude Haiku 4.5 for KBLI explanation")
+            response = await client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=1024,
+                system=system_prompt,
+                messages=[{"role": "user", "content": user_message}],
+            )
+            answer = response.content[0].text
+            if answer and answer.strip():
+                logger.info(f"✅ Claude Haiku 4.5 response: {len(answer)} chars")
+                return answer
+            logger.warning("⚠️ Claude Haiku returned empty response, falling back to Gemini")
+        except Exception as e:
+            logger.warning(f"⚠️ Claude Haiku 4.5 failed: {e}, falling back to Gemini Flash")
+
+    logger.info("🔄 Falling back to Gemini Flash")
     return await _generate_kbli_explanation(query, results, parent_docs)
 
 
@@ -1374,7 +1390,7 @@ async def chat_kbli(
         codes_to_fetch = [r.code for r in results if r.code != "N/A"]
         parent_docs = await _fetch_parent_documents_from_kbli_table(codes_to_fetch, pool)
 
-        # Generate explanation via Claude Opus 4.6 (MAX subscription, clean prompt)
+        # Generate explanation via Claude Haiku 4.5 (fast, cost-effective)
         # Falls back to Gemini Flash if Claude unavailable
         answer = await _generate_kbli_explanation_claude(kbli_request.query, results, parent_docs)
         
