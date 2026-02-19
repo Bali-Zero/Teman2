@@ -198,9 +198,9 @@ async def search_shared_memory(
                 if "active" in query_lower or "in progress" in query_lower:
                     status_filter = [
                         "inquiry",
-                        "quotation_sent",
-                        "payment_pending",
-                        "in_progress",
+                        "sending_invoice",
+                        "waiting_payment",
+                        "on_process",
                         "waiting_documents",
                         "submitted_to_gov",
                     ]
@@ -209,7 +209,7 @@ async def search_shared_memory(
                 else:
                     status_filter = [
                         "inquiry",
-                        "in_progress",
+                        "on_process",
                         "waiting_documents",
                         "submitted_to_gov",
                     ]  # default to active
@@ -254,7 +254,7 @@ async def search_shared_memory(
                     JOIN practice_types pt ON p.practice_type_id = pt.id
                     JOIN clients c ON p.client_id = c.id
                     WHERE p.priority IN ('high', 'urgent')
-                    AND p.status IN ('inquiry', 'in_progress', 'waiting_documents', 'submitted_to_gov')
+                    AND p.status IN ('inquiry', 'on_process', 'waiting_documents', 'submitted_to_gov')
                     {"" if user_is_admin else f"AND LOWER(c.assigned_to) = '{user_email}'"}
                     ORDER BY
                         CASE p.priority
@@ -480,7 +480,7 @@ async def get_client_full_context(
                             p
                             for p in practices
                             if p["status"]
-                            in ["inquiry", "in_progress", "waiting_documents", "submitted_to_gov"]
+                            in ["inquiry", "on_process", "waiting_documents", "submitted_to_gov"]
                         ]
                     ),
                     "completed": len([p for p in practices if p["status"] == "completed"]),
@@ -555,7 +555,7 @@ async def get_team_overview(
                 SELECT assigned_to, COUNT(*) as count
                 FROM practices
                 WHERE assigned_to IS NOT NULL
-                AND status IN ('inquiry', 'in_progress', 'waiting_documents', 'submitted_to_gov')
+                AND status IN ('inquiry', 'on_process', 'waiting_documents', 'submitted_to_gov')
                 GROUP BY assigned_to
                 ORDER BY count DESC
                 """
@@ -597,7 +597,7 @@ async def get_team_overview(
                     COUNT(p.id) as count
                 FROM practices p
                 JOIN practice_types pt ON p.practice_type_id = pt.id
-                WHERE p.status IN ('inquiry', 'in_progress', 'waiting_documents', 'submitted_to_gov')
+                WHERE p.status IN ('inquiry', 'on_process', 'waiting_documents', 'submitted_to_gov')
                 GROUP BY pt.code, pt.name
                 ORDER BY count DESC
                 """

@@ -1,6 +1,15 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+/**
+ * Required Documents Hook
+ * 
+ * Manages required documents for practice workflows with optimized caching
+ * and TypeScript safety.
+ * 
+ * @ai_onboarding - Strict TypeScript, useMemo for stats, proper error handling
+ */
+
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { api } from "@/lib/api";
 import {
   RequiredDocument,
@@ -25,13 +34,15 @@ export function useRequiredDocuments(options: UseRequiredDocumentsOptions = {}) 
   // Fetch required documents for a practice (CRM view)
   const fetchPracticeDocuments = useCallback(async () => {
     if (!practiceId) return;
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
-      const response = await api.get(`/api/crm/practices/${practiceId}/required-documents`);
-      setDocuments(response.data || []);
+      const result = await api.get<RequiredDocument[]>(
+        `/api/crm/practices/${practiceId}/required-documents`
+      );
+      setDocuments(result || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load documents");
     } finally {
@@ -42,13 +53,15 @@ export function useRequiredDocuments(options: UseRequiredDocumentsOptions = {}) 
   // Fetch client's required documents across all practices (Portal view)
   const fetchClientDocuments = useCallback(async () => {
     if (!clientId) return;
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
-      const response = await api.get(`/api/crm/clients/client/${clientId}/required-documents`);
-      setClientDocuments(response.data || []);
+      const result = await api.get<ClientRequiredDocument[]>(
+        `/api/crm/clients/client/${clientId}/required-documents`
+      );
+      setClientDocuments(result || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load documents");
     } finally {
@@ -59,15 +72,14 @@ export function useRequiredDocuments(options: UseRequiredDocumentsOptions = {}) 
   // Add a required document (team member)
   const addDocument = useCallback(async (data: RequiredDocumentCreate) => {
     if (!practiceId) throw new Error("Practice ID required");
-    
+
     setIsLoading(true);
     try {
-      const response = await api.post(
+      await api.post<RequiredDocument>(
         `/api/crm/practices/${practiceId}/required-documents`,
         data
       );
       await fetchPracticeDocuments();
-      return response.data;
     } catch (err) {
       throw err;
     } finally {
@@ -78,15 +90,14 @@ export function useRequiredDocuments(options: UseRequiredDocumentsOptions = {}) 
   // Update a required document (team member review)
   const updateDocument = useCallback(async (docId: number, data: RequiredDocumentUpdate) => {
     if (!practiceId) throw new Error("Practice ID required");
-    
+
     setIsLoading(true);
     try {
-      const response = await api.patch(
+      await api.patch<RequiredDocument>(
         `/api/crm/practices/${practiceId}/required-documents/${docId}`,
         data
       );
       await fetchPracticeDocuments();
-      return response.data;
     } catch (err) {
       throw err;
     } finally {
@@ -97,10 +108,12 @@ export function useRequiredDocuments(options: UseRequiredDocumentsOptions = {}) 
   // Delete a required document
   const deleteDocument = useCallback(async (docId: number) => {
     if (!practiceId) throw new Error("Practice ID required");
-    
+
     setIsLoading(true);
     try {
-      await api.delete(`/api/crm/practices/${practiceId}/required-documents/${docId}`);
+      await api.delete<void>(
+        `/api/crm/practices/${practiceId}/required-documents/${docId}`
+      );
       await fetchPracticeDocuments();
     } catch (err) {
       throw err;
@@ -112,15 +125,14 @@ export function useRequiredDocuments(options: UseRequiredDocumentsOptions = {}) 
   // Client uploads a document
   const uploadClientDocument = useCallback(async (data: ClientDocumentUpload) => {
     if (!practiceId) throw new Error("Practice ID required");
-    
+
     setIsLoading(true);
     try {
-      const response = await api.post(
+      await api.post<RequiredDocument>(
         `/api/crm/practices/${practiceId}/upload-client-document`,
         data
       );
       await fetchPracticeDocuments();
-      return response.data;
     } catch (err) {
       throw err;
     } finally {
@@ -141,8 +153,8 @@ export function useRequiredDocuments(options: UseRequiredDocumentsOptions = {}) 
     }
   }, [clientId, fetchClientDocuments]);
 
-  // Stats
-  const stats = {
+  // Stats - optimized with useMemo
+  const stats = useMemo(() => ({
     total: documents.length,
     required: documents.filter((d) => d.is_required).length,
     uploaded: documents.filter((d) => d.uploaded_by_client).length,
@@ -151,7 +163,7 @@ export function useRequiredDocuments(options: UseRequiredDocumentsOptions = {}) 
     completionPercentage: documents.length > 0
       ? Math.round((documents.filter((d) => d.status === "verified").length / documents.length) * 100)
       : 0,
-  };
+  }), [documents]);
 
   return {
     documents,

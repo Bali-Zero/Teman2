@@ -40,8 +40,11 @@ const STATUS_CONFIG = {
 const PROCESS_STATUS_LABELS: Record<string, string> = {
   inquiry: "Inquiry",
   quotation_sent: "Quotation Sent",
+  sending_invoice: "Sending Invoice",
   payment_pending: "Payment Pending",
+  waiting_payment: "Waiting for Payment",
   in_progress: "In Progress",
+  on_process: "On Process",
   waiting_documents: "Waiting for Documents",
   submitted_to_gov: "Submitted to Government",
   approved: "Approved",
