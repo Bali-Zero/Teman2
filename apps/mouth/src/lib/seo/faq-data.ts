@@ -15,7 +15,7 @@ export const HOMEPAGE_FAQS: FAQItem[] = [
     question:
       "What is PT PMA and how much does it cost to set up in Indonesia?",
     answer:
-      "PT PMA (Penanaman Modal Asing) is a foreign-owned limited liability company in Indonesia. The minimum investment requirement is IDR 10 billion (~$620,000 USD), with paid-up capital of IDR 2.5 billion per shareholder. Bali Zero charges IDR 45,000,000 (~$2,800 USD) for full PT PMA registration, which includes NIB, business licenses, and bank account setup. The process takes 4-8 weeks.",
+      "PT PMA (Penanaman Modal Asing) is a foreign-owned limited liability company in Indonesia. The minimum investment requirement is IDR 10 billion (~$620,000 USD), with paid-up capital of IDR 2.5 billion per shareholder. Bali Zero charges from IDR 20,000,000 for PT PMA registration, which includes NIB, business licenses, and bank account setup. The process takes 4-8 weeks.",
     category: "business",
   },
   {
