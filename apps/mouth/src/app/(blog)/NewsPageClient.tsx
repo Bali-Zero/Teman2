@@ -257,7 +257,7 @@ export default function NewsPageClient({
                   className="animate-in fade-in slide-in-from-bottom-4 duration-500"
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
-                  <Link href="/kbli-explorer">
+                  <Link href="/kbli-navigator">
                     <article className="group">
                       <div className="aspect-[16/10] relative overflow-hidden rounded-lg mb-5 bg-[#0a1628]">
                         <Image
@@ -304,7 +304,7 @@ export default function NewsPageClient({
             <div className="flex items-center justify-between mb-10">
               <h2 className="text-2xl font-serif text-white">Watch & Listen</h2>
               <Link
-                href="/kbli-explorer"
+                href="/kbli-navigator"
                 className="flex items-center gap-2 text-[#2251ff] hover:text-[#4d73ff] text-sm font-medium transition-colors"
               >
                 Explore Navigator
@@ -314,7 +314,7 @@ export default function NewsPageClient({
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
               {/* Podcast Cover */}
-              <Link href="/kbli-explorer" className="group">
+              <Link href="/kbli-navigator" className="group">
                 <div className="relative aspect-square rounded-xl overflow-hidden">
                   <Image
                     src="/images/podcast-kbli-2025.png"
@@ -384,7 +384,7 @@ export default function NewsPageClient({
 
                 <div className="flex gap-4">
                   <Link
-                    href="/kbli-explorer"
+                    href="/kbli-navigator"
                     className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-[#2251ff] text-white font-semibold hover:bg-[#1a3fcc] transition-colors"
                   >
                     <Play className="w-5 h-5" fill="currentColor" />
