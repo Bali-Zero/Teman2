@@ -1,5 +1,48 @@
 # Claude Memory - Backend RAG
 
+## Session Update (2026-02-19 - KBLI Navigator: Claude Haiku 4.5 + Full Deploy)
+
+### Overview
+
+Completed the KBLI Navigator 2025 rebuild and switched the KBLI chat LLM from Gemini Flash to **Claude Haiku 4.5**.
+
+### Changes
+
+**File:** `backend/app/routers/kbli_notebook.py`
+
+1. **Enabled Claude Haiku 4.5** in `_generate_kbli_explanation_claude()`:
+   - Previously the Claude path was disabled (fell straight through to Gemini Flash)
+   - Now calls `client.messages.create(model="claude-haiku-4-5-20251001", max_tokens=1024)`
+   - Graceful fallback: if `ANTHROPIC_API_KEY` missing or call fails → Gemini Flash
+   - Updated log messages and docstrings
+
+2. **Model:** `claude-haiku-4-5-20251001` — fast, cost-effective, fits KBLI chat use case
+
+3. **Flow:**
+   ```
+   KBLI /chat → _generate_kbli_explanation_claude()
+     → Claude Haiku 4.5 (primary)
+     → Gemini Flash fallback (if Anthropic unavailable)
+   ```
+
+### Deployment
+
+- **Commit:** `f091ea05e`
+- **Fly.io:** Rolling deploy, healthy
+- **GitHub:** Pushed to main
+
+### KBLI Navigator Rebuild (standalone Vercel app)
+
+Separate project: `/Users/nuzantara/Desktop/kbli-navigator-rebuild/`
+
+- **1,563 KBLI codes**, **246 Gold content entries**
+- **basePath:** `/kbli-navigator` (Next.js config)
+- **ZantaraChat backend URL:** `NEXT_PUBLIC_BACKEND_URL=https://nuzantara-rag.fly.dev`
+- **Deployed to:** `kbli-navigator-rebuild.vercel.app`
+- **Proxied via:** `balizero.com/kbli-navigator` → rewrites in `apps/mouth/next.config.ts`
+
+---
+
 ## Session Update (2026-02-17 - Fix ABSTAIN Override Blocking All Business Queries)
 
 ### Problem
