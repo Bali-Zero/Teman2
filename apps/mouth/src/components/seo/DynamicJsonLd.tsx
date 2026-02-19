@@ -7,7 +7,7 @@ import type { Article } from "@/lib/blog/types";
 
 interface PageSchema {
   "@context": string;
-  "@type": string;
+  "@type": string | string[];
   [key: string]: unknown;
 }
 
@@ -98,7 +98,7 @@ export function DynamicJsonLd() {
 
             const articleSchema = {
               "@context": "https://schema.org",
-              "@type": "Article",
+              "@type": ["Article", "NewsArticle"],
               headline: article.title,
               description: article.excerpt || article.subtitle || article.title,
               url: articleUrl,
@@ -155,18 +155,12 @@ export function DynamicJsonLd() {
                 {
                   "@type": "ListItem",
                   position: 2,
-                  name: "Insights",
-                  item: `${baseUrl}/insights`,
+                  name: article.category,
+                  item: `${baseUrl}/${article.category}`,
                 },
                 {
                   "@type": "ListItem",
                   position: 3,
-                  name: article.category,
-                  item: `${baseUrl}/insights/${article.category}`,
-                },
-                {
-                  "@type": "ListItem",
-                  position: 4,
                   name: article.title,
                   item: articleUrl,
                 },
@@ -256,7 +250,7 @@ export function DynamicJsonLd() {
           url: baseUrl,
           description:
             "Expert visa, immigration, company setup, and business consulting services in Bali, Indonesia. Trusted by 1000+ expats.",
-          foundingDate: "2020",
+          foundingDate: "2023",
           numberOfEmployees: {
             "@type": "QuantitativeValue",
             value: "10-50",
@@ -281,7 +275,8 @@ export function DynamicJsonLd() {
     <>
       {pageSchemas.map((schema, index) => {
         const schemaType = schema["@type"] || "schema";
-        const uniqueId = `json-ld-${schemaType.toLowerCase()}-${index}`;
+        const schemaTypeStr = Array.isArray(schemaType) ? schemaType[0] : schemaType;
+        const uniqueId = `json-ld-${schemaTypeStr.toLowerCase()}-${index}`;
         return (
           <script
             key={uniqueId}

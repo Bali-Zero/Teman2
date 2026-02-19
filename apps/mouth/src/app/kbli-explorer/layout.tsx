@@ -1,5 +1,45 @@
 import React from "react";
 
+const baseUrl = process.env.NEXT_PUBLIC_PUBLIC_URL || "https://balizero.com";
+
+function KBLIExplorerJsonLd() {
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    name: "KBLI 2025 Explorer",
+    description:
+      "Search and explore Indonesian business classification codes (KBLI 2025). Check foreign ownership rules, required licenses, and PMA eligibility for any business activity.",
+    url: `${baseUrl}/kbli-explorer`,
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Any",
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "IDR",
+    },
+    provider: {
+      "@type": "Organization",
+      name: "Bali Zero",
+      url: baseUrl,
+    },
+    featureList: [
+      "KBLI 2025 code search",
+      "Foreign ownership eligibility check",
+      "License requirement lookup",
+      "PMA investment rules",
+    ],
+    inLanguage: ["en", "id"],
+  };
+
+  return (
+    <script
+      id="kbli-explorer-jsonld"
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+    />
+  );
+}
+
 export default function KBLIExplorerLayout({
   children,
 }: {
@@ -7,6 +47,7 @@ export default function KBLIExplorerLayout({
 }) {
   return (
     <div className="h-screen w-full bg-[#050507] text-[#E1E1E3] overflow-hidden overflow-x-hidden font-sans selection:bg-[#D4B483]/30 selection:text-[#D4B483]">
+      <KBLIExplorerJsonLd />
       {/* Texture Layer: Noise/Grain for tactile feel */}
       <div
         className="fixed inset-0 z-0 opacity-[0.03] pointer-events-none mix-blend-overlay"

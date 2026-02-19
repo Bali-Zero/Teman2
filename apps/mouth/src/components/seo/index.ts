@@ -24,3 +24,11 @@ export {
 } from "./EnhancedJsonLd";
 
 export { DynamicJsonLd } from "./DynamicJsonLd";
+
+export { AnswerBox, KeyTakeaway } from "./AnswerBox";
+
+export {
+  AuthorJsonLd,
+  PredefinedAuthorJsonLd,
+  BALI_ZERO_AUTHORS,
+} from "./AuthorJsonLd";

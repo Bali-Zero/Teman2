@@ -60,3 +60,6 @@ export { InfoCard, type InfoCardProps } from "./InfoCard";
 
 // Glossary Term - Linked glossary terms
 export { GlossaryTerm, type GlossaryTermProps } from "./GlossaryTerm";
+
+// Answer Box - Answer-first content for AI citation optimization
+export { AnswerBox, KeyTakeaway } from "./AnswerBox";
