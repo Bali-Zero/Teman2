@@ -13,6 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 import { CategoryNav } from "./CategoryNav";
 import type { SearchBarProps, ArticleCategory } from "@/lib/blog/types";
+import { logger } from "@/lib/logger";
 
 export function SearchBar({
   placeholder = "Search articles...",
@@ -296,7 +297,7 @@ export function SearchModal({
         setResults(data.articles || []);
         setSelectedIndex(0);
       } catch (err) {
-        console.error("Search failed:", err);
+        logger.error("Search failed:", err);
         setResults([]);
       } finally {
         setIsLoading(false);
@@ -420,7 +421,7 @@ export function SearchModal({
                   >
                     {/* Thumbnail */}
                     <div className="w-16 h-12 rounded-lg bg-white/10 overflow-hidden flex-shrink-0">
-                      {article.coverImage && (
+                      {article.coverImage && typeof article.coverImage === "string" && (
                         <img
                           src={article.coverImage}
                           alt=""
@@ -431,14 +432,16 @@ export function SearchModal({
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <p className="text-white font-medium truncate">
-                        {article.title}
+                        {article.title || "Untitled Article"}
                       </p>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 capitalize">
-                          {article.category}
-                        </span>
+                        {article.category && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 capitalize">
+                            {article.category}
+                          </span>
+                        )}
                         <span className="text-xs text-white/40">
-                          {article.readingTime} min read
+                          {article.readingTime || 0} min read
                         </span>
                       </div>
                     </div>
