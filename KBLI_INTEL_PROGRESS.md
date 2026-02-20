@@ -1,6 +1,6 @@
 # KBLI intel_2026 Enrichment Progress
 
-**Stato:** 215 / 1563 codici arricchiti (13.8%)
+**Stato:** 237 / 1563 codici arricchiti (15.2%)
 **Aggiornato:** 2026-02-21
 **File JSON:** `source_documents/KBLI_2025_FINAL_CLEAN.json`
 
@@ -539,11 +539,54 @@ Note: codici 784xx → 855xx (migrazione KBLI 2020→2025 per pelatihan kerja)
 
 ---
 
+### Batch 19 — F&B (56xxx) + Personal Services (96xxx)
+
+**Codici arricchiti (12):**
+| Codice | Titolo |
+|--------|--------|
+| 56102 | PENYEDIAAN MAKANAN DI BANGUNAN TIDAK TETAP (food truck — CHIUSO a PMA) |
+| 56210 | JASA BOGA UNTUK ACARA TERTENTU (event catering — TOP pick) |
+| 56290 | PENYEDIAAN JASA BOGA LAINNYA (ghost kitchen/industrial catering) |
+| 56302 | KELAB MALAM ATAU DISKOTEK (nightclub — PBJT 40-75% confermato) |
+| 56303 | RUMAH MINUM/KAFE (café — saturo a Canggu, migra a Uluwatu) |
+| 56304 | KEDAI MINUMAN (beverage kiosk — sproporzionato per PMA) |
+| 56400 | JASA INTERMEDIASI PENYEDIAAN MAKANAN (food delivery — oligopoly) |
+| 96100 | PENCUCIAN DAN PEMBERSIHAN (laundry — solo B2B industriale per PMA) |
+| 96210 | PENATAAN DAN PANGKAS RAMBUT (barbershop — solo catena multi-location) |
+| 96220 | PERAWATAN KECANTIKAN (beauty salon — halal compliance vantaggio competitivo) |
+| 96230 | SANTE PAR AQUA/SPA — TOP PICK: ESENTE da entertainment tax (MK No.19/2024) |
+| 96300 | AKTIVITAS PEMAKAMAN (funeral — sconsigliato per PMA) |
+
+MDX: `kbli-2025-fnb-personal-services-bali-2026.mdx`
+Note: SPA = game-changer 2025. MK ha escluso SPA da PBJT 40-75%. Risparmio IDR 2-3.75 mld/anno su fatturato IDR 5 mld.
+
+---
+
+### Batch 20 — Advertising, PR & Creative Arts (73xxx + 90xxx)
+
+**Codici arricchiti (10):**
+| Codice | Titolo |
+|--------|--------|
+| 73100 | AKTIVITAS PERIKLANAN — STORICA LIBERALIZZAZIONE: 100% PMA aperto |
+| 73300 | AKTIVITAS KEHUMASAN (PR) |
+| 90111 | PENCIPTAAN KARYA SASTRA (content writing → KBLI 2025: 90024) |
+| 90112 | PENCIPTAAN KOMPOSISI MUSIK (→ KBLI 2025: 90022) |
+| 90113 | JURNALIS BERITA INDEPENDEN (→ KBLI 2025: 90025 — CHIUSO) |
+| 90120 | PENCIPTAAN KARYA SENI RUPA (photography — enforcement attivo) |
+| 90130 | PENCIPTAAN KARYA SENI LAINNYA (→ KBLI 2025: 74130/74141/74142) |
+| 90200 | AKTIVITAS SENI PERTUNJUKAN (performance arts, eventi) |
+| 90310 | OPERASIONAL TEMPAT KESENIAN (gallerie d'arte) |
+| 90391 | PENYELENGGARAAN KEGIATAN KESENIAN (festival culturali) |
+
+MDX: `kbli-2025-advertising-creative-arts-bali-2026.mdx`
+Note: 73100 storica liberalizzazione (PR 44/2016 chiuso → PR 10/2021 100% PMA). Fotografi stranieri senza PMA = rischio deportazione. E33G visa trap critica per creativi che servono clienti indonesiani.
+
+---
+
 ## Prossimi Batch
 
 - Settori da coprire (non ancora arricchiti):
-  - Advertising/Media: 73100 (advertising agency), 73300 (PR/kehumasan)
-  - Creative/Arts: 90xxx (arts creation, performance, cultural events)
-  - Food & Beverage: 56102-56400 (café, catering, dark kitchen, F&B intermediary)
-  - Personal Services: 96100-96300 (laundry, barbershop, beauty salon, SPA harian)
-  - Finance Support: remaining 65xxx/66xxx codes
+  - Finance Support: remaining 65xxx/66xxx (insurance brokers, pension, etc.)
+  - Manufacturing Creative: 16xxx (wood crafts), 32xxx (jewelry)
+  - Transport: 49xxx (more codes)
+  - Other services: 74xxx remaining, 75xxx, 77xxx

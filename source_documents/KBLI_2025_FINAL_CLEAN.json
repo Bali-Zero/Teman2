@@ -81347,7 +81347,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Moderately positive. Food trucks are a low-barrier entry model popular among Indonesian micro-entrepreneurs. Tourist demand in Bali fuels the premium street-food segment (açaí bowls, smash burgers, fusion burritos). Market is fragmented with fierce competition from traditional warungs. KBLI 56102 is restricted to micro and small enterprises — PMA cannot operate directly under this code.",
+        "bali_nuance": "Food trucks operate in tourist areas like Canggu, Seminyak, and Ubud with fusion menus for digital nomads. The Sarbagita moratorium may limit new commercial parking permits in Badung. The model works best at events, night markets, and festivals. Integration with GoFood/GrabFood allows scaling without a fixed location.",
+        "operational_risks": "KBLI 56102 is restricted to micro/small enterprises — foreign PMA investors cannot operate directly. SNI 7574:2022 mandatory for mobile food vehicle safety standards. Halal certification required for micro/small enterprises by 17 October 2026 (GR 42/2024). NIB via OSS required. Increasing zonal enforcement risk under GR 28/2025.",
+        "investment_outlook": "Not directly accessible to PMA due to scale restriction (micro/small only). Indirect participation possible via franchise, licensing, or partnership with a local entity. Rapid ROI but limited scalability. Recommended investment for operators: IDR 50–200 million per unit.",
+        "legacy_bridge": "Digital evolution of the traditional warung kaki lima street vendor. Bridge between street food heritage and modern mobile catering. GoFood/GrabFood integration allows scaling without fixed premises."
+      }
     },
     {
       "kode_kbli_2025": "56210",
@@ -81405,7 +81412,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Very positive. International wedding tourism in Bali generates consistent demand for premium catering. The MICE (Meeting, Incentive, Conference, Exhibition) market recovering post-pandemic drives corporate event catering with estimated 10–15% annual growth in the Bali premium segment.",
+        "bali_nuance": "Bali is Asia's top destination wedding location for international couples (Australia, India, China). Event catering requires international standards, multi-cultural menus (vegan, kosher, jain), and ability to handle dietary restrictions. Iconic locations (cliff-top, beachfront) demand specialized logistics. May–October is peak wedding season.",
+        "operational_risks": "Halal certification mandatory for medium/large enterprises since 24 October 2024. BPOM registration required for any packaged products. TDUP required for tourism-linked catering. High logistical risk for events at remote locations. Seasonal dependency (peak: May–October).",
+        "investment_outlook": "Open to PMA as large enterprise (minimum IDR 10 billion investment). High margins in the luxury segment (30–40% gross margin). Vertical integration opportunities with event planning, decoration, and venue management. Growing market with structural tailwinds from destination wedding trend.",
+        "legacy_bridge": "Bridge between traditional Balinese culinary traditions (megibung communal feasting, ceremonial babi guling) and contemporary international catering. Opportunity to position nusantara cuisine as a premium offering in international weddings."
+      }
     },
     {
       "kode_kbli_2025": "56290",
@@ -81463,7 +81477,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Stable with moderate growth. Industrial/corporate catering serves the growing manufacturing sector and corporate offices. In Bali, driven by hotels, resorts, and villas outsourcing staff meal preparation, plus the boom in co-working spaces for digital nomads. Ghost/dark kitchen model is expanding rapidly as a delivery-first pivot.",
+        "bali_nuance": "Growing demand from co-living and co-working spaces serving 15,000+ digital nomads estimated in Bali. Hotel and resort staff catering is a consolidated B2B market. Ghost kitchen boom: industrial catering reinvents itself as supplier for virtual brands on delivery platforms (GoFood/GrabFood).",
+        "operational_risks": "BPOM registration mandatory for any packaged distributed products. Halal certification required. Strict hygiene standards (Sertifikat Laik Higiene). Thin margins in industrial segment (10–15%). Delivery platform commissions: GoFood 20%+IDR 1,000, GrabFood 30%, ShopeeFood 25%. Risk of late payments from corporate clients.",
+        "investment_outlook": "Accessible to PMA as large enterprise. B2B model with recurring contracts provides revenue predictability. Ghost kitchen as strategic pivot for delivery market penetration without front-of-house costs. Initial investment: IDR 10–25 billion for scalable operation.",
+        "legacy_bridge": "Indonesian industrial catering (nasi box, prasmanan buffet) evolves toward standardized and traceable meal-prep. The heritage of dapur besar (communal kitchens) finds new expression in the cloud kitchen model."
+      }
     },
     {
       "kode_kbli_2025": "56301",
@@ -81552,7 +81573,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Negative / under pressure. The sector faces a triple threat: entertainment PBJT tax 40–75% confirmed constitutional by the Constitutional Court (MK No. 32/PUU-XXII/2024, 2025), Sarbagita moratorium blocking new openings, and growing social/religious pressure. Many operators are evaluating reclassification as 'restaurant with live entertainment'.",
+        "bali_nuance": "Canggu and Seminyak are Bali's nightlife epicenters. The Sarbagita moratorium (October 2024–2026) blocks new licenses for discotek and kelab pantai in Denpasar, Badung, Gianyar, and Tabanan. Beach clubs are repositioning as 'lifestyle dining' to avoid nightclub classification. Australian and European tourism sustains demand. PHRI Badung has called the tax rate 'a killer' for the sector.",
+        "operational_risks": "PBJT entertainment tax 40–75% applied to gross revenue (not profit) — potentially destructive for margins. Constitutional Court confirmed the tax rate's legality in 2025 (MK No. 32/PUU-XXII/2024). Only medium/large enterprises permitted to operate. TDUP mandatory plus separate alcohol license. Sarbagita moratorium blocks new openings through 2026. Risk of sudden enforcement action.",
+        "investment_outlook": "High risk. PMA can operate as large enterprise but the tax burden is prohibitive for new entrants. Recommended strategy: acquisition of existing pre-moratorium licenses rather than new openings. Repositioning as 'restaurant-lounge' to avoid diskotek classification. Extended break-even (24–36 months minimum).",
+        "legacy_bridge": "Bali's nightlife originated in Kuta in the 1980s–90s (Paddy's, Bounty). The model now shifts toward the integrated beach club (F&B + music + daylife) as the evolution of the traditional nightclub. The 40–75% tax may accelerate migration toward non-taxed formats."
+      }
     },
     {
       "kode_kbli_2025": "56303",
@@ -81591,7 +81619,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Saturated but resilient. Indonesia has over 4.85 million F&B businesses. In Bali, Canggu has one of the highest café concentrations per km² globally. The market is saturated in the Berawa-Batu Bolong-Pererenan corridor. Only unique or hybrid concepts (café + co-working, café + retail) sustain profitability. New openings are migrating to Uluwatu, Tabanan, and North Bali.",
+        "bali_nuance": "Canggu café turnover rate estimated at 30–40% annually. Land lease costs in Canggu: IDR 300–500 million/are/year. The café + co-working model remains valid for digital nomads. Sarbagita moratorium may limit new F&B licenses in Badung. From 2026, F&B operations inside Airbnb villa rentals require a separate NIB (Permenpar No. 6/2025).",
+        "operational_risks": "Open to all scales — PMA can operate as large enterprise. TDUP mandatory for tourist-oriented cafés. Halal certification required. Extreme competition in Canggu core. NIB mandatory for F&B inside villa rental properties on Airbnb. Rising real estate costs compress margins in prime locations.",
+        "investment_outlook": "Accessible to PMA. Avoid Canggu core saturation — prefer emerging locations (Amed, Sidemen, Munduk, Uluwatu) or strongly differentiated concepts. Specialty coffee + brunch model achieves 25–35% margins if well managed. Investment: IDR 10–20 billion for premium café. Break-even: 18–30 months in optimal location.",
+        "legacy_bridge": "From the traditional warung kopi to the third-wave specialty café. Contemporary Balinese café integrates local elements (Kintamani single-origin coffee, jamu bar) with international aesthetics. Café culture has become part of Bali's tourist identity."
+      }
     },
     {
       "kode_kbli_2025": "56304",
@@ -81628,7 +81663,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Positive and growing. Beverage kiosk segment driven by the bubble tea boom, health-conscious juice bars, and grab-and-go kopi. Low capex model with high turnover. Strong penetration in tourist areas and malls. Jamu (traditional herbal drinks) experiencing revival among wellness-oriented tourists.",
+        "bali_nuance": "Juice bars and smoothie bowls are integral to Bali's wellness lifestyle. Beachside kedai minuman perform well in Canggu, Seminyak, and Uluwatu. GoFood/GrabFood integration is essential. The jamu segment revival among wellness tourists creates a premium positioning opportunity.",
+        "operational_risks": "Micro/small scale accessible only to PMDN (Indonesian investors). PMA possible only as large enterprise with IDR 10 billion minimum investment — disproportionate for a single kiosk. Halal certification mandatory by October 2026. Margins vulnerable to fresh fruit price fluctuations.",
+        "investment_outlook": "Difficult to justify a standalone PMA for a beverage kiosk. Better strategy: include KBLI 56304 as a secondary activity in a multi-activity PMA (e.g., alongside 56303 café or 56101 restaurant). Franchise model is the most practical route for foreign investors. Rapid ROI (6–12 months) for efficient local operators.",
+        "legacy_bridge": "Evolution of the jamu gendong (ambulant jamu vendor) and traditional es campur toward the modern juice bar. The kedai minuman format is the most accessible entry point for first-time F&B entrepreneurs in Indonesia."
+      }
     },
     {
       "kode_kbli_2025": "56305",
@@ -81718,7 +81760,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Oligopolistic consolidation. GoFood dominates with ~52% market share, GrabFood ~33%, ShopeeFood/foodpanda the remainder. Indonesia's food delivery market is worth approximately IDR 87 trillion (2024) with projected 22% annual growth through 2027. Platform commission rates erode merchant margins significantly.",
+        "bali_nuance": "GoFood and GrabFood dominate in Bali with strong penetration among tourists and digital nomads. Ghost/dark kitchens proliferate — a single location can list 10+ virtual brands on platforms. Quality issues and 'SEO spam' problems on platforms. Demand concentrated in Denpasar-Badung corridor.",
+        "operational_risks": "High regulatory risk: food delivery tariff regulation is in flux (Permenkomdigi No. 8/2025 does not adequately cover food delivery, leaving GoFood and GrabFood in a regulatory grey zone). Platform commissions: GoFood 20%+IDR 1,000, GrabFood 30%, ShopeeFood 25%. Merchant dependency on platforms erodes margins. PMA possible as large tech enterprise.",
+        "investment_outlook": "Entry as a new platform is nearly impossible given the GoFood/GrabFood duopoly. Opportunity lies in SaaS/tech development for ghost kitchen optimization, or white-label aggregators for hotels/resorts. High investment threshold (IDR 50+ billion) for technological scale.",
+        "legacy_bridge": "The warung and pedagang keliling (itinerant vendor) are the analog version of food delivery. Digital platforms have formalized and scaled a food distribution model deeply rooted in Indonesian culture."
+      }
     },
     {
       "kode_kbli_2025": "58110",
@@ -92571,7 +92620,14 @@
       "pma_prioritas": false,
       "pma_nota": "Periklanan",
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Very positive — historic liberalization. KBLI 73100 covers full advertising services: creative advisory, production, media planning & buying, outdoor advertising, direct mail, and marketing consultancy. Under the old Negative List (PR 44/2016), advertising was 100% closed to foreign investment (ASEAN investors capped at 51%). The Positive Investment List (PR 10/2021) completely eliminated this restriction, opening the sector to 100% PMA — a landmark change. Indonesia's digital advertising market grows at double digits annually, driven by 215M+ internet users and 80% social media penetration.",
+        "bali_nuance": "Bali is a global content creation hub. Canggu, Seminyak, and Ubud attract thousands of content creators, influencers, and boutique agencies. Demand for digital marketing services in hospitality (hotels, villas, retreats, spas) is massive and growing. Wedding marketing is a premium sub-segment. The local market is Jakarta-dominated but there is significant space for boutique agencies specializing in tourism, wellness, and lifestyle brands.",
+        "operational_risks": "PPN 12% on digital advertising services from January 2025 — for cross-border services, the tax base is calculated at 11/12 of gross payment. PSE registration mandatory for digital platforms (PM Komdigi 5/2025). Komdigi issued non-compliance warnings to 25 global PSEs in February 2026 including Cloudflare, Dropbox, OpenAI, Shutterstock. Film production for commercials (KBLI 59112) remains 100% closed to foreign investment. Broadcast advertising (KBLI 60102/60202) closed to FDI (max 20% for development). TKA (foreign workers) permitted in senior direction, supervision, and expert consultancy roles only. Social media creator taxation framework being developed for 2026.",
+        "investment_outlook": "Among the most attractive sectors for PMA in 2026 following full liberalization. Minimum investment IDR 10 billion (paid-up capital IDR 2.5B per BKPM Reg 5/2025). Digital advertising is the highest-growth segment. Recommended specializations: hospitality marketing, influencer management, performance marketing for e-commerce. Asset-light model with potentially high margins. Bali-based agency serving regional ASEAN hospitality clients is a viable business model.",
+        "legacy_bridge": "From the era of reklame (physical billboards governed by local regulations requiring Bahasa Indonesia text to be larger than foreign language text) to fully liberalized global digital marketing. Indonesia has moved from a closed protectionist advertising market to one of the most open in ASEAN for foreign investors."
+      }
     },
     {
       "kode_kbli_2025": "73201",
@@ -92692,7 +92748,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "75000",
       "mapping_note": "Auto-matched to 75000 (Aktivitas Kesehatan Hewan...) score=73%",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Positive with stable growth. Indonesian PR is evolving toward digital PR, crisis management, and corporate reputation services. Demand is driven by corporate expansion, IPOs, and reputational management in the context of growing social media activism. The market for PR services in hospitality and luxury brands is expanding in Bali.",
+        "bali_nuance": "PR for hotels, resorts, and lifestyle brands is a consolidated segment in Bali. New luxury resort openings and wedding tourism expansion create continuous demand for specialized PR. Bali-based PR agencies manage media relations with international travel journalists, influencer trips, and brand activations. Ubud as a cultural hub generates PR demand for arts and wellness businesses.",
+        "operational_risks": "Generally open to foreign investors under Positive Investment List without specific ownership restrictions. Reputational risk: PR in Indonesia requires deep understanding of local culture and political dynamics. Content regulation (PM Komdigi 5/2025) impacts online content management. TKA permitted in senior/consultancy positions per Kepmenaker 228/2019. PPN 12% on service fees.",
+        "investment_outlook": "Accessible to PMA as large enterprise. The Bali PR market is still relatively unstructured — opportunity for international agencies to introduce best practices. Minimum investment IDR 10 billion. Asset-light professional services model with potentially 30–50% margins. Natural synergy with KBLI 73100 advertising in a multi-activity PMA.",
+        "legacy_bridge": "From formal government kehumasan (public relations) to contemporary digital PR. Indonesian PR retains a strong relational cultural component (gotong royong, silaturahmi) that foreign agencies must integrate into their approach."
+      }
     },
     {
       "kode_kbli_2025": "74111",
@@ -100622,7 +100685,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Growing niche driven by the creator economy boom. Copywriters and content writers are among the most sought-after roles in Indonesia's digital ecosystem. Demand for Bahasa Indonesia and English content for digital marketing, e-commerce product descriptions, and social media is massive. Under KBLI 2025, this code may be reassigned to group 9002 (creative and artistic activities) as sub-class 90024.",
+        "bali_nuance": "Canggu is a hub for international freelance writers and content creators. Many operate on E33G Remote Worker Visa but cannot legally serve Indonesian clients — creating a frequent legal trap. Demand for copywriting in hospitality (hotel websites, menus, brochures, listing descriptions) is consistent. Content creation for social media (Instagram, TikTok) is expanding rapidly.",
+        "operational_risks": "E33G visa trap critical: digital creatives on Remote Worker Visa cannot invoice Indonesian clients — all income must come from foreign sources. UU Hak Cipta No. 28/2014 protects copyright of foreign authors in Indonesia. PPN 12% applicable on content creation services. Social media creator taxation planned for 2026. KBLI 2025 restructuring: code may have moved to 90024.",
+        "investment_outlook": "As standalone, KBLI 90111 is typically an individual or micro activity — not ideal for direct PMA. Better as secondary KBLI in a multi-activity PMA alongside 73100 (advertising) or 62xxx (IT services). Agency/studio model is the most practical structure for foreign investment in content creation.",
+        "legacy_bridge": "From Indonesia's rich literary tradition (sastra — Pramoedya, Chairil Anwar) to digital copywriting. The literary heritage of Malay-Indonesian literature transforms into contemporary content economy."
+      }
     },
     {
       "kode_kbli_2025": "90112",
@@ -100658,7 +100728,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "90012",
       "mapping_note": "Cleaned: removed invalid ['90112']",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Positive and expanding. Indonesia's music industry grows with streaming (Spotify, YouTube Music) and demand for audio production for digital content. In Bali, music production for hospitality (ambient music for villas, hotels, spas, beach clubs) is a niche but lucrative segment. KBLI 2025 introduced 60103 (Audio On-Demand Streaming) as a specific new code.",
+        "bali_nuance": "Bali attracts international music producers for quality of life and manageable studio costs. Demand for ambient/chill music for beach clubs, hotel lobbies, and spas is consistent. Resident DJs and producers feed the Canggu/Seminyak music scene. Pesta Kesenian Bali (PKB) promotes traditional Balinese music as a cultural asset. Under KBLI 2025, reassigned to group 90022 (Creative Professionals in Music Art).",
+        "operational_risks": "UU Hak Cipta No. 28/2014 protects musical compositions. KBLI 2025 introduced specific codes for streaming (60103). Complex music licensing: sync rights, mechanical rights, performance rights require separate agreements. E33G trap: foreign musicians cannot produce for Indonesian clients without appropriate KITAS/PMA. Neighboring rights framework still developing in Indonesia.",
+        "investment_outlook": "Niche for PMA — best as component of a multi-activity company (with audio production + event management + advertising). Music production studio in Bali requires relatively low investment in equipment. Good margins in the hospitality licensing segment. Investment: IDR 10 billion for professional studio + licensing business.",
+        "legacy_bridge": "Balinese gamelan meets digital music production. Bali's sacred musical tradition (gamelan, kecak rhythms) reinvents itself as inspiration for contemporary ambient music and world music fusion, creating a globally marketable sonic identity."
+      }
     },
     {
       "kode_kbli_2025": "90113",
@@ -100674,7 +100751,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Cautious / regulated. Independent journalism operates in a delicate regulatory context in Indonesia. Press freedom is guaranteed by UU Pers No. 40/1999 but political pressures and digital content regulation (Komdigi) create an uncertain operating environment. Foreign journalism faces specific restrictions. Under KBLI 2025, reassigned as 90025 (Independent News Journalist).",
+        "bali_nuance": "International freelance journalists cover tourism, culture, and lifestyle in Bali. Travel journalism is a significant segment. However, investigative or political journalism by foreigners is a sensitive area. Foreign media must comply with regulations on foreign journalists (Permenlu). Bali-based content about hospitality and wellness is generally lower-risk than political coverage.",
+        "operational_risks": "Print media activities (KBLI 58130) are 100% closed to foreign investment. Independent journalism (90113/90025) has specific restrictions for foreigners. Foreign journalists require a specific journalist visa. Komdigi can order content takedowns and has strengthened PSE regulation. PSE registration mandatory for digital publishing platforms. Content about sensitive political topics carries enforcement risk.",
+        "investment_outlook": "NOT recommended for PMA. Journalism is one of the few sectors that remains closed or heavily restricted for foreign investors in Indonesia. Print media remains 100% closed to FDI. Possible indirect contribution via content creation (KBLI 90111) for foreign media outlets, but not as a primary PMA activity.",
+        "legacy_bridge": "Indonesia has a vibrant post-Reformasi (1998) journalistic tradition. Independent digital journalism (Tirto, Vice Indonesia, Kumparan) represents the modern evolution of a press that emerged from authoritarian constraints and is now navigating the digital regulation era."
+      }
     },
     {
       "kode_kbli_2025": "90120",
@@ -100724,7 +100808,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Very positive in Bali. Visual arts and photography are among the most dynamic segments of Bali's creative economy. Wedding photography/videography is a multi-million dollar industry. The contemporary art market in Ubud is experiencing a renaissance with new galleries, artist residencies, and festivals. Under KBLI 2025, reassigned as 90023 (Creative Professionals in Visual Arts).",
+        "bali_nuance": "Bali is Asia's #1 destination wedding location — the wedding photography/videography market is enormous. Foreign professional photographers MUST have a PMA to operate legally. Authorities actively monitor photographers with professional equipment without permits — unauthorized operators risk deportation and coordinators risk arrest. Ubud Open Studios (70+ artists), Ubud Art Ground (inaugural 2025 with 51 Balinese artists + 20 from CAFA Beijing), Dalam Seniman, and Titik Dua are redefining the art scene.",
+        "operational_risks": "CRITICAL: Foreign photographers operating in Bali without PMA risk deportation. Indonesia is among the strictest countries globally in enforcing permits for professional photography operations. E33G Remote Worker Visa does NOT cover photography services for local clients. PMA must be registered in the photographer's own name — nominee arrangements (local sponsors) are illegal. UU Hak Cipta No. 28/2014 protects visual works. PPN 12% on commercial photography services.",
+        "investment_outlook": "Very attractive for PMA in wedding photography/videography and commercial photography. Bali wedding photography commands premium rates: USD 3,000–15,000+ per shoot. Art galleries and art dealing are accessible as large enterprise. Investment: IDR 10 billion. Rapid payback for established wedding operations. The art gallery model (gallery + café + artist residency) is growing.",
+        "legacy_bridge": "From Bali's painting traditions (Ubud style, Batuan style, Kamasan school, the 1930s Pita Maha movement with Walter Spies and Rudolf Bonnet) to contemporary art and digital photography. Ubud Art Ground was created specifically to 'bridge the gap' in the Balinese art narrative: 'many prominent museums stopped telling the story in the 1950s.'"
+      }
     },
     {
       "kode_kbli_2025": "90130",
@@ -100760,7 +100851,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Stable with growing niches. This catch-all KBLI covers creative activities not classified elsewhere: graphic design, animation, creative consulting, art direction. KBLI 2025 has significantly fragmented this code — new specific codes introduced: 74130 (Graphic Design/Visual Communication), 74141 (Film/Video/Animation Design), 74142 (Game Content Design). Activities previously under 90130 should be mapped to the appropriate new specific code.",
+        "bali_nuance": "Bali attracts international graphic designers, illustrators, and art directors. The design segment for hospitality (hotel branding, F&B packaging, menu design) is consolidated. Boutique creative agencies in Canggu serve both local and international clients. The Ubud creative community generates demand for creative consulting and art curation. Under KBLI 2025: reassigned to 74130 (Graphic Design) or 90029 (Other Creative Professionals) depending on specific activity.",
+        "operational_risks": "KBLI 2025 has fragmented 90130 into specific codes — verify which code applies to the specific activity before OSS registration. UU Hak Cipta No. 28/2014 for IP protection of creative works. E33G trap for freelance creatives serving Indonesian clients. PPN 12% on creative services. Mandatory KBLI update by June 2026.",
+        "investment_outlook": "Accessible to PMA as component of a multi-activity company. The new KBLI 74130 (Graphic Design) may be more appropriate for design studios. Investment: IDR 10 billion minimum. Asset-light model with high margins in hospitality design. Strong synergy with 73100 (advertising) and 90120 (visual arts) in a creative-focused multi-activity PMA.",
+        "legacy_bridge": "Balinese decorative arts (ukiran woodcarving, batik, offerings design, traditional architecture ornamentation) transform into contemporary creative arts. Balinese contemporary design fuses traditional aesthetic vocabulary with global visual languages."
+      }
     },
     {
       "kode_kbli_2025": "90200",
@@ -100776,7 +100874,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Positive and recovering. The live events sector is in full post-pandemic recovery. In Bali, performance arts encompasses both sacred traditions (Kecak, Barong, Legong) and contemporary events (concerts, festivals, theatre). Wedding entertainment and corporate events are the highest-revenue commercial segments. Pesta Kesenian Bali (PKB) 2024 generated IDR 192.3 billion in economic impact with 20,000 artists involved.",
+        "bali_nuance": "Traditional Balinese performances are integral to the tourism offering. Uluwatu Kecak at sunset is a global icon. Beach club events, music festivals, and destination wedding entertainment are premium commercial segments. The Bali World Culture Celebration (BWCC) brings international artists during PKB. Wedding entertainment packages range from USD 5,000 to USD 50,000+.",
+        "operational_risks": "TDUP required for tourism-linked activities. Entertainment tax PBJT 40–75% may apply to specific performances in nightclub contexts. Event permits (izin keramaian) mandatory for every public performance. TKA foreign artists require specific permits for paid performances. Cultural sensitivity: sacred Balinese performances are not 'entertainment' and require strict protocol respect — inappropriate commercialization risks community backlash.",
+        "investment_outlook": "Accessible to PMA as large enterprise in the event management/production segment. Wedding entertainment market at Bali is premium and growing. Integration opportunities with venue management (90310) and festival organization (90391). Investment: IDR 10–25 billion for a structured event production company.",
+        "legacy_bridge": "Balinese performing arts are UNESCO Intangible Cultural Heritage. Kecak, Barong, and Legong are expressions of living tradition that interfaces with tourism without losing its sacred character — a delicate balance that any investor must understand and respect."
+      }
     },
     {
       "kode_kbli_2025": "90310",
@@ -100792,7 +100897,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Positive in Bali. The art infrastructure in Ubud is expanding rapidly. New galleries and creative venues are bridging the gap between traditional and contemporary art. The Balinese contemporary art market is attracting international collectors. Ubud Art Ground (inaugurated July 2025, featuring 51 Balinese artists + 20 from CAFA Beijing), Dalam Seniman, DESA Artist-In-Residence (Kedewatan), and Titik Dua (hotel + exhibition space with monthly shows) are reshaping the scene.",
+        "bali_nuance": "Ubud is the heart of Balinese art with dozens of operational galleries. Traditional Balinese art (Kamasan style, Lempad works) coexists with contemporary international installations. Seminyak/Canggu have commercial galleries oriented toward lifestyle buyers. The gallery + café + artist residency model is growing as an integrated hospitality-arts concept. New galleries explicitly focus on filling the 'narrative gap' in Balinese art post-1950s.",
+        "operational_risks": "Customs regulations for import/export of artworks — CITES compliance for works incorporating protected materials. UU Hak Cipta No. 28/2014 for exhibited and sold works. Anti-money laundering compliance for high-value art transactions. PPATK reporting obligations for art transactions above IDR 500 million. Gallery operations may require specific tourism licenses (TDUP) if primarily serving tourists.",
+        "investment_outlook": "Accessible to PMA as large enterprise in the commercial gallery segment. The Ubud art market is in a maturation phase with appreciation potential. Gallery + café + artist residency integrated model generates multiple revenue streams. Investment: IDR 10–20 billion for a premium gallery operation. Longer payback (36–48 months) but high brand value potential.",
+        "legacy_bridge": "From the Pita Maha era (1930s, Walter Spies and Rudolf Bonnet establishing the Ubud art movement) to 21st-century contemporary galleries. The art infrastructure of Ubud is the bridge between Bali's painting tradition and the global contemporary art market."
+      }
     },
     {
       "kode_kbli_2025": "90391",
@@ -100808,7 +100920,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Positive, government-supported. Kemenparekraf actively promotes cultural festivals as creative economy drivers. The Rindekraf 2026–2045 (replacing Perpres 142/2018) positions festivals as pillars of the national growth strategy. Pesta Kesenian Bali (PKB) 2024 generated IDR 192.3 billion in economic impact and is included in the Karisma Event Nusantara (KEN) government program.",
+        "bali_nuance": "PKB is Bali's most important cultural festival: IDR 192.3 billion economic impact (2024), 20,000 artists involved (2025), hotel occupancy +2% during the event. Ubud Writers & Readers Festival, Bali Spirit Festival, Ubud Food Festival, and Ubud Open Studios are international events attracting cultural tourists. Private corporate festival organization for brands and companies is an emerging commercial opportunity.",
+        "operational_risks": "Event permits (izin keramaian) mandatory and require police coordination. Coordination with local authorities (desa adat, banjar) is essential in Bali — community buy-in is not optional. Event insurance required. Safety regulations for events have been strengthened after past incidents. Cultural sensitivity: festivals with Balinese cultural themes must respect local religious authorities and adat protocols.",
+        "investment_outlook": "Accessible to PMA as large enterprise in the event management/festival organization segment. Kemenparekraf offers support and potential incentives for cultural events aligned with Rindekraf 2026–2045. Revenue model: sponsorships + ticketing + F&B + accommodation partnerships. Investment: IDR 10–30 billion for a structured festival operation.",
+        "legacy_bridge": "Balinese cultural festivals (PKB, Galungan celebrations, Nyepi) are expressions of a culture that celebrates through community. Contemporary event organization inherits this tradition of collective celebration and projects it into a global context while maintaining cultural integrity."
+      }
     },
     {
       "kode_kbli_2025": "90399",
@@ -103925,7 +104044,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Very positive in Bali. Massive demand from 15,000+ digital nomads, long-stay tourists, and villa/hotel operators that outsource laundry. Pickup-and-delivery model is standard. Sustained growth from the Airbnb villa rental boom (39,000+ listings in Bali). Healthy margins for efficient operators. Premium services (same-day, 3-hour express) command higher rates.",
+        "bali_nuance": "Laundry service is one of the most consistently demanded businesses in Bali. Demand concentrated in Seminyak, Canggu, Nusa Dua, and Sanur. Prices range IDR 24,000–80,000/kg depending on service level. Competition is high but quality supply falls short of demand. Eco-friendly laundry (plant-based detergents, water recycling) is a growing differentiator.",
+        "operational_risks": "Generally open to various scales. PMA could operate as large enterprise but the model is typically micro/small. Key operating costs: water, detergent, energy, labor. Environmental risk: wastewater and chemical management compliance. NIB mandatory. Low entry barrier = high competition. No dedicated halal certification requirement for laundry services.",
+        "investment_outlook": "Accessible indirectly to PMA via franchise or as an integrated service within a multi-activity hospitality company. Scalable model: centralized hub + distributed pickup/delivery. Investment: IDR 500 million – 5 billion for a structured operation. Payback: 12–18 months for an efficient operator.",
+        "legacy_bridge": "From the traditional dobi (manual washerwoman) to the professional laundry service with app-based booking. The Bali laundry industry is professionalizing rapidly to meet international standards demanded by tourists and digital nomads."
+      }
     },
     {
       "kode_kbli_2025": "96210",
@@ -103960,7 +104086,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Stable with growing premium niche. Traditional barbershop remains a micro-scale activity. However, the 'premium barbershop' / grooming lounge segment is growing in Bali driven by expat and digital nomad demand. Chains like Captain Barbershop are expanding across Indonesia. Male grooming demand increasing among Indonesian millennials and expats.",
+        "bali_nuance": "Premium barbershops in Canggu and Seminyak serve international clientele willing to pay IDR 150,000–300,000 for a cut and grooming service. The integrated barbershop + café/bar model is popular. Strong demand from the surf community for beard grooming and lifestyle haircuts.",
+        "operational_risks": "KBLI 96210 is typically micro/small scale — not directly accessible to PMA as standalone. TDUP required if classified as a tourist service. Reputational dependency on individual barber quality and skill. High staff turnover. Hygiene and sanitation standards must be maintained.",
+        "investment_outlook": "Not ideal for PMA as a standalone business given the micro scale. Better as a component of a multi-activity PMA (e.g., alongside spa 96230 or beauty salon 96220). The franchise model (e.g., Captain Barbershop) is the most practical route. Investment per single outlet: IDR 100–500 million.",
+        "legacy_bridge": "The tukang cukur (traditional barber) reinvents itself as a grooming specialist. The Indonesian pangkas rambut tradition fuses with Western barber culture, creating a hybrid experience appreciated by the tourist market."
+      }
     },
     {
       "kode_kbli_2025": "96220",
@@ -103976,7 +104109,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Very positive. The Indonesian beauty salon market is growing strongly, driven by international wedding tourism, the K-beauty wave, and the expanding middle class. In Bali, the bridal beauty segment is particularly strong. The beauty salons and spas market in Indonesia shows positive expansion projections through 2031.",
+        "bali_nuance": "Bali is a premier wedding destination — demand for bridal makeup, hair styling, and nail art for international weddings is high and commands premium margins. Beauty salons in Seminyak and Ubud serve international clientele. The 'beauty tourism' segment grows in parallel with wellness tourism. Korean beauty techniques (BB glow, semi-permanent makeup) are particularly in demand.",
+        "operational_risks": "Halal certification for cosmetics used on premises required by 2026 — significant supply chain impact as many cosmetic products will need BPJPH certification. TDUP required for tourist-oriented salons. Qualified staff critical — certified beauty therapists are in demand. Risk of using non-BPOM-registered cosmetic products.",
+        "investment_outlook": "Accessible to PMA as large enterprise in the premium/bridal segment. High margins in bridal beauty (30–50% on services). Natural synergy with wedding planning, photography, and venue management. Investment: IDR 10–15 billion for a premium beauty salon. Structurally growing market.",
+        "legacy_bridge": "From the juru rias pengantin (traditional wedding makeup artist) to the international beauty salon. Traditional Balinese beauty techniques (lulur body scrub, boreh herbal treatment) are incorporated as signature offerings in contemporary salons."
+      }
     },
     {
       "kode_kbli_2025": "96230",
@@ -103992,7 +104132,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Positive — with a major regulatory game-changer. The Constitutional Court ruling (MK No. 19/PUU-XXII/2024, January 2025) EXCLUDED SPA from the 40–75% entertainment tax, reclassifying it as a traditional health service. This removes the primary fiscal threat and dramatically improves the sector's investment profile. Bali wellness tourism is booming — spa numbers grew 160% since 2003, with approximately 390 active spas and 21 under construction.",
+        "bali_nuance": "Bali has been designated 'Asian Spa Capital.' The spa sector generates the largest share of wellness industry revenue on the island. Foreign investment is increasing following structural reforms that simplify registration and expand foreign property rights. Day spa, resort spa, and integrated health center formats are all expanding. Traditional Balinese techniques (pijat Bali, boreh, lulur) are globally recognized USPs.",
+        "operational_risks": "EXEMPT from 40–75% entertainment tax (confirmed by MK No. 19/PUU-XXII/2024) — SPA is now classified as a traditional health service, not entertainment. TDUP mandatory. Certified therapists (terapis spa) required. Residual regional-level regulatory confusion about the exemption's application may persist. Halal certification for cosmetic products used in treatments required by October 2026.",
+        "investment_outlook": "Among the most attractive sectors for PMA in Bali in 2026. The tax exemption dramatically improves the return profile. Investment: IDR 15–50 billion for a premium day spa. Strong synergy with hotels, villas, and retreat centers. Foreign investment increasing in 2025 due to structural reforms. Payback: 24–36 months for a well-positioned operation.",
+        "legacy_bridge": "The traditions of mandi uap (herbal steam bath) and pijat Bali (Balinese massage) are living cultural heritage. The modern spa is the vehicle that transforms this legacy into a premium industry while maintaining the spiritual and traditional medicine connection that makes Balinese wellness globally distinctive."
+      }
     },
     {
       "kode_kbli_2025": "96300",
@@ -104008,7 +104155,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Stable niche, low investor attractiveness. Indonesian funeral services are traditionally managed by religious communities and family businesses. Demand is constant but monetization is culturally sensitive. The formal commercial market is limited. Not a growth sector in the conventional sense.",
+        "bali_nuance": "In Bali, funeral services are dominated by Hindu-Balinese tradition (ngaben cremation ceremony). Families and banjar (local community associations) manage the majority of rituals. A niche exists for expat/international community services: body repatriation and funeral assistance for tourists and long-term residents. Cultural sensitivity is extreme.",
+        "operational_risks": "Culturally sensitive sector with stringent local regulations. Not typically attractive for PMA. Requirements: health permits, environmental compliance for crematoriums, coordination with adat (customary law). Market dominated by local operators and religious institutions. Any commercial involvement risks cultural backlash.",
+        "investment_outlook": "Not recommended for PMA in Bali. The market is culturally reserved and not scalable with conventional business models. The only viable niche: funeral assistance services for the international community (body repatriation, cremation assistance for tourists and expats). Minimal investment, limited returns.",
+        "legacy_bridge": "The ngaben (Balinese cremation ceremony) is one of the most significant rituals in Hindu-Balinese culture. Any commercial activity in this sector must operate with deep respect for local traditions. This is not a sector for disruption but for respectful service enhancement."
+      }
     },
     {
       "kode_kbli_2025": "96400",
