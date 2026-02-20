@@ -92,7 +92,7 @@ class UnifiedScraper:
         
         try:
             # Try RSS/Atom feed first (fast & reliable)
-            feed = feedparser.parse(url, timeout=5)
+            feed = feedparser.parse(url)
             if feed.entries:
                 self.log(f'  ✓ Found {len(feed.entries)} feed entries')
                 for entry in feed.entries[:self.limit_per_source]:
