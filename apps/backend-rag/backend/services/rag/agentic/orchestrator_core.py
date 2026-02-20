@@ -154,15 +154,20 @@ class OrchestratorCore:
 
                 # Record metrics
                 from backend.app.metrics import faq_cache_hits_total
-                faq_cache_hits_total.labels(domain=cached.get("metadata", {}).get("domain", "unknown")).inc()
+
+                faq_cache_hits_total.labels(
+                    domain=cached.get("metadata", {}).get("domain", "unknown")
+                ).inc()
 
                 return CoreResult(
                     answer=cached["answer"],
-                    sources=[{
-                        "type": "faq_cache",
-                        "source": cached.get("metadata", {}).get("source", "team_qa"),
-                        "domain": cached.get("metadata", {}).get("domain", "unknown")
-                    }],
+                    sources=[
+                        {
+                            "type": "faq_cache",
+                            "source": cached.get("metadata", {}).get("source", "team_qa"),
+                            "domain": cached.get("metadata", {}).get("domain", "unknown"),
+                        }
+                    ],
                     model_used="faq_cache",
                     entities=extracted_entities,
                     timings={"total": time.time() - start_time, "faq_cache_lookup": 0.001},
@@ -174,6 +179,7 @@ class OrchestratorCore:
 
                 # Record metrics
                 from backend.app.metrics import faq_cache_misses_total
+
                 faq_cache_misses_total.inc()
 
                 return None
@@ -184,6 +190,7 @@ class OrchestratorCore:
             # Record error metric
             try:
                 from backend.app.metrics import faq_cache_errors_total
+
                 faq_cache_errors_total.inc()
             except ImportError:
                 pass
@@ -293,14 +300,19 @@ class OrchestratorCore:
         async def _fetch_langgraph_workflow_task():
             """KGLangGraphOrchestrator task (Phase 3)"""
             if not self.kg_langgraph_orchestrator:
-                logger.warning("🔀 [KG LangGraph] DISABLED: Orchestrator not initialized (ENABLE_KG_LANGGRAPH=false or db_pool missing)")
+                logger.warning(
+                    "🔀 [KG LangGraph] DISABLED: Orchestrator not initialized (ENABLE_KG_LANGGRAPH=false or db_pool missing)"
+                )
                 return None
             logger.info("🔀 [KG LangGraph] ENABLED: Starting workflow synthesis...")
 
             try:
                 with trace_span("kg.langgraph", {"query_length": len(query)}):
                     # Initialize orchestrator if needed
-                    if not hasattr(self.kg_langgraph_orchestrator, 'app') or self.kg_langgraph_orchestrator.app is None:
+                    if (
+                        not hasattr(self.kg_langgraph_orchestrator, "app")
+                        or self.kg_langgraph_orchestrator.app is None
+                    ):
                         await self.kg_langgraph_orchestrator.initialize()
 
                     # Execute LangGraph workflow
@@ -321,7 +333,9 @@ class OrchestratorCore:
 
                     return result
             except Exception as e:
-                logger.warning(f"⚠️ [KG LangGraph] Failed to synthesize workflow: {e}", exc_info=True)
+                logger.warning(
+                    f"⚠️ [KG LangGraph] Failed to synthesize workflow: {e}", exc_info=True
+                )
                 set_span_status("error", str(e))
                 return None
 
@@ -392,7 +406,11 @@ class OrchestratorCore:
         total_time = time.time() - start_time
 
         # Log parallel execution summary
-        if not isinstance(extracted_entities, Exception) and not isinstance(kg_context, Exception) and not isinstance(langgraph_result, Exception):
+        if (
+            not isinstance(extracted_entities, Exception)
+            and not isinstance(kg_context, Exception)
+            and not isinstance(langgraph_result, Exception)
+        ):
             entity_time_actual = time.time() - entity_start
             kg_time_actual = time.time() - kg_start if kg_context else 0.0
             langgraph_time_actual = time.time() - langgraph_start if langgraph_result else 0.0
@@ -406,7 +424,11 @@ class OrchestratorCore:
 
         # Extract workflow dict for direct answer injection
         workflow_result = None
-        if langgraph_result and isinstance(langgraph_result, dict) and langgraph_result.get("workflow"):
+        if (
+            langgraph_result
+            and isinstance(langgraph_result, dict)
+            and langgraph_result.get("workflow")
+        ):
             workflow_result = langgraph_result["workflow"]
 
         return extracted_entities, system_context_for_prompt, workflow_result
@@ -721,10 +743,18 @@ class OrchestratorCore:
 
         # Retrieval debug logging
         logger.info(f"\U0001f4da [Retrieval] Collections interrogated: {collections_used}")
-        source_collections = list({
-            s.get('collection', s.get('source', 'unknown')) if isinstance(s, dict) else str(s)
-            for s in sources
-        }) if sources else []
+        source_collections = (
+            list(
+                {
+                    s.get("collection", s.get("source", "unknown"))
+                    if isinstance(s, dict)
+                    else str(s)
+                    for s in sources
+                }
+            )
+            if sources
+            else []
+        )
         logger.info(
             f"\U0001f4c4 [Retrieval] Chunks retrieved: {len(sources)} from {source_collections}"
         )
@@ -788,7 +818,9 @@ class OrchestratorCore:
         if langgraph_workflow:
             workflow_text = self._format_workflow_for_prompt(langgraph_workflow)
             result.answer = result.answer.rstrip() + "\n\n" + workflow_text
-            logger.info(f"🔗 [KG LangGraph] Workflow included in response: {langgraph_workflow.get('type')}")
+            logger.info(
+                f"🔗 [KG LangGraph] Workflow included in response: {langgraph_workflow.get('type')}"
+            )
 
         return result
 
@@ -870,13 +902,23 @@ class OrchestratorCore:
 
         workflow = None
         try:
-            extracted_entities, system_context_for_prompt, workflow = await _extract_entities_kg_with_context()
+            (
+                extracted_entities,
+                system_context_for_prompt,
+                workflow,
+            ) = await _extract_entities_kg_with_context()
         except Exception as e:
             logger.error(f"❌ KG extraction failed: {e}", exc_info=True)
             extracted_entities = {}
             system_context_for_prompt = ""
 
-        return user_context, optimized_history, extracted_entities, system_context_for_prompt, workflow
+        return (
+            user_context,
+            optimized_history,
+            extracted_entities,
+            system_context_for_prompt,
+            workflow,
+        )
 
     async def check_gates_and_cache(
         self,
@@ -944,10 +986,13 @@ class OrchestratorCore:
         if not system_context_for_prompt:
             _, system_context_for_prompt = await self.extract_entities_and_kg_context(query)
 
-        # Build system prompt
+        # Build system prompt - handle None user_context
+        safe_user_context = user_context or {}
+        user_id = (safe_user_context.get("profile") or {}).get("id") or "anonymous"
+
         system_prompt = self.prompt_builder.build_system_prompt(
-            user_id=user_context.get("profile", {}).get("id") or "anonymous",
-            context=user_context,
+            user_id=user_id,
+            context=safe_user_context,
             query=query,
             deep_think_mode=deep_think_mode,
             additional_context=system_context_for_prompt,
@@ -959,10 +1004,10 @@ class OrchestratorCore:
         logger.debug(f"🔍 Query: {query}")
         logger.debug(f"🔍 System prompt length: {len(system_prompt)} chars")
         logger.debug(f"🔍 KG context length: {len(system_context_for_prompt)} chars")
-        logger.debug(f"🔍 User context facts: {len(user_context.get('facts', []))} facts")
+        logger.debug(f"🔍 User context facts: {len(safe_user_context.get('facts', []))} facts")
         logger.debug(f"🔍 Conversation history: {len(history)} messages")
         logger.debug(f"🔍 Deep think mode: {deep_think_mode}")
-        logger.debug(f"🔍 First 1000 chars of KG context:\\n{system_context_for_prompt[:1000]}...")
+        logger.debug(f"🔍 First 1000 chars of KG context:\n{system_context_for_prompt[:1000]}...")
         logger.debug(f"🔍 ===== END CONTEXT BREAKDOWN =====")
 
         return model_tier, deep_think_mode, state, system_prompt
