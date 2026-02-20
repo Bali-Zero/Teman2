@@ -114,19 +114,23 @@ class LLMGateway:
         self._genai_client: GenAIClient | None = None
 
         # Model name constants - Updated 2026-02-21
-        # Vertex AI model names (check availability in GCP Console)
-        # gemini-2.5-flash-preview-* not yet available in all regions
-        # gemini-2.0-flash is the current stable with tool calling support
-        self.model_name_pro = "gemini-2.0-flash"  # Primary: stable, tool calling
-        self.model_name_flash = "gemini-2.0-flash"  # Same as pro
-        self.model_name_fallback = "gemini-1.5-flash"  # Fallback: older stable
-
-        # Future: When gemini-2.5-flash available, update to:
-        # self.model_name_pro = "gemini-2.5-flash"
+        # gemini-3-flash has a response parsing bug: 'NoneType' object has no attribute 'get'
+        # Using gemini-2.0-flash (stable) until response handler is fixed
+        #
+        # TODO: Fix response parser for gemini-3-flash
+        # Error: response object is None when model returns tool calls
+        #
+        # Gemini 3 Flash specs (when fixed):
+        # - MMLU: 87%, SWE-bench: 78% (best coding)
+        # - Cost: $0.50/1M input (20x cheaper than GPT-5.2)
+        # - Speed: 3x faster than Pro
+        self.model_name_pro = "gemini-2.0-flash"  # Primary: stable
+        self.model_name_flash = "gemini-2.0-flash"
+        self.model_name_fallback = "gemini-1.5-flash"
 
         logger.info(
             "✅ LLMGateway: Model configuration ready (gemini-2.0-flash primary, "
-            "gemini-1.5-flash fallback)"
+            "gemini-1.5-flash fallback) - gemini-3-flash pending fix"
         )
         self.model_name_fallback = "gemini-2.0-flash"  # Fallback: older but stable
 
