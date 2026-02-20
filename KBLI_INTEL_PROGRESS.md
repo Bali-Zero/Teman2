@@ -1,6 +1,6 @@
 # KBLI intel_2026 Enrichment Progress
 
-**Stato:** 122 / 1563 codici arricchiti (7.8%) + 4 intel upgrade
+**Stato:** 129 / 1563 codici arricchiti (8.3%) + 5 intel upgrade
 **Aggiornato:** 2026-02-20
 **File JSON:** `source_documents/KBLI_2025_FINAL_CLEAN.json`
 
@@ -138,17 +138,19 @@ MDX: `kbli-2025-automotive-food-textile-wholesale-bali.mdx`
 
 ## MDX Articles Create
 
-| File                                                              | Batch | Codici coperti                                                       |
-| ----------------------------------------------------------------- | ----- | -------------------------------------------------------------------- |
-| `kbli-2025-wholesale-tech-trading.mdx`                            | pre   | 46100, 46511, 46512                                                  |
-| `kbli-2025-wholesale-machinery-construction-bali.mdx`             | 1     | 46521, 46523, 46530, 46591, 46620, 46631, 46632, 46752               |
-| `kbli-2025-health-cosmetics-consumer-goods-bali.mdx`              | 2     | 46430, 46441, 46442, 46451, 46452, 46491, 46492, 46493, 46499, 46791 |
-| `kbli-2025-wholesale-consumer-goods-strategic-framework-bali.mdx` | 3     | 464xx (approfondimento strategico)                                   |
-| `kbli-2025-bali-investment-regulatory-framework.mdx`              | 4     | retail, costruzione, manifattura, educazione, turismo, servizi       |
-| `kbli-2025-automotive-food-textile-wholesale-bali.mdx`            | 5     | 463xx, 46411-46415, 46420, 46494-46496                               |
-| `indonesia-political-regulatory-risk-intelligence-guide.mdx`      | 6     | 49231, 49296, 55101, 55103, 55203, 55209, 62199, 62201, 62209, 64210 |
-| `kbli-2025-wholesale-ict-machinery-vehicles-bali.mdx`             | 7a    | 46511, 46512, 46521, 46523, 46530, 46591, 46620, 46631, 46632        |
-| `kbli-2025-wholesale-consumer-goods-pharma-cosmetics-bali.mdx`    | 7b    | 46430, 46441, 46442, 46451, 46452, 46491, 46492, 46493, 46499, 46791 |
+| File                                                              | Batch | Codici coperti                                                                                                                             |
+| ----------------------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `kbli-2025-wholesale-tech-trading.mdx`                            | pre   | 46100, 46511, 46512                                                                                                                        |
+| `kbli-2025-wholesale-machinery-construction-bali.mdx`             | 1     | 46521, 46523, 46530, 46591, 46620, 46631, 46632, 46752                                                                                     |
+| `kbli-2025-health-cosmetics-consumer-goods-bali.mdx`              | 2     | 46430, 46441, 46442, 46451, 46452, 46491, 46492, 46493, 46499, 46791                                                                       |
+| `kbli-2025-wholesale-consumer-goods-strategic-framework-bali.mdx` | 3     | 464xx (approfondimento strategico)                                                                                                         |
+| `kbli-2025-bali-investment-regulatory-framework.mdx`              | 4     | retail, costruzione, manifattura, educazione, turismo, servizi                                                                             |
+| `kbli-2025-automotive-food-textile-wholesale-bali.mdx`            | 5     | 463xx, 46411-46415, 46420, 46494-46496                                                                                                     |
+| `indonesia-political-regulatory-risk-intelligence-guide.mdx`      | 6     | 49231, 49296, 55101, 55103, 55203, 55209, 62199, 62201, 62209, 64210                                                                       |
+| `kbli-2025-wholesale-ict-machinery-vehicles-bali.mdx`             | 7a    | 46511, 46512, 46521, 46523, 46530, 46591, 46620, 46631, 46632                                                                              |
+| `kbli-2025-wholesale-consumer-goods-pharma-cosmetics-bali.mdx`    | 7b    | 46430, 46441, 46442, 46451, 46452, 46491, 46492, 46493, 46499, 46791                                                                       |
+| `kbli-2025-retail-sector-bali-investment-guide.mdx`               | 8     | 47191, 47222, 47242, 47401, 47404, 47406, 47521, 47592, 47620, 47690, 47712, 47714, 47721, 47722, 47733, 47751, 47761, 47774, 47781, 47782 |
+| `kbli-2025-hospitality-villa-hotel-bali-investment-guide.mdx`     | 9     | 55101, 55102, 55103, 55104, 55105, 55106, 55201, 55203, 55204, 55209, 55901                                                                |
 
 ---
 
@@ -261,11 +263,42 @@ MDX: `indonesia-political-regulatory-risk-intelligence-guide.mdx`
 - 47620 = attrezzatura ricreativa/sportiva, non media fisici
 - Soglia 400m² è il confine chiave per proprietà PMA retail
 
+---
+
+### Batch 9 — Hospitality & Accommodation (Villa, Hotel, Homestay, Management)
+
+**Nuovi codici arricchiti (7):**
+| Codice | Titolo |
+|--------|--------|
+| 55102 | AKTIVITAS HOTEL BINTANG EMPAT |
+| 55104 | AKTIVITAS HOTEL BINTANG DUA |
+| 55105 | AKTIVITAS HOTEL BINTANG SATU |
+| 55106 | AKTIVITAS HOTEL NONBINTANG |
+| 55201 | AKTIVITAS RUMAH TINGGAL SEWA (HOMESTAY) |
+| 55204 | AKTIVITAS APARTEMEN HOTEL |
+| 55901 | AKTIVITAS JASA MANAJEMEN AKOMODASI |
+
+**Intel upgrade (operational_risks + legacy_bridge) su 1 codice:**
+
+- 55203 (Vila) — aggiunto: transizione 55193→55203, moratoria Sarbagita, OSS-RDTR GPS enforcement, capital paradox BKPM 5/2025
+
+**MDX article create (1):**
+| File | Batch | Codici coperti |
+|------|-------|----------------|
+| `kbli-2025-hospitality-villa-hotel-bali-investment-guide.mdx` | 9 | 55101, 55102, 55103, 55104, 55105, 55106, 55201, 55203, 55204, 55209, 55901 |
+
+**Note batch:**
+
+- Transizione critica: KBLI 2020 55193 (Pondok Wisata) → KBLI 2025 55203 (Aktivitas Vila)
+- Moratoria Sarbagita: costruzione bloccata in Denpasar, Badung, Gianyar, Tabanan
+- OSS-RDTR GPS: licenze validate via coordinate GPS sulla mappa GIS RDTR
+- 55201 (homestay) de facto riservato WNI — condizione di residenza del proprietario
+- 55901 (management) il veicolo chiave per PMA in hospitality
+
 ## Prossimi Batch
 
-- Batch 9: in attesa
+- Batch 10: in attesa
 - Settori da coprire (non ancora arricchiti):
-  - Hospitality: 55102 (4★), 55104 (2★), 55105 (1★), 55106 (nonbintang), 55201 (homestay), 55204 (apartemen hotel), 55901 (villa management)
   - IT: 62110 (video game), 62191-62194 (app specifiche), 62900 (IT services)
   - Finance: 64991 (venture capital), 64995 (carbon trading)
   - Real estate: 68111 (sviluppo immobiliare), 68112 (sewa), 68113 (pengelolaan)
