@@ -86676,7 +86676,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "mapping_note": "Agent mapping: 64911 (Perusahaan Pembiayaan Konvensi...) [high]",
       "kbli_2020_source": "64911",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Settore leasing maturo e consolidato, dominato da sussidiarie di gruppi bancari (Astra, BCA, Mandiri). Domanda trainata da finanziamento veicoli, macchinari industriali e equipment. PMA attrattività moderata in mercato competitivo con margini compressi. Crescita stabile ma non eccezionale.",
+        "bali_nuance": "Domanda leasing a Bali collegata a villa economy (veicoli, attrezzature hospitality), flotte di trasporto turistico, costruzioni e attrezzature F&B. Potenziale di nicchia per leasing energia rinnovabile (pannelli solari, sistemi HVAC) per resort e strutture alberghiere in espansione verso Nord Bali.",
+        "operational_risks": "Supervisione OJK tramite POJK 46/2024 (Perusahaan Pembiayaan). Foreign ownership max 85%. Capitale minimo IDR 100 miliardi per operazioni nazionali. POJK 42/2024 impone governance rafforzata. UU P2SK fornisce framework integrato. Competizione intensa con grandi gruppi bancari entrenched.",
+        "investment_outlook": "ROI stabile ma modesta (single-digit ROE per i maggiori player). Opportunità 2026: leasing asset green (EV, pannelli solari) come nicchia differenziante. Più realistica come JV con partner locale nel settore bancario. Barriere capitale molto elevate per standalone PMA.",
+        "legacy_bridge": "KBLI 64910 invariato 2020→2025. Aggiornamento OSS obbligatorio entro 18 giugno 2026. POJK 46/2024 è norma di riferimento principale entrata in vigore fine 2024. Licenze esistenti valide durante transizione."
+      }
     },
     {
       "kode_kbli_2025": "64920",
@@ -86746,7 +86753,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "80100",
       "mapping_note": "Auto-matched to 80100 (Aktivitas Keamanan Swasta...) score=67%",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Mercato factoring di nicchia in Indonesia, meno sviluppato del leasing. Crescente interesse per supply chain finance e invoice discounting con integrazione fintech. PMI indonesiane hanno forte bisogno di working capital ma il factoring tradizionale ha bassa penetrazione. Opportunità nel digital factoring.",
+        "bali_nuance": "Applicabilità limitata a Bali per tessuto economico dominato da micro-imprese informali turistiche. Potenziale per supply chain finance B2B nel settore hospitality (hotel, ristoranti, resort) e filiera approvvigionamento turistica. Villa economy genera fatture commerciali adatte al factoring B2B.",
+        "operational_risks": "Stessa regolazione delle Perusahaan Pembiayaan (POJK 46/2024). Foreign ownership max 85%. Requisiti patrimoniali analoghi al leasing (IDR 100 miliardi). Difficoltà di valutazione crediti PMI con bassa trasparenza finanziaria. PPN 12% applicabile sulle fee di servizio dal 2025.",
+        "investment_outlook": "ROI potenzialmente superiore al leasing nel factoring digitale per margini più elevati. Opportunità 2026: piattaforme fintech supply chain finance integrate con P2P lending. Modello ibrido factoring-fintech può entrare via sandbox OJK (POJK 3/2024). Barriere: stessi requisiti patrimoniali del leasing.",
+        "legacy_bridge": "KBLI 64930 invariato 2020→2025. POJK 46/2024 copre tutte le attività di pembiayaan incluso factoring. Aggiornamento OSS entro 18 giugno 2026. Modelli digitali emergenti abilitati da POJK 3/2024 (ITSK sandbox)."
+      }
     },
     {
       "kode_kbli_2025": "64940",
@@ -87078,7 +87092,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Mercato VC nascente ma in crescita sostenuta. Indonesia ha registrato crescita PIL oltre 5% nel Q2 2025 con proiezioni governative 6-8% per 2026. OJK ha emesso 9 nuovi POJK per settore PVML a fine 2024. Cap PMA all'85% del capitale versato. Deal flow VC formale concentrato a Jakarta ma ecosistema startup in espansione.",
+        "bali_nuance": "Bali hub globale per founders e remote teams. Coworking spaces (Dojo Bali, Outpost, BWork) fungono da incubatori informali. Potenziale per micro-VC focalizzati su turismo tech, wellness tech e PropTech balinesi. Comunità crypto-nativa crea pipeline di deal non convenzionali.",
+        "operational_risks": "Licenza OJK obbligatoria (POJK 25/2023 aggiornato da POJK 46/2024). Foreign ownership max 85% del capitale versato. Cittadini stranieri possono detenere azioni VCC solo tramite transazioni di borsa. Equity minima IDR 50 miliardi per venture capital corporation. Dana Ventura richiede licenza OJK separata. Necessità partner locale per il 15% minimo.",
+        "investment_outlook": "ROI potenziale elevato nel medio-lungo termine. Barriere significative: requisiti patrimoniali elevati, licenza OJK complessa. Opportunità strutturale 2026: framework UU P2SK facilita integrazione fintech/VC. Mercato poco presidiato rispetto a Singapore e Bangkok. Pipeline startup indonesiana in crescita.",
+        "legacy_bridge": "KBLI 64991 mappato direttamente da KBLI 2020 con stessa numerazione. Obbligo aggiornamento OSS entro 18 giugno 2026. Licenze esistenti valide durante transizione. POJK 46/2024 rafforza governance e risk management per PVML."
+      }
     },
     {
       "kode_kbli_2025": "64992",
@@ -87111,7 +87132,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Versione syariah del venture capital con crescente interesse istituzionale. Mercato finanza islamica Indonesia tra i più grandi al mondo per potenziale. OJK attiva nella promozione del segmento syariah post-UU P2SK. Attrattività per investitori del Golfo e Asia Sudorientale con mandati halal.",
+        "bali_nuance": "Bali ha una comunità musulmana locale significativa (circa 20% della popolazione) e una crescente sensibilità verso prodotti halal nel turismo. Potenziale per micro-VC syariah focalizzati su halal tourism, agritech halal e wellness islamico. Diversificazione rispetto al VC convenzionale dominante.",
+        "operational_risks": "Stessi requisiti del 64991 convenzionale con obbligo di conformità syariah (akad musyarakah/mudharabah). Equity minima IDR 25 miliardi per venture debt syariah corporation. Supervisione DSN-MUI per compliance prodotti. Personale certificato in finanza islamica obbligatorio. Cap 85% PMA invariato.",
+        "investment_outlook": "ROI simile al VC convenzionale ma con accesso a pool di capital syariah internazionale (Gulf SWFs, Islamic development funds). Nicchia meno competitiva rispetto al VC convenzionale. Opportunità 2026: halal economy in espansione, KBLI 2025 esplicita il codice syariah per prima volta.",
+        "legacy_bridge": "KBLI 64992 invariato da KBLI 2020. Prima formalizzazione esplicita nel sistema OSS come codice distinto dal convenzionale. Aggiornamento OSS obbligatorio entro 18 giugno 2026. POJK 46/2024 copre entrambe le versioni convenzionale e syariah."
+      }
     },
     {
       "kode_kbli_2025": "64993",
@@ -87212,7 +87240,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Codice completamente nuovo in KBLI 2025, non esisteva nel 2020. IDXCarbon operativo dal settembre 2023: volume cumulativo 1,6 milioni tonnellate CO2e, valore IDR 77,95 miliardi (~USD 4,9M). Forte rallentamento: solo 8 tonnellate scambiate a giugno 2025 (-98,5%). 90% acquirenti domestici, solo 8 progetti listati.",
+        "bali_nuance": "Bali possiede asset naturali per crediti carbonio: geotermia, energia rinnovabile, conservazione forestale, turismo eco-sostenibile. Comunità founder green-tech a Canggu crea ecosistema favorevole per intermediari carbon. Potenziale integrazione con villa economy per carbon offset certificati su piattaforme internazionali.",
+        "operational_risks": "Perpres 98/2021 aggiornato da Perpres 110/2025 per mercato carbonio nazionale. IDXCarbon unica borsa ufficiale sotto supervisione OJK. Procedure certificazione e trading ancora poco chiare (IEEFA). Trading internazionale aperto solo da gennaio 2025. Rischio liquidità elevato nel breve termine. Framework regolatorio in evoluzione.",
+        "investment_outlook": "ROI incerta nel breve termine per bassa liquidità. Potenziale strutturale enorme: Indonesia target NDC 29-41% riduzione emissioni entro 2030. Target IDXCarbon 3 milioni tonnellate volume totale. Strategia consigliata: costruire pipeline progetti ora, monetizzare 2027-2030. Finestra first-mover aperta.",
+        "legacy_bridge": "Codice completamente nuovo in KBLI 2025 (parte nuova Categoria V — Carbon & Environment). Nessuna migrazione da KBLI 2020 necessaria. Solo nuova registrazione. Concordanza KBLI 2020→2025 non applicabile. Primo anno di operatività piena con stranieri dal 2025."
+      }
     },
     {
       "kode_kbli_2025": "64996",
@@ -87346,7 +87381,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Mercato assicurativo vita indonesiano sottopenetrato (sotto 3% PIL). Forte potenziale crescita trainato da classe media emergente. Post-scandali Jiwasraya e AJB Bumiputera, OJK intensifica supervisione. UU P2SK rafforza framework. Foreign ownership cap 80% (più restrittivo del settore finanziario generico).",
+        "bali_nuance": "Opportunità assicurazione vita a Bali: polizze endowment e unit-linked per expatriate HNWI, prodotti annuity per pensionati stranieri con visa Retirement KITAS, micro-insurance vita per lavoratori del settore turistico locale. Comunità expat crescente crea domanda stabile e prevedibile.",
+        "operational_risks": "Foreign ownership max 80% (PP 14/2018 aggiornato PP 3/2020). Azionista straniero deve essere compagnia assicurativa o holding con sussidiaria assicurativa. Equity minima azionista straniero: 5x investimento diretto. Capitale minimo IDR 100 miliardi. Licenza OJK processo 12-24 mesi. Requisiti patrimoniali molto elevati.",
+        "investment_outlook": "ROI medio-lungo termine 5-10 anni per break-even. Barriere tra le più alte nel finanziario. Opportunità 2026: insurtech vita digitale via sandbox OJK, micro-insurance digitale. Il cap 80% richiede partner locale strategico. Più accessibile via JV o acquisizione partecipazione in player esistente.",
+        "legacy_bridge": "KBLI 65111 invariato 2020→2025. UU P2SK (Legge 4/2023) framework legislativo sovraordinato per modernizzazione settore. Aggiornamento OSS obbligatorio entro 18 giugno 2026. Compliance con nuovi requisiti governance OJK post-scandali."
+      }
     },
     {
       "kode_kbli_2025": "65112",
@@ -87378,7 +87420,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Assicurazione generale (property, casualty, liability, travel, health) con penetrazione in crescita. Domanda forte da settore corporate e UMKM. Crescente interesse per prodotti parametrici e micro-insurance. OJK attiva nel consolidamento settore post-UU P2SK. Mercato ancora sottopenetrato vs peer regionali.",
+        "bali_nuance": "Bali presenta domanda eccezionale per asuransi umum: travel insurance per 7+ milioni turisti annui, property all-risk per villa economy, liability insurance per operatori turistici, health insurance per expatriate e nomadi digitali, marine cargo per import/export. Nicchia molto ben definita con clientela internazionale ad alto reddito.",
+        "operational_risks": "Foreign ownership max 80% (PP 14/2018 aggiornato PP 3/2020). Capitale minimo IDR 150 miliardi (superiore a asuransi jiwa). Licenza OJK obbligatoria. Azionista straniero deve essere compagnia assicurativa o holding con sussidiaria assicurativa. Equity azionista straniero: 5x investimento diretto. Processo licenza 12-24 mesi.",
+        "investment_outlook": "ROI più rapido di asuransi jiwa grazie ai premi annuali più frequenti e prodotti più standardizzati. Opportunità 2026: insurtech via sandbox, micro-insurance parametrica per turismo e agricoltura, integrazione con piattaforme OTA per travel insurance. Partner locale obbligatorio per il 20% minimo.",
+        "legacy_bridge": "KBLI 65121 invariato 2020→2025. Transizione puramente amministrativa. UU P2SK framework sovraordinato. Aggiornamento OSS obbligatorio entro 18 giugno 2026. Verifica aggiornamento licenze OJK con nuovi requisiti patrimoniali rafforzati."
+      }
     },
     {
       "kode_kbli_2025": "65122",
@@ -88092,7 +88141,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "66160",
       "mapping_note": "PP28 usa codice KBLI 2020 66160 (Kegiatan Penukaran Valuta Asin...). Match: 99%",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Mercato maturo e frammentato. BI moratorium su nuove licenze a Jakarta luglio 2025-dicembre 2026 (482 uffici nella capitale, 31% totale nazionale). Fuori Jakarta licenze disponibili. Digitalizzazione crescente con PADG 11/2024 BI che modernizza il mercato valutario. Competizione con cambio digitale e app fintech.",
+        "bali_nuance": "Bali è uno dei mercati più attraenti per money changer. Moratorium BI NON si applica fuori Jakarta. Forte domanda cambio AUD, EUR, USD, GBP da turisti e nomadi digitali. Margini buoni nelle zone ad alto flusso (Kuta, Seminyak, Ubud, Canggu). Oltre 7 milioni di turisti stranieri nel 2025 creano domanda strutturale stabile.",
+        "operational_risks": "Regolato da Bank Indonesia (non OJK) — licenza KUPVA BB necessaria. Compliance AML/KYC stringente, reporting periodico a BI. Digitalizzazione obbligatoria per conformità PADG 11/2024. PMA: verificare apertura specifica settore money changer per stranieri nel sistema OSS — storicamente con limitazioni. Investimento PMA minimo IDR 10 miliardi.",
+        "investment_outlook": "ROI stabile e prevedibile per operatori in zone turistiche. Break-even relativamente rapido (12-18 mesi) in location ad alto flusso. Opportunità 2026: integrazione piattaforme digitali per nomadi, servizi remittance cross-border, QRIS integration. Competizione crescente da fintech ma mercato turistico Bali resiliente.",
+        "legacy_bridge": "KBLI 66125 invariato 2020→2025 (sotto categoria 6612 — Aktivitas Perantara Transaksi). Aggiornamento OSS entro 18 giugno 2026. BI regolatore esclusivo tramite PBI 6/2024 e PADG correlati."
+      }
     },
     {
       "kode_kbli_2025": "66126",
@@ -88580,7 +88636,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Settore in espansione grazie a crescita mercato dei capitali indonesiano e maggiore educazione finanziaria. OJK regola rigorosamente i penasihat investasi. Crescente domanda da HNWI indonesiani e investitori retail. Parametro PMA 'Seluruh' (aperto a tutti). Codice a rischio ALTO secondo OSS ma licenza OJK accessibile.",
+        "bali_nuance": "Bali ospita comunità crescente di HNWI expatriate, pensionati internazionali e imprenditori digitali con necessità di consulenza per investimenti in Indonesia e ASEAN. Potenziale per boutique advisory focalizzate su real estate, mercato dei capitali e asset digitali. Comunità crypto/Web3 Bali crea domanda advisory su asset digitali regolati.",
+        "operational_risks": "Rischio ALTO secondo OSS — richiede licenza OJK (non solo NIB). Parametro PMA: aperto ('Seluruh'). Investimento minimo IDR 10 miliardi per PT PMA. Compliance con regolamento OJK mercato dei capitali. PPN 12% su fee di consulenza. Personale con sertifikasi pasar modal richiesto.",
+        "investment_outlook": "ROI potenzialmente elevato con costi operativi relativamente bassi. Barriere moderate vs altri servizi finanziari. Opportunità 2026: wealth management digitale, robo-advisory via sandbox OJK, consulenza ESG/carbon credit per nomadi digitali HNWI. Modello scalabile con team lean. Entry point più accessibile nel finance.",
+        "legacy_bridge": "KBLI 66151 invariato 2020→2025. Framework regolatorio stabile sotto OJK pasar modal. Aggiornamento OSS entro 18 giugno 2026. POJK 3/2024 (ITSK) abilita modelli innovativi di advisory digitale via sandbox."
+      }
     },
     {
       "kode_kbli_2025": "66152",
@@ -88742,7 +88805,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "mapping_note": "Agent mapping: 64951 (Fintech P2P Lending Konvension...) [high]",
       "kbli_2020_source": "64951",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "P2P lending convenzionale in fase di consolidamento sotto POJK 40/2024 (dicembre 2024, sostituisce POJK 10/2022). Regole più stringenti dopo problemi NPL e pratiche predatorie. OJK in modalità pulizia settore. Cooperative ora possono operare come P2P provider. Mercato maturo ma rischio regolatorio elevato.",
+        "bali_nuance": "Potenziale per servire micro-imprese turistiche balinesi con difficoltà accesso credito bancario. Borrower devono essere entità indonesiane (non stranieri). Lender possono essere stranieri. Nicchia possibile per piattaforme P2P specializzate in turismo, hospitality e creative economy balinese.",
+        "operational_risks": "Foreign ownership max 85% (POJK 40/2024). Capitale minimo versato IDR 25 miliardi depositato immediatamente in deposito a termine. Controlling shareholder operativo da almeno 2 anni. Lavoratori stranieri: approvazione OJK preventiva obbligatoria. Lending massimo IDR 2 miliardi (consumtivo), IDR 5 miliardi (produttivo). Divieto raccolta fondi diretta dal pubblico.",
+        "investment_outlook": "ROI potenzialmente elevato ma rischio regolatorio significativo. Break-even 2-3 anni. Opportunità 2026: supply chain finance, partnership e-commerce, espansione aree rurali sottobancate. PPN 12% su fee. Rischio reputazionale alto per track record settore. Accesso via sandbox OJK più prudente.",
+        "legacy_bridge": "KBLI 66161 invariato 2020→2025. POJK 40/2024 framework attuale (sostituisce POJK 10/2022). UU P2SK base legislativa. Aggiornamento OSS entro 18 giugno 2026. POJK 3/2024 (ITSK) governa sandbox per innovazioni collegate."
+      }
     },
     {
       "kode_kbli_2025": "66162",
@@ -88784,7 +88854,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "mapping_note": "Agent mapping: 64952 (Fintech P2P Lending Syariah...) [high]",
       "kbli_2020_source": "64952",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Versione syariah del P2P lending con strutture akad compliant (mudharabah, musyarakah, wakalah). Mercato in sviluppo con supporto OJK per finanza islamica. Accesso a pool di investitori syariah internazionali. Meno problemi reputazionali del P2P convenzionale ma mercato più piccolo.",
+        "bali_nuance": "Opportunità per servire UMKM halal e produttori di prodotti tradizionali balinesi con mandato syariah. Integrazione con economia halal in crescita (food, cosmetics, turismo halal). Comunità Muslim locale può beneficiare di prodotti finanziari akad-compliant per espansione attività.",
+        "operational_risks": "Stessi requisiti patrimoniali e OJK del 66161 convenzionale. Obbligo conformità DSN-MUI per strutture akad. Personale certificato finanza islamica. Supervisione OJK + DSN-MUI dual layer. Cap PMA 85% invariato. Mercato più piccolo del convenzionale ma meno saturo.",
+        "investment_outlook": "ROI simile al convenzionale con accesso aggiuntivo a capital pool islamico internazionale. Opportunità 2026: halal supply chain finance, piattaforme crowdfunding syariah per UMKM, integrazione con economia pesantren. Sandbox OJK disponibile per modelli innovativi syariah.",
+        "legacy_bridge": "KBLI 66162 invariato 2020→2025 come codice distinto dal convenzionale. POJK 40/2024 copre entrambe le versioni. Prima codificazione esplicita come attività separata nel KBLI 2025. Aggiornamento OSS entro 18 giugno 2026."
+      }
     },
     {
       "kode_kbli_2025": "66191",
@@ -89270,7 +89347,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Agente assicurativo opera per conto di una singola compagnia assicurativa (tied agent). Settore in crescita parallela al mercato assicurativo sottopenetrato. Digitalizzazione con insurtech e aggregatori. OJK Reg 4/2025 regola aggregatori finanziari con cap PMA 85%. Più accessibile delle compagnie dirette per requisiti patrimoniali inferiori.",
+        "bali_nuance": "Forte domanda a Bali per agenti specializzati: travel insurance per 7M+ turisti annui, property insurance per villa owners, health insurance per expatriate e nomadi digitali, liability per operatori turistici. Nicchia di mercato ben definita con clientela internazionale. Modello tied-agent con compagnia internazionale partner strategico ideale.",
+        "operational_risks": "Agisce per conto di una sola compagnia assicurativa (non indipendente come pialang). Licenza OJK necessaria. Requisiti patrimoniali inferiori alle compagnie dirette. Proprietà straniera storicamente consentita nel brokeraggio assicurativo (50 broker assicurativi con proprietà estera sotto 80% per dati OJK). PPN 12% su commissioni.",
+        "investment_outlook": "ROI attraente con investimento iniziale contenuto. Modello commission-based scalabile. Break-even 12-24 mesi. Opportunità 2026: piattaforme digitali distribuzione assicurativa, specializzazione prodotti expatriate e turismo. Entry point più accessibile nel settore assicurativo per PMA rispetto alle compagnie dirette.",
+        "legacy_bridge": "KBLI 66221 invariato 2020→2025 (sotto subgolongan 6622). Framework normativo stabile. Aggiornamento OSS entro 18 giugno 2026. OJK Reg 4/2025 modernizza regolazione degli aggregatori finanziari digitali."
+      }
     },
     {
       "kode_kbli_2025": "66222",
@@ -89310,7 +89394,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Broker assicurativo indipendente (pialang) consulta e intermedia tra cliente e molteplici compagnie assicurative — più flessibile e di valore vs agente tied. 50 broker assicurativi con proprietà straniera sotto 80% già operativi secondo dati OJK. Settore in consolidamento ma con opportunità per operatori specializzati.",
+        "bali_nuance": "Il modello pialang indipendente è particolarmente adatto al mercato Bali per la diversità dei prodotti richiesti da clientela internazionale (travel, property, health, liability, marine). Capacità di confrontare e intermediare tra più compagnie offre valore aggiunto all'expatriate community. Potenziale per pialang digitale multi-prodotto per nomadi digitali.",
+        "operational_risks": "Licenza OJK obbligatoria come Pialang Asuransi. Requisiti patrimoniali inferiori alle compagnie assicurative dirette ma superiori agli agenti. Compliance POJK per intermediari assicurativi. Cap PMA 80-85% (da verificare specifico per pialang). Professionisti certificati in assicurazione obbligatori. Indipendenza da singola compagnia richiede rete multi-partner.",
+        "investment_outlook": "ROI attraente. Modello commission-based da molteplici compagnie scalabile. Break-even 12-24 mesi. Opportunità 2026: piattaforme digitali comparazione e distribuzione, specializzazione expat/turismo, integrazione con OTA per travel insurance. Tra i migliori entry point nel settore assicurativo per PMA.",
+        "legacy_bridge": "KBLI 66222 invariato 2020→2025 (sotto subgolongan 6622 ora espansa fino a 66226). Aggiornamento OSS entro 18 giugno 2026. OJK Reg 4/2025 regola aggregatori finanziari digitali — opportunità per modello pialang digitale."
+      }
     },
     {
       "kode_kbli_2025": "66223",
@@ -89632,7 +89723,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "mapping_note": "Agent mapping: 66311 (Manajer Investasi...) [high]",
       "kbli_2020_source": "66311",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Fund management in crescita con AUM in espansione grazie a classe media e investitori retail via piattaforme digitali. Comprende gestione reksadana, dana investasi e portafogli individuali. Parametro PMA confermato nel sistema OSS. Derivati KBLI 2025: 66311 (convenzionale) e 66312 (syariah). OJK supervisione diretta.",
+        "bali_nuance": "Operativamente centralizzato a Jakarta (IDX, KSEI infrastrutture). A Bali potenziale per back-office operations e boutique fund management per investitori expatriate/HNWI. Comunità wealth holders internazionale in crescita crea domanda gestione patrimoniale localizzata. Real estate fund management particolarmente rilevante per villa economy.",
+        "operational_risks": "Rischio ALTO sistema OSS. Licenza OJK obbligatoria come Manajer Investasi. Capitale minimo IDR 25 miliardi. Personale certificato WPPE e WMI obbligatorio. Compliance con regolamento mercato dei capitali, reporting periodico OJK. PPN 12% su management fee. Codice ricodificato: 66301 → 66311/66312 in KBLI 2025.",
+        "investment_outlook": "ROI proporzionale all'AUM gestito, modello fee-based scalabile. Break-even 2-4 anni. Opportunità 2026: robo-advisory, reksadana digitali via piattaforme fintech, prodotti ESG/green bond. Apertura PMA lo rende tra i codici finance più accessibili per investitori stranieri con expertise gestione fondi.",
+        "legacy_bridge": "KBLI 2020: 6631 → KBLI 2025: 66301 ricodificato con maggiore granularità (66311/66312). Transizione richiede aggiornamento codice in AHU e OSS entro 18 giugno 2026. Framework normativo stabile sotto OJK pasar modal."
+      }
     },
     {
       "kode_kbli_2025": "66302",
@@ -90527,7 +90625,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Bearish for foreign PMA. KBLI 69101 is de facto closed to foreign investors: UU Advokat 18/2003 (Art. 23) prohibits foreign lawyers from practicing in Indonesian courts or opening law firms directly. The only pathway is employment as foreign advisor in Indonesian law firms. Market sentiment for PMA operators is negative — legal demand is growing but direct access is blocked.",
+        "bali_nuance": "Strong demand for litigation support in villa lease disputes and land title conflicts in Bali. Local law firms actively seek foreign lawyers as advisors for international clientele in hospitality and real estate PMA. The bottleneck is PERADI certification for foreigners, which requires a mandatory test on basic Indonesian law.",
+        "operational_risks": "HIGH. (1) Violation of Art. 23 UU Advokat = criminal sanctions and deportation. (2) Kepmenaker 228/2019 limits TKA to managerial/advisor roles, not direct legal practice. (3) PP 28/2025 classifies legal activities as high risk in OSS-RBA. (4) Reputational risk if PMA operates de facto as a law firm without a valid license.",
+        "investment_outlook": "Not directly investable via PT PMA. Alternative strategy: contractual partnership with an Indonesian law firm + KBLI 70200 (management consulting) for non-legal advisory activities. Indirect ROI via referral fees and service agreements with Indonesian legal partners.",
+        "legacy_bridge": "Code 69101 unchanged from KBLI 2020 to 2025. No new codes added in KBLI 2025 transition. The BPS Reg 7/2025 transition requires OSS update within 6 months but does not alter PMA sectoral restrictions. Primary normative reference remains UU 18/2003."
+      }
     },
     {
       "kode_kbli_2025": "69102",
@@ -90565,7 +90670,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Cautiously positive with restrictions. KBLI 69102 is partially accessible: foreign legal consultants can operate under Indonesian law firms as foreign law experts. Growing demand for legal consulting on PMA structuring, real estate due diligence, and post-PP 28/2025 OSS-RBA compliance. The Bali-centric market is particularly active.",
+        "bali_nuance": "Surge in demand for: (1) PT PMA structuring for real estate acquisitions, (2) leasehold contracts, (3) OSS-RBA compliance post-PP 28/2025, (4) villa rental licensing ahead of the 31 March 2026 deadline. Foreign legal consultants with cross-border transaction expertise are in high demand as advisors to Indonesian law firms.",
+        "operational_risks": "MEDIUM-HIGH. (1) Thin line between 'legal consulting' (69102) and 'legal practice' (69101) — crossing it violates UU Advokat. (2) BKPM 5/2025 maintains minimum investment >IDR 10B per KBLI/location. (3) Mandatory local partnership to operate. (4) Risk of OSS-RBA reclassification under new risk categories in PP 28/2025.",
+        "investment_outlook": "Moderately attractive via JV model. PT PMA can operate as a legal consulting firm if structured with a qualified Indonesian partner. Capital reduced to IDR 2.5B (BKPM 5/2025) lowers entry barrier. Focus on cross-border transactional advisory, not litigation. Cross-sell with KBLI 70200 (management consulting).",
+        "legacy_bridge": "Code 69102 unchanged from KBLI 2020 to 2025. Primary normative reference: UU 18/2003. The OSS-RBA transition under PP 28/2025 may require new risk profile verification and NIB update. BKPM 5/2025 reduces paid-up capital threshold to IDR 2.5B effective 2 October 2025."
+      }
     },
     {
       "kode_kbli_2025": "69103",
@@ -90601,7 +90713,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Positive and growing. KBLI 69103 is among the most accessible in the 69xxx cluster for foreign PMA. IP consulting does not require bar admission. Demand driven by: brand protection for F&B/hospitality, design registrations, trademark filing under the first-to-file system. Classified as high risk in OSS-RBA but with manageable requirements.",
+        "bali_nuance": "Strong demand from: (1) international creative brands establishing in Bali (fashion, design, wellness), (2) PMA hospitality firms protecting villa/resort trademarks, (3) local and international designers for industrial design registration. Trademark registration takes 12-14 months via DGIP. The Canggu/Seminyak creative community generates consistent demand.",
+        "operational_risks": "MEDIUM. (1) Must operate through a DGIP-registered Konsultan KI — qualified Indonesian staff required. (2) High risk in OSS-RBA requires specific izin from Kemenkumham/DGIP. (3) Widespread piracy and counterfeiting with weak enforcement. (4) Long registration timelines (12-14 months) create client frustration. First-to-file principle increases urgency of early filing.",
+        "investment_outlook": "Attractive for a specialized niche. Manageable minimum investment. Operating model: PT PMA with a registered Indonesian KI consultant + foreign expertise in international IP strategy. Cross-selling opportunities with 69102 (legal consulting) and 70200 (management consulting). ROI driven by recurring trademark renewals and portfolio management.",
+        "legacy_bridge": "Code 69103 present in both KBLI 2020 and 2025, unchanged. No new subdivisions for IP consulting in KBLI 2025. Normative references remain UU 20/2016 (Trademarks and Geographical Indications) and implementing regulations. OSS update required within 6 months of BPS Reg 7/2025 publication."
+      }
     },
     {
       "kode_kbli_2025": "69104",
@@ -90637,7 +90756,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Completely closed to foreign PMA. UU Jabatan Notaris (UU 2/2014) and PPAT regulations strictly require Indonesian citizenship (WNI). No legal mechanism exists for any direct or indirect foreign participation in notarial or PPAT activities. The notarial market is booming but exclusively reserved for Indonesian professionals.",
+        "bali_nuance": "Notaries PPAT are the primary bottleneck for property transactions in Bali. Demand far exceeds supply: every land acquisition, title conversion (HGB→Hak Pakai), and leasehold deed requires a local notary PPAT. Waiting times can reach 2-3 months for complex transactions. The 31 March 2026 villa registration deadline is intensifying pressure on notarial capacity.",
+        "operational_risks": "N/A for PMA — sector completely prohibited for foreigners. Indirect risk: total dependence on third-party notaries PPAT for all PMA corporate and real estate operations. Frequent conflicts of interest when the same notary serves both buyer and seller. Mandatory Bahasa Indonesia drafting (Art. 43 UU 2/2014) with optional bilingual version on request.",
+        "investment_outlook": "Zero — direct investment impossible. Indirect strategy: develop privileged relationships with reliable Bali-based notarial offices. Possible investment in notarial support tech platforms (legaltech) under different KBLI codes (62xxx). Strategic value lies in maintaining a preferred notary network for PT PMA operations.",
+        "legacy_bridge": "Code 69104 unchanged from KBLI 2020 to 2025. The WNI restriction is constitutional and cannot be modified by secondary regulations. No changes anticipated. OSS administrative update required within 6 months, but no substantive change to operational framework."
+      }
     },
     {
       "kode_kbli_2025": "69201",
@@ -90673,7 +90799,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Moderately positive with mandatory partnership model. UU KAP (UU 5/2011) allows foreign participation in KAP (Kantor Akuntan Publik) with strict constraints: (1) KAP must be led by a WNI akuntan publik partner, (2) at least 2/3 of partners must be Indonesian public accountants, (3) cooperation with KAPA/OAA requires ministerial approval. The audit/accounting market for PMA is expanding rapidly.",
+        "bali_nuance": "Growing demand for: (1) mandatory annual audit for PT PMA entities, (2) financial reporting for LKPM (Laporan Kegiatan Penanaman Modal) under BKPM 5/2025, (3) bookkeeping for foreign startups and SMEs. In Bali, shortage of KAP firms with international experience — opportunity for firms with cross-border competence. CoreTax CTAS compliance creates additional bookkeeping complexity.",
+        "operational_risks": "MEDIUM. (1) CoreTax CTAS requires NITKU for each business location — additional compliance per branch/office. (2) Mandatory partnership with WNI akuntan publik limits operational control. (3) POJK 9/2023 imposes additional requirements for KAP serving OJK-regulated entities. (4) Joint liability between local and foreign partners. Approximately 35% of taxpayers had not yet activated Coretax accounts as of September 2025.",
+        "investment_outlook": "Attractive via JV/partnership with local KAP. The Big 4 model (Deloitte, PwC, EY, KPMG — all operating in Indonesia through local KAP partnerships) is the industry benchmark. For smaller operators: KAPA/OAA cooperation with an Indonesian KAP. Capital reduction to IDR 2.5B (BKPM 5/2025) lowers the entry barrier for boutique accounting firms.",
+        "legacy_bridge": "Code 69201 unchanged from KBLI 2020 to 2025. Subgolongan 6920 groups both 69201 and 69202. CoreTax CTAS (operational from 1 January 2025) has radically transformed the workflow: NITKU replaces NPWP cabang, annual tax returns fully digital on Coretax from tax year 2025. 2026 integration with CEISA and SIMPONI will further increase audit trail requirements."
+      }
     },
     {
       "kode_kbli_2025": "69202",
@@ -90710,7 +90843,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Bullish but with significant regulatory barriers. PMK 111/2014 (amended by PMK 175/2022) requires the Konsultan Pajak to be WNI. However, international/strategic tax consulting can be delivered by PMA firms under complementary KBLI codes (70200 management consulting). CoreTax CTAS is the 2025-2026 game-changer: it creates massive advisory demand for migration and compliance support.",
+        "bali_nuance": "Explosive demand from: (1) digital nomads on E33G visa — tax compliance for residents >183 days raises residency questions, (2) PMA hospitality/real estate entities with VAT (PPN 12%) and PPh obligations, (3) foreign startups needing tax planning. The E33G fiscal residency question is unresolved: theoretically no income tax on foreign-sourced income, but >183 days physical presence may trigger Indonesian tax residency. Tax consultants with international competence are scarce in Bali.",
+        "operational_risks": "HIGH. (1) Konsultan Pajak must be WNI (PMK 111/2014 Art. 2) — foreigners cannot obtain the license directly. (2) CoreTax CTAS: each business location requires NITKU, physical address validation with photos, migration from legacy NPWP cabang. Only ~65% of taxpayers activated by September 2025. (3) Planned 2026 Coretax-CEISA-SIMPONI integration will increase data consistency scrutiny. (4) Penalties for Coretax errors: interest, administrative sanctions, audit risk. PER-7/PJ/2025 governs NITKU validation.",
+        "investment_outlook": "Highly attractive indirectly. Operating model: PT PMA with KBLI 70200 (management consulting) + partnership with a licensed WNI Konsultan Pajak. The tax advisory market for expats and PMA entities in Bali is underserved and growing rapidly. CoreTax creates a technological moat for firms investing in digital compliance and automation competencies.",
+        "legacy_bridge": "Code 69202 unchanged from KBLI 2020 to 2025. Critical impact: CoreTax CTAS (Jan 2025) — NITKU mandatory per location, digital SPT, real-time dashboard. PMK 175/2022 updated practice requirements. 2026 is expected to be an enforcement year driven by data analytics — tax consultants must master the new system to serve clients effectively."
+      }
     },
     {
       "kode_kbli_2025": "70100",
@@ -91041,7 +91181,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Positive with caution. Strong demand in eco-resort, wellness, and luxury hospitality. Sarbagita moratorium freezes new developments in the most active South Bali zone but shifts demand to North Bali. KBLI 2025 retains the code with expanded description referencing International Building Code. PT PMA may operate via SBU sub-classifications AR001/AR002 with minimum 33% local partner.",
+        "bali_nuance": "Fundamental aesthetic paradox: clients demand vernacular Balinese architecture (bamboo, rammed earth, alang-alang roofs, rice terrace integration, Tri Hita Karana philosophy) while requiring clinical/hotel performance (concealed HVAC, sanitary standards, seismic compliance). The 15m height limit (SK Gubernur 1971, confirmed Perda 16/2009 Art. 95) forces cliff-edge and semi-underground design. Maximum opportunity in North Bali (Buleleng/Kubutambahan) outside the moratorium — international airport incoming via Perpres 12/2025.",
+        "operational_risks": "OSS-RDTR GPS validation mandatory (PP 28/2025) — coordinates outside zoning = automatic NIB block. SBU via LPJK with SKK for each tenaga ahli; foreign architects must complete knowledge transfer (alih teknologi). KBLI 2020→2025 transition deadline June 2026. Bali seismic risk requires advanced structural calculations for every PBG submission.",
+        "investment_outlook": "Favorable for specialized wellness/hospitality PMA design firms. Paid-up capital reduced to IDR 2.5B (BKPM Reg 5/2025). ROI estimated 18–30 months for eco-resort projects in North Bali. Gilimanuk-Mengwi toll road (97km, IDR 5T) opens new corridors toward Tabanan and West Bali.",
+        "legacy_bridge": "IMB→PBG retrofit is the critical 2026 legacy bridge: all existing structures must migrate to PBG+SLF via SIMBG. Significant consulting opportunity for architectural compliance audits on existing Sarbagita resorts and villas. OSS/NIB update required within 6 months of BPS Reg 7/2025 publication (deadline June 2026)."
+      }
     },
     {
       "kode_kbli_2025": "71102",
@@ -91219,7 +91366,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Moderate in Bali, strong nationally. Bali has limited manufacturing industry, but growth of micro-processing facilities (specialty coffee, cacao, natural cosmetics) and wastewater treatment plants creates niches. IKN and nickel/bauxite downstreaming drive national demand. Code confirmed in KBLI 2025 under subgolongan 7110.",
+        "bali_nuance": "Specific niche: design of low-impact agro-industrial plants compatible with Pergub 24/2020 (water resource protection) and the Nangun Sat Kerthi Loka Bali framework. WWTP design for tourist zones is an expanding sub-market given environmental pressure on the southern coast. North Bali airport and infrastructure projects will generate supporting facility demand.",
+        "operational_risks": "Limited local client base in Bali. Competition from lower-cost local engineers. AMDAL mandatory for industrial plants. Same OSS-RDTR GPS validation requirements as all 71xxx codes. KBLI migration deadline June 2026.",
+        "investment_outlook": "Moderate standalone in Bali, excellent if combined with 71109 for integrated engineering services. Synergy with North Bali infrastructure projects. IDR 2.5B paid-up capital + IDR 10B total investment per KBLI.",
+        "legacy_bridge": "Existing plants (water treatment, bottling facilities) require PBG upgrades and SLF verification. KBLI 2020→2025 update mandatory by June 2026."
+      }
     },
     {
       "kode_kbli_2025": "71109",
@@ -91267,7 +91421,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "mapping_note": "Agent mapping: 71102 (Aktivitas Keinsinyuran dan Kon...) [high]",
       "kbli_2020_source": "71102",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Strong and growing. Catch-all for civil, hydraulic, traffic, MEP, geotechnical, acoustic engineering. KBLI 2025 expands scope to explicitly include project management and safety engineering. Post-September 2025 Bali floods: explosive demand for hydrological studies and water management. National pipeline: PSN mega-infrastructure and IKN construction.",
+        "bali_nuance": "Post-flood 2025 demand surge for hydrological studies, drainage engineering, and risk mitigation. Pergub 24/2020 on lake/spring/river/sea protection mandates specialized environmental engineering. Gilimanuk-Mengwi toll road and North Bali Airport generate years of geotechnical, traffic, and coastal engineering work. Airport sits on marine reclamation — unique coastal engineering challenge.",
+        "operational_risks": "Broad scope requires SKK certifications per specialization — risk of sub-qualification without proper credentials. Intense competition from large Indonesian engineering firms (BUMN and private). Lab partnership needed for testing components. OSS-RDTR GPS validation required per project.",
+        "investment_outlook": "Highly favorable. Most versatile KBLI in the 71 group — ideal as core PMA license. Combinable with 71101 (architecture) and 71204 (testing) for full-service offering. Bali infrastructure pipeline 2025–2030 worth billions USD.",
+        "legacy_bridge": "Structural retrofitting for seismic compliance and green building upgrades represents stable market. Feasibility studies for IMB→PBG conversion on existing infrastructure. KBLI update mandatory by June 2026."
+      }
     },
     {
       "kode_kbli_2025": "71201",
@@ -91382,7 +91543,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Significantly expanding. KBLI 2025 separates the old aggregated 71200 into specific codes: 71201 covers product/process/service/system certification (ISO, HACCP, ISPO, SMK3, halal, SBU construction). Demand driven by ESG compliance, green building certification, and mandatory halal certification expansion through 2026.",
+        "bali_nuance": "Ecolabel and sustainable tourism certification is the primary Bali driver — sertifikasi kegiatan pariwisata explicitly included in KBLI 2025 scope. Green building certification demand (EDGE, Greenship) growing on eco-resorts. Potential conflict of interest to manage: SBU construction certification falls under this code.",
+        "operational_risks": "KAN (National Accreditation Committee) accreditation required to operate as a certifying body. High technical and reputational barrier. Market dominated by internationals (SGS, Bureau Veritas, TÜV). Framework evolving rapidly with halal expansion. Better as complementary to 71101/71109 than standalone.",
+        "investment_outlook": "Attractive for specific niches (tourism, green building, F&B). High potential ROI but requires significant investment in accreditation and reputation. More viable as add-on service for a PMA already operating in architecture/engineering.",
+        "legacy_bridge": "Most significant change in the 71 group: old KBLI 2020 code 71200 fragmented into 71201–71209. Companies with 71200 must re-map activities to specific codes by June 2026."
+      }
     },
     {
       "kode_kbli_2025": "71202",
@@ -91449,7 +91617,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Strong and growing. Separated from old 71200 in KBLI 2025. Covers pipeline and structural inspection not connected to repair/installation. Demand driven by PBG/SLF transition backlog, post-earthquake inspections, and growing building safety regulation enforcement.",
+        "bali_nuance": "Critical market: thousands of Bali structures (hotels, villas, restaurants) require technical inspection for IMB→PBG+SLF migration. Post-September 2025 floods: structural inspections on damaged buildings in Sarbagita and Buleleng. Periodic water crisis drives pipe network inspection demand.",
+        "operational_risks": "IPTB (Building Technical Practitioner License) required for inspectors. High legal liability — inspection errors create litigation risk. Dependent on government enforcement cycle. Competition from local Dinas PU offices offering similar services.",
+        "investment_outlook": "Good in near-medium term (2026–2028) for PBG/SLF backlog. Market may saturate once IMB→PBG transition completes. Excellent as add-on to 71101 or 71109 for complete design+inspection package.",
+        "legacy_bridge": "New code in KBLI 2025 granularity (separated from old 71200). Firms with 71200 must specifically cover 71202. IMB→PBG retrofit generates immediate inspection demand — opportunity window 2026–2028."
+      }
     },
     {
       "kode_kbli_2025": "71203",
@@ -91652,7 +91827,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Specialized niche growing. New in KBLI 2025 granularity. Covers verification and validation of processes, systems, and technical documents without issuing final certification. Relevant for BIM model validation, PBG documentary compliance, and AMDAL/UKL-UPL studies.",
+        "bali_nuance": "OSS-RDTR geospatial validation is conceptually aligned — potential for pre-validation consulting services before OSS submission. In Bali: validation of complex eco-resort technical documents requiring simultaneous compliance with seismic, environmental, 15m height, and international standards (WELL, LEED, FGI 2026).",
+        "operational_risks": "Thin boundary with 71201 (certification) and 71202 (inspection) — risk of normative overlap. Small market if not combined with other KBLI codes. Highly specific competencies required (BIM, GIS, building regulation). Few PMA precedents as standalone activity.",
+        "investment_outlook": "Interesting as complementary code, not as primary business. Maximum value when integrated in a multi-KBLI offering (71101+71109+71203). Digitization trend toward BIM and automated validation creates opportunities for tech-savvy firms.",
+        "legacy_bridge": "Completely new code in KBLI 2025. No direct equivalent in KBLI 2020 (was part of generic 71200). Companies must evaluate if their verification/validation activities fall here or in 71201/71202."
+      }
     },
     {
       "kode_kbli_2025": "71204",
@@ -91722,7 +91904,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Robust and steadily growing. Physical, chemical, and analytical testing of materials, products, and environmental conditions. Includes acoustic/vibration, material strength/durability, environmental (air/water pollution), fuel quality, radiographic weld testing, and seismic testing. Large national market with PSN infrastructure. KBLI 2025 further clarifies separation from certification (71201).",
+        "bali_nuance": "Bali-specific demand: water quality testing (contamination from overtourism), local construction material testing (structural bamboo, Paras Bali stone, rammed earth per SNI standards), seismic testing on existing structures, acoustic testing for resorts (open-air design vs. acoustic privacy paradox). FGI 2026 mandates Evidence-Based Design for healthcare facilities — indoor environment testing becomes mandatory for wellness centers and clinics.",
+        "operational_risks": "Heavy lab and equipment investment. KAN accreditation required. Instrument calibration cycle costly. Highly qualified staff hard to find in Bali. Competition from university labs (Udayana) and government PU labs.",
+        "investment_outlook": "High potential, high barrier. A testing lab in Bali would fill a market gap — currently many samples are sent to Surabaya or Jakarta. Partnership with Udayana University can reduce CAPEX. FGI 2026 healthcare standards may create new demand for environmental testing in wellness/medical facilities.",
+        "legacy_bridge": "Separated from old 71200 in KBLI 2025. PBG transition requires material testing for every new construction and retrofit — expanding market immediately. KBLI update mandatory by June 2026."
+      }
     },
     {
       "kode_kbli_2025": "71209",
@@ -91797,7 +91986,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Residual but strategic. Catch-all for testing and technical analysis not covered by 71201–71204. Includes forensic testing, models/prototypes, and product quality analysis. Functions as regulatory safety net for emerging testing activities not yet specifically classified in KBLI 2025.",
+        "bali_nuance": "Bali applications: forensic analysis of structural failures post-flood/earthquake, marine impact modeling for North Bali Airport reclamation, quality analysis of Balinese artisanal products for export certification (batik, jewelry, organic products).",
+        "operational_risks": "Vague scope creates regulatory uncertainty. Risk of activity reclassification to more specific codes in future KBLI revisions. Difficult to build reputation on a residual code. Same lab/accreditation requirements as 71201–71204.",
+        "investment_outlook": "Recommended only as additional code alongside a PMA already covering 71204 or other testing codes. Does not justify standalone investment. Strategic value as regulatory insurance policy covering activities at the margins of other codes.",
+        "legacy_bridge": "Same migration path as 71201–71204 from old 71200. Companies must map each activity to the correct specific code by June 2026."
+      }
     },
     {
       "kode_kbli_2025": "72101",
@@ -98251,7 +98447,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "85332",
       "mapping_note": "PP28 usa codice KBLI 2020 85332 (Pendidikan Tinggi Keagamaan Sw...). Match: 88%",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Moderately positive. Private higher education market worth ~USD 950M annually with 4,600+ private HEIs. Gross Enrollment Ratio of 36% indicates significant growth headroom. MRHE Reg 53/2018 allows foreign universities in Indonesia, but only top-200 globally, only in Special Economic Zones (KEZ), and mandatory partnership with a local university. BAN-PT updated accreditation standards in 2025 (Peraturan BAN-PT No. 20-21/2025).",
+        "bali_nuance": "Bali has no designated KEZ for higher education, limiting direct applicability. However, growing expat and digital nomad community creates demand for hybrid post-graduate/MBA programs. Udayana University partnership is the most practical entry. Apple Developer Academy opened in Bali 2024–2025, signaling interest for tech education hubs on the island.",
+        "operational_risks": "High. Requires Yayasan (foundation) as badan penyelenggara for private universities. BAN-PT accreditation mandatory with updated 2025 criteria (governance design, SDM, facilities, financing). Long process: 30+ working days for PTLN document verification. Priority hiring of Indonesian academic staff required. Mandatory subjects: Pancasila, kewarganegaraan, Bahasa Indonesia, agama (UU 12/2012).",
+        "investment_outlook": "Cautiously positive for investors with strong university brand (top-200). BKPM Reg 5/2025 reduces paid-up capital to IDR 2.5B but total investment remains IDR 10B per KBLI/location. Most accessible model remains Transnational Education (TNE) via joint/double degree with local HEIs. Long-term ROI (5–8 years).",
+        "legacy_bridge": "Evolution from KBLI 85321 (2017) to 85402 (2025). Classification now more clearly distinguishes between pendidikan tinggi akademik and vokasi. Investors with pre-existing structures under 85321 must verify code migration in OSS/IBOSS. Primary normative reference: UU 12/2012 + PP 4/2014 + MRHE Reg 53/2018."
+      }
     },
     {
       "kode_kbli_2025": "85403",
@@ -98359,7 +98562,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Positive for niche. Demand for sport/recreation education driven by wellness tourism and the expat market. Falls under non-formal education, generally more accessible for PMA. Global wellness tourism market growing at 12% annually with Bali as a primary Southeast Asian hub.",
+        "bali_nuance": "Highly relevant: Bali is a global epicenter for yoga teacher training (200h Yoga Alliance certified, USD 2,000–5,000), surf instructor certification (ISA), and dive instructor training (PADI). Canggu, Ubud, and Nusa Lembongan are consolidated hotspots. All Yoga Training (Nusa Lembongan) has certified over 2,500 teachers since 2009. Digital nomad community sustains consistent demand year-round.",
+        "operational_risks": "Medium. Many operators currently in regulatory grey zone without formal KBLI licenses. As non-formal education, operable via PT (not necessarily Yayasan). Increasing enforcement risk under GR 28/2025. Foreign instructors require RPTKA/IMTA + Kepmenaker 228/2019 compliance (instruktur keterampilan). Liability insurance critical for physical activities.",
+        "investment_outlook": "Very positive for operators with international brand (Yoga Alliance, ISA, PADI). Relatively low initial investment. High margins on premium residential programs. Scalable via franchising and hybrid online platforms. Main risk: market saturation in yoga/surf niches in Canggu/Ubud.",
+        "legacy_bridge": "Code relatively stable between KBLI 2017 and 2025. Clearly covers non-formal sports/recreation educational activities. Existing operators should formalize KBLI position in OSS to anticipate GR 28/2025 enforcement."
+      }
     },
     {
       "kode_kbli_2025": "85520",
@@ -98494,7 +98704,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Positive. Indonesia has a structural deficit of qualified technical workers. Government drives vocational training via Kartu Prakerja (16.42 million beneficiaries since 2020). KBLI 2025 restructured pelatihan kerja codes from 784xx to 855xx, reinforcing educational legitimacy. Generally open to PMA as non-formal education.",
+        "bali_nuance": "Specific Bali demand for: IT/networking technicians for hotels and villas, renewable energy technicians (solar panel installation highly requested), luxury resort pool/plant maintenance. Villa/property construction sector generates continuous qualified technician demand.",
+        "operational_risks": "Medium-low. Operable via PT PMA without Yayasan requirement. Requires Sertifikat Standar/Izin for medium-high risk classification in OSS. Collaboration with BNSP required for nationally recognized certifications. Foreign instructor TKA permitted via Kepmenaker 228/2019 but RPTKA required.",
+        "investment_outlook": "Positive. Manageable initial investment (facilities + equipment). Revenue model: B2B (corporate training) + B2C (individual). Access to Kartu Prakerja funds as accredited training provider. Industry partnership for placement guarantees sustainability.",
+        "legacy_bridge": "Migrated from KBLI 78421 (2017) to 85571 (2025). Investors with licenses under old code must update in OSS/IBOSS. Normative substance unchanged significantly."
+      }
     },
     {
       "kode_kbli_2025": "85572",
@@ -98533,7 +98750,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Very positive. Creative industry is a government priority sector (Kemenparekraf). Covers design, photography, videography, animation, game development, fashion. Indonesian EdTech market at USD 3.6B (2025) projected to USD 10B by 2034 includes strong creative skills component.",
+        "bali_nuance": "Excellent fit for Bali: the content creator, photographer, designer, and filmmaker community in Canggu/Seminyak is among the densest globally. Training programs in social media marketing, content creation, and UX/UI design find natural audience among digital nomads and aspiring Indonesian creators. Bali Creative Industry Network active.",
+        "operational_risks": "Medium-low. Same normative structure as other pelatihan kerja swasta. Operable via PT PMA. Main risk: perceived quality vs formal BNSP certifications. Market fragmented with many informal operators. Competitive advantage for providers offering internationally recognized certifications (Adobe, Google, Meta).",
+        "investment_outlook": "Very positive. Hybrid online/offline model particularly suitable. Low capex for setup (co-working space + digital equipment). High regional scalability potential (Indonesia + SEA). Revenue from courses, intensive workshops, premium residential bootcamps.",
+        "legacy_bridge": "Migrated from KBLI 78423 to 85573. Reclassification into branch 85 (education) from previous 78 (employment activities) reinforces the sector's educational legitimacy."
+      }
     },
     {
       "kode_kbli_2025": "85574",
@@ -98549,7 +98773,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Strongly positive. Indonesian hospitality industry suffers from chronic qualified staff shortage. Bali recorded record revenues in 2024 but faces a softer 2025 with ADR declines of 20–30%. Training demand remains high: front office, F&B service, housekeeping, villa management, and guest relations are skills consistently in demand.",
+        "bali_nuance": "Maximum relevance: Bali is the heart of Indonesian hospitality. High staff turnover (seasonal cyclical) creates constant training demand. Foreign operators in villa/boutique hotels prefer in-house training to international standards. English proficiency gap is the primary pain point. Luxury villa management growth creates a premium niche for specialized programs. Kartu Prakerja subsidizes hospitality training, opening scalable B2C channel.",
+        "operational_risks": "Medium. Operable via PT PMA. Competition from government BLK institutions and polytechnics. Alignment with SKKNI (National Work Competency Standards) required for recognized certifications. 2025 hotel slowdown may temporarily reduce B2B training budgets.",
+        "investment_outlook": "Very positive medium-term. Bali's permanent structure as a global tourist destination guarantees sustained demand. Integrated B2B (hotel chains, villa management companies) + B2C (aspiring hospitality professionals) model. Kartu Prakerja partnership opportunity for subsidized courses.",
+        "legacy_bridge": "Migrated from KBLI 78424 to 85574. Reclassification reinforces positioning within the education sector."
+      }
     },
     {
       "kode_kbli_2025": "85575",
@@ -98636,7 +98867,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Positive. Catch-all covering K3 safety training, motivation, NLP, career development, migrant worker preparation. Maximum operational flexibility. Most useful as supplementary code for PMA wanting to cover training areas not specifically classified elsewhere.",
+        "bali_nuance": "Applicable to: life coaching certification, leadership retreat training, mindfulness/wellness professional development, and Bahasa Indonesia training for expats — all growing segments in Bali. Executive and professional retreat/workshop market expanding in Ubud and Seminyak.",
+        "operational_risks": "Medium-low. Maximum flexibility but maximum regulatory ambiguity. Risk of inspectors requiring a more specific code. Best used as secondary code alongside more specific ones (85571–85578).",
+        "investment_outlook": "Positive as strategic complement. Not ideal as primary code for a focused PMA, but excellent for diversifying training offerings. Low additional investment if already operating under other pelatihan codes.",
+        "legacy_bridge": "Migrated from KBLI 78429 to 85579. Catch-all function maintained in reclassification."
+      }
     },
     {
       "kode_kbli_2025": "85581",
@@ -98801,7 +99039,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "85491",
       "mapping_note": "PP28 usa codice KBLI 2020 85491 (Jasa Pendidikan Manajemen Dan ...). Match: 100%",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Moderately positive. Managerial education demand grows with Indonesia's expanding middle class (135 million). Post-graduate market has 335,000 enrolled + 43,000 doctoral students. Competition from international online MBAs (Coursera, edX partnerships) is intense. Only 3 Indonesian universities in global rankings.",
+        "bali_nuance": "Interesting niche: executive education and MBA retreat format. Bali Business School already offers Leadership, Project Management, Digital Marketing, Sustainable Tourism, and AI in Business programs. Premium short-course format (1–2 weeks residential) best suited to Bali context for international C-level.",
+        "operational_risks": "High for formal programs (requires Yayasan + BAN-PT accreditation). Medium for non-formal/professional development programs (operable via PT PMA). Critical distinction: programs awarding gelar (degree) are formal; programs awarding sertifikat kompetensi are non-formal.",
+        "investment_outlook": "Positive for non-formal/executive education model. Partnership with international business schools for dual-degree is most practical path for formal programs. Long-term ROI for formal MBA.",
+        "legacy_bridge": "Code stable in KBLI transition. Formal/non-formal distinction remains the critical investment structuring factor."
+      }
     },
     {
       "kode_kbli_2025": "85592",
@@ -98838,7 +99083,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "85492",
       "mapping_note": "PP28 usa codice KBLI 2020 85492 (Jasa Pendidikan Komputer (Tekn...). Match: 100%",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Strongly positive. IT/digital skills is the most dynamic EdTech segment. Kartu Prakerja has 29 companies in the professional/upskilling segment. Demand for web developers, data scientists, AI/ML specialists far exceeds supply. Government targets connecting 300,000 schools to internet by end of 2025, driving digital literacy demand.",
+        "bali_nuance": "Global hotspot for coding bootcamps: Le Wagon Bali (Canggu), Island Tech, Institute of Code already successful. Apple Developer Academy opened Bali 2024–2025. Tech/nomad community provides natural mentor and employer network. Q2 2025 Bali skill demand: web development (frontend/backend), digital marketing, data analysis, AI/ML among most requested.",
+        "operational_risks": "Medium-low. Operable via PT PMA as non-formal education. PSE registration mandatory for online platforms (PM Kominfo 5/2020). UU PDP + PP TUNAS (PP 17/2025) impose special protection for minors' data — critical if target includes under-18. Foreign instructors permitted via Kepmenaker 228/2019. Growing competition but expanding market.",
+        "investment_outlook": "Very positive. High-margin bootcamp model (9–24 weeks). Revenue: B2C premium (international) + B2C local (subsidized via Prakerja) + B2B (corporate upskilling). Strong online scalability. Bali = lifestyle + tech education is a unique global selling proposition.",
+        "legacy_bridge": "Code stable. EdTech market expansion has made this one of the most relevant education KBLI codes for PMA in Bali."
+      }
     },
     {
       "kode_kbli_2025": "85593",
@@ -98919,7 +99171,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "85494",
       "mapping_note": "PP28 usa codice KBLI 2020 85494 (Pendidikan Kesehatan Swasta...). Match: 100%",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Moderately positive. Indonesia has chronic healthcare staff shortage — doctor-to-population ratio among the lowest in the region. Healthcare education is strategically important but heavily regulated by both Kemendikbud and Kemenkes. Specialist clinics now open to 100% FDI under UU Kesehatan 17/2023.",
+        "bali_nuance": "Limited Bali relevance vs Java (where major hospitals and training centers concentrate). However, growing demand for wellness practitioner training (spa therapist, holistic health, traditional Balinese medicine). Udayana University already offers courses in Balinese Traditional and Complementary Medicine.",
+        "operational_risks": "High. Dual regulation (Kemendikbud + Kemenkes). Strict facility, equipment, and faculty requirements. Mandatory accreditation. Yayasan likely required for formal programs. Professional healthcare certifications must be recognized by relevant asosiasi profesi.",
+        "investment_outlook": "Cautiously positive for specific niches (wellness/holistic health in Bali, nursing/healthcare in Java). High investment, long ROI. Better suited to international healthcare operators with track record than pure financial investors.",
+        "legacy_bridge": "Code stable. Kemenkes regulatory framework adds a significant layer beyond other education codes. UU Kesehatan 17/2023 removed IDI endorsement requirement — opening medical training to more international collaboration."
+      }
     },
     {
       "kode_kbli_2025": "85595",
@@ -98956,7 +99215,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "85495",
       "mapping_note": "PP28 usa codice KBLI 2020 85495 (Pendidikan Bimbingan Belajar D...). Match: 100%",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Positive with caution. Tutoring market in Indonesia is large (K-12 supplementary education). Dominant players are local (Ruangguru, Zenius, Primagama). Classified as non-formal education, theoretically accessible to PMA, but historically dominated by domestic operators. Online tutoring growth post-pandemic was significant.",
+        "bali_nuance": "Specific niche: tutoring for international/SPK school students in Bali (IB, Cambridge, Australian curriculum support). International school growth in Bali (Green School, Canggu Community School, Australian Independent School) creates supplementary service demand. Also: college prep/SAT/IELTS tutoring for expat children.",
+        "operational_risks": "Medium. Operable via PT PMA for non-formal services. K-12 target (minors) fully activates UU PDP + PP TUNAS for data protection. PSE registration mandatory for online platforms. Risk: potential future restrictions on PMA in K-12 non-formal education given the sensitive nature of children's education.",
+        "investment_outlook": "Moderately positive. Scalable online model attractive but local competition is fierce. Premium international school tutoring segment in Bali offers better margins but limited market size. Better as complementary activity than core PMA business.",
+        "legacy_bridge": "Code stable. Convergence with EdTech platforms makes the boundary between traditional tutoring and online platform increasingly blurred."
+      }
     },
     {
       "kode_kbli_2025": "85596",
@@ -99120,7 +99386,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Positive. Platform/marketplace model for connecting tutors and students is growing within the broader EdTech trend (USD 3.6B 2025 → USD 10B 2034). Code specifically covers intermediation, not direct education delivery, positioning it as a tech/digital service.",
+        "bali_nuance": "Global applicability: a marketplace platform can be operated from Bali serving the entire Indonesian and international market. Bali's operating cost is competitive for tech startups. Local tech/developer community provides platform development talent.",
+        "operational_risks": "Medium-high. PSE registration mandatory (PM Kominfo 5/2020). UU PDP compliance critical (user data, potentially minors). PP TUNAS (PP 17/2025) adds specific obligations for platforms involving children. Blocking risk: Komdigi sent warnings to 25 platforms including Duolingo for non-PSE registration (October 2025). Data localization and/or local representative required for compliance.",
+        "investment_outlook": "Positive for teams with platform development expertise. Asset-light scalable model. PSE/PDP regulatory risk manageable with proactive compliance. Potential exit via acquisition by larger EdTech players.",
+        "legacy_bridge": "Relatively new code in KBLI classification, reflecting the emergence of the platform/marketplace model in education."
+      }
     },
     {
       "kode_kbli_2025": "85691",
@@ -99136,7 +99409,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Very positive. BNSP (National Professional Certification Agency) framework is the national standard for professional certification. Government actively promotes sertifikasi kompetensi as an alternative/complement to academic degrees. LSP (Professional Certification Institutions) accredited by BNSP are growing. Covers certification from hasil pendidikan formal (formal education outcomes).",
+        "bali_nuance": "Relevant for: hospitality/tourism professional certification, licensed tourist guide certification, beauty/spa therapist competency certification, food safety handler certification. High demand in Bali's tourism-dominated economy. Partnership with local asosiasi profesi essential.",
+        "operational_risks": "Medium-high. To operate as LSP (certifying body), BNSP accreditation required. Bureaucratic process requiring SKKNI compliance. For foreign PMA, most practical route is partnership with existing LSP or focus on pre-certification training (codes 855xx) rather than direct certification.",
+        "investment_outlook": "Moderately positive. Certification itself has limited margins; value lies in the training-to-certification ecosystem. Foreign investors should position as training providers (85571–85579 codes) with BNSP-certified LSP partnership pathway. Integrated training + certification model most sustainable.",
+        "legacy_bridge": "Consolidated in BNSP framework. KBLI 2025 reclassification maintains existing structure with minor updates. Four separate codes (85691–85694) cover different certification origin types."
+      }
     },
     {
       "kode_kbli_2025": "85692",
@@ -99152,7 +99432,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Very positive. Covers professional certification from hasil pendidikan non-formal (non-formal education outcomes). Increasingly important as Indonesia shifts toward competency-based recognition alongside academic credentials. Growing demand from digital nomad and vocational training communities.",
+        "bali_nuance": "Directly applicable to certifying outcomes from Bali's thriving non-formal training ecosystem: coding bootcamp graduates, yoga teacher trainees, hospitality trainees. Creates valuable pipeline from training providers (85592, 85574, 85510) to certified professionals.",
+        "operational_risks": "Medium-high. Same BNSP accreditation requirements as 85691. Coordination with relevant asosiasi profesi for sector-specific certifications. Partnership model with established LSP is most viable PMA entry strategy.",
+        "investment_outlook": "Moderately positive as part of integrated training-certification model. Standalone certification business has limited scale; combine with training delivery codes for full-value proposition.",
+        "legacy_bridge": "Part of the KBLI 2025 four-code sertifikasi profesi structure. Map activities carefully to correct sub-code based on certification source type."
+      }
     },
     {
       "kode_kbli_2025": "85693",
@@ -99168,7 +99455,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Positive. Covers professional certification administered by asosiasi profesi (professional associations). Relevant for sectors with strong professional association governance: engineers, architects, accountants, lawyers. Growing as UU P2SK and sector-specific laws require certified professionals.",
+        "bali_nuance": "Applicable to certifying Bali-based professionals in tourism, hospitality, and creative industries through relevant asosiasi profesi. Less directly relevant to PMA startups, more relevant as partnership vehicle with established Indonesian professional associations.",
+        "operational_risks": "Medium-high. Requires working relationship with recognized asosiasi profesi. Cannot issue certifications independently without association backing. Regulatory framework varies by profession.",
+        "investment_outlook": "Niche opportunity for PMA firms with strong professional association relationships internationally. Most practical as part of an international professional body establishing Indonesian chapter.",
+        "legacy_bridge": "Part of the KBLI 2025 four-code sertifikasi profesi structure. Verify mapping from KBLI 2020 equivalent codes."
+      }
     },
     {
       "kode_kbli_2025": "85694",
@@ -99184,7 +99478,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Positive. Covers certification by lembaga sertifikasi independen (independent certification bodies) not tied to educational institutions or professional associations. Growing market as Indonesia diversifies professional recognition frameworks.",
+        "bali_nuance": "Opportunity for internationally recognized independent certification bodies (e.g., PMI, Scrum Alliance, AWS, Google Cloud) to establish Indonesian operations. High demand from tech, project management, and cloud computing professionals in Bali's digital nomad ecosystem.",
+        "operational_risks": "Medium. Most accessible sertifikasi profesi code for foreign PMA given independence from local institutions. BNSP accreditation still required. Must demonstrate independence and technical credibility.",
+        "investment_outlook": "Attractive for internationally recognized certification bodies entering Indonesia. Bali's tech-savvy digital nomad and expat community creates immediate demand. Revenue model: certification exam fees + study material + prep courses.",
+        "legacy_bridge": "Part of the KBLI 2025 four-code sertifikasi profesi structure. New granularity — verify mapping from previous KBLI 2020 framework. OSS update required by June 2026."
+      }
     },
     {
       "kode_kbli_2025": "85699",
@@ -101158,7 +101459,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Very positive. Bali is a global hub for digital nomads and wellness tourism. Provincial government strategy for 2026 explicitly targets digital nomad and wellness tourism as quality visitor segments. Consistent demand growth in Canggu, Seminyak, Ubud, and now Uluwatu. Premium gyms integrating co-working command IDR 1.5–5M/month memberships. Not subject to the 40–75% entertainment tax.",
+        "bali_nuance": "Canggu showing saturation signs: rising land prices, falling occupancy for new operators. Uluwatu emerging as new frontier with lower competition. Ubud strong for integrated yoga-fitness. Fitness centers fall under pariwisata sector for OSS licensing. OSS-RDTR GPS check mandatory post-PP 28/2025. Digital nomads on E33G KITAS or B211A visa are the primary target demographic.",
+        "operational_risks": "Medium. RDTR zoning check can block NIB if location is non-compliant. Governor Koster's 2025 ban on agricultural land conversion limits site selection in rural areas. High local competition in Canggu. Electricity costs significant for AC and equipment. No entertainment tax risk (not classified as hiburan mewah).",
+        "investment_outlook": "Favorable for PMA. Generally open to 100% foreign ownership under Positive Investment List (Perpres 10/2021). Minimum PMA investment IDR 10 billion. Estimated ROI 15–25% for premium facilities in strategic locations. Hybrid gym+co-working+café model highest ROI. Recommended areas: Uluwatu (early-stage), Sanur (underserved), Ubud (wellness premium).",
+        "legacy_bridge": "Code confirmed in KBLI 2020 as 93116. KBLI 2025 transition in progress (BPS Reg 7/2025, Dec 2025) — verify potential recoding. OSS already operational with this code. Risk classification: medium under PP 28/2025."
+      }
     },
     {
       "kode_kbli_2025": "93119",
@@ -101265,7 +101573,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Stable niche, luxury segment. Bali has few consolidated golf clubs (Bali National, New Kuta Golf, Handara). Demand tied to MICE tourism and high-net-worth visitors. Mature market with very high entry barriers. Not a high-growth sector but generates stable premium revenue.",
+        "bali_nuance": "Required land (50–80 ha) virtually unavailable in the Sarbagita zone after Governor Koster's agricultural land conversion ban. Only realistic options: expansion/acquisition of existing structures or greenfield development in North Bali (Singaraja/Lovina) where land is more accessible. High water consumption creates tension with local agricultural communities (subak system).",
+        "operational_risks": "High. Water and pesticide use under growing environmental scrutiny. De facto moratorium on productive land eliminates South Bali greenfield development. Very high tropical maintenance costs. Environmental impact assessment (AMDAL/UKL-UPL) regulatory risk. Water stress during dry seasons.",
+        "investment_outlook": "Cautious. Greenfield almost impossible in South Bali. Acquisition of existing structures is the only practical route but requires very high capital (>$10M). Better to consider management contract or partnership with existing resort. PMA generally permitted but RDTR validation essential for any expansion.",
+        "legacy_bridge": "KBLI 2020: 93122. Verify potential split or recoding in KBLI 2025. Complex licensing: AMDAL, izin lingkungan, RDTR compliant with recreational/tourism zone."
+      }
     },
     {
       "kode_kbli_2025": "93123",
@@ -101472,7 +101787,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Positive, growing in parallel with 93116. Distinction from fitness center: focus on bodybuilding, strength training, competitions. The expat and digital nomad community is highly active in CrossFit and functional training. Global fitness culture trend is strongly reflected in Bali. Good margins on membership and personal training.",
+        "bali_nuance": "Significant overlap with 93116 — code choice depends on predominant offering. If focus is bodybuilding/binaraga, use 93127. Bali market prefers boutique gym model with specialized classes (CrossFit, Muay Thai, calisthenics). Canggu and Seminyak are primary markets. Uluwatu expanding.",
+        "operational_risks": "Similar to 93116. Additional risk: supplement and sports nutrition regulation (BPOM). Mandatory halal certification from October 2026 for supplements sold on premises. Imported equipment subject to duties. Smaller physical footprint needed vs full fitness center.",
+        "investment_outlook": "Favorable for PMA, same regime as 93116. Lower initial investment than integrated fitness center. Boutique model with premium membership (>$100/month) sustainable. Target: expat community, digital nomads, long-stay tourists.",
+        "legacy_bridge": "Code separate from 93116 — careful not to confuse during OSS registration. Verify KBLI 2025 for potential mergers or redefinitions of fitness codes."
+      }
     },
     {
       "kode_kbli_2025": "93128",
@@ -101603,7 +101925,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Strongly growing. Bali hosts increasing international sports events: WSL surf competitions at Uluwatu, Ironman 70.3, Bali Marathon, yoga festivals, ultra-trail running. Government promotes sports tourism as a premium segment. Events generate significant economic multiplier. Trend: combined wellness+sport events (retreat+competition).",
+        "bali_nuance": "Surf competitions at Uluwatu are consolidated commercial assets (WSL Championship Tour). Ultra-marathon in Ubud rice fields. Yoga festivals attract thousands of international participants annually. Beach volleyball and soccer growing. Coordination with adat (traditional authorities) essential for use of public spaces near temples.",
+        "operational_risks": "Medium-high. Complex permitting: coordination with police, PHRI, Dinas Pariwisata, local banjar. Mandatory event insurance. Critical road logistics (Bali traffic). Weather risk in wet season (Nov–Mar). Post-event waste management under increasing scrutiny.",
+        "investment_outlook": "Favorable as PMA event organizer. Revenue model: sponsorship + ticket + media rights. Surf events at Uluwatu have demonstrated ROI. 15–20% annual growth in sports-tourism events segment. Partnership with international brands (sportswear, F&B) essential.",
+        "legacy_bridge": "KBLI 2020: 93191. Code covers event organization, not facility management. Licensing: izin keramaian (police) + izin tempat kegiatan. Verify KBLI 2025 mapping."
+      }
     },
     {
       "kode_kbli_2025": "93192",
@@ -101925,7 +102254,14 @@
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "mapping_note": "Cleaned: removed invalid ['93210']",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Moderate with caution. No mega theme parks exist in Bali. Prevalent model: waterpark (Waterbom Bali) and adventure park (Bali Treetop, Mason Adventure). Stable family tourist demand. Greenfield very expensive. Agricultural land ban limits new South Bali developments.",
+        "bali_nuance": "Waterbom Kuta is the established local benchmark — operational for decades with solid revenue. New developments must differentiate: eco-adventure, cultural theme park (integrating Balinese culture). Sarbagita zone nearly saturated; North Bali (Buleleng) or East Bali (Karangasem) more viable for greenfield. Cultural sensitivity: avoid theming that trivializes Hindu-Balinese traditions.",
+        "operational_risks": "High. AMDAL mandatory for large structures. Very high water and energy consumption. Agricultural land ban reduces options. RDTR must be compliant with recreational zone. High tropical maintenance costs (corrosion, humidity). Qualified staff hard to find locally.",
+        "investment_outlook": "Selective. Only for investors with >$5M capital and long horizon (5–7 year ROI). Eco-adventure or boutique waterpark model more sustainable than mega theme park. PMA permitted but RDTR and AMDAL are critical gatekeepers. Local operator partnership strongly recommended.",
+        "legacy_bridge": "KBLI 2020: 93210. Broad classification: includes waterpark, theme park, adventure park. KBLI 2025 may add further detail. Licensing: AMDAL/UKL-UPL + izin operasional + RDTR compliance."
+      }
     },
     {
       "kode_kbli_2025": "93291",
@@ -102028,7 +102364,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Negative/under pressure. PBJT entertainment tax 40–75% (UU HKPD 1/2022) directly hits diskotek operators. Widespread operator protests in Bali. Margins significantly compressed. Governor Koster has declared war on structures that 'lower the island's energy.' Active demolitions of illegal structures ongoing (48 buildings at Bingin Beach, Uluwatu).",
+        "bali_nuance": "Bali nightlife (Seminyak, Kuta, Canggu) is a fundamental tourism asset but under multiple regulatory attacks. Alcohol legal in Hindu-majority Bali but national halal pressure growing. Beach club/disco hybrids in dangerous regulatory grey zone. Potential to apply for fiscal incentive (PP 35/2023 Art. 99–100) but bureaucratic process. Existing operators survive on brand equity and volume.",
+        "operational_risks": "Very high. PBJT 40–75% tax erodes margins. Izin Tempat Hiburan + alcohol license required. Operating hours enforcement. Demolition risk for non-compliant structures. Growing halal tourism agenda creates normative tension. Drug and security scrutiny very high. New regulations for foreign tourists (SE 7/2025 Koster).",
+        "investment_outlook": "Unfavorable for new PMA entry in 2026. Punitive taxation + regulatory risk + political pressure create hostile environment. New investors advised to avoid or structure as 'entertainment venue' with alternative code if possible.",
+        "legacy_bridge": "KBLI 2020: 93291. Subject to PBJT hiburan khusus (UU HKPD Art. 58). Licensing: izin tempat hiburan + SIUP-MB (alcoholic beverages) + RDTR hiburan zone compliance. MK judicial review pending (filed Feb 2024)."
+      }
     },
     {
       "kode_kbli_2025": "93292",
@@ -102114,7 +102457,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Negative. Same 40–75% PBJT tax pressure as diskotek. Iconic protest by Inul Daratista brought national media attention. Constitutional Court (MK) received judicial review petition in February 2024. Many operators report collapse risk. Slow consolidation trend toward integrated hotel karaoke rooms.",
+        "bali_nuance": "Karaoke less central in Bali compared to Java but present as tourist entertainment in Kuta and Seminyak. Mixed clientele: Asian tourists (Japan, South Korea, China) and domestic visitors. Halal pressure impacts karaoke venues serving alcohol. Niche market relative to mainland Indonesia.",
+        "operational_risks": "Very high. Identical fiscal regime to 93291. Additional: mandatory halal certification for F&B served on premises (October 2026). Izin tempat hiburan required. Competition from digital entertainment (streaming, gaming). High real estate costs in tourist zones.",
+        "investment_outlook": "Unfavorable. Not recommended for new PMA entry in Bali 2026. Insufficient margins after 40%+ taxation. Viable model only integrated in existing hospitality structures (hotel karaoke room). Standalone karaoke = high risk.",
+        "legacy_bridge": "KBLI 2020: 93292. Subject to PBJT hiburan khusus. MK petition pending (Feb 2024) — monitor for potential tax regime change. Verify KBLI 2025 recoding."
+      }
     },
     {
       "kode_kbli_2025": "93293",
@@ -102177,7 +102527,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Moderately positive with evolution. Traditional arcade declining globally, but e-sports and gaming lounges growing strongly. Indonesia is a top-5 global gaming market by mobile users. Bali attracts gaming/e-sports community among digital nomads. Hybrid gaming+café+co-working model emerging. Not subject to 40–75% PBJT entertainment tax (classified as hiburan umum, max 10%).",
+        "bali_nuance": "Specific Bali niches: gaming lounge for expats/nomads (Canggu) and family entertainment center for tourists (Kuta/Nusa Dua). E-sports events potential growing. Critical distinction: must clearly be 'entertainment' not 'gambling' — gambling is illegal in Indonesia. RDTR check required.",
+        "operational_risks": "Medium. Gaming equipment import subject to duties. High electricity consumption. Limited demographic target vs Jakarta. Strict regulation against online gambling/real-money gaming — must ensure operation is clearly classified as entertainment.",
+        "investment_outlook": "Moderately favorable. E-sports lounge + café in Canggu zone has potential. Contained initial investment ($100–300K). PMA permitted for this code. Revenue model: hourly gaming fee + F&B + events. Market still underdeveloped in Bali = first-mover opportunity.",
+        "legacy_bridge": "Critical distinction from gambling (different KBLI, illegal in Indonesia). Gaming/arcade = hiburan umum, PBJT max 10%. Verify KBLI 2025 for potential separation of e-sports from traditional arcade."
+      }
     },
     {
       "kode_kbli_2025": "93294",
@@ -102253,7 +102610,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Very positive. Eco-adventure tourism is one of Bali's fastest-growing segments, perfectly aligned with the government's 2026 quality tourism strategy. Activities: canyoning, rafting (Ayung River), trekking (Mt. Agung, Mt. Batur), waterfall tours, cave exploration. Strong international demand with 15–20% annual growth.",
+        "bali_nuance": "Bali's extraordinary natural assets: rivers, volcanoes, waterfalls, caves, terraced rice fields. Ubud and Kintamani are primary hubs. Hot springs (pemandian) at Banjar (North Bali) and Toya Bungkah. Surf tourism at Uluwatu/Canggu technically classified as adventure. Coordination with local communities (desa adat) essential for access to natural sites. No separate surf KBLI — typically classified under 93294 or 93191.",
+        "operational_risks": "Medium. Mandatory safety standards: insurance, certified guides. Access to natural sites depends on agreements with banjar/desa adat. Environmental risk: overtourism at fragile sites. Agricultural land ban does not directly impact but limits support facility construction. Wet season (Nov–Mar) reduces operability.",
+        "investment_outlook": "Very favorable for PMA. Moderate initial investment ($200K–1M). Revenue model: tour packages + equipment rental + accommodation partnership. Rapid ROI (2–3 years). Recommended areas: Ubud/Kintamani (trekking/rafting), North Bali (diving/snorkeling add-on), Uluwatu (surf adventure). Eco-lodge + adventure integrated model commands premium pricing.",
+        "legacy_bridge": "KBLI 2020: 93294. Broad code covering caves, hot springs, nature adventure. PBJT as hiburan umum (max 10%). Licensing: izin operasional wisata + RDTR + koordinasi desa adat. Verify KBLI 2025 mapping."
+      }
     },
     {
       "kode_kbli_2025": "93295",
@@ -102394,7 +102758,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "93246",
       "mapping_note": "Cleaned: removed invalid ['93296']",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Very positive with strong political alignment. Agrotourism is explicitly protected and promoted by the Bali provincial government as an alternative to agricultural land conversion. Governor Koster's 2025 ban on agricultural land construction paradoxically strengthens the agrotourism business case: the only legal way to monetize agricultural land without converting it. Trend: coffee plantation tours, rice terrace experiences, organic farming.",
+        "bali_nuance": "Ubud is the epicenter: Tegallalang rice terraces, Kintamani coffee plantations, luwak coffee tours as iconic attractions. Subak irrigation system (UNESCO heritage) is a unique, non-replicable asset. North Bali: vanilla, cacao, clove farming. Integration with Balinese cultural tourism is the key differentiator. Political support from Governor Koster extremely strong — only land-use model that benefits from the moratorium.",
+        "operational_risks": "Low-medium. Genuine partnership with local farmers (petani) is essential — neo-colonial approach is a serious reputational risk. Mandatory halal certification for food products sold on premises (October 2026). Harvest seasonality impacts tour scheduling. Road infrastructure often inadequate in rural zones. Coordination with subak system essential.",
+        "investment_outlook": "Very favorable, especially for PMA structures with genuine local community partnerships. Model: agro-lodge + educational tours + farm-to-table restaurant. Investment $300K–1.5M. Strong political support (aligned with Koster's agenda). Recommended areas: Ubud/Tegallalang, Kintamani, Pupuan (Tabanan), Sidemen (Karangasem). Revenue: tour fees + premium product sales (coffee, chocolate, spices) + accommodation.",
+        "legacy_bridge": "KBLI 2020: 93296. Priority sector for Bali provincial government. PBJT as hiburan umum (max 10%). Local community partnership practically mandatory for social license. Verify KBLI 2025 — potential elevation to priority code with fiscal incentives."
+      }
     },
     {
       "kode_kbli_2025": "93297",
@@ -102534,7 +102905,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Neutral-positive. Catch-all code for unclassified activities: escape rooms, trampoline parks, cooking classes, art workshops, daytime beach clubs (without nightlife classification), hybrid wellness retreats. Maximum flexibility is the main advantage. Often used as secondary code alongside primary KBLI.",
+        "bali_nuance": "Covers many popular Bali activities: Balinese cooking classes, batik workshops, daytime beach clubs (if not classified as discotek), hybrid wellness retreats. Beach clubs are the most dangerous grey area: if classified here, avoids the 40–75% PBJT, but if they have dancefloor/DJ sets, local authorities may reclassify as 93291.",
+        "operational_risks": "Medium. Primary risk is fiscal reclassification: if local tax authority determines the activity is effectively diskotek/karaoke/bar, the 40–75% PBJT rate applies retroactively. Must clearly define the operational profile. RDTR check required. Licensing varies by specific sub-activity.",
+        "investment_outlook": "Favorable for PMA as flexible code. Ideal for innovative concepts (wellness retreat, cooking school, experience center). Variable investment. Fiscal reclassification risk requires constant monitoring. Written tax advisory from local Dinas Pendapatan on applicable PBJT rate is strongly recommended before launch.",
+        "legacy_bridge": "KBLI 2020: 93299 YTDL (Yang Tidak Dapat Diklasifikasikan di Tempat Lain). Residual code — high probability of restructuring in KBLI 2025 with new specific codes. Monitor BPS updates. PBJT depends on specific nature of activity."
+      }
     },
     {
       "kode_kbli_2025": "94110",

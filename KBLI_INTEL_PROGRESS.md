@@ -1,6 +1,6 @@
 # KBLI intel_2026 Enrichment Progress
 
-**Stato:** 161 / 1563 codici arricchiti (10.3%) + 5 intel upgrade
+**Stato:** 215 / 1563 codici arricchiti (13.8%)
 **Aggiornato:** 2026-02-21
 **File JSON:** `source_documents/KBLI_2025_FINAL_CLEAN.json`
 
@@ -431,12 +431,119 @@ MDX: `indonesia-political-regulatory-risk-intelligence-guide.mdx`
 
 ---
 
+### Batch 14 — Finance & Capital Markets (64xxx/65xxx/66xxx)
+
+**Codici arricchiti (14):**
+| Codice | Titolo |
+|--------|--------|
+| 64910 | AKTIVITAS SEWA GUNA USAHA FINANSIAL (Leasing) |
+| 64930 | AKTIVITAS ANJAK PIUTANG (Factoring) |
+| 64991 | AKTIVITAS MODAL VENTURA KONVENSIONAL |
+| 64992 | AKTIVITAS MODAL VENTURA SYARIAH |
+| 64995 | PERDAGANGAN UNIT KARBON (NUOVO in KBLI 2025) |
+| 65111 | ASURANSI JIWA KONVENSIONAL |
+| 65121 | ASURANSI UMUM KONVENSIONAL |
+| 66125 | AKTIVITAS PENUKARAN VALUTA ASING (Money Changer) |
+| 66151 | AKTIVITAS ADVISORI INVESTASI |
+| 66161 | P2P LENDING KONVENSIONAL |
+| 66162 | P2P LENDING SYARIAH |
+| 66221 | AKTIVITAS AGEN ASURANSI |
+| 66222 | AKTIVITAS PIALANG ASURANSI |
+| 66301 | MANAJEMEN INVESTASI KONVENSIONAL |
+
+MDX: `kbli-2025-finance-capital-markets-bali-2026.mdx`
+
+---
+
+### Batch 15 — Legal, Accounting & Tax Advisory (69xxx)
+
+**Codici arricchiti (6):**
+| Codice | Titolo |
+|--------|--------|
+| 69101 | AKTIVITAS PENGACARA (CHIUSO per PMA) |
+| 69102 | AKTIVITAS KONSULTAN HUKUM (parziale via JV) |
+| 69103 | AKTIVITAS KONSULTAN KEKAYAAN INTELEKTUAL ✅ |
+| 69104 | AKTIVITAS NOTARIS DAN PPAT (CHIUSO per PMA) |
+| 69201 | AKTIVITAS AKUNTANSI, PEMBUKUAN, PEMERIKSA (via KAPA partnership) |
+| 69202 | AKTIVITAS KONSULTANSI PAJAK (indiretto via 70200) |
+
+MDX: `kbli-2025-legal-accounting-tax-advisory-bali-2026.mdx`
+Note: CoreTax CTAS + E33G visa tax complexity = principale driver demand
+
+---
+
+### Batch 16 — Engineering & Architecture (71xxx)
+
+**Codici arricchiti (8):**
+| Codice | Titolo |
+|--------|--------|
+| 71101 | AKTIVITAS ARSITEKTURAL |
+| 71102 | PERANCANGAN DAN KONSULTANSI TEKNIS PABRIK |
+| 71109 | ENJINERING DAN KONSULTANSI TEKNIS TERKAIT |
+| 71201 | JASA SERTIFIKASI TEKNIS |
+| 71202 | JASA INSPEKSI TEKNIS |
+| 71203 | JASA VERIFIKASI DAN VALIDASI TEKNIS |
+| 71204 | JASA PENGUJIAN TEKNIS |
+| 71209 | PENGUJIAN DAN ANALISIS TEKNIS LAINNYA |
+
+MDX: `kbli-2025-engineering-architecture-technical-bali-2026.mdx`
+Note: vecchio 71200 KBLI 2020 frammentato in 71201-71209. Migrazione obbligatoria entro giugno 2026.
+
+---
+
+### Batch 17 — Sports, Recreation & Entertainment (93xxx)
+
+**Codici arricchiti (11):**
+| Codice | Titolo |
+|--------|--------|
+| 93116 | FASILITAS PUSAT KEBUGARAN/FITNESS CENTER |
+| 93122 | KLUB GOLF |
+| 93127 | KLUB KEBUGARAN/FITNESS DAN BINARAGA |
+| 93191 | PENYELENGGARAAN KEGIATAN OLAHRAGA |
+| 93210 | AKTIVITAS TAMAN BERTEMA DAN TAMAN HIBURAN |
+| 93291 | AKTIVITAS LANTAI DANSA (PBJT 40-75%) |
+| 93292 | PENGELOLAAN FASILITAS KARAOKE (PBJT 40-75%) |
+| 93293 | PENGELOLAAN ARENA PERMAINAN (gaming) |
+| 93294 | WISATA GUA, PEMANDIAN, DAN PETUALANGAN ALAM |
+| 93296 | WISATA AGRO |
+| 93299 | AKTIVITAS HIBURAN DAN REKREASI LAINNYA YTDL |
+
+MDX: `kbli-2025-sports-recreation-entertainment-bali-2026.mdx`
+Note: 93291/93292 PBJT 40-75% = non raccomandato per nuovi PMA
+
+---
+
+### Batch 18 — Education & Training (85xxx)
+
+**Codici arricchiti (15):**
+| Codice | Titolo |
+|--------|--------|
+| 85402 | PENDIDIKAN TINGGI UMUM SWASTA (università) |
+| 85510 | PENDIDIKAN OLAHRAGA DAN REKREASI |
+| 85571 | PELATIHAN KERJA TEKNIK SWASTA |
+| 85573 | PELATIHAN KERJA INDUSTRI KREATIF SWASTA |
+| 85574 | PELATIHAN KERJA PARIWISATA DAN PERHOTELAN SWASTA |
+| 85579 | PELATIHAN KERJA SWASTA LAINNYA |
+| 85591 | PENDIDIKAN MANAJEMEN DAN PERBANKAN |
+| 85592 | PENDIDIKAN KOMPUTER (coding bootcamp) |
+| 85594 | PENDIDIKAN KESEHATAN SWASTA |
+| 85595 | PENDIDIKAN BIMBINGAN BELAJAR DAN KONSELING |
+| 85610 | JASA PERANTARA KURSUS DAN TUTOR |
+| 85691 | SERTIFIKASI PROFESI — pendidikan formal |
+| 85692 | SERTIFIKASI PROFESI — pendidikan non-formale |
+| 85693 | SERTIFIKASI PROFESI — asosiasi profesi |
+| 85694 | SERTIFIKASI PROFESI — ente indipendente |
+
+MDX: `kbli-2025-education-training-bali-2026.mdx`
+Note: codici 784xx → 855xx (migrazione KBLI 2020→2025 per pelatihan kerja)
+
+---
+
 ## Prossimi Batch
 
 - Settori da coprire (non ancora arricchiti):
-  - IT: 62110 (video game), 62191-62194 (app specifiche), 62900 (IT services)
-  - Finance: 64991 (venture capital), 64995 (carbon trading)
-  - Real estate: 68111 (sviluppo immobiliare), 68112 (sewa), 68113 (pengelolaan)
-  - Professional: 69xxx (legal), 71xxx (engineering), 73xxx (advertising/marketing)
-  - Health: 86xxx (clinics, hospitals, wellness)
-  - Creative: 90xxx (arts, entertainment, cultural)
+  - Advertising/Media: 73100 (advertising agency), 73300 (PR/kehumasan)
+  - Creative/Arts: 90xxx (arts creation, performance, cultural events)
+  - Food & Beverage: 56102-56400 (café, catering, dark kitchen, F&B intermediary)
+  - Personal Services: 96100-96300 (laundry, barbershop, beauty salon, SPA harian)
+  - Finance Support: remaining 65xxx/66xxx codes
