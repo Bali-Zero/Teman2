@@ -53,7 +53,7 @@ except ImportError as e:
     logger.warning(f"⚠️ google-genai SDK not available: {e}")
     # Try legacy SDK as fallback
     try:
-        import google.generativeai as legacy_genai
+        import google.generativeai  # noqa: F401
 
         logger.warning("⚠️ Using deprecated google-generativeai as fallback")
     except ImportError:

@@ -36,7 +36,6 @@ UPDATED 2025-12-23:
 """
 
 import asyncio
-import json
 import logging
 from typing import Any
 
@@ -51,7 +50,6 @@ from backend.app.utils.tracing import set_span_attribute, set_span_status, trace
 from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient, get_genai_client, types
 from backend.services.llm_clients.openrouter_client import ModelTier, OpenRouterClient
 from backend.services.llm_clients.pricing import TokenUsage, create_token_usage
-
 from backend.services.rag.agentic.chat_session import ChatSession, MockChatSession
 
 logger = logging.getLogger(__name__)
@@ -398,9 +396,8 @@ class LLMGateway:
             chain.append(self.model_name_pro)
 
         # RAG-06 Fix: Ensure TIER_LITE (1) and TIER_PRO (2) also try the flash model
-        if model_tier <= TIER_PRO:
-            if self.model_name_flash not in chain:
-                chain.append(self.model_name_flash)
+        if model_tier <= TIER_PRO and self.model_name_flash not in chain:
+            chain.append(self.model_name_flash)
 
         if self.model_name_fallback not in chain:
             chain.append(self.model_name_fallback)
@@ -668,12 +665,11 @@ class LLMGateway:
                     function_declarations.append(func_decl)
                 config_args["tools"] = [types.Tool(function_declarations=function_declarations)]
                 # Add tool_config to encourage function calling
-                try:
+                import contextlib
+                with contextlib.suppress(AttributeError, TypeError):
                     config_args["tool_config"] = types.ToolConfig(
                         function_calling_config=types.FunctionCallingConfig(mode="AUTO")
                     )
-                except (AttributeError, TypeError):
-                    pass  # Older SDK version
 
             # Inject system instruction if present
             if sys_prompt:
@@ -719,11 +715,9 @@ class LLMGateway:
             # Handle images (multimodal)
             if images:
                 processed_images = _build_multimodal_content("", images)
-                if isinstance(processed_images, list) and processed_images:
+                if isinstance(processed_images, list) and processed_images and "parts" in processed_images[0]:
                     # _build_multimodal_content returns [{"parts": [...]}]
-                    # We need just the parts
-                    if "parts" in processed_images[0]:
-                        current_content_parts.extend(processed_images[0]["parts"])
+                    current_content_parts.extend(processed_images[0]["parts"])
 
             if current_content_parts:
                 contents.append({"role": "user", "parts": current_content_parts})
