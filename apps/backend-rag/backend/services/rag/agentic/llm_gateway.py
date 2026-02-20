@@ -116,15 +116,15 @@ class LLMGateway:
         self._genai_client: GenAIClient | None = None
 
         # Model name constants - Gemini 2.0 Flash (latest stable)
-        # UPDATED 2026-02-16: Using gemini-2.0-flash-001 (stable, widely available)
-        # Note: gemini-2.5-flash may not be available in all regions/API versions
-        self.model_name_pro = "gemini-2.0-flash-001"  # Primary tier
-        self.model_name_flash = "gemini-2.0-flash-001"  # Primary: latest stable
-        self.model_name_fallback = "gemini-1.5-flash-001"  # Fallback: stable
+        # For AI Studio API (api_key auth): use names WITHOUT -001 suffix
+        # For Vertex AI: use names WITH -001 suffix
+        self.model_name_pro = "gemini-2.0-flash"  # Primary tier (AI Studio naming)
+        self.model_name_flash = "gemini-2.0-flash"  # Primary: latest stable
+        self.model_name_fallback = "gemini-1.5-flash"  # Fallback: stable
 
         logger.info(
-            "✅ LLMGateway: Model configuration ready (gemini-2.5-flash primary, "
-            "gemini-2.0-flash-001 fallback)"
+            "✅ LLMGateway: Model configuration ready (gemini-2.0-flash primary, "
+            "gemini-1.5-flash fallback)"
         )
 
         # Lazy-loaded OpenRouter client (fallback)
@@ -154,7 +154,7 @@ class LLMGateway:
     @property
     def _available(self) -> bool:
         """Check availability dynamically.
-        
+
         Returns the actual client availability unless a test override is set.
         Tests can set gateway._available = True/False to mock availability.
         """
@@ -168,7 +168,7 @@ class LLMGateway:
     @_available.setter
     def _available(self, value: bool) -> None:
         """Set availability for testing purposes.
-        
+
         This setter allows tests to mock the availability state.
         In production, availability is determined by the GenAI client state.
         """
@@ -396,15 +396,15 @@ class LLMGateway:
         chain = []
         if model_tier == TIER_PRO:
             chain.append(self.model_name_pro)
-        
+
         # RAG-06 Fix: Ensure TIER_LITE (1) and TIER_PRO (2) also try the flash model
         if model_tier <= TIER_PRO:
             if self.model_name_flash not in chain:
                 chain.append(self.model_name_flash)
-                
+
         if self.model_name_fallback not in chain:
             chain.append(self.model_name_fallback)
-            
+
         return chain
 
     async def _send_with_fallback(
@@ -571,11 +571,11 @@ class LLMGateway:
             openrouter_response, token_usage = await self._call_openrouter(
                 openrouter_messages, system_prompt
             )
-            
+
             # Record cost
             query_cost_tracker["cost"] += token_usage.cost_usd
             query_cost_tracker["depth"] += 1
-            
+
             return (openrouter_response, "openrouter", None, token_usage)
         except Exception as openrouter_error:
             logger.error(f"❌ LLMGateway: OpenRouter fallback also failed: {openrouter_error}")
@@ -750,7 +750,7 @@ class LLMGateway:
                         for part in candidate.content.parts:
                             if hasattr(part, "text") and part.text:
                                 text_content += part.text
-            
+
             # Log warning if response is empty (could be safety block)
             if not text_content:
                 finish_reason = None
@@ -856,32 +856,39 @@ class LLMGateway:
                             for part in candidate.content.parts:
                                 if hasattr(part, "text") and part.text:
                                     text_content += part.text
-                
+
                 # text_content can be None/empty if Gemini returns a function call
                 if not text_content:
                     # Check if this is a function call
                     has_function_call = (
                         hasattr(response, "function_calls") and response.function_calls
                     ) or (
-                        hasattr(response, "candidates") and response.candidates and
-                        hasattr(response.candidates[0], "content") and 
-                        response.candidates[0].content and
-                        any(hasattr(p, "function_call") and p.function_call 
-                            for p in response.candidates[0].content.parts)
+                        hasattr(response, "candidates")
+                        and response.candidates
+                        and hasattr(response.candidates[0], "content")
+                        and response.candidates[0].content
+                        and any(
+                            hasattr(p, "function_call") and p.function_call
+                            for p in response.candidates[0].content.parts
+                        )
                     )
                     if has_function_call:
                         set_span_attribute("has_function_call", "true")
                     else:
                         set_span_attribute("has_function_call", "false")
                         # Log warning for truly empty responses
-                        finish_reason = getattr(response.candidates[0], "finish_reason", None) if hasattr(response, "candidates") and response.candidates else None
+                        finish_reason = (
+                            getattr(response.candidates[0], "finish_reason", None)
+                            if hasattr(response, "candidates") and response.candidates
+                            else None
+                        )
                         logger.warning(
                             f"⚠️ LLMGateway: Empty text response from {model_name}. "
                             f"Finish reason: {finish_reason}. Possible safety block."
                         )
                 else:
                     set_span_attribute("has_function_call", "false")
-                
+
                 set_span_attribute("response_length", len(text_content))
             except ValueError as e:
                 # Function call detected or other error - reasoning.py will extract it from response_obj
@@ -893,7 +900,9 @@ class LLMGateway:
             set_span_status("ok")
             return text_content, response, token_usage
 
-    async def _call_openrouter(self, messages: list[dict], system_prompt: str) -> tuple[str, TokenUsage]:
+    async def _call_openrouter(
+        self, messages: list[dict], system_prompt: str
+    ) -> tuple[str, TokenUsage]:
         """Call OpenRouter as final fallback when Gemini models are unavailable.
 
         Uses third-party OpenRouter API for model access. Requires user consent
@@ -923,14 +932,14 @@ class LLMGateway:
 
         result = await client.complete(full_messages, tier=ModelTier.RAG)
         logger.info(f"✅ LLMGateway: OpenRouter fallback used: {result.model_name}")
-        
+
         # Convert OpenRouter usage to TokenUsage object
         usage = create_token_usage(
             prompt_tokens=result.prompt_tokens,
             completion_tokens=result.completion_tokens,
             model=result.model_used,
         )
-        
+
         return result.content, usage
 
     async def health_check(self) -> dict[str, bool]:
