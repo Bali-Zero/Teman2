@@ -64,8 +64,9 @@ def get_llm_for_reasoning() -> Any:
     """
     Get LLM instance for reasoning tasks.
 
-    Uses Claude Sonnet 4.5 for complex reasoning,
-    falls back to OpenAI GPT-4 if Anthropic unavailable.
+    Uses OpenAI GPT-4 for reasoning (Anthropic API key invalid).
+    Gemini 3 Flash is used by main LLMGateway, but LangChain doesn't
+    support it directly yet.
 
     Returns:
         LangChain LLM instance
@@ -73,25 +74,26 @@ def get_llm_for_reasoning() -> Any:
     anthropic_key = os.getenv("ANTHROPIC_API_KEY")
     openai_key = os.getenv("OPENAI_API_KEY")
 
-    if anthropic_key and ChatAnthropic is not None:
-        logger.info("🤖 [LLM] Using Claude Sonnet 4.5 for reasoning")
-        return ChatAnthropic(
-            model="claude-sonnet-4-5-20250929",
-            temperature=0.2,  # Low temp for deterministic reasoning
-            api_key=anthropic_key,
-        )
-    elif openai_key and ChatOpenAI is not None:
-        logger.info("🤖 [LLM] Using OpenAI GPT-4 for reasoning (Anthropic unavailable)")
+    # Prefer OpenAI (Anthropic key is invalid in this project)
+    if openai_key and ChatOpenAI is not None:
+        logger.info("🤖 [LLM] Using OpenAI GPT-4o for reasoning")
         return ChatOpenAI(
-            model="gpt-4-turbo-preview",
+            model="gpt-4o-mini",  # Fast + cheap
             temperature=0.2,
             api_key=openai_key,
+        )
+    elif anthropic_key and ChatAnthropic is not None:
+        logger.info("🤖 [LLM] Using Claude Sonnet 4.5 for reasoning (OpenAI unavailable)")
+        return ChatAnthropic(
+            model="claude-sonnet-4-5-20250929",
+            temperature=0.2,
+            api_key=anthropic_key,
         )
     else:
         raise ValueError(
             "No LLM available for KG reasoning. "
-            f"ANTHROPIC_API_KEY={'set' if anthropic_key else 'missing'} (lib={'ok' if ChatAnthropic else 'missing'}), "
-            f"OPENAI_API_KEY={'set' if openai_key else 'missing'} (lib={'ok' if ChatOpenAI else 'missing'})"
+            f"OPENAI_API_KEY={'set' if openai_key else 'missing'} (lib={'ok' if ChatOpenAI else 'missing'}), "
+            f"ANTHROPIC_API_KEY={'set' if anthropic_key else 'missing'} (lib={'ok' if ChatAnthropic else 'missing'})"
         )
 
 
@@ -176,15 +178,15 @@ def route_after_query_understanding(state: KGAgentState) -> str:
     if domain == "visa":
         logger.info(f"🛂 [Router] Domain='visa', routing to VisaSubgraph")
         return "visa_subgraph"
-    
+
     if domain == "tax":
         logger.info(f"🧾 [Router] Domain='tax', routing to TaxSubgraph")
         return "tax_subgraph"
-    
+
     if domain == "property":
         logger.info(f"🏠 [Router] Domain='property', routing to PropertySubgraph")
         return "property_subgraph"
-    
+
     if domain == "company" or domain == "kbli":
         logger.info(f"🏢 [Router] Domain='{domain}', routing to CompanySubgraph")
         return "company_subgraph"
@@ -192,29 +194,41 @@ def route_after_query_understanding(state: KGAgentState) -> str:
     # PHASE 2: Intent-based routing (fallback)
     # Company setup queries
     company_keywords = ["pt pma", "pt lokal", "perorangan", "cv", "company", "azienda", "società"]
-    if intent in ["company_setup", "pt_pma_setup", "business_formation"] or \
-       any(kw in query_lower for kw in company_keywords):
+    if intent in ["company_setup", "pt_pma_setup", "business_formation"] or any(
+        kw in query_lower for kw in company_keywords
+    ):
         logger.info(f"🏢 [Router] Company-related query, routing to CompanySubgraph")
         return "company_subgraph"
 
     # Visa/immigration queries
     visa_keywords = ["kitas", "kitap", "vitas", "visa", "work permit", "rptka", "immigration"]
-    if intent in ["visa_application", "kitas_work", "immigration", "visa"] or \
-       any(kw in query_lower for kw in visa_keywords):
+    if intent in ["visa_application", "kitas_work", "immigration", "visa"] or any(
+        kw in query_lower for kw in visa_keywords
+    ):
         logger.info(f"🛂 [Router] Visa-related query, routing to VisaSubgraph")
         return "visa_subgraph"
 
     # Property queries
-    property_keywords = ["property", "villa", "hak pakai", "hgb", "hak milik", "rental", "real estate"]
-    if intent in ["property_acquisition", "property_purchase", "property"] or \
-       any(kw in query_lower for kw in property_keywords):
+    property_keywords = [
+        "property",
+        "villa",
+        "hak pakai",
+        "hgb",
+        "hak milik",
+        "rental",
+        "real estate",
+    ]
+    if intent in ["property_acquisition", "property_purchase", "property"] or any(
+        kw in query_lower for kw in property_keywords
+    ):
         logger.info(f"🏠 [Router] Property-related query, routing to PropertySubgraph")
         return "property_subgraph"
 
     # Tax queries
     tax_keywords = ["tax", "pph", "ppn", "npwp", "pajak", "tasse", "fiscal", "vat"]
-    if intent in ["tax_compliance", "npwp_registration", "tax"] or \
-       any(kw in query_lower for kw in tax_keywords):
+    if intent in ["tax_compliance", "npwp_registration", "tax"] or any(
+        kw in query_lower for kw in tax_keywords
+    ):
         logger.info(f"🧾 [Router] Tax-related query, routing to TaxSubgraph")
         return "tax_subgraph"
 
@@ -552,7 +566,9 @@ def build_kg_langgraph_workflow(db_pool: asyncpg.Pool) -> StateGraph:
     workflow.add_edge("property_subgraph", END)
     workflow.add_edge("tax_subgraph", END)
 
-    logger.info("✅ [Build Workflow] StateGraph constructed with 10 nodes (6 core + 4 subgraphs) and routing logic")
+    logger.info(
+        "✅ [Build Workflow] StateGraph constructed with 10 nodes (6 core + 4 subgraphs) and routing logic"
+    )
 
     return workflow
 
