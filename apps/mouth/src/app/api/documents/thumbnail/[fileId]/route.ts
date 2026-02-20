@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { logger } from "@/lib/logger";
 
 /**
  * Proxy authenticated Google Drive thumbnails
@@ -67,7 +68,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    logger.error("Thumbnail proxy error:", error);
+    logger.error("Thumbnail proxy error:", error as Record<string, unknown>);
     // Fallback to public Google Drive URL
     return NextResponse.redirect(
       `https://drive.google.com/thumbnail?id=${fileId}&sz=w800`,
