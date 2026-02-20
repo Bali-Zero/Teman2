@@ -69826,7 +69826,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Consolidamento verso format premium e branded. CoreTax elimina margini informali: solo catene con e-Faktur sopravvivono. Grandi magazzini >2.000m² in crescita nelle zone commerciali di Denpasar e Kuta.",
+        "bali_nuance": "Matahari, Ramayana e format premium si contendono le zone commerciali di Kuta e Denpasar. Turismo rafforza domanda di beni non-FMCG. KKPR (zonizzazione) blocca aperture fuori zone commerciali designate.",
+        "operational_risks": "Soglia >2.000m² attiva Certificato Standard verificato + ANDAL Lalin (valutazione traffico). KKPR deve confermare zona Perdagangan e Jasa. PT PMA: 100% open ma distanza obbligatoria da pasar tradisional (Permendag 23/2021). CoreTax NITKU per ogni piano/reparto se separato fiscalmente.",
+        "investment_outlook": "Outlook moderato per format commodity, eccellente per lifestyle department store premium. Turismo internazionale Bali rafforza domanda stagionale ma imprevedibile. Modello anchor tenant in mall riduce rischio standalone.",
+        "legacy_bridge": "Stabile dal KBLI 2020. KBLI 2025 non ha scisso questo codice — rimane aggregato. Verifica che NIB non includa attività F&B o intrattenimento senza codici aggiuntivi (56xxx, 90xxx)."
+      }
     },
     {
       "kode_kbli_2025": "47192",
@@ -70292,7 +70299,14 @@
       "pma_prioritas": false,
       "pma_nota": "Perdagangan eceran minuman beralkohol di bar",
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Mercato bevande analcoliche premium in crescita sostenuta. Cultura wellness e 'clean drinking' trainano domanda di water kefir, kombucha, cold-pressed juice tra espatriati e turisti. CoreTax impone tracciabilità BPOM ML per ogni referenza.",
+        "bali_nuance": "Canggu e Ubud: boutique di bevande premium (specialty coffee, adaptogen drinks, herbal infusions) servono nomadi digitali con benchmark di prezzo occidentali. Categoria distinta da F&B (56xxx): vendita bottiglia chiusa ≠ servizio bicchiere.",
+        "operational_risks": "BPOM ML obbligatorio per ogni prodotto importato. Halal BPJPH deadline ottobre 2026 per tutte le bevande confezionate. Minimarket <400m²: rischio classificazione MSME — PT PMA deve operare in format più ampio o via distribuzione wholesale (46xxx). Coretax NITKU per ogni punto vendita.",
+        "investment_outlook": "Nicchia premium ad alta marginalità (30-50% su specialty drinks). Opportunità nel segmento 'Bali-made' artigianale (infusi locali, acqua di cocco premium) con export component. B2B verso hotel e resort è il canale più scalabile.",
+        "legacy_bridge": "Codice stabile. Distinzione critica con 47221 (alcolici) e con 56xxx (F&B service). Se prodotto viene consumato in loco va su 56301 (bar) o 56101 (ristorante), non su 47222."
+      }
     },
     {
       "kode_kbli_2025": "47230",
@@ -70403,7 +70417,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Bakery premium in espansione accelerata. Trend 'artisan sourdough' e pasticceria internazionale rafforza domanda tra espatriati. CoreTax richiede e-Faktur anche per piccole transazioni retail — elimina competitor informali.",
+        "bali_nuance": "Seminyak, Canggu, Ubud: boutique bakery europee e australiane servono espatriati e turisti luxury. Halal 2026: prodotti con lardo, strutto o vanillina alcolica richiedono reformulazione. Cold chain per prodotti freschi critica durante trasporto Gilimanuk.",
+        "operational_risks": "BPOM MD (produzione locale) o ML (importazione) per ogni referenza. Halal BPJPH deadline ottobre 2026 obbligatoria per prodotti venduti al pubblico generale. Formato <400m² in zona mista: verificare KKPR per attività commerciale retail. Temperatura stoccaggio monitorata da BPOM.",
+        "investment_outlook": "Margini retail bakery premium: 40-60% per prodotti artigianali. Catene con cucina centrale (produzione separata sotto codici manifatturieri) + punti vendita retail multi-location sono il modello scalabile. B2B verso hotel e resort garantisce volumi prevedibili.",
+        "legacy_bridge": "Codice specifico solo vendita: produzione in loco richiede codice industriale separato (107xxx). KBLI 2025 mantiene distinzione netta tra retail (47242) e manifattura alimentare. Verifica che NIB non includa produzione senza codice 107xx aggiuntivo."
+      }
     },
     {
       "kode_kbli_2025": "47243",
@@ -70849,7 +70870,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Mercato retail computer in trasformazione: boom workstation per content creator e nomadi digitali. CoreTax digitalizza l'intero retail: solo rivenditori autorizzati con e-Faktur sopravvivono alla sorveglianza post-vendita. CEIR tracking per dispositivi con IMEI.",
+        "bali_nuance": "Canggu e Seminyak: domanda premium per MacBook, monitor 4K, accessori studio da nomadi digitali con benchmark Sydney/Londra. Jalan Teuku Umar (Denpasar): consolidamento verso rivenditori autorizzati. Etichettatura obbligatoria in Bahasa Indonesia + garanzia locale.",
+        "operational_risks": "Certificazione SDPPI/Postel obbligatoria per ogni device importato (non delegabile al produttore). SNI per componenti elettrici. Sorveglianza post-vendita BPOM/Kemendag attiva. CEIR per device con IMEI. CoreTax NITKU per ogni punto vendita. Import: LARTAS PI+LS per hardware non-SEZ.",
+        "investment_outlook": "Margini rivenditore autorizzato: 10-18% su hardware, 25-40% su accessori e peripherals non-branded. Modello servizi (setup, supporto, garanzia estesa) aumenta LTV. Nicchia HaaS (Hardware-as-a-Service) per coworking e agenzie digitali: margini 20-28% annui.",
+        "legacy_bridge": "Distinguere netto da 46511 (wholesale computer) e da 47404 (telefoni/telecomunicazioni). Un punto vendita che vende sia computer che smartphone deve registrare entrambi 47401 e 47404. Software venduto fisicamente: 47401; licenze digitali: categoria J."
+      }
     },
     {
       "kode_kbli_2025": "47402",
@@ -70969,7 +70997,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "47414",
       "mapping_note": "Cleaned: removed invalid ['47404']",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Smartphone retail dominato da Oppo, Samsung, Xiaomi con ATPM consolidati. Segmento accessori (case, auricolari, powerbank) in forte crescita con margini superiori all'hardware principale. CEIR obbligatorio dal 2025: device non registrati bloccati su rete indonesiana.",
+        "bali_nuance": "Turisti e nomadi digitali: domanda locale SIM card + accessori + riparazioni. Zona Phone Street (Denpasar) vs boutique tech in mall: due mercati distinti per qualità e prezzo. Etichettatura Bahasa Indonesia obbligatoria sulle confezioni.",
+        "operational_risks": "CEIR (Central Equipment Identity Register): ogni smartphone venduto deve avere IMEI registrato prima dell'attivazione su rete indonesiana — responsabilità del distributore a monte, verifica del rivenditore. Kominfo Type Approval per ogni modello. SNI per caricatori e accessori. Sorveglianza Kemendag attiva su mercato grigio.",
+        "investment_outlook": "Rivendita smartphone mainstream: margini 5-12%, competitivo. Nicchia premium (iPhone, Samsung Galaxy Ultra): margini 15-20% con garanzia autorizzata. Accessori e peripherals: 30-50% margine. Riparazione (codice separato): margini molto alti ma richiede codice KBLI specifico.",
+        "legacy_bridge": "In KBLI 2025 separato da 47401 (computer) e 47406 (audio/video). Rivenditori multi-categoria devono registrare tutti e tre i codici nel NIB. Import wholesale: codice 46523."
+      }
     },
     {
       "kode_kbli_2025": "47405",
@@ -71047,7 +71082,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "47420",
       "mapping_note": "PP28 usa codice KBLI 2020 47420 (Perdagangan Eceran Khusus Pera...). Match: 95%",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Mercato audio/video retail biforcato: commodity (TV, casse Bluetooth) sotto pressione da Tokopedia/Shopee; premium (home cinema, audiofili, professional audio) tiene i margini. Boom beach club e live music venue Bali: domanda B2B professional audio in crescita.",
+        "bali_nuance": "Seminyak e Canggu: beach club e live music venue richiedono sistemi audio professional (Line Array, monitor, mixer). Ville luxury: home cinema e sistemi multi-room audio sono standard di fascia alta. Nomadi digitali: podcast e streaming equipment in crescita.",
+        "operational_risks": "SNI e Kominfo Type Approval per apparati con frequenza radio. CEIR per device con connettività mobile. Sorveglianza Kemendag su importazioni parallele (grey market). CoreTax NITKU. Import wholesale separato (46521 per componenti, 46591 per apparati completi).",
+        "investment_outlook": "Professional audio per venue: margini 20-35% con contratti installazione + manutenzione. Home cinema luxury villa: progetto una tantum ad alto valore (IDR 50-200 juta per sistema). Modello B2B verso beach club e resort superiore al retail consumer per stabilità.",
+        "legacy_bridge": "Codice stabile. Distinguere da 47401 (computer) e 47404 (telefoni). Installazione audio professionale richiede codice costruzione/servizi separato (43909 o 71102) oltre al retail 47406."
+      }
     },
     {
       "kode_kbli_2025": "47511",
@@ -71195,7 +71237,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Boom edilizio Bali 2025-2026 mantiene domanda inelastica di materiali costruzione. CoreTax elimina fornitori informali senza e-Faktur: consolidamento verso distributori certificati con tracciabilità SNI. Acciaio tondo SNI: requisito obbligatorio per qualsiasi struttura richiedente PBG.",
+        "bali_nuance": "Canggu, Pererenan, Bukit: cantieri ville luxury richiedono materiali certificati SNI — i developer stranieri specificano per contratto. Strade strette (<3m) rendono consegne con camion grande impossibili: domanda specifica per fornitori con mezzi leggeri (Engkel) + stock Bali-side. Gilimanuk: blocchi festività religiose impongono buffer 30-45 giorni.",
+        "operational_risks": "KKPR rigido per depositi materiali edili: non ammissibili in zone residenziali dense. SNI obbligatorio per acciaio strutturale (SNI 07-2052). SVLK per materiali lignei associati. CoreTax NITKU per deposito/magazzino. Sorveglianza Kemendag su materiali importati non-SNI.",
+        "investment_outlook": "Margini distributore specializzato: 12-20% su commodity, 25-35% su materiali certificati premium. Modello B2B diretto a developer stranieri elimina catena intermediari. Buffer stock Bali-side è vantaggio competitivo non replicabile rapidamente da competitor Java-based.",
+        "legacy_bridge": "Codice retail (47521) distinto da wholesale (46xxx). Operatori che vendono sia wholesale B2B che retail devono registrare entrambi i codici. KBLI 2025 mantiene categoria ampia — verifica se attività specifica richiede codice più granulare."
+      }
     },
     {
       "kode_kbli_2025": "47522",
@@ -71499,7 +71548,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Elettrodomestici retail: segmento commodity sotto compressione da brand cinesi (Midea, Haier) su marketplace. Segmento smart home e IoT in forte crescita. Boom ville luxury Bali crea domanda B2B one-time + cicli sostituzione. CoreTax elimina dealer informali.",
+        "bali_nuance": "Ville luxury Canggu/Bukit: smart home integration (Lutron, Philips Hue, Daikin inverter) è standard di fascia alta. Villa manager e property manager sono il cliente B2B chiave. Consegna e installazione richiedono personale tecnico (installazione = codice separato 43xxx o 71102).",
+        "operational_risks": "SNI obbligatorio per elettrodomestici (wiring devices, lampadine, condizionatori). TKDN per prodotti con sussidio governativo. CoreTax NITKU per showroom. Distinguere nettamente vendita (47592) da installazione elettrica (43xxx): attività combinate senza codice installazione sono violazione KBLI.",
+        "investment_outlook": "Smart home integration: margini 25-40% su sistema completo inclusa configurazione. HaaS per resort: fornitura elettrodomestici a noleggio con manutenzione inclusa — modello ricorrente più stabile della vendita. B2B verso sviluppatori immobiliari: ordini bulk prevedibili durante fasi construction + fit-out.",
+        "legacy_bridge": "KBLI 2025 amplia la portata a dispositivi IoT e smart home rispetto al 2020. Codice 'channel-agnostic': vendita online ammessa senza codice separato. Installazione richiede sempre codice aggiuntivo."
+      }
     },
     {
       "kode_kbli_2025": "47593",
@@ -71781,7 +71837,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Attrezzatura ricreativa e sportiva: mercato premium in crescita sostenuta a Bali. Surf, yoga, diving, cycling trainati da turismo esperienziale. Smarter Spending: Gen Z preferisce prodotti premium certificati sostenibili. CoreTax elimina rivenditori informali.",
+        "bali_nuance": "Uluwatu e Canggu: surf shop premium, yoga equipment store, dive center con retail integrato. Domanda da nomadi digitali per attrezzatura leggera e portatile (travel yoga mat, compact surf fins). Wearables IoT (surf computer GPS, dive computer): intersezione con 47404 — classificare per funzione primaria.",
+        "operational_risks": "SNI per attrezzatura sportiva con componenti elettrici. Wearables con IMEI: CEIR obbligatorio — classificare come 47404 se funzione primaria è telecom, 47620 se sportiva. KKPR per showroom. CoreTax NITKU. Importazione: API-U + LARTAS per attrezzatura professionale specifica.",
+        "investment_outlook": "Nicchia premium con margini 25-40%. Integrazione con scuole surf, yoga studio, dive center crea cross-selling naturale. Rental equipment (tavole surf, bici) genera ricavi ricorrenti ma richiede codice 77210 separato. B2B verso resort e villa manager più stabile del retail walk-in.",
+        "legacy_bridge": "Verificare judul completo: in KBLI 2025 questo codice può coprire attrezzatura ricreativa generale. Distinguere da 46492 (wholesale sport equipment) e da 47733 (occhiali/ottica). Rental richiede sempre 77210 separato."
+      }
     },
     {
       "kode_kbli_2025": "47630",
@@ -71878,7 +71941,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "47739",
       "mapping_note": "PP28 usa codice KBLI 2020 47739 (Perdagangan eceran khusus bara...). Match: 78%",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Categoria residuale per beni artistici e ricreativi di nicchia: trofei, francobolli, monete, articoli da collezionismo, hobby specializzati. Mercato di nicchia ma stabile. TikTok Shop e resale market online in crescita per collezionismo.",
+        "bali_nuance": "Ubud e Seminyak: gallerie d'arte contemporanea, negozi vintage, collezionismo artigianale. Mercato espatriati e turisti culturali. Distinzione critica: gallerie che vendono arte originale spesso richiedono sia 47690 (retail) che 46xxx (export wholesale) per gestire vendite internazionali.",
+        "operational_risks": "Verifica che prodotti in materiali animali (conchiglie, avorio, corallo) siano conformi CITES prima dell'acquisto/vendita. CoreTax NITKU. Per gallerie con funzione export: necessario codice wholesale (46xxx) aggiuntivo. KKPR per spazi espositivi.",
+        "investment_outlook": "Nicchia con margini elevati (40-60% su arte originale). Doppio modello retail+export per gallerie internazionali. Mercato stabile ma volumi limitati. Integrazione con turismo culturale (Ubud Art Festival, gallerie resort) amplifica visibilità.",
+        "legacy_bridge": "Codice catch-all per beni ricreativi non classificati altrove. KBLI 2025 mantiene struttura residuale. Attività specifiche (artigianato legno: 47781; pitture: 47782; musica: 47493) hanno codici dedicati — usare 47690 solo per categorie non coperte."
+      }
     },
     {
       "kode_kbli_2025": "47711",
@@ -71959,7 +72029,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Calzature retail: polarizzazione tra fast fashion (pressione da Shopee/marketplace) e artigianato premium. Boom sandali artigianali Bali (Sidemen, Klungkung) con export a mercati Western. CoreTax elimina rivenditori con stock importato illegalmente (thrifting).",
+        "bali_nuance": "Seminyak e Canggu: boutique sandali artigianali con 'Made in Bali' provenance command prezzi 3-5x commodity. Sidemen e Klungkung: cluster produzione artigianale pelle e rafia. Import secondhand (thrifting) vietato: Permendag 40/2022 — rischio confisca immediata stock non certificato.",
+        "operational_risks": "Provenienza legittima obbligatoria: fatture da distributori autorizzati o produttori locali richieste durante sorveglianza Kemendag. Import usato severamente vietato (Permendag 40/2022). SNI per calzature bambino. KKPR per store <400m² in zone residenziali: verificare zonizzazione. CoreTax NITKU.",
+        "investment_outlook": "Artigianato pelle premium: margini 35-50% su prodotti certificati con provenance documentata. Modello factory-outlet (manifattura 32xxx + retail 47712) elimina restrizioni retail PMA: produttori possono vendere direttamente. Export componente scalabile senza restrizioni retail.",
+        "legacy_bridge": "Stabile dal 2020. Distinguere da 47714 (borse/valigeria). PT PMA: strategia ottimale è manifattura (32120 o codice tessile) + retail proprio prodotto, evitando restrizioni retail generic. Thrifting vietato — non usare come workaround per stock import."
+      }
     },
     {
       "kode_kbli_2025": "47713",
@@ -72033,7 +72110,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Borse e valigeria: segmento artisanal Bali in forte crescita internazionale. Rafia, rattan e pelle locale: export a luxury retailer globali. CoreTax traccia ogni transazione — elimina il sommerso che comprimeva i margini dei produttori certificati.",
+        "bali_nuance": "Seminyak, Canggu: boutique borse artigianali rafia/rattan/pelle servono turisti luxury con prezzi Sydney-equivalenti. KKPR: boutique in zona residenziale (Canggu backstreet) sempre più soggette a chiusura — solo zona Perdagangan e Jasa valida. Provenance 'Made in Bali' è differenziatore premium.",
+        "operational_risks": "KKPR: zona commerciale obbligatoria (Perdagangan e Jasa) — verificare RDTR locale prima di firmare contratto affitto. Materiali pelle: SVLK-equivalente per tracciabilità se da fonti forestali. Import borse branded: rischio contraffazione — verifica IP rights prima dello stock. CoreTax NITKU per ogni punto vendita.",
+        "investment_outlook": "Artigianato rafia/rattan premium: margini 40-60% su prodotti con provenance certificata. Modello duale wholesale export (46496) + retail locale (47714): massimizza revenue senza conflitti KBLI. Collaborazione con artisan network Klungkung/Gianyar è barriera competitiva non replicabile.",
+        "legacy_bridge": "Stabile. Distinguere da 46496 (wholesale borse) e 47712 (calzature). Per export: necessario codice wholesale 46496 aggiuntivo. PT PMA manifattura: può vendere prodotto proprio senza limitazioni retail; prodotti terzi richiedono verifica restrizioni."
+      }
     },
     {
       "kode_kbli_2025": "47721",
@@ -72076,7 +72160,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Farmacie formali in consolidamento verso catene (Guardian, Watson's, K24). CoreTax trasparenta margini storicamente opachi. Sanur Health SEZ: domanda farmaci specialty oncologici e biologici in crescita strutturale. BPJS: volumi garantiti ma margini 5-10%.",
+        "bali_nuance": "Turismo medico SEZ Sanur crea domanda farmaci specialty non disponibili in farmacia standard. Espatriati a Canggu: preferiscono farmaci internazionali con packaging originale — import MP obbligatorio. Omnibus Health Law 17/2023: chiusura cliniche non conformi riduce canale informale.",
+        "operational_risks": "Izin Apotek (Kemenkes) + SIPA del Farmacista responsabile: ispezione fisica locali obbligatoria. Solo Apotek (47721) può dispensare farmaci etici (ricetta). Halal deadline ottobre 2026 per OTC: reformulazione capsule gelatina porcina richiede 12-18 mesi. HET (Harga Eceran Tertinggi): price control governativo su farmaci essenziali comprime margini. CDOB BPOM per stoccaggio.",
+        "investment_outlook": "PMA in farmacia: tecnicamente 100% aperto ma tendenze normative suggeriscono irrigidimento — verificare aggiornamenti Perpres prima di impegnarsi. Modello catena farmaceutica (10+ punti vendita) è unico che giustifica investimento PMA in questo codice. Margini specialty/OTC: 20-35%.",
+        "legacy_bridge": "Distinguere assolutamente da 47722 (Toko Obat, senza ricetta). Un NIB 47722 che dispensa farmaci etici è violazione grave. KBLI 2025 mantiene distinzione netta. Post Omnibus Health Law: requisiti SIPA e struttura fisica più stringenti."
+      }
     },
     {
       "kode_kbli_2025": "47722",
@@ -72114,7 +72205,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Toko Obat (drug store OTC): mercato frammentato ma in consolidamento verso formati wellness integrati. Vitamine, integratori, rimedi erboristici: crescita 15-20% annua trainata da health consciousness post-pandemia. CoreTax formalizza operatori storicamente informali.",
+        "bali_nuance": "Ubud e Canggu: health food store e wellness shop usano 47722 per vendita OTC + integratori. Espatriati: alta domanda per brand internazionali (iHerb-equivalent products). Halal: integratori con gelatina animale devono essere riformulati entro ottobre 2026. Barriera all'ingresso inferiore vs 47721.",
+        "operational_risks": "Certificato Standard verificato (Medio-Alto rischio). TTK (Tenaga Teknis Kefarmasian) obbligatorio — non necessita farmacista completo ma assistente tecnico qualificato. Solo farmaci OTC: nessun farmaco etico/ricetta. BPOM sorveglianza attiva. Halal deadline 2026 per integratori. CoreTax NITKU.",
+        "investment_outlook": "Health & wellness store con 47722: barriera all'ingresso gestibile, margini integratori 25-40%. Integrazione con yoga studio, retreat center crea clientela captive. Modello 'functional nutrition' (adattogeni, nootropi, sport nutrition) per mercato nomadi digitali Bali è nicchia non ancora saturata.",
+        "legacy_bridge": "Barriera inferiore rispetto a 47721 ma ambito prodotti limitato (no ricetta). Toko Obat che vuole espandersi a farmaci etici deve ottenere Izin Apotek separato e assumere Farmacista (SIPA). Halal 2026 si applica anche qui per OTC di origine animale."
+      }
     },
     {
       "kode_kbli_2025": "47723",
@@ -72538,7 +72636,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Mercato ottica retail in crescita: aging population + screen fatigue tra nomadi digitali. Lenti progressive e lenti a contatto: margini 40-60%. Occhiali da sole premium: mercato lusso Bali con brand europei (Ray-Ban, Oakley, Maui Jim). CoreTax formalizza optometristi informali.",
+        "bali_nuance": "Seminyak e Uluwatu: boutique ottica premium servono turisti luxury e espatriati. Sanur Health SEZ: cliniche oftalmologiche private creano demand strutturale per lenti correttive specialty. Optometria (servizio di misurazione): richiede codice servizi sanitari separato (86xxx) oltre al retail 47733.",
+        "operational_risks": "Lenti e occhiali come dispositivo medico (visione): IPAK (Izin Penyalur Alat Kesehatan) può essere richiesto per lenti correttive avanzate. Servizio optometrico (misurazione vista): codice 86201/86202 separato obbligatorio. CoreTax NITKU per ogni punto vendita/ottica. SNI per protezione UV occhiali da sole.",
+        "investment_outlook": "Ottica premium: margini 40-65% su occhiali completi (montatura + lenti progressive). Integrazione optometria (servizio) + retail (prodotto) in unico spazio: modello più efficace ma richiede due codici KBLI. Contratti B2B con cliniche SEZ Sanur per fornitura lenti specialty: opportunità strutturale.",
+        "legacy_bridge": "In KBLI 2025, 47733 = KACAMATA (occhiali) — non 'articoli ortopedici' come in alcune classificazioni 2020. Dispositivi ortopedici generali: verificare codice specifico (47733 potrebbe non coprire protesi). Lenti correttive avanzate: verificare confine con 46430 (wholesale ottica) e 46791 (dispositivi medici)."
+      }
     },
     {
       "kode_kbli_2025": "47734",
@@ -72916,7 +73021,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Pet economy Indonesia in esplosione: pet ownership espatriati Bali paragonabile a mercati Western. Veterinary premium, pet food specialty, grooming professionale. CoreTax elimina pet shop informali senza e-Faktur. Mercato USD-priced per servizi high-end.",
+        "bali_nuance": "Seminyak, Canggu, Sanur: pet shop premium servono espatriati con razze importate (Golden, French Bulldog, Border Collie). Servizio grooming + veterinary integrati richiedono codici separati (86xxx per veterinaria). Razze esotiche: controllo CITES + karantina hewan obbligatori.",
+        "operational_risks": "CITES: vietato commerciare specie protette senza permesso BKSDA. Razze esotiche importate: karantina hewan (Kementan) + sertifikat kesehatan hewan obbligatori. Animali vivi: conformità benessere animale (UU 18/2009). CoreTax NITKU. Veterinaria in negozio: codice 86xxx separato obbligatorio.",
+        "investment_outlook": "Pet shop premium Bali: margini 40-60% su prodotti specialty (Hill's Science Diet, Royal Canin). Servizi grooming (codice separato): 100% margine sul servizio. Integrazione con veterinaria privata: modello one-stop-shop per espatriati con animali. Mercato crescente con bassa stagionalità.",
+        "legacy_bridge": "Stabile dal 2020. Distinguere nettamente retail animali (47751) da servizi veterinari (86xxx) e da grooming/cura animali (altri codici S). Ogni attività aggiuntiva richiede KBLI dedicato nel NIB."
+      }
     },
     {
       "kode_kbli_2025": "47752",
@@ -73086,7 +73198,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Mercato florist Bali dominato da eventi: matrimoni, cerimonie corporate, decorazioni villa. Bali Wedding Industry (IDR 2+ triliun annui) è il principale driver. CoreTax richiede e-Faktur anche per fioristi — elimina operatori completamente informali.",
+        "bali_nuance": "Ubud, Seminyak, Nusa Dua: fioristi luxury servono matrimoni internazionali con fiori tropicali e importati (rose Kenya, orchidee). Cerimonie religiose Balinesi creano domanda costante di frangipani e fiori tradizionali. Stagionalità bassa: matrimoni tutto l'anno a Bali.",
+        "operational_risks": "Import fiori freschi: karantina tumbuhan (Kementan) obbligatoria per fiori da paesi a rischio fitosanitario. Cold chain per fiori recisi importati. KKPR per negozio (zona commerciale). Servizi decorazione cerimonie: verificare se attività decorazione richiede codice aggiuntivo (43909 o N services). CoreTax NITKU.",
+        "investment_outlook": "Wedding florist luxury: ordini singoli IDR 50-500 juta per matrimonio internazionale. B2B con venue (hotel, villa resort, beach club) garantisce revenue ricorrente. Corporate events e villa decoration: canale stabile non stagionale. Margini floristica premium: 40-65%.",
+        "legacy_bridge": "Stabile. Distinguere vendita fiori (47761) da servizi floreali/decorazione (altri codici). Se florist produce piante da vivaio (produzione): codice agricolo separato. Import piante vive: karantina + BKSDA per specie protette."
+      }
     },
     {
       "kode_kbli_2025": "47762",
@@ -73424,7 +73543,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Oli essenziali e aromatici: mercato Bali in forte crescita trainato da industria spa e wellness. Patchouli, sandalo, ylang-ylang indonesiani: GI (Geographical Indication) protection rafforza premium pricing. Halal 2026 applicabile ai prodotti topici/cosmetici. CoreTax formalizza mercato.",
+        "bali_nuance": "Ubud e Seminyak: spa resort, yoga retreat, boutique wellness sono il mercato primario B2B. Turisti acquistano oli locali come souvenir premium. 'Bali-made' provenance (Sandalwood Timor, Patchouli Aceh) è premium differenziator. Esportazione: UK, Australia, Giappone mercati principali.",
+        "operational_risks": "BPOM notifikasi kosmetik per oli da applicazione cutanea. BPOM obat tradisional se commercializzati con claim terapeutici. Halal BPJPH deadline ottobre 2026 per prodotti topici e cosmetici. Import oli non locali: ML BPOM obbligatorio. Distillazione/produzione: codice industriale separato (20xxx). CoreTax NITKU.",
+        "investment_outlook": "Oli essenziali Bali-made: margini 50-70% su brand premium con GI provenance. Export componente scalabile senza restrizioni retail (via 46xxx wholesale). B2B verso spa resort: contratti annuali prevedibili. Mercato wellness globale in crescita — brand built in Bali ha equity internazionale.",
+        "legacy_bridge": "Codice retail distinto dalla produzione (20xxx manifattura). Export richiede codice wholesale 46xxx aggiuntivo. BPOM: classificazione come cosmetico, obat tradisional o pangan (alimentare) cambia radicalmente gli obblighi. Verificare end-use prima di registrazione BPOM."
+      }
     },
     {
       "kode_kbli_2025": "47779",
@@ -73499,7 +73625,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Artigianato legno e intrecciati Bali: export globale sostenuto, retail locale trainato da turismo culturale. Protezione GI per prodotti con certificata origine Bali (Ubud, Gianyar). CoreTax elimina rivenditori senza tracciabilità produzione. SVLK obbligatorio per prodotti legnosi.",
+        "bali_nuance": "Pasar Sukawati, Ubud Art Market, Tegalalang: centri retail artigianato per turisti. Gianyar e Mas: cluster produzione sculture legno. Gallerie premium Seminyak/Canggu: artigianato art-grade per collezionisti internazionali con prezzi 10-50x mercato souvenir. Esportatori: doppio codice 47781 (retail) + 46xxx (wholesale export).",
+        "operational_risks": "SVLK (Sertifikat Verifikasi Legalitas Kayu) obbligatorio per legname e prodotti derivati — sequestri su strada senza certificato. CITES per materiali protetti (rosewood, ebano). CoreTax NITKU. Export: V-Legal document per sdoganamento internazionale. Bambù e rattan: origine tracciabile raccomandata.",
+        "investment_outlook": "Galleria artigianato premium: margini 50-80% su pezzi d'arte certificati con provenance artisan. Export B2B verso interior designer globali: ordini bulk, margini 30-50%. Modello curatorship (galleria PT PMA + artisan network locale) è il più difendibile legalmente e commercialmente.",
+        "legacy_bridge": "Stabile. In KBLI 2025 include cendera mata (souvenir) e kerajinan (artigianato). Distinguere da 47782 (lukisan/pitture) e 47690 (beni ricreativi generici). Export sempre via codice wholesale 46xxx. Produzione: codice manifatturiero separato (16293 legno, 13xxx tessile)."
+      }
     },
     {
       "kode_kbli_2025": "47782",
@@ -73536,7 +73669,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Mercato arte originale Bali: ecosystem unico al mondo con 5.000+ artisti attivi. Gallerie internazionali (Seminyak, Ubud) servono collezionisti globali. NFT e arte digitale: nuova frontiera ma richiede codici Category J separati. CoreTax formalizza transazioni storicamente cash-based.",
+        "bali_nuance": "Ubud: epicentro arte pittorica Balinese — stile tradizionale Kamasan, Ubud Modern, arte contemporanea. Gallerie premium Seminyak: arte Indonesian contemporanea per collezionisti internazionali. Transazioni spesso >IDR 50 juta: CoreTax e-Faktur obbligatorio con verifikasi identitas acquirente.",
+        "operational_risks": "Arte originale: nessuna certificazione BPOM ma autenticità e provenance documentazione sono critiche per mercato internazionale. Arte con materiali CITES (avorio, tartaruga): vietata. CoreTax: transazioni >IDR 600 juta richiedono pelaporan PPATK (anti-money laundering). Export: nota Kemendag per opere >50 anni (patrimonio culturale).",
+        "investment_outlook": "Galleria d'arte PT PMA: margini 40-60% su commission artisti (50/50 tipicamente). Export arte contemporanea: mercato aste internazionali (Sotheby's, Christie's Asian art). Doppio modello retail Bali + export online (Instagram, Artsy) amplifica reach senza costi aggiuntivi. Mercato piccolo ma molto alto margine.",
+        "legacy_bridge": "KBLI 2025: 47782 = LUKISAN (pitture, quadri). Distinguere da 47781 (artigianato 3D legno/intrecciati) e 47690 (beni ricreativi catch-all). Arte digitale e NFT: Category J codes, non 47782. Export opere >50 anni: verifica Kemenbudristek per protezione patrimonio culturale."
+      }
     },
     {
       "kode_kbli_2025": "47791",
