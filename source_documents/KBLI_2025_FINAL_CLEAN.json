@@ -1272,7 +1272,14 @@
       "pma_prioritas": true,
       "pma_nota": "Sektor prioritas: Pertanian sayuran daun",
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Moderately positive. Demand for fresh leafy vegetables (sayuran daun) grows steadily driven by Bali's expanding HoReCa sector and health-conscious consumers. The farm-to-table movement in Bali's luxury hospitality segment creates premium demand for locally grown greens. The sector is open to PMA under the Positive Investment List without explicit foreign ownership cap, but structural land constraints apply.",
+        "bali_nuance": "Relevant for Bali's restaurant and hotel supply chain. Ubud and Tabanan produce most of Bali's leafy vegetables. Governor Koster's Instruksi 5/2025 prohibits conversion of agricultural land (LP2B and LBS), protecting farmland but limiting greenfield expansion. The Subak irrigation system governs water rights — any farming operation must integrate with the subak community, not bypass it. Organic positioning ('Bali organic') commands significant premium in the HoReCa market.",
+        "operational_risks": "High for direct PMA farming. No Hak Milik for foreigners — only HGB or long-term leasehold. Subak community water rights cannot be appropriated. BKPM Reg 5/2025 allows land/building costs to count toward the IDR 10 billion minimum investment in agriculture. SNI 6729:2025 (updated August 2025) sets new organic certification standards, mandatory from March 2026 for products labeled 'Organik Indonesia'. Certification via KAN-accredited LSPO (e.g., BIOCert, MutuAgung).",
+        "investment_outlook": "Moderately positive for integrated aggregator model. Direct farming PMA is impractical at individual farm level. Viable model: PT PMA as aggregator/distributor supplying HoReCa hotels and restaurants via contract farming with local subak abian cooperatives. Value-add through processing and packaging for premium domestic and export markets.",
+        "legacy_bridge": "Code 01131 (leafy vegetables) is a KBLI 2025 specific sub-classification under the vegetables category. Previous KBLI 2020 code 01131 was broader. Verify exact code mapping in OSS before registration. For mixed vegetable operations, multiple sub-codes (01131-01138) can be consolidated under BKPM Reg 5/2025."
+      }
     },
     {
       "kode_kbli_2025": "01132",
@@ -1941,7 +1948,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "01122",
       "mapping_note": "PP28 usa codice KBLI 2020 01122 (Pertanian Padi Inbrida...). Match: 80%",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Positive with strong Bali-specific demand. Chili (cabai) is a staple in Indonesian cuisine with chronic supply shortages causing price volatility. Bali's F&B sector consumes large quantities. Premium varieties (Bali red chili, organic chili) command higher prices in the specialty food market.",
+        "bali_nuance": "Cabai is one of the most economically volatile agricultural commodities in Indonesia. Bali imports significant quantities from Java and Sulawesi. Local production gap creates opportunity for structured contract farming operations. Integration with food processing (sambal production, dried chili export) adds significant value. The Balinese cooking tradition makes chili a non-discretionary input for the entire F&B sector.",
+        "operational_risks": "High price volatility — cabai prices can swing 300-400% within a year. Same land ownership constraints as other agricultural codes. Weather dependency high (susceptible to fungal disease in high humidity). Supply chain cold storage critical to reduce post-harvest losses (currently 20-40%). BPOM registration required for any processed chili products.",
+        "investment_outlook": "Moderately positive as part of vertically integrated agribusiness PMA. Best model: combine farming support services (01619) with aggregation and processing into value-added products (sambal, chili sauce, dried chili). Export to Singapore, Australia, and Europe is viable for premium Balinese chili varieties.",
+        "legacy_bridge": "KBLI 2025 code 01138 specifically covers cabai (chili) cultivation, disaggregated from the previous broader vegetable category. OSS update and specific code registration required."
+      }
     },
     {
       "kode_kbli_2025": "01139",
@@ -3124,7 +3138,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Very positive with strong momentum. Indonesia is the world's third-largest tropical fruit producer. Key Bali asset: Salak Karangasem received GIAHS (Globally Important Agricultural Heritage Systems) recognition from FAO in 2024 — Indonesia's first GIAHS designation. Twelve salak varieties are being registered with PVTPP Kementan. Salak export reached 1,200 tonnes in 2018 (+28% YoY), with China as the fastest-growing market. The sector is open to PMA.",
+        "bali_nuance": "Critical Bali assets: (1) Salak Bali/Gula Pasir (Karangasem): GIAHS-recognized agroforestry system, approximately 50 tonnes/month production, exceptional sweetness profile. (2) Manggis (mangosteen): premium export product, Bali variety highly valued in Chinese market. (3) Rambutan, durian, and tropical mixed fruit as complementary crops. The GIAHS recognition creates unique premium branding opportunity internationally still largely unexploited commercially. Agritourism integration (farm tours, fruit picking, cooking classes) provides complementary revenue — validated by Pemulan Bali and Astungkara Way examples.",
+        "operational_risks": "Medium-high. Same land ownership constraints (HGB, no Hak Milik). Export requires Phytosanitary Certificate from Badan Karantina Nasional (Permentan 1/2017): inspection, isolation, observation, treatment before issuance. For Chinese market: particularly strict phytosanitary protocols with on-site inspections by Chinese quarantine officers. Climate risk: extended droughts and unpredictable rainfall increasingly impact harvest timing and quality. Organic certification SNI 6729:2025 needed for premium positioning.",
+        "investment_outlook": "Positive for integrated value-chain model. The GIAHS recognition for salak Karangasem creates a rare premium branding opportunity. Best model: processing + branding + export with contract farming from local producers. Premium positioning: direct-to-consumer export via e-commerce (salak chips, dried salak, salak-based cosmetics). Agritourism as complementary revenue stream is already validated in the market.",
+        "legacy_bridge": "KBLI 2025 code 01220 covers pertanian buah tropis dan subtropis. This is the appropriate code for salak, manggis, rambutan, and most Balinese tropical fruits. Note: KBLI 2020 had broader classification — verify OSS mapping. For coffee specifically, use KBLI 01271 (separate code)."
+      }
     },
     {
       "kode_kbli_2025": "01230",
@@ -4320,7 +4341,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "01270",
       "mapping_note": "Manual fix: Pertanian Kopi - parte di 01270 Tanaman Bahan Minuman",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Very positive. Kintamani Arabica Coffee is Indonesia's first Geographical Indication (GI), registered 5 December 2008. Grown at 900+ meters above sea level in northeast Bali, using the traditional wet-hulling process unique to the subak abian system. The specialty coffee market globally values single-origin Balinese coffee. Direct trade and specialty roasting commands 5-10x premium over commodity green bean prices.",
+        "bali_nuance": "The GI protection for Kintamani coffee means only coffee grown in the delimited area (coordinates 115°5'-115°30'E, 8°10'-8°20'S) using the wet-processing method can carry the 'Kopi Arabika Kintamani Bali' GI label. The subak abian system manages the farming cooperatively. Export destination: primarily Japan, Australia, USA, Europe specialty market. Café culture in Bali (Canggu, Seminyak) creates strong domestic premium demand. Integration with agritourism (coffee plantation tours, cupping sessions, barista workshops) generates significant complementary revenue.",
+        "operational_risks": "Medium. GI protection requires compliance with origin and process requirements — only coffee from the delimited area with wet-processing qualifies for GI labeling. Export requires phytosanitary certification. Climate change impact: changing rainfall patterns affect harvest timing. Same land constraints as other agricultural codes. Roasting and packaging operations require separate BPOM registration for processed products.",
+        "investment_outlook": "Very positive for specialty coffee model. The gap between green bean commodity price and specialty roasted coffee price is enormous — moving downstream (roasting, packaging, direct trade) provides dramatically better margins. Best model: PT PMA as specialty coffee processor + exporter, sourcing green beans from Kintamani farmers via direct trade/contract. Integration with café (KBLI 56303) or agritourism experience maximizes value capture per kilogram.",
+        "legacy_bridge": "KBLI 01271 specifically covers coffee cultivation (pertanian kopi). This is the appropriate code for Kintamani coffee operations. Stable between KBLI 2020 and 2025. For operations combining coffee with other tree crops, coordinate with KBLI 01299 (other perennial crops)."
+      }
     },
     {
       "kode_kbli_2025": "01272",
@@ -5403,7 +5431,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Positive niche with growing mainstream demand. Medicinal rhizome plants (tanaman obat rimpang) include turmeric (kunyit), ginger (jahe), galangal (lengkuas), and kencur — the core ingredients of jamu traditional medicine and Balinese spa/wellness products. The Indonesian jamu market exceeds IDR 25 trillion annually, growing post-COVID as health consciousness increases. Global demand for these ingredients in nutraceuticals, cosmetics, and functional foods is expanding.",
+        "bali_nuance": "Highly relevant for Bali's spa and wellness sector. Premium spas actively seek locally grown organic turmeric, ginger, and other medicinal rhizomes. Integration opportunity: supply chain from cultivation (01285) to spa product manufacturing to spa service delivery (96230). Permaculture gardens featuring medicinal plants are established agritourism attractions. Bali's climate (tropical, volcanic soil) produces particularly potent rhizomes.",
+        "operational_risks": "Medium. Same land constraints as other agricultural codes. BPOM registration required for any processed medicinal plant products. Halal certification October 2026 deadline affects products sold as food supplements or wellness products. SNI 6729:2025 organic certification applicable if marketed as organic. The subak system may or may not apply depending on whether irrigation is involved.",
+        "investment_outlook": "Moderately positive as component of integrated wellness/agribusiness PMA. Best positioned as part of a multi-KBLI wellness company combining: cultivation (01285) + processing/manufacturing + spa supply (96230). Direct export of dried/powdered rhizomes to Japan, South Korea, and Europe is viable for certified organic product.",
+        "legacy_bridge": "KBLI 01285 specifically covers rimpang (rhizome) medicinal plant cultivation. Distinguished from non-rhizome medicinal plants (01286) and aromatic plants (01284). Stable in KBLI 2025 transition. For comprehensive herbal business, register multiple codes under BKPM Reg 5/2025 consolidation."
+      }
     },
     {
       "kode_kbli_2025": "01286",
@@ -7815,7 +7850,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Positive niche. Honey bee cultivation (budidaya lebah) is growing in Indonesia with madu Bali commanding premium prices for its multifloral composition from Bali's diverse botanical environment. The market for raw honey, propolis, beeswax, and royal jelly is expanding with health-conscious consumers. Bali honey commands 2-3x premium over Java honey in specialty markets.",
+        "bali_nuance": "Bali's diverse flora (from coastal mangroves to highland forests) produces distinctive multifloral honey with unique flavor profiles. Integration with agritourism (honey farm visits, honey tasting) and spa products (honey treatments, beeswax candles) provides multiple revenue streams. Small-scale but high value per unit. The wellness tourism segment creates premium domestic demand.",
+        "operational_risks": "Low-medium. Bee cultivation has fewer land constraints than crop farming — can utilize existing forested or mixed agricultural areas. BPOM registration required for honey sold as food product. Halal certification applicable for honey products. Quality standardization (SNI for madu) important for premium market positioning. Colony Collapse Disorder (CCD) risk.",
+        "investment_outlook": "Moderately positive as complementary activity within a multi-KBLI agribusiness or wellness PMA. Standalone PMA for beekeeping is difficult to justify at IDR 10 billion scale. Best integrated with: agritourism operation, spa product business, or medicinal plant farming.",
+        "legacy_bridge": "KBLI 01493 specifically covers bee cultivation and honey production. Stable in KBLI 2025. Can be combined with 01285 (medicinal plants) and 01301 (ornamental plants) in an integrated wellness agribusiness PMA."
+      }
     },
     {
       "kode_kbli_2025": "01494",
@@ -8328,7 +8370,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Positive. Land preparation services (jasa pengolahan lahan) are in demand as agricultural mechanization increases in Indonesia. Tractor and tillage equipment rental with operator is the standard service model. The shift away from buffalo-based tillage creates consistent demand for mechanized services.",
+        "bali_nuance": "In Bali, land preparation services must work within the subak system's schedule — planting and harvesting are often communally coordinated. Mechanization is limited in traditional rice terraces due to terrain. Better opportunities in flatland vegetables (Tabanan) and highland coffee/fruit areas. The service model avoids land ownership constraints entirely.",
+        "operational_risks": "Medium-low. As a service provider (not land owner), the primary asset is equipment (tractors, tillers, equipment). No Hak Milik needed. Investment in machinery counts toward IDR 10 billion threshold. BKPM Reg 5/2025 allows consolidation of 01611-01619 sub-codes under single investment plan.",
+        "investment_outlook": "Positive as component of integrated agricultural support PMA. Standalone land preparation service has limited scale. Best combined with other support services (01612 fertilization, 01613 harvest, 01619 other) into a comprehensive agricultural services company serving the Bali HoReCa supply chain.",
+        "legacy_bridge": "KBLI 2025 disaggregates agricultural support services into specific sub-codes (01611-01619). Previous KBLI 2020 had broader classification. Register the relevant sub-codes in OSS. Consolidation under BKPM Reg 5/2025 is explicitly permitted."
+      }
     },
     {
       "kode_kbli_2025": "01612",
@@ -8457,7 +8506,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Positive and growing. Harvest services (jasa pemanenan) are increasingly in demand as rural-to-urban migration creates agricultural labor shortages. Mechanized harvesting is expanding for paddy and certain vegetables. Coffee cherry harvesting services are a growing niche in Kintamani.",
+        "bali_nuance": "Labor shortages for harvest season are a real constraint for Balinese farmers — many young Balinese prefer tourism employment. Organized harvest service companies that provide reliable seasonal labor are increasingly valued. The specialty coffee harvest (selective hand-picking of ripe cherries only, critical for quality) commands premium fees.",
+        "operational_risks": "Medium-low. Service model avoids land constraints. Key risk: seasonal demand concentration. For coffee cherry picking: quality control is critical — incorrect harvesting damages specialty coffee quality permanently. Labor management and training requirements.",
+        "investment_outlook": "Positive as part of integrated agri-supply-chain PMA. Harvest services combined with cold chain logistics (post-harvest) and aggregation provides full upstream service to the HoReCa supply chain. Revenue model: service fees + margin on aggregated products.",
+        "legacy_bridge": "KBLI 01613 specifically covers harvest services. New specific sub-code in KBLI 2025 structure. OSS registration under this specific code required."
+      }
     },
     {
       "kode_kbli_2025": "01614",
@@ -8711,7 +8767,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Very positive — the most strategic agricultural support code for PMA. Catch-all for agricultural support services not classified elsewhere, including: irrigation management, agricultural equipment rental with operator, field maintenance services, and increasingly agritech services (precision farming, drone monitoring, IoT sensors). This breadth makes it the ideal primary KBLI for an agri-services PMA.",
+        "bali_nuance": "Strategic positioning opportunity in Bali: (1) Cold chain logistics — most farms lack cold storage, creating massive post-harvest loss (20-40%). A cold chain aggregator serving Bali's HoReCa sector fills a critical gap. (2) Organic certification consulting — gap between actual organic practice and formal certification is enormous in Bali. (3) Agritech services — IoT irrigation monitoring compatible with subak system, drone surveillance for crop health, soil testing. (4) Agricultural co-packing for premium export.",
+        "operational_risks": "Medium-low. Service model avoids land ownership issues. Investment in cold storage, vehicles, lab equipment, technology counts toward IDR 10 billion. The consolidation mechanism in BKPM Reg 5/2025 allows grouping all 01611-01619 sub-codes under one investment plan, maximizing efficiency.",
+        "investment_outlook": "Top pick for agribusiness PMA in Bali. The agricultural support model integrates positively with the subak ecosystem, avoids land constraints, and creates B2B revenue from the entire farming community. Specific high-value services: organic certification consulting (growing demand for SNI 6729:2025 compliance), cold chain management, and direct HoReCa supply chain aggregation. Scalable across all of Bali and exportable to other Indonesian islands.",
+        "legacy_bridge": "KBLI 01619 is the catch-all for agricultural support services — the most flexible code in the agricultural support cluster. BKPM Reg 5/2025 consolidation of 01611-01619 under one investment plan is a key operational advantage. Verify specific sub-code requirements for planned activities in OSS."
+      }
     },
     {
       "kode_kbli_2025": "01621",
@@ -9027,7 +9090,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Very positive. Post-harvest services (jasa pascapanen) cover critical activities including cleaning, sorting, grading, drying, cooling, and packing of agricultural products. This is the highest-value point in the farm-level supply chain where PMA can add the most value with the fewest regulatory barriers. Post-harvest losses in Indonesia average 20-40% — solving this problem is both profitable and impactful.",
+        "bali_nuance": "In Bali's premium market context: (1) Coffee processing — wet processing for Kintamani specialty coffee requires specific washing station, fermentation, and drying infrastructure. (2) Fruit grading and packing for export (salak, manggis, tropical fruit) requires sanitary facilities and cold chain. (3) Vegetable washing, cooling, and vacuum packing for premium HoReCa delivery. The post-harvest gap in Bali is enormous — most farmers sell unprocessed at farm gate. A PMA operating post-harvest services can capture the entire value chain margin between farm gate and HoReCa delivery.",
+        "operational_risks": "Medium-low. Service/processing model avoids land ownership issues. Capital investment in facility and equipment (washing stations, dryers, cooling, packing lines) is straightforward. BPOM registration may be required if products are packaged with health claims. Halal certification for processed agricultural products if sold domestically.",
+        "investment_outlook": "Very positive. Post-harvest services combined with 01619 (agricultural support) create a complete farm-to-HoReCa solution. Investment: IDR 10-20 billion for a processing facility. Revenue: margin on processed/value-added products + service fees. The Kintamani coffee wet processing station model is the benchmark — specialty coffee processors earn 5-10x the green bean commodity price.",
+        "legacy_bridge": "KBLI 01630 specifically covers post-harvest activities. Distinct from primary farming codes. Stable in KBLI 2025 transition. Key complement to 01619 for comprehensive agricultural services PMA."
+      }
     },
     {
       "kode_kbli_2025": "01640",
@@ -10226,7 +10296,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Positive. Marine finfish aquaculture (pembudidayaan ikan bersirip) covers sea bass (kerapu/grouper), snapper, tuna farming, and similar high-value species. The global market for farmed marine fish is growing as wild catch stagnates. Indonesia has vast coastline suitable for marine cage culture. Grouper (kerapu) is particularly valued in the Chinese luxury seafood market.",
+        "bali_nuance": "Bali's coastal waters (particularly north coast and Nusa Penida area) have good conditions for marine finfish aquaculture. The Nusa Penida area is being developed as a marine conservation and aquaculture zone. Integration with Bali's high-end restaurant scene creates premium local market for fresh marine fish. The tourism sector creates consistent demand for premium seafood at resort hotels.",
+        "operational_risks": "Medium. KKP (Ministry of Marine Affairs and Fisheries) concession required for marine space use. Environmental impact assessment may be required for larger operations. Climate risk: sea temperature changes can cause mass mortality events. Water quality degradation from coastal development. Competition for coastal space with tourism activities. For export: HACCP certification and health certificates required.",
+        "investment_outlook": "Moderately positive for premium species (grouper, sea bass). Best model: integrated hatchery + grow-out facility with direct supply to Bali's premium restaurants and hotels. Export to Singapore and China for grouper commands premium prices. Investment: IDR 15-30 billion for meaningful scale operation.",
+        "legacy_bridge": "KBLI 2025 disaggregates old 03210 into specific codes. 03211 covers marine finfish (excluding ornamental). Verify KKP regulations for specific species — some species (protected) require different permitting. OSS registration under 03211 specific code."
+      }
     },
     {
       "kode_kbli_2025": "03212",
@@ -10292,7 +10369,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Positive niche. Ornamental marine fish (ikan hias air laut) farming is growing as global demand for reef aquarium fish increases and wild collection faces tightening regulations. Indonesia is the world's largest supplier of marine ornamental fish. Bali is a major transit and export hub. Captive-bred ornamental fish command 3-5x premium over wild-caught for conservation-conscious markets.",
+        "bali_nuance": "Bali's Benoa port is a major export hub for marine ornamental fish collected from throughout eastern Indonesia. Locally, the Nusa Penida marine reserve creates conservation awareness that supports sustainable aquaculture positioning. Key species: clownfish (anemonefish), marine angelfish, marine tangs, reef invertebrates. Integration with Bali's diving and snorkeling tourism sector is natural.",
+        "operational_risks": "Medium. CITES compliance critical — many ornamental marine species are CITES-regulated. KKP permits for aquaculture concession. Export health certificates and species documentation. Some species require ESA (Endangered Species Act) compliance for US export. Biosecurity and disease management in marine systems is technically demanding.",
+        "investment_outlook": "Positive for premium captive-bred ornamental fish. The premium for captive-bred vs wild-caught is growing as environmental regulations tighten. Investment: IDR 10-20 billion for a professional hatchery facility. Export revenue per kg is significantly higher than food fish. Bali's international connectivity (direct flights to Singapore, Australia) facilitates live fish export.",
+        "legacy_bridge": "KBLI 03212 specifically covers ornamental marine fish that are not protected species. For protected species breeding programs, see 03214 (pengembangbiakan species dilindungi). Verify CITES Appendix status for each target species before planning operations."
+      }
     },
     {
       "kode_kbli_2025": "03213",
@@ -10368,7 +10452,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Very positive. Marine plant aquaculture (pembudidayaan tumbuhan air laut) primarily covers seaweed (rumput laut), which represents 98% of Indonesian marikultur volume and 84% of value. Indonesia is the world's second-largest seaweed producer (38% global market). Government has designated seaweed as a priority commodity. Global demand projected at 40-43 million tonnes by 2029 for food, cosmetics, pharmaceuticals, and bioplastics. Dutch investors expressed specific interest in November 2025 at KKP matching events.",
+        "bali_nuance": "Seaweed farming in Nusa Lembongan and Nusa Ceningan has a 40-year history (since 1982). Eucheuma cottonii (red algae, carrageenan source) is the primary species in the shallow canal between the two islands. Harvest cycle: 30-45 days from transplanting. Price at farm level: ~IDR 14,000/kg dry weight (harvested product loses 90% weight during drying). The sector collapsed 2014-2016 (ocean warming + tourism competition) then revived post-COVID as tourism workers returned to seaweed farming. Current end market: primarily skincare/cosmetics export.",
+        "operational_risks": "Medium. KKP concession for marine area use. Climate risk: ocean temperature increases damage seaweed and algae. Competition for coastal space with tourism at Nusa Lembongan. Farm-gate margins are extremely thin (IDR 14,000/kg dry) — profitable model requires downstream processing. Seaweed farming is subject to seasonal constraints (monsoon limits harvest periods). BKPM Reg 5/2025 allows seaweed-related investment costs (processing facility, boats, equipment) in the IDR 10 billion threshold.",
+        "investment_outlook": "Positive but only in downstream processing model. The farm-level seaweed business is not viable at PMA scale (too low-margin, too fragmented). The strategic entry point is: (1) aggregation + carrageenan extraction processing, (2) bioplastic/biopolymer production, (3) cosmeceutical ingredient production (agar, carrageenan, fucoidan). The processing-to-export model commands 10-20x the raw seaweed price. Integrated model: seaweed farming + agritourism (snorkeling + seaweed workshop) at Nusa Lembongan already validated.",
+        "legacy_bridge": "KBLI 2025 code 03213 covers pembudidayaan tumbuhan air laut tidak dilindungi (non-protected marine plants). This is the seaweed farming code. Previous KBLI 2020 had 03210 as a broader category — now disaggregated. For protected species marine plants, see code 03214. Register 03213 for standard seaweed farming operations."
+      }
     },
     {
       "kode_kbli_2025": "03214",
