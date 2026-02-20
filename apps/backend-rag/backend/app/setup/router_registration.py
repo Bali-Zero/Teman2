@@ -8,6 +8,7 @@ This is critical for Fly.io health checks - the server must start listening with
 
 from fastapi import FastAPI
 
+
 def include_routers(api: FastAPI) -> None:
     """
     Include all API routers - Prime Standard modular structure.
@@ -84,7 +85,6 @@ def include_routers(api: FastAPI) -> None:
         telegram_webhook,
         twitter,
         voice,
-        webhook_chat,
         webhooks,
         workflow_analytics,
         websocket,
@@ -93,6 +93,7 @@ def include_routers(api: FastAPI) -> None:
         omnichannel_workflow,
         zoho_email,
     )
+
     # Core routers
     api.include_router(auth.router)
     api.include_router(health.router)
@@ -139,6 +140,7 @@ def include_routers(api: FastAPI) -> None:
 
     # Notification router (Automated email alerts)
     from backend.app.modules.notifications.router import router as notifications_router
+
     api.include_router(notifications_router)
 
     # Portal routers (Client-facing)
@@ -170,14 +172,19 @@ def include_routers(api: FastAPI) -> None:
     # Communication routers (notifications removed - will be MCP)
     api.include_router(websocket.router)
     api.include_router(telegram.router)  # Telegram bot integration (query endpoints)
-    api.include_router(telegram_webhook.router)  # [NEW] Telegram webhook (multi-channel architecture)
+    api.include_router(
+        telegram_webhook.router
+    )  # [NEW] Telegram webhook (multi-channel architecture)
     api.include_router(twitter.router)  # Twitter/X omnichannel API
-    api.include_router(whatsapp_chat.router)  # WhatsApp Cloud API with intelligent triage (Gemini 3 Flash + Zan v2)
+    api.include_router(
+        whatsapp_chat.router
+    )  # WhatsApp Cloud API with intelligent triage (Gemini 3 Flash + Zan v2)
     # api.include_router(whatsapp_chat.alias_router)  # ❌ DISABLED - Legacy alias causes duplicate responses
-    api.include_router(whatsapp_conversations.router)  # Omnichannel WhatsApp conversations API (dashboard only)
-    api.include_router(omnichannel_workflow.router) # [NEW] Omnichannel Workflow & CRM Enrichment
+    api.include_router(
+        whatsapp_conversations.router
+    )  # Omnichannel WhatsApp conversations API (dashboard only)
+    api.include_router(omnichannel_workflow.router)  # [NEW] Omnichannel Workflow & CRM Enrichment
     api.include_router(instagram_chat.router)  # Instagram DM auto-reply via RAG
-    api.include_router(webhook_chat.router)  # Webhook chat with auto-persistence
     api.include_router(webhooks.router)  # External webhooks (OpenClaw, etc.)
     api.include_router(
         messaging_identity.router
