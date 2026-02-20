@@ -84558,7 +84558,14 @@
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "mapping_note": "Cleaned: removed invalid ['62110']",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "POSITIVE — Indonesia's interactive entertainment market is USD 1.1B+ with 174M+ active players, yet 99.51% of revenue flows to foreign publishers. Government-backed IGDX (Indonesia Game Developer Exchange) in Bali is catalyzing domestic studio development. Cultural IP rooted in Indonesian mythology (Wayang, Ramayana) represents an untapped blue ocean for original game IP.",
+        "bali_nuance": "IGDX is hosted annually in Bali — the archipelago's physical proximity to the game developer community creates a unique studio development hub. KBLI 62110 covers game development, game engine programming, and game software production. Indonesia Game Rating System (IGRS) is mandatory from 2026: all games distributed on Indonesian platforms must carry age ratings (3+, 7+, 13+, 15+, 18+) aligned with IARC/ESRB/PEGI standards. Games featuring gambling mechanics with real currency, extreme mutilation, or cannibalism face automatic national blocking by Komdigi.",
+        "operational_risks": "IGRS compliance: trailers, gameplay demonstrations, and monetization feature descriptions (loot boxes, gacha mechanics) submitted to rating authorities must be precise — post-classification gameplay changes risk license revocation. PSTE registration mandatory for any game with Indonesian user accounts (online multiplayer, in-app purchases). UU PDP: games collecting minor (under-18) demographic data face heightened DPO obligation and criminal liability. Foreign TKA game developers require demonstrated senior technical or creative director credentials.",
+        "investment_outlook": "Early-stage but high-potential. Cultural IP conversion (traditional storytelling → interactive AAA game narrative) is the most defensible competitive moat against foreign publishers. Government IGDX matching grants available for studios registered under 62110.",
+        "legacy_bridge": "62110 (Pengembangan Video Gim) is newly specific in KBLI 2025. KBLI 2020 grouped this under broader 62010 (Pengembangan Perangkat Lunak). Migrate NIB from 62010 → 62110 for dedicated game studios before June 18, 2026."
+      }
     },
     {
       "kode_kbli_2025": "62191",
@@ -84623,7 +84630,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "62012",
       "mapping_note": "PP28 usa codice KBLI 2020 62012 (Aktivitas Pengembangan Aplikas...). Match: 100%",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "POSITIVE — E-commerce application development rides Indonesia's GMV trajectory toward USD 100B. Video commerce (live shopping) adoption is growing 90% YoY in transaction volume; developers building live-commerce infrastructure and D2C platforms for Indonesian brands are in high demand.",
+        "bali_nuance": "62191 covers development of e-commerce and marketplace applications. In Bali, the dominant use case is B2B platform development for sustainable fashion brands, artisan craft export marketplaces, and villa booking micro-sites. Foreign developers building OTA-competitive platforms for Bali hospitality operators must ensure platforms do not inadvertently compete with established OTA concession agreements (Airbnb/Booking.com network effects are formidable).",
+        "operational_risks": "PPN 12% digital: e-commerce platform operators are designated as Pemungut PPN (PPN collectors) — the platform's payment architecture must automatically deduct and remit 12% VAT on digital transactions. PSTE registration (Komdigi) mandatory before launch. UU PDP: platforms processing transaction data of Indonesian consumers require DPO if operating at scale. Komdigi content takedown authority: platforms hosting fraudulent seller listings or prohibited content face immediate domain blocking.",
+        "investment_outlook": "Strong. Niche B2B e-commerce tools (inventory management, cross-border logistics API integration, OTA channel manager) for Bali's small-medium hospitality operators represent an underserved USD 50M+ addressable market.",
+        "legacy_bridge": "62191 is newly granular in KBLI 2025 — previously under 62010. E-commerce specific application developers should migrate from 62010 → 62191. June 18, 2026 deadline."
+      }
     },
     {
       "kode_kbli_2025": "62192",
@@ -84729,7 +84743,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "62022",
       "mapping_note": "Cleaned: removed invalid ['62192']",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "POSITIVE — Health-tech application development is the fastest-growing software sub-sector in Indonesia. KEK Sanur's medical tourism infrastructure (Bali International Hospital, Mayo Clinic partnership) creates immediate demand for EMR systems, telemedicine platforms, patient data management, and genomics data processing applications.",
+        "bali_nuance": "62192 covers health and medical application development. The KEK Sanur ecosystem is Bali's focal point — developers building Electronic Medical Record (EMR) systems, telemedicine interfaces, AI diagnostic tools, and clinical trial management software for international hospital operations have a captive institutional client base. BPOM's draft electronic labeling regulation also creates demand for pharmaceutical product compliance applications.",
+        "operational_risks": "UU PDP: clinical data is classified as 'data spesifik/sensitif' (sensitive data) — the Constitutional Court's July 2025 ruling makes DPO appointment mandatory for any health-tech company processing medical records at any scale. Data localization: health data of Indonesian patients cannot be transferred offshore without Ministry of Health approval. BPOM electronic labeling compliance tools must accommodate Halal certification October 2026 requirements. OJK POJK 30/2025 applies if the health app interfaces with insurance or BPJS payment systems.",
+        "investment_outlook": "10-year growth runway. KEK Sanur hospital ecosystem alone represents IDR 2.29T+ in infrastructure investment requiring software integration. International hospital groups partnering with Mayo Clinic need KARS/JCI-compatible EMR systems with English-Bahasa bilingual interfaces.",
+        "legacy_bridge": "62192 (Aplikasi Kesehatan) is newly specific in KBLI 2025. Previously under 62010. Health-tech developers must migrate NIB before June 18, 2026."
+      }
     },
     {
       "kode_kbli_2025": "62193",
@@ -84794,7 +84815,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "62014",
       "mapping_note": "PP28 usa codice KBLI 2020 62014 (Aktivitas Pengembangan Teknolo...). Match: 88%",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "POSITIVE — Fintech application development in Indonesia projects USD 35B market size by 2031 (9%+ CAGR). Neo-banking, P2P lending, QRIS payment integration, and alternative credit scoring (ACS) are primary development verticals. The QRIS ITTP (Indonesia Tourist Travel Pack) integration for Bali's cashless tourism ecosystem creates immediate PT PMA fintech opportunities.",
+        "bali_nuance": "62193 covers financial technology application development. Bali-specific fintech development centers on: (1) QRIS payment integration for tourism operators, (2) multi-currency conversion APIs for the digital nomad community, (3) Islamic finance (Sharia-compliant Mudharabah P2P) contract digitalization platforms. The Bali Digital Nomad KITAS (E33G) community represents a captive beta-testing market for cross-border payment tools.",
+        "operational_risks": "OJK POJK 30/2025: fintech applications must pass Regulatory Sandbox before commercial launch — process takes 6-18 months with very selective pass rate. Minimum two qualified board directors required. KYC/AML: Komdigi Peraturan 7/2026 biometric SIM registration forces fintech apps to synchronize OTP and KYC flows with national biometric identity database. PSTE registration mandatory. Data localization: all financial transaction data of Indonesian users must be stored on Indonesian servers.",
+        "investment_outlook": "Strong long-term. Near-term complexity due to regulatory sandbox gatekeeping. Best entry: build for a specific vertical (QRIS tourism payments, Islamic finance) rather than broad neo-banking to reduce regulatory scope.",
+        "legacy_bridge": "62193 (Aplikasi Fintech) is newly specific in KBLI 2025. Previously under 62010. Migrate NIB before June 18, 2026."
+      }
     },
     {
       "kode_kbli_2025": "62194",
@@ -84923,7 +84951,14 @@
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "mapping_note": "Cleaned: removed invalid ['62194']",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "POSITIVE — AI/ML component development is Indonesia's highest-growth software vertical in 2026. Enterprise demand for AI agents, automation workflows, and ML model development is accelerating. Agentic AI platforms (replacing fragmented SaaS stacks with unified AI orchestration) represent the frontier opportunity.",
+        "bali_nuance": "62194 covers development of AI/ML core components, AI agents, and foundational AI software. The Canggu/Seminyak digital nomad ecosystem has a high concentration of AI developers building automation tools for Bali's captive hospitality market (villa management AI, dynamic pricing engines, AI concierge bots). Note: these developers typically operate under E33G visas which prohibit local income generation — PT PMA registration under 62194 is the legal path to serving the Bali B2B market.",
+        "operational_risks": "E33G visa trap: foreign AI developers offering services to Indonesian clients via E33G visa face deportation and IDR 1M/day overstay fines — PT PMA registration is mandatory for legal local revenue. PSTE registration required for any AI platform with Indonesian users. UU PDP: AI systems processing personal data (behavioral data, biometrics) trigger DPO requirement. Komdigi's IGRS content moderation rules apply to AI-generated content platforms. TKDN implications: AI tools targeting government/BUMN contracts must achieve 25% local content + 40% BMP under Perpres 46/2025.",
+        "investment_outlook": "Highest growth trajectory. IDR 2.5B PT PMA setup cost is low relative to revenue potential from captive Bali hospitality and wellness automation market. AI platform subscription model achieves IDR 200M+ ARR within 12 months with 20-30 villa operator clients.",
+        "legacy_bridge": "62194 (Komponen Dasar Kecerdasan Buatan) is entirely new in KBLI 2025 — no equivalent in KBLI 2020. Previously AI development was registered under 62010 or 62900. New registration required."
+      }
     },
     {
       "kode_kbli_2025": "62199",
@@ -85433,7 +85468,14 @@
       "pma_prioritas": true,
       "pma_nota": "Sektor prioritas: Aktivitas jasa teknologi informasi dan komputer lainnya",
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "POSITIVE — Catch-all IT services code covering IoT consulting, custom software development, software architecture advisory, and IT systems integration. Highly relevant for Bali's villa management automation, property tech, and tourism tech verticals.",
+        "bali_nuance": "62900 (Aktivitas Jasa Teknologi Informasi dan Komputer Lainnya) is the operational code for IT service providers whose offering spans multiple sub-categories not fully captured by 62191-62194. In Bali, this covers: IoT sensor installation for villa predictive maintenance, AI chatbot integration for hospitality, PMS (Property Management System) customization, and bespoke software for wellness retreat operations. Same E33G visa risk as 62194 — foreign developers must use PT PMA to legally serve Indonesian B2B clients.",
+        "operational_risks": "Scope precision is critical — PT PMA providing services under 62900 must ensure actual service delivery matches OSS KBLI description. OSS audit post-licensing is increasing (PP 28/2025 Fiktif Positif mechanism). TKA: senior IT architects and project managers permitted; junior developers and admins closed to TKA. PSTE registration if deploying software platforms with Indonesian users.",
+        "investment_outlook": "Stable, cash-generating IT services model. The Bali villa/hospitality automation market (10,000+ short-term rental properties) represents IDR 500B+ annual addressable spend on property tech solutions.",
+        "legacy_bridge": "62900 (Aktivitas Jasa TI dan Komputer Lainnya) is equivalent to 62090 in KBLI 2020. Migrate NIB from 62090 → 62900 before June 18, 2026."
+      }
     },
     {
       "kode_kbli_2025": "63101",
@@ -85521,7 +85563,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "POSITIVE — Data processing demand is surging driven by: (1) local ML model training requirements (TKDN rules creating demand for domestically-processed training datasets), (2) KEK Sanur genomic and medical imaging data processing, (3) regulatory compliance data analytics (CoreTax CTAS audit support).",
+        "bali_nuance": "63101 (Aktivitas Pengolahan Data) is the correct KBLI 2025 code for data processing bureaus and analytics service providers. Note: KBLI 2020 63111 (Aktivitas Pengolahan Data) has been renumbered to 63101 in KBLI 2025 — this is a critical migration point. KEK Sanur bioinformatics and medical imaging analytics companies will use this code alongside 62192.",
+        "operational_risks": "UU PDP Constitutional Court ruling: data processing companies (as data processors under UU PDP terminology) are subject to DPO mandate if processing personal data at scale for controller clients. Low-latency data center colocation for KEK Sanur hospital data requires Komdigi PSTE registration + compliance with BSSN (National Cyber Security Agency) security standards. TKDN for government data processing contracts: Perpres 46/2025 Layer 1 (25% TKDN + 40% BMP) barrier must be met to compete for BUMN/ministry contracts.",
+        "investment_outlook": "KEK Sanur creates a 10-year data processing infrastructure demand cycle. Medical imaging AI processing, genomics pipeline computing, and clinical data warehousing for the international hospital complex are the highest-value service lines.",
+        "legacy_bridge": "KBLI 2020 63111 → KBLI 2025 63101. Critical migration: update OSS NIB from 63111 to 63101 before June 18, 2026. Failure to migrate will invalidate LKPM submissions and e-Faktur integrations."
+      }
     },
     {
       "kode_kbli_2025": "63102",
@@ -85700,7 +85749,14 @@
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "mapping_note": "Cleaned: removed invalid ['63102']",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "POSITIVE — Cloud and hosting infrastructure is in a structural permitting crisis that represents both a threat (for non-compliant incumbents) and an opportunity (for compliant entrants). KBLI 2025 replaced 63112 with 63102, explicitly covering IaaS, PaaS, and data center colocation.",
+        "bali_nuance": "63102 (Aktivitas Penyediaan Infrastruktur Komputasi, Hosting) is the mandatory new code for cloud infrastructure providers, data center operators, and hosting companies. Bali's coworking ecosystem (Canggu/Seminyak) is generating demand for edge computing and low-latency microserver installations to serve 15,000+ remote workers. Government TKDN rules are forcing international cloud providers (AWS, GCP, Azure) to establish Indonesian data center footprints — creating subcontract opportunities for local cloud operators.",
+        "operational_risks": "KBLI migration deadline June 18, 2026: operators still registered under 63112 will have OSS profiles invalidated. TKDN Perpres 46/2025: cloud/hosting contracts with government entities require 25% local content — international cloud providers without local data centers cannot access Layer 1 government contracts. BSSN cybersecurity certification required for providers handling government or financial data. Komdigi PSTE registration mandatory. Data residency: all Indonesian user data must be stored in Indonesia under KMK-regulated financial data rules.",
+        "investment_outlook": "Structural opportunity driven by data localization mandates and TKDN government procurement rules. Local edge computing node operators serving the Bali coworking ecosystem are achieving IDR 500M+ ARR with minimal capex through rack colocation models.",
+        "legacy_bridge": "KBLI 2020 63112 → KBLI 2025 63102. Critical migration: all hosting/cloud providers must migrate OSS NIB before June 18, 2026. The old code 63112 has been formally deleted from the KBLI taxonomy."
+      }
     },
     {
       "kode_kbli_2025": "63900",
@@ -85735,7 +85791,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "POSITIVE-NEUTRAL — Web portals and digital information platforms show moderate growth compared to the e-commerce peak. Niche vertical portals (luxury villa booking, curated Bali wellness retreats, B2B property listings) show stronger performance than general horizontal portals.",
+        "bali_nuance": "63900 (Aktivitas Jasa Portal Pencarian Web dan Informasi) in KBLI 2025 is equivalent to 63120 in KBLI 2020 — critical migration point. Bali-specific portal opportunities include: Digital Nusantara Tourist Information Center integration partners (government initiative), luxury property listing platforms, KBLI compliance advisory portals, and wellness retreat aggregators.",
+        "operational_risks": "Komdigi PSTE registration mandatory — portals operating without PSE registration face unilateral IP/DNS blocking. Content moderation obligations: portals must respond to Komdigi takedown orders within 24 hours or face platform suspension. UU ITE liability: defamatory user-generated content triggers criminal liability for platform operators who fail to remove it promptly. PPN 12% digital: portals must collect and remit digital services tax on premium listing fees and transaction commissions. UU PDP: cookie-based ad targeting systems require user consent under the new disjunctive DPO threshold.",
+        "investment_outlook": "Digital Nusantara government portal ecosystem creates integration partnership revenue opportunities. Luxury villa and wellness retreat vertical portals serving international B2B travel trade (DMCs, luxury travel agencies) show the highest ARPU.",
+        "legacy_bridge": "KBLI 2020 63120 → KBLI 2025 63900. Update OSS NIB from 63120 to 63900 before June 18, 2026."
+      }
     },
     {
       "kode_kbli_2025": "64110",
@@ -90680,7 +90743,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "POSITIVE — Corporate headquarters (kantor pusat) registrations in Bali are growing rapidly as PT PMA family offices, holding companies, and multi-entity corporate structures use Bali as their ASEAN operational hub. The KEK Sanur initiative and DEN family office studies are accelerating this trend.",
+        "bali_nuance": "70100 is the code for the administrative/management headquarters of a corporate group — not for operating subsidiaries. A PT PMA holding structure with subsidiaries in hospitality (55203), real estate (68111), and professional services (70203) would register the apex holding entity under 70100. Under BKPM Reg. 5/2025, IDR 10B total investment threshold applies per KBLI; the 70100 holding entity must independently meet this threshold via intercompany loans to subsidiaries or CAPEX allocation.",
+        "operational_risks": "NITKU (CoreTax CTAS) requires separate registration per operational location — the kantor pusat must have its own NITKU distinct from branch entities. KBLI 2025 deadline June 18, 2026: verify OSS NIB reflects KBLI 2025 code 70100 (no change from 2020, but metadata must be synchronized). Director liability under UU PT for corporate group governance failures is joint and several — foreign directors face criminal exposure. LKPM quarterly reports must reflect actual capital deployment across all subsidiaries to satisfy BKPM 5/2025 retensi modal requirement.",
+        "investment_outlook": "Strategic code for institutional investors, family offices, and corporate groups establishing Bali as their ASEAN coordination hub. KEK Sanur family office incentive study (DEN) could make 70100 the anchor code for a zero-tax-first-year holding structure in 2027+.",
+        "legacy_bridge": "70100 is unchanged from KBLI 2020. No migration required. Ensure KBLI 2025 metadata is synchronized in OSS before June 18, 2026."
+      }
     },
     {
       "kode_kbli_2025": "70201",
@@ -90837,7 +90907,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "POSITIVE — Management and business consulting is the flagship professional services code for PT PMA operators in Bali. Demand driven by: (1) foreign companies needing local market entry advisory, (2) PT PMA compliance consulting (KBLI transitions, BKPM reporting), (3) Bali-specific operational consulting for hospitality, real estate, and wellness sectors.",
+        "bali_nuance": "70203 is the correct code for management consulting, business development advisory, and strategic consulting. It is distinct from: 74191/74192 (design), 74192 (marketing advisory via visual communication), and 73201 (market research). PT PMA consulting firms must carefully scope their service descriptions in client contracts to match the 70203 KBLI definition — billing for services outside this scope risks a PB UMKU violation under PP 28/2025 with fines up to 1% of investment value.",
+        "operational_risks": "TKA restrictions (Kepmenaker 228/2019): foreign consultants may only hold Country Manager, Business Development Manager, or equivalent C-suite titles — Junior Consultant, HR Administrator, and Assistant Manager roles are closed to TKA. RPTKA approval requires demonstrated executive leadership capacity; generic 'consultant' job titles without specific domain expertise will be rejected. CoreTax CTAS e-Faktur: all B2B invoices for consulting services must be issued via e-Faktur system with company's digital certificate — failure to upload within 3 months triggers automatic system lockout (PER-19/PJ/2025). Capital lock-up: IDR 2.5B must remain in company bank account for 12 months minimum post-establishment.",
+        "investment_outlook": "Asset-light, high-margin model ideally suited for the IDR 2.5B paid-up threshold introduced by BKPM 5/2025. A boutique consulting firm serving 10-20 institutional clients can achieve breakeven within 6-12 months. The KBLI 2025 compliance wave (June 2026 deadline) has created massive demand for specialized regulatory advisory.",
+        "legacy_bridge": "70203 in KBLI 2025 is equivalent to 70209 in KBLI 2020 (Aktivitas Konsultansi Manajemen Lainnya). If NIB shows 70209, update to 70203 before June 18, 2026 using OSS concordance table."
+      }
     },
     {
       "kode_kbli_2025": "70209",
@@ -92333,7 +92410,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "POSITIVE — Market research is growing as Bali's B2B service economy matures. Digital nomad demographic profiling, hospitality sector consumer intelligence, and real estate demand analytics are primary service lines. Institutional clients include KEK Sanur developers, OTA platforms, and luxury brand entrants.",
+        "bali_nuance": "73201 (Penelitian Pasar) covers primary and secondary market research, consumer surveys, competitive intelligence, and feasibility studies. Under UU PDP and the Constitutional Court ruling on DPO obligations, market research firms that collect consumer data at scale — even via online surveys — now fall within the mandatory DPO appointment threshold. Data subjects' consent frameworks must comply with UU PDP Chapter 3.",
+        "operational_risks": "UU PDP liability: market research firms processing personal data at scale must appoint a Data Protection Officer (DPO) — the Constitutional Court's July 2025 ruling made criteria disjunctive, so any firm conducting systematic large-scale monitoring of individuals triggers the mandate. PSTE registration (Komdigi PP 71/2019) required if using online research platforms. TKA: foreign senior researchers require demonstrable academic credentials or unique technical expertise — junior analyst roles closed to TKA.",
+        "investment_outlook": "Niche but growing. The June 2026 KBLI compliance wave is generating demand for market research into sector-specific regulatory impact assessments. Best positioned as a standalone consulting unit or bundled service within a 70203 management consulting PT PMA.",
+        "legacy_bridge": "73201 (Penelitian Pasar) is unchanged from KBLI 2020. Verify OSS synchronization before June 18, 2026."
+      }
     },
     {
       "kode_kbli_2025": "73202",
@@ -92368,7 +92452,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "NEUTRAL — Public opinion polling has limited direct PT PMA commercial application in Bali but is relevant for: political risk advisory, brand sentiment tracking, and consumer attitude research for institutional clients.",
+        "bali_nuance": "73202 (Jajak Pendapat Opini Publik) covers polling and opinion survey firms. In Bali, this is most relevant for tourism satisfaction surveys, hospitality brand tracking, and international perception studies. Distinct from 73201 which covers market research proper.",
+        "operational_risks": "Polling involving political opinions is sensitive in Indonesia — firms must operate strictly within electoral survey regulations and avoid any activities that could be construed as political advocacy by a foreign entity. UU PDP same as 73201: DPO mandatory if operating at scale.",
+        "investment_outlook": "Niche supporting code. Best registered alongside 73201 as a secondary KBLI for research firms that combine market research with opinion polling.",
+        "legacy_bridge": "73202 is unchanged from KBLI 2020. Verify OSS sync before June 18, 2026."
+      }
     },
     {
       "kode_kbli_2025": "73300",
@@ -93076,7 +93167,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "POSITIVE — Interior design is one of Bali's strongest professional services exports. The villa development boom (KBLI 68111, 55203), luxury resort expansion, and KEK Sanur hospital fit-out demand are driving premium interior design mandates. Bali-based interior design firms are winning international commissions across ASEAN.",
+        "bali_nuance": "74191 (Aktivitas Desain Interior) covers interior design for residential, commercial, and hospitality spaces. LPJK (Lembaga Pengembangan Jasa Konstruksi) certification is required for design firms involved in construction project management in addition to interior design — verify if your scope crosses into construction oversight. The Sarbagita moratorium affects new-build interior design volume in the four core regencies but creates demand for renovation and refurbishment projects of existing structures.",
+        "operational_risks": "TKA restrictions: foreign designers may only hold Design Manager or Technical Advisor titles — Draftsman, Junior Designer, and Decorator roles are closed to TKA (Kepmenaker 228/2019). Portfolio verification required for RPTKA approval. OSS PB UMKU: professional service certification from relevant industry body may be required for operational license. Scope creep into construction management without IUJK (Izin Usaha Jasa Konstruksi) risks PP 28/2025 sanctions.",
+        "investment_outlook": "Strong demand pipeline. Villa interior design projects in Canggu/Seminyak range IDR 200M–IDR 2B per project. Hospital and wellness resort fit-out (KEK Sanur, Ubud retreats) represents the highest-value contract tier.",
+        "legacy_bridge": "74191 in KBLI 2025 is equivalent to 74100 in KBLI 2020 (Aktivitas Desain Khusus). Update OSS NIB from 74100 to 74191 before June 18, 2026."
+      }
     },
     {
       "kode_kbli_2025": "74192",
@@ -93092,7 +93190,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "POSITIVE — Graphic design and visual communication is Bali's most vibrant creative professional services segment. The intersection of Balinese artistic heritage, digital nomad creative talent, and international brand client base creates a uniquely positioned market.",
+        "bali_nuance": "74192 (Aktivitas Desain Grafis/Komunikasi Visual) covers brand identity, packaging design, UI/UX design, motion graphics, and visual communication strategy. It is distinct from: 74191 (interior/spatial design), 59111-59113 (film/video production), and 62194 (AI/software development). PT PMA creative agencies must carefully delineate service scope to avoid bundling software development (KBLI 62xxx) with design work under 74192 — the combination requires dual KBLI registration.",
+        "operational_risks": "TKA: foreign creative directors and senior designers may hold Design Manager titles; junior graphic designers and production staff are closed to TKA. HAKI (IP rights): all creative work produced for Indonesian clients must comply with UU Hak Cipta (Copyright Law 28/2014) — work-for-hire clauses must be explicit in client contracts or IP defaults to the creator. CoreTax e-Faktur: all design service invoices must be issued electronically with digital certificate.",
+        "investment_outlook": "Bali's creative economy is generating USD 50M+ in annual export value from design services. Brand identity, tourism marketing, and hospitality packaging design are top revenue categories. Agency model with 5-10 senior designers can achieve IDR 2B+ annual revenue within 18 months.",
+        "legacy_bridge": "74192 is new in KBLI 2025 — previously bundled under 74100 (Aktivitas Desain Khusus) in KBLI 2020. If registered under 74100, migrate to 74192 for graphic/visual design or 74191 for interior design. June 18, 2026 deadline."
+      }
     },
     {
       "kode_kbli_2025": "74193",

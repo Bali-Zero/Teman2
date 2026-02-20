@@ -1,6 +1,6 @@
 # KBLI intel_2026 Enrichment Progress
 
-**Stato:** 146 / 1563 codici arricchiti (9.3%) + 5 intel upgrade
+**Stato:** 161 / 1563 codici arricchiti (10.3%) + 5 intel upgrade
 **Aggiornato:** 2026-02-21
 **File JSON:** `source_documents/KBLI_2025_FINAL_CLEAN.json`
 
@@ -153,6 +153,8 @@ MDX: `kbli-2025-automotive-food-textile-wholesale-bali.mdx`
 | `kbli-2025-hospitality-villa-hotel-bali-investment-guide.mdx`     | 9     | 55101, 55102, 55103, 55104, 55105, 55106, 55201, 55203, 55204, 55209, 55901                                                                |
 | `kbli-2025-real-estate-property-investment-bali-2026.mdx`         | 10    | 68111, 68112, 68121, 68123, 68129, 68210, 68291, 68292, 68299                                                                              |
 | `kbli-2025-health-wellness-medical-tourism-bali-2026.mdx`         | 11    | 74910, 86101, 86102, 86103, 86104, 86105, 86201, 86202, 86910, 86992, 86995, 96120                                                         |
+| `kbli-2025-professional-services-consulting-design-bali-2026.mdx` | 12    | 70100, 70203, 73201, 73202, 74191, 74192                                                                                                   |
+| `kbli-2025-it-tech-software-cloud-bali-2026.mdx`                  | 13    | 62110, 62191, 62192, 62193, 62194, 62900, 63101, 63102, 63900                                                                              |
 
 ---
 
@@ -365,6 +367,67 @@ MDX: `indonesia-political-regulatory-risk-intelligence-guide.mdx`
 - Halal scadenza ottobre 2026: cosmesi, medicine tradizionali, OTC → obbligatorio BPJPH
 - 86910 e 86995 sono nuovi in KBLI 2025 (non esistevano come codici dedicati nel 2020)
 - 96120 = salone bellezza (non-medico); 86105 = clinica estetica (medico con dottore) — non confondere
+
+---
+
+### Batch 12 — Professional Services (70xxx/73xxx/74xxx) — CoreTax CTAS + PP 28/2025 + TKA
+
+**Nuovi codici arricchiti (6):**
+| Codice | Titolo |
+|--------|--------|
+| 70100 | AKTIVITAS KANTOR PUSAT |
+| 70203 | AKTIVITAS KONSULTANSI MANAJEMEN DAN BISNIS |
+| 73201 | PENELITIAN PASAR |
+| 73202 | JAJAK PENDAPAT OPINI PUBLIK |
+| 74191 | AKTIVITAS DESAIN INTERIOR |
+| 74192 | AKTIVITAS DESAIN GRAFIS/KOMUNIKASI VISUAL |
+
+**MDX article create (1):**
+| File | Batch | Codici coperti |
+|------|-------|----------------|
+| `kbli-2025-professional-services-consulting-design-bali-2026.mdx` | 12 | 70100, 70203, 73201, 73202, 74191, 74192 |
+
+**Migrazioni KBLI critiche:**
+
+- 70209 → 70203 (management consulting rinumerato)
+- 74100 → 74191 (interior design nuovo specifico)
+- 74100 → 74192 (graphic design nuovo specifico)
+
+---
+
+### Batch 13 — IT/Tech (62xxx/63xxx) — KBLI 63112 eliminato + 62194 AI nuovo codice
+
+**Nuovi codici arricchiti (9):**
+| Codice | Titolo |
+|--------|--------|
+| 62110 | PENGEMBANGAN VIDEO GIM (game development) |
+| 62191 | AKTIVITAS PENGEMBANGAN APLIKASI PERDAGANGAN (e-commerce) |
+| 62192 | AKTIVITAS PENGEMBANGAN APLIKASI KESEHATAN (health-tech) |
+| 62193 | AKTIVITAS PENGEMBANGAN APLIKASI FINTECH |
+| 62194 | AKTIVITAS PENGEMBANGAN KOMPONEN DASAR KECERDASAN BUATAN (AI/ML) **NUOVO** |
+| 62900 | AKTIVITAS JASA TEKNOLOGI INFORMASI LAINNYA |
+| 63101 | AKTIVITAS PENGOLAHAN DATA |
+| 63102 | AKTIVITAS PENYEDIAAN INFRASTRUKTUR KOMPUTASI/HOSTING **CRITICO** |
+| 63900 | AKTIVITAS JASA PORTAL PENCARIAN WEB E INFORMASI |
+
+**MDX article create (1):**
+| File | Batch | Codici coperti |
+|------|-------|----------------|
+| `kbli-2025-it-tech-software-cloud-bali-2026.mdx` | 13 | 62110, 62191, 62192, 62193, 62194, 62900, 63101, 63102, 63900 |
+
+**Migrazioni KBLI critiche:**
+
+- 63112 (hosting) → **63102** (ELIMINATO — migrazione obbligatoria entro 18 giu 2026)
+- 63111 (data processing) → **63101** (rinumerato)
+- 63120 (web portal) → **63900** (rinumerato)
+- 62010/62090 → 62191-62194/62900 (split in codici specifici)
+- 62194 è **NUOVO** in KBLI 2025 (AI/ML non aveva codice dedicato nel 2020)
+
+**Note speciali:**
+
+- Codici ricerca (63111, 63112, 63120, 63910 KBLI 2020) NON esistono in KBLI 2025
+- E33G visa trap: sviluppatori stranieri che servono clienti locali = violazione immigrazione + deportazione
+- TKDN Perpres 46/2025 Layer 1: cloud gov contracts richiedono 25% TKDN + 40% BMP
 
 ---
 
