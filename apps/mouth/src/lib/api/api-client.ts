@@ -1,7 +1,6 @@
 import { ApiClientBase } from "./client";
 import { AuthApi } from "./auth/auth.api";
 import { ChatApi } from "./chat/chat.api";
-import { WebhookChatApi } from "./chat/webhook-chat.api";
 import { KnowledgeApi } from "./knowledge/knowledge.api";
 import { ConversationsApi } from "./conversations/conversations.api";
 import { TeamApi } from "./team/team.api";
@@ -44,7 +43,6 @@ export class ApiClient extends ApiClientBase {
   // Domain-specific API modules
   private authApi: AuthApi;
   private chatApi: ChatApi;
-  public webhookChatApi: WebhookChatApi;
   private knowledgeApi: KnowledgeApi;
   private conversationsApi: ConversationsApi;
   private teamApi: TeamApi;
@@ -69,7 +67,6 @@ export class ApiClient extends ApiClientBase {
     super(baseUrl);
     this.authApi = new AuthApi(this);
     this.chatApi = new ChatApi(this);
-    this.webhookChatApi = new WebhookChatApi(this);
     this.knowledgeApi = new KnowledgeApi(this);
     this.conversationsApi = new ConversationsApi(this);
     this.teamApi = new TeamApi(this);
@@ -110,6 +107,23 @@ export class ApiClient extends ApiClientBase {
       method: "POST",
       body: data ? JSON.stringify(data) : undefined,
     });
+  }
+
+  /**
+   * Simple PATCH request for endpoints that don't need domain-specific logic.
+   */
+  async patch<T>(endpoint: string, data?: unknown): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: "PATCH",
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  /**
+   * Simple DELETE request for endpoints that don't need domain-specific logic.
+   */
+  async delete<T>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, { method: "DELETE" });
   }
 
   // ============================================================================

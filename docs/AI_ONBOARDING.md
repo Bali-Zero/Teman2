@@ -1,6 +1,6 @@
 # AI ONBOARDING GUIDE - Nuzantara Project
 
-**Last Updated:** 2026-02-16
+**Last Updated:** 2026-02-21
 **Purpose:** Quick-start guide for AI assistants working on Project Nuzantara
 
 **System Stats:**
@@ -335,6 +335,23 @@ nuzantara-mcp  # starts stdio server
 ```
 
 **FastMCP 2.x gotcha:** Use `instructions=` not `description=` in the constructor.
+
+---
+
+## CHAT STREAMING (Unified Endpoint)
+
+**Endpoint:** `POST /api/agentic-rag/stream` (SSE)
+
+Single source of truth for all chat streaming. Features:
+
+- ✅ Timeout: 120s request, 300s idle, 600s max total
+- ✅ Abort handling via AbortController
+- ✅ 13+ event types (token, sources, metadata, thinking, tool_call, reasoning_step, etc.)
+- ✅ Vision support (base64 images)
+- ✅ Automatic conversation persistence
+- ✅ Correlation ID for end-to-end tracing
+
+**Frontend:** `useChatStreaming.ts` → `api.sendMessageStreaming()`
 
 ---
 

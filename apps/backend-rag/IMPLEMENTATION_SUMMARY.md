@@ -2,7 +2,8 @@
 
 **Priority**: P0 🔴  
 **Status**: ✅ COMPLETE  
-**Date**: 2026-02-09
+**Date**: 2026-02-09  
+**Updated**: 2026-02-21 (unified endpoint)
 
 ---
 
@@ -36,18 +37,18 @@ Core database operations:
 - `cleanup_old_conversations()` - Delete conversations > N days
 - `anonymize_user_data()` - Anonymize user_id for privacy
 
-### 2. Webhook Chat Router
+### 2. Agentic RAG Router (Unified Endpoint)
 
-**File**: `backend/app/routers/webhook_chat.py`
+**File**: `backend/app/routers/agentic_rag.py`
 
-New `/webhook/chat` endpoint:
+`/api/agentic-rag/stream` endpoint now includes auto-persistence:
 
 - Accepts `session_id` in request body
 - Retrieves conversation history from DB
 - Injects history into RAG context
-- Processes query with orchestrator
-- Saves user query + assistant response
-- Returns conversation_id for tracking
+- Processes query with orchestrator (streaming)
+- Saves user query + assistant response after stream completes
+- Returns `metadata` event with `conversation_id` and `persisted` status
 
 Additional endpoints:
 

@@ -246,7 +246,7 @@ export function useChatPage(): UseChatPageReturn {
       setCurrentStatus("");
 
       startTransition(async () => {
-        // Conversation is now automatically saved by the backend (WebhookChatApi)
+        // Conversation is automatically saved by the backend (agentic_rag.py stream endpoint)
         // No need for manual saveConversation call here anymore.
         logger.info("Conversation persisted automatically by backend", {
           component: "useChatPage",

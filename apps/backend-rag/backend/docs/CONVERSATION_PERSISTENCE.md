@@ -19,11 +19,12 @@ Complete conversation persistence system for the webapp with automatic memory re
    - Save, retrieve, cleanup, and anonymize operations
    - Optimized queries with proper indexing
 
-2. **Webhook Chat Router** (`backend/app/routers/webhook_chat.py`)
-   - `/webhook/chat` endpoint with auto-persistence
+2. **Agentic RAG Router** (`backend/app/routers/agentic_rag.py`)
+   - `/api/agentic-rag/stream` endpoint with auto-persistence
    - Retrieves conversation history before processing
    - Injects history into RAG context
-   - Saves user query + assistant response after processing
+   - Saves user query + assistant response after stream completes
+   - **Unified endpoint**: streaming + persistence + 13+ event types
 
 3. **Cleanup Cron Job** (`backend/jobs/conversation_cleanup.py`)
    - Daily cleanup of conversations > 30 days
