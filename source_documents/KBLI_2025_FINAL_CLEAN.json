@@ -89795,7 +89795,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Il mercato della locazione immobiliare (KBLI 68112) a Bali rappresenta il segmento più liquido e immediato per le PT PMA: nessun AMDAL complesso, nessuna costruzione, solo gestione dell'asset già edificato. La domanda di affitti a lungo termine (6-24 mesi) da nomadi digitali, expat aziendali e turisti residenziali cresce a tassi a due cifre. Il modello 'buy-leasehold + rent' genera rendite nette del 6-14% annuo con capital gain strutturale del 15-25% CAGR nelle zone prime.",
+        "bali_nuance": "La moratoria Sarbagita ha creato scarsità artificiale nell'offerta commerciale certificata — gli immobili con TDUP/HGB valido hanno un premio del 30-50% rispetto ai non conformi. Le zone di massima domanda sono Canggu (nomadi), Seminyak-Kerobokan (expat lifestyle), Ubud (wellness-retreat), Nusa Dua (corporate). Il mercato ha biforcato: top-end ($2.000-8.000/mese) con occupancy 85-95%; fascia media ($500-1.500/mese) con competizione estrema contro affitti informali su visto turistico.",
+        "operational_risks": "PBG komersial obbligatorio per affittare commercialmente — immobili con PBG residenziale non possono essere affittati a uso ufficio o commerciale senza conversione (6-18 mesi). PBJT 10% su tutti i ricavi da locazione commerciale. Coretax NITKU per ogni unità locata. IMB/PBG legacy: migliaia di immobili a Bali hanno IMB residenziale e vengono affittati commercialmente — esposizione crescente a ispezioni Dinas PUPR. Contratti di locazione superiori a 3 anni richiedono registrazione notarile e imposta materai (e-Materai).",
+        "investment_outlook": "ROI locazione pura: 6-14% annuo. Strategia ottimale PT PMA: acquisire leasehold HGB 30+20+30 anni su immobile certificato → affittare commercialmente con TDUP → gestire via management company (KBLI 55901). CAPEX medio villa 2-3 camere: IDR 3-8 miliardi. Rendita mensile lorda: $2.000-5.000. Break-even: 8-12 anni. Capital gain atteso HGB: 15-25% CAGR fino al 2030 in zone prime Bali. Mercato istituzionale: REIT/fondi internazionali entrano via PT PMA con portfolio 5-20 unità.",
+        "legacy_bridge": "KBLI 2020: 68100 (Aktivitas Real Estat) generico → KBLI 2025: separazione granulare. 68112 copre esclusivamente la locazione di immobili NON-residenziali di proprietà della PT PMA. Per immobili residenziali affittati: verificare se rientra in 68292. Aggiornamento NIB entro 18 giugno 2026. Priorità: verificare che PBG dell'immobile sia coerente con l'uso komersial dichiarato nell'NIB."
+      }
     },
     {
       "kode_kbli_2025": "68121",
@@ -89839,7 +89846,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "68120",
       "mapping_note": "PP28 usa codice KBLI 2020 68120 (Kawasan Pariwisata...). Match: 85%",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "La gestione di kawasan pariwisata (KBLI 68121) è il codice per gli operatori di zone turistiche integrate — resort villages, eco-retreat campus, surf camp con bungalow multipli. Il segmento wellness-luxury ($500-2.000/notte) mostra domanda strutturalmente crescente da mercati Australia, Europa e Asia-Pacific. La moratoria Sarbagita favorisce chi ha asset esistenti: nessun nuovo competitor costruisce nelle zone premium.",
+        "bali_nuance": "Le zone turistiche integrate a Bali si concentrano in 3 macro-aree: Uluwatu-Pecatu (surf + luxury cliff), Ubud-Tegallalang (spiritual + wellness), Buleleng-Lovina (diving + eco, fuori moratoria). La KEK Sanur introduce una zona speciale dove le regole RDTR ordinarie non si applicano — opportunità per investitori nel segmento medical-wellness tourism. Gestire una kawasan richiede coordinamento con il Banjar locale per accesso stradale, gestione rifiuti e cerimonie adat.",
+        "operational_risks": "TDUP da Dinas Pariwisata per ogni struttura ricettiva nella kawasan. AMDAL obbligatorio per kawasan sopra 10.000 mq GFA. Konversi lahan agricola massimo 5%/anno (decreto moratoria). Compliance ESG: riduzione plastiche 25%/anno, efficienza WWTP 15%/anno — rendicontazione obbligatoria. KKPR GPS-validato prima di qualsiasi sviluppo. Rischio: classificazione 68121 per operazione che è in realtà una villa singola (55203) → audit automatico.",
+        "investment_outlook": "ROI: 15-25% per kawasan wellness-luxury certificata. CAPEX sviluppo: IDR 20-100 miliardi (5-20 unità). Modello efficiente: PT PMA sviluppa kawasan → affida gestione a management company (55901) → distribuzione revenue agli investitori. Strutture di fondi: limited partnership con GP (PT PMA) + LP (investitori stranieri tramite BKPM approval). Mercato M&A: kawasan pariwisata con licenze complete valgono 3-5x vs. asset non certificati.",
+        "legacy_bridge": "KBLI 2020: 68100 generico → KBLI 2025: 68121 specifico per kawasan pariwisata. Operatori che usavano 68200 (gestione) per kawasan devono migrare a 68121 (sviluppo/gestione kawasan). Cruciale: il RDTR deve classificare la zona come Kawasan Pariwisata (K-3) — verifica GPS obbligatoria prima di qualsiasi investimento. Deadline: 18 giugno 2026."
+      }
     },
     {
       "kode_kbli_2025": "68122",
@@ -89927,7 +89941,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "mapping_note": "Agent mapping: 68130 (Kawasan Industri...) [medium]",
       "kbli_2020_source": "68130",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Le Kawasan Ekonomi Khusus (KEK) rappresentano l'innovazione più strategica del real estate indonesiano del 2026. La KEK Kesehatan Sanur a Bali — 41 ettari dedicati al medical tourism — crea un ecosistema normativo speciale dove le restrizioni ordinarie non si applicano. PMA in KEK gode di: esenzioni fiscali (tax holiday), procedure doganali semplificate, regole speciali per TKA medici stranieri. Target: intercettare i 600.000 pazienti indonesiani/anno che si recano in Tailandia e Malaysia per cure mediche.",
+        "bali_nuance": "La KEK Sanur è l'unica KEK in Indonesia con focus esclusivo sulla salute. Comprende ospedali internazionali, cliniche specializzate, wellness center, hotel medicali e servizi ancillari. UU Kesehatan 17/2023 + PP 28/2024 hanno liberalizzato parzialmente l'accesso PMA ai servizi medici — la KEK è il veicolo principale. Gli sviluppatori già presenti includono Siloam (Lippo Group), BIMC Nusa Dua. RDTR Sanur classifica l'area KEK come zona speciale con deroghe ai limiti di altezza e densità ordinari.",
+        "operational_risks": "Autorizzazione KEK da BKPM + Dewan Nasional KEK — processo 6-12 mesi. Compliance sanitaria: JCI o KARS accreditamento per strutture mediche. STR (Surat Tanda Registrasi) per ogni medico straniero: 6-12 mesi. PPN 0% in zona KEK ma obbligo rendicontazione mensile al BKF. Rischio: confusione tra KEK Sanur e real estate ordinario circostante — le regole speciali si applicano SOLO entro il perimetro fisico della KEK, non nel Sanur generale.",
+        "investment_outlook": "ROI: 18-30% per strutture mediche in KEK con gestione JCI. CAPEX: IDR 50-200 miliardi per hospital/clinic di medio livello. Tax holiday: 5-25 anni di esenzione PPh Badan + 0% bea masuk attrezzatura medica. CAPEX ammortizzato significativamente. Modello ideale: PT PMA sviluppa struttura → joint operation con catena medica internazionale (operatore + brand). Revenue: medical fees + wellness stays + medical tourism packages.",
+        "legacy_bridge": "KBLI 2025: 68123 (KEK) è un codice nuovo, non aveva equivalente diretto in KBLI 2020. Operatori in KEK che usavano 68100 o 86xxx devono valutare se la componente immobiliare rientra in 68123. La combinazione 68123 (real estate in KEK) + 86101/86102 (ospedale) è lo stack tipico per gli investitori in Sanur KEK. Verifica: la struttura è fisicamente dentro il perimetro KEK Sanur? Se sì → 68123 è obbligatorio."
+      }
     },
     {
       "kode_kbli_2025": "68124",
@@ -90186,7 +90207,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "mapping_note": "Agent mapping: 68111 (Real Estat Yang Dimiliki Sendi...) [high]",
       "kbli_2020_source": "68111",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Il real estate non-residenziale (KBLI 68129) copre il segmento commerciale puro: uffici, showroom, warehouse, spazi co-working. A Bali il mercato è guidato dalla crescita delle aziende tech/startup che cercano spazi B2B, dai brand internazionali che aprono flagship store e dalla proliferazione di co-working (Dojo, Outpost, Seelect) che serve la base nomadi. Il mercato B2B è meno esposto alla moratoria rispetto all'hospitality.",
+        "bali_nuance": "Canggu e Pererenan concentrano il 60% della domanda di co-working e uffici ibridi. Il segmento retail-showroom si concentra su Sunset Road (Kuta-Seminyak), Jalan Raya Seminyak e il nuovo asse Berawa-Canggu. Warehouse e logistica crescono lungo l'asse Mengwi-Kuta-Nusa Dua in risposta all'espansione dell'e-commerce. Zonazione commerciale (K-1/K-2 nel RDTR) è prerequisito — molte aree di Canggu hanno ancora RDTR residenziale che blocca gli usi commerciali.",
+        "operational_risks": "IMB/PBG komersial obbligatorio. Occupancy certificate (SLF) specifico per uso commerciale. RDTR zonazione: uffici/co-working richiedono zona perdagangan dan jasa (K-1/K-2) — verifica GPS prima dell'investimento. Rischio: struttura con PBG residenziale usata come ufficio/co-working = violazione → chiusura forzata + denda. Contratti di locazione commerciale >1 miliardo IDR: obbligo di registrazione PPJB notarile.",
+        "investment_outlook": "ROI: 8-18% per immobili commerciali certificati nelle zone prime. Co-working premium (Canggu): $15-40/sqm/mese. Uffici Sanur/Nusa Dua (corporate): $10-25/sqm/mese. Warehouse Mengwi: $3-8/sqm/mese. Modello efficiente: PT PMA acquista HGB su capannone industriale o spazio commerciale → sublocazione a operatori co-working con contratto revenue-share. Barriera d'ingresso bassa rispetto all'hospitality.",
+        "legacy_bridge": "KBLI 2020: 68100 → KBLI 2025: 68129 specifico per non-residenziale. Distinguere da 68121 (kawasan pariwisata) e 68127 (gedung perkantoran). Un PT PMA che gestisce un mix uffici + retail deve valutare se registrare più codici KBLI (uno per ogni attività prevalente) o se 68129 copre l'intero portafoglio. Deadline migrazione NIB: 18 giugno 2026."
+      }
     },
     {
       "kode_kbli_2025": "68210",
@@ -90232,7 +90260,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "L'intermediazione immobiliare professionale (KBLI 68210) è il segmento con la più alta barriera normativa ma anche il più alto margine commissionale. La professionalizzazione forzata del mercato balinese (SIU-P4, certificazione AREBI) ha eliminato migliaia di 'agenti informali' su visto turistico, consolidando il mercato nelle mani di player certificati. La domanda di intermediazione qualificata è in crescita: ogni PT PMA che acquista real estate a Bali ha bisogno di un agente certificato.",
+        "bali_nuance": "Il mercato degli agenti immobiliari a Bali è polarizzato: i top 10 brand (Bali Realty, Leapfrog, Sotheby's Bali, Kibarer) gestiscono il 60-70% delle transazioni luxury (>$500K). Il resto è frammentato in centinaia di piccole agenzie. La digitalizzazione ha spostato il discovery online (Lamudi, Dot Property, Property24) ma la chiusura della transazione richiede ancora presenza fisica certificata. Un agente senior certificato AREBI a Bali guadagna IDR 50-200 milioni/mese su mercato premium.",
+        "operational_risks": "SIU-P4 obbligatoria — senza di essa l'agenzia non può adire le corti per recupero commissioni. Minimo 2 agenti certificati AREBI in organico. Rinnovo ogni 5 anni. Rendicontazione annuale volumi al Kemendag. TKA: agenti stranieri che chiudono transazioni in Indonesia devono avere RPTKA approvato — posizione 'property consultant' è tra quelle aperte a stranieri senior. Rischio: operare come 'buyer's agent' informale su visto turistico = deportazione + blacklist.",
+        "investment_outlook": "Commissione standard: 2-3% su transazioni (acquirente + venditore). Transaction value medio a Bali per villa luxury: $300K-2M. Commissione per transazione: $6K-60K. Margine netto agenzia certificata: 30-50% della commissione. Break-even per agenzia con 3-5 agenti: 4-6 transazioni/mese. Specializzazione KBL 68210: solo intermediazione — per sviluppo combinare con 68111/68113. Opportunità: partnership con fondi immobiliari internazionali come buyer's advisor esclusivo.",
+        "legacy_bridge": "KBLI 2020: 68200 (Jasa Real Estat) generico → KBLI 2025: 68210 (intermediazione) separato da 68291 (valutazione) e 68292/68299 (gestione per conto terzi). Le agenzie che usavano 68200 per coprire tutto devono rianalizzare le proprie attività prevalenti e aggiornare l'NIB ai codici specifici 2025. Una holding che fa sia intermediazione che gestione deve registrare sia 68210 che 68292. Deadline: 18 giugno 2026."
+      }
     },
     {
       "kode_kbli_2025": "68291",
@@ -90275,7 +90310,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "mapping_note": "Agent mapping: 68200 (Real Estat Atas Dasar Balas Ja...) [high]",
       "kbli_2020_source": "68200",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "La valutazione immobiliare professionale (KBLI 68291) è un servizio ad altissima domanda strutturale nel Bali 2026: ogni transazione PT PMA richiede una valutazione certificata per BPHTB, ogni finanziamento bancario richiede una perizia HGB, ogni ingresso di investitore istituzionale richiede una due diligence di valore. La digitalizzazione catastale (ATR/BPN 18/2021) e l'eliminazione dei Girik hanno reso il perito certificato indispensabile.",
+        "bali_nuance": "I periti immobiliari (Penilai) devono essere registrati MAPPI (Masyarakat Profesi Penilai Indonesia) e autorizzati dal Kementerian Keuangan. A Bali operano circa 50-80 periti certificati — un numero insufficiente rispetto al volume di transazioni. La carenza di periti qualificati crea colli di bottiglia nelle transazioni PT PMA: attese di 2-4 settimane per una perizia standard. La combinazione drone survey + GIS analysis sta trasformando la metodologia di valutazione: i periti che padroneggiano gli strumenti geospaziali hanno un premium significativo.",
+        "operational_risks": "Certificazione MAPPI obbligatoria. Iscrizione al KEMENKU (Kementerian Keuangan) come Kantor Jasa Penilai Publik (KJPP). Per PT PMA: la società può operare come KJPP se impiega periti MAPPI certificati. TKA: periti stranieri ammessi con RPTKA specifico — limitato a expertise non disponibile localmente. Conflitto di interessi: un perito non può valutare un immobile per cui ha ricevuto una commissione di vendita.",
+        "investment_outlook": "Fee perizia standard: IDR 5-25 milioni per villa luxury (0.1-0.3% del valore). Fee due diligence completa (legale + fisica + geospaziale): IDR 25-75 milioni. Market size: 10.000-15.000 transazioni immobiliari/anno a Bali → IDR 50-375 miliardi/anno in fee di perizia. Margine KJPP: 40-60%. Modello efficiente: KJPP specializzato PT PMA + partnership con studi legali internazionali per one-stop due diligence service per investitori stranieri.",
+        "legacy_bridge": "KBLI 2020: 68200 → KBLI 2025: 68291 (valutazione) codice dedicato. Nuova granularità riflette la maturazione del mercato. Le KJPP che usavano 68200 devono aggiornare l'NIB a 68291 e verificare che la loro licenza KEMENKU sia ancora valida. Attenzione: 68291 è esclusivamente per la valutazione — la gestione per conto terzi è 68292. Deadline: 18 giugno 2026."
+      }
     },
     {
       "kode_kbli_2025": "68292",
@@ -90323,7 +90365,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "mapping_note": "Agent mapping: 68200 (Real Estat Atas Dasar Balas Ja...) [high]",
       "kbli_2020_source": "68200",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "La gestione immobiliare per conto terzi (KBLI 68292) è il segmento a più alta crescita del real estate balinese: i proprietari stranieri che non possono essere fisicamente presenti delegano la gestione completa a property management company. Modello in forte espansione: PT PMA (proprietario) + PMDN management (operatore) con revenue sharing. Il mercato è trainato dalla crescita dei portfolio multi-villa e degli investitori istituzionali non residenti.",
+        "bali_nuance": "Il segmento 68292 si distingue da 55901 (villa management per hospitality): 68292 copre la gestione immobiliare generale (manutenzione, affitti, contabilità), mentre 55901 copre specificamente la gestione operativa di strutture ricettive con TDUP. In pratica molte aziende fanno entrambe — necessario registrare entrambi i codici. I migliori operatori Bali (Semara, Elite Havens, Bali Private Villas) operano già con struttura multi-codice. Software PMS (Property Management System) è diventato prerequisito: Guesty, Hostaway, Beds24 dominano il mercato.",
+        "operational_risks": "NIB con 68292. Contratti di gestione: devono specificare chiaramente chi detiene le licenze operative (TDUP) — la management company o il proprietario. Responsabilità fiscale: la company che incassa gli affitti è soggetto passivo PBJT 10% anche se il reddito appartiene al proprietario. CoreTax: ogni proprietà gestita richiede NITKU separato. Conflitto di interessi: la stessa company non può essere contemporaneamente buyer's agent e property manager per lo stesso cliente.",
+        "investment_outlook": "Fee gestione: 15-25% del gross revenue locativo. Portfolio di 20 ville con $6.000/mese revenue ciascuna = $120K/mese totale → fee management = $18-30K/mese. Margine netto company: 35-50% della fee dopo staff e overhead. Break-even: 8-12 unità gestite. Scalabilità: una company che gestisce 50+ unità con PMS digitale raggiunge margini del 45-55%. Modello vincente 2026: property management + OTA optimization + financial reporting trasparente per investitori istituzionali.",
+        "legacy_bridge": "KBLI 2020: 68200 (Jasa Real Estat) → KBLI 2025: 68292 (gestione residenziale per terzi) + 68299 (gestione non-residenziale per terzi). Aziende che usavano 68200 per coprire sia intermediazione che gestione devono disaggregare le attività e registrare i codici specifici. Distinzione critica: 68292 = gestione per conto proprietario (relazione fiduciaria), non acquisto diretto. Deadline: 18 giugno 2026."
+      }
     },
     {
       "kode_kbli_2025": "68299",
@@ -90371,7 +90420,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "47920",
       "mapping_note": "PP28 usa codice KBLI 2020 47920 (Perdagangan Eceran Atas Dasar ...). Match: 77%",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "La gestione di immobili non-residenziali per conto terzi (KBLI 68299) copre co-working, uffici, retail, centri commerciali. A Bali il segmento è trainato dall'espansione dei co-working spaces (Dojo, Outpost, Seelect, Tropical Nomad) e dei centri commerciali di prossimità. Le catene di co-working operano spesso come operatori per conto di PT PMA proprietarie degli spazi — un modello che richiede esplicitamente 68299.",
+        "bali_nuance": "Il co-working premium a Canggu (Berawa, Batu Bolong) è sold-out 6-12 mesi in anticipo — scarcity artificiale creata dalla moratoria. I nuovi hub si sviluppano a Sanur (per la KEK medica) e Ubud-Tegallalang (per il mercato wellness-startup). Centri commerciali di prossimità (Beachwalk Kuta, Level 21 Denpasar) cercano gestori certificati per ottimizzare occupancy tenant-mix e marketing locale. Il modello mall-management richiede competenze diverse dal villa management — team separati, KPI diversi.",
+        "operational_risks": "NIB con 68299. SLF komersial obbligatorio per ogni edificio gestito. PBJT 10% su affitti commerciali. Contratto di gestione deve specificare chi risponde ai tenant in caso di dispute — liability chain cruciale. Per co-working: PSTSE (pendaftaran sistem elektronik) se la struttura offre servizi digitali. Compliance anti-incendio (APAR, sprinkler, jalur evakuasi) obbligatoria — ispezioni Dinas Pemadam Kebakaran annuali.",
+        "investment_outlook": "Fee gestione co-working: 20-30% del revenue. Fee gestione uffici: 8-15% del canone. Margine per gestori specializzati: 35-50%. Mercato in espansione: 15.000+ nomadi digitali a Bali creano domanda costante per co-working premium. CAPEX setup co-working 500 mq: IDR 2-4 miliardi. Break-even occupancy: 60%. ROI a occupancy 80%: 18-28% annuo. Opportunità: operator as a service per PT PMA proprietarie di spazi commerciali non residenti.",
+        "legacy_bridge": "KBLI 2020: 68200 → KBLI 2025: 68299 (non-residenziale per terzi) separato da 68292 (residenziale). Operatori misti (gestiscono sia ville che uffici) devono registrare sia 68292 che 68299. Attenzione: non confondere con 68129 (locazione diretta non-residenziale di proprietà propria) — 68299 è esclusivamente gestione per conto di terzi proprietari. Deadline: 18 giugno 2026."
+      }
     },
     {
       "kode_kbli_2025": "69101",
@@ -93276,7 +93332,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "86903",
       "mapping_note": "Auto-matched to 86903 (Aktivitas Pelayanan Penunjang ...) score=65%",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "POSITIVE — Patent/IP broker and marketing services for pharmaceutical, medical device, and traditional medicine brands is a growth sector as Indonesia's health industry commercializes IP from research institutions.",
+        "bali_nuance": "74910 is relevant to health/wellness in Bali as a structure for companies that license Balinese traditional formulas, herbal IP, or wellness brand trademarks. Tourism companies using Balinese cultural assets in commercial wellness products use this code alongside their primary health code.",
+        "operational_risks": "DJHKI (Direktorat Jenderal Kekayaan Intelektual) registration required for any IP being brokered. Balinese cultural IP (traditional recipes, sacred practices) has emerging legal protection frameworks — cultural sensitivity and community consent (FPIC) are recommended due diligence steps.",
+        "investment_outlook": "Niche supporting role. Most valuable as a secondary KBLI for wellness companies commercializing proprietary formulas or branded treatments.",
+        "legacy_bridge": "74910 (Aktivitas Broker dan Layanan Pemasaran Paten) corresponds to 74100 in KBLI 2020. Verify NIB if registered under old code."
+      }
     },
     {
       "kode_kbli_2025": "74991",
@@ -99073,7 +99136,14 @@
       "pma_prioritas": true,
       "pma_nota": "Sektor prioritas: Aktivitas rumah sakit pemerintah",
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "POSITIVE — Medical tourism growth 15-20% YoY in Bali, KEK Sanur (41 ha) operational as Indonesia's dedicated medical tourism zone; government hospitals benefit from BPJS patient flow but face chronic underfunding in equipment and staff.",
+        "bali_nuance": "KEK Sanur is the anchor development — within the zone, PT PMA hospitals benefit from simplified licensing, tax holidays, and relaxed TKA rules for foreign medical staff under PP 24/2022. Outside KEK, private hospital PMA rules apply under BKPM Reg 5/2025.",
+        "operational_risks": "UU Kesehatan 17/2023 revokes 11 previous health laws and restructures the entire regulatory framework — recheck all legacy permits against the new law. BPJS Kesehatan integration mandatory for hospitals; tariff negotiation with BPJS (Kapitasi system) compresses margins. TKA medical professionals require STR (Surat Tanda Registrasi) + SIP (Surat Izin Praktik) even after UU 17/2023 relaxations — IDI (Ikatan Dokter Indonesia) no longer required for endorsement of foreign specialist applications. AMDAL required for facilities above 200 beds.",
+        "investment_outlook": "KEK Sanur is the entry point for premium medical tourism PT PMA. Outside KEK, hospital development requires minimum IDR 20B capital + local partner coordination. Medical tourism market targeting Singapore/Australia patients shows 3-year ROI horizon for well-located facilities.",
+        "legacy_bridge": "KBLI 2020 86100 (aktivitas rumah sakit) split into 86101 (government) and 86103 (private) in KBLI 2025. PT PMA operators should use 86103 (private hospital), not 86101 (government). Verify OSS registration reflects correct code."
+      }
     },
     {
       "kode_kbli_2025": "86102",
@@ -99124,7 +99194,14 @@
       "pma_prioritas": true,
       "pma_nota": "Sektor prioritas: Aktivitas puskesmas",
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "NEUTRAL — Puskesmas are government-run community health centers; not directly relevant to PT PMA investment but important for understanding the BPJS primary care ecosystem that affects private clinic patient flow.",
+        "bali_nuance": "Puskesmas saturation in Denpasar/Badung redirects patients to private clinics (86104/86105) for faster service. Understanding Puskesmas referral patterns is essential for private clinic location strategy.",
+        "operational_risks": "UU Kesehatan 17/2023 expands Puskesmas mandate — potential competition risk for small private clinics in primary care segment. BPJS Kesehatan primary care capitation rates are set at Puskesmas level, affecting private clinic BPJS revenues.",
+        "investment_outlook": "Not a direct PT PMA investment target. Strategic context only — understand Puskesmas coverage map before siting a private clinic.",
+        "legacy_bridge": "86102 is new in KBLI 2025 (Puskesmas specifically named). Previously bundled under 86100 in KBLI 2020."
+      }
     },
     {
       "kode_kbli_2025": "86103",
@@ -99164,7 +99241,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "POSITIVE — Private hospital development is booming in Bali, driven by medical tourism, expat population, and domestic middle-class demand. International hospital brands (Siloam, BIMC, Prima Medika) are expanding.",
+        "bali_nuance": "BIMC Nusa Dua and Kasih Ibu are benchmarks. KEK Sanur allows international hospital PT PMA with 100% foreign ownership and streamlined TKA for foreign doctors. Outside KEK, BKPM 5/2025 IDR 10B+ investment threshold applies.",
+        "operational_risks": "UU Kesehatan 17/2023 Section 4 Chapter VI: foreign doctors may practice under supervised arrangement with Indonesian doctor for up to 2 years without IDI endorsement — but STR + SIP still required from Konsil Kedokteran Indonesia (KKI). Halal certification (BPJPH) mandatory for all pharmaceutical products and food/beverages served in hospital premises from October 2026. Medical waste (limbah medis) regulations under Permen LHK 56/2015 require licensed transporter and TPS B3 facility — frequent inspection by KLHK.",
+        "investment_outlook": "Strong medium-term ROI from medical tourism segment. International Joint Commission (JCI) accreditation + KARS accreditation are market differentiators. Target: 200+ bed international-standard hospital near Nusa Dua or within KEK Sanur.",
+        "legacy_bridge": "86103 (Rumah Sakit Swasta) newly separated from 86100 in KBLI 2025. This is the correct PT PMA code for private hospital development."
+      }
     },
     {
       "kode_kbli_2025": "86104",
@@ -99215,7 +99299,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "NEUTRAL-POSITIVE — Government clinic development not directly available to PT PMA. Context for understanding primary care landscape.",
+        "bali_nuance": "Government clinics (klinik pemerintah) receive APBD funding; their expansion in tourist areas creates indirect competition for private clinics.",
+        "operational_risks": "Not a PT PMA target. Registration note only.",
+        "investment_outlook": "Not applicable for foreign investment.",
+        "legacy_bridge": "86104 newly specified in KBLI 2025 for government-run clinics."
+      }
     },
     {
       "kode_kbli_2025": "86105",
@@ -99266,7 +99357,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "POSITIVE — Private clinics (klinik swasta) represent the most accessible entry point for PT PMA in the health sector: lower capital requirements than hospitals, faster permitting, and direct alignment with Bali's wellness tourism market.",
+        "bali_nuance": "Aesthetic medicine clinics (botox, dermal fillers, laser treatments), dental clinics, and sports medicine practices serving the digital nomad and villa-rental guest market are the highest-margin segment. Canggu, Seminyak, and Ubud have clinic clusters with 85%+ occupancy.",
+        "operational_risks": "Klinik license (Permenkes 9/2014, updated under UU 17/2023) requires: Surat Izin Operasional Klinik from Dinas Kesehatan (not OSS), minimum 1 doctor on site during operating hours, and separate medical waste handling contract. Foreign doctors require KKI-issued STR — process takes 3-6 months. BPJS participation: optional for klinik swasta but exclusion limits market reach for Indonesian patient base. Aesthetic procedures using imported equipment require BPOM device registration (Alkes import license).",
+        "investment_outlook": "IDR 500M–IDR 2B setup cost for a premium aesthetic clinic; 18–24 month payback in high-tourism zones. Dental chains and aesthetic medicine networks are active acquisition targets.",
+        "legacy_bridge": "86105 newly explicit in KBLI 2025 for private clinics. Previously under broad 86100. Update NIB if showing 2020 code."
+      }
     },
     {
       "kode_kbli_2025": "86109",
@@ -99357,7 +99455,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "POSITIVE — GP/general practice clinics serving the expat and tourist population show consistent demand. Bali's 300,000+ long-term foreign resident population is the primary target market.",
+        "bali_nuance": "Solo doctor practice (praktik dokter mandiri) is legally available to Indonesian doctors. Foreign doctors operating their own practice in Bali must structure via PT PMA with Indonesian doctor partner for KKI compliance. The 'dokter penanggung jawab' (responsible doctor) on the SIP must be an Indonesian-licensed physician.",
+        "operational_risks": "UU Kesehatan 17/2023 maintains STR + SIP requirements even for foreign doctors under bilateral cooperation arrangements. KKI evaluation timeline for foreign doctor STR: 3-6 months minimum. Bali Dinas Kesehatan inspection cycle: annual for licensed practices.",
+        "investment_outlook": "Stable income practice model. Best combined with 86105 (klinik swasta) structure for PT PMA compliance.",
+        "legacy_bridge": "86201 (praktik dokter umum) corresponds to 86201 in KBLI 2020. No code change."
+      }
     },
     {
       "kode_kbli_2025": "86202",
@@ -99408,7 +99513,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "POSITIVE — Specialist medical practices (orthopedics, dermatology, cardiology) are growing rapidly in Bali's premium medical tourism segment. Flying-specialist model (specialists based in Jakarta who rotate through Bali clinics) is common.",
+        "bali_nuance": "KEK Sanur explicitly targets medical specialist services. Under KEK rules (PP 24/2022), foreign specialist doctors can practice for up to 2 years under simplified arrangement. The IDI endorsement requirement previously blocking foreign specialist applications was removed by UU 17/2023.",
+        "operational_risks": "SIP specialist must specify the specialist field (Surat Izin Praktik Spesialis) — cannot practice outside stated specialty. Foreign specialist credentials must be recognized via KKI equivalency process (typically 2-4 months). Medical malpractice liability framework strengthened under UU 17/2023 — professional indemnity insurance recommended.",
+        "investment_outlook": "High-margin segment. Aesthetic surgery (plastic surgery specialist) + oncology + orthopedics are the top three by revenue in Bali's medical tourism market.",
+        "legacy_bridge": "86202 matches KBLI 2020 86202. No migration needed."
+      }
     },
     {
       "kode_kbli_2025": "86203",
@@ -99475,7 +99587,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "POSITIVE — Health intermediation services (insurance health coordination, health referral management, case management) are growing with the expansion of international health insurance coverage among Bali's expat community.",
+        "bali_nuance": "This code covers health coordination companies — e.g., companies that manage international insurance claims, coordinate medical evacuations, or act as third-party administrators for corporate health plans. A significant segment serving Bali's digital nomad visa holders and KITAS holders.",
+        "operational_risks": "Requires OJK (Otoritas Jasa Keuangan) coordination if activities touch insurance product distribution. Not a standalone medical practice license. UU 17/2023 has expanded the definition of 'jasa intermediasi kesehatan' — seek legal opinion on scope.",
+        "investment_outlook": "Niche but growing market. Best positioned as ancillary service to hospital or clinic operations.",
+        "legacy_bridge": "86910 is new in KBLI 2025 — no direct KBLI 2020 equivalent. Previously these activities were unclassified or filed under miscellaneous services."
+      }
     },
     {
       "kode_kbli_2025": "86991",
@@ -99555,7 +99674,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "POSITIVE — Traditional health services (jamu, herbal medicine, Balinese healing, yoga therapy) align with Bali's strongest brand identity as a wellness destination. Market growing 20-25% YoY driven by wellness tourism.",
+        "bali_nuance": "This is the correct code for Balinese traditional healing practices (melukat, boreh, traditional massage), jamu production and service, and traditional medicine clinics. Spa services using traditional techniques are here; beauty spa services use 96120.",
+        "operational_risks": "Halal certification (BPJPH) mandatory for all jamu and traditional herbal products from October 2026 — applies to 3000+ Bali wellness businesses. BPOM registration required for any manufactured jamu product (not needed for immediate-use services). Traditional healer practitioners require STPT (Surat Tanda Pendaftaran Tenaga Penyehat Tradisional) from Dinas Kesehatan.",
+        "investment_outlook": "Strong alignment with Bali brand. Premium wellness retreat integration (3-7 day immersive programs) shows highest EBITDA margins in the health/wellness sector.",
+        "legacy_bridge": "86992 (pelayanan kesehatan tradisional) updated from KBLI 2020 86902. Verify OSS code if registered under 2020 classification."
+      }
     },
     {
       "kode_kbli_2025": "86993",
@@ -99729,7 +99855,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "POSITIVE — Spa and massage (rumah pijat) is Bali's most visible wellness service. Market dominated by small operators but consolidating rapidly under branded chains. Premium wellness brands command 10-15x pricing vs budget operators.",
+        "bali_nuance": "86995 (Aktivitas Rumah Pijat) is the correct code for dedicated massage/spa establishments. Note: integrated resort spas are typically registered under the hotel's primary KBLI (55203 or 55101) rather than 86995. Standalone day spas and massage centers use 86995.",
+        "operational_risks": "Sertifikasi Kompetensi: massage therapists require BNSP competency certificate since Permenaker 2/2016. Bali Perda hiburan: massage services classified as 'entertainment' in some regency regulations (Badung, Gianyar) → subject to hiburan tax 10-15% on gross revenue. Halal certification from October 2026 affects any spa using herbal/aromatherapy products.",
+        "investment_outlook": "Entry cost IDR 200M–IDR 1B for branded spa concept. Returns driven by occupancy rate and treatment pricing. Franchise model (under PMSE/digital booking platforms) shows strongest growth.",
+        "legacy_bridge": "86995 (Aktivitas Rumah Pijat) is new in KBLI 2025. KBLI 2020 did not have a dedicated spa/massage code at this level of specificity — previously under 96999. Update NIB if using 2020 code."
+      }
     },
     {
       "kode_kbli_2025": "87101",

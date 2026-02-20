@@ -1,7 +1,7 @@
 # KBLI intel_2026 Enrichment Progress
 
-**Stato:** 129 / 1563 codici arricchiti (8.3%) + 5 intel upgrade
-**Aggiornato:** 2026-02-20
+**Stato:** 146 / 1563 codici arricchiti (9.3%) + 5 intel upgrade
+**Aggiornato:** 2026-02-21
 **File JSON:** `source_documents/KBLI_2025_FINAL_CLEAN.json`
 
 ---
@@ -151,6 +151,8 @@ MDX: `kbli-2025-automotive-food-textile-wholesale-bali.mdx`
 | `kbli-2025-wholesale-consumer-goods-pharma-cosmetics-bali.mdx`    | 7b    | 46430, 46441, 46442, 46451, 46452, 46491, 46492, 46493, 46499, 46791                                                                       |
 | `kbli-2025-retail-sector-bali-investment-guide.mdx`               | 8     | 47191, 47222, 47242, 47401, 47404, 47406, 47521, 47592, 47620, 47690, 47712, 47714, 47721, 47722, 47733, 47751, 47761, 47774, 47781, 47782 |
 | `kbli-2025-hospitality-villa-hotel-bali-investment-guide.mdx`     | 9     | 55101, 55102, 55103, 55104, 55105, 55106, 55201, 55203, 55204, 55209, 55901                                                                |
+| `kbli-2025-real-estate-property-investment-bali-2026.mdx`         | 10    | 68111, 68112, 68121, 68123, 68129, 68210, 68291, 68292, 68299                                                                              |
+| `kbli-2025-health-wellness-medical-tourism-bali-2026.mdx`         | 11    | 74910, 86101, 86102, 86103, 86104, 86105, 86201, 86202, 86910, 86992, 86995, 96120                                                         |
 
 ---
 
@@ -295,9 +297,79 @@ MDX: `indonesia-political-regulatory-risk-intelligence-guide.mdx`
 - 55201 (homestay) de facto riservato WNI — condizione di residenza del proprietario
 - 55901 (management) il veicolo chiave per PMA in hospitality
 
+---
+
+### Batch 10 — Real Estate (Categoria 68) — HGB, Sarbagita, OSS-RDTR GPS, PPJB/AJB
+
+**Nuovi codici arricchiti (8):**
+| Codice | Titolo |
+|--------|--------|
+| 68112 | AKTIVITAS PENYEWAAN BANGUNAN DAN LAHAN HUNIAN MILIK SENDIRI |
+| 68121 | PENGELOLAAN KAWASAN PARIWISATA |
+| 68123 | PENGELOLAAN KAWASAN EKONOMI KHUSUS |
+| 68129 | AKTIVITAS REAL ESTAT (BANGUNAN DAN LAHAN) NONHUNIAN |
+| 68210 | AKTIVITAS JASA INTERMEDIASI REAL ESTAT |
+| 68291 | JASA PENAKSIR REAL ESTAT |
+| 68292 | PENGELOLAAN REAL ESTAT HUNIAN ATAS DASAR BALAS JASA |
+| 68299 | AKTIVITAS REAL ESTAT ATAS DASAR BALAS JASA (FEE) ALTRI |
+
+**MDX article create (1):**
+| File | Batch | Codici coperti |
+|------|-------|----------------|
+| `kbli-2025-real-estate-property-investment-bali-2026.mdx` | 10 | 68111, 68112, 68121, 68123, 68129, 68210, 68291, 68292, 68299 |
+
+**Note batch:**
+
+- Tutti i 14 codici 68xxx sono 100% PMA
+- PT PMA può solo detenere HGB (max 80 anni: 30+20+30), non Hak Milik
+- Girik scaduti il 2 febbraio 2026 — solo Sertifikat BPN valido per acquisizione
+- Moratoria Sarbagita si applica anche al real estate commerciale
+- SIU-P4 obbligatorio per 68210 (broker) — emesso da Kementerian PUPR, non OSS
+- BPHTB 5% (acquirente) + PPh Final 2.5% (venditore) su ogni AJB
+- Codici non arricchiti in batch 10: 68122, 68124, 68125, 68126, 68127 (industrial/commercial management)
+
+---
+
 ## Prossimi Batch
 
-- Batch 10: in attesa
+---
+
+### Batch 11 — Health/Wellness (86xxx + 74910 + 96120) — UU Kesehatan 17/2023 + KEK Sanur + Halal Oct 2026
+
+**Nuovi codici arricchiti (11):**
+| Codice | Titolo |
+|--------|--------|
+| 74910 | AKTIVITAS BROKER DAN LAYANAN PEMASARAN PATEN |
+| 86101 | AKTIVITAS RUMAH SAKIT PEMERINTAH |
+| 86102 | AKTIVITAS PUSKESMAS |
+| 86103 | AKTIVITAS RUMAH SAKIT SWASTA (PT PMA target) |
+| 86104 | AKTIVITAS KLINIK PEMERINTAH |
+| 86105 | AKTIVITAS KLINIK SWASTA |
+| 86201 | AKTIVITAS PRAKTIK DOKTER |
+| 86202 | AKTIVITAS PRAKTIK DOKTER SPESIALIS |
+| 86910 | AKTIVITAS JASA INTERMEDIASI UNTUK KESEHATAN MEDIS |
+| 86992 | AKTIVITAS PELAYANAN KESEHATAN TRADISIONAL |
+| 86995 | AKTIVITAS RUMAH PIJAT |
+
+**MDX article create (1):**
+| File | Batch | Codici coperti |
+|------|-------|----------------|
+| `kbli-2025-health-wellness-medical-tourism-bali-2026.mdx` | 11 | 74910, 86101, 86102, 86103, 86104, 86105, 86201, 86202, 86910, 86992, 86995, 96120 |
+
+**Note batch:**
+
+- UU Kesehatan 17/2023 revoca 11 leggi precedenti — tutti i permessi legacy vanno reverificati
+- KEK Sanur (41 ha): 100% PMA, tax holiday, TKA semplificato, dazio zero su attrezzature mediche
+- IDI endorsement rimosso da UU 17/2023: medici stranieri applicano diretto a KKI (3-6 mesi)
+- Codice PT PMA corretto per ospedale privato: **86103** (non 86101 che è governativo)
+- Halal scadenza ottobre 2026: cosmesi, medicine tradizionali, OTC → obbligatorio BPJPH
+- 86910 e 86995 sono nuovi in KBLI 2025 (non esistevano come codici dedicati nel 2020)
+- 96120 = salone bellezza (non-medico); 86105 = clinica estetica (medico con dottore) — non confondere
+
+---
+
+## Prossimi Batch
+
 - Settori da coprire (non ancora arricchiti):
   - IT: 62110 (video game), 62191-62194 (app specifiche), 62900 (IT services)
   - Finance: 64991 (venture capital), 64995 (carbon trading)
