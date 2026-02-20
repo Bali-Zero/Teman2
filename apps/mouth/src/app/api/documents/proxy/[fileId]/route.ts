@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { logger } from "@/lib/logger";
 
 /**
  * Proxy authenticated Google Drive documents
@@ -75,7 +76,7 @@ export async function GET(
       headers,
     });
   } catch (error) {
-    logger.error("Document proxy error:", error);
+    logger.error("Document proxy error:", error as Record<string, unknown>);
     // Fallback to Google Drive
     return NextResponse.redirect(
       `https://drive.google.com/file/d/${fileId}/view`,

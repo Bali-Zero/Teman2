@@ -1,5 +1,5 @@
 // KBLI Search - Stub for build
-import type { KBLICode } from "./kbli-data.server";
+import type { KBLICode } from "./kbli-types";
 
 export interface SearchResult {
   codes: KBLICode[];

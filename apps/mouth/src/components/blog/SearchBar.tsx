@@ -297,7 +297,7 @@ export function SearchModal({
         setResults(data.articles || []);
         setSelectedIndex(0);
       } catch (err) {
-        logger.error("Search failed:", err);
+        logger.error("Search failed:", err as Record<string, unknown>);
         setResults([]);
       } finally {
         setIsLoading(false);
@@ -421,13 +421,14 @@ export function SearchModal({
                   >
                     {/* Thumbnail */}
                     <div className="w-16 h-12 rounded-lg bg-white/10 overflow-hidden flex-shrink-0">
-                      {article.coverImage && typeof article.coverImage === "string" && (
-                        <img
-                          src={article.coverImage}
-                          alt=""
-                          className="w-full h-full object-cover"
-                        />
-                      )}
+                      {article.coverImage &&
+                        typeof article.coverImage === "string" && (
+                          <img
+                            src={article.coverImage}
+                            alt=""
+                            className="w-full h-full object-cover"
+                          />
+                        )}
                     </div>
                     {/* Content */}
                     <div className="flex-1 min-w-0">
