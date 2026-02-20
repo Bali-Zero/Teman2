@@ -1,6 +1,6 @@
 # KBLI intel_2026 Enrichment Progress
 
-**Stato:** 102 / 1563 codici arricchiti (6.5%) + 4 intel upgrade
+**Stato:** 122 / 1563 codici arricchiti (7.8%) + 4 intel upgrade
 **Aggiornato:** 2026-02-20
 **File JSON:** `source_documents/KBLI_2025_FINAL_CLEAN.json`
 
@@ -221,9 +221,49 @@ MDX: `indonesia-political-regulatory-risk-intelligence-guide.mdx`
 
 ---
 
+---
+
+### Batch 8 — Retail Sector (Categoria 47) — PP 28/2025 + KBLI 2025 + BKPM 5/2025
+
+**Nuovi codici arricchiti (20):**
+| Codice | Titolo |
+|--------|--------|
+| 47191 | PERDAGANGAN ECERAN BERBAGAI MACAM BARANG (Department Store) |
+| 47222 | PERDAGANGAN ECERAN MINUMAN TIDAK BERALKOHOL |
+| 47242 | PERDAGANGAN ECERAN ROTI, KUE KERING, SERTA KUE BASAH |
+| 47401 | PERDAGANGAN ECERAN KOMPUTER DAN PERLENGKAPANNYA |
+| 47404 | PERDAGANGAN ECERAN TELEPON BESERTA AKSESORISNYA |
+| 47406 | PERDAGANGAN ECERAN PERALATAN AUDIO DAN VIDEO |
+| 47521 | PERDAGANGAN ECERAN BAHAN DAN MATERIAL KONSTRUKSI |
+| 47592 | PERDAGANGAN ECERAN PERALATAN LISTRIK RUMAH TANGGA |
+| 47620 | PERDAGANGAN ECERAN PERALATAN DAN PERLENGKAPAN (Ricreativa) |
+| 47690 | PERDAGANGAN ECERAN KHUSUS BARANG KESENIAN DAN REKREASI LAINNYA |
+| 47712 | PERDAGANGAN ECERAN SEPATU, SANDAL, DAN ALAS KAKI |
+| 47714 | PERDAGANGAN ECERAN TAS, DOMPET, KOPER, RANSEL |
+| 47721 | PERDAGANGAN ECERAN SEDIAAN FARMASI (APOTEK) |
+| 47722 | PERDAGANGAN ECERAN SEDIAAN FARMASI (TOKO OBAT) |
+| 47733 | PERDAGANGAN ECERAN KACAMATA |
+| 47751 | PERDAGANGAN ECERAN HEWAN KESAYANGAN (PET SHOP) |
+| 47761 | PERDAGANGAN ECERAN BUNGA POTONG/FLORIST |
+| 47774 | PERDAGANGAN ECERAN AROMATIK/PENYEGAR (MINYAK ASIRI) |
+| 47781 | PERDAGANGAN ECERAN CENDERA MATA, KERAJINAN |
+| 47782 | PERDAGANGAN ECERAN LUKISAN |
+
+**MDX article create (1):**
+| File | Batch | Codici coperti |
+|------|-------|----------------|
+| `kbli-2025-retail-sector-bali-investment-guide.mdx` | 8 | 47191, 47222, 47242, 47401, 47404, 47406, 47521, 47592, 47620, 47690, 47712, 47714, 47721, 47722, 47733, 47751, 47761, 47774, 47781, 47782 |
+
+**Note batch:**
+
+- 47733 in KBLI 2025 = KACAMATA (occhiali), non articoli ortopedici generali
+- 47782 = LUKISAN (pitture/arte), non registrazioni musicali
+- 47620 = attrezzatura ricreativa/sportiva, non media fisici
+- Soglia 400m² è il confine chiave per proprietà PMA retail
+
 ## Prossimi Batch
 
-- Batch 8: in attesa
+- Batch 9: in attesa
 - Settori da coprire (non ancora arricchiti):
   - Hospitality: 55102 (4★), 55104 (2★), 55105 (1★), 55106 (nonbintang), 55201 (homestay), 55204 (apartemen hotel), 55901 (villa management)
   - IT: 62110 (video game), 62191-62194 (app specifiche), 62900 (IT services)
