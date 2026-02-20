@@ -224,7 +224,11 @@ class GenAIClient:
             return
 
         # Try Service Account first (Vertex AI mode) - PREFERRED for production
-        if _sa_configured and _sa_project_id:
+        # TEMPORARILY DISABLED: Service account lacks Vertex AI permissions
+        # Will use API key fallback instead
+        use_vertex_ai = os.environ.get("USE_VERTEX_AI", "false").lower() == "true"
+
+        if use_vertex_ai and _sa_configured and _sa_project_id:
             try:
                 self._client = genai.Client(
                     vertexai=True,
