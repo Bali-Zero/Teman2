@@ -80503,7 +80503,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "55110",
       "mapping_note": "Manual fix: Hotel Bintang Empat → Hotel Bintang",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Gli hotel 4 stelle (KBLI 55102) occupano il segmento premium-mid del mercato alberghiero balinese — il punto di equilibrio ottimale tra ADR ($150-350/notte) e occupancy (72-82%). La domanda è sostenuta dal turismo MICE (Meetings, Incentives, Conferences, Exhibitions), dal business travel e dalle famiglie upscale che cercano servizi certificati senza i prezzi luxury. Il Bali Tourism Board proietta 6,5 milioni di arrivi internazionali nel 2026, con il 4 stelle come standard di aspettativa per il viaggiatore Western.",
+        "bali_nuance": "Seminyak, Kuta-Legian, Nusa Dua e Sanur restano le zone di massima concentrazione degli hotel 4 stelle. La nuova frontiera è Ubud-Tegallalang (culture & wellness) e Canggu (digital nomad + short-stay). L'integrazione con OTA (Booking.com, Expedia, Agoda) è obbligatoria — il canale diretto tipicamente copre solo il 20-30% delle prenotazioni. La costruzione di nuovi hotel è soggetta alla moratoria Sarbagita (Denpasar, Badung, Gianyar, Tabanan) — le nuove concessioni edilizie in zona sono congelate, creando scarsità artificiale che aumenta il valore degli asset esistenti.",
+        "operational_risks": "TDUP da Dinas Pariwisata Bali obbligatorio — timeline 3-6 mesi. Classificazione bintang empat richiede audit annuale da Lembaga Sertifikasi Usaha (LSU) con 35 criteri minimi (piscina, restaurant, fitness center, 24h front desk). PBG per strutture sopra 3 piani: AMDAL obbligatorio. Moratorio Sarbagita: impossibile costruire nuovi hotel nelle zone più richieste — solo ristrutturazione edifici esistenti. BPJS Ketenagakerjaan + Kesehatan per tutto il personale: costo aggiuntivo del 10-12% sulla massa salariale. BI-Fast + GPN compliance per pagamenti: contratti OTA devono rispettare regole Bank Indonesia su conversione valuta.",
+        "investment_outlook": "ROI: 10-18% per hotel 4 stelle well-positioned con gestione professionale. ADR target: $150-350/notte. CAPEX costruzione: IDR 15-25 miliardi (1.000-1.500 mq). CAPEX ristrutturazione asset esistente: IDR 5-12 miliardi. RevPAR medio a Bali: $90-140 per hotel 4 stelle in alta stagione. Il modello più efficiente per PMA: acquisizione/leasehold di asset esistente + rebrand internazionale + distribuzione OTA ottimizzata. Fondi internazionali (Accor, Marriott) con pipeline attiva per acquisizioni nel segmento.",
+        "legacy_bridge": "KBLI 2020: 55110 (Hotel Bintang — unico codice per tutte le stelle) → KBLI 2025: codici separati per livello (55101 5★, 55102 4★, 55103 3★, 55104 2★, 55105 1★). Aggiornamento NIB e TDUP obbligatorio entro 18 giugno 2026 — hotel con codice 55110 nel NIB devono richiedere migrazione al codice corrispondente alla loro stella attuale. Processo: OSS → Perubahan NIB → selezione nuovo KBLI 2025 → riemissione TDUP se necessario."
+      }
     },
     {
       "kode_kbli_2025": "55103",
@@ -80680,7 +80687,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "55110",
       "mapping_note": "Manual fix: Hotel Bintang Dua → Hotel Bintang",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Gli hotel 2 stelle (KBLI 55104) servono il segmento economy-mid: backpacker premium, turismo domestico indonesiano e nomadi digitali con budget contenuto. La forte concorrenza con Airbnb e homestay li ha spinti verso la specializzazione (surf camp, yoga retreat, dive resort) per sopravvivere nel segmento $40-100/notte. A Bali il segmento 2 stelle è in contrazione nelle zone saturate (Kuta, Legian) ma in crescita nelle destinazioni emergenti (Nusa Penida, Amed, Munduk).",
+        "bali_nuance": "Il valore di un hotel 2 stelle a Bali dipende quasi interamente dalla location: stesso edificio a Seminyak vale 3x rispetto a Singaraja. Le piattaforme OTA tendono a svalutare il prodotto 2 stelle a meno di una nicchia tematica chiara (surf, yoga, diving, cycling). La moratoria costruttiva Sarbagita impatta meno questo segmento poiché molte strutture 2 stelle sono al di fuori delle 4 regioni vincolate. Staff cost è il principale driver di margine: in zone con basso costo della vita locale, il 2 stelle può raggiungere margini EBITDA del 30-35%.",
+        "operational_risks": "LSU audit per classificazione bintang dua: 20 criteri minimi (reception, breakfast service, AC, wifi, hot water). TDUP richiesto identicamente al 4 stelle. Rischio declassificazione: se i criteri non sono mantenuti, l'LSU può abbassare la stella o revocare la classificazione. Alta rotazione del personale (turnover 40-60% annuo nel segmento economy). OTA possono sospendere o abbassare ranking senza preavviso per recensioni negative. Competizione strutturale con homestay non certificati che operano a costi inferiori.",
+        "investment_outlook": "ROI: 12-22% in zone emergenti, 5-10% in zone saturate. CAPEX costruzione: IDR 5-8 miliardi per struttura 20-40 camere. ADR target: $40-100/notte. Il modello più efficiente per investitore straniero: joint venture con operatore locale (PMDN) che gestisce le licenze, con PMA che fornisce capitale e brand. Nicchie ad alto rendimento: surf camp (Canggu, Uluwatu), eco-lodge (Munduk, Jatiluwih), dive resort (Amed, Padangbai). RevPAR atteso: $25-60 in alta stagione.",
+        "legacy_bridge": "KBLI 2020: 55110 → KBLI 2025: 55104. Migrazione NIB obbligatoria entro 18 giugno 2026. Hotel 2 stelle con NIB vecchio devono verificare anche la corrispondenza della classificazione LSU attuale prima di aggiornare il codice."
+      }
     },
     {
       "kode_kbli_2025": "55105",
@@ -80744,7 +80758,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "55110",
       "mapping_note": "PP28 usa codice KBLI 2020 55110 (Hotel Bintang...). Match: 94%",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Gli hotel 1 stella (KBLI 55105) operano nel segmento $20-50/notte prevalentemente servendo il turismo domestico indonesiano (wisatawan nusantara) che a Bali conta più di 9 milioni di arrivi/anno — superando i visitatori internazionali. La classificazione LSU formale distingue questo segmento dall'economia sommersa dell'alloggio non certificato. Il mercato 1 stella nelle destinazioni emergenti balinesi (Nusa Penida, Gili Islands, Amed) mantiene occupancy alta grazie alla scarsità dell'offerta formale.",
+        "bali_nuance": "Le strutture 1 stella operano prevalentemente nelle zone periferiche (Gianyar, Tabanan, Buleleng, Klungkung) servendo il turismo domestico e i lavoratori del settore ricettivo. Il mercato 1 stella a Kuta e Legian è in forte pressione da parte degli hotel budget internazionali (Fave, Amaris, OYO) che offrono standard superiori a prezzi simili. In zone come Nusa Penida la scarsità di offerta formale mantiene ADR sopra la media del segmento.",
+        "operational_risks": "LSU audit con 15 criteri minimi. TDUP obbligatorio. Rischio principale: comparsa di competitor con marchio internazionale (OYO, RedDoorz) nella stessa area che crea instant commoditization. Piattaforme OTA classificano gli hotel 1 stella accanto ad Airbnb — difficoltà di differenziazione. Rischio regolatorio: se la struttura è su terreno non idoneo per uso komersial (zona residenziale), il TDUP può essere negato indipendentemente dalla classificazione LSU.",
+        "investment_outlook": "ROI: 15-25% in destinazioni emergenti con bassa concorrenza. ADR target: $20-50/notte. CAPEX: IDR 2-4 miliardi per struttura 10-20 camere. Modello efficiente: leasehold di edificio esistente, ristrutturazione minima, brand internazionale OYO/RedDoorz come franchising per distribuzione OTA istantanea. Mercato di riferimento principale: wisatawan nusantara (domestici) che cercano alloggio certificato ma economico.",
+        "legacy_bridge": "KBLI 2020: 55190 (Akomodasi Lainnya) o 55110 → KBLI 2025: 55105 (1 stella) o 55106 (non classificato). La granularità della classificazione stella in KBLI 2025 richiede che gli operatori verifichino la propria classificazione LSU corrente per selezionare il codice corretto. Strutture senza classificazione LSU devono usare 55106."
+      }
     },
     {
       "kode_kbli_2025": "55106",
@@ -80827,7 +80848,14 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Gli hotel non classificati (KBLI 55106) includono penginapan, losmen, mess, wisma — la forma più diffusa di alloggio commerciale in Indonesia. A Bali questo segmento copre principalmente il mercato domestico a basso costo e i lavoratori migranti. La pressione dalla classificazione formale (LSU) e dalla digitalizzazione (OTA, Google Hotels) spinge sempre più strutture verso la classificazione, rendendo KBLI 55106 transitorio per chi ha ambizioni di crescita.",
+        "bali_nuance": "La distinzione tra 55106 (hotel non classificato) e 55201 (homestay) è operativa: 55106 implica struttura dedicata commercialmente ad alloggio, mentre 55201 è la casa del proprietario parzialmente affittata. Molte strutture in zona grigia usano 55201 anche quando operano come veri alberghi — questo crea rischi regolatori. L'OSS-RDTR verifica la zonazione prima di emettere qualsiasi licenza anche per questo segmento.",
+        "operational_risks": "TDUP richiesto anche senza classificazione LSU. Rischio principale: uso di KBLI sbagliato — strutture che operano come hotel ma dichiarano homestay rischiano revoca delle licenze se ispezionate. Dinas Pariwisata Bali sta aumentando le ispezioni sul settore non classificato. Nessuna possibilità di comparire su OTA prime senza classificazione → visibilità limitata al mercato locale e walk-in.",
+        "investment_outlook": "Non raccomandato per investimento PMA diretto. Il segmento non classificato è prevalentemente MSME riservato a operatori locali. PMA che volesse operare nel segmento budget dovrebbe puntare al 1 o 2 stelle con classificazione formale. Interesse strategico: acquisizione di strutture non classificate per ristrutturazione e upgrade verso segmento superiore.",
+        "legacy_bridge": "KBLI 2020: 55190 (Penyediaan Akomodasi Lainnya) → KBLI 2025: 55106 (Hotel Non Bintang). Strutture con codice 55190 devono valutare se migrare a 55106, 55105, 55201 o 55209 a seconda della natura operativa effettiva. Deadline migrazione: 18 giugno 2026."
+      }
     },
     {
       "kode_kbli_2025": "55201",
@@ -80866,7 +80894,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "80100",
       "mapping_note": "Auto-matched to 80100 (Aktivitas Keamanan Swasta...) score=66%",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "Il homestay (KBLI 55201) è il formato più autentico dell'ospitalità balinese — dalla tradizionale family compound affittata a turisti culturali fino al boutique guesthouse di design. Il mercato $30-120/notte è sostenuto dal turismo esperienziale che cerca immersione nella vita locale. Airbnb ha trasformato il segmento: oltre 15.000 listing attivi a Bali su Airbnb. La crescita del slow travel e del remote work favorisce soggiorni più lunghi (7-30 giorni) con tariffe settimanali e mensili competitive.",
+        "bali_nuance": "La caratteristica distintiva del 55201 è che il proprietario abita nella stessa struttura — questa è la differenza legale cruciale con 55203 (villa commerciale) e 55209 (guesthouse). In pratica molte strutture a Bali operano come homestay anche quando il proprietario non vive più lì, creando una zona grigia regolamentare. L'integrazione con la community locale (banjar) è un vantaggio competitivo reale. La nuova generazione di homestay curati con interior design Instagram-friendly a Ubud, Sidemen e Amed genera ADR di $80-150/notte paragonabile ai guesthouse boutique.",
+        "operational_risks": "TDUP richiesto anche per homestay. Definizione legale: il proprietario deve risiedere nell'immobile — verificabile da Dinas Pariwisata durante ispezioni. Uso del codice 55201 per strutture dove il proprietario non risiede è una violazione potenzialmente soggetta a chiusura. Per PMA: il modello homestay è de facto riservato a operatori locali (WNI) per la condizione di residenza. Airbnb e Booking.com richiedono TDUP per la pubblicazione — strutture senza licenza rischiano rimozione dalla piattaforma.",
+        "investment_outlook": "Modello ideale per WNI con proprietà immobiliare esistente. Per PMA: non raccomandato come investimento diretto — la condizione di residenza del proprietario è incompatibile con il modello societario. Alternativa per investitore straniero: PT PMA che acquista villa e la classifica come 55203, non 55201. Potenziale di rendita: $2.000-8.000/mese per homestay boutique ben posizionato ad Ubud o Canggu. OTA (Airbnb, Booking.com, Agoda) generano 70-80% delle prenotazioni per homestay non branded.",
+        "legacy_bridge": "KBLI 2020: 55209 (generica akomodasi jangka pendek) → KBLI 2025: 55201 (codice dedicato per homestay). Il KBLI 2025 riconosce formalmente il homestay come categoria distinta. Strutture con 55209 che operano effettivamente come homestay (proprietario residente) devono migrare a 55201. Strutture senza proprietario residente devono verificare se 55203 (villa) o 55209 (altri) è più appropriato."
+      }
     },
     {
       "kode_kbli_2025": "55202",
@@ -80948,9 +80983,9 @@
       "intel_2026": {
         "market_sentiment": "Le ville (KBLI 55203 — AKTIVITAS VILA) sono il prodotto hospitality più iconico di Bali e il più esposto a rischio normativo strutturale. Il Bali Governor ha dichiarato pubblicamente l'intenzione di regolarizzare il settore entro il 2026: centinaia di ville operano come strutture turistiche commerciali con PBG residenziale invece di commerciale — un'esposizione legale accumulata che diventa critica nel momento in cui il business scala o cerca finanziamenti. Le piattaforme Airbnb e Booking.com, sotto accordo con il governo indonesiano, stanno progressivamente richiedendo documentazione TDUP per le strutture listate.",
         "bali_nuance": "Il mercato delle ville luxury ($300-800/notte, pool privata, servizi concierge) mantiene ADR stabili e occupancy 65-75% nelle zone premium (Canggu, Uluwatu, Seminyak, Ubud). La domanda da parte di turisti australiani, europei e asiatici ad alto reddito è strutturalmente in crescita. Un PT PMA con TDUP corretto e PBG komersial ha un vantaggio competitivo immediato sulle piattaforme premium — specialmente per contratti B2B con tour operator luxury e villa management company.",
-        "operational_risks": "TDUP obbligatorio — qualsiasi struttura che offre ospitalità a pagamento, indipendentemente dalle dimensioni. Conversione PBG residenziale → komersial: 6-18 mesi, costo significativo. PBJT 10% su tutti i ricavi. Sempadan Pantai 100m: verifica obbligatoria per qualsiasi proprietà beachfront. Banjar coordination: ville in zone residenziali richiedono accordo formale per rumore, accessi, parcheggio. Rischio chiusura forzata per strutture non conformi dal 2026.",
+        "operational_risks": "TDUP obbligatorio — qualsiasi struttura che offre ospitalità a pagamento, indipendentemente dalle dimensioni. Conversione PBG residenziale → komersial: 6-18 mesi, costo significativo. PBJT 10% su tutti i ricavi. Sempadan Pantai 100m: verifica obbligatoria per qualsiasi proprietà beachfront. Moratoria Sarbagita: costruzione nuove ville in Denpasar, Badung, Gianyar, Tabanan sostanzialmente bloccata — solo ristrutturazioni. OSS-RDTR integration: le coordinate GPS della proprietà devono essere verificate nel GIS del RDTR prima del rilascio delle licenze — la zona katergori residenziale blocca automaticamente il TDUP. Banjar coordination: ville in zone residenziali richiedono accordo formale per rumore, accessi, parcheggio. Rischio chiusura forzata per strutture non conformi dal 2026. Capital paradox PT PMA: IDR 2,5 miliardi paid-up (BKPM Reg. 5/2025) + IDR 10 miliardi total investment per KBLI — barriera d'ingresso formale significativa.",
         "investment_outlook": "ROI: 12-25% per ville luxury certificate con operatività su piattaforme premium. Capital gain: 15-25% CAGR 2021-2025 nelle zone premium. Il segmento villa con servizi (pool villa, villa con chef, villa con wellness) raggiunge ADR $500-2.000/notte nel top 10% del mercato.",
-        "legacy_bridge": "KBLI 2020: non esisteva codice specifico per villa → KBLI 2025: 55203 (AKTIVITAS VILA) codice dedicato. PRIORITÀ ASSOLUTA: verificare conformità PBG komersial + TDUP prima di qualsiasi operazione commerciale. Aggiornamento NIB entro 18 giugno 2026."
+        "legacy_bridge": "KBLI 2020: 55193 (Pondok Wisata) era il codice usato per l'attività villa/affitto breve — un codice improprio che ha creato confusione normativa per anni. KBLI 2025: 55203 (AKTIVITAS VILA) codice dedicato e formalmente riconosciuto. La transizione 55193→55203 è la migrazione più importante nel settore hospitality balinese. Strutture che ancora usano 55193 nel NIB devono aggiornare a 55203 entro 18 giugno 2026 — dopo quella data il codice 55193 non sarà riconosciuto dall'OSS. PRIORITÀ ASSOLUTA: verificare conformità PBG komersial + TDUP + OSS-RDTR prima di qualsiasi operazione commerciale. Aggiornamento NIB entro deadline BPS Reg. 7/2025."
       }
     },
     {
@@ -80991,7 +81026,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "55194",
       "mapping_note": "PP28 usa codice KBLI 2020 55194 (Apartemen Hotel...). Match: 100%",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "L'apartemen hotel (KBLI 55204) combina i servizi alberghieri con le dimensioni e i comfort dell'appartamento — ideale per soggiorni di media durata (1 settimana - 3 mesi). A Bali il segmento è emergente, trainato dalla crescita dei nomadi digitali che cercano spazi con cucina, zona lavoro e connettività garantita. Il target primario è il lavoratore remoto straniero con budget $100-300/notte (equivalente $2.000-6.000/mese) che preferisce la flessibilità dell'aparthotel al contratto di leasehold annuale.",
+        "bali_nuance": "La distinzione tra aparthotel (55204) e coliving/serviced apartment (55209) è sottile: il discriminante è la struttura tariffaria (giornaliera/settimanale = aparthotel; mensile = coliving) e i servizi inclusi (pulizie giornaliere, front desk 24h = aparthotel). Denpasar e Kuta ospitano la maggior concentrazione di aparthotel, ma la domanda si sposta verso Canggu e Seminyak dove la base di nomadi digitali è più densa. La moratoria costruttiva Sarbagita impatta anche questo segmento: nuove costruzioni bloccate nelle 4 regioni principali.",
+        "operational_risks": "TDUP Dinas Pariwisata + classificazione LSU per la componente hotel. Peraturan Menteri Pariwisata tende a classificare gli aparthotel come struttura ricettiva mista — serve chiarire il codice principale (55204) per evitare sovrapposizioni con 55209 nell'OSS. SLO (Sertifikasi Laik Operasi) dall'Dinas Pekerjaan Umum per strutture multi-piano. Rischio IHT — alcune Pemda richiedono questo permesso aggiuntivo. Contratti di locazione mensile a lungo termine possono essere riqualificati come affitto abitativo — evitare contratti oltre 3 mesi senza TDUP esplicito.",
+        "investment_outlook": "ROI: 14-22% per aparthotel ben posizionato a Canggu o Seminyak con target nomadi digitali. CAPEX: IDR 10-20 miliardi per 20-40 unità. ADR target: $100-300/notte o $2.000-6.000/mese. Il modello vincente: unità di 40-80 mq con cucina equipaggiata, internet fibra 100+ Mbps, coworking space condiviso. Partnership con piattaforme specializzate (Anyplace, Spotahome) per distribuzione diretta al mercato nomadi. Opportunità: strutture esistenti under-repositioned da riposizionare verso il segmento expat/nomade.",
+        "legacy_bridge": "KBLI 2020: 55120 (Kondominium Hotel) o 55190 → KBLI 2025: 55204 (Aktivitas Apartemen Hotel). La KBLI 2025 introduce un codice dedicato per questo formato misto, riconoscendo la sua crescita strutturale. Strutture con codice 55120 o 55190 che operano come aparthotel devono migrare a 55204 entro 18 giugno 2026."
+      }
     },
     {
       "kode_kbli_2025": "55209",
@@ -81131,7 +81173,14 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "55900",
       "mapping_note": "Cleaned: removed invalid ['55901']",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "market_sentiment": "La gestione professionale di strutture ricettive per conto terzi (KBLI 55901) è un segmento in forte espansione a Bali, guidato dalla proliferazione di proprietà di investimento gestite da villa management company. Il modello è semplice: il proprietario detiene l'asset, la management company gestisce operazioni, marketing, personale e manutenzione in cambio del 15-25% del revenue. Il mercato è frammentato — oltre 200 company operative a Bali — ma si sta consolidando verso operatori professionali certificati.",
+        "bali_nuance": "Bali è il mercato più maturo dell'Indonesia per il villa management professionale. I modelli operativi principali: Full Management (company gestisce tutto, proprietario riceve net revenue mensile); Rental Pool (più ville in portafoglio con distribuzione equa del revenue); Guaranteed Rent (company paga affitto fisso al proprietario indipendentemente dall'occupancy). La qualità delle management company varia enormemente — le migliori offrono sistemi PMS (Property Management System), OTA optimization e financial reporting trasparente. La governance del contratto di management è critica: clausole di esclusività, performance KPI, termination rights.",
+        "operational_risks": "NIB come jasa manajemen. Per gestire strutture ricettive, la management company deve avere TDUP per conto delle strutture gestite — in alcuni casi la responsabilità TDUP ricade sulla company di gestione, non sul proprietario. Rischio fiduciario: il management contract deve definire chiaramente chi detiene le licenze operative. CoreTax (CTAS): la management company è soggetto fiscale separato — NITKU per ogni location gestita, fatturazione con e-Faktur. BI-Fast compliance per trasferimento revenue al proprietario straniero. Contratti con OTA devono essere intestati all'entità con TDUP valido — attenzione alla catena legale proprietario-company-OTA.",
+        "investment_outlook": "Il modello villa management è il veicolo preferito per l'investimento straniero nelle proprietà ricettive balinesi. Struttura tipica: PT PMA (proprietario asset) + PMDN management company (operazione) con revenue sharing. ROI atteso: 12-20% per proprietario, margine netto management company 8-15% sul revenue gestito. CAPEX per aprire una management company: IDR 1-3 miliardi (personale, software PMS, marketing). Opportunità: white-label management per fondi immobiliari internazionali che acquisiscono cluster di ville a Bali.",
+        "legacy_bridge": "KBLI 2020: 68200 (Jasa Pengelolaan Properti) o non classificato specificamente → KBLI 2025: 55901 (Aktivitas Jasa Manajemen Akomodasi). La KBLI 2025 riconosce formalmente il villa management come attività distinta, separandola dalla generica gestione immobiliare. Aziende che usavano 68200 per gestione villa devono valutare la migrazione a 55901 se l'attività principale è la gestione di strutture ricettive. Deadline: 18 giugno 2026."
+      }
     },
     {
       "kode_kbli_2025": "55909",
