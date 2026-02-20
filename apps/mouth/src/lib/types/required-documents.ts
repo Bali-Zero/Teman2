@@ -57,22 +57,71 @@ export interface ClientRequiredDocument {
 export const DOCUMENT_TYPE_OPTIONS = [
   { value: "passport", label: "Passport", description: "Valid passport copy" },
   { value: "photo", label: "Photo", description: "Recent passport-size photo" },
-  { value: "bank_statement", label: "Bank Statement", description: "Last 3 months bank statement" },
+  {
+    value: "bank_statement",
+    label: "Bank Statement",
+    description: "Last 3 months bank statement",
+  },
   { value: "cv", label: "CV / Resume", description: "Curriculum Vitae" },
-  { value: "diploma", label: "Diploma / Degree", description: "Educational certificates" },
-  { value: "employment_letter", label: "Employment Letter", description: "Letter from current employer" },
-  { value: "police_clearance", label: "Police Clearance", description: "Police clearance certificate" },
-  { value: "medical_certificate", label: "Medical Certificate", description: "Health check certificate" },
-  { value: "insurance", label: "Insurance", description: "Travel/health insurance" },
-  { value: "flight_ticket", label: "Flight Ticket", description: "Confirmed flight booking" },
-  { value: "hotel_booking", label: "Hotel Booking", description: "Accommodation confirmation" },
-  { value: "invitation_letter", label: "Invitation Letter", description: "Invitation from sponsor/host" },
-  { value: "business_license", label: "Business License", description: "Company business license" },
-  { value: "deed_of_establishment", label: "Deed of Establishment", description: "AKTA Pendirian" },
+  {
+    value: "diploma",
+    label: "Diploma / Degree",
+    description: "Educational certificates",
+  },
+  {
+    value: "employment_letter",
+    label: "Employment Letter",
+    description: "Letter from current employer",
+  },
+  {
+    value: "police_clearance",
+    label: "Police Clearance",
+    description: "Police clearance certificate",
+  },
+  {
+    value: "medical_certificate",
+    label: "Medical Certificate",
+    description: "Health check certificate",
+  },
+  {
+    value: "insurance",
+    label: "Insurance",
+    description: "Travel/health insurance",
+  },
+  {
+    value: "flight_ticket",
+    label: "Flight Ticket",
+    description: "Confirmed flight booking",
+  },
+  {
+    value: "hotel_booking",
+    label: "Hotel Booking",
+    description: "Accommodation confirmation",
+  },
+  {
+    value: "invitation_letter",
+    label: "Invitation Letter",
+    description: "Invitation from sponsor/host",
+  },
+  {
+    value: "business_license",
+    label: "Business License",
+    description: "Company business license",
+  },
+  {
+    value: "deed_of_establishment",
+    label: "Deed of Establishment",
+    description: "AKTA Pendirian",
+  },
   { value: "nib", label: "NIB", description: "Nomor Induk Berusaha" },
   { value: "npwp", label: "NPWP", description: "Tax identification number" },
-  { value: "sk_kemenkumham", label: "SK Kemenkumham", description: "Ministry of Law approval" },
+  {
+    value: "sk_kemenkumham",
+    label: "SK Kemenkumham",
+    description: "Ministry of Law approval",
+  },
   { value: "other", label: "Other", description: "Custom document type" },
 ] as const;
 
-export type DocumentTypeOption = (typeof DOCUMENT_TYPE_OPTIONS)[number]["value"];
+export type DocumentTypeOption =
+  (typeof DOCUMENT_TYPE_OPTIONS)[number]["value"];

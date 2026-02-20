@@ -1,76 +1,193 @@
-// KBLI Data Server - Stub for build
-export interface KBLICode {
-  code: string;
-  name: string;
-  description?: string;
-  section?: string;
-  pma?: { status: string };
-  transition?: { status: string };
-}
+import fs from "fs";
+import path from "path";
+import type { KBLIRawCode, KBLICode, KBLISection } from "./kbli-types";
+import { GOLD_CODES } from "./kbli-gold-codes";
 
-export interface KBLISection {
-  code: string;
-  name: string;
-  description?: string;
-}
+// Section names mapping
+const SECTION_NAMES_EN: Record<string, string> = {
+  A: "Agriculture, Forestry & Fishing",
+  B: "Mining & Quarrying",
+  C: "Manufacturing",
+  D: "Electricity, Gas & Steam",
+  E: "Water Supply & Waste Management",
+  F: "Construction",
+  G: "Wholesale & Retail Trade",
+  H: "Transportation & Storage",
+  I: "Accommodation & Food Service",
+  J: "Information & Communication",
+  K: "Financial & Insurance",
+  L: "Real Estate",
+  M: "Professional, Scientific & Technical",
+  N: "Administrative & Support Services",
+  O: "Public Administration & Defence",
+  P: "Education",
+  Q: "Human Health & Social Work",
+  R: "Arts, Entertainment & Recreation",
+  S: "Other Service Activities",
+  T: "Household Activities",
+  U: "Extraterritorial Organizations",
+  V: "Activities Not Yet Defined",
+};
 
-export function getSections(): KBLISection[] {
-  return [
-    { code: "A", name: "Agriculture", description: "" },
-    { code: "B", name: "Mining", description: "" },
-    { code: "C", name: "Manufacturing", description: "" },
-    { code: "D", name: "Electricity", description: "" },
-    { code: "E", name: "Water Supply", description: "" },
-    { code: "F", name: "Construction", description: "" },
-    { code: "G", name: "Trade", description: "" },
-    { code: "H", name: "Transportation", description: "" },
-    { code: "I", name: "Accommodation", description: "" },
-    { code: "J", name: "Information", description: "" },
-  ];
-}
+const SECTION_ICONS: Record<string, string> = {
+  A: "🌾",
+  B: "⛏️",
+  C: "🏭",
+  D: "⚡",
+  E: "💧",
+  F: "🏗️",
+  G: "🛒",
+  H: "🚛",
+  I: "🍽️",
+  J: "💻",
+  K: "🏦",
+  L: "🏠",
+  M: "🔬",
+  N: "📋",
+  O: "🏛️",
+  P: "🎓",
+  Q: "🏥",
+  R: "🎭",
+  S: "💇",
+  T: "🏡",
+  U: "🌐",
+  V: "❓",
+};
 
+const DATA_PATH = path.join(
+  process.cwd(),
+  "..",
+  "..",
+  "source_documents",
+  "KBLI_2025_FINAL_CLEAN.json",
+);
+
+let _cache: KBLICode[] | null = null;
+
+/** Load all KBLI codes. Cached in memory during build. */
 export function getAllCodes(): KBLICode[] {
-  // Return some dummy codes with proper structure
-  return [
-    {
-      code: "56101",
-      name: "Restaurant",
-      description: "Restaurant activities",
-      pma: { status: "open" },
-      transition: { status: "MATCH" },
-    },
-    {
-      code: "55194",
-      name: "Hotel",
-      description: "Hotel activities",
-      pma: { status: "open" },
-      transition: { status: "MATCH" },
-    },
-    {
-      code: "62011",
-      name: "Software Development",
-      description: "Computer programming",
-      pma: { status: "open" },
-      transition: { status: "BPS_ONLY" },
-    },
-    {
-      code: "68110",
-      name: "Real Estate",
-      description: "Buying and selling of real estate",
-      pma: { status: "restricted" },
-      transition: { status: "MATCH_CON_AGGREGAZIONE" },
-    },
-  ];
+  if (_cache) return _cache;
+
+  try {
+    const rawData = fs.readFileSync(DATA_PATH, "utf-8");
+    const parsed = JSON.parse(rawData);
+    const rawCodes: KBLIRawCode[] = parsed.data;
+
+    _cache = rawCodes.map(transformCode);
+    return _cache;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    process.stderr.write(
+      `❌ Error loading KBLI data from: ${DATA_PATH} ${err}\n`,
+    );
+    return [];
+  }
 }
 
-export function getCodesBySection(_section: string): KBLICode[] {
-  return [];
+/** Get a single code by its 5-digit ID */
+export function getCode(code: string): KBLICode | undefined {
+  return getAllCodes().find((c) => c.code === code);
 }
 
-export function getCodeById(_id: string): KBLICode | null {
-  return null;
+/** Get all unique sections with metadata */
+export function getSections(): KBLISection[] {
+  const codes = getAllCodes();
+  const sectionMap = new Map<string, number>();
+
+  for (const code of codes) {
+    const sec = code.section || "?";
+    sectionMap.set(sec, (sectionMap.get(sec) || 0) + 1);
+  }
+
+  return Array.from(sectionMap.entries())
+    .map(([id, count]) => ({
+      id,
+      nameEn: SECTION_NAMES_EN[id] || id,
+      nameId: id, // Fallback
+      icon: SECTION_ICONS[id] || "📋",
+      codeCount: count,
+      description: SECTION_DESCRIPTIONS[id] || "",
+    }))
+    .sort((a, b) => a.id.localeCompare(b.id));
 }
 
-export function searchKBLI(_query: string): KBLICode[] {
-  return [];
+const SECTION_DESCRIPTIONS: Record<string, string> = {
+  A: "Farming, animal husbandry, forestry, and fishing activities",
+  B: "Mining, quarrying, and extraction of minerals",
+  C: "Processing raw materials into finished goods",
+  D: "Generation and distribution of electricity, gas, and steam",
+  E: "Water collection, treatment, sewerage, and waste management",
+  F: "Building construction, civil engineering, and specialized construction",
+  G: "Wholesale and retail sale of goods, vehicle repair",
+  H: "Land, water, and air transportation and warehousing",
+  I: "Hotels, resorts, restaurants, bars, and catering",
+  J: "Publishing, telecoms, IT services, and digital media",
+  K: "Banking, insurance, pension funds, and financial services",
+  L: "Real estate buying, selling, renting, and management",
+  M: "Legal, accounting, consulting, architecture, and R&D",
+  N: "Rental, employment, travel agencies, security, and office support",
+  O: "Government administration, defence, and social security",
+  P: "Pre-primary through higher education and training",
+  Q: "Hospitals, clinics, social care, and health services",
+  R: "Creative arts, sports, amusement, and recreation",
+  S: "Professional associations, repair, personal services (spa, wellness)",
+  T: "Household employers and subsistence activities",
+  U: "International organizations and diplomatic bodies",
+  V: "Activities not adequately defined elsewhere",
+};
+
+function transformCode(raw: KBLIRawCode): KBLICode {
+  const code = raw.kode_kbli_2025;
+  const section = (raw.sektor_id || "?").charAt(0);
+
+  return {
+    code,
+    titleId: raw.judul,
+    titleEn: raw.judul, // Fallback
+    description: raw.uraian || "",
+    section,
+    sectionName: SECTION_NAMES_EN[section] || section,
+    pma: {
+      status: mapPmaStatus(raw.pma_status),
+      maxForeign: raw.pma_max_asing || 0,
+      conditions: raw.pma_kondisi,
+      isPriority: raw.pma_prioritas || false,
+      note: raw.pma_nota,
+      source: raw.pma_source,
+    },
+    licensing: (raw.per_skala || []).map((s) => ({
+      scales: s.skala_usaha,
+      riskCategory: s.kategori_risiko,
+      licenseType: s.perizinan,
+      requirements: s.persyaratan,
+      timeline: s.jangka_waktu,
+      obligations: s.kewajiban,
+      authority: s.kewenangan,
+    })),
+    transition: {
+      status: raw.status_mapping,
+      fromCodes: raw.pp28_sources || [],
+      note: raw.aggregation_note || raw.mapping_note || null,
+    },
+    intel: raw.intel_2026
+      ? {
+          market_sentiment: raw.intel_2026.market_sentiment || "",
+          bali_nuance: raw.intel_2026.bali_nuance || "",
+          operational_risks: raw.intel_2026.operational_risks || "",
+          investment_outlook: raw.intel_2026.investment_outlook || "",
+          legacy_bridge: raw.intel_2026.legacy_bridge || "",
+        }
+      : undefined,
+    tier: GOLD_CODES.has(code) ? "gold" : "bronze",
+  };
+}
+
+function mapPmaStatus(
+  status: string,
+): "open" | "restricted" | "closed" | "unknown" {
+  const s = (status || "").toUpperCase();
+  if (s === "TERBUKA") return "open";
+  if (s === "TERBATAS") return "restricted";
+  if (s === "TERTUTUP") return "closed";
+  return "unknown";
 }

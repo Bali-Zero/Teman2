@@ -1,9 +1,9 @@
 {
   "version": "2.0.0-merged",
   "source": "Intel Scraper Deep Research + Existing Sources (Deduplicated)",
-  "last_updated": "2026-02-19T05:38:19.989398",
+  "last_updated": "2026-02-19T22:25:04.557689",
   "total_categories": 18,
-  "total_sources": 525,
+  "total_sources": 609,
   "duplicates_removed": 503,
   "categories": {
     "immigration": {
@@ -381,6 +381,96 @@
           "tier": "T2",
           "authority": null,
           "description": ""
+        },
+        {
+          "name": "Alvarez & Marsal Coretax PER-8/11",
+          "url": "https://alvarezandmarsal.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high",
+          "notes": "Big 4 consulting analysis"
+        },
+        {
+          "name": "DJP Global Minimum Tax Strategy",
+          "url": "https://pajak.go.id",
+          "tier": "T1",
+          "type": "website",
+          "update_frequency": "daily",
+          "credibility": "critical"
+        },
+        {
+          "name": "UGM Coretax Challenges",
+          "url": "https://ugm.ac.id",
+          "tier": "T1",
+          "type": "website",
+          "update_frequency": "daily",
+          "credibility": "high",
+          "notes": "Academic analysis"
+        },
+        {
+          "name": "KPMG Coretax Implementation",
+          "url": "https://kpmg.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "ASEAN Briefing Coretax Revolution",
+          "url": "https://aseanbriefing.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Jakarta Globe Tax Revenue Rise",
+          "url": "https://jakartaglobe.id",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Taxindo Corporate Tax Appeal Strategy",
+          "url": "https://taxindo.co.id",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Withers Indonesia Capital Rules BKPM 5/2025",
+          "url": "https://withersworldwide.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Business Indonesia PT PMA Capital Reduction",
+          "url": "https://business-indonesia.org",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "LMI Consultancy BKPM 2025",
+          "url": "https://lmiconsultancy.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Permitindo New Investment Rules",
+          "url": "https://permitindo.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
         }
       ],
       "name": "Tax Bkpm",
@@ -388,7 +478,7 @@
       "priority": "high",
       "id": 2,
       "key": "tax_bkpm",
-      "source_count": 25
+      "source_count": 36
     },
     "property": {
       "sources": [
@@ -1003,6 +1093,199 @@
           "tier": "T2",
           "authority": null,
           "description": ""
+        },
+        {
+          "name": "BPS KBLI 2025 Release",
+          "url": "https://bps.go.id",
+          "tier": "T1",
+          "type": "website",
+          "update_frequency": "daily",
+          "credibility": "critical",
+          "notes": "Official KBLI 2025 announcement"
+        },
+        {
+          "name": "Infiniti KBLI 2020 PDF",
+          "url": "https://infiniti.id/kbli-2020.pdf",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Putranto Alliance KBLI Guide",
+          "url": "https://putranto-alliance.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "ILO KBLI Reference",
+          "url": "https://webapps.ilo.org",
+          "tier": "T1",
+          "type": "website",
+          "update_frequency": "daily",
+          "credibility": "critical"
+        },
+        {
+          "name": "CISEMA KBLI Wholesale Analysis",
+          "url": "https://cisema.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "AKSET Law KBLI 2025",
+          "url": "https://aksetlaw.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Seven Stones KBLI Update",
+          "url": "https://sevenstonesindonesia.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "WIYASA Law KBLI Strategic Implications",
+          "url": "https://wiyasalaw.co.id",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Legal Indonesia KBLI Analysis",
+          "url": "https://legalindonesia.id",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Pajakku KBLI 2025 Tax Impact",
+          "url": "https://artikel.pajakku.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Legalo KBLI Changes",
+          "url": "https://legalo.id",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Citra Melati KBLI Transition",
+          "url": "https://citramelati.co.id",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "PriOffice KBLI Business Guide",
+          "url": "https://prioffice.com",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Permitindo Permendag 23/2025",
+          "url": "https://permitindo.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Watershore Halal Cosmetics 2026",
+          "url": "https://watershore.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Officenow KBLI Cosmetics",
+          "url": "https://officenow.co.id",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Smartlegal BPOM Registration",
+          "url": "https://smartlegal.id",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Hivefive BPOM 2025",
+          "url": "https://hivefivesurabaya.com",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Jakarta Pelayanan Medical Device Permit",
+          "url": "https://pelayanan.jakarta.go.id",
+          "tier": "T1",
+          "type": "website",
+          "update_frequency": "daily",
+          "credibility": "critical"
+        },
+        {
+          "name": "Sertifikasi Alkes IPAK Guide",
+          "url": "https://sertifikasialkes.kemkes.go.id",
+          "tier": "T1",
+          "type": "website",
+          "update_frequency": "daily",
+          "credibility": "critical"
+        },
+        {
+          "name": "Perizinan Indonesia IPAK",
+          "url": "https://perizinanindonesia.com",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Product Registration Halal Export",
+          "url": "https://productregistrationindonesia.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "SGS Food Contact Materials",
+          "url": "https://sgs.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Alibaba SEA Cosmetics White Paper",
+          "url": "https://seller.alibaba.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
         }
       ],
       "name": "Business Regulations",
@@ -1010,7 +1293,7 @@
       "priority": "high",
       "id": 4,
       "key": "business_regulations",
-      "source_count": 14
+      "source_count": 38
     },
     "legal_updates": {
       "sources": [
@@ -1344,6 +1627,70 @@
           "tier": "T2",
           "authority": null,
           "description": ""
+        },
+        {
+          "name": "Balivisa Medical Tourism 2026",
+          "url": "https://balivisa.co",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Travel Weekly Asia Bali Medical Paradise",
+          "url": "https://travelweekly-asia.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Channel News Asia Bali Healthcare",
+          "url": "https://channelnewsasia.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Antara Bali Health SEZ",
+          "url": "https://en.antaranews.com",
+          "tier": "T1",
+          "type": "website",
+          "update_frequency": "daily",
+          "credibility": "critical"
+        },
+        {
+          "name": "Get Transfer Sanur SEZ Analysis",
+          "url": "https://blog.gettransfer.com",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "The Investor Bali Medical Hotspot",
+          "url": "https://theinvestor.vn",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "GMINSIGHTS ASEAN Medical Tourism",
+          "url": "https://gminsights.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Semantic Scholar Bali Medical Tourism",
+          "url": "https://pdfs.semanticscholar.org",
+          "tier": "T1",
+          "type": "website",
+          "update_frequency": "daily",
+          "credibility": "high"
         }
       ],
       "name": "Healthcare",
@@ -1351,7 +1698,7 @@
       "priority": "high",
       "id": 8,
       "key": "healthcare",
-      "source_count": 11
+      "source_count": 19
     },
     "education": {
       "sources": [
@@ -1462,6 +1809,62 @@
           "tier": "T2",
           "authority": null,
           "description": ""
+        },
+        {
+          "name": "Balivisa Logistics Guide 2026",
+          "url": "https://balivisa.co",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "INP Polri Freight Restrictions",
+          "url": "https://inp.polri.go.id",
+          "tier": "T1",
+          "type": "website",
+          "update_frequency": "daily",
+          "credibility": "critical"
+        },
+        {
+          "name": "Jakarta Globe Truck Ban",
+          "url": "https://jakartaglobe.id",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Bali Live Toll Road Ban",
+          "url": "https://bali.live",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "low"
+        },
+        {
+          "name": "Gede Bali Transport Guide",
+          "url": "https://gedebalitransport.com",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "low"
+        },
+        {
+          "name": "Indo Shipping Gazette East Java Logistics",
+          "url": "https://indoshippinggazette.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Thomson Reuters Supply Chain 2026",
+          "url": "https://tax.thomsonreuters.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
         }
       ],
       "name": "Transportation",
@@ -1469,7 +1872,7 @@
       "priority": "high",
       "id": 10,
       "key": "transportation",
-      "source_count": 7
+      "source_count": 14
     },
     "bali_news": {
       "sources": [
@@ -1549,6 +1952,30 @@
           "tier": "T2",
           "authority": null,
           "description": ""
+        },
+        {
+          "name": "Exotiq Bali Property Laws",
+          "url": "https://exotiqproperty.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Coco Development Building Villa Bali",
+          "url": "https://cocodevelopmentgroup.com",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "low"
+        },
+        {
+          "name": "BGS Bali Uluwatu Development",
+          "url": "https://bgsbali.com",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "low"
         }
       ],
       "name": "Bali News",
@@ -1556,7 +1983,7 @@
       "priority": "high",
       "id": 11,
       "key": "bali_news",
-      "source_count": 11
+      "source_count": 14
     },
     "competitor_intel": {
       "sources": [
@@ -2279,6 +2706,214 @@
           "tier": "T2",
           "authority": "Medium",
           "description": "imf.org/en/Countries/IDN"
+        },
+        {
+          "name": "Hashmeta Indonesia Social Commerce",
+          "url": "https://hashmeta.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Target Media Indonesia Outlook 2026",
+          "url": "https://hellotmn.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Vyre FMCG Community Marketing",
+          "url": "https://vyreagency.id",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Globe Newswire Indonesia E-commerce 2026-2031",
+          "url": "https://globenewswire.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Marketing Interactive Social Commerce",
+          "url": "https://marketing-interactive.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "YouGov TikTok Tokopedia Partnership",
+          "url": "https://yougov.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "TMO Group Indonesia Marketplaces",
+          "url": "https://tmogroup.asia",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Mordor Intelligence E-commerce 2031",
+          "url": "https://mordorintelligence.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Store2Go JFW 2026 Partners",
+          "url": "https://store2go.co.id",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "low"
+        },
+        {
+          "name": "Xendit Warung Digital Solutions",
+          "url": "https://xendit.co",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Retail Asia B2B E-commerce",
+          "url": "https://retailasia.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Ken Research Social Commerce",
+          "url": "https://kenresearch.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Nexdigm Medical Devices 2030",
+          "url": "https://nexdigm.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Senen Biotech Pharma Margins",
+          "url": "https://senenbiotech.in",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "low"
+        },
+        {
+          "name": "Chameleon Pharma Indonesia Chains",
+          "url": "https://chameleon-pharma.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Market Research Household Appliances",
+          "url": "https://marketresearch.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Grand View Research Appliances 2030",
+          "url": "https://grandviewresearch.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "NIQ Home Appliances Trends",
+          "url": "https://nielseniq.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "FMI Musical Instruments 2036",
+          "url": "https://futuremarketinsights.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Mobility Foresights Sporting Goods",
+          "url": "https://mobilityforesights.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Seedtable Jakarta Startups 2026",
+          "url": "https://seedtable.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "MDPI Retail Loyalty Digital Transformation",
+          "url": "https://mdpi.com",
+          "tier": "T1",
+          "type": "website",
+          "update_frequency": "daily",
+          "credibility": "high"
+        },
+        {
+          "name": "Scribd DSInnovate Startup Report",
+          "url": "https://scribd.com",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "low"
+        },
+        {
+          "name": "North Ridge Partners Warung Wars",
+          "url": "https://northridgepartners.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "ResearchGate Transaction Cost Economics",
+          "url": "https://researchgate.net",
+          "tier": "T1",
+          "type": "website",
+          "update_frequency": "daily",
+          "credibility": "high"
+        },
+        {
+          "name": "Adjust Case Studies",
+          "url": "https://adjust.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
         }
       ],
       "name": "Business & Investment",
@@ -2286,7 +2921,7 @@
       "priority": "high",
       "id": 14,
       "key": "business",
-      "source_count": 53
+      "source_count": 79
     },
     "market_intelligence": {
       "sources": [
@@ -2611,6 +3246,46 @@
           "tier": "T2",
           "authority": "Medium",
           "description": ""
+        },
+        {
+          "name": "ASEAN Briefing Indonesia Market Entry",
+          "url": "https://aseanbriefing.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "critical"
+        },
+        {
+          "name": "SBM ITB Indonesia 2026 Outlook",
+          "url": "https://sbm.itb.ac.id",
+          "tier": "T1",
+          "type": "website",
+          "update_frequency": "daily",
+          "credibility": "high"
+        },
+        {
+          "name": "PwC Indonesia Legal Alert Sep 2025",
+          "url": "https://pwc.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Fitch Solutions Indonesia Market",
+          "url": "https://fitchsolutions.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Indonesia Investments E-commerce",
+          "url": "https://indonesia-investments.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
         }
       ],
       "name": "Market Intelligence",
@@ -2618,7 +3293,7 @@
       "priority": "high",
       "id": 15,
       "key": "market_intelligence",
-      "source_count": 46
+      "source_count": 51
     },
     "political_risk": {
       "sources": [
