@@ -241,9 +241,18 @@ async def get_dashboard_summary(
         tasks = [
             _with_timeout(get_practices_stats(user_id, db_pool), DEFAULT_PRACTICE_STATS),
             _with_timeout(get_interactions_stats(user_id, db_pool), DEFAULT_INTERACTION_STATS),
-            _with_timeout(list_practices(status="in_progress", limit=5, user_id=user_id, pool=db_pool), []),
-            _with_timeout(list_interactions(interaction_type="whatsapp", limit=5, user_id=user_id, pool=db_pool), []),
-            _with_timeout(_get_email_stats(db_pool, user_id), {"connected": False, "unread_count": 0}),
+            _with_timeout(
+                list_practices(status="in_progress", limit=5, user_id=user_id, pool=db_pool), []
+            ),
+            _with_timeout(
+                list_interactions(
+                    interaction_type="whatsapp", limit=5, user_id=user_id, pool=db_pool
+                ),
+                [],
+            ),
+            _with_timeout(
+                _get_email_stats(db_pool, user_id), {"connected": False, "unread_count": 0}
+            ),
             _with_timeout(_get_critical_deadlines(db_pool, user_id, is_admin), 0),
         ]
 
@@ -251,7 +260,10 @@ async def get_dashboard_summary(
         if is_admin:
             tasks.extend(
                 [
-                    _with_timeout(_get_revenue_stats(db_pool), {"total_revenue": 0, "paid_revenue": 0, "outstanding_revenue": 0}),
+                    _with_timeout(
+                        _get_revenue_stats(db_pool),
+                        {"total_revenue": 0, "paid_revenue": 0, "outstanding_revenue": 0},
+                    ),
                     _with_timeout(_calculate_revenue_growth(db_pool), 0.0),
                 ]
             )
@@ -434,10 +446,9 @@ async def get_neural_pulse(
         last_activity = "Initializing neural link..."
         try:
             async with db_pool.acquire() as conn:
-                # Check last conversation or interaction from the conversations table
+                # Check last conversation - use session_id as identifier since title may not exist
                 last_conv = await conn.fetchval(
-                    """SELECT title FROM conversations 
-                       WHERE title IS NOT NULL 
+                    """SELECT session_id FROM conversations 
                        ORDER BY updated_at DESC LIMIT 1"""
                 )
                 if last_conv:

@@ -4,6 +4,7 @@ Handles security logging and system audit trails for compliance and debugging.
 Replaces Node.js audit-trail.ts
 """
 
+import json
 import logging
 from typing import Any
 
@@ -87,7 +88,7 @@ class AuditService:
                     user_agent,
                     success,
                     failure_reason,
-                    metadata or {},
+                    json.dumps(metadata) if metadata else None,
                 )
                 logger.debug(f"📝 Auth audit logged: {action} for {email} (Success: {success})")
 
