@@ -67221,7 +67221,7 @@
       "intel_2026": {
         "market_sentiment": "HaaS in ascesa. CoreTax impone tracciabilità totale: solo fornitori con e-Faktur attivo. B2B e-commerce raddoppia volumi.",
         "bali_nuance": "Coworking e ville di lusso a Canggu/Pererenan: domanda workstation e infrastruttura connettività ininterrotta. Eco-premium su hardware.",
-        "operational_risks": "Separazione obbligatoria da servizi cloud (Cat J). Restrizioni import marchi non omologati. LARTAS blocca import non allineati a NIB.",
+        "operational_risks": "LARTAS Permendag 47/2025 impone PI (Persetujuan Impor) e LS (Laporan Surveyor) per importazione hardware al di fuori delle SEZ. Separazione obbligatoria da servizi cloud (Cat J): un NIB 46511 non copre hosting o SaaS. Restrizioni import marchi non omologati Kominfo. CEIR tracking obbligatorio per dispositivi con IMEI. CoreTax NITKU per ogni sede. API-U standard per wholesale domestico.",
         "investment_outlook": "Margini sani su leasing B2B. Trasformazione CAPEX→OPEX favorisce fidelizzazione clienti sviluppatori.",
         "legacy_bridge": "Focalizzato solo hardware fisico, scorporato dai servizi IT post-2025. Verifica disallineamento codici HS in dogana."
       }
@@ -67390,7 +67390,7 @@
       "intel_2026": {
         "market_sentiment": "Esplosione Starlink e ripetitori enterprise per zone difficili. CoreTax impone tracciabilità IMEI tramite sistema CEIR dal 2025.",
         "bali_nuance": "Connettività vitale per ville a Uluwatu, Nusa Penida, Bingin. Mercato apparati enterprise per resort e coworking in forte espansione.",
-        "operational_risks": "Blocco IMEI via CEIR per apparati non registrati. TKDN blocca apparati 5G stranieri senza quota assemblaggio locale certificata.",
+        "operational_risks": "Blocco IMEI via CEIR per apparati non registrati: dispositivi attivati su rete indonesiana senza CEIR sono soggetti a blocco permanente da parte di Kominfo. TKDN 35%+ blocca apparati 5G stranieri senza componente assemblaggio locale certificato. Permendag 47/2025: PI+LS obbligatorio per apparati telecom importati fuori SEZ. Kominfo Type Approval obbligatorio prima dello sdoganamento. CoreTax NITKU per ogni magazzino.",
         "investment_outlook": "Alto per distributori di marchi già omologati Kominfo o nicchie hardware esenti TKDN (es. apparati satellite professionale).",
         "legacy_bridge": "Isolato dal vecchio codice composito per separare apparati trasmissione da software (46512) e suku cadang (46521)."
       }
@@ -68087,11 +68087,11 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "_source": "BPS_7_2025 + PP28_2024",
       "intel_2026": {
-        "market_sentiment": "Codice critico boom edilizio. CoreTax impone e-Faktur su tutto: catene non conformi escluse dai cantieri di sviluppatori stranieri.",
-        "bali_nuance": "Consumo colossale tondini SNI e legname Teak/Ulin per ville a Canggu. Banjar fees informali non deducibili CoreTax: erosione margini netti.",
-        "operational_risks": "SVLK obbligatorio per legname: sequestri su strada per carichi non tracciabili. Traffico festività religiose blocca consegne fino a 3 giorni.",
-        "investment_outlook": "Fornitori compliance-first dominano mercato sviluppatori stranieri. ROI protetto da certificazioni SVLK come barriera competitiva.",
-        "legacy_bridge": "Affinamento classificazione materiali per isolare metalli strutturali da legname. Verifica copertura per materiali compositi e prefabbricati."
+        "market_sentiment": "Mercato moto Indonesia 2025: 6,4 milioni di unità/anno, secondo mercato ASEAN dopo Vietnam. Disruption strutturale: moto elettriche crescono del 340% YoY (Gesits, Alva, Smoot). CoreTax e-Faktur elimina dealer informali senza tracciabilità. API-P obbligatoria per importatori; API-U per distributori nazionali.",
+        "bali_nuance": "Bali consuma 180.000+ moto/anno. Scooter automatici dominano (Honda Beat, Yamaha NMAX). Boom noleggio moto turistico a Canggu, Ubud, Uluwatu crea domanda B2B da fleet operator. Conversione flotte a elettrico (Alva One) accelerata da incentivi Gubernur Bali Pergub 48/2019. Dealer locali operano tramite SKP (Surat Kuasa Penjualan) da ATPM — PT PMA può operare come grossista nazionale che rifornisce dealer locali.",
+        "operational_risks": "ATPM (Agen Tunggal Pemegang Merek) detengono controllo distributivo quasi totale. Ingresso PT PMA richiede accordo formale ATPM o focus su marchi non ancora distribuiti. TKDN 40%+ per moto con incentivi pemerintah. Logistica Gilimanuk: consegne moto su camion flatbed bloccate durante festività religiose fino a 3 giorni. Coretax NITKU per ogni showroom/gudang. Batterie EV non ancora coperte da sistema recycling formale in Indonesia.",
+        "investment_outlook": "Margini distributor moto: 8-15% su nuove, 20-35% su EV (meno intermediari, brand emergenti). Opportunità: diventare distributore esclusivo Bali per marchi EV cinesi (Vmoto, Yadea) o brand premium europei prima che ATPM consolidino il territorio. Fleet leasing B2B a operatori turistici: modello ricorrente, meno dipendente da vendite una tantum.",
+        "legacy_bridge": "In KBLI 2020 il codice 45401 copriva vendita moto nuove; in KBLI 2025 la distribuzione wholesale è isolata in 46631 (nuove) separata da 46632 (usate) e dalla vendita retail (45xxx). Verifica che NIB escluda attività di riparazione (45xxx) e copra solo la funzione wholesale B2B."
       }
     },
     {
@@ -68201,11 +68201,11 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "_source": "BPS_7_2025 + PP28_2024",
       "intel_2026": {
-        "market_sentiment": "Mercato materiali da costruzione non-strutturali in forte crescita. CoreTax impone tracciabilità totale: boom domanda fornitori certificati.",
-        "bali_nuance": "Vetri temperati grandi formati, legni decorativi e building materials premium per architettura tropicale/brutalismo in Bukit e Seminyak.",
-        "operational_risks": "Logistica ultimo miglio critica: strade strette <3m richiedono camion Engkel. Doppio trasbordo Gilimanuk raddoppia costi rispetto a Java.",
-        "investment_outlook": "Eco-premium su materiali certificati sostenibili. Margini superiori 20-30% rispetto a materiali generici per mercato ville luxury.",
-        "legacy_bridge": "Codice complementare a 46631: coprire entrambi nel NIB per non perdere ordini misti strutturali+finiture su unico cantiere."
+        "market_sentiment": "Mercato moto usate Indonesia: 8-10 milioni di unità scambiate annualmente, circa il 60% del totale transazioni moto. CoreTax digitalizza e trasparente il settore — eliminando i famosi 'calo' (intermediari informali) che assorbivano 5-8% del margine. Piattaforme OLX Autos e MotoEx crescono del 45% annuo. API-U sufficiente per wholesale usato nazionale.",
+        "bali_nuance": "Mercato moto usate Bali doppiamente strutturato: segmento locale (prezzo sensibile) e segmento turismo (moto in ottime condizioni per noleggio). Canggu, Seminyak e Kuta: fleet operator noleggio rinnovano parco moto ogni 2-3 anni, creando flusso costante di usato di qualità. Prezzo medio moto usata buone condizioni Bali: IDR 8-15 juta. Margine grossista: IDR 500k-2 juta per unità. Volume di 50-100 moto/mese è sufficiente per redditività.",
+        "operational_risks": "Verifica legalità titolo proprietà: STNK + BPKB obbligatori per ogni transazione B2B — il Sistema Administrasi Manunggal Satu Atap (SAMSAT) deve riflettere trasferimento. Moto rubate con documento alterato circolano nel mercato informale: due diligence sul numero rangka/mesin (numero telaio/motore). CoreTax: ogni transazione wholesale B2B deve avere e-Faktur con NITKU, anche per usato.",
+        "investment_outlook": "ROI interessante per operatori che costruiscono un sistema di acquisizione strutturato (rapporti con fleet operator per riacquisto fleet). Margini superiori rispetto al nuovo. Rischio principale: qualità media del parco usato si deteriora con invecchiamento fleet. Opportunità a lungo termine: hub certificazione moto elettriche usate (Gesits, Alva) quando il mercato EV matura tra 2027-2029.",
+        "legacy_bridge": "In KBLI 2020 la compravendita moto usate era spesso inclusa nei codici retail 45xxx senza distinzione wholesale/retail. KBLI 2025 isola il commercio wholesale in 46632, creando chiarezza regolamentare. Operatori esistenti con NIB 2020 devono verificare che il codice 46632 sia esplicitamente registrato, altrimenti le transazioni B2B di usato rischiano di cadere in zona grigia Coretax."
       }
     },
     {

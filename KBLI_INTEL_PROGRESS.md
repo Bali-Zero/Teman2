@@ -1,6 +1,6 @@
 # KBLI intel_2026 Enrichment Progress
 
-**Stato:** 100 / 1563 codici arricchiti (6.4%)
+**Stato:** 102 / 1563 codici arricchiti (6.5%) + 4 intel upgrade
 **Aggiornato:** 2026-02-20
 **File JSON:** `source_documents/KBLI_2025_FINAL_CLEAN.json`
 
@@ -146,6 +146,9 @@ MDX: `kbli-2025-automotive-food-textile-wholesale-bali.mdx`
 | `kbli-2025-wholesale-consumer-goods-strategic-framework-bali.mdx` | 3     | 464xx (approfondimento strategico)                                   |
 | `kbli-2025-bali-investment-regulatory-framework.mdx`              | 4     | retail, costruzione, manifattura, educazione, turismo, servizi       |
 | `kbli-2025-automotive-food-textile-wholesale-bali.mdx`            | 5     | 463xx, 46411-46415, 46420, 46494-46496                               |
+| `indonesia-political-regulatory-risk-intelligence-guide.mdx`      | 6     | 49231, 49296, 55101, 55103, 55203, 55209, 62199, 62201, 62209, 64210 |
+| `kbli-2025-wholesale-ict-machinery-vehicles-bali.mdx`             | 7a    | 46511, 46512, 46521, 46523, 46530, 46591, 46620, 46631, 46632        |
+| `kbli-2025-wholesale-consumer-goods-pharma-cosmetics-bali.mdx`    | 7b    | 46430, 46441, 46442, 46451, 46452, 46491, 46492, 46493, 46499, 46791 |
 
 ---
 
@@ -191,9 +194,36 @@ MDX: `indonesia-political-regulatory-risk-intelligence-guide.mdx`
 
 ---
 
+### Batch 7 — ICT, Machinery, Vehicles + Consumer Goods, Pharma, Cosmetics
+
+**Nuovi codici arricchiti (2):**
+| Codice | Titolo |
+|--------|--------|
+| 46631 | PERDAGANGAN BESAR SEPEDA MOTOR BARU (fix: riscritto da zero — contenuto precedente errato) |
+| 46632 | PERDAGANGAN BESAR SEPEDA MOTOR BEKAS (fix: riscritto da zero — contenuto precedente errato) |
+
+**Intel upgrade (operational_risks) su 2 codici:**
+
+- 46511 (computer hardware) — LARTAS PI+LS, CEIR, Kominfo, API-U
+- 46523 (telecom equipment) — CEIR blocco IMEI, TKDN 35%, Permendag 47/2025, Kominfo Type Approval
+
+**MDX articles create (2):**
+| File | Batch | Codici coperti |
+|------|-------|----------------|
+| `kbli-2025-wholesale-ict-machinery-vehicles-bali.mdx` | 7a | 46511, 46512, 46521, 46523, 46530, 46591, 46620, 46631, 46632 |
+| `kbli-2025-wholesale-consumer-goods-pharma-cosmetics-bali.mdx` | 7b | 46430, 46441, 46442, 46451, 46452, 46491, 46492, 46493, 46499, 46791 |
+
+**Codici non trovati in questa batch:**
+
+- 46610 → non esiste; split in 46611+46612 (auto nuove/usate)
+- 46421 → confermato assente (rimpiazzato da 46451+46452)
+- 46443, 46444 → confermati assenti (rimpiazzati da 46499 e 46791)
+
+---
+
 ## Prossimi Batch
 
-- Batch 7: in attesa
+- Batch 8: in attesa
 - Settori da coprire (non ancora arricchiti):
   - Hospitality: 55102 (4★), 55104 (2★), 55105 (1★), 55106 (nonbintang), 55201 (homestay), 55204 (apartemen hotel), 55901 (villa management)
   - IT: 62110 (video game), 62191-62194 (app specifiche), 62900 (IT services)
