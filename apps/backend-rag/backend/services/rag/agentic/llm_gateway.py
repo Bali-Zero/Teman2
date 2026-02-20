@@ -113,16 +113,30 @@ class LLMGateway:
         # Uses singleton client that supports both API Key and Service Account (Vertex AI)
         self._genai_client: GenAIClient | None = None
 
-        # Model name constants - Gemini 2.0 Flash (latest stable)
-        # For AI Studio API (api_key auth): use names WITHOUT -001 suffix
-        # For Vertex AI: use names WITH -001 suffix
-        self.model_name_pro = "gemini-2.0-flash"  # Primary tier (AI Studio naming)
-        self.model_name_flash = "gemini-2.0-flash"  # Primary: latest stable
-        self.model_name_fallback = "gemini-1.5-flash"  # Fallback: stable
+        # Model name constants - Updated 2026-02-21
+        # Vertex AI model names (check availability in GCP Console)
+        # gemini-2.5-flash-preview-* not yet available in all regions
+        # gemini-2.0-flash is the current stable with tool calling support
+        self.model_name_pro = "gemini-2.0-flash"  # Primary: stable, tool calling
+        self.model_name_flash = "gemini-2.0-flash"  # Same as pro
+        self.model_name_fallback = "gemini-1.5-flash"  # Fallback: older stable
+
+        # Future: When gemini-2.5-flash available, update to:
+        # self.model_name_pro = "gemini-2.5-flash"
 
         logger.info(
             "✅ LLMGateway: Model configuration ready (gemini-2.0-flash primary, "
             "gemini-1.5-flash fallback)"
+        )
+        self.model_name_fallback = "gemini-2.0-flash"  # Fallback: older but stable
+
+        # Future 3-tier models (when implemented)
+        # Tier 2: claude-3-5-haiku (Anthropic) - complex reasoning
+        # Tier 3: gpt-4o-mini (OpenAI) - reliable fallback
+
+        logger.info(
+            "✅ LLMGateway: Model configuration ready (gemini-2.5-flash primary, "
+            "gemini-2.0-flash fallback)"
         )
 
         # Lazy-loaded OpenRouter client (fallback)
@@ -666,6 +680,7 @@ class LLMGateway:
                 config_args["tools"] = [types.Tool(function_declarations=function_declarations)]
                 # Add tool_config to encourage function calling
                 import contextlib
+
                 with contextlib.suppress(AttributeError, TypeError):
                     config_args["tool_config"] = types.ToolConfig(
                         function_calling_config=types.FunctionCallingConfig(mode="AUTO")
@@ -715,7 +730,11 @@ class LLMGateway:
             # Handle images (multimodal)
             if images:
                 processed_images = _build_multimodal_content("", images)
-                if isinstance(processed_images, list) and processed_images and "parts" in processed_images[0]:
+                if (
+                    isinstance(processed_images, list)
+                    and processed_images
+                    and "parts" in processed_images[0]
+                ):
                     # _build_multimodal_content returns [{"parts": [...]}]
                     current_content_parts.extend(processed_images[0]["parts"])
 
