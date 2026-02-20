@@ -1,0 +1,194 @@
+{
+  "timestamp": "2026-02-21T06:11:26.984406",
+  "source_file": "/Users/antonellosiano/Projects/nuzantara/apps/bali-intel-scraper/data/enriched/20260221_060912_enriched.json",
+  "stats": {
+    "total": 3,
+    "optimized": 3,
+    "failed": 0
+  },
+  "articles": [
+    {
+      "id": "abc123mock001",
+      "title": "New KITAS Regulations Effective March 2026",
+      "url": "https://www.imigrasi.go.id/kitas-2026",
+      "summary": "Indonesia announces simplified KITAS renewal process starting March 2026, reducing processing time from 30 to 14 days for existing holders.",
+      "text": "The Indonesian Immigration Directorate has announced significant changes to the KITAS (Limited Stay Permit Card) renewal process. Starting March 1, 2026, existing KITAS holders will benefit from a streamlined renewal procedure that cuts processing time in half. The new system introduces online document submission and automated verification for straightforward cases. Immigration officials stated this change aims to improve service quality and reduce administrative burden on foreign residents.",
+      "published": "2026-02-20T10:00:00",
+      "source_name": "Imigrasi Indonesia",
+      "source_url": "https://www.imigrasi.go.id/",
+      "category": "immigration",
+      "tier": "T1",
+      "quality_score": 85,
+      "scraped_at": "2026-02-21T06:00:00",
+      "validation_status": "approved",
+      "validated_at": "2026-02-21T06:07:26.381638",
+      "enrichment": {
+        "executive_brief": "Effective March 1, 2026, Indonesia will implement a streamlined KITAS renewal process, reducing the standard processing time from 30 days to just 14 days for existing holders. The initiative transitions the procedure to a digital-first model featuring online document submission and automated verification for straightforward cases, aiming to significantly lower the administrative burden on the foreign business community and residents in Bali and beyond.",
+        "key_facts": [
+          "Processing time for KITAS renewals reduced by over 50%, from 30 days to 14 days.",
+          "Official implementation date is March 1, 2026.",
+          "Introduction of mandatory online document submission and automated verification for standard applications."
+        ],
+        "actionable_insights": [
+          "Recalibrate Renewal Cycles: Businesses can optimize cash flow and operational planning by utilizing the shorter 14-day window, though a buffer is recommended during the initial March rollout.",
+          "Digital Compliance Audit: Immediately verify that all corporate sponsors and individual documents are scanned and meet the new digital verification standards to avoid automated rejections."
+        ],
+        "legal_implications": "The regulation represents a formal shift toward digitalization in stay permit administration, aligning with broader 'E-Government' initiatives. It reduces discretionary processing by immigration officers through automated verification, potentially increasing transparency but requiring stricter adherence to document formatting.",
+        "target_audience": [
+          "Foreign Investors (PMA)",
+          "Expatriate Workforce",
+          "HR & Legal Compliance Departments",
+          "Bali-based Business Owners"
+        ],
+        "urgency_level": "high",
+        "expiry_date": null
+      },
+      "enriched_at": "2026-02-21T06:08:05.110906",
+      "enriched_by": "gemini-3-pro",
+      "seo": {
+        "meta_title": "New KITAS Regulations 2026: 14-Day Renewal in Indonesia",
+        "meta_description": "Indonesia introduces 14-day KITAS renewals starting March 2026. A new digital-first process for faster immigration services for existing holders.",
+        "keywords": [
+          "KITAS renewal 2026",
+          "Indonesia immigration news",
+          "KITAS Indonesia",
+          "digital KITAS",
+          "14-day KITAS renewal"
+        ],
+        "schema_org": {
+          " @context": "https://schema.org",
+          " @type": "Article",
+          "headline": "New KITAS Regulations Effective March 2026",
+          "description": "Indonesia implements a streamlined 14-day digital KITAS renewal process starting March 1, 2026.",
+          "articleBody": "Effective March 1, 2026, Indonesia will implement a streamlined KITAS renewal process, reducing the standard processing time from 30 days to just 14 days for existing holders. The initiative transitions the procedure to a digital-first model featuring online document submission and automated verification."
+        },
+        "og_title": "New KITAS Regulations 2026: Fast 14-Day Renewal in Indonesia",
+        "og_description": "Starting March 2026, KITAS renewals in Indonesia will take only 14 days via a new digital-first system. Learn how it affects existing holders."
+      },
+      "seo_optimized_at": "2026-02-21T06:10:14.833912"
+    },
+    {
+      "id": "abc123mock002",
+      "title": "Tax Amnesty Program Extended to June 2026",
+      "url": "https://www.kemenkeu.go.id/tax-amnesty-extension",
+      "summary": "Ministry of Finance extends voluntary tax amnesty program for foreign-owned PMA companies until June 30, 2026.",
+      "text": "The Indonesian Ministry of Finance has announced a three-month extension of the voluntary tax amnesty program specifically targeting foreign-owned PMA (Penanaman Modal Asing) companies. The program, originally set to end in March 2026, will now run until June 30, 2026. Companies participating in the amnesty can declare unreported assets with reduced penalties and interest rates. Tax officials encourage compliance before the deadline as enforcement actions will intensify after program closure.",
+      "published": "2026-02-19T14:30:00",
+      "source_name": "Ministry of Finance Indonesia",
+      "source_url": "https://www.kemenkeu.go.id/",
+      "category": "tax",
+      "tier": "T1",
+      "quality_score": 78,
+      "scraped_at": "2026-02-21T06:00:00",
+      "validation_status": "approved",
+      "validated_at": "2026-02-21T06:07:26.381663",
+      "enrichment": {
+        "executive_brief": "The Indonesian Ministry of Finance has officially extended the voluntary tax amnesty program for foreign-owned PMA (Penanaman Modal Asing) companies until June 30, 2026. This three-month extension from the original March 2026 deadline provides a final window for companies to declare previously unreported assets while benefiting from significantly reduced penalties and interest rates. The Ministry has signaled a shift toward aggressive enforcement and intensified auditing immediately following the program's closure, making this period the last opportunity for low-cost regularization of tax positions.",
+        "key_facts": [
+          "Program deadline extended from March 31, 2026, to June 30, 2026.",
+          "Exclusive focus on foreign-owned PMA (Penanaman Modal Asing) entities.",
+          "Incentives include reduced penalties and lower interest rates on asset declarations.",
+          "The Ministry of Finance plans to intensify enforcement actions starting July 1, 2026."
+        ],
+        "actionable_insights": [
+          "Initiate an immediate internal tax audit to identify any discrepancies between reported assets and actual holdings.",
+          "Allocate capital for the payment of reduced penalties before the June 30 cut-off to avoid the full statutory penalty rates applicable post-amnesty.",
+          "Verify that all declared assets are correctly documented in the company's financial statements for the current fiscal year."
+        ],
+        "legal_implications": "Participating in this program offers a temporary deviation from standard tax penalties under the Indonesian Tax Law. Failure to declare assets before the June 30 deadline will leave PMA companies vulnerable to full enforcement measures, including potential criminal investigations for tax evasion and significantly higher administrative fines once the 'voluntary' window is closed.",
+        "target_audience": [
+          "PMA Company Directors",
+          "Foreign Business Owners",
+          "Corporate Tax Compliance Officers",
+          "Business Consultants in Bali"
+        ],
+        "urgency_level": "high",
+        "expiry_date": "2026-06-30"
+      },
+      "enriched_at": "2026-02-21T06:08:40.804522",
+      "enriched_by": "gemini-3-pro",
+      "seo": {
+        "meta_title": "Indonesia Tax Amnesty 2026: PMA Extension to June 30",
+        "meta_description": "The Indonesian Ministry of Finance extends the tax amnesty program for PMA companies to June 30, 2026. Declare unreported assets and ensure tax compliance.",
+        "keywords": [
+          "Tax Amnesty Indonesia 2026",
+          "PMA Tax Extension",
+          "Indonesian Ministry of Finance",
+          "PMA Company Compliance",
+          "Bali Business Tax"
+        ],
+        "schema_org": {
+          " @context": "https://schema.org",
+          " @type": "Article",
+          "headline": "Tax Amnesty Program Extended to June 2026",
+          "description": "The Indonesian Ministry of Finance has officially extended the voluntary tax amnesty program for foreign-owned PMA companies until June 30, 2026.",
+          "articleBody": "The Indonesian Ministry of Finance has officially extended the voluntary tax amnesty program for foreign-owned PMA (Penanaman Modal Asing) companies until June 30, 2026. This three-month extension from the original March 2026 deadline provides a final window for companies to declare previously unreported assets."
+        },
+        "og_title": "Tax Amnesty Indonesia 2026: Deadline Extended for PMA Companies",
+        "og_description": "Great news for foreign investors: The Indonesian Ministry of Finance has extended the tax amnesty program until June 30, 2026. Learn how to benefit from this final window."
+      },
+      "seo_optimized_at": "2026-02-21T06:10:59.396464"
+    },
+    {
+      "id": "abc123mock003",
+      "title": "Digital Nomad Visa Requirements Clarified",
+      "url": "https://www.imigrasi.go.id/digital-nomad-2026",
+      "summary": "Immigration authority publishes detailed requirements for new Digital Nomad visa category including minimum income thresholds.",
+      "text": "Following months of speculation, the Indonesian Immigration Directorate has released comprehensive guidelines for the new Digital Nomad Visa (B211A category). The visa requires applicants to demonstrate monthly income of at least USD 2,000 from foreign sources, health insurance coverage valid in Indonesia, and proof of accommodation. The visa allows stays of up to 5 years with multiple re-entry privileges. Applications can be submitted through Indonesian embassies worldwide starting April 2026.",
+      "published": "2026-02-18T09:15:00",
+      "source_name": "Imigrasi Indonesia",
+      "source_url": "https://www.imigrasi.go.id/",
+      "category": "immigration",
+      "tier": "T1",
+      "quality_score": 92,
+      "scraped_at": "2026-02-21T06:00:00",
+      "validation_status": "approved",
+      "validated_at": "2026-02-21T06:07:26.381682",
+      "enrichment": {
+        "executive_brief": "The Indonesian Immigration Directorate has formalized the B211A Digital Nomad Visa requirements, effective April 2026. The 5-year multiple-entry visa targets high-earning remote workers (min. USD 2,000/month) and requires health insurance and proof of stay. This move transitionally shifts the remote work landscape in Bali from 'gray-area' visit visas to a structured, long-term regulatory framework, enhancing legal certainty for foreign professionals.",
+        "key_facts": [
+          "Visa Category: B211A (specifically adapted for Digital Nomads).",
+          "Financial Requirement: Minimum monthly income of USD 2,000 from non-Indonesian sources.",
+          "Validity: Up to 5 years with multiple re-entry privileges allowed.",
+          "Mandatory Documentation: Health insurance valid in Indonesia and proof of local accommodation.",
+          "Launch Date: Applications open via Indonesian embassies starting April 2026."
+        ],
+        "actionable_insights": [
+          "Consultants should advise clients currently on short-term B211 visas to prepare financial statements (bank records) proving the $2,000 threshold for the April transition.",
+          "Property managers should standardize 'Proof of Accommodation' letters to comply with the new immigration guidelines to assist prospective nomad tenants.",
+          "Businesses serving remote workers should pivot marketing to highlight the stability of the new 5-year residency option."
+        ],
+        "legal_implications": "The release of these guidelines formalizes the previously ambiguous status of remote workers. It shifts compliance responsibility to the individual to prove self-sufficiency (income and insurance), effectively reducing the regulatory risk for local co-working spaces and short-term rentals that previously hosted 'tourists' who were working remotely.",
+        "target_audience": [
+          "Foreign Digital Nomads and Remote Workers",
+          "Indonesian Business Consultants and Visa Agencies",
+          "Bali Hospitality and Real Estate Sectors",
+          "International HR Departments with remote staff in Southeast Asia"
+        ],
+        "urgency_level": "medium",
+        "expiry_date": null
+      },
+      "enriched_at": "2026-02-21T06:09:12.161148",
+      "enriched_by": "gemini-3-pro",
+      "seo": {
+        "meta_title": "Indonesia Digital Nomad Visa (B211A) Requirements 2026",
+        "meta_description": "Indonesia clarifies B211A Digital Nomad Visa rules for April 2026. 5-year entry for remote workers earning $2,000+/month. Learn the requirements here.",
+        "keywords": [
+          "Indonesia Digital Nomad Visa",
+          "B211A Visa requirements",
+          "Bali remote work 2026"
+        ],
+        "schema_org": {
+          "@context": "https://schema.org",
+          "@type": "Article",
+          "headline": "Digital Nomad Visa Requirements Clarified",
+          "description": "The Indonesian Immigration Directorate has formalized the B211A Digital Nomad Visa requirements, effective April 2026.",
+          "articleBody": "The Indonesian Immigration Directorate has formalized the B211A Digital Nomad Visa requirements, effective April 2026. The 5-year multiple-entry visa targets high-earning remote workers (min. USD 2,000/month) and requires health insurance and proof of stay. This move transitionally shifts the remote"
+        },
+        "og_title": "New B211A Digital Nomad Visa Requirements for Indonesia",
+        "og_description": "Starting April 2026, Indonesia introduces new rules for the 5-year B211A Digital Nomad Visa. Check if you qualify."
+      },
+      "seo_optimized_at": "2026-02-21T06:11:26.983648"
+    }
+  ]
+}
