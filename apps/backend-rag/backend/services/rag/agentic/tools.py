@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 AVAILABLE_COLLECTIONS = [
     "visa_oracle",
     "legal_unified_hybrid",
-    "kbli_unified",  # Fixed: was kbli_2025_final, actual collection is kbli_unified
+    "kbli_2025_final",  # KBLI 2025 - 1,563 codes, 4,618 chunks (BPS + PP 28/2025)
     "tax_genius_hybrid",  # Migrated to hybrid format Dec 2025
     "bali_zero_pricing_hybrid",
     "training_conversations_hybrid",  # Migrated to hybrid format Dec 2025
@@ -69,7 +69,7 @@ class VectorSearchTool(BaseTool):
             "**OPTIONALLY specify a collection** ONLY for focused single-topic queries:\n"
             "- visa_oracle: Visas, KITAS, KITAP, immigration, stay permits\n"
             "- legal_unified_hybrid: Laws, company types (PT, CV, Firma), regulations\n"
-            "- kbli_unified: Business classification codes (KBLI), OSS, NIB, 8886 codes\n"
+            "- kbli_2025_final: Business classification codes (KBLI 2025), OSS, NIB, 1,563 codes\n"
             "- tax_genius_hybrid: Taxes, PPh, PPN, NPWP, fiscal matters\n"
             "- bali_zero_pricing_hybrid: Official Bali Zero service pricing and costs\n"
             "- training_conversations_hybrid: Procedures, practical examples, FAQs\n"
