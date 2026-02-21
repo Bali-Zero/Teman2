@@ -179,12 +179,12 @@ def ollama_generate(prompt: str, ollama_url: str) -> str:
         data=payload,
         headers={"Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(req, timeout=120) as resp:
+    with urllib.request.urlopen(req, timeout=300) as resp:
         result = json.loads(resp.read())
         return result.get("response", "").strip()
 
 
-def enrich_with_llm(targets: list, batch_size: int = 10, ollama_url: str = "http://localhost:11434") -> None:
+def enrich_with_llm(targets: list, batch_size: int = 5, ollama_url: str = "http://localhost:11434") -> None:
     target_map = {c['kode_kbli_2025']: c for c in targets}
     total = len(targets)
     processed = 0

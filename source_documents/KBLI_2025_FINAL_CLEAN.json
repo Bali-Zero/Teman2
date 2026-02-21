@@ -10577,7 +10577,15 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "63111",
       "mapping_note": "PP28 usa codice KBLI 2020 63111 (Aktivitas Pengolahan Data...). Match: 75%",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Managing forests — planting, reforestation, and conservation of forest and timber land. This includes natural carbon sequestration in various types of forests (natural, semi-natural, planted) and selling carbon credits or emission reduction certificates from these activities.",
+        "whatYouNeed": "**Micro / Small / Medium / Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Limited — max 95% foreign ownership. Condition: Kemitraan dengan masyarakat setempat. Note: Pengelolaan hutan.",
+        "whatChanged": "Renumbered/adjusted from KBLI 2020. OSS update may be required to register under the new code.",
+        "zantaraOpener": "Planning a forest management project in Bali? Let me help you with the licensing requirements for planting, reforestation, and managing carbon credits.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "02102",
@@ -10667,7 +10675,15 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "02121",
       "mapping_note": "PP28 usa codice KBLI 2020 02121 (Pemanfaatan Kayu Hutan Alam...). Match: 100%",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Utilizing timber from forests — starting from planting to harvesting, producing roundwood. This can be done in natural, semi-natural, or planted forests.",
+        "whatYouNeed": "**Micro / Small / Medium / Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Limited — max 95% foreign ownership. Condition: Kemitraan dengan masyarakat. Note: Pemanfaatan kayu hutan.",
+        "whatChanged": "Renumbered/adjusted from KBLI 2020. OSS update may be required to register under the new code.",
+        "zantaraOpener": "Growing and harvesting timber in Bali? Let me guide you through the necessary permits for sustainable forest management.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "02103",
@@ -10755,7 +10771,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Nursery operations for forest trees — growing trees to a certain age. Nurseries for non-forest trees are covered under 01302.",
+        "whatYouNeed": "**Micro / Small / Medium / Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed. Condition: Mungkin memerlukan kemitraan dengan masyarakat.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Setting up a forest tree nursery in Bali? Let me help you understand the licensing and best practices for raising young forest trees.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "02201",
@@ -10843,7 +10867,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Harvesting timber — producing roundwood from felled trees, used either in wood-based industries or as raw materials like pit-props, fence posts, and utility poles.",
+        "whatYouNeed": "**Micro / Small / Medium / Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed. Condition: Mungkin memerlukan kemitraan dengan masyarakat.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Planning to harvest timber in Bali? Let me explain the permits needed for sustainable logging and processing.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "02202",
@@ -10931,7 +10963,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Collecting forest residues — gathering wood waste from tree felling, such as underbrush, stumps, sawdust, and other forest debris, often used as fuel. Also includes traditional charcoal production associated with forestry activities.",
+        "whatYouNeed": "**Micro / Small / Medium / Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed. Condition: Mungkin memerlukan kemitraan dengan masyarakat.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Gathering forest residues in Bali? Let me help you navigate the regulations for collecting wood waste and producing charcoal.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "02300",
@@ -11021,7 +11061,15 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "02130",
       "mapping_note": "PP28 usa codice KBLI 2020 02130 (Pemanfaatan Hasil Hutan Bukan ...). Match: 95%",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Harvesting non-timber forest products such as mushrooms, truffles, cashews, balata, gums, rattan, pine resin, jelutung, kemenyan, jernang, copal, selak, and bamboo. This includes gathering wild-growing plants and extracting natural resources without deforestation.",
+        "whatYouNeed": "**Micro / Small / Medium / Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed. Condition: Mungkin memerlukan kemitraan dengan masyarakat.",
+        "whatChanged": "Renumbered/adjusted from KBLI 2020. OSS update may be required to register under the new code.",
+        "zantaraOpener": "Planning to harvest non-timber forest products in Bali? Let me guide you through the licensing process and sustainable harvesting practices.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "02401",
@@ -11109,7 +11157,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Utilizing environmental services within forests, including conservation functions, air quality, climate conditions, natural phenomena, species diversity, and uniqueness. This can be done in natural, semi-natural, or planted forests.",
+        "whatYouNeed": "**Micro / Small / Medium / Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed. Condition: Mungkin memerlukan kemitraan dengan masyarakat.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Exploring forest environmental services in Bali? Let me help you understand the regulations and sustainable practices for using these resources.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "02402",
@@ -11197,7 +11253,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Using forest areas without altering their designated functions, such as conducting research, tourism, or educational activities within protected forests.",
+        "whatYouNeed": "**Micro / Small / Medium / Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed. Condition: Mungkin memerlukan kemitraan dengan masyarakat.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Looking to use forest areas in Bali without changing their purpose? Let me explain the permits and guidelines for your project.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "02409",
@@ -11285,7 +11349,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Supporting forestry services like inventory, management consulting, wood evaluation, fire prevention, pest control, and equipment rentals with operators. This includes timber harvesting support activities but excludes reforestation and land clearing.",
+        "whatYouNeed": "**Micro / Small / Medium / Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed. Condition: Mungkin memerlukan kemitraan dengan masyarakat.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Need forestry support services in Bali? Let me help you find the right permits and sustainable practices for your project.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "03110",
@@ -11540,7 +11612,15 @@
       "pma_nota": "Penangkapan ikan di laut",
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "mapping_note": "Cleaned: removed invalid ['03110']",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Fishing for commercial purposes in the sea and coastal areas, including finfish (tuna, mackerel, sharks), crustaceans (shrimp, crabs, lobsters), mollusks (clams, oysters, squids, octopuses), coelenterates (jellyfish), echinoderms (sea cucumbers, sea pigs), amphibians (frogs), reptiles (crocodiles, turtles, tortoises, lizards, water snakes), and algae (seaweed and other aquatic plants).",
+        "whatYouNeed": "**Micro scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Small scale**: High risk. NIB + Business License (Izin) — full review required.\n\n**Small / Medium scale**: High risk. NIB + Business License (Izin) — full review required.\n\n**Small / Medium / Large scale**: High risk. NIB + Business License (Izin) — full review required.\n\n**Micro / Small scale**: Low risk. NIB only — issued automatically.\n\n**Medium / Large scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**PMA:** Limited — max 30% foreign ownership. Condition: Kemitraan dengan nelayan lokal. Note: Penangkapan ikan di laut.",
+        "whatChanged": "This code aggregates multiple KBLI 2020 activities. Verify your specific activity maps correctly.",
+        "zantaraOpener": "Planning a commercial fishing operation in Bali's seas? Let me help you with the licensing requirements and sustainable practices for marine life.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "03120",
@@ -11594,7 +11674,15 @@
       "pma_nota": "Penangkapan ikan di perairan umum",
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "mapping_note": "Cleaned: removed invalid ['03120']",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Fishing for commercial purposes in freshwater bodies, including finfish, crustaceans (shrimp, crabs), mollusks (clams, squids), amphibians (frogs), reptiles (crocodiles, turtles, tortoises, lizards, water snakes), aquatic plants, and other freshwater biota. This also includes protected species as per the Convention on International Trade in Endangered Species of Wild Fauna and Flora (CITES).",
+        "whatYouNeed": "**Micro scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**PMA:** Limited — max 100% foreign ownership. Condition: Zona ekonomi eksklusif. Note: Penangkapan ikan di perairan umum.",
+        "whatChanged": "This code aggregates multiple KBLI 2020 activities. Verify your specific activity maps correctly.",
+        "zantaraOpener": "Setting up a freshwater fishing operation in Bali? Let me guide you through the licensing process and regulations for sustainable freshwater resources.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "03211",
@@ -11895,7 +11983,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Breeding protected marine species such as Napoleon fish, sea horses, Banggai cardinalfish, and Clarion angelfish. This activity is regulated by the Convention on International Trade in Endangered Species of Wild Fauna and Flora (CITES) and other local laws.",
+        "whatYouNeed": "**Micro / Small scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Breeding protected marine species in Bali? Let me help you navigate CITES regulations and ensure compliance with local breeding standards.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "03221",
@@ -12005,7 +12101,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Breeding non-protected freshwater fish and other aquatic life for consumption or as input for further breeding activities. Examples include carp, tilapia, catfish, gourami, snakehead, walking catfish, mudskipper, barbels, and frogs. This can be done in ponds, lakes, and artificial facilities using freshwater.",
+        "whatYouNeed": "**Micro / Small scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Medium / Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Medium scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "This code aggregates multiple KBLI 2020 activities. Verify your specific activity maps correctly.",
+        "zantaraOpener": "Starting a freshwater fish farm in Bali? Let me assist you with the licensing and best practices for breeding common freshwater species.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "03222",
@@ -12085,7 +12189,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Breeding non-protected freshwater ornamental fish, such as discus, botia, koi carp, arwana, black ghost knife, cupang, silver dollar, palmas, rainbow tetra, diamond tetra, barnabus fish, molly, platyfish, and manfish. This activity can be conducted in ponds, lakes, or artificial facilities using freshwater.",
+        "whatYouNeed": "**Micro / Small scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Medium / Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "This code aggregates multiple KBLI 2020 activities. Verify your specific activity maps correctly.",
+        "zantaraOpener": "Breeding ornamental freshwater fish in Bali? Let me help you with the licensing requirements and tips for successful breeding practices.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "03223",
@@ -12160,7 +12272,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Growing non-protected freshwater plants like Anubias spp., java moss, and java fern. This includes cultivation for ornamental purposes or carbon sequestration, including selling carbon credits from these activities.",
+        "whatYouNeed": "**Micro / Small scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Medium / Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Planning a freshwater plant nursery in Bali? Let me help you with the licensing and regulations for growing non-protected plants like Anubias and java moss.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "03224",
@@ -12304,7 +12424,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Breeding protected freshwater species such as tawar fish, belida, badar goa, selusur maninjau, arwana super red, arwana jardinii, zebra pleco, and pari motoro. This is regulated under CITES and local laws.",
+        "whatYouNeed": "**Micro / Small scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Medium / Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Medium scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "This code aggregates multiple KBLI 2020 activities. Verify your specific activity maps correctly.",
+        "zantaraOpener": "Breeding protected freshwater species in Bali? Let me guide you through the necessary permits and regulations for species like tawar fish and arwana.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "03231",
@@ -12322,7 +12450,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Farming non-protected freshwater fish and other aquatic life such as bandeng, patin, nila salin, kakap, kepiting, udang windu, and vaname. This includes breeding, raising, and harvesting for consumption or further breeding.",
+        "whatYouNeed": "**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Starting a freshwater fish farm in Bali? Let me help you with the licensing and best practices for farming species like bandeng and patin.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "03232",
@@ -12340,7 +12476,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Breeding non-protected freshwater ornamental fish. This includes raising, breeding, and harvesting fish for sale or further breeding in various water bodies.",
+        "whatYouNeed": "**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Breeding freshwater ornamental fish in Bali? Let me assist you with the licensing requirements and tips for successful breeding of species like guppies and angelfish.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "03233",
@@ -12358,7 +12502,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Growing non-protected freshwater aquatic plants such as Gracilaria spp. This includes cultivation for carbon sequestration and selling carbon credits from these activities.",
+        "whatYouNeed": "**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Cultivating freshwater aquatic plants in Bali? Let me help you with the licensing and how to grow species like Gracilaria for carbon sequestration.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "03234",
@@ -12405,7 +12557,15 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "03119",
       "mapping_note": "Auto-matched to 03119 (Penangkapan Biota Air Lainnya ...) score=66%",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Breeding protected aquatic species — crocodiles, mahakam mudskippers, and dugongs. This includes raising endangered fish and other water animals listed in the CITES appendix or local regulations.",
+        "whatYouNeed": "**Micro scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Renumbered/adjusted from KBLI 2020. OSS update may be required to register under the new code.",
+        "zantaraOpener": "Planning to breed protected aquatic species in Bali? Let me help you understand the licensing requirements and environmental regulations for endangered species.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "03300",
@@ -14866,7 +15026,15 @@
       "pma_prioritas": false,
       "pma_nota": "Tunduk pada ketentuan divestasi dan IUP",
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Sand mining — extracting, cleaning, and separating sand. This includes various types of sand like concrete sand, beach sand, and clayey sand.",
+        "whatYouNeed": "**Micro / Small / Medium / Large scale**: High risk. NIB + Business License (Izin) — full review required.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed. Note: Tunduk pada ketentuan divestasi dan IUP.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Starting a sand mining operation in Bali? Let me guide you through the necessary permits and environmental compliance requirements.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "08105",
@@ -16207,7 +16375,15 @@
       "pma_prioritas": false,
       "pma_nota": "Tunduk pada ketentuan divestasi dan IUP",
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Peat extraction — digging, crushing, washing, sieving, and storing peat. This includes improving quality or facilitating transportation and storage.",
+        "whatYouNeed": "**Micro / Small scale**: Low risk. NIB only — issued automatically.\n\n**Medium scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Large scale**: High risk. NIB + Business License (Izin) — full review required.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed. Note: Tunduk pada ketentuan divestasi dan IUP.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Extracting peat in Bali? Let me explain the permits needed for peat mining and processing operations.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "08930",
@@ -16293,7 +16469,15 @@
       "pma_prioritas": false,
       "pma_nota": "Tunduk pada ketentuan divestasi dan IUP",
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Salt extraction — mining salt from underground, evaporating seawater, and crushing salt. This includes producing table salt through various methods.",
+        "whatYouNeed": "**Micro / Small scale**: Low risk. NIB only — issued automatically.\n\n**Medium scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Large scale**: High risk. NIB + Business License (Izin) — full review required.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed. Note: Tunduk pada ketentuan divestasi dan IUP.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Mining salt in Bali? Let me help you navigate the licensing process for salt extraction and production.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "08991",
@@ -17635,7 +17819,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Fish smoking or grilling — processing and preserving fish through smoking or grilling. This includes products like smoked bandeng, julung-julung, fufu, lele, and patin.",
+        "whatYouNeed": "**Micro / Small scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Medium / Large scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Setting up a fish smoking operation in Bali? Let me assist you with the licensing and food safety regulations for smoked fish production.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "10213",
@@ -17711,7 +17903,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Freezing fish processing — freezing whole or cut fish like mackerel, tuna, skipjack, and snapper into products such as fillets, steaks, chunks, and brown meat. This excludes temporary cooling services for freshness preservation.",
+        "whatYouNeed": "**Micro / Small scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Medium scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Planning a frozen fish processing plant in Bali? Let me help you with the licensing requirements and best practices for handling and storing frozen seafood.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "10214",
@@ -17811,7 +18011,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Fish marination processing — marinating fish to produce products like salted mackerel, salted tongkol, salted anchovies, salted nile perch, salted catfish, salted milkfish, and salted skipjack.",
+        "whatYouNeed": "**Micro / Small scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Medium scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Medium scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Setting up a fish marination facility in Bali? I can guide you through the necessary permits and quality control measures for your marinated seafood products.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "10215",
@@ -18124,7 +18332,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Fish canning processing — canning fish using retort or pasteurization processes to produce canned sardines, salted anchovies, herring, and tuna. This includes fishing vessels that only process and can fish without catching it.",
+        "whatYouNeed": "**Micro / Small scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Medium scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Medium / Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Starting a fish canning operation in Bali? Let me assist you with the licensing and safety standards for your canned seafood products.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "10218",
@@ -18289,7 +18505,15 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "mapping_note": "Agent mapping: 10219 (Industri Pengolahan Dan Pengaw...) [high]",
       "kbli_2020_source": "10219",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Fish processing into value-added products — processing minced or surimi-based fish into advanced products like meatballs, nuggets, fish cakes, sausage, shrimp paste, siomai, dim sum, squid sticks, and imitation crab sticks.",
+        "whatYouNeed": "**Micro / Small scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Medium scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Medium / Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Renumbered/adjusted from KBLI 2020. OSS update may be required to register under the new code.",
+        "zantaraOpener": "Investing in a fish processing plant for value-added products in Bali? I can help you navigate the licensing and production guidelines for your seafood delicacies.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "10219",
@@ -18432,7 +18656,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Processing other aquatic biota through salting or drying — salting or drying crustaceans, mollusks, echinoderms, and other aquatic life to produce products like salted shrimp, dried squid, ebi, salted crabs, dried cuttlefish, dried sea cucumbers, and dried octopus.",
+        "whatYouNeed": "**Micro / Small scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Medium scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Planning a facility for salting or drying seafood in Bali? Let me help you with the licensing and preservation techniques for your salted and dried aquatic products.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "10292",
@@ -18644,7 +18876,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Freezing aquatic life — freezing crustaceans, mollusks, echinoderms, and other marine organisms to produce frozen shrimp, frog legs, squid, crabs, lobsters, and clams. This excludes cooling services aimed at preserving freshness.",
+        "whatYouNeed": "**Micro / Small scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Medium scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Planning a seafood freezing plant in Bali? Let me help you with the licensing requirements and best practices for handling frozen marine products.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "10294",
@@ -18743,7 +18983,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Smoking aquatic life — processing and preserving crustaceans, mollusks, echinoderms, and other marine organisms through smoking. This includes smoked shrimp, squid, crabs, lobsters, and clams.",
+        "whatYouNeed": "**Micro / Small scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Medium scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Medium / Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Setting up a seafood smoking facility in Bali? I can guide you through the necessary permits and techniques for smoking marine products.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "10295",
@@ -18969,7 +19217,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Canning aquatic life — processing and preserving crustaceans, mollusks, echinoderms, and other marine organisms using airtight packaging with retort or pasteurization. This includes canned shrimp, clams, squid, crabs, and lobsters.",
+        "whatYouNeed": "**Micro / Small scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Medium scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Starting a seafood canning operation in Bali? Let me assist you with the licensing and best practices for canning marine products.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "10298",
@@ -31525,7 +31781,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Preserving wood through drying, chemical processing, or soaking with preservatives. This includes treating wood to prevent decay, insect infestation, and other damage.",
+        "whatYouNeed": "**Small scale**: Low risk. NIB only — issued automatically.\n\n**Medium scale**: Low risk. NIB only — issued automatically.\n\n**Large scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Micro / Small / Medium / Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Planning wood preservation in Bali? Let me guide you through the processes and regulations for ensuring your timber lasts.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "16103",
@@ -31654,7 +31918,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Preserving rattan, bamboo, and similar materials — processes like soaking, drying, or chemical treatment to extend the lifespan of these natural fibers. This includes preparing them for further processing or direct use in manufacturing.",
+        "whatYouNeed": "**Small scale**: Low risk. NIB only — issued automatically.\n\n**Medium scale**: Low risk. NIB only — issued automatically.\n\n**Large scale**: Low risk. NIB only — issued automatically.\n\n**Micro / Small / Medium / Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Planning a rattan preservation facility in Bali? Let me help you understand the licensing requirements and best practices for handling these materials.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "16104",
@@ -31794,7 +32066,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Processing rattan into semi-finished products — such as polished rattan, rattan hearts, or rattan skins. This involves various stages of cleaning, cutting, and shaping to prepare the material for use in furniture or other goods.",
+        "whatYouNeed": "**Small scale**: Low risk. NIB only — issued automatically.\n\n**Medium scale**: Low risk. NIB only — issued automatically.\n\n**Large scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Micro / Small / Medium / Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Setting up a rattan processing plant in Bali? I can guide you through the necessary permits and techniques for transforming raw rattan into valuable semi-finished products.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "16105",
@@ -32120,7 +32400,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Manufacturing veneer — creating thin sheets of wood used as decorative or protective coverings. This involves peeling logs using rotary cutting, slicing, or other methods to produce high-quality veneers for furniture and flooring.",
+        "whatYouNeed": "**Small scale**: Low risk. NIB only — issued automatically.\n\n**Medium scale**: Low risk. NIB only — issued automatically.\n\n**Large scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Micro / Small / Medium / Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Starting a veneer manufacturing business in Bali? Let me help you navigate the licensing process and learn about efficient veneer production techniques.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "16213",
@@ -32249,7 +32537,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Producing laminated wood — creating composite boards like barecore, blockboard, or lamin board. This involves bonding multiple layers of wood with adhesives to form strong, stable panels used in construction and furniture.",
+        "whatYouNeed": "**Small scale**: Low risk. NIB only — issued automatically.\n\n**Medium scale**: Low risk. NIB only — issued automatically.\n\n**Large scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Micro / Small / Medium / Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Planning a laminated wood factory in Bali? I can assist you with the licensing requirements and provide insights into efficient laminated wood production methods.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "16219",
@@ -33290,7 +33586,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Manufacturing firewood and biomass pellets — creating fuel from wood dust, coffee husks, soybean residues, or other organic materials. This includes pressing these materials into compact, burnable pellets for use in heating systems or power generation.",
+        "whatYouNeed": "**Small scale**: Low risk. NIB only — issued automatically.\n\n**Medium scale**: Low risk. NIB only — issued automatically.\n\n**Large scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Micro / Small / Medium / Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Considering a biomass pellet plant in Bali? Let me help you with the licensing and technical aspects of converting wood waste into efficient fuel pellets.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "16299",
@@ -82468,7 +82772,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Retail of fresh fishery products — selling fresh shrimp, fish, squid, and seaweed directly to consumers. This includes markets, supermarkets, and specialized seafood stores.",
+        "whatYouNeed": "**Micro / Small scale**: Low risk. NIB only — issued automatically.\n\n**Medium scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Planning a fresh seafood retail business in Bali? I can help you with the licensing requirements and tips for running a successful seafood store.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "47216",
@@ -83263,7 +83575,15 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "47415",
       "mapping_note": "PP28 usa codice KBLI 2020 47415 (Perdagangan Eceran Mesin Kanto...). Match: 84%",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Retail of processed fishery products — selling various types of processed fish, shrimp, and clams that are smoked or dried in buildings. This includes sausages, meatballs, fish sauce, and other seafood delicacies.",
+        "whatYouNeed": "**Micro / Small scale**: Low risk. NIB only — issued automatically.\n\n**Medium scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Renumbered/adjusted from KBLI 2020. OSS update may be required to register under the new code.",
+        "zantaraOpener": "Opening a processed seafood retail shop in Bali? Let me assist you with the licensing and insights into selling preserved marine products.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "47249",
@@ -87353,7 +87673,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Selling retail of aquatic life and other water organisms not for consumption, such as ornamental fish, pearl oysters, coral, fish eggs (nener), shrimp eggs (benur), fish larvae, and BBL. This includes the sale of live or preserved specimens in small quantities.",
+        "whatYouNeed": "**Micro / Small scale**: Low risk. NIB only — issued automatically.\n\n**Medium scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Planning to sell ornamental fish and other aquatic life in Bali? Let me help you with the licensing and regulations for retail sales.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "47754",
@@ -87760,7 +88088,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Selling retail of mineral oil. This includes various types of mineral oils sold directly to consumers, such as motor oil, lubricants, and other petroleum-based products.",
+        "whatYouNeed": "**Micro / Small scale**: Low risk. NIB only — issued automatically.\n\n**Medium scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Setting up a mineral oil store in Bali? Let me guide you through the necessary licenses and compliance requirements.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "47772",
@@ -92217,7 +92553,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Providing public ferry services within a city or regency, including sea, strait, and bay crossings. This involves operating ferries that connect specific locations as part of road or rail networks.",
+        "whatYouNeed": "**Micro scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Small / Medium / Large scale**: High risk. NIB + Business License (Izin) — full review required.\n\n**Small scale**: High risk. NIB + Business License (Izin) — full review required.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Starting a ferry service in Bali? Let me explain the licensing and operational requirements for intercity water transport.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "50134",
@@ -93750,7 +94094,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Operating bonded warehouses within customs areas that receive special treatment, such as those located outside regular customs zones. This includes managing physical commodity storage in bonded areas.",
+        "whatYouNeed": "**Small / Medium / Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Micro scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Planning a bonded warehouse in Bali? Let me help you understand the customs regulations and operational procedures for these facilities.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "52104",
@@ -94641,7 +94993,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Providing marine port services for fishing activities, including vessel transport. This includes operating port facilities and jetties, inspecting cargo using radiation sources, berthing and docking services, pilotage, and fish loading/unloading.",
+        "whatYouNeed": "**Small / Medium / Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Micro scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Setting up a fishing port in Bali? Let me assist you with the licensing and operational requirements for marine port services.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "52225",
@@ -95119,7 +95479,15 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "mapping_note": "Agent mapping: 52296 (Jasa Penunjang Angkutan Udara...) [high]",
       "kbli_2020_source": "52296",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Security inspection and control of air cargo or mail being transported by aircraft, including drones. This includes ensuring compliance with national and international aviation security standards as part of the air supply chain security system. Typically performed by entities in cargo agency or shipping fields.",
+        "whatYouNeed": "**Small / Medium / Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Micro scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Renumbered/adjusted from KBLI 2020. OSS update may be required to register under the new code.",
+        "zantaraOpener": "Planning to inspect air cargo in Bali? Let me help you understand the licensing and security requirements for handling air freight safely.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "52239",
@@ -129107,7 +129475,15 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "87901",
       "mapping_note": "PP28 usa codice KBLI 2020 87901 (Aktivitas Panti Asuhan Pemerin...). Match: 79%",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Government archiving services, including building, storing, classifying physical or digital archive collections, and communicating them to the public or specific users. This covers public archiving services provided to the general public or special clients like students, researchers, staff, and government archives operations.",
+        "whatYouNeed": "**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Renumbered/adjusted from KBLI 2020. OSS update may be required to register under the new code.",
+        "zantaraOpener": "Setting up a government archive in Bali? Let me guide you through the licensing and best practices for managing public records.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "91122",
@@ -129127,7 +129503,15 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "80100",
       "mapping_note": "PP28 usa codice KBLI 2020 80100 (Aktivitas Keamanan Swasta...). Match: 86%",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Private archiving services provided by non-government entities such as individuals, organizations, companies, foundations, or other private institutions. This includes building, storing, classifying physical or digital archive collections, and communicating them to the public or specific users.",
+        "whatYouNeed": "**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Renumbered/adjusted from KBLI 2020. OSS update may be required to register under the new code.",
+        "zantaraOpener": "Starting a private archive in Bali? Let me help you with licensing and strategies for managing your archives effectively.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "91211",
@@ -129265,7 +129649,15 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "mapping_note": "Agent mapping: 91039 (Aktivitas Kawasan Alam Lainnya...) [medium]",
       "kbli_2020_source": "91039",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Conservation, restoration, and other supporting activities for cultural heritage. This includes preventive conservation, curative restoration, and consultations considering the real and intangible significance of cultural heritage and sustainability. Activities cover movable and immovable archaeological assets, skins, archival documents, graphic and printed documents, wooden panels, art objects, ceramic tiles.",
+        "whatYouNeed": "**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Renumbered/adjusted from KBLI 2020. OSS update may be required to register under the new code.",
+        "zantaraOpener": "Working on cultural heritage conservation in Bali? Let me assist you with the licensing and best practices for preserving historical artifacts.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "91410",
