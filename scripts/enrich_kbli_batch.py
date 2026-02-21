@@ -9,8 +9,6 @@ import sys
 import argparse
 from pathlib import Path
 
-import urllib.request
-
 JSON_PATH = Path(__file__).parent.parent / "source_documents" / "KBLI_2025_FINAL_CLEAN.json"
 
 RISK_MAP = {
@@ -160,47 +158,22 @@ Respond ONLY with valid JSON: {"results": [{"code": "01131", "whatItMeans": "...
 No extra text, no markdown fences."""
 
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "qwen2.5-coder:32b"
-
-
-def ollama_generate(prompt: str) -> str:
-    payload = json.dumps({
-        "model": OLLAMA_MODEL,
-        "prompt": prompt,
-        "stream": False,
-        "options": {"temperature": 0.2, "num_predict": 4096},
-    }).encode()
-    req = urllib.request.Request(
-        OLLAMA_URL,
-        data=payload,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=120) as resp:
-        return json.loads(resp.read())["response"]
-
-
-def enrich_with_llm(targets: list, batch_size: int = 5) -> None:
-    # Verify Ollama is reachable
+def enrich_with_llm(targets: list, batch_size: int = 10) -> None:
     try:
-        with urllib.request.urlopen("http://localhost:11434/api/tags", timeout=5) as r:
-            models = [m["name"] for m in json.loads(r.read()).get("models", [])]
-        if not any(OLLAMA_MODEL in m for m in models):
-            print(f"ERROR: model {OLLAMA_MODEL} not found in Ollama. Available: {models}")
-            sys.exit(1)
-    except Exception as e:
-        print(f"ERROR: Ollama not reachable at {OLLAMA_URL} — {e}")
+        import anthropic
+    except ImportError:
+        print("ERROR: anthropic SDK not installed. Run: pip install anthropic")
         sys.exit(1)
 
-    print(f"  Provider: Ollama local ({OLLAMA_MODEL})")
+    api_key = os.environ.get('ANTHROPIC_API_KEY')
+    if not api_key:
+        print("ERROR: ANTHROPIC_API_KEY not set. Use --skip-llm for deterministic-only mode.")
+        sys.exit(1)
 
-    # Build index for fast lookup
+    client = anthropic.Anthropic(api_key=api_key)
     target_map = {c['kode_kbli_2025']: c for c in targets}
-
     total = len(targets)
     processed = 0
-    raw = ''
 
     for i in range(0, len(targets), batch_size):
         batch = targets[i:i + batch_size]
@@ -212,13 +185,18 @@ def enrich_with_llm(targets: list, batch_size: int = 5) -> None:
             for c in batch
         )
 
-        full_prompt = SYSTEM_PROMPT + "\n\nNow generate for these codes:\n\n" + batch_text
-
         print(f"  LLM batch {i//batch_size + 1}: {len(batch)} codes...", end='', flush=True)
 
+        raw = ''
         try:
-            raw = ollama_generate(full_prompt).strip()
+            response = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=4096,
+                messages=[{"role": "user", "content": batch_text}],
+                system=SYSTEM_PROMPT,
+            )
 
+            raw = response.content[0].text.strip()
             # Strip markdown fences if model wraps in ```json
             if raw.startswith('```'):
                 raw = raw.split('\n', 1)[1].rsplit('```', 1)[0].strip()
@@ -236,10 +214,10 @@ def enrich_with_llm(targets: list, batch_size: int = 5) -> None:
 
         except (json.JSONDecodeError, KeyError) as e:
             print(f" ✗ Parse error: {e}")
-            print(f"  Raw response (first 400 chars): {raw[:400]}")
-            # Don't fail — deterministic fields already written, LLM fields stay empty
+            if raw:
+                print(f"  Raw response (first 400 chars): {raw[:400]}")
         except Exception as e:
-            print(f" ✗ Error: {e}")
+            print(f" ✗ API error: {e}")
 
 
 def main():
@@ -288,7 +266,7 @@ def main():
         return
 
     if not args.skip_llm:
-        print(f"\nRunning LLM enrichment via Ollama/{OLLAMA_MODEL} ({len(targets)} codes in batches of 5)...")
+        print(f"\nRunning LLM enrichment via Claude Haiku 4.5 ({len(targets)} codes in batches of 10)...")
         enrich_with_llm(targets)
 
     # Write back

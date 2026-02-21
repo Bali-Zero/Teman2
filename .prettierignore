@@ -23,3 +23,8 @@ venv/
 
 # Extracted data (PDFs, raw text)
 lampiran/
+
+# Large data files (auto-generated JSON)
+source_documents/
+data/
+archives/kbli-feb2026/KBLI_2025_*.json
