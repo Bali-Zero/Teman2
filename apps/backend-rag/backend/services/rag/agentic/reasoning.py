@@ -204,7 +204,9 @@ class ReasoningEngine:
         }
         # Fallback order: Requested Lang -> English -> Generic
         lang_stubs = stubs.get(key, {})
-        return lang_stubs.get(language, lang_stubs.get("ENGLISH", "I'm sorry, I cannot fulfill this request."))
+        return lang_stubs.get(
+            language, lang_stubs.get("ENGLISH", "I'm sorry, I cannot fulfill this request.")
+        )
 
     async def execute_react_loop(
         self,
@@ -558,17 +560,59 @@ class ReasoningEngine:
             set_span_attribute("total_steps", state.current_step)
             set_span_attribute("tools_executed", tool_execution_counter.get("count", 0))
 
+        # ==================== TRUSTED TOOLS CHECK ====================
+        # Check if trusted tools (calculator, pricing, team) were used successfully
+        # These tools provide their own evidence and don't need KB sources
+        # MOVED BEFORE EVIDENCE SCORE: If trusted tools used, skip keyword-based scoring
+        trusted_tools_used = False
+        trusted_tool_names = {
+            "calculator",
+            "get_pricing",
+            "team_knowledge",
+            "timesheet",
+            "vector_search",  # Added: vector search is also a trusted tool
+        }
+        for step in state.steps:
+            if step.action and hasattr(step.action, "tool_name"):
+                if step.action.tool_name in trusted_tool_names and step.observation:
+                    # Tool was used and produced output
+                    obs_lower = step.observation.lower()
+                    # Check for actual content, not "no results" or errors
+                    has_content = (
+                        "error" not in obs_lower
+                        and "not found" not in obs_lower
+                        and "no relevant" not in obs_lower
+                        and len(step.observation) > 50  # Must have substantial content
+                    )
+                    if has_content:
+                        trusted_tools_used = True
+                        logger.info(
+                            f"🔧 [Trusted Tools] {step.action.tool_name} used successfully "
+                            f"(obs_len={len(step.observation)}), bypassing keyword evidence check"
+                        )
+                        break
+
         # ==================== EVIDENCE SCORE CALCULATION ====================
         # 🔍 TRACING: Evidence score calculation
         sources_count = (
             len(state.sources) if hasattr(state, "sources") and state.sources is not None else 0
         )
-        with trace_span("react.evidence_score", {"sources_count": sources_count}):
-            # Calculate evidence score after ReAct loop
-            sources = state.sources if hasattr(state, "sources") else None
-            evidence_score = calculate_evidence_score(sources, state.context_gathered, query)
-            logger.info(f"🛡️ [Uncertainty] Evidence Score: {evidence_score:.2f}")
+        with trace_span(
+            "react.evidence_score",
+            {"sources_count": sources_count, "trusted_tools_used": trusted_tools_used},
+        ):
+            # If trusted tools used successfully, use high evidence score directly
+            if trusted_tools_used:
+                evidence_score = 0.85  # High confidence from trusted tool
+                logger.info(f"🛡️ [Evidence] Trusted tools used: score={evidence_score:.2f}")
+            else:
+                # Calculate evidence score from sources and context (keyword-based)
+                sources = state.sources if hasattr(state, "sources") else None
+                evidence_score = calculate_evidence_score(sources, state.context_gathered, query)
+                logger.info(f"🛡️ [Evidence] Keyword-based score: {evidence_score:.2f}")
+
             set_span_attribute("evidence_score", evidence_score)
+            set_span_attribute("trusted_tools_used", trusted_tools_used)
             # Store evidence_score in state for downstream use
             if not hasattr(state, "evidence_score"):
                 state.evidence_score = evidence_score
@@ -576,37 +620,27 @@ class ReasoningEngine:
                 state.evidence_score = evidence_score
             set_span_status("ok")
 
-        # ==================== TRUSTED TOOLS CHECK ====================
-        # Check if trusted tools (calculator, pricing, team) were used successfully
-        # These tools provide their own evidence and don't need KB sources
-        trusted_tools_used = False
-        trusted_tool_names = {
-            "calculator",
-            "get_pricing",
-            "team_knowledge",
-            "timesheet",
-        }
-        for step in state.steps:
-            if step.action and hasattr(step.action, "tool_name"):
-                if step.action.tool_name in trusted_tool_names and step.observation:
-                    # Tool was used and produced output
-                    if "error" not in step.observation.lower():
-                        trusted_tools_used = True
-                        logger.info(
-                            f"🧮 [Trusted Tool] {step.action.tool_name} used successfully, bypassing evidence check"
-                        )
-                        break
-
         # ==================== ANSWER CONTENT CHECK ====================
         # If the LLM produced an answer with specific factual data (prices, numbers),
         # it likely used tool results or system context. Don't override it.
         if not trusted_tools_used and state.final_answer:
             answer_lower = state.final_answer.lower()
-            has_pricing_data = any(marker in answer_lower for marker in [
-                "rp ", "rp.", "idr ", "usd ", "$",
-                "20.000.000", "15.000.000", "10.000.000", "5.000.000",
-                "juta", "million",
-            ])
+            has_pricing_data = any(
+                marker in answer_lower
+                for marker in [
+                    "rp ",
+                    "rp.",
+                    "idr ",
+                    "usd ",
+                    "$",
+                    "20.000.000",
+                    "15.000.000",
+                    "10.000.000",
+                    "5.000.000",
+                    "juta",
+                    "million",
+                ]
+            )
             if has_pricing_data:
                 trusted_tools_used = True
                 logger.info(
@@ -621,7 +655,7 @@ class ReasoningEngine:
         #
         # FIX: Also skip if LLM had tools available — it was given the opportunity
         # to call tools and chose to answer directly. Trust its judgment.
-        has_tools = hasattr(llm_gateway, '_gemini_tools') and bool(llm_gateway._gemini_tools)
+        has_tools = hasattr(llm_gateway, "_gemini_tools") and bool(llm_gateway._gemini_tools)
         if has_tools and state.final_answer:
             logger.info(
                 f"🔍 [Tools Available] LLM had {len(llm_gateway._gemini_tools)} tools "
@@ -1283,11 +1317,46 @@ Do not invent information. If the context is insufficient, admit it.
                     step = AgentStep(step_number=state.current_step, thought=text_response)
                     state.steps.append(step)
 
+        # ==================== TRUSTED TOOLS CHECK (BEFORE EVIDENCE) ====================
+        # Check if trusted tools were used successfully BEFORE calculating evidence score
+        # This ensures RAG-native behavior: tool success = high evidence
+        trusted_tools_used = False
+        trusted_tool_names = {
+            "calculator",
+            "get_pricing",
+            "team_knowledge",
+            "timesheet",
+            "vector_search",
+        }
+        for step in state.steps:
+            if step.action and hasattr(step.action, "tool_name"):
+                if step.action.tool_name in trusted_tool_names and step.observation:
+                    obs_lower = step.observation.lower()
+                    has_content = (
+                        "error" not in obs_lower
+                        and "not found" not in obs_lower
+                        and "no relevant" not in obs_lower
+                        and len(step.observation) > 50
+                    )
+                    if has_content:
+                        trusted_tools_used = True
+                        logger.info(
+                            f"🔧 [Trusted Tools - Stream] {step.action.tool_name} used successfully "
+                            f"(obs_len={len(step.observation)}), using high evidence score"
+                        )
+                        break
+
         # ==================== EVIDENCE SCORE CALCULATION ====================
-        # Calculate evidence score after ReAct loop
-        sources = state.sources if hasattr(state, "sources") else None
-        evidence_score = calculate_evidence_score(sources, state.context_gathered, query)
-        logger.info(f"🛡️ [Uncertainty Stream] Evidence Score: {evidence_score:.2f}")
+        # RAG-NATIVE: If trusted tools used, use high evidence score directly
+        if trusted_tools_used:
+            evidence_score = 0.85  # High confidence from trusted tool
+            logger.info(f"🛡️ [Evidence Stream] Trusted tools used: score={evidence_score:.2f}")
+        else:
+            # Calculate evidence score from sources and context (keyword-based)
+            sources = state.sources if hasattr(state, "sources") else None
+            evidence_score = calculate_evidence_score(sources, state.context_gathered, query)
+            logger.info(f"🛡️ [Uncertainty Stream] Evidence Score: {evidence_score:.2f}")
+
         # Store evidence_score in state for downstream use
         if not hasattr(state, "evidence_score"):
             state.evidence_score = evidence_score
@@ -1297,60 +1366,52 @@ Do not invent information. If the context is insufficient, admit it.
         # Yield evidence score event
         yield {"type": "evidence_score", "data": {"score": evidence_score}}
 
-        # ==================== TRUSTED TOOLS CHECK ====================
-        # Check if trusted tools (calculator, pricing, team) were used successfully
-        # These tools provide their own evidence and don't need KB sources
-        trusted_tools_used = False
-        trusted_tool_names = {
-            "calculator",
-            "get_pricing",
-            "team_knowledge",
-            "timesheet",
-        }
-        logger.info(f"🔍 [Trusted Tools] Checking {len(state.steps)} steps for trusted tools")
-        for step in state.steps:
-            tool_name = (
-                step.action.tool_name
-                if step.action and hasattr(step.action, "tool_name")
-                else "no_action"
-            )
-            obs_preview = step.observation[:100] if step.observation else "None"
-            has_error = "error" in step.observation.lower() if step.observation else False
-            logger.info(f"🔍 [Trusted Tools] Step: tool={tool_name}, obs_len={len(step.observation) if step.observation else 0}, has_error={has_error}, obs_preview={obs_preview}")
-            if step.action and hasattr(step.action, "tool_name"):
-                if step.action.tool_name in trusted_tool_names and step.observation:
-                    # Tool was used and produced output
-                    if "error" not in step.observation.lower():
-                        trusted_tools_used = True
-                        logger.info(
-                            f"Trusted tool {step.action.tool_name} used successfully, bypassing evidence check"
-                        )
-                        break
-
-        # FIX: Also check context_gathered for tool output patterns
-        # When Gemini calls tools, context_gathered gets populated even if step.action
-        # isn't set correctly (e.g., when text_response is empty but function_call exists)
+        # ==================== TRUSTED TOOLS FALLBACK CHECK ====================
+        # Also check context_gathered for tool output patterns (fallback)
         if not trusted_tools_used and state.context_gathered:
             context_text = " ".join(state.context_gathered).lower()
             # Check for pricing tool output patterns
-            if any(marker in context_text for marker in [
-                "bali_zero_official_prices", "service_type", "total_price",
-                "pricing", "rp ", "idr ", "harga",
-            ]):
+            if any(
+                marker in context_text
+                for marker in [
+                    "bali_zero_official_prices",
+                    "service_type",
+                    "total_price",
+                    "pricing",
+                    "rp ",
+                    "idr ",
+                    "harga",
+                ]
+            ):
                 trusted_tools_used = True
-                logger.info("🔍 [Trusted Tools] Pricing data found in context_gathered, bypassing evidence check")
+                logger.info("🔍 [Trusted Tools - Stream] Pricing data found in context_gathered")
             # Check for team knowledge tool output
-            elif any(marker in context_text for marker in [
-                "team_member", "specialties", "role:", "department",
-            ]):
+            elif any(
+                marker in context_text
+                for marker in [
+                    "team_member",
+                    "specialties",
+                    "role:",
+                    "department",
+                ]
+            ):
                 trusted_tools_used = True
-                logger.info("🔍 [Trusted Tools] Team data found in context_gathered, bypassing evidence check")
+                logger.info("🔍 [Trusted Tools - Stream] Team data found in context_gathered")
             # Check for KG tool output
-            elif any(marker in context_text for marker in [
-                "subgraph", "nodes,", "edges)", "focus]", "knowledge graph",
-            ]):
+            elif any(
+                marker in context_text
+                for marker in [
+                    "subgraph",
+                    "nodes,",
+                    "edges)",
+                    "focus]",
+                    "knowledge graph",
+                ]
+            ):
                 trusted_tools_used = True
-                logger.info("🔍 [Trusted Tools] KG data found in context_gathered, bypassing evidence check")
+                logger.info(
+                    "🔍 [Trusted Tools] KG data found in context_gathered, bypassing evidence check"
+                )
 
         # FIX: Also bypass evidence check when context_gathered has substantial content
         # from ANY tool. If the ReAct loop gathered context, the LLM had evidence to work with.
@@ -1368,11 +1429,22 @@ Do not invent information. If the context is insufficient, admit it.
         # it likely used tool results or system context. Don't override it.
         if not trusted_tools_used and state.final_answer:
             answer_lower = state.final_answer.lower()
-            has_pricing_data = any(marker in answer_lower for marker in [
-                "rp ", "rp.", "idr ", "usd ", "$",
-                "20.000.000", "15.000.000", "10.000.000", "5.000.000",
-                "juta", "million",
-            ])
+            has_pricing_data = any(
+                marker in answer_lower
+                for marker in [
+                    "rp ",
+                    "rp.",
+                    "idr ",
+                    "usd ",
+                    "$",
+                    "20.000.000",
+                    "15.000.000",
+                    "10.000.000",
+                    "5.000.000",
+                    "juta",
+                    "million",
+                ]
+            )
             if has_pricing_data:
                 trusted_tools_used = True
                 logger.info(
@@ -1387,7 +1459,7 @@ Do not invent information. If the context is insufficient, admit it.
         #
         # FIX: Also skip if LLM had tools available — it was given the opportunity
         # to call tools and chose to answer directly. Trust its judgment.
-        has_tools = hasattr(llm_gateway, '_gemini_tools') and bool(llm_gateway._gemini_tools)
+        has_tools = hasattr(llm_gateway, "_gemini_tools") and bool(llm_gateway._gemini_tools)
         if has_tools and state.final_answer:
             logger.info(
                 f"🔍 [Tools Available] LLM had {len(llm_gateway._gemini_tools)} tools "
@@ -1902,3 +1974,6 @@ def detect_team_query(query: str) -> tuple[bool, str, str]:
             return True, "search_by_role", raw_term.lower()
 
     return False, "", ""
+
+
+# Build trigger: 1771635692

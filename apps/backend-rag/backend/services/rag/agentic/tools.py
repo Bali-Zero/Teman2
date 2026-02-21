@@ -35,11 +35,12 @@ logger = logging.getLogger(__name__)
 AVAILABLE_COLLECTIONS = [
     "visa_oracle",
     "legal_unified_hybrid",
-    "kbli_2025_final",
+    "kbli_unified",  # Fixed: was kbli_2025_final, actual collection is kbli_unified
     "tax_genius_hybrid",  # Migrated to hybrid format Dec 2025
     "bali_zero_pricing_hybrid",
     "training_conversations_hybrid",  # Migrated to hybrid format Dec 2025
     "immigration_circulars",  # Kemnaker/Imigrasi circulars
+    "knowledge_base",  # General knowledge base (largest collection)
 ]
 
 
@@ -68,11 +69,12 @@ class VectorSearchTool(BaseTool):
             "**OPTIONALLY specify a collection** ONLY for focused single-topic queries:\n"
             "- visa_oracle: Visas, KITAS, KITAP, immigration, stay permits\n"
             "- legal_unified_hybrid: Laws, company types (PT, CV, Firma), regulations\n"
-            "- kbli_2025_final: Business classification codes (KBLI), OSS, NIB\n"
+            "- kbli_unified: Business classification codes (KBLI), OSS, NIB, 8886 codes\n"
             "- tax_genius_hybrid: Taxes, PPh, PPN, NPWP, fiscal matters\n"
             "- bali_zero_pricing_hybrid: Official Bali Zero service pricing and costs\n"
             "- training_conversations_hybrid: Procedures, practical examples, FAQs\n"
-            "- immigration_circulars: Immigration policy updates, circulars, Kemnaker regulations\n\n"
+            "- immigration_circulars: Immigration policy updates, circulars, Kemnaker regulations\n"
+            "- knowledge_base: General knowledge, procedures, guides (largest collection)\n\n"
             "Example: 'PT PMA requirements' → federated (legal + visa + tax)\n"
             "Example: 'PPh 21 rates' → collection='tax_genius_hybrid'\n"
             "Example: 'Quanto costa D12?' → collection='bali_zero_pricing_hybrid'"
@@ -312,7 +314,7 @@ class VisionTool(BaseTool):
 
             resolved = Path(file_path).resolve()
             allowed_dirs = [Path(d).resolve() for d in settings.get_vision_allowed_dirs]
-            
+
             # Use is_relative_to for robust path checking (Python 3.9+)
             is_allowed = False
             for allowed_dir in allowed_dirs:
@@ -322,13 +324,16 @@ class VisionTool(BaseTool):
                         break
                 except ValueError:
                     continue
-            
+
             if not is_allowed:
                 logger.warning(f"🛡️ VisionTool path traversal blocked: {file_path}")
-                return "Error: Access denied. File must be in one of the following directories: " + ", ".join(settings.get_vision_allowed_dirs)
+                return (
+                    "Error: Access denied. File must be in one of the following directories: "
+                    + ", ".join(settings.get_vision_allowed_dirs)
+                )
 
             # Validate file extension
-            allowed_extensions = {'.pdf', '.png', '.jpg', '.jpeg', '.webp'}
+            allowed_extensions = {".pdf", ".png", ".jpg", ".jpeg", ".webp"}
             if resolved.suffix.lower() not in allowed_extensions:
                 logger.warning(f"🛡️ VisionTool invalid extension blocked: {resolved.suffix}")
                 return f"Error: File type {resolved.suffix} not supported. Allowed types: {', '.join(allowed_extensions)}"
@@ -969,7 +974,7 @@ class TimeSheetTool(BaseTool):
             return json.dumps({"error": str(e)})
 
 
-def create_default_tools(search_service: Any=None) -> list[BaseTool]:
+def create_default_tools(search_service: Any = None) -> list[BaseTool]:
     """
     Create default tool set for AgenticRAGOrchestrator.
 
