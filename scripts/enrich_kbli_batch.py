@@ -4,9 +4,12 @@ KBLI Base Enrichment Script
 Populates intel_2026 fields for unenriched KBLI codes.
 """
 import json
+import os
 import sys
 import argparse
 from pathlib import Path
+
+import urllib.request
 
 JSON_PATH = Path(__file__).parent.parent / "source_documents" / "KBLI_2025_FINAL_CLEAN.json"
 
@@ -113,6 +116,132 @@ def print_stats(codes: list) -> None:
         print(f"  {sid:<10} {info['enriched']:>4}/{info['total']:<4} ({pct:>5.1f}%) missing={missing}")
 
 
+FEW_SHOT_EXAMPLES = """
+EXAMPLE 1:
+code: 01131
+judul: PERTANIAN SAYURAN DAUN
+uraian: Kelompok ini mencakup kegiatan pertanian sayuran yang daun, bunga atau batangnya dimakan sebagai sayur, seperti articok, petsai/sawi, asparagus, kubis/kol, kembang kol, brokoli, selada, seledri, daun bawang, bawang daun, bayam, kangkung, dll.
+→ whatItMeans: "Growing leafy vegetables — spinach, kale, cabbage, lettuce, pak choi, kangkung, celery, leeks, and similar greens. This covers any farm activity where the leaf, stem, or flower of the plant is the edible product. It includes soil prep, planting, watering, and harvesting on the farm itself."
+→ zantaraOpener: "Planning a leafy vegetable farm in Bali? Let me walk you through the licensing, land rules, and how to structure this as a PMA operation."
+
+EXAMPLE 2:
+code: 01138
+judul: PERTANIAN CABAI
+uraian: Kelompok ini mencakup kegiatan pertanian cabai (Capsicum spp), seperti cabai besar, cabai rawit, cabai keriting, dan paprika. Pertanian cabai yang dimaksud mencakup kegiatan pengolahan lahan, penyemaian, penanaman, pemeliharaan, pemanenan, dan kegiatan pascapanen.
+→ whatItMeans: "Farming chili peppers and similar hot or sweet pepper varieties (cabai merah, cabai rawit, paprika). This includes cultivation from seedling to harvest. One of Indonesia's most price-volatile agricultural commodities — chili prices can swing 300–400% within a single season."
+→ zantaraOpener: "Growing chili in Bali? Let me explain the licensing requirements and how to navigate Subak water rights and the LP2B land restrictions."
+
+EXAMPLE 3:
+code: 43302
+judul: PENGERJAAN LANTAI, DINDING, DAN PLAFON
+uraian: Kelompok ini mencakup kegiatan pengerjaan lantai, dinding, dan plafon dalam rangka penyelesaian bangunan gedung hunian dan nonhunian serta bangunan sipil. Kelompok ini mencakup pelapisan interior atau eksterior bangunan gedung dan bangunan sipil.
+→ whatItMeans: "Floor laying, wall covering, ceiling finishing — tiles, marble, wood flooring, plasterwork, stucco, painting preparation. If you're applying the final surfaces to floors, walls, and ceilings inside a building, this is the code."
+→ zantaraOpener: "Doing luxury villa finishing in Bali? 43302 covers floor, wall, and ceiling work — but PMA access is restricted. Here are the structures that work."
+"""
+
+SYSTEM_PROMPT = """You are an expert on Indonesian business law writing for foreign investors in Bali.
+
+Generate two fields for each KBLI 2025 business code provided:
+
+1. whatItMeans: Plain English explanation, 1-3 sentences, ~200-280 chars.
+   - Lead with the activity (e.g. "Growing leafy vegetables —")
+   - Mention specific examples from the uraian (Indonesian description)
+   - End with scope clarification if useful
+   - NO Indonesian bureaucratic language. Translate Indonesian terms.
+
+2. zantaraOpener: One conversational sentence for a chatbot. ~100-150 chars.
+   - Start with Bali context (e.g. "Planning a X in Bali?")
+   - End with what Zantara will help with
+   - Be specific to the business activity
+
+Study these examples carefully:
+""" + FEW_SHOT_EXAMPLES + """
+Respond ONLY with valid JSON: {"results": [{"code": "01131", "whatItMeans": "...", "zantaraOpener": "..."}, ...]}
+No extra text, no markdown fences."""
+
+
+OLLAMA_URL = "http://localhost:11434/api/generate"
+OLLAMA_MODEL = "qwen2.5-coder:32b"
+
+
+def ollama_generate(prompt: str) -> str:
+    payload = json.dumps({
+        "model": OLLAMA_MODEL,
+        "prompt": prompt,
+        "stream": False,
+        "options": {"temperature": 0.2, "num_predict": 4096},
+    }).encode()
+    req = urllib.request.Request(
+        OLLAMA_URL,
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=120) as resp:
+        return json.loads(resp.read())["response"]
+
+
+def enrich_with_llm(targets: list, batch_size: int = 5) -> None:
+    # Verify Ollama is reachable
+    try:
+        with urllib.request.urlopen("http://localhost:11434/api/tags", timeout=5) as r:
+            models = [m["name"] for m in json.loads(r.read()).get("models", [])]
+        if not any(OLLAMA_MODEL in m for m in models):
+            print(f"ERROR: model {OLLAMA_MODEL} not found in Ollama. Available: {models}")
+            sys.exit(1)
+    except Exception as e:
+        print(f"ERROR: Ollama not reachable at {OLLAMA_URL} — {e}")
+        sys.exit(1)
+
+    print(f"  Provider: Ollama local ({OLLAMA_MODEL})")
+
+    # Build index for fast lookup
+    target_map = {c['kode_kbli_2025']: c for c in targets}
+
+    total = len(targets)
+    processed = 0
+    raw = ''
+
+    for i in range(0, len(targets), batch_size):
+        batch = targets[i:i + batch_size]
+
+        batch_text = "\n\n".join(
+            f"code: {c['kode_kbli_2025']}\n"
+            f"judul: {c['judul']}\n"
+            f"uraian: {c.get('uraian', '')[:500]}"
+            for c in batch
+        )
+
+        full_prompt = SYSTEM_PROMPT + "\n\nNow generate for these codes:\n\n" + batch_text
+
+        print(f"  LLM batch {i//batch_size + 1}: {len(batch)} codes...", end='', flush=True)
+
+        try:
+            raw = ollama_generate(full_prompt).strip()
+
+            # Strip markdown fences if model wraps in ```json
+            if raw.startswith('```'):
+                raw = raw.split('\n', 1)[1].rsplit('```', 1)[0].strip()
+
+            result = json.loads(raw)
+
+            for item in result.get('results', []):
+                code_key = item.get('code')
+                if code_key in target_map:
+                    target_map[code_key]['intel_2026']['whatItMeans'] = item.get('whatItMeans', '')
+                    target_map[code_key]['intel_2026']['zantaraOpener'] = item.get('zantaraOpener', '')
+
+            processed += len(batch)
+            print(f" ✓ ({processed}/{total})")
+
+        except (json.JSONDecodeError, KeyError) as e:
+            print(f" ✗ Parse error: {e}")
+            print(f"  Raw response (first 400 chars): {raw[:400]}")
+            # Don't fail — deterministic fields already written, LLM fields stay empty
+        except Exception as e:
+            print(f" ✗ Error: {e}")
+
+
 def main():
     parser = argparse.ArgumentParser(description='KBLI Base Enrichment')
     parser.add_argument('--sector', help='Sector ID to process (e.g. I.E)')
@@ -149,26 +278,30 @@ def main():
         }
 
     if args.dry_run:
-        print("\n=== DRY RUN OUTPUT ===")
+        print("\n=== DRY RUN OUTPUT (deterministic fields) ===")
         for code in targets:
             print(f"\n--- {code['kode_kbli_2025']} | {code['judul']} ---")
             intel = code['intel_2026']
             print(f"whatYouNeed:\n{intel['whatYouNeed']}")
             print(f"whatChanged: {intel['whatChanged']}")
-        print(f"\n[DRY RUN] Would write {len(targets)} codes. Use --write to save.")
+        print(f"\n[DRY RUN] {len(targets)} codes ready. Run without --dry-run to enrich with LLM + write.")
         return
 
     if not args.skip_llm:
+        print(f"\nRunning LLM enrichment via Ollama/{OLLAMA_MODEL} ({len(targets)} codes in batches of 5)...")
         enrich_with_llm(targets)
 
     # Write back
-    # Update codes in-place by code key
     code_map = {c['kode_kbli_2025']: c for c in codes}
     for t in targets:
         code_map[t['kode_kbli_2025']]['intel_2026'] = t['intel_2026']
 
     save_json(data)
-    print(f"\n✅ Wrote {len(targets)} enriched codes to {JSON_PATH}")
+    print(f"\n✅ Enriched and saved {len(targets)} codes to {JSON_PATH.name}")
+
+    # Summary
+    enriched_after = sum(1 for c in codes if c.get('intel_2026'))
+    print(f"   Progress: {enriched_after}/{len(codes)} ({enriched_after/len(codes)*100:.1f}%)")
 
 
 if __name__ == '__main__':
