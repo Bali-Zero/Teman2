@@ -4,9 +4,9 @@ KBLI Base Enrichment Script
 Populates intel_2026 fields for unenriched KBLI codes.
 """
 import json
-import os
 import sys
 import argparse
+import urllib.request
 from pathlib import Path
 
 JSON_PATH = Path(__file__).parent.parent / "source_documents" / "KBLI_2025_FINAL_CLEAN.json"
@@ -84,8 +84,13 @@ def derive_what_changed(code: dict) -> str:
     return STATUS_MAP.get(mapping, f'Status: {mapping}.')
 
 
-def get_unenriched(codes: list, sector: str | None = None, limit: int | None = None) -> list:
-    result = [c for c in codes if not c.get('intel_2026')]
+def get_unenriched(codes: list, sector: str | None = None, limit: int | None = None,
+                   refill_empty: bool = False) -> list:
+    if refill_empty:
+        # Include codes that have intel_2026 but missing LLM fields
+        result = [c for c in codes if not c.get('intel_2026') or not c['intel_2026'].get('whatItMeans')]
+    else:
+        result = [c for c in codes if not c.get('intel_2026')]
     if sector:
         result = [c for c in result if str(c.get('sektor_id', 'None')) == sector]
     if limit:
@@ -158,19 +163,28 @@ Respond ONLY with valid JSON: {"results": [{"code": "01131", "whatItMeans": "...
 No extra text, no markdown fences."""
 
 
-def enrich_with_llm(targets: list, batch_size: int = 10) -> None:
-    try:
-        import anthropic
-    except ImportError:
-        print("ERROR: anthropic SDK not installed. Run: pip install anthropic")
-        sys.exit(1)
+OLLAMA_MODEL = "qwen2.5-coder:32b"
 
-    api_key = os.environ.get('ANTHROPIC_API_KEY')
-    if not api_key:
-        print("ERROR: ANTHROPIC_API_KEY not set. Use --skip-llm for deterministic-only mode.")
-        sys.exit(1)
 
-    client = anthropic.Anthropic(api_key=api_key)
+def ollama_generate(prompt: str, ollama_url: str) -> str:
+    """Call Ollama API and return raw response text."""
+    payload = json.dumps({
+        "model": OLLAMA_MODEL,
+        "prompt": f"{SYSTEM_PROMPT}\n\n{prompt}",
+        "stream": False,
+        "options": {"temperature": 0.1, "num_predict": 4096},
+    }).encode()
+    req = urllib.request.Request(
+        f"{ollama_url}/api/generate",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(req, timeout=120) as resp:
+        result = json.loads(resp.read())
+        return result.get("response", "").strip()
+
+
+def enrich_with_llm(targets: list, batch_size: int = 10, ollama_url: str = "http://localhost:11434") -> None:
     target_map = {c['kode_kbli_2025']: c for c in targets}
     total = len(targets)
     processed = 0
@@ -189,14 +203,7 @@ def enrich_with_llm(targets: list, batch_size: int = 10) -> None:
 
         raw = ''
         try:
-            response = client.messages.create(
-                model="claude-haiku-4-5-20251001",
-                max_tokens=4096,
-                messages=[{"role": "user", "content": batch_text}],
-                system=SYSTEM_PROMPT,
-            )
-
-            raw = response.content[0].text.strip()
+            raw = ollama_generate(batch_text, ollama_url)
             # Strip markdown fences if model wraps in ```json
             if raw.startswith('```'):
                 raw = raw.split('\n', 1)[1].rsplit('```', 1)[0].strip()
@@ -217,7 +224,7 @@ def enrich_with_llm(targets: list, batch_size: int = 10) -> None:
             if raw:
                 print(f"  Raw response (first 400 chars): {raw[:400]}")
         except Exception as e:
-            print(f" ✗ API error: {e}")
+            print(f" ✗ Error: {e}")
 
 
 def main():
@@ -227,6 +234,11 @@ def main():
     parser.add_argument('--dry-run', action='store_true', help='Print output, do not write')
     parser.add_argument('--stats', action='store_true', help='Show enrichment stats and exit')
     parser.add_argument('--skip-llm', action='store_true', help='Only derive deterministic fields')
+    parser.add_argument('--refill-empty', action='store_true',
+                        help='Re-process codes that have intel_2026 but empty whatItMeans/zantaraOpener')
+    parser.add_argument('--ollama-host', default='http://localhost:11434',
+                        help='Ollama host URL (default: http://localhost:11434). '
+                             'Use http://192.168.0.19:11434 for Mac Air.')
     args = parser.parse_args()
 
     data = load_json()
@@ -236,7 +248,7 @@ def main():
         print_stats(codes)
         return
 
-    targets = get_unenriched(codes, sector=args.sector, limit=args.limit)
+    targets = get_unenriched(codes, sector=args.sector, limit=args.limit, refill_empty=args.refill_empty)
     print(f"\nTargets: {len(targets)} codes to enrich"
           + (f" in sector {args.sector}" if args.sector else ""))
 
@@ -244,15 +256,16 @@ def main():
         print("Nothing to do.")
         return
 
-    # Phase 1: Deterministic fields
+    # Phase 1: Deterministic fields (skip if already populated by --refill-empty)
     for code in targets:
+        existing = code.get('intel_2026') or {}
         code['intel_2026'] = {
-            'whatItMeans': '',       # filled by LLM
-            'whatYouNeed': derive_what_you_need(code),
-            'whatChanged': derive_what_changed(code),
-            'zantaraOpener': '',     # filled by LLM
-            'baliContext': '',
-            'youllAlsoNeed': '',
+            'whatItMeans': existing.get('whatItMeans', ''),
+            'whatYouNeed': existing.get('whatYouNeed') or derive_what_you_need(code),
+            'whatChanged': existing.get('whatChanged') or derive_what_changed(code),
+            'zantaraOpener': existing.get('zantaraOpener', ''),
+            'baliContext': existing.get('baliContext', ''),
+            'youllAlsoNeed': existing.get('youllAlsoNeed', ''),
         }
 
     if args.dry_run:
@@ -266,8 +279,8 @@ def main():
         return
 
     if not args.skip_llm:
-        print(f"\nRunning LLM enrichment via Claude Haiku 4.5 ({len(targets)} codes in batches of 10)...")
-        enrich_with_llm(targets)
+        print(f"\nRunning LLM enrichment via Qwen 2.5:32b @ {args.ollama_host} ({len(targets)} codes in batches of 10)...")
+        enrich_with_llm(targets, ollama_url=args.ollama_host)
 
     # Write back
     code_map = {c['kode_kbli_2025']: c for c in codes}
