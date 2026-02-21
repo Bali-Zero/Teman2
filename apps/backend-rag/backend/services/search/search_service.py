@@ -312,10 +312,10 @@ class SearchService:
     def hybrid_search_service(self) -> HybridSearchService:
         """
         Access to HybridSearchService for advanced hybrid search.
-        
+
         Returns:
             HybridSearchService instance for BM25 + dense vector search
-            
+
         Example:
             >>> hybrid_results = await search_service.hybrid_search_service.search_hybrid(
             ...     query="visa KITAS",
@@ -497,11 +497,8 @@ class SearchService:
                         metrics_collector.search_hybrid_failed_total.inc()
                     # Fall through to dense-only search
                     # CRITICAL: Hybrid collections require named vector "dense"
-                    use_vector_name = (
-                        "dense"
-                        if collection_name.endswith("_hybrid") or collection_name == "kbli_2025_final"
-                        else None
-                    )
+                    # Note: kbli_2025_final is NOT a hybrid collection (single unnamed vector)
+                    use_vector_name = "dense" if collection_name.endswith("_hybrid") else None
                     raw_results = await vector_db.search(
                         query_embedding=query_embedding,
                         filter=chroma_filter,
@@ -513,11 +510,8 @@ class SearchService:
             else:
                 # Fallback: Dense-only search
                 # CRITICAL: Hybrid collections require named vector "dense"
-                use_vector_name = (
-                    "dense"
-                    if collection_name.endswith("_hybrid") or collection_name == "kbli_2025_final"
-                    else None
-                )
+                # Note: kbli_2025_final is NOT a hybrid collection (single unnamed vector)
+                use_vector_name = "dense" if collection_name.endswith("_hybrid") else None
                 raw_results = await vector_db.search(
                     query_embedding=query_embedding,
                     filter=chroma_filter,
