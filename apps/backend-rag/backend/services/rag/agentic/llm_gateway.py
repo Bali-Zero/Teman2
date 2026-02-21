@@ -114,23 +114,18 @@ class LLMGateway:
         self._genai_client: GenAIClient | None = None
 
         # Model name constants - Updated 2026-02-21
-        # Gemini 3 Flash Preview (gemini-3-flash-preview) requires:
-        # 1. Vertex AI API with Gemini 3 models enabled
-        # 2. May need allowlist in some regions
-        #
-        # Using gemini-2.0-flash (stable) until Gemini 3 is confirmed working
-        #
-        # Gemini 3 Flash specs (when available):
+        # Gemini 3 Flash Preview via Google AI Studio API Key
         # - MMLU: 87%+, SWE-bench: 78% (best coding)
         # - Cost: $0.50/1M input, $3/1M output
+        # - Available via AI Studio API (no allowlist needed)
         # - Vertex AI ID: gemini-3-flash-preview
-        self.model_name_pro = "gemini-2.0-flash"  # Primary: stable
-        self.model_name_flash = "gemini-2.0-flash"
-        self.model_name_fallback = "gemini-1.5-flash"
+        self.model_name_pro = "gemini-3-flash-preview"  # Primary: latest
+        self.model_name_flash = "gemini-3-flash-preview"
+        self.model_name_fallback = "gemini-2.0-flash"  # Fallback: stable
 
         logger.info(
-            "✅ LLMGateway: Model configuration ready (gemini-2.0-flash primary, "
-            "gemini-1.5-flash fallback)"
+            "✅ LLMGateway: Model configuration ready (gemini-3-flash-preview primary, "
+            "gemini-2.0-flash fallback)"
         )
         self.model_name_fallback = "gemini-2.0-flash"  # Fallback: older but stable
 
