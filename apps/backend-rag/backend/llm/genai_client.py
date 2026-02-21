@@ -183,18 +183,18 @@ class GenAIClient:
     The client uses connection pooling internally for efficiency.
     """
 
-    # Default models - using Gemini 3 Flash Preview (Primary)
+    # Default models - Gemini 3 Flash Preview (Primary via AI Studio)
     # Primary tier
-    DEFAULT_MODEL = "gemini-2.0-flash-001"  # Primary: Vertex AI Validated
-    PRO_MODEL = "gemini-2.0-flash-001"  # Using 2.0 Flash as Pro equivalent
+    DEFAULT_MODEL = "gemini-3-flash-preview"  # Primary: Gemini 3 Flash
+    PRO_MODEL = "gemini-3-flash-preview"  # Same as default
 
-    # Fallback tier (Gemini 1.5 - stable)
-    FALLBACK_FLASH = "gemini-1.5-flash-001"  # Fallback: stable
-    FALLBACK_PRO = "gemini-1.5-pro-001"  # Fallback for pro
+    # Fallback tier (Gemini 2.0 Flash - use without -001 suffix)
+    FALLBACK_FLASH = "gemini-2.0-flash"  # Fallback: stable
+    FALLBACK_PRO = "gemini-2.0-flash"  # Fallback for pro
 
     # Aliases for clarity
-    FLASH_MODEL = "gemini-2.0-flash-001"  # Primary model
-    PRO_HIGH_MODEL = "gemini-2.0-flash-001"  # Same as flash
+    FLASH_MODEL = "gemini-3-flash-preview"  # Primary model
+    PRO_HIGH_MODEL = "gemini-3-flash-preview"  # Same as flash
 
     def __init__(self, api_key: str | None = None):
         """
@@ -214,7 +214,13 @@ class GenAIClient:
             _sa_setup_done = True
 
         # Try multiple API key sources
-        self.api_key = api_key or settings.google_api_key or settings.google_imagen_api_key
+        # Priority: GOOGLEAISTUDIO_API_KEY > GOOGLE_API_KEY > GOOGLE_IMAGEN_API_KEY
+        self.api_key = (
+            api_key
+            or os.environ.get("GOOGLEAISTUDIO_API_KEY")
+            or settings.google_api_key
+            or settings.google_imagen_api_key
+        )
         self._client = None
         self._available = False
         self._auth_method = None
