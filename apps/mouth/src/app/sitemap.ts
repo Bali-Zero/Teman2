@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getAllArticles } from "@/lib/blog/articles";
+import { getAllCodes } from "@/lib/kbli-data.server";
 import { logger } from "@/lib/logger";
 
 /**
@@ -10,10 +11,11 @@ import { logger } from "@/lib/logger";
  * - Service pages (4 main services)
  * - News categories (8 categories)
  * - Blog articles (all published articles)
+ * - KBLI 2025 codes (1,563 pages)
  * Priority scale:
  * - 1.0: Homepage
  * - 0.9: Main service pages
- * - 0.8: Blog articles, KBLI explorer
+ * - 0.8: Blog articles, KBLI explorer, KBLI codes
  * - 0.7: Service detail pages, news categories
  *
  * Change frequency:
@@ -34,6 +36,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(),
       changeFrequency: "monthly" as const,
       priority: 1.0,
+    },
+    {
+      url: `${baseUrl}/kbli`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.9,
     },
     {
       url: `${baseUrl}/services`,
@@ -137,6 +145,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   } catch (error) {
     logger.error(
       "[SITEMAP] Failed to load articles",
+      {},
+      error instanceof Error ? error : new Error(String(error)),
+    );
+  }
+
+  // 5. KBLI Codes (1,563 pages)
+  try {
+    const codes = getAllCodes();
+    const kbliPages = codes.map((c) => ({
+      url: `${baseUrl}/kbli/${c.code}`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
+    }));
+    routes.push(...kbliPages);
+  } catch (error) {
+    logger.error(
+      "[SITEMAP] Failed to load KBLI codes",
       {},
       error instanceof Error ? error : new Error(String(error)),
     );
