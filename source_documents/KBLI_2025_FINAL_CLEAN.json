@@ -31248,7 +31248,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Manufacturing everyday footwear from leather, faux leather, rubber, textiles, plastic, and wood — including casual shoes, sandals, slippers. This covers the production of shoe components like uppers, insoles, outsoles, reinforcements, layers, and accessories.",
+        "whatYouNeed": "**Small scale**: Low risk. NIB only — issued automatically.\n\n**Medium scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Planning to manufacture everyday footwear in Bali? Let me guide you through the licensing requirements and how to set up your factory for producing casual shoes and sandals.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "15202",
@@ -31351,7 +31359,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Manufacturing sports shoes from leather, faux leather, rubber, plastic, and textiles — including soccer boots, basketball shoes, tennis shoes, athletic shoes, jogging shoes, hiking boots, ballet slippers. This covers the production of shoe components.",
+        "whatYouNeed": "**Small scale**: Low risk. NIB only — issued automatically.\n\n**Medium scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Starting a sports footwear factory in Bali? Let me help you navigate the licensing process for producing soccer boots and other athletic shoes.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "15203",
@@ -31456,7 +31472,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Manufacturing industrial or fieldwork shoes from leather, faux leather, rubber, textiles, and plastic — including chemical-resistant shoes, heat-resistant shoes, safety shoes. This covers the production of shoe components.",
+        "whatYouNeed": "**Small scale**: Low risk. NIB only — issued automatically.\n\n**Medium scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Setting up an industrial footwear factory in Bali? Let me assist you with licensing for producing chemical-resistant and safety shoes.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "15209",
@@ -31559,7 +31583,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Manufacturing other types of footwear not covered by 15201-15203 — including banana leaf slippers, eceng gondok sandals, gaiters. This excludes orthopedic health shoes.",
+        "whatYouNeed": "**Small scale**: Low risk. NIB only — issued automatically.\n\n**Medium scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Planning to make unique footwear in Bali? Let me help you with licensing for banana leaf slippers and other specialty footwear.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "16101",
@@ -31652,7 +31684,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Woodworking — sawing, planing, shaving, cutting, and smoothing logs into beams; kasu (dovetail joints); reng; boards, including surfaced four sides (S4S) boards and eased two edges (E2E) or eased four edges (E4E) boards. This includes making wood for train cushion blocks and unfinished wooden floors.",
+        "whatYouNeed": "**Small scale**: Low risk. NIB only — issued automatically.\n\n**Medium scale**: Low risk. NIB only — issued automatically.\n\n**Large scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Starting a woodworking business in Bali? Let me help you with licensing and setting up your factory to produce S4S boards and other wood products.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "16102",
@@ -32166,7 +32206,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Producing wood particles and similar materials — including sawdust, wood flour, and wood chips. This involves processing raw timber into smaller pieces for various industrial uses.",
+        "whatYouNeed": "**Small scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Medium scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Large scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Planning a wood particle production facility in Bali? Let me help you with the licensing and regulations to get your operation up and running smoothly.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "16211",
@@ -32260,7 +32308,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Manufacturing laminated wood products — such as plywood, MDF, interior and exterior paneling. This includes waterproof and concrete-reinforced wood panels, decorative veneers, and other engineered wood materials.",
+        "whatYouNeed": "**Small scale**: Low risk. NIB only — issued automatically.\n\n**Medium scale**: Low risk. NIB only — issued automatically.\n\n**Large scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Setting up a laminated wood factory in Bali? I can guide you through the necessary permits and best practices for producing high-quality wood products.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "16212",
@@ -32859,7 +32915,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Producing wooden construction materials — including beams, rafters, window frames, doors, stairs, and other building components. This covers both solid wood and composite materials like finger-jointed timber.",
+        "whatYouNeed": "**Small scale**: Low risk. NIB only — issued automatically.\n\n**Medium scale**: Low risk. NIB only — issued automatically.\n\n**Large scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Building a wooden construction factory in Bali? Let me help you navigate the licensing requirements and ensure your facility meets all safety and quality standards.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "16222",
@@ -32952,7 +33016,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Manufacturing prefabricated wooden structures — such as mobile homes, caravans, and modular building components. This includes wood-based partitions for buildings but excludes standalone furniture.",
+        "whatYouNeed": "**Small scale**: Low risk. NIB only — issued automatically.\n\n**Medium scale**: Low risk. NIB only — issued automatically.\n\n**Large scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Starting a prefabricated wooden structures factory in Bali? I can assist you with the licensing process and provide insights into efficient production methods.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "16230",
@@ -33045,7 +33117,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Producing wooden containers and packaging — including crates, drums, pallets, barrels, and cable reels. This excludes woven baskets and luggage.",
+        "whatYouNeed": "**Small scale**: Low risk. NIB only — issued automatically.\n\n**Medium scale**: Low risk. NIB only — issued automatically.\n\n**Large scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Planning a wooden container factory in Bali? Let me help you with the licensing and ensure your production meets all safety and quality standards for shipping materials.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "16291",
@@ -33136,7 +33216,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Manufacturing woven items from rattan and bamboo — mats, webbing, fans, baskets, and handbags like tote bags and laptop cases. This includes any product primarily made from these materials.",
+        "whatYouNeed": "**Small scale**: Low risk. NIB only — issued automatically.\n\n**Medium scale**: Low risk. NIB only — issued automatically.\n\n**Large scale**: Low risk. NIB only — issued automatically.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Planning a rattan and bamboo weaving business in Bali? Let me help you with the licensing and regulations for setting up your workshop.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "16292",
@@ -33229,7 +33317,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Manufacturing woven items from plants other than rattan and bamboo — pandan, banana leaves, corn husks, and more. Examples include mats, baskets, bags, and handicrafts.",
+        "whatYouNeed": "**Small scale**: Low risk. NIB only — issued automatically.\n\n**Medium scale**: Low risk. NIB only — issued automatically.\n\n**Large scale**: Low risk. NIB only — issued automatically.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Starting a plant-based weaving business in Bali? Let me guide you through the legal requirements for using natural materials like pandan and banana leaves.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "16293",
@@ -33457,7 +33553,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Manufacturing kitchenware and eating utensils from wood, rattan, and bamboo — graters, spoons, forks, bowls, plates, cups, and other dining items. This covers the production of these essential household tools.",
+        "whatYouNeed": "**Small scale**: Low risk. NIB only — issued automatically.\n\n**Medium scale**: Low risk. NIB only — issued automatically.\n\n**Large scale**: Low risk. NIB only — issued automatically.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Setting up a kitchenware workshop in Bali? Let me help you navigate the licensing for making wooden, rattan, and bamboo utensils.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "16295",
@@ -33687,7 +33791,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "PP28_2024_ONLY"
+      "_source": "PP28_2024_ONLY",
+      "intel_2026": {
+        "whatItMeans": "Manufacturing other wood products; items from gabus, jerami, rattan, bamboo, etc. — looms, shoe lasts, furniture parts, tools, and more. This includes a wide range of wooden and natural material goods.",
+        "whatYouNeed": "**Small scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Medium scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Large scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Planning to make wood or natural fiber products in Bali? Let me assist you with the legal setup for your workshop producing items like furniture and tools.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "17011",
@@ -33796,7 +33908,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Manufacturing paper pulp from wood, other fibers, or recycled paper — bleached, semi-bleached, or unbleached pulp. This includes mechanical, chemical, and semichemical processes to produce pulp.",
+        "whatYouNeed": "**Small scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Medium scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Large scale**: High risk. NIB + Business License (Izin) — full review required.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Starting a paper pulp mill in Bali? Let me help you understand the licensing and regulations for processing wood and other fibers into pulp.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "17012",
@@ -33896,7 +34016,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Producing newspaper and other printing papers or writing papers. This includes the manufacturing process from raw materials to finished products like newsprint, magazine paper, and stationery.",
+        "whatYouNeed": "**Small scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Medium scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Large scale**: High risk. NIB + Business License (Izin) — full review required.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Planning a paper mill in Bali for newspapers and printing? Let me help you understand the licensing requirements and production regulations.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "17013",
@@ -34005,7 +34133,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Manufacturing valuable papers such as banknotes, cheques, security papers, watermarked papers, stamps, and similar documents. This involves specialized paper making for official and financial use.",
+        "whatYouNeed": "**Small scale**: High risk. NIB + Business License (Izin) — full review required.\n\n**Medium scale**: High risk. NIB + Business License (Izin) — full review required.\n\n**Large scale**: High risk. NIB + Business License (Izin) — full review required.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Setting up a factory to produce banknotes or security papers in Bali? I can guide you through the necessary permits and quality standards.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "17014",
@@ -34113,7 +34249,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Producing special papers like cardstock, litmus paper, metallic paper, acid-proof paper, patterned paper, coated paper, and wrapping paper. This includes various finishing processes such as lamination and coating.",
+        "whatYouNeed": "**Small scale**: High risk. NIB + Business License (Izin) — full review required.\n\n**Medium scale**: High risk. NIB + Business License (Izin) — full review required.\n\n**Large scale**: High risk. NIB + Business License (Izin) — full review required.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Starting a business to make specialty papers in Bali? Let me help you navigate the licensing and production techniques for unique paper products.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "17019",
@@ -34212,7 +34356,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Manufacturing various types of paper including magnetic paper, creped paper, laminated or foiled paper if combined with cardboard, cellulose wadding, handmade papers, and carbon/stencil sheets in rolls or large sheets.",
+        "whatYouNeed": "**Small scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Medium scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Large scale**: High risk. NIB + Business License (Izin) — full review required.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Planning to produce specialized paper products like magnetic or creped paper in Bali? I can assist you with the licensing and production methods.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "17021",
@@ -34311,7 +34463,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Producing corrugated cardboard, construction papers (insulation, roofing board), packaging papers (kraftliner, ribbed kraft paper), and various boards (postcards, linden, bristol, chipboard). This includes the manufacturing of materials used in construction and packaging.",
+        "whatYouNeed": "**Small scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Medium scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Large scale**: High risk. NIB + Business License (Izin) — full review required.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Starting a corrugated cardboard or construction paper factory in Bali? Let me help you with the licensing and production processes for these essential materials.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "17022",
@@ -34410,7 +34570,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Manufacturing various paper and cardboard packaging including cigarette boxes and other products like corrugated board, foldable cardboard boxes, solid board boxes, and office stationery items such as file folders.",
+        "whatYouNeed": "**Small scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Medium scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Planning a paper packaging factory in Bali? Let me help you with the licensing requirements and how to set up your operations efficiently.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "17091",
@@ -34513,7 +34681,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Producing household paper products, tissue papers, and cellulose-based goods such as facial tissues, kitchen towels, toilet paper, baby diapers, sanitary napkins, adult incontinence pads, pet pads, and other similar items.",
+        "whatYouNeed": "**Small scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Medium scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Large scale**: High risk. NIB + Business License (Izin) — full review required.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Starting a tissue paper manufacturing plant in Bali? I can guide you through the necessary permits and best practices for your facility.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "17099",
@@ -34616,7 +34792,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Manufacturing various products from paper and cardboard not covered elsewhere, including writing paper, ready-to-use printout paper, computer printouts, coffee filters, binders, albums, educational tools, and 3D printing filters.",
+        "whatYouNeed": "**Small scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Medium scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Large scale**: High risk. NIB + Business License (Izin) — full review required.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Thinking about a diverse paper product factory in Bali? Let's discuss the licensing and operational setup for your unique manufacturing needs.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "18111",
@@ -34716,7 +34900,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Printing newspapers, magazines, brochures, music sheets, maps, posters, catalogs, business cards, and other commercial print products using offset printing, gravure, flexography, and similar machines.",
+        "whatYouNeed": "**Small scale**: Low risk. NIB only — issued automatically.\n\n**Medium scale**: Low risk. NIB only — issued automatically.\n\n**Large scale**: High risk. NIB + Business License (Izin) — full review required.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Planning a general printing facility in Bali? I can help you navigate the licensing process and ensure your operations meet all regulatory standards.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "18112",
@@ -34825,7 +35017,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Specialized printing of postage stamps, tax documents, checks, confidential papers, currency, traveler's cheques, bonds, shares, passports, and airplane tickets using specialized equipment.",
+        "whatYouNeed": "**Small scale**: High risk. NIB + Business License (Izin) — full review required.\n\n**Medium scale**: High risk. NIB + Business License (Izin) — full review required.\n\n**Large scale**: High risk. NIB + Business License (Izin) — full review required.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Setting up a special print facility in Bali? Let me assist you with the specific licensing requirements for high-security printing operations.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "18113",
@@ -34928,7 +35128,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "PP28_2024_ONLY"
+      "_source": "PP28_2024_ONLY",
+      "intel_2026": {
+        "whatItMeans": "Three-dimensional printing (3D) — creating objects from polymers, plastics, clay, metal powders, and other materials. This includes the entire process of designing, preparing, and producing physical models or parts using 3D printers.",
+        "whatYouNeed": "**Small scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Medium scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Planning a 3D printing business in Bali? Let me help you with licensing, equipment regulations, and how to set up your operation efficiently.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "18120",
@@ -35001,7 +35209,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Support services for printing — including pre-printing services like proofreading, media preparation, binding, and data input. This covers tasks such as creating books, brochures, magazines, and catalogs through folding, gluing, stitching, and other finishing processes.",
+        "whatYouNeed": "**Small / Medium scale**: Low risk. NIB only — issued automatically.\n\n**Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Setting up a print support service in Bali? Let me guide you on licensing requirements and best practices for proofreading, binding, and data preparation.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "18201",
@@ -35082,7 +35298,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Reproduction of audio media — duplicating music or other sound recordings from master discs, CDs, and tapes. This also includes reproducing software and data from master disks and magnetic tapes.",
+        "whatYouNeed": "**Small / Medium scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Planning an audio reproduction business in Bali? Let me help you navigate licensing for copying music, CDs, and software.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "18202",
@@ -35157,7 +35381,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Reproduction of film and video media — duplicating moving images or films from master recordings, CDs, and tapes. This includes producing copies of movies and other video content.",
+        "whatYouNeed": "**Small / Medium scale**: Low risk. NIB only — issued automatically.\n\n**Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Starting a film and video reproduction business in Bali? Let me assist you with licensing and the technical requirements for copying films and videos.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "19100",
@@ -35265,7 +35497,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Coking coal production — operating coke ovens, producing coke and semi-coke, manufacturing pitch and coked pitch, generating coke oven gas (lamp gas), processing raw coal and lignite, and agglomerating coke. This does not include making briquettes or distilling gas through pipelines.",
+        "whatYouNeed": "**Small / Medium scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Small / Medium scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Planning a coke production facility in Bali? Let me help you with the licensing and operational requirements for producing coke, pitch, and coke oven gas.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "19201",
@@ -35518,7 +35758,15 @@
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "mapping_note": "Cleaned: removed invalid ['19202']",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Producing lubricating oils, engine oil, and grease from base oil. This includes refining crude oil into various types of lubricants used in machinery and vehicles.",
+        "whatYouNeed": "**Small scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Medium scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Small / Medium scale**: Low risk. NIB only — issued automatically.\n\n**Large scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "This code aggregates multiple KBLI 2020 activities. Verify your specific activity maps correctly.",
+        "zantaraOpener": "Planning to produce lubricating oils in Bali? Let me help you understand the licensing requirements and environmental regulations for your facility.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "19203",
@@ -35690,7 +35938,15 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "19213",
       "mapping_note": "Cleaned: removed invalid ['19203']",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Creating products from waste oil, such as recycling used motor oil into fuel or new lubricants. This process helps reduce waste and repurpose byproducts of the oil industry.",
+        "whatYouNeed": "**Small / Medium scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Large scale**: High risk. NIB + Business License (Izin) — full review required.\n\n**Small scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Medium scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "This code aggregates multiple KBLI 2020 activities. Verify your specific activity maps correctly.",
+        "zantaraOpener": "Recycling waste oil in Bali? Let me guide you through the legal framework and best practices for turning waste into valuable resources.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "19204",
@@ -35827,7 +36083,15 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "19292",
       "mapping_note": "PP28 usa codice KBLI 2020 19292 (Industri Briket Batu Bara...). Match: 85%",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Manufacturing briquettes from coal, peat, lignite, or petroleum. This can be done at mining sites or elsewhere using purchased raw materials.",
+        "whatYouNeed": "**Small / Medium scale**: Low risk. NIB only — issued automatically.\n\n**Large scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Renumbered/adjusted from KBLI 2020. OSS update may be required to register under the new code.",
+        "zantaraOpener": "Making briquettes in Bali? Let me explain the licensing and environmental considerations for your production process.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "19206",
@@ -35907,7 +36171,15 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "19291",
       "mapping_note": "PP28 usa codice KBLI 2020 19291 (Industri Produk Dari Hasil Kil...). Match: 87%",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Blending products from oil refineries with biofuels, such as mixing ethanol with gasoline (gasohol) or diesel with biodiesel (FAME). This creates more sustainable fuel options.",
+        "whatYouNeed": "**Small / Medium scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Large scale**: High risk. NIB + Business License (Izin) — full review required.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Renumbered/adjusted from KBLI 2020. OSS update may be required to register under the new code.",
+        "zantaraOpener": "Blending biofuel with petroleum in Bali? Let me help you navigate the regulations and ensure your production meets environmental standards.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "19209",
@@ -35987,7 +36259,15 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "19291",
       "mapping_note": "PP28 usa codice KBLI 2020 19291 (Industri Produk Dari Hasil Kil...). Match: 100%",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Producing various products from oil refinery outputs, including asphalt, modified bitumen, paraffin wax, and other petrochemicals. This also includes recycling waste oil into new products.",
+        "whatYouNeed": "**Small / Medium scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Large scale**: High risk. NIB + Business License (Izin) — full review required.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Renumbered/adjusted from KBLI 2020. OSS update may be required to register under the new code.",
+        "zantaraOpener": "Creating petrochemical products in Bali? Let me assist you with the licensing and environmental compliance for your facility.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "20111",
@@ -36075,7 +36355,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Producing inorganic acids like hydrochloric and carbonic acid; bases such as sodium hydroxide (caustic soda), potassium hydroxide, lithium hydroxide; and salts formed from acid-base reactions, including sodium chloride, sodium carbonate (soda ash), and potassium chloride. This excludes edible salt production.",
+        "whatYouNeed": "**Small / Medium scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Planning an inorganic chemical plant in Bali? Let me help you with the licensing requirements for producing acids, bases, and salts.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "20112",
@@ -36186,7 +36474,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Producing industrial gases like hydrogen, oxygen, nitrogen, carbon dioxide, and dry ice; as well as noble gases such as helium, neon, and argon. This excludes radon gas production (see 20114) and ammonia production (see 20121).",
+        "whatYouNeed": "**Small / Medium scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Small / Medium scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Setting up an industrial gas plant in Bali? Let me guide you through the licensing process for producing gases like hydrogen, oxygen, and noble gases.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "20113",
@@ -36254,7 +36550,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Producing basic chemical products such as pigments and dyes including red lead, chrome yellow, zinc yellow, barium sulfate, aluminum powder pigments, ochre, titanium-based pigments, and intermediates like phenol derivatives. This includes textile dyes and food/medication colorants.",
+        "whatYouNeed": "**Small / Medium scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**Large scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Starting a pigment manufacturing plant in Bali? Let me help you navigate the licensing for producing pigments and dyes.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "20114",
@@ -36373,7 +36677,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Producing radioactive basic chemicals such as uranium, radium, thorium, and radon, including enriching uranium and thorium ores and creating radioisotopes from these materials.",
+        "whatYouNeed": "**Small scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Medium scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Planning a radioactive chemical plant in Bali? Let me assist you with the licensing for producing radioactive materials like uranium and radon.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "20115",
@@ -36572,7 +36884,15 @@
       "pma_prioritas": false,
       "pma_nota": null,
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Producing organic basic chemicals from natural resources, such as bio-benzene, bio-toluene, and bio-xylene through biomass pyrolysis; carboxylic acids from plants or animals via fermentation; and ethanol production from sugar cane or corn.",
+        "whatYouNeed": "**Micro / Small / Medium / Large scale**: High risk. NIB + Business License (Izin) — full review required.\n\n**Small scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Medium scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Small / Medium scale**: Medium-Low risk. NIB + Standard Certificate — issued automatically.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Unchanged from KBLI 2020 — direct match.",
+        "zantaraOpener": "Investing in an organic chemical plant in Bali? Let me help you with the licensing for producing chemicals like bio-benzene and ethanol from natural resources.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "20116",
@@ -38364,7 +38684,15 @@
       "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
       "kbli_2020_source": "22230",
       "mapping_note": "Auto-matched to 22230 (Industri Pipa Plastik Dan Perl...) score=68%",
-      "_source": "BPS_7_2025 + PP28_2024"
+      "_source": "BPS_7_2025 + PP28_2024",
+      "intel_2026": {
+        "whatItMeans": "Producing pigments, dyes, opacifiers, glazes, and other coating materials — including printing inks, painting paints, and similar substances. This covers the manufacturing process from raw ingredients to finished products.",
+        "whatYouNeed": "**Small scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Medium scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**Large scale**: Medium-High risk. NIB + Standard Certificate — issued within 7 working days.\n\n**PMA:** Fully open to PMA — 100% foreign ownership allowed.",
+        "whatChanged": "Renumbered/adjusted from KBLI 2020. OSS update may be required to register under the new code.",
+        "zantaraOpener": "Planning a pigment and dye production facility in Bali? Let me help you understand the licensing requirements and environmental regulations for your factory.",
+        "baliContext": "",
+        "youllAlsoNeed": ""
+      }
     },
     {
       "kode_kbli_2025": "20231",
