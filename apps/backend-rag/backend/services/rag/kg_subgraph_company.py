@@ -31,6 +31,7 @@ class CompanyState(TypedDict, total=False):
 
     Extends KGAgentState with company-specific fields.
     """
+
     # Inherited from parent (KGAgentState)
     query: str
     user_context: dict
@@ -55,8 +56,7 @@ class CompanyState(TypedDict, total=False):
 
 
 async def identify_company_type_node(
-    state: CompanyState,
-    llm
+    state: CompanyState, llm, db_pool: asyncpg.Pool | None = None
 ) -> CompanyState:
     """
     Identify company type from query and user context.
@@ -64,15 +64,19 @@ async def identify_company_type_node(
     Determines: PT PMA, Perorangan, CV, or PT Lokal based on:
     - Citizenship (foreign → likely PT PMA)
     - Capital amount (>10B IDR → PT, <1B → Perorangan/CV)
-    - Business activity (from KBLI codes)
+    - Business activity (from KBLI codes) - KG lookup if db_pool available
+    - KG relationships (KBLI -> REQUIRES -> company:pt_pma)
 
     Args:
         state: Current CompanyState
         llm: LangChain LLM for reasoning
+        db_pool: Optional PostgreSQL connection pool for KG lookup
 
     Returns:
         Updated state with company_type identified
     """
+    import re
+
     logger.info("🏢 [Company Subgraph] Identifying company type...")
 
     query = state["query"]
@@ -96,6 +100,41 @@ async def identify_company_type_node(
         # Default based on citizenship
         company_type = "pt_pma" if is_foreign else "perorangan"
 
+    # NEW: Check KG for KBLI requirements (overrides heuristics)
+    if db_pool:
+        kbli_codes = state.get("kbli_codes", [])
+        if not kbli_codes:
+            # Extract from query
+            kbli_match = re.search(r"KBLI\s*(\d{5})", query, re.IGNORECASE)
+            if kbli_match:
+                kbli_codes = [f"kbli:{kbli_match.group(1)}"]
+            else:
+                kbli_codes = [e for e in state.get("current_entities", []) if e.startswith("kbli:")]
+
+        if kbli_codes:
+            try:
+                async with db_pool.acquire() as conn:
+                    # Check if KBLI requires PT PMA
+                    requires_ptpma = await conn.fetchval(
+                        """
+                        SELECT COUNT(*) > 0
+                        FROM kg_edges
+                        WHERE source_entity_id = ANY($1::text[])
+                        AND target_entity_id = 'company:pt_pma'
+                        AND relationship_type = 'REQUIRES'
+                        """,
+                        kbli_codes,
+                    )
+
+                    if requires_ptpma:
+                        company_type = "pt_pma"
+                        is_foreign = True  # PT PMA implies foreign investor
+                        logger.info(
+                            f"✅ [Company Subgraph] KBLI {kbli_codes} requires PT PMA (from KG)"
+                        )
+            except Exception as e:
+                logger.warning(f"⚠️ [Company Subgraph] KG lookup failed: {e}")
+
     state["company_type"] = company_type
     state["is_foreign_investor"] = is_foreign
 
@@ -109,10 +148,7 @@ async def identify_company_type_node(
 # ============================================================================
 
 
-async def check_pma_eligibility_node(
-    state: CompanyState,
-    db_pool: asyncpg.Pool
-) -> CompanyState:
+async def check_pma_eligibility_node(state: CompanyState, db_pool: asyncpg.Pool) -> CompanyState:
     """
     Check if business activity is eligible for foreign investment (PMA).
 
@@ -159,20 +195,24 @@ async def check_pma_eligibility_node(
             props = row.get("properties", {})
             pma_status = props.get("pma_status", "unknown")
 
-            pma_info.append({
-                "kbli_code": row["entity_id"],
-                "business_name": row["name"],
-                "pma_status": pma_status,
-                "eligible": pma_status in ["allowed", "open"],
-            })
+            pma_info.append(
+                {
+                    "kbli_code": row["entity_id"],
+                    "business_name": row["name"],
+                    "pma_status": pma_status,
+                    "eligible": pma_status in ["allowed", "open"],
+                }
+            )
 
         state["kbli_codes"] = kbli_codes
-        state.setdefault("licensing_requirements", []).extend([
-            {
-                "requirement_type": "pma_eligibility",
-                "details": pma_info,
-            }
-        ])
+        state.setdefault("licensing_requirements", []).extend(
+            [
+                {
+                    "requirement_type": "pma_eligibility",
+                    "details": pma_info,
+                }
+            ]
+        )
 
         logger.info(f"✅ [Company Subgraph] PMA eligibility checked for {len(pma_info)} KBLI codes")
 
@@ -184,10 +224,7 @@ async def check_pma_eligibility_node(
 # ============================================================================
 
 
-async def get_capital_requirements_node(
-    state: CompanyState,
-    db_pool: asyncpg.Pool
-) -> CompanyState:
+async def get_capital_requirements_node(state: CompanyState, db_pool: asyncpg.Pool) -> CompanyState:
     """
     Get capital requirements for the company type.
 
@@ -211,40 +248,44 @@ async def get_capital_requirements_node(
     capital_reqs = {
         "pt_pma": {
             "min_capital": 10_000_000_000,  # 10B IDR
-            "paid_up_min": 2_500_000_000,   # 2.5B IDR
+            "paid_up_min": 2_500_000_000,  # 2.5B IDR
             "currency": "IDR",
-            "notes": "Foreign investment minimum as per BKPM regulations"
+            "notes": "Foreign investment minimum as per BKPM regulations",
         },
         "pt_lokal": {
             "min_capital": 50_000_000,  # 50M IDR
             "paid_up_min": 12_500_000,  # 12.5M IDR (25%)
             "currency": "IDR",
-            "notes": "Standard PT minimum capital"
+            "notes": "Standard PT minimum capital",
         },
         "cv": {
             "min_capital": None,
             "paid_up_min": None,
             "currency": "IDR",
-            "notes": "No minimum capital required"
+            "notes": "No minimum capital required",
         },
         "perorangan": {
             "min_capital": None,
             "paid_up_min": None,
             "currency": "IDR",
-            "notes": "No minimum capital required for sole proprietorship"
+            "notes": "No minimum capital required for sole proprietorship",
         },
     }
 
     requirements = capital_reqs.get(company_type, {})
 
-    state.setdefault("licensing_requirements", []).append({
-        "requirement_type": "capital",
-        "details": requirements,
-    })
+    state.setdefault("licensing_requirements", []).append(
+        {
+            "requirement_type": "capital",
+            "details": requirements,
+        }
+    )
 
     state["capital_amount"] = requirements.get("min_capital")
 
-    logger.info(f"✅ [Company Subgraph] Capital requirements: {requirements.get('min_capital', 'N/A')} IDR")
+    logger.info(
+        f"✅ [Company Subgraph] Capital requirements: {requirements.get('min_capital', 'N/A')} IDR"
+    )
 
     return state
 
@@ -254,9 +295,7 @@ async def get_capital_requirements_node(
 # ============================================================================
 
 
-async def synthesize_company_workflow_node(
-    state: CompanyState
-) -> CompanyState:
+async def synthesize_company_workflow_node(state: CompanyState) -> CompanyState:
     """
     Synthesize company setup workflow from collected information.
 
@@ -282,59 +321,69 @@ async def synthesize_company_workflow_node(
     steps = []
 
     # Step 1: Legal structure decision
-    steps.append({
-        "step": 1,
-        "action": f"Choose legal structure: {company_type.upper()}",
-        "entity_id": f"company_type:{company_type}",
-        "details": {
-            "company_type": company_type,
-            "is_foreign_investor": is_foreign,
+    steps.append(
+        {
+            "step": 1,
+            "action": f"Choose legal structure: {company_type.upper()}",
+            "entity_id": f"company_type:{company_type}",
+            "details": {
+                "company_type": company_type,
+                "is_foreign_investor": is_foreign,
+            },
         }
-    })
+    )
 
     # Step 2: Capital preparation
     if capital:
-        steps.append({
-            "step": 2,
-            "action": f"Prepare minimum capital: Rp {capital:,}",
-            "entity_id": "capital_requirement",
-            "details": {
-                "amount": capital,
-                "currency": "IDR",
+        steps.append(
+            {
+                "step": 2,
+                "action": f"Prepare minimum capital: Rp {capital:,}",
+                "entity_id": "capital_requirement",
+                "details": {
+                    "amount": capital,
+                    "currency": "IDR",
+                },
             }
-        })
+        )
 
     # Step 3: Company registration
-    steps.append({
-        "step": len(steps) + 1,
-        "action": "Register company via OSS (Online Single Submission)",
-        "entity_id": "oss_registration",
-        "details": {
-            "system": "OSS",
-            "outputs": ["NIB", "TDP", "API (if applicable)"],
+    steps.append(
+        {
+            "step": len(steps) + 1,
+            "action": "Register company via OSS (Online Single Submission)",
+            "entity_id": "oss_registration",
+            "details": {
+                "system": "OSS",
+                "outputs": ["NIB", "TDP", "API (if applicable)"],
+            },
         }
-    })
+    )
 
     # Step 4: Licensing
     if state.get("kbli_codes"):
-        steps.append({
-            "step": len(steps) + 1,
-            "action": f"Obtain sector licenses for KBLI codes",
-            "entity_id": "sector_licensing",
-            "details": {
-                "kbli_codes": state["kbli_codes"],
+        steps.append(
+            {
+                "step": len(steps) + 1,
+                "action": f"Obtain sector licenses for KBLI codes",
+                "entity_id": "sector_licensing",
+                "details": {
+                    "kbli_codes": state["kbli_codes"],
+                },
             }
-        })
+        )
 
     # Step 5: Bank account
-    steps.append({
-        "step": len(steps) + 1,
-        "action": "Open corporate bank account",
-        "entity_id": "bank_account",
-        "details": {
-            "requirement": "After NIB issuance",
+    steps.append(
+        {
+            "step": len(steps) + 1,
+            "action": "Open corporate bank account",
+            "entity_id": "bank_account",
+            "details": {
+                "requirement": "After NIB issuance",
+            },
         }
-    })
+    )
 
     from dataclasses import asdict
 
@@ -393,7 +442,7 @@ def build_company_subgraph(db_pool: asyncpg.Pool, llm: Any) -> StateGraph:
 
     # Async closures (lambdas can't be async, causing coroutine-instead-of-dict errors)
     async def _identify(state):
-        return await identify_company_type_node(state, llm)
+        return await identify_company_type_node(state, llm, db_pool)
 
     async def _check_pma(state):
         return await check_pma_eligibility_node(state, db_pool)
