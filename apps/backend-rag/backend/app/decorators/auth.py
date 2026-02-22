@@ -231,6 +231,8 @@ ENDPOINT_CLASSIFICATION = {
         "/openapi.json",
         "/api/csrf-token",
         "/api/search/health",
+        "/admin/google-drive/auth-system",
+        "/admin/google-drive/callback-system",
     ],
     # API Key endpoints (can use API key auth)
     "api_key": [
