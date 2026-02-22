@@ -1,0 +1,125 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "created": "2026-02-19",
+    "description": "Mapping KBLI 2017 (obsoleti) → KBLI 2025 (attivi) - Collega 2",
+    "validator": "AI Agent",
+    "total_mappings": 12
+  },
+  "mappings": [
+    {
+      "kbli_2017": "47531",
+      "kbli_2025": "47530",
+      "judul_2017": "PERDAGANGAN ECERAN KARPET, PERMADANI DAN PENUTUP LANTAI DINDING",
+      "judul_2025": "PERDAGANGAN ECERAN KARPET, PERMADANI, SERTA PENUTUP DINDING DAN LANTAI",
+      "mapping_type": "DIRETTO",
+      "note": "Codice riformattato KBLI 2025 - stesso significato",
+      "action": "USARE 47530"
+    },
+    {
+      "kbli_2017": "47621",
+      "kbli_2025": "47620",
+      "judul_2017": "PERDAGANGAN ECERAN PERALATAN MUSIK",
+      "judul_2025": "PERDAGANGAN ECERAN PERALATAN DAN PERLENGKAPAN",
+      "mapping_type": "DIRETTO",
+      "note": "Codice riformattato KBLI 2025 - stesso significato",
+      "action": "USARE 47620"
+    },
+    {
+      "kbli_2017": "47631",
+      "kbli_2025": "47630",
+      "judul_2017": "PERDAGANGAN ECERAN ALAT PERMAINAN",
+      "judul_2025": "PERDAGANGAN ECERAN ALAT PERMAINAN DAN MAINAN",
+      "mapping_type": "DIRETTO",
+      "note": "Codice riformattato KBLI 2025 - stesso significato",
+      "action": "USARE 47630"
+    },
+    {
+      "kbli_2017": "47821",
+      "kbli_2025": "47820",
+      "judul_2017": "PERDAGANGAN ECERAN KENDARAAN BERMOTOR RODA DUA",
+      "judul_2025": "PERDAGANGAN ECERAN SUKU CADANG DAN AKSESORI MOBIL",
+      "mapping_type": "AGGREGATO",
+      "note": "KBLI 2025 aggrega 47821+47822+47831+47832 in 47820",
+      "action": "USARE 47820"
+    },
+    {
+      "kbli_2017": "47822",
+      "kbli_2025": "47820",
+      "judul_2017": "PERDAGANGAN ECERAN SUKU CADANG DAN AKSESORI KENDARAAN BERMOTOR RODA DUA",
+      "judul_2025": "PERDAGANGAN ECERAN SUKU CADANG DAN AKSESORI MOBIL",
+      "mapping_type": "AGGREGATO",
+      "note": "KBLI 2025 aggrega parti motor in 47820",
+      "action": "USARE 47820"
+    },
+    {
+      "kbli_2017": "47251",
+      "kbli_2025": "47219",
+      "judul_2017": "PERDAGANGAN ECERAN MAKANAN DAN MINUMAN DI KIOSK, STALL, DLL",
+      "judul_2025": "PERDAGANGAN ECERAN HASIL PERTANIAN LAINNYA",
+      "mapping_type": "CONTESTUALE",
+      "note": "47251 non esiste in KBLI 2025. Per food retail generico usare 47219 o 47243-47249",
+      "action": "VERIFICARE tipo specifico: 47243(kopi), 47244(tahu/tempe), 47249(other food)",
+      "alternative_codes": ["47243", "47244", "47249"]
+    },
+    {
+      "kbli_2017": "47261",
+      "kbli_2025": "47721",
+      "judul_2017": "PERDAGANGAN ECERAN OBAT-OBATAN",
+      "judul_2025": "PERDAGANGAN ECERAN SEDIAAN FARMASI UNTUK MANUSIA DI APOTEK",
+      "mapping_type": "CONTESTUALE",
+      "note": "47261 non esiste in KBLI 2025. Se apotek usare 47721, altrimenti 47722",
+      "action": "SE APOTEK → 47721, SE TOKO OBAT → 47722",
+      "alternative_codes": ["47721", "47722"]
+    },
+    {
+      "kbli_2017": "47291",
+      "kbli_2025": "47249",
+      "judul_2017": "PERDAGANGAN ECERAN MAKANAN DAN MINUMAN LAINNYA",
+      "judul_2025": "PERDAGANGAN ECERAN MAKANAN LAINNYA",
+      "mapping_type": "CONTESTUALE",
+      "note": "47291 non esiste in KBLI 2025. Usare 47249 per food retail non specializzato",
+      "action": "USARE 47249 per retail makanan lainnya",
+      "alternative_codes": ["47249"]
+    },
+    {
+      "kbli_2017": "47411",
+      "kbli_2025": "47401",
+      "judul_2017": "PERDAGANGAN ECERAN KOMPUTER DAN PERLENGKAPANNYA",
+      "judul_2025": "PERDAGANGAN ECERAN KOMPUTER DAN PERLENGKAPANNYA",
+      "mapping_type": "DIRETTO",
+      "note": "47411 → 47401 in KBLI 2025",
+      "action": "USARE 47401"
+    },
+    {
+      "kbli_2017": "47421",
+      "kbli_2025": "47403",
+      "judul_2017": "PERDAGANGAN ECERAN PERALATAN TELEKOMUNIKASI",
+      "judul_2025": "PERDAGANGAN ECERAN PERANGKAT LUNAK (SOFTWARE)",
+      "mapping_type": "CONTESTUALE",
+      "note": "47421 non esiste in KBLI 2025. Per telecom usare 47403 (software/telecom)",
+      "action": "USARE 47403 per equipment telecom",
+      "alternative_codes": ["47403", "47404"]
+    },
+    {
+      "kbli_2017": "47431",
+      "kbli_2025": "47405",
+      "judul_2017": "PERDAGANGAN ECERAN ALAT AUDIO DAN VIDEO",
+      "judul_2025": "PERDAGANGAN ECERAN MESIN DAN PERALATAN KANTOR",
+      "mapping_type": "CONTESTUALE",
+      "note": "47431 non esiste in KBLI 2025. Per audio/video usare 47405-47406",
+      "action": "USARE 47405 (mesin kantir) o 47406 (peralatan komunikasi)",
+      "alternative_codes": ["47405", "47406"]
+    },
+    {
+      "kbli_2017": "47911",
+      "kbli_2025": null,
+      "judul_2017": "PERDAGANGAN ECERAN MELALUI MEDIA UNTUK POS DAN INTERNET",
+      "judul_2025": "DISTRIBUITO NEI VARI CODICI RETAIL",
+      "mapping_type": "NON_APPLICABILE",
+      "note": "47911 (e-commerce) NON ESISTE in KBLI 2025. Il retail online è distribuito nei vari codici di retail specializzato",
+      "action": "IDENTIFICARE il tipo di prodotto venduto online e usare il codice retail appropriato (es. 47711 per pakaian, 47591 per furnitur, ecc.)",
+      "alternative_codes": ["VARIABILE_PER_PRODOTTO"]
+    }
+  ]
+}

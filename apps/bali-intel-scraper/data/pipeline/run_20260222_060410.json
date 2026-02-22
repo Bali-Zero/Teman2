@@ -1,0 +1,25 @@
+{
+  "run_id": "20260222_060410",
+  "config": {
+    "mode": "full",
+    "categories": [
+      "immigration",
+      "tax",
+      "legal"
+    ],
+    "limit": 20,
+    "min_score": 40,
+    "skip_images": false,
+    "auto_approve": true,
+    "dry_run": false,
+    "continue_on_error": false,
+    "skip_steps": [
+      "4_images"
+    ]
+  },
+  "started_at": "2026-02-22T06:04:10.590554",
+  "steps": {},
+  "articles": [],
+  "status": "failed",
+  "failed_at": "1_scraping"
+}
