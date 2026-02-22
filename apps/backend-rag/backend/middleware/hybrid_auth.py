@@ -129,6 +129,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/api/integrations/google-drive/system/status",  # BUSINESS: OAuth status check - REVIEW: Should require auth
             "/api/admin/drive/health",  # BUSINESS: Drive health check - public status for diagnostics
             "/api/admin/drive/refresh",  # BUSINESS: Drive token refresh - public for admin use
+            "/api/admin/drive/service-account-status",  # BUSINESS: Service Account status - public for diagnostics
             "/admin/google-drive/auth-system",  # BUSINESS: Admin OAuth init for system user
             "/admin/google-drive/callback-system",  # BUSINESS: Admin OAuth callback for system user
             "/admin/zoho/auth",  # BUSINESS: Admin Zoho OAuth init
