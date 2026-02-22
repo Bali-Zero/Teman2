@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bali Zero — Set Up Your Business in Bali, Stress-Free</title>
+  <meta name="description" content="Visas, company registration, and compliance for foreign entrepreneurs in Bali. AI-powered, human-guided. Get started in 48 hours." />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green:  #2D6A4F;
+      --green-light: #40916C;
+      --green-pale: #D8F3DC;
+      --sand:   #FAF3E0;
+      --dark:   #1A1A2E;
+      --mid:    #4A5568;
+      --light:  #F7FAFC;
+      --white:  #FFFFFF;
+      --gold:   #C9963A;
+      --radius: 14px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.10);
+      --shadow-lg: 0 12px 48px rgba(0,0,0,0.14);
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', sans-serif;
+      color: var(--dark);
+      background: var(--white);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── NAV ─────────────────────────────────────── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 5%; height: 68px;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+    }
+    .nav-logo {
+      font-size: 1.25rem; font-weight: 800; color: var(--green);
+      letter-spacing: -0.5px;
+    }
+    .nav-logo span { color: var(--gold); }
+    .nav-links { display: flex; gap: 2rem; list-style: none; }
+    .nav-links a { text-decoration: none; color: var(--mid); font-size: 0.9rem; font-weight: 500; transition: color .2s; }
+    .nav-links a:hover { color: var(--green); }
+    .nav-cta {
+      background: var(--green); color: #fff; border: none;
+      padding: 10px 22px; border-radius: 50px; font-size: 0.875rem;
+      font-weight: 600; cursor: pointer; transition: background .2s, transform .15s;
+      text-decoration: none;
+    }
+    .nav-cta:hover { background: var(--green-light); transform: translateY(-1px); }
+
+    /* ── HERO ────────────────────────────────────── */
+    .hero {
+      min-height: 100vh;
+      display: flex; align-items: center;
+      background: linear-gradient(135deg, #0d2818 0%, #1a4332 45%, #2d6a4f 100%);
+      position: relative; overflow: hidden;
+      padding: 120px 5% 80px;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        radial-gradient(ellipse 60% 50% at 80% 50%, rgba(201,150,58,0.12) 0%, transparent 70%),
+        url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+
+    /* Decorative circles */
+    .hero-circle {
+      position: absolute; border-radius: 50%;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .hero-circle-1 { width: 500px; height: 500px; top: -100px; right: -100px; }
+    .hero-circle-2 { width: 300px; height: 300px; bottom: 50px; left: -80px; }
+    .hero-circle-3 { width: 180px; height: 180px; top: 30%; right: 30%; }
+
+    .hero-content { position: relative; max-width: 640px; z-index: 2; }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(201,150,58,0.15);
+      border: 1px solid rgba(201,150,58,0.3);
+      color: #e8b96a; font-size: 0.8rem; font-weight: 600;
+      padding: 6px 14px; border-radius: 50px;
+      margin-bottom: 28px; letter-spacing: 0.5px; text-transform: uppercase;
+    }
+    .hero-badge::before { content: '✦'; font-size: 0.7rem; }
+
+    .hero h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2.4rem, 5vw, 3.8rem);
+      line-height: 1.1;
+      color: #fff;
+      margin-bottom: 24px;
+    }
+    .hero h1 em {
+      font-style: normal;
+      color: #e8b96a;
+    }
+    .hero p {
+      font-size: 1.15rem; color: rgba(255,255,255,0.72);
+      line-height: 1.7; max-width: 520px;
+      margin-bottom: 40px;
+    }
+    .hero-actions { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 56px; }
+    .btn-primary {
+      background: var(--gold); color: #fff; font-weight: 700;
+      padding: 14px 32px; border-radius: 50px; font-size: 1rem;
+      text-decoration: none; transition: all .2s;
+      box-shadow: 0 4px 20px rgba(201,150,58,0.4);
+    }
+    .btn-primary:hover { background: #d9a840; transform: translateY(-2px); box-shadow: 0 8px 28px rgba(201,150,58,0.5); }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1); color: #fff; font-weight: 600;
+      padding: 14px 28px; border-radius: 50px; font-size: 1rem;
+      text-decoration: none; border: 1px solid rgba(255,255,255,0.2);
+      transition: all .2s;
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.18); }
+
+    .hero-stats {
+      display: flex; gap: 40px; flex-wrap: wrap;
+    }
+    .hero-stat { }
+    .hero-stat-num {
+      font-size: 1.75rem; font-weight: 800; color: #fff;
+      line-height: 1;
+    }
+    .hero-stat-num span { color: var(--gold); }
+    .hero-stat-label { font-size: 0.8rem; color: rgba(255,255,255,0.5); margin-top: 4px; letter-spacing: 0.3px; }
+
+    /* Hero right panel */
+    .hero-panel {
+      position: absolute; right: 5%; top: 50%; transform: translateY(-50%);
+      z-index: 2; width: 340px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(16px);
+      border-radius: 20px; padding: 28px;
+      display: none;
+    }
+    @media(min-width: 900px) { .hero-panel { display: block; } }
+    .hero-panel-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.5); margin-bottom: 20px; }
+    .hero-panel-item {
+      display: flex; align-items: flex-start; gap: 12px; margin-bottom: 18px;
+    }
+    .hero-panel-item:last-child { margin-bottom: 0; }
+    .panel-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; flex-shrink: 0;
+    }
+    .pi-green { background: rgba(64,145,108,0.25); }
+    .pi-gold  { background: rgba(201,150,58,0.25); }
+    .pi-blue  { background: rgba(66,153,225,0.18); }
+    .pi-purple{ background: rgba(128,90,213,0.18); }
+    .panel-text-main { font-size: 0.9rem; font-weight: 600; color: #fff; }
+    .panel-text-sub  { font-size: 0.78rem; color: rgba(255,255,255,0.5); margin-top: 2px; }
+
+    /* ── SOCIAL PROOF BAR ────────────────────────── */
+    .proof-bar {
+      background: var(--sand); padding: 22px 5%;
+      display: flex; align-items: center; justify-content: center;
+      gap: 40px; flex-wrap: wrap;
+    }
+    .proof-bar-label { font-size: 0.8rem; color: var(--mid); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+    .proof-flags { display: flex; gap: 10px; align-items: center; font-size: 1.5rem; }
+
+    /* ── SECTION ─────────────────────────────────── */
+    .section { padding: 100px 5%; }
+    .section-tag {
+      display: inline-block;
+      font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1px; color: var(--green);
+      background: var(--green-pale); padding: 5px 12px;
+      border-radius: 50px; margin-bottom: 16px;
+    }
+    .section-title {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+      line-height: 1.2; color: var(--dark);
+      max-width: 620px; margin-bottom: 16px;
+    }
+    .section-sub {
+      font-size: 1.05rem; color: var(--mid);
+      line-height: 1.7; max-width: 580px; margin-bottom: 60px;
+    }
+    .center { text-align: center; }
+    .section-title.center, .section-sub.center { margin-left: auto; margin-right: auto; }
+
+    /* ── VALUE PROPS ─────────────────────────────── */
+    #services { background: var(--light); }
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+    }
+    .service-card {
+      background: var(--white);
+      border-radius: var(--radius);
+      padding: 36px 30px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(0,0,0,0.05);
+      transition: transform .25s, box-shadow .25s;
+      position: relative; overflow: hidden;
+    }
+    .service-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 4px;
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+    .card-green::before { background: linear-gradient(90deg, var(--green), var(--green-light)); }
+    .card-gold::before  { background: linear-gradient(90deg, var(--gold), #e8b96a); }
+    .card-blue::before  { background: linear-gradient(90deg, #3182CE, #63B3ED); }
+    .service-card:hover { transform: translateY(-6px); box-shadow: var(--shadow-lg); }
+
+    .service-icon {
+      font-size: 2rem; margin-bottom: 20px;
+      width: 56px; height: 56px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 14px;
+    }
+    .icon-green  { background: var(--green-pale); }
+    .icon-gold   { background: #FEF3C7; }
+    .icon-blue   { background: #EBF8FF; }
+    .service-card h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: 12px; }
+    .service-card p  { font-size: 0.92rem; color: var(--mid); line-height: 1.65; margin-bottom: 20px; }
+    .service-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+    .tag {
+      font-size: 0.72rem; font-weight: 600; padding: 4px 10px; border-radius: 50px;
+      letter-spacing: 0.3px;
+    }
+    .tag-green { background: var(--green-pale); color: var(--green); }
+    .tag-gold  { background: #FEF3C7; color: #92400E; }
+    .tag-blue  { background: #EBF8FF; color: #2B6CB0; }
+
+    /* ── HOW IT WORKS ────────────────────────────── */
+    #how { background: var(--white); }
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0;
+      position: relative;
+    }
+    .steps-grid::before {
+      content: '';
+      position: absolute; top: 40px; left: 10%; right: 10%; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--green-pale), var(--green-pale), transparent);
+      z-index: 0;
+    }
+    .step {
+      text-align: center; padding: 0 24px;
+      position: relative; z-index: 1;
+    }
+    .step-num {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: var(--green); color: #fff;
+      font-size: 1.5rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 24px;
+      box-shadow: 0 4px 20px rgba(45,106,79,0.35);
+      position: relative;
+    }
+    .step-num::after {
+      content: '';
+      position: absolute; inset: -6px; border-radius: 50%;
+      border: 2px solid rgba(45,106,79,0.2);
+    }
+    .step h4 { font-size: 1.05rem; font-weight: 700; margin-bottom: 10px; }
+    .step p  { font-size: 0.875rem; color: var(--mid); line-height: 1.6; }
+    .step-badge {
+      display: inline-block; margin-top: 14px;
+      background: var(--green-pale); color: var(--green);
+      font-size: 0.72rem; font-weight: 700; padding: 4px 12px;
+      border-radius: 50px;
+    }
+
+    /* ── TESTIMONIALS ────────────────────────────── */
+    #testimonials { background: var(--dark); }
+    #testimonials .section-title { color: #fff; }
+    #testimonials .section-sub   { color: rgba(255,255,255,0.6); }
+    #testimonials .section-tag   { background: rgba(64,145,108,0.2); }
+    .testimonials-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+    }
+    .testimonial-card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: var(--radius); padding: 32px;
+    }
+    .testimonial-stars { color: var(--gold); margin-bottom: 16px; font-size: 0.9rem; letter-spacing: 2px; }
+    .testimonial-text { font-size: 0.95rem; color: rgba(255,255,255,0.82); line-height: 1.7; margin-bottom: 24px; font-style: italic; }
+    .testimonial-author { display: flex; align-items: center; gap: 12px; }
+    .author-avatar {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--green), var(--gold));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; color: #fff; font-weight: 700;
+    }
+    .author-name  { font-size: 0.9rem; font-weight: 700; color: #fff; }
+    .author-title { font-size: 0.78rem; color: rgba(255,255,255,0.5); margin-top: 2px; }
+
+    /* ── STATS ───────────────────────────────────── */
+    .stats-strip {
+      background: var(--green);
+      padding: 60px 5%;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 32px; text-align: center;
+    }
+    .stat-item {}
+    .stat-number {
+      font-size: 2.5rem; font-weight: 800; color: #fff;
+      font-family: 'Playfair Display', serif;
+    }
+    .stat-number sup { font-size: 1.2rem; }
+    .stat-label { font-size: 0.85rem; color: rgba(255,255,255,0.7); margin-top: 4px; }
+
+    /* ── CTA ─────────────────────────────────────── */
+    #cta {
+      background: linear-gradient(135deg, var(--sand) 0%, #fff 100%);
+      text-align: center; padding: 120px 5%;
+    }
+    #cta .section-title { max-width: 720px; }
+    #cta .section-sub   { max-width: 560px; }
+    .cta-actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 40px; }
+    .btn-large-primary {
+      background: var(--green); color: #fff; font-weight: 700;
+      padding: 18px 44px; border-radius: 50px; font-size: 1.05rem;
+      text-decoration: none; transition: all .2s;
+      box-shadow: 0 6px 24px rgba(45,106,79,0.35);
+    }
+    .btn-large-primary:hover { background: var(--green-light); transform: translateY(-2px); box-shadow: 0 10px 32px rgba(45,106,79,0.45); }
+    .btn-large-secondary {
+      background: transparent; color: var(--dark); font-weight: 600;
+      padding: 18px 36px; border-radius: 50px; font-size: 1.05rem;
+      text-decoration: none; border: 2px solid rgba(0,0,0,0.15);
+      transition: all .2s;
+    }
+    .btn-large-secondary:hover { border-color: var(--green); color: var(--green); }
+    .cta-note { margin-top: 18px; font-size: 0.82rem; color: var(--mid); }
+
+    /* ── FOOTER ──────────────────────────────────── */
+    footer {
+      background: var(--dark); color: rgba(255,255,255,0.5);
+      padding: 48px 5%; font-size: 0.85rem;
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 16px;
+    }
+    .footer-logo { font-size: 1.1rem; font-weight: 800; color: #fff; }
+    .footer-logo span { color: var(--gold); }
+    .footer-links { display: flex; gap: 24px; }
+    .footer-links a { color: rgba(255,255,255,0.5); text-decoration: none; transition: color .2s; }
+    .footer-links a:hover { color: #fff; }
+
+    /* ── RESPONSIVE ──────────────────────────────── */
+    @media(max-width: 600px) {
+      .nav-links { display: none; }
+      .steps-grid::before { display: none; }
+      .step { margin-bottom: 40px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <div class="nav-logo">Bali<span>Zero</span></div>
+    <ul class="nav-links">
+      <li><a href="#services">Services</a></li>
+      <li><a href="#how">How It Works</a></li>
+      <li><a href="#testimonials">Stories</a></li>
+    </ul>
+    <a href="#cta" class="nav-cta">Get Started →</a>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-circle hero-circle-1"></div>
+    <div class="hero-circle hero-circle-2"></div>
+    <div class="hero-circle hero-circle-3"></div>
+
+    <div class="hero-content">
+      <div class="hero-badge">AI-Powered · Bali, Indonesia</div>
+      <h1>Set Up Your Business in Bali —<br/><em>Without the Bureaucracy.</em></h1>
+      <p>Visas, company registration, and compliance—handled by our AI platform and human experts. From first call to first stamp, we take care of everything.</p>
+      <div class="hero-actions">
+        <a href="#cta" class="btn-primary">Start Your Application</a>
+        <a href="#how" class="btn-secondary">See How It Works</a>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <div class="hero-stat-num">48<span>h</span></div>
+          <div class="hero-stat-label">Average first response</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-num">500<span>+</span></div>
+          <div class="hero-stat-label">Expats helped</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-num">98<span>%</span></div>
+          <div class="hero-stat-label">Approval rate</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-panel">
+      <div class="hero-panel-title">Your Journey Starts Here</div>
+      <div class="hero-panel-item">
+        <div class="panel-icon pi-green">🏢</div>
+        <div>
+          <div class="panel-text-main">PT PMA Setup</div>
+          <div class="panel-text-sub">Full company incorporation for foreign investors</div>
+        </div>
+      </div>
+      <div class="hero-panel-item">
+        <div class="panel-icon pi-gold">🪪</div>
+        <div>
+          <div class="panel-text-main">KITAS / KITAP</div>
+          <div class="panel-text-sub">Stay legally — investor, work, and retirement visas</div>
+        </div>
+      </div>
+      <div class="hero-panel-item">
+        <div class="panel-icon pi-blue">📊</div>
+        <div>
+          <div class="panel-text-main">Tax & Compliance</div>
+          <div class="panel-text-sub">NPWP, SPT filings, ongoing regulatory monitoring</div>
+        </div>
+      </div>
+      <div class="hero-panel-item">
+        <div class="panel-icon pi-purple">🤖</div>
+        <div>
+          <div class="panel-text-main">AI Intelligence</div>
+          <div class="panel-text-sub">Real-time regulatory alerts tailored to your business</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SOCIAL PROOF BAR -->
+  <div class="proof-bar">
+    <span class="proof-bar-label">Trusted by entrepreneurs from</span>
+    <div class="proof-flags">🇮🇹 🇦🇺 🇺🇸 🇬🇧 🇩🇪 🇫🇷 🇸🇬 🇯🇵 🇳🇱 🇨🇦</div>
+  </div>
+
+  <!-- SERVICES -->
+  <section class="section" id="services">
+    <div class="section-tag">Our Services</div>
+    <h2 class="section-title">Everything You Need to Operate Legally in Bali</h2>
+    <p class="section-sub">We combine AI-driven intelligence with hands-on human expertise to handle the full spectrum of legal, visa, and business compliance in Indonesia.</p>
+    <div class="services-grid">
+      <div class="service-card card-green">
+        <div class="service-icon icon-green">🏢</div>
+        <h3>Company Formation</h3>
+        <p>Set up a legally compliant PT PMA (foreign-owned company) in Indonesia. We handle OSS registration, NIB issuance, notarial deeds, and shareholder documentation — fully remote-friendly.</p>
+        <div class="service-tags">
+          <span class="tag tag-green">PT PMA</span>
+          <span class="tag tag-green">NIB / OSS</span>
+          <span class="tag tag-green">KBLI Search</span>
+        </div>
+      </div>
+      <div class="service-card card-gold">
+        <div class="service-icon icon-gold">🪪</div>
+        <h3>Visa & Stay Permits</h3>
+        <p>From B211A tourist visas to KITAS investor permits and long-term KITAP residency — we prepare, file, and track your application from day one through final stamp.</p>
+        <div class="service-tags">
+          <span class="tag tag-gold">KITAS</span>
+          <span class="tag tag-gold">KITAP</span>
+          <span class="tag tag-gold">IMTA / RPTKA</span>
+        </div>
+      </div>
+      <div class="service-card card-blue">
+        <div class="service-icon icon-blue">📋</div>
+        <h3>Tax & Compliance</h3>
+        <p>Stay on the right side of Indonesian tax law. We manage NPWP registration, annual SPT filings, VAT compliance, and proactively alert you to regulatory changes that affect your business.</p>
+        <div class="service-tags">
+          <span class="tag tag-blue">NPWP</span>
+          <span class="tag tag-blue">SPT Filing</span>
+          <span class="tag tag-blue">PPN / PPh</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATS -->
+  <div class="stats-strip">
+    <div class="stat-item">
+      <div class="stat-number">500<sup>+</sup></div>
+      <div class="stat-label">Clients Successfully Served</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number">98<sup>%</sup></div>
+      <div class="stat-label">Visa Approval Rate</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number">56K</div>
+      <div class="stat-label">Regulatory Data Points</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number">30<sup>+</sup></div>
+      <div class="stat-label">Nationalities Served</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number">48<sup>h</sup></div>
+      <div class="stat-label">Average First Response</div>
+    </div>
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <section class="section" id="how">
+    <div class="center">
+      <div class="section-tag">How It Works</div>
+      <h2 class="section-title center">Simple Process. Serious Results.</h2>
+      <p class="section-sub center">Our AI-powered platform handles the complexity. You handle your business.</p>
+    </div>
+    <div class="steps-grid">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h4>Tell Us Your Vision</h4>
+        <p>Share your nationality, business type, and goals. Our system matches you with the right visa and entity structure instantly.</p>
+        <span class="step-badge">Free Consultation</span>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h4>We Build Your Plan</h4>
+        <p>Our experts create a step-by-step execution plan — tailored to Indonesian regulations, your business activity (KBLI), and your timeline.</p>
+        <span class="step-badge">Within 48 Hours</span>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h4>We Handle Everything</h4>
+        <p>Document collection, government submissions, translations, follow-ups — all managed via your personal client portal with real-time updates.</p>
+        <span class="step-badge">Fully Managed</span>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <h4>You're Operational</h4>
+        <p>Company registered. Visa approved. Tax ID in hand. You're ready to do business in Bali — legally, confidently, and permanently monitored for compliance.</p>
+        <span class="step-badge">You're Live 🎉</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- TESTIMONIALS -->
+  <section class="section" id="testimonials">
+    <div class="section-tag">Client Stories</div>
+    <h2 class="section-title">Real Entrepreneurs. Real Results.</h2>
+    <p class="section-sub">From digital nomads to restaurant owners — here's what our clients say.</p>
+    <div class="testimonials-grid">
+      <div class="testimonial-card">
+        <div class="testimonial-stars">★★★★★</div>
+        <p class="testimonial-text">"I tried to navigate the PT PMA process alone for three months. Bali Zero sorted everything in six weeks. The AI portal gave me live updates at every step — I always knew exactly where things stood."</p>
+        <div class="testimonial-author">
+          <div class="author-avatar">M</div>
+          <div>
+            <div class="author-name">Marco R.</div>
+            <div class="author-title">Italian Entrepreneur · Canggu</div>
+          </div>
+        </div>
+      </div>
+      <div class="testimonial-card">
+        <div class="testimonial-stars">★★★★★</div>
+        <p class="testimonial-text">"Getting my investor KITAS felt impossible until I found Bali Zero. They knew every document, every government form, every potential blocker before it happened. Best investment I made in Bali."</p>
+        <div class="testimonial-author">
+          <div class="author-avatar">S</div>
+          <div>
+            <div class="author-name">Sophie L.</div>
+            <div class="author-title">French Investor · Seminyak</div>
+          </div>
+        </div>
+      </div>
+      <div class="testimonial-card">
+        <div class="testimonial-stars">★★★★★</div>
+        <p class="testimonial-text">"The team understood my e-commerce business perfectly — they found the right KBLI codes, structured my company correctly, and even flagged a new regulation that would have affected my taxes. Phenomenal."</p>
+        <div class="testimonial-author">
+          <div class="author-avatar">J</div>
+          <div>
+            <div class="author-name">James T.</div>
+            <div class="author-title">Australian E-Commerce · Ubud</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section id="cta">
+    <div class="section-tag">Get Started Today</div>
+    <h2 class="section-title center">Your Bali Business Story Starts With One Conversation.</h2>
+    <p class="section-sub center">No bureaucratic headaches. No guesswork. Just a clear, AI-powered path from where you are to where you want to be.</p>
+    <div class="cta-actions">
+      <a href="https://zantara.balizero.com" class="btn-large-primary">Open My Client Portal</a>
+      <a href="mailto:zero@balizero.com" class="btn-large-secondary">Talk to a Human First</a>
+    </div>
+    <p class="cta-note">Free initial consultation · No credit card required · Response within 24 hours</p>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-logo">Bali<span>Zero</span> · Nuzantara Platform</div>
+    <div class="footer-links">
+      <a href="#">Privacy</a>
+      <a href="#">Terms</a>
+      <a href="https://zantara.balizero.com">Portal</a>
+      <a href="mailto:zero@balizero.com">Contact</a>
+    </div>
+    <div>© 2026 Bali Zero · All rights reserved</div>
+  </footer>
+
+</body>
+</html>
