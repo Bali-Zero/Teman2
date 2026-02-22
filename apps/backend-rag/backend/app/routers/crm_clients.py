@@ -16,7 +16,11 @@ from pydantic import BaseModel, EmailStr, field_validator
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.services.crm.audit_logger import audit_change, audit_logger
 from backend.app.services.crm.metrics import crm_metrics, metrics_collector, track_client_creation
-from backend.app.utils.crm_utils import extract_json_from_llm_response, is_crm_admin, verify_client_access
+from backend.app.utils.crm_utils import (
+    extract_json_from_llm_response,
+    is_crm_admin,
+    verify_client_access,
+)
 from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.json_utils import to_jsonb
 from backend.app.utils.logging_utils import get_logger, log_database_operation, log_success
@@ -325,8 +329,11 @@ async def create_client(
                     # 🚀 Auto-create Google Drive folder for new client
                     try:
                         import asyncio
-                        from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
-                        
+
+                        from backend.services.integrations.service_account_drive_service import (
+                            ServiceAccountDriveService,
+                        )
+
                         drive_service = ServiceAccountDriveService()
                         asyncio.create_task(
                             drive_service.create_client_folder(
@@ -1489,14 +1496,13 @@ async def extract_npwp(
 ):
     """
     Extract NPWP data from uploaded NPWP card image using Gemini Vision.
-    
+
     Extracts:
     - NPWP number (15 digits)
     - Registered address
     - City
     """
     import base64
-    import json
     import re
 
     from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
@@ -1618,7 +1624,7 @@ async def extract_nib(
 ):
     """
     Extract NIB (Nomor Induk Berusaha) data from uploaded NIB document using Gemini Vision.
-    
+
     Extracts:
     - NIB number (13 digits)
     - Company name
@@ -1737,14 +1743,14 @@ async def get_client_required_documents(
                 "SELECT id FROM clients WHERE email = $1",
                 current_user["email"]
             )
-            
+
             if not client or client["id"] != client_id:
                 if not await is_crm_admin(current_user["email"], conn):
                     raise HTTPException(status_code=403, detail="Not authorized")
-            
+
             rows = await conn.fetch(
                 """
-                SELECT 
+                SELECT
                     prd.id, prd.practice_id, prd.document_type, prd.document_label,
                     prd.description, prd.is_required, prd.uploaded_by_client,
                     prd.status, prd.client_notes, prd.team_member_notes,
@@ -1757,7 +1763,7 @@ async def get_client_required_documents(
                 """,
                 client_id
             )
-            
+
             return [
                 {
                     "id": row["id"],
@@ -1775,7 +1781,7 @@ async def get_client_required_documents(
                 }
                 for row in rows
             ]
-            
+
     except HTTPException:
         raise
     except Exception as e:

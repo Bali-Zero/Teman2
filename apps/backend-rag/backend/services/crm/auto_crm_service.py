@@ -28,7 +28,6 @@ if TYPE_CHECKING:
     import asyncpg
 
 from backend.app.core.constants import CRMConstants
-
 from backend.services.crm.ai_crm_extractor import get_extractor
 from backend.services.crm.lead_assignment_agent import trigger_lead_assignment
 
