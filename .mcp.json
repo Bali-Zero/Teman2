@@ -1,19 +1,29 @@
 {
   "mcpServers": {
-    "nuzantara-rag": {
-      "command": "/Users/nuzantara/.local/bin/nuzantara-mcp",
+    "nuzantara-postgres": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-postgres",
+        "postgresql://localhost:5432/nuzantara"
+      ],
       "env": {
-        "NUZANTARA_BACKEND_URL": "https://nuzantara-rag.fly.dev",
-        "NUZANTARA_TIMEOUT": "30"
+        "DATABASE_URL": "${DATABASE_URL}"
       }
     },
-    "nuzantara-ops": {
-      "command": "/Users/nuzantara/.local/bin/nuzantara-mcp-advanced",
-      "env": {
-        "NUZANTARA_BACKEND_URL": "https://nuzantara-rag.fly.dev",
-        "FLY_APP": "nuzantara-rag",
-        "NUZANTARA_ROOT": "/Users/nuzantara/Desktop/nuzantara"
-      }
+    "nuzantara-filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/nuzantara/Desktop/nuzantara"
+      ]
+    },
+    "nuzantara-fetch": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-fetch"
+      ]
     }
   }
 }
