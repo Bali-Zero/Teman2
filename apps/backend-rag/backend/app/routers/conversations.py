@@ -10,10 +10,10 @@ User identity is taken from JWT token, NOT from request parameters.
 Refactored: Migrated to asyncpg with connection pooling (2025-12-07)
 """
 
-from typing import Any
-
 import asyncio
+import json
 from datetime import datetime
+from typing import Any
 
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -462,7 +462,16 @@ async def get_conversation_history(
                     )
 
                 if row:
-                    messages = row.get("messages", [])
+                    raw_messages = row.get("messages", [])
+                    if isinstance(raw_messages, str):
+                        try:
+                            messages = json.loads(raw_messages)
+                        except json.JSONDecodeError:
+                            messages = []
+                    elif isinstance(raw_messages, list):
+                        messages = raw_messages
+                    else:
+                        messages = []
                     session_id_result = row.get("session_id")
                     log_success(
                         logger,
