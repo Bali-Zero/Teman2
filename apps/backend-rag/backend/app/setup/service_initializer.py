@@ -802,17 +802,12 @@ async def _init_background_services(
             db_pool=db_pool,
             ai_client=ai_client,
             search_service=search_service,
-            auto_ingestion_enabled=False,  # Disabled - scraper service not configured
-            self_healing_enabled=True,  # Continuous health monitoring
-            conversation_trainer_enabled=True,  # Learn from conversations
-            client_value_predictor_enabled=True,  # Nurture high-value clients
-            knowledge_graph_enabled=True,  # RE-ENABLED 2026-02-07 - uses Gemini free tier (15 RPM, 1500/day)
         )
         logger.info("DEBUG: Scheduler started")
 
         app.state.autonomous_scheduler = autonomous_scheduler
         service_registry.register("autonomous_scheduler", ServiceStatus.HEALTHY, critical=False)
-        logger.info("✅ Autonomous Scheduler: Active (5 agents registered)")
+        logger.info("✅ Autonomous Scheduler: Active")
     except Exception as e:
         service_registry.register(
             "autonomous_scheduler", ServiceStatus.DEGRADED, error=str(e), critical=False

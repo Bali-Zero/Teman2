@@ -289,12 +289,10 @@ async def create_and_start_scheduler(
     db_pool,
     ai_client,
     search_service,
-    auto_ingestion_enabled: bool = True,
-    self_healing_enabled: bool = True,
-    conversation_trainer_enabled: bool = True,
-    client_value_predictor_enabled: bool = True,
-    knowledge_graph_enabled: bool = True,
-    conversation_cleanup_enabled: bool = True,
+    auto_ingestion_enabled: bool = False,  # Disabled - scraper not configured
+    self_healing_enabled: bool = True,      # Active - health monitoring
+    conversation_trainer_enabled: bool = True,  # Active - learns from conversations
+    conversation_cleanup_enabled: bool = True,  # Active - cleans old data
 ) -> AutonomousScheduler:
     """
     Create and start the autonomous scheduler with all agents.
@@ -418,37 +416,6 @@ async def create_and_start_scheduler(
             logger.info("✅ Conversation Trainer Agent registered (6h interval)")
         except Exception as e:
             logger.error(f"❌ Failed to register Conversation Trainer: {e}")
-
-    # ═══════════════════════════════════════════════════════════════════════════
-    # 4. CLIENT VALUE PREDICTOR AGENT (every 12 hours)
-    # ═══════════════════════════════════════════════════════════════════════════
-    if client_value_predictor_enabled and db_pool:
-        try:
-            from backend.agents.agents.client_value_predictor import ClientValuePredictor
-
-            ClientValuePredictor(
-                db_pool=db_pool,
-                ai_client=ai_client,
-            )
-
-            async def run_client_value_predictor():
-                # This would typically:
-                # 1. Score all clients
-                # 2. Identify VIP/high-value inactive clients
-                # 3. Send nurturing messages
-                logger.info("💰 Running Client Value Predictor...")
-                # Full implementation would call predictor methods
-                # await predictor.run_full_analysis()
-
-            scheduler.register_task(
-                name="client_value_predictor",
-                task_func=run_client_value_predictor,
-                interval_seconds=43200,  # 12 hours
-                enabled=True,
-            )
-            logger.info("✅ Client Value Predictor Agent registered (12h interval)")
-        except Exception as e:
-            logger.error(f"❌ Failed to register Client Value Predictor: {e}")
 
     # ═══════════════════════════════════════════════════════════════════════════
     # 5. GOLDEN ROUTES SEEDER (one-time at startup)
@@ -620,63 +587,6 @@ async def create_and_start_scheduler(
             logger.info("✅ Renewal Alerts Checker registered (12h interval)")
         except Exception as e:
             logger.error(f"❌ Failed to register Renewal Alerts: {e}")
-
-    # ═══════════════════════════════════════════════════════════════════════════
-    # 7. KNOWLEDGE GRAPH BUILDER AGENT (every 24 hours - incremental)
-    # ═══════════════════════════════════════════════════════════════════════════
-    if knowledge_graph_enabled and db_pool:
-        try:
-            from backend.agents.agents.knowledge_graph_builder import KnowledgeGraphBuilder
-            from backend.services.knowledge_graph.incremental_builder import (
-                run_knowledge_graph_incremental_build,
-            )
-
-            graph_builder = KnowledgeGraphBuilder(
-                db_pool=db_pool,
-                ai_client=ai_client,
-            )
-
-            async def run_knowledge_graph_builder():
-                """Run incremental KG build from Qdrant collections"""
-                try:
-                    # 1. Initialize schema if needed
-                    await graph_builder.init_graph_schema()
-                    logger.info("🕸️ Knowledge Graph schema verified")
-
-                    # 2. Process conversations (always)
-                    try:
-                        await graph_builder.build_graph_from_all_conversations(days_back=7)
-                        logger.info("✅ Processed conversations for KG")
-                    except Exception as e:
-                        logger.warning(f"⚠️ Failed to process conversations: {e}")
-                        # Continue with Qdrant extraction
-
-                    # 3. Incremental extraction from Qdrant collections
-                    try:
-                        stats = await run_knowledge_graph_incremental_build(db_pool)
-                        logger.info(
-                            f"✅ KG Incremental Build Complete: "
-                            f"{stats.get('collections_processed', 0)} collections, "
-                            f"{stats.get('total_chunks', 0):,} chunks, "
-                            f"{stats.get('total_entities', 0):,} entities"
-                        )
-                    except Exception as e:
-                        logger.error(f"❌ KG Incremental Build failed: {e}", exc_info=True)
-                        # Don't raise - allow scheduler to continue
-
-                except Exception as e:
-                    logger.error(f"❌ Knowledge Graph Builder error: {e}", exc_info=True)
-                    # Don't raise - allow scheduler to continue
-
-            scheduler.register_task(
-                name="knowledge_graph_builder",
-                task_func=run_knowledge_graph_builder,
-                interval_seconds=86400,  # 24 hours
-                enabled=False,  # ❌ DISABLED: Caused 3.9M Rp in Gemini API costs (37M calls in Jan 2026)
-            )
-            logger.info("⏸️ Knowledge Graph Builder Agent registered (DISABLED - too expensive)")
-        except Exception as e:
-            logger.error(f"❌ Failed to register Knowledge Graph Builder: {e}")
 
     # ═══════════════════════════════════════════════════════════════════════════
     # TASK 8: BIRTHPLACE ENRICHMENT (Ollama)
