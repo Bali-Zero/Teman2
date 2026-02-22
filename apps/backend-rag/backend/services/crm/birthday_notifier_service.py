@@ -20,8 +20,9 @@ from backend.services.integrations.zoho_email_service import ZohoEmailService
 
 logger = logging.getLogger(__name__)
 
-# System user ID for sending emails (team@balizero.com or similar)
-SYSTEM_SENDER_USER_ID = "b4b4b4b4-b4b4-4b4b-b4b4-b4b4b4b4b4b4"  # Will need to configure
+# System user ID for sending emails via Zoho
+# Using zero@balizero.com UUID (same as invoice service)
+SYSTEM_SENDER_USER_ID = "7dfe56b2-ff63-4d40-b78b-90c018127a02"
 
 # Nationality to language mapping
 NATIONALITY_LANGUAGE_MAP = {
