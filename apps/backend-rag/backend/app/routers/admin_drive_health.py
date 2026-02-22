@@ -11,8 +11,9 @@ router = APIRouter(prefix="/api/admin/drive", tags=["admin"])
 @router.get("/health")
 async def drive_health(request: Request):
     """Verifica stato token Google Drive (public endpoint)."""
-    from backend.app.dependencies import get_database_pool
-    pool = get_database_pool()
+    pool = getattr(request.app.state, "db_pool", None)
+    if not pool:
+        return {"status": "error", "message": "Database pool not available"}
     
     async with pool.acquire() as conn:
         # Check table exists
