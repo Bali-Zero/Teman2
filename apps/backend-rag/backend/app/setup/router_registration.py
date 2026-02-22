@@ -199,6 +199,7 @@ def include_routers(api: FastAPI) -> None:
     # Admin Drive Auth (Temporary - for system user OAuth)
     from backend.app.routers import (
         admin_drive_auth,
+        admin_drive_health,
         admin_zoho_auth,
         test_drive,
         test_drive_create,
@@ -209,6 +210,7 @@ def include_routers(api: FastAPI) -> None:
         test_zoho_status,
     )
     api.include_router(admin_drive_auth.router)
+    api.include_router(admin_drive_health.router)
     api.include_router(admin_zoho_auth.router)
     api.include_router(test_drive.router)
     api.include_router(test_drive_create.router)
