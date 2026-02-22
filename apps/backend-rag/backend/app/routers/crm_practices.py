@@ -476,7 +476,7 @@ async def get_upcoming_renewals(
             # Filter by days parameter - check if view supports filtering or use direct query
             rows = await conn.fetch(
                 """
-                SELECT * FROM upcoming_renewals_view 
+                SELECT * FROM upcoming_renewals_view
                 WHERE days_until_expiry <= $1
                 """,
                 days
@@ -777,7 +777,7 @@ async def update_practice(
                     )
                 )
                 logger.info(f"🚀 Invoice automation triggered for practice {practice_id}")
-            
+
             # 🚀 Process Start Automation: Trigger when status changes to 'on_process'
             if updates.status == "on_process":
                 from backend.services.crm.process_automation_service import ProcessAutomationService
@@ -789,7 +789,7 @@ async def update_practice(
                     )
                 )
                 logger.info(f"🚀 Process start automation triggered for practice {practice_id}")
-            
+
             # 🚀 Process Completion Automation: Trigger when status changes to 'completed'
             if updates.status == "completed":
                 from backend.services.crm.completed_process_service import CompletedProcessService
@@ -1195,7 +1195,7 @@ async def get_required_documents(
         async with db_pool.acquire() as conn:
             rows = await conn.fetch(
                 """
-                SELECT 
+                SELECT
                     id, practice_id, document_type, document_label, description,
                     is_required, uploaded_by_client, uploaded_file_id, uploaded_at,
                     client_notes, team_member_notes, status, created_at, updated_at
@@ -1205,7 +1205,7 @@ async def get_required_documents(
                 """,
                 practice_id
             )
-            
+
             return [
                 {
                     "id": row["id"],
@@ -1247,7 +1247,7 @@ async def add_required_document(
             )
             if not practice:
                 raise HTTPException(status_code=404, detail="Practice not found")
-            
+
             # Insert required document
             row = await conn.fetchrow(
                 """
@@ -1261,26 +1261,26 @@ async def add_required_document(
                     updated_at = NOW()
                 RETURNING *
                 """,
-                practice_id, doc.document_type, doc.document_label, 
+                practice_id, doc.document_type, doc.document_label,
                 doc.description, doc.is_required, current_user.get("email", "system")
             )
-            
+
             # Mark practice as needing client notification
             await conn.execute(
                 """
-                UPDATE practices 
+                UPDATE practices
                 SET client_notification_sent = FALSE,
                     updated_at = NOW()
                 WHERE id = $1
                 """,
                 practice_id
             )
-            
+
             logger.info(
                 f"Added required document {doc.document_type} to practice {practice_id}",
                 extra={"practice_id": practice_id, "document_type": doc.document_type, "user": current_user.get("email")}
             )
-            
+
             return {
                 "id": row["id"],
                 "practice_id": row["practice_id"],
@@ -1318,15 +1318,15 @@ async def delete_required_document(
                 "DELETE FROM practice_required_documents WHERE id = $1 AND practice_id = $2",
                 doc_id, practice_id
             )
-            
+
             if result == "DELETE 0":
                 raise HTTPException(status_code=404, detail="Document not found")
-            
+
             logger.info(
                 f"Deleted required document {doc_id} from practice {practice_id}",
                 extra={"practice_id": practice_id, "doc_id": doc_id, "user": current_user.get("email")}
             )
-            
+
             return {"success": True, "message": "Document requirement deleted"}
     except HTTPException:
         raise
@@ -1350,40 +1350,40 @@ async def update_required_document(
             updates = []
             params = []
             param_idx = 1
-            
+
             if update.status:
                 updates.append(f"status = ${param_idx}")
                 params.append(update.status)
                 param_idx += 1
-            
+
             if update.team_member_notes is not None:
                 updates.append(f"team_member_notes = ${param_idx}")
                 params.append(update.team_member_notes)
                 param_idx += 1
-            
+
             if not updates:
                 raise HTTPException(status_code=400, detail="No fields to update")
-            
+
             updates.append("updated_at = NOW()")
             params.extend([doc_id, practice_id])
-            
+
             query = f"""
-                UPDATE practice_required_documents 
+                UPDATE practice_required_documents
                 SET {', '.join(updates)}
                 WHERE id = ${param_idx} AND practice_id = ${param_idx + 1}
                 RETURNING *
             """
-            
+
             row = await conn.fetchrow(query, *params)
-            
+
             if not row:
                 raise HTTPException(status_code=404, detail="Document not found")
-            
+
             logger.info(
                 f"Updated required document {doc_id} for practice {practice_id}",
                 extra={"practice_id": practice_id, "doc_id": doc_id, "status": update.status, "user": current_user.get("email")}
             )
-            
+
             return {
                 "id": row["id"],
                 "practice_id": row["practice_id"],
@@ -1416,9 +1416,10 @@ async def upload_client_document(
 ):
     """Client uploads a document for a required field."""
     try:
-        from backend.services.integrations.google_drive_service import GoogleDriveService
         import base64
-        
+
+        from backend.services.integrations.google_drive_service import GoogleDriveService
+
         async with db_pool.acquire() as conn:
             # Get required document info
             req_doc = await conn.fetchrow(
@@ -1431,38 +1432,38 @@ async def upload_client_document(
                 """,
                 request.required_doc_id, practice_id
             )
-            
+
             if not req_doc:
                 raise HTTPException(status_code=404, detail="Required document not found")
-            
+
             # Verify client is uploading their own document
             client = await conn.fetchrow(
                 "SELECT id FROM clients WHERE email = $1",
                 current_user.get("email")
             )
-            
+
             if not client or client["id"] != req_doc["client_id"]:
                 # Allow team members to upload on behalf of client
                 if not is_crm_admin(current_user):
                     raise HTTPException(status_code=403, detail="Not authorized")
-            
+
             # Decode and upload file to Google Drive
             file_data = base64.b64decode(request.file.split(",")[-1] if "," in request.file else request.file)
-            
+
             drive_service = GoogleDriveService(db_pool)
             folder_id = await drive_service.get_or_create_client_folder(req_doc["client_id"])
-            
+
             file_ext = request.file_name.split(".")[-1] if "." in request.file_name else "pdf"
             drive_filename = f"{req_doc['document_type']}_{practice_id}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.{file_ext}"
-            
+
             uploaded_file = await drive_service.upload_file(
                 file_data, drive_filename, folder_id
             )
-            
+
             # Create document record
             doc_row = await conn.fetchrow(
                 """
-                INSERT INTO documents 
+                INSERT INTO documents
                 (client_id, document_type, file_name, google_drive_file_url, mime_type, status)
                 VALUES ($1, $2, $3, $4, $5, 'active')
                 RETURNING id
@@ -1473,7 +1474,7 @@ async def upload_client_document(
                 uploaded_file.get("webViewLink", ""),
                 uploaded_file.get("mimeType", "application/pdf")
             )
-            
+
             # Update required document record
             await conn.execute(
                 """
@@ -1488,7 +1489,7 @@ async def upload_client_document(
                 """,
                 doc_row["id"], request.notes, request.required_doc_id
             )
-            
+
             logger.info(
                 f"Client uploaded document for practice {practice_id}",
                 extra={
@@ -1498,13 +1499,13 @@ async def upload_client_document(
                     "user": current_user.get("email")
                 }
             )
-            
+
             return {
                 "success": True,
                 "document_id": doc_row["id"],
                 "message": "Document uploaded successfully"
             }
-            
+
     except HTTPException:
         raise
     except Exception as e:

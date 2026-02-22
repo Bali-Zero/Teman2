@@ -68,14 +68,15 @@ def include_routers(api: FastAPI) -> None:
         news,
         newsletter,
         nusantara_health,
+        omnichannel_workflow,
         oracle_ingest,
         oracle_universal,
         performance,
         portal,
-        query_analytics,
         portal_invite,
         portal_taxes,
         portal_visa,
+        query_analytics,
         session,
         team,
         team_activity,
@@ -86,11 +87,10 @@ def include_routers(api: FastAPI) -> None:
         twitter,
         voice,
         webhooks,
-        workflow_analytics,
         websocket,
         whatsapp_chat,
         whatsapp_conversations,
-        omnichannel_workflow,
+        workflow_analytics,
         zoho_email,
     )
 
@@ -195,9 +195,19 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(google_drive.router)
     api.include_router(documents_proxy.router)  # Proxy Drive files without Google branding
     api.include_router(team_drive.router)  # Service Account based - for Zoho team members
-    
+
     # Admin Drive Auth (Temporary - for system user OAuth)
-    from backend.app.routers import admin_drive_auth, admin_zoho_auth, test_drive, test_drive_create, test_invoice, test_list_practices, test_update_client, test_zoho_status, test_invoice_debug
+    from backend.app.routers import (
+        admin_drive_auth,
+        admin_zoho_auth,
+        test_drive,
+        test_drive_create,
+        test_invoice,
+        test_invoice_debug,
+        test_list_practices,
+        test_update_client,
+        test_zoho_status,
+    )
     api.include_router(admin_drive_auth.router)
     api.include_router(admin_zoho_auth.router)
     api.include_router(test_drive.router)
