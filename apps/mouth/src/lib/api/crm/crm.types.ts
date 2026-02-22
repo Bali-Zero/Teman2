@@ -88,7 +88,7 @@ export interface Client {
   address?: string;
   notes?: string;
   google_drive_folder_id?: string;
-  status: "lead" | "active" | "completed" | "lost" | "inactive" | "prospect";
+  status: "lead" | "active" | "completed" | "lost" | "inactive";
   client_type: "individual" | "company";
   assigned_to?: string;
   avatar_url?: string;

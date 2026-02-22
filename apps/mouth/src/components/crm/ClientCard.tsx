@@ -162,11 +162,13 @@ export const ClientCard = React.memo(
               <div
                 className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-[var(--background-secondary)]
               ${
-                client.status === "active"
-                  ? "bg-green-500"
-                  : client.status === "lead"
-                    ? "bg-blue-500"
-                    : "bg-gray-400"
+                {
+                  lead: "bg-blue-500",
+                  active: "bg-green-500",
+                  completed: "bg-purple-500",
+                  inactive: "bg-gray-500",
+                  lost: "bg-red-500",
+                }[client.status] || "bg-gray-400"
               }`}
               />
             </div>
