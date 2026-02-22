@@ -1613,24 +1613,38 @@ class PortalService:
         try:
             from backend.app.core.config import settings
             from backend.services.integrations.google_drive_service import GoogleDriveService
+            from backend.services.integrations.team_drive_service import TeamDriveService
 
+            # Try OAuth first, fallback to Service Account
             drive_service = GoogleDriveService(self.pool)
-
+            use_service_account = False
+            
             # Check if Drive is configured
             if not drive_service.is_configured():
-                logger.warning("Google Drive not configured. Skipping upload.")
-                result["error"] = "Drive not configured"
-                return result
-
-            # Use system user for portal uploads
+                logger.warning("OAuth not configured, trying Service Account...")
+                use_service_account = True
+            else:
+                # Check if we have a valid token
+                token = await drive_service.get_valid_token("SYSTEM")
+                if not token:
+                    logger.warning("No valid OAuth token, trying Service Account...")
+                    use_service_account = True
+            
+            # Use Service Account if OAuth unavailable
+            if use_service_account:
+                team_drive = TeamDriveService(db_pool=self.pool)
+                if not team_drive.service_account_available:
+                    logger.error("Service Account also not available")
+                    result["error"] = "No Drive authentication available"
+                    return result
+                # Use Service Account for upload
+                return await self._upload_with_service_account(
+                    team_drive, client_id, client_name, document_type,
+                    file_content, file_name, mime_type, result
+                )
+            
+            # Continue with OAuth
             user_id = "SYSTEM"
-
-            # Check if we have a valid token
-            token = await drive_service.get_valid_token(user_id)
-            if not token:
-                logger.warning("No valid Google Drive token. Skipping upload.")
-                result["error"] = "No Drive token"
-                return result
 
             # Get or create root folder for portal uploads
             root_folder_id = await self._get_or_create_drive_folder(
@@ -1714,6 +1728,63 @@ class PortalService:
             logger.error(f"Failed to upload to Google Drive: {e}", exc_info=True)
             result["error"] = str(e)
 
+        return result
+
+    async def _upload_with_service_account(
+        self,
+        team_drive: Any,
+        client_id: int,
+        client_name: str,
+        document_type: str,
+        file_content: bytes,
+        file_name: str,
+        mime_type: str | None,
+        result: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Upload file using Service Account (fallback when OAuth fails)."""
+        try:
+            from datetime import datetime
+            from backend.app.core.config import settings
+            
+            # Create folder structure
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            safe_client_name = "".join(c for c in client_name if c.isalnum() or c in (' ', '_')).rstrip()[:30]
+            folder_path = f"Zantara Portal Uploads/{client_id}_{safe_client_name}/{document_type.replace('_', ' ').title()}"
+            drive_file_name = f"{timestamp}_{file_name}"
+            
+            # Upload using Service Account
+            file_metadata = {
+                'name': drive_file_name,
+                'parents': [settings.google_drive_root_folder_id or 'root']
+            }
+            
+            from googleapiclient.http import MediaIoBaseUpload
+            import io
+            
+            media = MediaIoBaseUpload(
+                io.BytesIO(file_content),
+                mimetype=mime_type or 'application/octet-stream',
+                resumable=True
+            )
+            
+            uploaded_file = team_drive.drive_service.files().create(
+                body=file_metadata,
+                media_body=media,
+                fields='id, name, webViewLink'
+            ).execute()
+            
+            result["success"] = True
+            result["file_id"] = uploaded_file.get('id')
+            result["file_url"] = uploaded_file.get('webViewLink', f"https://drive.google.com/file/d/{uploaded_file.get('id')}/view")
+            result["folder_path"] = folder_path
+            result["method"] = "service_account"
+            
+            logger.info(f"📁 File uploaded via Service Account: {drive_file_name} (ID: {uploaded_file.get('id')})")
+            
+        except Exception as e:
+            logger.error(f"Service Account upload failed: {e}", exc_info=True)
+            result["error"] = f"Service Account upload failed: {str(e)}"
+        
         return result
 
     async def _get_or_create_drive_folder(
