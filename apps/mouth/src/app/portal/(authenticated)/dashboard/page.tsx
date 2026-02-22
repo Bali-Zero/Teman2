@@ -111,7 +111,9 @@ export default function PortalDashboardPage() {
   const { error } = useToast();
   const [profile, setProfile] = useState<PortalProfile | null>(null);
   const [visaInfo, setVisaInfo] = useState<VisaInfo | null>(null);
-  const [processStatus, setProcessStatus] = useState<"process" | "electronic" | "actual">("process");
+  const [processStatus, setProcessStatus] = useState<
+    "process" | "electronic" | "actual"
+  >("process");
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -127,11 +129,13 @@ export default function PortalDashboardPage() {
       ]);
       setProfile(profileData);
       setVisaInfo(visaData);
-      
+
       // Determine which visa status to show
       if (visaData?.current) {
         setProcessStatus("actual");
-      } else if (visaData?.documents?.some(d => d.category === "electronic_visa")) {
+      } else if (
+        visaData?.documents?.some((d) => d.category === "electronic_visa")
+      ) {
         setProcessStatus("electronic");
       } else {
         setProcessStatus("process");
@@ -162,7 +166,9 @@ export default function PortalDashboardPage() {
       {/* Header */}
       <section>
         <h1 className="text-2xl font-bold tracking-tight">My Overview</h1>
-        <p className="text-muted-foreground">Your personal information and documents</p>
+        <p className="text-muted-foreground">
+          Your personal information and documents
+        </p>
       </section>
 
       {/* Main Grid - 3 columns on desktop */}
@@ -171,16 +177,10 @@ export default function PortalDashboardPage() {
         <TeamMemberCard profile={profile} isBirthday={isBirthday} />
 
         {/* Column 2: Passport (with OCR data) */}
-        <PassportCard
-          profile={profile}
-          passportValidity={passportValidity}
-        />
+        <PassportCard profile={profile} passportValidity={passportValidity} />
 
         {/* Column 3: Process → Electronic Visa → Actual Visa */}
-        <VisaProcessCard 
-          status={processStatus} 
-          visaInfo={visaInfo}
-        />
+        <VisaProcessCard status={processStatus} visaInfo={visaInfo} />
       </div>
     </div>
   );
@@ -189,15 +189,15 @@ export default function PortalDashboardPage() {
 // ============================================================================
 // TEAM MEMBER CARD (Left) - Small avatar + Client Data
 // ============================================================================
-function TeamMemberCard({ 
-  profile, 
-  isBirthday 
-}: { 
+function TeamMemberCard({
+  profile,
+  isBirthday,
+}: {
   profile: PortalProfile;
   isBirthday: boolean;
 }) {
   const assignedTo = profile.assignedTo;
-  
+
   return (
     <div className="rounded-xl border bg-card overflow-hidden flex flex-col">
       {/* Header */}
@@ -211,8 +211,8 @@ function TeamMemberCard({
         {/* Team Member - Small Avatar */}
         <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
           {assignedTo?.avatarUrl ? (
-            <img 
-              src={assignedTo.avatarUrl} 
+            <img
+              src={assignedTo.avatarUrl}
               alt={assignedTo.name}
               className="w-10 h-10 rounded-full object-cover flex-shrink-0"
             />
@@ -222,7 +222,9 @@ function TeamMemberCard({
             </div>
           )}
           <div className="min-w-0">
-            <p className="font-medium text-sm truncate">{assignedTo?.name || "Not assigned"}</p>
+            <p className="font-medium text-sm truncate">
+              {assignedTo?.name || "Not assigned"}
+            </p>
             <p className="text-xs text-muted-foreground">Case Manager</p>
           </div>
         </div>
@@ -232,7 +234,7 @@ function TeamMemberCard({
           <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">
             Your Information
           </h4>
-          
+
           {/* Client Name */}
           <div className="flex items-start gap-2">
             <User className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
@@ -244,37 +246,62 @@ function TeamMemberCard({
 
           {/* Email */}
           <div className="flex items-start gap-2">
-            <div className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0 text-xs">@</div>
+            <div className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0 text-xs">
+              @
+            </div>
             <div className="min-w-0">
               <p className="text-xs text-muted-foreground">Email</p>
-              <p className="text-sm truncate">{profile.email || <span className="italic text-muted-foreground/60">Not provided</span>}</p>
+              <p className="text-sm truncate">
+                {profile.email || (
+                  <span className="italic text-muted-foreground/60">
+                    Not provided
+                  </span>
+                )}
+              </p>
             </div>
           </div>
 
           {/* Phone */}
           <div className="flex items-start gap-2">
-            <div className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0 text-xs">📞</div>
+            <div className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0 text-xs">
+              📞
+            </div>
             <div className="min-w-0">
               <p className="text-xs text-muted-foreground">Phone</p>
-              <p className="text-sm">{profile.phone || <span className="italic text-muted-foreground/60">Not provided</span>}</p>
+              <p className="text-sm">
+                {profile.phone || (
+                  <span className="italic text-muted-foreground/60">
+                    Not provided
+                  </span>
+                )}
+              </p>
             </div>
           </div>
 
           {/* Nationality */}
           <div className="flex items-start gap-2">
-            <div className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0 text-xs">🌍</div>
+            <div className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0 text-xs">
+              🌍
+            </div>
             <div className="min-w-0">
               <p className="text-xs text-muted-foreground">Nationality</p>
-              <p className="text-sm">{profile.nationality || <span className="italic text-muted-foreground/60">Not provided</span>}</p>
+              <p className="text-sm">
+                {profile.nationality || (
+                  <span className="italic text-muted-foreground/60">
+                    Not provided
+                  </span>
+                )}
+              </p>
             </div>
           </div>
 
           {/* Date of Birth with Birthday Highlight */}
           {profile.dateOfBirth && (
-            <div 
+            <div
               className={cn(
                 "flex items-start gap-2 p-2 rounded-lg",
-                isBirthday && "bg-gradient-to-r from-yellow-100 via-amber-100 to-yellow-100 dark:from-yellow-900/30 dark:via-amber-900/30 dark:to-yellow-900/30 animate-pulse"
+                isBirthday &&
+                  "bg-gradient-to-r from-yellow-100 via-amber-100 to-yellow-100 dark:from-yellow-900/30 dark:via-amber-900/30 dark:to-yellow-900/30 animate-pulse",
               )}
             >
               <div className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0 text-xs">
@@ -282,7 +309,12 @@ function TeamMemberCard({
               </div>
               <div className="min-w-0">
                 <p className="text-xs text-muted-foreground">Date of Birth</p>
-                <p className={cn("text-sm font-medium", isBirthday && "text-amber-700 dark:text-amber-400")}>
+                <p
+                  className={cn(
+                    "text-sm font-medium",
+                    isBirthday && "text-amber-700 dark:text-amber-400",
+                  )}
+                >
                   {formatDate(profile.dateOfBirth)}
                   {isBirthday && " (Today!)"}
                 </p>
@@ -292,24 +324,52 @@ function TeamMemberCard({
 
           {/* Address */}
           <div className="flex items-start gap-2">
-            <div className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0 text-xs">📍</div>
+            <div className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0 text-xs">
+              📍
+            </div>
             <div className="min-w-0">
               <p className="text-xs text-muted-foreground">Address</p>
-              <p className="text-sm">{profile.address || <span className="italic text-muted-foreground/60">Not provided</span>}</p>
+              <p className="text-sm">
+                {profile.address || (
+                  <span className="italic text-muted-foreground/60">
+                    Not provided
+                  </span>
+                )}
+              </p>
             </div>
           </div>
 
           {/* Gender */}
           <div className="flex items-start gap-2">
-            <div className={cn(
-              "w-4 h-4 mt-0.5 flex-shrink-0 text-xs font-bold flex items-center justify-center rounded",
-              profile.gender === 'M' ? "text-blue-500" : profile.gender === 'F' ? "text-pink-500" : "text-muted-foreground"
-            )}>
-              {profile.gender === 'M' ? '♂' : profile.gender === 'F' ? '♀' : '—'}
+            <div
+              className={cn(
+                "w-4 h-4 mt-0.5 flex-shrink-0 text-xs font-bold flex items-center justify-center rounded",
+                profile.gender === "M"
+                  ? "text-blue-500"
+                  : profile.gender === "F"
+                    ? "text-pink-500"
+                    : "text-muted-foreground",
+              )}
+            >
+              {profile.gender === "M"
+                ? "♂"
+                : profile.gender === "F"
+                  ? "♀"
+                  : "—"}
             </div>
             <div className="min-w-0">
               <p className="text-xs text-muted-foreground">Gender</p>
-              <p className="text-sm">{profile.gender === 'M' ? 'Male' : profile.gender === 'F' ? 'Female' : <span className="italic text-muted-foreground/60">Not provided</span>}</p>
+              <p className="text-sm">
+                {profile.gender === "M" ? (
+                  "Male"
+                ) : profile.gender === "F" ? (
+                  "Female"
+                ) : (
+                  <span className="italic text-muted-foreground/60">
+                    Not provided
+                  </span>
+                )}
+              </p>
             </div>
           </div>
         </div>
@@ -364,7 +424,9 @@ function PassportCard({
         ) : (
           <div className="aspect-[3/2] rounded-lg border-2 border-dashed border-border bg-muted/50 flex flex-col items-center justify-center">
             <CreditCard className="w-10 h-10 text-muted-foreground/50 mb-2" />
-            <span className="text-sm text-muted-foreground">No passport uploaded</span>
+            <span className="text-sm text-muted-foreground">
+              No passport uploaded
+            </span>
           </div>
         )}
 
@@ -381,7 +443,7 @@ function PassportCard({
           <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider flex items-center gap-1">
             <span>Extracted Data (OCR)</span>
           </h4>
-          
+
           {/* Passport Number */}
           <div className="flex items-center justify-between p-2 bg-muted/50 rounded-lg">
             <span className="text-xs text-muted-foreground">Passport No.</span>
@@ -403,39 +465,60 @@ function PassportCard({
               )}
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs uppercase opacity-80">Expiry Date</span>
-                <span className={cn("font-semibold", passportValidity.textClass)}>
+                <span className="text-xs uppercase opacity-80">
+                  Expiry Date
+                </span>
+                <span
+                  className={cn("font-semibold", passportValidity.textClass)}
+                >
                   {formatDate(profile.passportExpiry)}
                 </span>
               </div>
               <div className="flex items-center justify-between mt-1">
                 <span className="text-xs opacity-70">Time remaining</span>
-                <span className={cn("text-xs font-medium", passportValidity.textClass)}>
+                <span
+                  className={cn(
+                    "text-xs font-medium",
+                    passportValidity.textClass,
+                  )}
+                >
                   {passportValidity.label}
                 </span>
               </div>
               {passportValidity.alertLevel === "warning" && (
                 <p className="mt-2 text-xs text-yellow-700 dark:text-yellow-400 flex items-start gap-1">
                   <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                  <span>Your passport expires in less than 14 months. Contact your embassy to begin renewal process.</span>
+                  <span>
+                    Your passport expires in less than 14 months. Contact your
+                    embassy to begin renewal process.
+                  </span>
                 </p>
               )}
               {passportValidity.alertLevel === "critical" && (
                 <p className="mt-2 text-xs text-red-700 dark:text-red-400 font-medium flex items-start gap-1">
                   <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                  <span>URGENT: Your passport expires in less than 9 months. You may not be able to travel internationally. Contact your embassy immediately!</span>
+                  <span>
+                    URGENT: Your passport expires in less than 9 months. You may
+                    not be able to travel internationally. Contact your embassy
+                    immediately!
+                  </span>
                 </p>
               )}
               {passportValidity.alertLevel === "expired" && (
                 <p className="mt-2 text-xs text-red-700 dark:text-red-400 font-bold flex items-start gap-1">
                   <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                  <span>Your passport has EXPIRED! Contact your embassy immediately for emergency renewal.</span>
+                  <span>
+                    Your passport has EXPIRED! Contact your embassy immediately
+                    for emergency renewal.
+                  </span>
                 </p>
               )}
             </div>
           ) : (
             <div className="p-2 bg-muted/50 rounded-lg text-center">
-              <span className="text-xs text-muted-foreground">No expiry date detected</span>
+              <span className="text-xs text-muted-foreground">
+                No expiry date detected
+              </span>
             </div>
           )}
         </div>
@@ -447,10 +530,10 @@ function PassportCard({
 // ============================================================================
 // VISA PROCESS CARD (Right) - Process → Electronic → Actual
 // ============================================================================
-function VisaProcessCard({ 
-  status, 
-  visaInfo 
-}: { 
+function VisaProcessCard({
+  status,
+  visaInfo,
+}: {
   status: "process" | "electronic" | "actual";
   visaInfo: VisaInfo | null;
 }) {
@@ -462,7 +545,7 @@ function VisaProcessCard({
   if (status === "process") {
     return <ProcessCard />;
   }
-  
+
   if (status === "electronic") {
     return <ElectronicVisaCard />;
   }
@@ -482,7 +565,9 @@ function VisaProcessCard({
           {currentVisa ? (
             <div className="text-center">
               <Plane className="w-12 h-12 text-muted-foreground/50 mx-auto mb-2" />
-              <p className="text-xs text-muted-foreground">{currentVisa.type}</p>
+              <p className="text-xs text-muted-foreground">
+                {currentVisa.type}
+              </p>
             </div>
           ) : (
             <>
@@ -515,32 +600,50 @@ function VisaProcessCard({
               )}
             >
               <div className="flex items-center justify-between">
-                <span className={cn("text-xs uppercase", isCritical && "font-bold")}>
+                <span
+                  className={cn("text-xs uppercase", isCritical && "font-bold")}
+                >
                   Exp Visa:
                 </span>
-                <span className={cn("font-semibold", isCritical && "text-red-700 dark:text-red-400")}>
+                <span
+                  className={cn(
+                    "font-semibold",
+                    isCritical && "text-red-700 dark:text-red-400",
+                  )}
+                >
                   {formatDate(currentVisa.expiryDate)}
                 </span>
               </div>
               {isCritical && (
                 <p className="mt-1 text-xs text-red-700 dark:text-red-400 font-medium flex items-start gap-1">
                   <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                  <span>URGENT: Your visa expires in less than 2 months. Contact us immediately to plan renewal or communicate your departure!</span>
+                  <span>
+                    URGENT: Your visa expires in less than 2 months. Contact us
+                    immediately to plan renewal or communicate your departure!
+                  </span>
                 </p>
               )}
             </div>
 
             {/* Days remaining indicator */}
             {daysRemaining !== null && (
-              <div className={cn(
-                "flex items-center justify-between p-2 rounded-lg text-sm",
-                isCritical ? "bg-red-50 dark:bg-red-900/20" : "bg-green-50 dark:bg-green-900/20"
-              )}>
+              <div
+                className={cn(
+                  "flex items-center justify-between p-2 rounded-lg text-sm",
+                  isCritical
+                    ? "bg-red-50 dark:bg-red-900/20"
+                    : "bg-green-50 dark:bg-green-900/20",
+                )}
+              >
                 <span className="text-muted-foreground">Days remaining:</span>
-                <span className={cn(
-                  "font-semibold",
-                  isCritical ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"
-                )}>
+                <span
+                  className={cn(
+                    "font-semibold",
+                    isCritical
+                      ? "text-red-600 dark:text-red-400"
+                      : "text-green-600 dark:text-green-400",
+                  )}
+                >
                   {daysRemaining} days
                 </span>
               </div>
@@ -567,7 +670,7 @@ function ProcessCard() {
         <div className="w-20 h-20 rounded-full bg-blue-500/10 flex items-center justify-center">
           <Loader className="w-10 h-10 text-blue-500 animate-spin" />
         </div>
-        
+
         <div className="text-center">
           <p className="text-lg font-semibold text-blue-500">Visa on process</p>
           <p className="text-sm text-muted-foreground mt-1">

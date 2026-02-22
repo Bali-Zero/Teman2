@@ -42,7 +42,7 @@ export default function KBLINavigatorSection() {
             </p>
 
             <div className="mb-8">
-              <KBLISearch 
+              <KBLISearch
                 className="max-w-md"
                 placeholder="Search KBLI (e.g. villa, restaurant)..."
               />

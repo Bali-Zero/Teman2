@@ -1,491 +1,150 @@
-# Arsenale AI Completo - Strategia Nuzantara
+# Arsenale AI - Strategia Nuzantara
 
-**Data:** 2026-01-27
-**Autore:** Claude Code + Ricerca Web
-
----
-
-## Executive Summary
-
-Antonello dispone di un **arsenale AI enterprise-grade** del valore di ~$500+/mese che include:
-
-- 6 IDE/CLI AI-powered
-- 3 assistenti conversazionali premium
-- 1 gateway di messaggistica agentico (Clawdbot/RIRI)
-- Modelli locali via Ollama
-
-Questa guida definisce come orchestrare tutti questi strumenti per massimizzare la produttività su **Nuzantara**.
+**Aggiornato:** 2026-02-22
 
 ---
 
-## 1. Inventario Completo
+## Inventario Reale (verificato Mac)
 
-### Abbonamenti Premium Attivi
+### Abbonamenti Attivi
 
-| Provider       | Piano       | Costo/mese | Modello Principale                            | Uso Primario                      |
-| -------------- | ----------- | ---------- | --------------------------------------------- | --------------------------------- |
-| **Anthropic**  | MAX 200     | ~$100-200  | Claude Opus 4.6                               | Coding, reasoning complesso       |
-| **Google**     | AI Ultra    | $249.99    | Gemini 3 Pro + Deep Think                     | Antigravity IDE, ricerca          |
-| **Cursor**     | Ultra       | ~$20       | GPT-5, Sonnet 4                               | IDE AI-first                      |
-| **Windsurf**   | Pro         | ~$20       | Codeium models                                | Editor veloce                     |
-| **Perplexity** | Pro         | ~$20       | Multi-model                                   | Ricerca AI                        |
-| **OpenAI**     | Codex OAuth | Incluso    | GPT-5.2, o3                                   | Codex CLI                         |
-| **ChatGPT**    | Pro         | ~$200      | GPT-5                                         | Conversazione                     |
-| **Opencode**   | Open Source | Gratis     | Multi-model (Anthropic, OpenAI, Gemini, ecc.) | TUI agent, multi-provider, web UI |
+| Provider | Piano | Cosa copre |
+|----------|-------|-----------|
+| **Anthropic** | Claude MAX 200 | Claude Code + Claude.app (Opus 4.6, 200k ctx) |
+| **Google** | AI Ultra ($249.99) | Gemini CLI + Antigravity IDE (Gemini 3 Pro) |
+| **Cursor** | Ultra | IDE AI-first (GPT-5, Sonnet) |
+| **Windsurf** | Pro | Cascade agent IDE |
+| **Claude Cowork** | — | Sessioni ottimizzate, automazioni locali |
+| **Gumloop** | 60k crediti/mese | Automazione workflow no-code con AI |
+| **Perplexity** | Pro | Ricerca web con citazioni |
 
-### Software Installato
+### CLI Installate
 
-#### IDE con Agent Mode
+| Tool | Versione | Modello Attivo |
+|------|----------|---------------|
+| `claude` | 2.1.50 | Opus 4.6 MAX (200k ctx) |
+| `opencode` | 1.2.10 | Dinamico — Google/Cohere/Ollama via env |
+| `openclaw` | 2026.2.21-2 | Gemini 3 Pro Preview (agent ZAN 🕉️) |
+| `kimi` | 1.12.0 | kimi-for-coding (262k ctx, thinking ON) |
+| `gemini` | 0.29.3 | Gemini 3 Pro Preview (AI Ultra, --yolo) |
+| `cursor` | 2.5.20 | Claude/GPT-5 (Ultra plan) |
+| `windsurf` | 1.9552 | Cascade (Pro) |
+| `antigravity` | 1.107.0 | Solo launcher GUI (apre l'app) — no agent CLI |
+| `ollama` | 0.15.6 | qwen2.5-coder:32b (locale, 19GB) |
 
-| App             | Versione | CLI           | Agent Mode | Specialità                                                       |
-| --------------- | -------- | ------------- | ---------- | ---------------------------------------------------------------- |
-| **Claude Code** | 2.1.9    | `claude`      | Full       | Coding complesso, MCP, subagents                                 |
-| **Opencode**    | 1.2.10   | `opencode`    | Full       | TUI/Web UI, multi-provider, MCP, PR review, sessioni esportabili |
-| **Antigravity** | 1.104.0  | `antigravity` | Full       | Multi-agent parallelo, Gemini 3                                  |
-| **Cursor**      | 2.4.21   | `cursor`      | Full       | IDE AI-first, velocità                                           |
-| **Windsurf**    | 1.106.0  | `windsurf`    | Full       | Cascade agent, edit mode                                         |
-| **Gemini CLI**  | 0.26.0   | `gemini`      | Full       | Q&A, summaries                                                   |
-| **Codex CLI**   | 0.77.0   | `codex`       | Full       | OpenAI agent, sandbox                                            |
+### App Installate
 
-#### Assistenti Conversazionali (App)
+| App | Uso principale |
+|-----|---------------|
+| **Claude.app** | Chat, file upload, research, Cowork |
+| **Cursor.app** | IDE coding veloce (Ultra) |
+| **Windsurf.app** | IDE Cascade agent (Pro) |
+| **Antigravity.app** | IDE multi-agent parallelo (AI Ultra) |
+| **Perplexity.app** | Ricerca web con fonti |
+| **Dia.app** | Browser AI |
 
-| App                | Modello           | Uso                       |
-| ------------------ | ----------------- | ------------------------- |
-| **Claude.app**     | Opus 4.5 + Cowork | File management, research |
-| **ChatGPT.app**    | GPT-5             | Conversazione, reasoning  |
-| **Perplexity.app** | Multi             | Ricerca con fonti         |
+### Opencode — Provider Attivi (via env, NO Copilot)
 
-#### Modelli Locali (Ollama)
+| Provider | Modelli disponibili |
+|----------|-------------------|
+| `google` (GEMINI_API_KEY) | Gemini 3 Pro Preview |
+| `cohere` (COHERE_API_KEY) | Command-A |
+| `ollama` (locale) | qwen2.5-coder:32b |
 
-| Modello            | Size   | Uso             |
-| ------------------ | ------ | --------------- |
-| `qwen2.5`          | 4.7 GB | General purpose |
-| `qwen2.5-coder:7b` | 4.7 GB | Coding locale   |
-| `llama3.2:3b`      | 2.0 GB | Veloce, leggero |
+### Openclaw ZAN — Setup
 
----
+- **Modello:** Gemini 3 Pro Preview → fallback Claude Sonnet/Opus
+- **Canali attivi:** WhatsApp, iMessage, voice-call
+- **Plugin:** memory-lancedb, llm-task, kimi-claw, lobster
+- **Telegram:** disabilitato
+- **RIRI:** non esiste più — ZAN è l'unico agent
 
-## 2. Clawdbot/RIRI - Il Gateway Centrale
+### Gumloop — Automazione No-Code
 
-### Cos'è Clawdbot
-
-**Clawdbot** è un gateway AI self-hosted che trasforma le app di messaggistica in un centro di comando per automazione. Con 29,900+ GitHub stars, è uno dei progetti open-source più popolari del 2026.
-
-**Fonti:**
-
-- [GitHub - clawdbot/clawdbot](https://github.com/clawdbot/clawdbot)
-- [Clawdbot Documentation](https://docs.clawd.bot)
-- [TowardsAI - Clawdbot Guide](https://pub.towardsai.net/clawdbot-ai-the-revolutionary-open-source-personal-assistant-transforming-productivity-in-2026-6ec5fdb3084f)
-
-### Configurazione Attuale RIRI
-
-```
-Agent: RIRI 🌺
-Workspace: ~/riri/
-Gateway: ws://127.0.0.1:18789
-Modello: Claude Opus 4.5 (200k context)
-TTS: ElevenLabs
-Memory: Abilitata
-Heartbeat: Ogni 30 minuti
-```
-
-### Canali Attivi
-
-| Canale       | Stato | Numero/ID      |
-| ------------ | ----- | -------------- |
-| **WhatsApp** | ✅ OK | +6281332982993 |
-| **Telegram** | ✅ OK | @Ri_rie_bot    |
-
-### Skills Pronti (19/49)
-
-- 🔐 1Password - Gestione secrets
-- 📝 Apple Notes - Note native
-- ⏰ Apple Reminders - Promemoria
-- 📦 GitHub - Issues, PR, CI/CD
-- 🧩 Coding Agent - Delega a Claude/Codex/etc
-- ♊ Gemini - Q&A rapido
-
-### Cron Jobs Configurati
-
-| Job                | Orario     | Scopo              |
-| ------------------ | ---------- | ------------------ |
-| `morning-briefing` | 07:00 WITA | Briefing mattutino |
-| `evening-summary`  | 20:00 WITA | Riepilogo serale   |
-
-### Potenzialità Clawdbot per Nuzantara
-
-1. **Notifiche Intelligenti**
-   - Alert quando un lead importante arriva
-   - Notifica errori in produzione
-   - Summary giornaliero attività sistema
-
-2. **Voice Interface**
-   - Comandi vocali via WhatsApp
-   - Risposte TTS con ElevenLabs
-   - "RIRI, status Nuzantara" → risposta audio
-
-3. **Delegazione Task**
-   - "RIRI, chiedi a Claude Code di fixare il bug login"
-   - RIRI lancia Claude Code in background
-   - Report risultato su WhatsApp
-
-4. **Monitoraggio Proattivo**
-   - Heartbeat ogni 30 minuti
-   - Check salute servizi Fly.io
-   - Alert automatici se qualcosa va storto
+- **60.000 crediti/mese** (valore alto)
+- Web-based, drag & drop workflows con AI
+- Connettori: Gmail, Google Sheets, Slack, Notion, webhook, HTTP, ecc.
+- **Ideale per:** pipeline dati, notifiche automatiche, CRM automation, scraping orchestration
 
 ---
 
-## 3. Antigravity IDE - Il Multi-Agent
+## Strategia d'Uso
 
-### Cos'è Antigravity
+### Matrice Decisionale
 
-**Antigravity** è l'IDE agentico di Google, rilasciato novembre 2025 insieme a Gemini 3. È costruito su VS Code ma con filosofia "Agent-First".
+| Scenario | Tool | Perché |
+|----------|------|--------|
+| **Feature complessa multi-file** | Claude Code | MCP servers, subagents, skill system |
+| **Coding TUI rapido** | Opencode | TUI fluida, switch modello, PR review |
+| **Coding in IDE** | Cursor | Veloce, agent mode nell'editor |
+| **Refactoring architetturale** | Antigravity.app | 8 agent paralleli, planning mode — solo GUI |
+| **Cascade multi-step in IDE** | Windsurf | Edit mode, cascade sequenziale |
+| **Context enorme (>100k)** | Kimi CLI | 262k ctx, thinking ON, gratis |
+| **Q&A istantaneo terminale** | gemini --yolo | Risposta immediata, zero interazione |
+| **Coding locale / privacy** | Opencode + ollama | qwen2.5-coder:32b, zero cloud |
+| **PR review da terminale** | Opencode | `opencode pr <n>` |
+| **Ricerca con fonti** | Perplexity.app | Citazioni verificate |
+| **Gateway mobile** | Openclaw (ZAN) | WhatsApp/iMessage → Gemini 3 Pro |
+| **Automazione workflow** | Gumloop | 60k crediti, no-code, API integrations |
+| **App Google (Gmail, Sheets, Drive)** | Gumloop | Connettori nativi, automazioni complesse |
 
-**Fonti:**
-
-- [Google Developers Blog](https://developers.googleblog.com/build-with-google-antigravity-our-new-agentic-development-platform/)
-- [AIFire Guide 2026](https://www.aifire.co/p/google-antigravity-the-2026-guide-to-the-best-ai-ide)
-- [KDnuggets](https://www.kdnuggets.com/google-antigravity-ai-first-development-with-this-new-ide)
-
-### Feature Chiave
-
-| Feature               | Descrizione                        |
-| --------------------- | ---------------------------------- |
-| **Dual Interface**    | Editor View + Manager Surface      |
-| **Planning Mode**     | Crea piano prima di codare         |
-| **Fast Mode**         | Coding diretto                     |
-| **8 Agent Paralleli** | Multiplica produttività            |
-| **Artifacts**         | Task list, screenshots, recordings |
-| **Learning**          | Salva contesto in knowledge base   |
-
-### Benchmark
-
-- **SWE-bench:** 76.2% (vs Claude 77.2%)
-- **Feature completion:** 42s (38% più veloce)
-- **Refactoring accuracy:** 94%
-
-### Uso per Nuzantara
-
-```bash
-# Refactoring complesso multi-file
-antigravity chat --mode agent "Refactor auth system to support OAuth2"
-
-# Planning mode per feature grandi
-antigravity chat --mode agent --planning "Add real-time notifications"
-
-# Parallel agents per task indipendenti
-# (via Manager Surface GUI)
-```
-
----
-
-## 4. Opencode - Il TUI/Web Agent Multi-Provider
-
-### Cos'è Opencode
-
-**Opencode** è un agente CLI open-source (v1.2.10) con TUI interattiva e Web UI opzionale, che supporta nativamente tutti i principali provider AI (Anthropic, OpenAI, Google, Ollama, ecc.) e il protocollo MCP.
-
-**Repository:** https://github.com/sst/opencode
-**Installato:** `~/.opencode/bin/opencode`
-
-### Feature Chiave
-
-| Feature             | Descrizione                                              |
-| ------------------- | -------------------------------------------------------- |
-| **TUI interattiva** | Interfaccia terminale fluida, no GUI richiesta           |
-| **Web UI**          | `opencode web` apre browser per sessioni visive          |
-| **Multi-provider**  | Anthropic, OpenAI, Gemini, Ollama, ecc. in un unico tool |
-| **MCP nativo**      | Supporto Model Context Protocol integrato                |
-| **PR Review**       | `opencode pr <number>` — checkout + review diretto       |
-| **ACP server**      | Agent Client Protocol per integrazione con altri agent   |
-| **Sessioni export** | Export/import JSON per riprendere sessioni               |
-| **GitHub agent**    | Integrazione GitHub nativa                               |
-| **Token stats**     | `opencode stats` per tracciare utilizzo e costi          |
-| **Headless mode**   | `opencode serve` per uso in pipeline/CI                  |
-
-### Comandi Principali
-
-```bash
-# Avvio TUI nel progetto corrente
-opencode
-
-# Web UI
-opencode web
-
-# Eseguire un task direttamente
-opencode run "Analizza i test che falliscono e proponi fix"
-
-# Review PR GitHub
-opencode pr 123
-
-# Lista modelli disponibili
-opencode models
-
-# Stats utilizzo token/costo
-opencode stats
-
-# Aggiornamento
-opencode upgrade
-```
-
-### Uso per Nuzantara
-
-```bash
-# Debug veloce con modello a scelta
-opencode run "Controlla reasoning.py e spiega il flusso evidence scoring"
-
-# PR review integrata
-opencode pr 45
-
-# Sessione salvabile e riprendibile
-opencode export <sessionID> > session-backup.json
-opencode import session-backup.json
-```
-
-### Quando Usare Opencode vs Claude Code
-
-| Scenario                                        | Tool           |
-| ----------------------------------------------- | -------------- |
-| Coding complesso con MCP servers personalizzati | Claude Code    |
-| TUI leggera, switch rapido tra modelli          | Opencode       |
-| Web UI senza IDE                                | Opencode web   |
-| PR review da terminale                          | Opencode       |
-| Task con subagents Claude                       | Claude Code    |
-| Headless in pipeline CI                         | Opencode serve |
-
----
-
-## 5. Strategia di Orchestrazione
-
-### Matrice Decisionale: Quale Tool Usare
-
-| Scenario                         | Tool Primario            | Perché                               |
-| -------------------------------- | ------------------------ | ------------------------------------ |
-| **Bug fix rapido**               | Cursor / Opencode        | Veloce, context switching minimo     |
-| **Feature complessa multi-file** | Claude Code              | Reasoning profondo, MCP servers      |
-| **Refactoring architetturale**   | Antigravity              | 8 agent paralleli, planning mode     |
-| **Ricerca + coding**             | Perplexity → Claude Code | Ricerca con fonti → implementazione  |
-| **Debug produzione**             | Claude Code + Fly MCP    | Accesso diretto a logs e metriche    |
-| **Quick Q&A su codice**          | Gemini CLI / Opencode    | Veloce, in-terminal, switch modello  |
-| **PR review da terminale**       | Opencode                 | `opencode pr <n>` — checkout diretto |
-| **Switch rapido tra modelli**    | Opencode                 | Multi-provider in un comando         |
-| **Prototipo UI**                 | Windsurf                 | Cascade mode, veloce                 |
-| **Task delegato da mobile**      | RIRI/Clawdbot            | Via WhatsApp/Telegram                |
-| **Sessione da Web UI**           | Opencode web             | Browser, no IDE, qualsiasi device    |
-
-### Workflow Quotidiano Suggerito
+### Regola Pratica
 
 ```
-07:00 - RIRI Morning Briefing (WhatsApp)
-        → Status Nuzantara, task prioritari, alert notturni
+Coding da terminale?
+  → opencode (TUI, switch modello con Tab)
+  → se serve MCP/subagent → claude
 
-Durante il giorno:
-├── Task coding complessi → Claude Code
-├── Refactoring parallelo → Antigravity (8 agents)
-├── Bug fix veloci → Cursor / Opencode
-├── PR review → Opencode (opencode pr <n>)
-├── Switch modello rapido → Opencode TUI
-├── Ricerca → Perplexity Pro
-├── Q&A rapido → Gemini CLI
-└── Mobile/Away → RIRI via WhatsApp
+Sei in IDE?
+  → Cursor (task veloci) | Windsurf (cascade) | Antigravity (parallelo)
 
-20:00 - RIRI Evening Summary (Telegram)
-        → Riepilogo commit, issue chiuse, metriche
+Risposta istantanea?
+  → gemini --yolo "domanda"
+
+File/context enorme?
+  → kimi (262k) oppure claude (200k MAX)
+
+Privacy / offline?
+  → opencode + ollama → qwen2.5-coder:32b
+
+Mobile / lontano dal Mac?
+  → WhatsApp → ZAN → Gemini 3 Pro
+
+Automazione ripetitiva / workflow?
+  → Gumloop (60k crediti, no-code)
 ```
 
-### Pipeline CI/CD con AI
+### Gumloop — Automazioni Utili per Nuzantara
+
+Con 60k crediti/mese puoi automatizzare:
+
+- **CRM alerts:** nuovo cliente in PostgreSQL → notifica WhatsApp a ZAN
+- **Intel pipeline:** RSS → Gumloop AI filter → staging area backend
+- **Google Sheets → Qdrant:** sync dati prezzi/KBLI aggiornati
+- **Gmail → CRM:** email clienti estratte e loggata in PostgreSQL
+- **Deploy alerts:** Fly.io webhook → Gumloop → WhatsApp
+- **Report settimanale:** query PostgreSQL → Gumloop → Google Sheets formattato
+
+### Workflow Quotidiano
 
 ```
-1. RIRI riceve alert (webhook GitHub)
-2. RIRI notifica su WhatsApp
-3. Tu rispondi "fixa"
-4. RIRI delega a Claude Code
-5. Claude Code:
-   - Analizza issue
-   - Crea branch
-   - Implementa fix
-   - Esegue test
-   - Crea PR
-6. RIRI notifica: "PR #123 pronta per review"
-7. Tu approvi da mobile
-8. RIRI merge via GitHub CLI
+Mattina:
+  1. opencode (TUI) per tasks del giorno
+  2. Cursor/Antigravity per features attive
+  3. claude per task complessi con MCP
+
+Durante:
+  ├── Analisi veloce    → gemini --yolo
+  ├── PR review         → opencode pr <n>
+  ├── Context enorme    → kimi
+  ├── Privacy/offline   → opencode + ollama
+  ├── Parallelismo      → Antigravity
+  └── Automazioni       → Gumloop
+
+Mobile:
+  → WhatsApp → ZAN → risposta Gemini 3 Pro
 ```
-
----
-
-## 5. Integrazione Nuzantara Specifica
-
-### MCP Servers Attivi (Claude Code)
-
-| Server             | Uso per Nuzantara     |
-| ------------------ | --------------------- |
-| `flyio`            | Deploy, logs, scaling |
-| `github`           | Issues, PR, CI/CD     |
-| `filesystem`       | Accesso codebase      |
-| `playwright`       | E2E testing           |
-| `brave-search`     | Ricerca web           |
-| `claude-in-chrome` | Browser automation    |
-
-### Comandi Utili
-
-```bash
-# Deploy rapido
-claude "Deploy backend to Fly.io and verify health"
-
-# Analisi codebase
-claude "Analyze the auth flow and suggest improvements"
-
-# Fix con context completo
-claude "Fix the bug described in GitHub issue #42"
-
-# Refactoring multi-file con Antigravity
-antigravity chat --mode agent "Refactor RAG service to use async/await consistently"
-```
-
-### RIRI Commands per Nuzantara
-
-Via WhatsApp/Telegram:
-
-- `/status nuzantara` - Health check completo
-- `/deploy backend` - Trigger deploy
-- `/logs backend 50` - Ultimi 50 log
-- `/issue create "Bug: ..."` - Crea GitHub issue
-- `"Claude Code, fixa il bug login"` - Delega coding
-
----
-
-## 6. Setup Raccomandato
-
-### Azioni Immediate
-
-1. **Fixare cron jobs RIRI** (attualmente in errore)
-
-   ```bash
-   clawdbot cron edit morning-briefing
-   clawdbot cron edit evening-summary
-   ```
-
-2. **Abilitare plugin mancanti Clawdbot**
-
-   ```bash
-   clawdbot plugins enable discord  # Se usi Discord
-   clawdbot plugins enable googlechat  # Per workspace Google
-   ```
-
-3. **Installare skills utili**
-
-   ```bash
-   clawdbot skills install himalaya  # Email CLI
-   clawdbot skills install gog  # Google Workspace
-   ```
-
-4. **Configurare webhook GitHub → RIRI**
-   - Per notifiche PR, issues, deploy
-
-### Configurazione Ottimale per Nuzantara
-
-```json
-// Aggiungere a ~/.clawdbot/clawdbot.json
-{
-  "agents": {
-    "list": [
-      {
-        "id": "nuzantara-ops",
-        "workspace": "/Users/antonellosiano/Projects/nuzantara",
-        "identity": {
-          "name": "Nuzantara Ops",
-          "emoji": "🚀"
-        }
-      }
-    ]
-  }
-}
-```
-
----
-
-## 7. ROI e Metriche
-
-### Costo Totale Stimato
-
-| Servizio        | Costo/mese         |
-| --------------- | ------------------ |
-| Anthropic MAX   | $100-200           |
-| Google AI Ultra | $249.99            |
-| Cursor Ultra    | $20                |
-| Windsurf Pro    | $20                |
-| Perplexity Pro  | $20                |
-| ChatGPT Pro     | $200               |
-| **TOTALE**      | **~$610-710/mese** |
-
-### ROI Atteso
-
-Se questi strumenti risparmiano **20+ ore/settimana** di lavoro:
-
-- 80 ore/mese salvate
-- $50-100/ora valore consulenza
-- **$4,000-8,000/mese** valore generato
-- **ROI: 6-12x**
-
-### Metriche da Tracciare
-
-- Tempo per feature (prima vs dopo)
-- Bug fix time
-- Linee di codice/giorno
-- Deploy frequency
-- Incident response time
-
----
-
-## 8. Roadmap Suggerita
-
-### Settimana 1: Stabilizzazione
-
-- [ ] Fix cron jobs RIRI
-- [ ] Test tutti i canali
-- [ ] Configurare webhook GitHub
-
-### Settimana 2: Integrazione
-
-- [ ] Creare agent Nuzantara-Ops
-- [ ] Configurare notifiche production
-- [ ] Test pipeline CI/CD con AI
-
-### Settimana 3: Ottimizzazione
-
-- [ ] Misurare metriche baseline
-- [ ] Ottimizzare workflow quotidiano
-- [ ] Documentare best practices
-
-### Mese 2+: Automazione Avanzata
-
-- [ ] Proactive monitoring
-- [ ] Auto-fix per errori comuni
-- [ ] Knowledge base condivisa tra agent
-
----
-
-## Conclusione
-
-Hai un **arsenale AI enterprise-grade** che pochi sviluppatori al mondo possiedono. La chiave è:
-
-1. **RIRI** come gateway centrale per notifiche e delegazione
-2. **Claude Code** per coding complesso e reasoning con MCP
-3. **Opencode** per TUI/Web multi-provider, PR review, switch modello rapido
-4. **Antigravity** per refactoring parallelo
-5. **Cursor/Windsurf** per task veloci in IDE
-6. **Perplexity** per ricerca
-
-Con questa orchestrazione, puoi operare come un **team di 5-10 sviluppatori** mantenendo il controllo di una sola persona.
 
 ---
 
 _"The lobster way"_ 🦞
-
-**Fonti:**
-
-- [Clawdbot GitHub](https://github.com/clawdbot/clawdbot)
-- [Clawdbot Docs](https://docs.clawd.bot)
-- [Google Antigravity Blog](https://developers.googleblog.com/build-with-google-antigravity-our-new-agentic-development-platform/)
-- [AIFire Antigravity Guide](https://www.aifire.co/p/google-antigravity-the-2026-guide-to-the-best-ai-ide)

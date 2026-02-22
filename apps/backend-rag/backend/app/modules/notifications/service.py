@@ -20,6 +20,12 @@ import os
 from typing import List, Optional
 from datetime import datetime
 import aiohttp
+import aiosmtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
+
 from .models import (
     ClientAlert,
     AlertStatus,
@@ -44,6 +50,108 @@ class EmailProvider:
         from_name: str = "Bali Zero Team",
     ) -> bool:
         raise NotImplementedError
+
+
+class SMTPProvider(EmailProvider):
+    """SMTP email provider (Gmail, etc.)."""
+
+    def __init__(self):
+        self.host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+        self.port = int(os.getenv("SMTP_PORT", "587"))
+        self.user = os.getenv("SMTP_USER")
+        self.password = os.getenv("SMTP_PASSWORD")
+        self.use_tls = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
+        self.from_email = os.getenv("SMTP_FROM", self.user)
+
+    async def send_email(
+        self,
+        to_email: str,
+        subject: str,
+        html_body: str,
+        text_body: Optional[str] = None,
+        bcc: Optional[List[str]] = None,
+        from_email: str = None,
+        from_name: str = "Bali Zero Team",
+        attachments: Optional[List[dict]] = None,
+    ) -> bool:
+        """Send email via SMTP with optional attachments."""
+        if not self.user or not self.password:
+            logger.error("SMTP credentials not configured")
+            return False
+
+        try:
+            # Create message
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = subject
+            msg["From"] = f"{from_name} <{from_email or self.from_email}>"
+            msg["To"] = to_email
+
+            # Add BCC if provided
+            if bcc:
+                msg["Bcc"] = ", ".join(bcc)
+
+            # Attach body parts
+            if text_body:
+                msg.attach(MIMEText(text_body, "plain", "utf-8"))
+            if html_body:
+                msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+            # Handle attachments
+            if attachments:
+                # Create a new multipart/mixed message
+                mixed_msg = MIMEMultipart("mixed")
+                mixed_msg["Subject"] = msg["Subject"]
+                mixed_msg["From"] = msg["From"]
+                mixed_msg["To"] = msg["To"]
+                if bcc:
+                    mixed_msg["Bcc"] = msg["Bcc"]
+                
+                # Attach the body part
+                mixed_msg.attach(msg)
+                
+                # Add file attachments
+                for attachment in attachments:
+                    filename = attachment.get("filename", "attachment")
+                    content = attachment.get("content")
+                    content_type = attachment.get("content_type", "application/octet-stream")
+                    
+                    if content:
+                        part = MIMEBase("application", "octet-stream")
+                        part.set_payload(content)
+                        encoders.encode_base64(part)
+                        part.add_header(
+                            "Content-Disposition",
+                            f'attachment; filename="{filename}"',
+                        )
+                        mixed_msg.attach(part)
+                
+                msg = mixed_msg
+
+            # Send email
+            # For port 587: use STARTTLS (use_tls=False, start_tls=True)
+            # For port 465: use TLS (use_tls=True, start_tls=False)
+            use_tls = self.port == 465
+            start_tls = self.port == 587
+            
+            await aiosmtplib.send(
+                msg,
+                hostname=self.host,
+                port=self.port,
+                username=self.user,
+                password=self.password,
+                use_tls=use_tls,
+                start_tls=start_tls,
+            )
+
+            logger.info(
+                "Email sent via SMTP",
+                extra={"to": to_email, "subject": subject, "host": self.host},
+            )
+            return True
+
+        except Exception as e:
+            logger.error("Failed to send email via SMTP", exc_info=e)
+            return False
 
 
 class SendGridProvider(EmailProvider):
@@ -129,10 +237,15 @@ class NotificationService:
         """Create email provider based on configuration."""
         provider_type = os.getenv("EMAIL_PROVIDER", "sendgrid").lower()
 
-        if provider_type == "sendgrid":
+        if provider_type == "smtp":
+            return SMTPProvider()
+        elif provider_type == "sendgrid":
             return SendGridProvider()
         else:
-            raise ValueError(f"Unsupported email provider: {provider_type}")
+            # Auto-detect: use SMTP if SMTP_USER is set, otherwise SendGrid
+            if os.getenv("SMTP_USER") and os.getenv("SMTP_PASSWORD"):
+                return SMTPProvider()
+            return SendGridProvider()
 
     async def process_alert(self, alert: ClientAlert, client_email: str) -> NotificationResult:
         """

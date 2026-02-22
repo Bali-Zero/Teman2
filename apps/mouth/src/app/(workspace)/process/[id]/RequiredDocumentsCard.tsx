@@ -45,15 +45,37 @@ interface RequiredDocumentsCardProps {
 
 // Status Badge Component
 const StatusBadge = memo(({ status }: { status: DocumentStatus }) => {
-  const configs: Record<DocumentStatus, { color: string; icon: React.ReactNode; label: string }> = {
-    pending: { color: "bg-amber-500/10 text-amber-500", icon: <AlertCircle className="w-3 h-3" />, label: "Pending" },
-    uploaded: { color: "bg-blue-500/10 text-blue-500", icon: <Upload className="w-3 h-3" />, label: "Uploaded" },
-    verified: { color: "bg-green-500/10 text-green-500", icon: <CheckCircle className="w-3 h-3" />, label: "Verified" },
-    rejected: { color: "bg-red-500/10 text-red-500", icon: <X className="w-3 h-3" />, label: "Rejected" },
+  const configs: Record<
+    DocumentStatus,
+    { color: string; icon: React.ReactNode; label: string }
+  > = {
+    pending: {
+      color: "bg-amber-500/10 text-amber-500",
+      icon: <AlertCircle className="w-3 h-3" />,
+      label: "Pending",
+    },
+    uploaded: {
+      color: "bg-blue-500/10 text-blue-500",
+      icon: <Upload className="w-3 h-3" />,
+      label: "Uploaded",
+    },
+    verified: {
+      color: "bg-green-500/10 text-green-500",
+      icon: <CheckCircle className="w-3 h-3" />,
+      label: "Verified",
+    },
+    rejected: {
+      color: "bg-red-500/10 text-red-500",
+      icon: <X className="w-3 h-3" />,
+      label: "Rejected",
+    },
   };
   const config = configs[status];
   return (
-    <Badge variant="secondary" className={`${config.color} flex items-center gap-1`}>
+    <Badge
+      variant="secondary"
+      className={`${config.color} flex items-center gap-1`}
+    >
       {config.icon}
       {config.label}
     </Badge>
@@ -70,7 +92,12 @@ function AddDocumentModal({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (data: { document_type: string; document_label: string; description: string; is_required: boolean }) => Promise<void>;
+  onAdd: (data: {
+    document_type: string;
+    document_label: string;
+    description: string;
+    is_required: boolean;
+  }) => Promise<void>;
   isLoading: boolean;
 }) {
   const [selectedType, setSelectedType] = useState("");
@@ -78,7 +105,9 @@ function AddDocumentModal({
   const [description, setDescription] = useState("");
   const [isRequired, setIsRequired] = useState(true);
 
-  const selectedOption = DOCUMENT_TYPE_OPTIONS.find((o) => o.value === selectedType);
+  const selectedOption = DOCUMENT_TYPE_OPTIONS.find(
+    (o) => o.value === selectedType,
+  );
 
   const handleSubmit = async () => {
     if (!selectedType) return;
@@ -112,7 +141,9 @@ function AddDocumentModal({
                   <SelectItem key={option.value} value={option.value}>
                     <div className="flex flex-col">
                       <span>{option.label}</span>
-                      <span className="text-xs text-muted-foreground">{option.description}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {option.description}
+                      </span>
                     </div>
                   </SelectItem>
                 ))}
@@ -134,7 +165,9 @@ function AddDocumentModal({
             <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder={selectedOption?.description || "Add notes for the client..."}
+              placeholder={
+                selectedOption?.description || "Add notes for the client..."
+              }
               rows={2}
             />
           </div>
@@ -147,14 +180,19 @@ function AddDocumentModal({
               onChange={(e) => setIsRequired(e.target.checked)}
               className="rounded border-gray-300"
             />
-            <Label htmlFor="is-required" className="mb-0">Required document</Label>
+            <Label htmlFor="is-required" className="mb-0">
+              Required document
+            </Label>
           </div>
 
           <div className="flex gap-2 justify-end">
             <Button variant="outline" onClick={onClose} disabled={isLoading}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit} disabled={!selectedType || isLoading}>
+            <Button
+              onClick={handleSubmit}
+              disabled={!selectedType || isLoading}
+            >
               {isLoading ? "Adding..." : "Add Document"}
             </Button>
           </div>
@@ -175,7 +213,10 @@ function DocumentReviewModal({
   document: RequiredDocument | null;
   isOpen: boolean;
   onClose: () => void;
-  onUpdate: (docId: number, data: { status: DocumentStatus; team_member_notes: string }) => Promise<void>;
+  onUpdate: (
+    docId: number,
+    data: { status: DocumentStatus; team_member_notes: string },
+  ) => Promise<void>;
   isLoading: boolean;
 }) {
   const [status, setStatus] = useState<DocumentStatus>("pending");
@@ -207,15 +248,22 @@ function DocumentReviewModal({
         <div className="space-y-4">
           <div className="p-3 bg-muted rounded-lg">
             <p className="font-medium">{document.document_label}</p>
-            <p className="text-sm text-muted-foreground">{document.document_type}</p>
+            <p className="text-sm text-muted-foreground">
+              {document.document_type}
+            </p>
             {document.client_notes && (
-              <p className="text-sm mt-2"><strong>Client notes:</strong> {document.client_notes}</p>
+              <p className="text-sm mt-2">
+                <strong>Client notes:</strong> {document.client_notes}
+              </p>
             )}
           </div>
 
           <div>
             <Label>Status</Label>
-            <Select value={status} onValueChange={(v) => setStatus(v as DocumentStatus)}>
+            <Select
+              value={status}
+              onValueChange={(v) => setStatus(v as DocumentStatus)}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -253,7 +301,9 @@ function DocumentReviewModal({
 }
 
 // Main Component
-export function RequiredDocumentsCard({ practiceId }: RequiredDocumentsCardProps) {
+export function RequiredDocumentsCard({
+  practiceId,
+}: RequiredDocumentsCardProps) {
   const {
     documents,
     isLoading,
@@ -323,7 +373,9 @@ export function RequiredDocumentsCard({ practiceId }: RequiredDocumentsCardProps
           <div className="p-8 text-center text-muted-foreground">
             <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
             <p>No required documents set</p>
-            <p className="text-sm">Add documents that the client needs to provide</p>
+            <p className="text-sm">
+              Add documents that the client needs to provide
+            </p>
             <Button
               variant="outline"
               size="sm"
@@ -345,15 +397,22 @@ export function RequiredDocumentsCard({ practiceId }: RequiredDocumentsCardProps
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium truncate">{doc.document_label}</span>
+                    <span className="font-medium truncate">
+                      {doc.document_label}
+                    </span>
                     {doc.is_required && (
-                      <Badge variant="secondary" className="text-[10px] bg-amber-500/10 text-amber-500">
+                      <Badge
+                        variant="secondary"
+                        className="text-[10px] bg-amber-500/10 text-amber-500"
+                      >
                         Required
                       </Badge>
                     )}
                   </div>
                   {doc.description && (
-                    <p className="text-xs text-muted-foreground truncate">{doc.description}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {doc.description}
+                    </p>
                   )}
                   <div className="flex items-center gap-2 mt-1">
                     <StatusBadge status={doc.status} />

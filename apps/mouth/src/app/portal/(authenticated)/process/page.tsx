@@ -30,10 +30,26 @@ import type { ClientRequiredDocument } from "@/lib/types/required-documents";
 
 // Status configurations
 const STATUS_CONFIG = {
-  pending: { color: "bg-amber-500/10 text-amber-500", icon: <Clock className="w-4 h-4" />, label: "Pending" },
-  uploaded: { color: "bg-blue-500/10 text-blue-500", icon: <Upload className="w-4 h-4" />, label: "Uploaded" },
-  verified: { color: "bg-green-500/10 text-green-500", icon: <CheckCircle className="w-4 h-4" />, label: "Verified" },
-  rejected: { color: "bg-red-500/10 text-red-500", icon: <X className="w-4 h-4" />, label: "Rejected" },
+  pending: {
+    color: "bg-amber-500/10 text-amber-500",
+    icon: <Clock className="w-4 h-4" />,
+    label: "Pending",
+  },
+  uploaded: {
+    color: "bg-blue-500/10 text-blue-500",
+    icon: <Upload className="w-4 h-4" />,
+    label: "Uploaded",
+  },
+  verified: {
+    color: "bg-green-500/10 text-green-500",
+    icon: <CheckCircle className="w-4 h-4" />,
+    label: "Verified",
+  },
+  rejected: {
+    color: "bg-red-500/10 text-red-500",
+    icon: <X className="w-4 h-4" />,
+    label: "Rejected",
+  },
 } as const;
 
 // Process status mapping
@@ -60,15 +76,20 @@ interface ProcessGroup {
 }
 
 // Status Badge Component
-const StatusBadge = memo(({ status }: { status: keyof typeof STATUS_CONFIG }) => {
-  const config = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
-  return (
-    <Badge variant="secondary" className={`${config.color} flex items-center gap-1`}>
-      {config.icon}
-      {config.label}
-    </Badge>
-  );
-});
+const StatusBadge = memo(
+  ({ status }: { status: keyof typeof STATUS_CONFIG }) => {
+    const config = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
+    return (
+      <Badge
+        variant="secondary"
+        className={`${config.color} flex items-center gap-1`}
+      >
+        {config.icon}
+        {config.label}
+      </Badge>
+    );
+  },
+);
 StatusBadge.displayName = "StatusBadge";
 
 // Document Upload Modal
@@ -89,14 +110,17 @@ function DocumentUploadModal({
   const [fileError, setFileError] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
 
-  const handleFileSelect = (selectedFile: File | null, error: string | null) => {
+  const handleFileSelect = (
+    selectedFile: File | null,
+    error: string | null,
+  ) => {
     setFile(selectedFile);
     setFileError(error);
   };
 
   const handleSubmit = async () => {
     if (!file) return;
-    
+
     // Convert file to base64
     const reader = new FileReader();
     reader.onloadend = async () => {
@@ -127,7 +151,9 @@ function DocumentUploadModal({
           <div className="p-3 bg-muted rounded-lg">
             <p className="font-medium">{document.document_label}</p>
             {document.description && (
-              <p className="text-sm text-muted-foreground">{document.description}</p>
+              <p className="text-sm text-muted-foreground">
+                {document.description}
+              </p>
             )}
           </div>
 
@@ -142,7 +168,9 @@ function DocumentUploadModal({
           />
 
           <div>
-            <label className="text-sm font-medium mb-1 block">Notes (optional)</label>
+            <label className="text-sm font-medium mb-1 block">
+              Notes (optional)
+            </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -155,10 +183,7 @@ function DocumentUploadModal({
             <Button variant="outline" onClick={onClose} disabled={isUploading}>
               Cancel
             </Button>
-            <Button 
-              onClick={handleSubmit} 
-              disabled={!file || isUploading}
-            >
+            <Button onClick={handleSubmit} disabled={!file || isUploading}>
               {isUploading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -187,12 +212,19 @@ function ProcessCard({
   onUploadClick: (doc: ClientRequiredDocument) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
-  
-  const pendingCount = process.documents.filter(d => d.status === "pending").length;
-  const uploadedCount = process.documents.filter(d => d.status === "uploaded").length;
-  const verifiedCount = process.documents.filter(d => d.status === "verified").length;
+
+  const pendingCount = process.documents.filter(
+    (d) => d.status === "pending",
+  ).length;
+  const uploadedCount = process.documents.filter(
+    (d) => d.status === "uploaded",
+  ).length;
+  const verifiedCount = process.documents.filter(
+    (d) => d.status === "verified",
+  ).length;
   const totalCount = process.documents.length;
-  const progress = totalCount > 0 ? Math.round((verifiedCount / totalCount) * 100) : 0;
+  const progress =
+    totalCount > 0 ? Math.round((verifiedCount / totalCount) * 100) : 0;
 
   return (
     <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
@@ -208,21 +240,28 @@ function ProcessCard({
           <div className="text-left">
             <h3 className="font-semibold">{process.processName}</h3>
             <p className="text-sm text-muted-foreground">
-              {PROCESS_STATUS_LABELS[process.processStatus] || process.processStatus}
+              {PROCESS_STATUS_LABELS[process.processStatus] ||
+                process.processStatus}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <div className="text-right hidden sm:block">
-            <p className="text-sm font-medium">{verifiedCount}/{totalCount} documents</p>
+            <p className="text-sm font-medium">
+              {verifiedCount}/{totalCount} documents
+            </p>
             <div className="w-24 h-1.5 bg-muted rounded-full mt-1">
-              <div 
+              <div
                 className="h-full bg-[var(--accent)] rounded-full transition-all"
                 style={{ width: `${progress}%` }}
               />
             </div>
           </div>
-          {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+          {isExpanded ? (
+            <ChevronUp className="w-5 h-5" />
+          ) : (
+            <ChevronDown className="w-5 h-5" />
+          )}
         </div>
       </button>
 
@@ -236,7 +275,7 @@ function ProcessCard({
             </div>
           ) : (
             process.documents.map((doc) => (
-              <div 
+              <div
                 key={doc.id}
                 className={`p-4 flex items-start justify-between gap-3 ${
                   doc.is_required ? "border-l-2 border-l-amber-500" : ""
@@ -246,16 +285,23 @@ function ProcessCard({
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-medium">{doc.document_label}</span>
                     {doc.is_required && (
-                      <Badge variant="secondary" className="text-[10px] bg-amber-500/10 text-amber-500">
+                      <Badge
+                        variant="secondary"
+                        className="text-[10px] bg-amber-500/10 text-amber-500"
+                      >
                         Required
                       </Badge>
                     )}
                   </div>
                   {doc.description && (
-                    <p className="text-sm text-muted-foreground mt-0.5">{doc.description}</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      {doc.description}
+                    </p>
                   )}
                   <div className="flex items-center gap-2 mt-2">
-                    <StatusBadge status={doc.status as keyof typeof STATUS_CONFIG} />
+                    <StatusBadge
+                      status={doc.status as keyof typeof STATUS_CONFIG}
+                    />
                     {doc.team_member_notes && (
                       <span className="text-xs text-muted-foreground">
                         Note: {doc.team_member_notes}
@@ -265,16 +311,16 @@ function ProcessCard({
                 </div>
 
                 {doc.status === "pending" && (
-                  <Button
-                    size="sm"
-                    onClick={() => onUploadClick(doc)}
-                  >
+                  <Button size="sm" onClick={() => onUploadClick(doc)}>
                     <Upload className="w-4 h-4 mr-1" />
                     Upload
                   </Button>
                 )}
                 {doc.status === "uploaded" && (
-                  <Badge variant="secondary" className="bg-blue-500/10 text-blue-500">
+                  <Badge
+                    variant="secondary"
+                    className="bg-blue-500/10 text-blue-500"
+                  >
                     Under Review
                   </Badge>
                 )}
@@ -303,21 +349,26 @@ function ProcessCard({
 // Main Page Component
 export default function PortalProcessPage() {
   const { success, error } = useToast();
-  const [profile, setProfile] = useState<{ id: number; fullName: string } | null>(null);
+  const [profile, setProfile] = useState<{
+    id: number;
+    fullName: string;
+  } | null>(null);
   const [documents, setDocuments] = useState<ClientRequiredDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadDoc, setUploadDoc] = useState<ClientRequiredDocument | null>(null);
+  const [uploadDoc, setUploadDoc] = useState<ClientRequiredDocument | null>(
+    null,
+  );
 
   // Load profile and documents
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
-      
+
       // Get profile
       const profileData = await api.portal.getProfile();
       setProfile({ id: profileData.id, fullName: profileData.fullName });
-      
+
       // Get required documents
       const docs = await api.crm.getClientRequiredDocuments(profileData.id);
       setDocuments(docs);
@@ -334,9 +385,13 @@ export default function PortalProcessPage() {
   }, [loadData]);
 
   // Handle document upload
-  const handleUpload = async (file: string, fileName: string, notes: string) => {
+  const handleUpload = async (
+    file: string,
+    fileName: string,
+    notes: string,
+  ) => {
     if (!uploadDoc) return;
-    
+
     setIsUploading(true);
     try {
       await api.crm.uploadClientDocument(uploadDoc.practice_id, {
@@ -345,8 +400,11 @@ export default function PortalProcessPage() {
         file_name: fileName,
         notes,
       });
-      
-      success("Document uploaded", "Your document has been submitted for review");
+
+      success(
+        "Document uploaded",
+        "Your document has been submitted for review",
+      );
       setUploadDoc(null);
       await loadData(); // Refresh data
     } catch (err) {
@@ -359,7 +417,7 @@ export default function PortalProcessPage() {
 
   // Group documents by process
   const processGroups: ProcessGroup[] = documents.reduce((groups, doc) => {
-    const existing = groups.find(g => g.practiceId === doc.practice_id);
+    const existing = groups.find((g) => g.practiceId === doc.practice_id);
     if (existing) {
       existing.documents.push(doc);
     } else {
@@ -375,9 +433,10 @@ export default function PortalProcessPage() {
 
   // Stats
   const totalDocs = documents.length;
-  const pendingDocs = documents.filter(d => d.status === "pending").length;
-  const verifiedDocs = documents.filter(d => d.status === "verified").length;
-  const completionRate = totalDocs > 0 ? Math.round((verifiedDocs / totalDocs) * 100) : 0;
+  const pendingDocs = documents.filter((d) => d.status === "pending").length;
+  const verifiedDocs = documents.filter((d) => d.status === "verified").length;
+  const completionRate =
+    totalDocs > 0 ? Math.round((verifiedDocs / totalDocs) * 100) : 0;
 
   if (isLoading) {
     return (
@@ -414,7 +473,9 @@ export default function PortalProcessPage() {
           </div>
           <div className="bg-card rounded-xl border p-4">
             <p className="text-sm text-muted-foreground">Completion</p>
-            <p className="text-2xl font-bold text-green-500">{completionRate}%</p>
+            <p className="text-2xl font-bold text-green-500">
+              {completionRate}%
+            </p>
           </div>
         </div>
       )}
@@ -425,8 +486,9 @@ export default function PortalProcessPage() {
           <FolderOpen className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
           <h3 className="text-lg font-medium mb-2">No Active Processes</h3>
           <p className="text-muted-foreground max-w-md mx-auto">
-            You don&apos;t have any active processes at the moment. 
-            When your team leader creates a process for you, it will appear here with any documents you need to upload.
+            You don&apos;t have any active processes at the moment. When your
+            team leader creates a process for you, it will appear here with any
+            documents you need to upload.
           </p>
         </div>
       ) : (
@@ -437,8 +499,9 @@ export default function PortalProcessPage() {
               <div>
                 <p className="font-medium text-amber-600">Documents Required</p>
                 <p className="text-sm text-amber-600/80">
-                  You have {pendingDocs} document{pendingDocs > 1 ? "s" : ""} waiting to be uploaded. 
-                  Please upload them to proceed with your process.
+                  You have {pendingDocs} document{pendingDocs > 1 ? "s" : ""}{" "}
+                  waiting to be uploaded. Please upload them to proceed with
+                  your process.
                 </p>
               </div>
             </div>

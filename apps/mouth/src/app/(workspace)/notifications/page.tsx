@@ -61,7 +61,11 @@ export default function NotificationsDashboardPage() {
   const loadDashboard = async () => {
     try {
       setIsLoading(true);
-      const data = await api.crm.request<{ stats: typeof stats; recent_alerts: typeof alerts; system_status: typeof systemStatus }>("/api/admin/notifications/dashboard");
+      const data = await api.crm.request<{
+        stats: typeof stats;
+        recent_alerts: typeof alerts;
+        system_status: typeof systemStatus;
+      }>("/api/admin/notifications/dashboard");
       setStats(data.stats);
       setAlerts(data.recent_alerts);
       setSystemStatus(data.system_status);
@@ -98,7 +102,7 @@ export default function NotificationsDashboardPage() {
     try {
       await api.crm.request(
         `/api/admin/notifications/pause-client?client_id=${clientId}`,
-        { method: "POST" }
+        { method: "POST" },
       );
       success("Client paused", "Notifications paused for 24 hours");
       loadDashboard();
@@ -198,8 +202,8 @@ export default function NotificationsDashboardPage() {
           systemStatus === "healthy"
             ? "border-green-200 bg-green-50"
             : systemStatus === "degraded"
-            ? "border-red-200 bg-red-50"
-            : "border-amber-200 bg-amber-50"
+              ? "border-red-200 bg-red-50"
+              : "border-amber-200 bg-amber-50",
         )}
       >
         <div
@@ -208,20 +212,21 @@ export default function NotificationsDashboardPage() {
             systemStatus === "healthy"
               ? "bg-green-500"
               : systemStatus === "degraded"
-              ? "bg-red-500"
-              : "bg-amber-500"
+                ? "bg-red-500"
+                : "bg-amber-500",
           )}
         />
         <div>
           <p className="font-medium">
-            System Status: {systemStatus.charAt(0).toUpperCase() + systemStatus.slice(1)}
+            System Status:{" "}
+            {systemStatus.charAt(0).toUpperCase() + systemStatus.slice(1)}
           </p>
           <p className="text-sm text-muted-foreground">
             {systemStatus === "healthy"
               ? "All systems operational"
               : systemStatus === "degraded"
-              ? "Multiple failures detected - attention required"
-              : "Pending alerts backlog - processing"}
+                ? "Multiple failures detected - attention required"
+                : "Pending alerts backlog - processing"}
           </p>
         </div>
       </div>
@@ -296,12 +301,24 @@ export default function NotificationsDashboardPage() {
           <table className="w-full">
             <thead className="bg-muted/50">
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium">Client</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">Type</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">Subject</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">Time</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">Actions</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">
+                  Client
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-medium">
+                  Type
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-medium">
+                  Status
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-medium">
+                  Subject
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-medium">
+                  Time
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-medium">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -311,7 +328,7 @@ export default function NotificationsDashboardPage() {
                     className="border-t hover:bg-muted/50 cursor-pointer"
                     onClick={() =>
                       setExpandedAlert(
-                        expandedAlert === alert.id ? null : alert.id
+                        expandedAlert === alert.id ? null : alert.id,
                       )
                     }
                   >
@@ -332,7 +349,7 @@ export default function NotificationsDashboardPage() {
                       <span
                         className={cn(
                           "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
-                          getStatusColor(alert.status)
+                          getStatusColor(alert.status),
                         )}
                       >
                         {getStatusIcon(alert.status)}
@@ -397,7 +414,9 @@ export default function NotificationsDashboardPage() {
       {/* Top Clients */}
       {stats?.top_clients && stats.top_clients.length > 0 && (
         <div className="rounded-xl border p-6">
-          <h3 className="font-semibold mb-4">Top Clients by Alert Volume (30 days)</h3>
+          <h3 className="font-semibold mb-4">
+            Top Clients by Alert Volume (30 days)
+          </h3>
           <div className="space-y-3">
             {stats.top_clients.slice(0, 5).map((client) => (
               <div
@@ -406,7 +425,9 @@ export default function NotificationsDashboardPage() {
               >
                 <div>
                   <p className="font-medium">{client.name}</p>
-                  <p className="text-sm text-muted-foreground">{client.email}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {client.email}
+                  </p>
                 </div>
                 <div className="flex items-center gap-4">
                   <span className="text-sm font-medium">
