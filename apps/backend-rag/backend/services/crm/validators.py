@@ -73,12 +73,14 @@ class PracticeValidator(BaseModel):
     def validate_status(cls, v: str) -> str:
         allowed = {
             "inquiry",
-            "quotation_sent",
-            "payment_pending",
-            "in_progress",
+            "waiting_documents",
+            "sending_invoice",
+            "waiting_payment",
+            "on_process",
+            "submitted_to_gov",
+            "approved",
             "completed",
             "cancelled",
-            "on_hold",
         }
         if v not in allowed:
             raise ValueError(f"Status must be one of: {allowed}")

@@ -286,7 +286,7 @@ class AutoCRMService:
                                 SELECT id FROM practices
                                 WHERE client_id = $1
                                 AND practice_type_id = $2
-                                AND status IN ('inquiry', 'quotation_sent', 'payment_pending', 'in_progress')
+                                AND status IN ('inquiry', 'waiting_documents', 'sending_invoice', 'waiting_payment', 'on_process', 'submitted_to_gov', 'approved')
                                 AND created_at >= NOW() - INTERVAL '7 days'
                             """,
                             client_id,

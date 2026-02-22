@@ -16,7 +16,7 @@ from pydantic import BaseModel, EmailStr, field_validator
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.services.crm.audit_logger import audit_change, audit_logger
 from backend.app.services.crm.metrics import crm_metrics, metrics_collector, track_client_creation
-from backend.app.utils.crm_utils import extract_json_from_llm_response, is_crm_admin
+from backend.app.utils.crm_utils import extract_json_from_llm_response, is_crm_admin, verify_client_access
 from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.json_utils import to_jsonb
 from backend.app.utils.logging_utils import get_logger, log_database_operation, log_success
@@ -322,6 +322,24 @@ async def create_client(
                         from_status="none", to_status=client.status, changed_by=user_email
                     ).inc()
 
+                    # 🚀 Auto-create Google Drive folder for new client
+                    try:
+                        import asyncio
+                        from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
+                        
+                        drive_service = ServiceAccountDriveService()
+                        asyncio.create_task(
+                            drive_service.create_client_folder(
+                                client_id=new_client["id"],
+                                client_name=client.full_name,
+                                client_type=client.client_type,
+                            )
+                        )
+                        logger.info(f"🚀 Drive folder creation initiated for client {new_client['id']}")
+                    except Exception as drive_error:
+                        logger.warning(f"Failed to initiate Drive folder creation: {drive_error}")
+                        # Don't fail client creation if Drive folder fails
+
                     await invalidate_cache("zantara:crm_clients_stats:*")
                     return ClientResponse(**new_client)
         except asyncio.TimeoutError:
@@ -525,12 +543,14 @@ async def update_client(
 
     Only provided fields will be updated. Other fields remain unchanged.
 
-    All authenticated users can update any client.
+    Access: Admin can update any client. Non-admin users can only update clients assigned to them.
     """
     user_email = current_user.get("email", "").lower()
     time.time()
     try:
         async with db_pool.acquire() as conn:
+            # RBAC: Verify user has access to this client
+            await verify_client_access(client_id, current_user, conn, allow_assigned=True)
             # Build update query dynamically
             update_fields: list[str] = []
             params: list[Any] = []
@@ -647,13 +667,16 @@ async def delete_client(
 
     This doesn't permanently delete the client, just marks them as inactive.
 
-    All authenticated users can delete any client.
+    Access: Admin can delete any client. Non-admin users can only delete clients assigned to them.
     """
     time.time()
     try:
         user_email = current_user.get("email", "").lower()
 
         async with db_pool.acquire() as conn:
+            # RBAC: Verify user has access to this client
+            await verify_client_access(client_id, current_user, conn, allow_assigned=True)
+
             # Soft delete (mark as inactive)
             row = await conn.fetchrow(
                 """

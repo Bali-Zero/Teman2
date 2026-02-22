@@ -58,10 +58,10 @@ PRIORITY_VALUES = {"low", "normal", "high", "urgent"}
 
 STATUS_VALUES = {
     "inquiry",
-    "quotation_sent",
-    "payment_pending",
-    "in_progress",
     "waiting_documents",
+    "sending_invoice",
+    "waiting_payment",
+    "on_process",
     "submitted_to_gov",
     "approved",
     "completed",
@@ -549,10 +549,10 @@ async def update_practice(
 
     Common status values:
     - inquiry
-    - quotation_sent
-    - payment_pending
-    - in_progress
     - waiting_documents
+    - sending_invoice
+    - waiting_payment
+    - on_process
     - submitted_to_gov
     - approved
     - completed
@@ -766,17 +766,41 @@ async def update_practice(
                     practice_id,
                 )
 
-            # 🚀 Invoice Automation: Trigger when status changes to 'quotation_sent'
-            if updates.status == "quotation_sent":
+            # 🚀 Invoice Automation: Trigger when status changes to 'sending_invoice'
+            if updates.status == "sending_invoice":
                 invoice_service = InvoiceAutomationService(db_pool)
                 # Run in background to not block the response
                 asyncio.create_task(
-                    invoice_service.trigger_on_quotation_sent(
+                    invoice_service.trigger_on_sending_invoice(
                         practice_id=practice_id,
                         triggered_by=user_email,
                     )
                 )
                 logger.info(f"🚀 Invoice automation triggered for practice {practice_id}")
+            
+            # 🚀 Process Start Automation: Trigger when status changes to 'on_process'
+            if updates.status == "on_process":
+                from backend.services.crm.process_automation_service import ProcessAutomationService
+                process_service = ProcessAutomationService(db_pool)
+                asyncio.create_task(
+                    process_service.trigger_on_process_start(
+                        practice_id=practice_id,
+                        triggered_by=user_email,
+                    )
+                )
+                logger.info(f"🚀 Process start automation triggered for practice {practice_id}")
+            
+            # 🚀 Process Completion Automation: Trigger when status changes to 'completed'
+            if updates.status == "completed":
+                from backend.services.crm.completed_process_service import CompletedProcessService
+                completion_service = CompletedProcessService(db_pool)
+                asyncio.create_task(
+                    completion_service.trigger_on_completed(
+                        practice_id=practice_id,
+                        triggered_by=user_email,
+                    )
+                )
+                logger.info(f"🚀 Process completion automation triggered for practice {practice_id}")
 
             log_success(
                 logger,
@@ -1057,7 +1081,7 @@ async def regenerate_invoice(
     - Invoice generation was skipped (e.g., practice created before automation implemented)
 
     This endpoint triggers the same workflow as the automatic invoice generation,
-    but can be called manually for any practice in 'quotation_sent' status.
+    but can be called manually for any practice in 'sending_invoice' status.
 
     Returns:
         dict: Invoice generation result with file IDs, links, and notification status
@@ -1075,10 +1099,10 @@ async def regenerate_invoice(
             if not practice_row:
                 raise HTTPException(status_code=404, detail="Practice not found")
 
-            if practice_row["status"] != "quotation_sent":
+            if practice_row["status"] != "sending_invoice":
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Can only regenerate invoice for practices in 'quotation_sent' status. Current status: {practice_row['status']}",
+                    detail=f"Can only regenerate invoice for practices in 'sending_invoice' status. Current status: {practice_row['status']}",
                 )
 
         # Trigger invoice automation
