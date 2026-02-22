@@ -40,6 +40,11 @@ Pillow>=10.0.0  # Required for PDF/vision (pdf_vision_service, vision_rag)
 EbookLib>=0.18
 beautifulsoup4>=4.14.3  # Security and stability updates
 
+# OCR and Advanced Document Processing (Gemini Vision based)
+# Uses PDFVisionService with Gemini-2.0-flash for OCR (same as passport box)
+python-magic>=0.4.27  # MIME type detection from file content
+# Note: PyMuPDF (fitz) is already included above for PDF processing
+
 # LangChain Ecosystem
 langgraph>=1.0.0
 langgraph-checkpoint-postgres>=2.0.0  # PostgreSQL checkpointing for stateful workflows
