@@ -2,16 +2,16 @@
 Admin endpoint per verificare stato Google Drive.
 """
 
-from fastapi import APIRouter, HTTPException
-from backend.app.dependencies import get_database_pool
+from fastapi import APIRouter, HTTPException, Request
+import asyncpg
 
 router = APIRouter(prefix="/api/admin/drive", tags=["admin"])
 
 
 @router.get("/health")
-async def drive_health():
-    """Verifica stato token Google Drive."""
-    pool = get_database_pool()
+async def drive_health(request: Request):
+    """Verifica stato token Google Drive (public endpoint)."""
+    pool = request.app.state.pool
     
     async with pool.acquire() as conn:
         # Check table exists
