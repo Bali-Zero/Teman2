@@ -379,3 +379,7 @@ main.py
 master_building_codes_complete.json
 service_roi_calculator.py
 service_zone_finder.py
+
+# API keys
+sk-*
+
