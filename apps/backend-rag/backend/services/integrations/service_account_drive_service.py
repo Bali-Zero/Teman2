@@ -198,3 +198,77 @@ class ServiceAccountDriveService:
 
         logger.info(f"✅ Uploaded: {file_name} ({file.get('size')} bytes)")
         return file
+
+    async def create_client_folder(
+        self,
+        client_id: int,
+        client_name: str,
+        client_type: str = "individual",
+    ) -> dict[str, Any]:
+        """
+        Create standardized folder structure for a new client.
+        
+        Creates: {ID}_{ClientName}/ with subfolders:
+        - 00_Profile
+        - 01_Immigration
+        - 02_Company
+        - 03_Tax
+        - 04_Family
+        - 99_Misc
+        """
+        STANDARD_SUBFOLDERS = [
+            "00_Profile",
+            "01_Immigration",
+            "02_Company",
+            "03_Tax",
+            "04_Family",
+            "99_Misc",
+        ]
+        
+        # Determine parent folder based on client type
+        if client_type == "individual":
+            parent_folder_id = getattr(settings, 'gdrive_individuals_folder_id', None)
+        elif client_type == "company":
+            parent_folder_id = getattr(settings, 'gdrive_companies_folder_id', None)
+        else:
+            parent_folder_id = settings.google_drive_root_folder_id
+        
+        # Fallback to root if no specific folder configured
+        if not parent_folder_id:
+            parent_folder_id = settings.google_drive_root_folder_id
+        
+        # Create root folder: "[ID]_[Name]"
+        root_folder_name = f"{client_id}_{client_name}"
+        root_folder = await self.create_folder(
+            name=root_folder_name,
+            parent_id=parent_folder_id,
+        )
+        
+        root_folder_id = root_folder["id"]
+        
+        # Create subfolders
+        subfolders = {}
+        for subfolder_name in STANDARD_SUBFOLDERS:
+            try:
+                subfolder = await self.create_folder(
+                    name=subfolder_name,
+                    parent_id=root_folder_id,
+                )
+                subfolders[subfolder_name] = {
+                    "id": subfolder["id"],
+                    "url": subfolder.get("webViewLink", ""),
+                }
+            except Exception as e:
+                logger.error(f"Failed to create subfolder {subfolder_name}: {e}")
+                continue
+        
+        logger.info(
+            f"✅ Created client folder structure for {client_name}: {root_folder_id}"
+        )
+        
+        return {
+            "success": True,
+            "root_folder_id": root_folder_id,
+            "root_folder_url": root_folder.get("webViewLink", ""),
+            "subfolders": subfolders,
+        }

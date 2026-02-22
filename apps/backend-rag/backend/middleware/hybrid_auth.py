@@ -127,6 +127,19 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/api/integrations/zoho/callback",  # BUSINESS: Zoho OAuth callback - required by OAuth 2.0 flow
             "/api/integrations/google-drive/callback",  # BUSINESS: Google Drive OAuth callback - required by OAuth 2.0 flow
             "/api/integrations/google-drive/system/status",  # BUSINESS: OAuth status check - REVIEW: Should require auth
+            "/admin/google-drive/auth-system",  # BUSINESS: Admin OAuth init for system user
+            "/admin/google-drive/callback-system",  # BUSINESS: Admin OAuth callback for system user
+            "/admin/zoho/auth",  # BUSINESS: Admin Zoho OAuth init
+            "/admin/zoho/callback",  # BUSINESS: Admin Zoho OAuth callback
+            "/test/drive-status",  # BUSINESS: Test Drive Service Account connectivity
+            "/test/drive-create-folder",  # BUSINESS: Test Drive folder creation
+            "/test/trigger-sending-invoice",  # BUSINESS: Test invoice automation
+            "/test/trigger-sending-invoice-debug",  # BUSINESS: Test invoice automation with debug
+            "/test/trigger-on-process",  # BUSINESS: Test process start automation
+            "/test/trigger-completed",  # BUSINESS: Test process completion automation
+            "/test/list-practices",  # BUSINESS: List practices for testing
+            "/test/update-client-email",  # BUSINESS: Update client email for testing
+            "/test/zoho-status",  # BUSINESS: Check Zoho OAuth status
             # ========================================================================
             # CLIENT PORTAL ENDPOINTS (Public for client self-service)
             # ========================================================================

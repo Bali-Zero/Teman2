@@ -316,6 +316,29 @@ async def get_dashboard_summary(
             }
             frontend_status = status_map.get(backend_status, "inquiry")
 
+            # Safely calculate days remaining with proper type handling
+            days_remaining = None
+            if practice.get("expiry_date"):
+                try:
+                    expiry = practice["expiry_date"]
+                    today = datetime.now(timezone.utc).date()
+                    
+                    # Handle different date formats
+                    if isinstance(expiry, str):
+                        # Parse ISO format date string
+                        expiry_date = datetime.fromisoformat(expiry.replace('Z', '+00:00')).date()
+                    elif hasattr(expiry, 'date'):
+                        # It's a datetime object
+                        expiry_date = expiry.date()
+                    else:
+                        # It's already a date object
+                        expiry_date = expiry
+                    
+                    days_remaining = (expiry_date - today).days
+                except (ValueError, TypeError) as e:
+                    logger.warning(f"Failed to parse expiry_date for practice {practice.get('id')}: {e}")
+                    days_remaining = None
+            
             mapped_practices.append(
                 {
                     "id": practice.get("id"),
@@ -323,11 +346,7 @@ async def get_dashboard_summary(
                     or "Case",
                     "client": practice.get("client_name", "Unknown Client"),
                     "status": frontend_status,
-                    "daysRemaining": (
-                        (practice["expiry_date"] - datetime.now(timezone.utc).date()).days
-                        if practice.get("expiry_date")
-                        else None
-                    ),
+                    "daysRemaining": days_remaining,
                 }
             )
 

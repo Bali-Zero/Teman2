@@ -2,10 +2,10 @@
 Invoice Automation Service.
 
 Orchestrates the complete invoice workflow:
-1. Generate PDF invoice
-2. Upload to Google Drive
-3. Send via Email
-4. Send via WhatsApp
+1. Generate invoice PDF locally
+2. Send invoice via Zoho Email to client
+3. Send notification email to Asya (accounting)
+4. Upload PDF to Google Drive (backup)
 5. Update practice with invoice details
 """
 
@@ -17,34 +17,43 @@ import asyncpg
 
 from backend.app.utils.logging_utils import get_logger
 from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
-
+from backend.services.integrations.zoho_email_service import ZohoEmailService
 from backend.services.invoicing.invoice_generator import InvoiceGenerator
 
 logger = get_logger(__name__)
 
+# System user for Zoho Email operations
+# Using zero@balizero.com which has Zoho OAuth token
+SYSTEM_EMAIL_USER_ID = "7dfe56b2-ff63-4d40-b78b-90c018127a02"
+SYSTEM_EMAIL_ADDRESS = "zero@balizero.com"
+
+# Accounting email for invoice notifications
+ACCOUNTING_EMAIL = "asya@balizero.com"
+
 
 class InvoiceAutomationService:
-    """Handles automated invoice generation and distribution for practice quotations."""
+    """Handles automated invoice generation and distribution via Zoho Email."""
 
     def __init__(self, db_pool: asyncpg.Pool):
         self.db_pool = db_pool
-        self.invoice_generator = InvoiceGenerator()
         self.drive_service = ServiceAccountDriveService()
+        self.zoho_email_service = ZohoEmailService(db_pool)
+        self.invoice_generator = InvoiceGenerator()
 
-    async def trigger_on_quotation_sent(
+    async def trigger_on_sending_invoice(
         self,
         practice_id: int,
         triggered_by: str,
     ) -> dict[str, Any]:
         """
-        Main trigger function when practice status changes to 'quotation_sent'.
+        Main trigger function when practice status changes to 'sending_invoice'.
 
         This function:
         1. Fetches practice and client details
-        2. Generates PDF invoice
-        3. Uploads to Google Drive
-        4. Sends email to client
-        5. Sends WhatsApp message to client
+        2. Generates invoice PDF locally
+        3. Sends invoice via Zoho Email to client
+        4. Sends notification email to Asya (accounting)
+        5. Uploads backup PDF to Google Drive
         6. Updates practice with invoice info
 
         Args:
@@ -68,80 +77,81 @@ class InvoiceAutomationService:
                 logger.error(f"Client {practice_data['client_id']} not found")
                 return {"success": False, "error": "Client not found"}
 
-            # Step 2: Generate PDF invoice
+            # Step 2: Generate invoice PDF locally
             logger.info(f"Generating invoice PDF for practice {practice_id}")
-            pdf_bytes = self.invoice_generator.generate(
-                practice_id=practice_id,
-                client_name=client_data["full_name"],
-                client_email=client_data.get("email"),
-                client_phone=client_data.get("phone"),
-                client_address=client_data.get("address"),
-                practice_type=practice_data["practice_type_code"],
-                practice_description=practice_data.get("notes"),
-                quoted_price=float(practice_data.get("quoted_price", 0)),
-                notes="Thank you for choosing Zantara Indonesia. We look forward to serving you.",
-            )
-
-            invoice_number = self.invoice_generator.generate_invoice_number(practice_id)
-            filename = f"Invoice_{invoice_number}.pdf"
-
-            # Step 3: Upload to Google Drive
-            logger.info(f"Uploading invoice to Google Drive: {filename}")
-            drive_file_id = None
-            drive_web_link = None
             try:
-                # Upload to specific folder (you can configure this)
-                # For now, uploads to root. In production, create "Invoices" folder
-                upload_result = await self.drive_service.upload_file_async(
-                    file_content=pdf_bytes,
-                    filename=filename,
-                    mime_type="application/pdf",
-                    # folder_id="<INVOICES_FOLDER_ID>"  # Configure this
+                invoice_number = self.invoice_generator.generate_invoice_number(practice_id)
+                
+                pdf_bytes = self.invoice_generator.generate(
+                    practice_id=practice_id,
+                    client_name=client_data["full_name"],
+                    client_email=client_data.get("email"),
+                    client_phone=client_data.get("phone"),
+                    client_address=client_data.get("address"),
+                    practice_type=practice_data.get("practice_type_code", "SERVICE"),
+                    practice_description=practice_data.get("notes", "Professional Services"),
+                    quoted_price=float(practice_data.get("quoted_price", 0)),
+                    notes="Thank you for choosing Zantara Indonesia. Payment is due within 7 days.",
                 )
-                drive_file_id = upload_result.get("id")
-                drive_web_link = upload_result.get("webViewLink")
-                logger.info(f"Invoice uploaded to Drive: {drive_file_id}")
-            except Exception as drive_error:
-                logger.error(f"Failed to upload invoice to Drive: {drive_error}")
-                # Continue even if Drive upload fails
+                
+                filename = f"Invoice_{invoice_number}.pdf"
+                logger.info(f"PDF generated: {filename}")
+                
+            except Exception as pdf_error:
+                logger.error(f"Failed to generate PDF: {pdf_error}")
+                return {"success": False, "error": f"PDF generation failed: {pdf_error}"}
 
-            # Step 4: Send Email
+            # Step 3: Send invoice email to client
             email_sent = False
             if client_data.get("email"):
                 try:
-                    await self._send_email(
-                        to_email=client_data["email"],
+                    await self._send_invoice_email_to_client(
+                        client_email=client_data["email"],
                         client_name=client_data["full_name"],
                         invoice_number=invoice_number,
-                        amount=float(practice_data.get("quoted_price", 0)),
                         pdf_bytes=pdf_bytes,
                         filename=filename,
-                        drive_link=drive_web_link,
+                        amount=float(practice_data.get("quoted_price", 0)),
                     )
                     email_sent = True
-                    logger.info(f"Invoice email sent to {client_data['email']}")
+                    logger.info(f"Invoice email sent to client {client_data['email']}")
                 except Exception as email_error:
-                    logger.error(f"Failed to send invoice email: {email_error}")
+                    logger.error(f"Failed to send invoice email to client: {email_error}")
             else:
                 logger.warning(f"Client {client_data['id']} has no email, skipping email")
 
-            # Step 5: Send WhatsApp
-            whatsapp_sent = False
-            if client_data.get("phone"):
-                try:
-                    await self._send_whatsapp(
-                        phone=client_data["phone"],
-                        client_name=client_data["full_name"],
-                        invoice_number=invoice_number,
-                        amount=float(practice_data.get("quoted_price", 0)),
-                        drive_link=drive_web_link,
-                    )
-                    whatsapp_sent = True
-                    logger.info(f"WhatsApp notification sent to {client_data['phone']}")
-                except Exception as whatsapp_error:
-                    logger.error(f"Failed to send WhatsApp notification: {whatsapp_error}")
-            else:
-                logger.warning(f"Client {client_data['id']} has no phone, skipping WhatsApp")
+            # Step 4: Send notification email to Asya (accounting)
+            asya_notified = False
+            try:
+                await self._send_accounting_notification(
+                    client_data=client_data,
+                    practice_data=practice_data,
+                    invoice_number=invoice_number,
+                    pdf_bytes=pdf_bytes,
+                    filename=filename,
+                )
+                asya_notified = True
+                logger.info(f"Accounting notification sent to {ACCOUNTING_EMAIL}")
+            except Exception as notify_error:
+                logger.warning(f"Failed to notify accounting: {notify_error}")
+
+            # Step 5: Upload backup PDF to Google Drive
+            logger.info(f"Uploading invoice backup to Google Drive")
+            drive_file_id = None
+            drive_web_link = None
+            try:
+                upload_result = await self.drive_service.upload_file_to_folder(
+                    folder_id=practice_data.get("client_drive_folder_id"),
+                    file_content=pdf_bytes,
+                    file_name=filename,
+                    mime_type="application/pdf",
+                )
+                drive_file_id = upload_result.get("id")
+                drive_web_link = upload_result.get("webViewLink")
+                logger.info(f"Invoice backup uploaded to Drive: {drive_file_id}")
+            except Exception as drive_error:
+                logger.warning(f"Failed to upload invoice backup to Drive: {drive_error}")
+                # Continue even if Drive upload fails
 
             # Step 6: Update practice with invoice details
             invoice_info = {
@@ -150,7 +160,8 @@ class InvoiceAutomationService:
                 "invoice_drive_id": drive_file_id,
                 "invoice_drive_link": drive_web_link,
                 "email_sent": email_sent,
-                "whatsapp_sent": whatsapp_sent,
+                "accounting_notified": asya_notified,
+                "source": "local_pdf",
             }
 
             await self._update_practice_with_invoice(
@@ -167,7 +178,7 @@ class InvoiceAutomationService:
                 "drive_file_id": drive_file_id,
                 "drive_link": drive_web_link,
                 "email_sent": email_sent,
-                "whatsapp_sent": whatsapp_sent,
+                "accounting_notified": asya_notified,
             }
 
         except Exception as error:
@@ -177,6 +188,122 @@ class InvoiceAutomationService:
             )
             return {"success": False, "error": str(error)}
 
+    async def _send_invoice_email_to_client(
+        self,
+        client_email: str,
+        client_name: str,
+        invoice_number: str,
+        pdf_bytes: bytes,
+        filename: str,
+        amount: float,
+    ) -> None:
+        """Send invoice email to client with PDF attachment."""
+        subject = f"Invoice {invoice_number} from Zantara Indonesia"
+        
+        body = f"""Dear {client_name},
+
+Thank you for choosing Zantara Indonesia for your immigration services.
+
+Please find your invoice attached to this email.
+
+Invoice Details:
+- Invoice Number: {invoice_number}
+- Amount Due: IDR {amount:,.0f}
+- Payment Terms: Net 7 days
+
+Payment can be made via bank transfer. Please contact us for payment details or if you have any questions.
+
+We look forward to serving you!
+
+Best regards,
+Zantara Indonesia Team
+
+---
+This is an automated email. Please do not reply to this email.
+For support: support@balizero.com | WhatsApp: +62 859 0436 9574
+"""
+
+        # Upload attachment first
+        attachment = await self.zoho_email_service.upload_attachment(
+            user_id=SYSTEM_EMAIL_USER_ID,
+            filename=filename,
+            content=pdf_bytes,
+            content_type="application/pdf",
+        )
+
+        # Send email with attachment
+        await self.zoho_email_service.send_email(
+            user_id=SYSTEM_EMAIL_USER_ID,
+            to=[client_email],
+            subject=subject,
+            content=body,
+            attachments=[attachment],
+            is_html=False,
+        )
+
+    async def _send_accounting_notification(
+        self,
+        client_data: dict,
+        practice_data: dict,
+        invoice_number: str,
+        pdf_bytes: bytes,
+        filename: str,
+    ) -> None:
+        """Send notification email to accounting (Asya)."""
+        subject = f"🎉 New Invoice {invoice_number} - {client_data['full_name']}"
+        
+        body = f"""Hi Asya!
+
+Hope you're having a great day! ☺️
+
+A new invoice has just been generated and sent to our client. Here's everything you need to know:
+
+👤 Client Details:
+   Name: {client_data['full_name']}
+   Email: {client_data.get('email', 'N/A')}
+   Practice ID: {practice_data['id']}
+
+💰 Invoice Info:
+   Invoice Number: {invoice_number}
+   Amount: IDR {float(practice_data.get('quoted_price', 0)):,.0f}
+
+📎 PDF Attached to this email
+
+✨ Your Next Steps:
+1. Reach out to the client via WhatsApp for payment follow-up
+2. Keep an eye on our bank account
+3. Once payment comes through, update the status to "ON PROCESS"
+
+As always, you're doing an amazing job keeping everything running smoothly! 
+
+If you need any help with this client or have questions, just give me a shout.
+
+Have a wonderful day!
+
+Warmly,
+Zantara CRM Assistant 🤖
+
+P.S. This is an automated email, but the appreciation for your hard work is 100% genuine! 😊
+"""
+
+        # Upload attachment first
+        attachment = await self.zoho_email_service.upload_attachment(
+            user_id=SYSTEM_EMAIL_USER_ID,
+            filename=filename,
+            content=pdf_bytes,
+            content_type="application/pdf",
+        )
+
+        # Send email with attachment
+        await self.zoho_email_service.send_email(
+            user_id=SYSTEM_EMAIL_USER_ID,
+            to=[ACCOUNTING_EMAIL],
+            subject=subject,
+            content=body,
+            attachments=[attachment],
+            is_html=False,
+        )
+
     async def _fetch_practice_data(self, practice_id: int) -> dict | None:
         """Fetch practice data from database."""
         async with self.db_pool.acquire() as conn:
@@ -185,9 +312,11 @@ class InvoiceAutomationService:
                 SELECT
                     p.*,
                     pt.code as practice_type_code,
-                    pt.name as practice_type_name
+                    pt.name as practice_type_name,
+                    c.google_drive_folder_id as client_drive_folder_id
                 FROM practices p
                 LEFT JOIN practice_types pt ON p.practice_type_id = pt.id
+                LEFT JOIN clients c ON p.client_id = c.id
                 WHERE p.id = $1
                 """,
                 practice_id,
@@ -206,102 +335,6 @@ class InvoiceAutomationService:
                 client_id,
             )
             return dict(row) if row else None
-
-    async def _send_email(
-        self,
-        to_email: str,
-        client_name: str,
-        invoice_number: str,
-        amount: float,
-        pdf_bytes: bytes,
-        filename: str,
-        drive_link: str | None = None,
-    ) -> None:
-        """
-        Send invoice email to client.
-
-        Note: This is a placeholder. In production, use:
-        - SendGrid API
-        - AWS SES
-        - SMTP with proper configuration
-        """
-        # TODO: Implement actual email sending with your email service
-        # For now, just log what would be sent
-
-        email_body = f"""
-Dear {client_name},
-
-Thank you for choosing Zantara Indonesia for your immigration services.
-
-Please find attached your invoice {invoice_number} for the amount of IDR {amount:,.0f}.
-
-Payment is due within 7 days from the invoice date.
-
-{f"You can also view/download your invoice here: {drive_link}" if drive_link else ""}
-
-If you have any questions, please don't hesitate to contact us.
-
-Best regards,
-Zantara Indonesia Team
-"""
-
-        logger.info(
-            f"[EMAIL PLACEHOLDER] Would send to {to_email}:\n"
-            f"Subject: Invoice {invoice_number} - Zantara Indonesia\n"
-            f"Body: {email_body}\n"
-            f"Attachment: {filename} ({len(pdf_bytes)} bytes)"
-        )
-
-        # TODO: Actual implementation
-        # msg = MIMEMultipart()
-        # msg['From'] = "billing@zantara.com"
-        # msg['To'] = to_email
-        # msg['Subject'] = f"Invoice {invoice_number} - Zantara Indonesia"
-        # msg.attach(MIMEText(email_body, 'plain'))
-        # pdf_attachment = MIMEApplication(pdf_bytes, _subtype="pdf")
-        # pdf_attachment.add_header('Content-Disposition', 'attachment', filename=filename)
-        # msg.attach(pdf_attachment)
-        # # Send via SMTP or API
-
-    async def _send_whatsapp(
-        self,
-        phone: str,
-        client_name: str,
-        invoice_number: str,
-        amount: float,
-        drive_link: str | None = None,
-    ) -> None:
-        """
-        Send WhatsApp notification to client.
-
-        Note: This is a placeholder. In production, use:
-        - WhatsApp Business API
-        - Twilio WhatsApp API
-        - Third-party WhatsApp services
-        """
-        # TODO: Implement actual WhatsApp sending with WhatsApp Business API
-
-        message = f"""
-Hello {client_name},
-
-Your invoice {invoice_number} for IDR {amount:,.0f} has been generated.
-
-{f"View/Download: {drive_link}" if drive_link else ""}
-
-Payment is due within 7 days. Contact us for any questions.
-
-Best regards,
-Zantara Indonesia
-"""
-
-        logger.info(f"[WHATSAPP PLACEHOLDER] Would send to {phone}:\n{message}")
-
-        # TODO: Actual implementation using WhatsApp Business API
-        # await whatsapp_api.send_message(
-        #     to=phone,
-        #     message=message,
-        #     attachment_url=drive_link if drive_link else None
-        # )
 
     async def _update_practice_with_invoice(
         self,
@@ -350,7 +383,7 @@ Zantara Indonesia
                 practice_id,
                 "invoice_generated",
                 triggered_by,
-                f"Invoice {invoice_info['invoice_number']} generated and sent automatically",
+                f"Invoice {invoice_info['invoice_number']} created and sent",
             )
 
         logger.info(f"Practice {practice_id} updated with invoice information")
@@ -364,9 +397,9 @@ Zantara Indonesia
         Manually regenerate and resend invoice for a practice.
 
         Useful if:
-        - Client lost the invoice
+        - Client lost the invoice email
         - Need to send updated version
         - Previous automation failed
         """
         logger.info(f"Manual invoice regeneration requested for practice {practice_id}")
-        return await self.trigger_on_quotation_sent(practice_id, triggered_by)
+        return await self.trigger_on_sending_invoice(practice_id, triggered_by)
