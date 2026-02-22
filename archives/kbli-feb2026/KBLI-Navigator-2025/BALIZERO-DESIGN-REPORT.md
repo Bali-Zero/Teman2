@@ -21,32 +21,34 @@ Balizero.com usa un **tema scuro professionale** con design minimalista.
 ### Colori Principali
 
 **Background Colors**:
+
 ```css
 --background: (dark blue/black - molto scuro)
---background-secondary: (variante più chiara)
---background-elevated: (per card e superfici elevate)
+  --background-secondary: (variante più chiara)
+  --background-elevated: (per card e superfici elevate);
 ```
 
 **Text Colors**:
+
 ```css
 --foreground: (bianco/grigio chiaro per testo principale)
---foreground-secondary: (grigio più scuro per testo secondario)
+  --foreground-secondary: (grigio più scuro per testo secondario);
 ```
 
 **Accent Colors**:
-```css
---accent: BLUE brillante (#3B82F6 o simile)
-- Usato per: pulsante "Zantara", link, CTA
-- Molto prominente e visibile
 
-RED accent: #EF4444 o simile
-- Usato per: parola "Thrive" nel heading principale
-- Per enfasi e call-to-action importanti
+```css
+--accent:
+  BLUE brillante (#3b82f6 o simile) - Usato per: pulsante "Zantara", link,
+  CTA - Molto prominente e visibile RED accent: #ef4444 o simile - Usato
+    per: parola "Thrive" nel heading principale - Per enfasi e call-to-action
+    importanti;
 ```
 
 **Border & Dividers**:
+
 ```css
---border: (grigio molto scuro, quasi impercettibile)
+--border: (grigio molto scuro, quasi impercettibile);
 ```
 
 ---
@@ -56,11 +58,13 @@ RED accent: #EF4444 o simile
 ### Font Families
 
 **Font Principale**: **Geist**
+
 - Moderno, pulito, sans-serif
 - Usato per: heading, body text, tutto il contenuto
 - Rendering: Antialiased per smoothness
 
 **Font Monospace**: **Geist Mono**
+
 - Per: codice, riferimenti tecnici
 - Esempio: shortcut "⌘ K"
 
@@ -91,6 +95,7 @@ Tagline: ~16-18px, weight 400, grigio/blue accent
 **Layout**: Fixed top bar, dark background, full width
 
 **Logo** (sx):
+
 ```
 ┌─────────────┐
 │  BALI       │ ← Circular badge style
@@ -100,6 +105,7 @@ Logo URL: https://balizero.com/static/balizero-logo-clean.png
 ```
 
 **Elementi Centro/Destra**:
+
 1. **Search button** 🔍 `⌘ K`
 2. **Language selector** 🌐 `EN ▼`
 3. **Zantara button** (BLUE, prominente)
@@ -108,6 +114,7 @@ Logo URL: https://balizero.com/static/balizero-logo-clean.png
 ### Navigation Links
 
 **Main Categories** (orizzontale sotto header):
+
 - AI & Tech
 - GCI (immigration)
 - Golden Visa
@@ -130,6 +137,7 @@ Logo URL: https://balizero.com/static/balizero-logo-clean.png
 **Layout**: 4 colonne
 
 **Colonna 1: Branding**
+
 ```
 ┌─────────────┐
 │ BALI ZERO   │ Logo
@@ -146,12 +154,14 @@ Social Icons:
 ```
 
 **Colonna 2: Services**
+
 - Visa & Immigration
 - Company Setup
 - Tax & Compliance
 - Property
 
 **Colonna 3: News**
+
 - Immigration
 - Business
 - Tax & Legal
@@ -159,12 +169,14 @@ Social Icons:
 - Lifestyle
 
 **Colonna 4: Contact**
+
 - info@balizero.com
 - +62 859 0436 9574
 - Kerobokan, Bali
 - Link to Zantara
 
 **Bottom Bar**:
+
 ```
 © 2026 Bali Zero. All rights reserved.
 ```
@@ -178,6 +190,7 @@ Social Icons:
 **Keyword**: Professionale, Tech-Forward, Minimale, Trustworthy
 
 **Caratteristiche**:
+
 - ✅ **Clean & Minimal** - Molto spazio bianco (nero), no clutter
 - ✅ **Modern** - Gradient subtili, shadow leggere
 - ✅ **Professional** - B2B service feeling
@@ -187,6 +200,7 @@ Social Icons:
 ### UI Components
 
 **Card Style**:
+
 ```css
 background: var(--background-elevated)
 border: 1px solid var(--border)
@@ -196,6 +210,7 @@ hover: subtle elevation + border glow
 ```
 
 **Buttons**:
+
 ```css
 /* Primary (Zantara) */
 background: blue brillante (#3B82F6)
@@ -212,6 +227,7 @@ hover: border glow
 ```
 
 **Badges/Tags**:
+
 ```css
 /* Category badges (es. "Business", "AI") */
 background: rgba(blue, 0.1)
@@ -224,6 +240,7 @@ uppercase
 ```
 
 **Links**:
+
 ```css
 color: var(--foreground)
 text-decoration: none
@@ -309,21 +326,13 @@ transition: 200ms
    - Copyright
 
 6. **Colori specifici da usare**:
+
 ```css
 /* Background */
---bg-primary: #0a0e1a o simile (molto scuro)
---bg-elevated: #141824 o simile (leggermente più chiaro)
-
-/* Text */
---text-primary: #ffffff
---text-secondary: #94a3b8
-
-/* Accent */
---accent-blue: #3B82F6
---accent-red: #EF4444
-
-/* Border */
---border: #1e293b
+--bg-primary: #0a0e1a o simile (molto scuro) --bg-elevated: #141824 o simile
+  (leggermente più chiaro) /* Text */ --text-primary: #ffffff
+  --text-secondary: #94a3b8 /* Accent */ --accent-blue: #3b82f6
+  --accent-red: #ef4444 /* Border */ --border: #1e293b;
 ```
 
 ---
@@ -337,6 +346,7 @@ transition: 200ms
 - **Il nostro KBLI Navigator ha anche "Zantara"!**
 
 **Opportunità**:
+
 - Integrare KBLI Navigator con Zantara esistente?
 - Mantenere coerenza nel naming/branding
 
@@ -345,11 +355,13 @@ transition: 200ms
 ## 📱 RESPONSIVE DESIGN
 
 **Breakpoints** (stimati):
+
 - Mobile: < 768px (stack verticale)
 - Tablet: 768-1024px (2 colonne)
 - Desktop: > 1024px (3 colonne)
 
 **Header mobile**:
+
 - Logo + Hamburger menu
 - Search collapsato
 - Zantara button prominente
@@ -371,8 +383,8 @@ transition: 200ms
   --border: hsl(220, 40%, 15%);
 
   /* Typography */
-  --font-sans: 'Geist', -apple-system, sans-serif;
-  --font-mono: 'Geist Mono', monospace;
+  --font-sans: "Geist", -apple-system, sans-serif;
+  --font-mono: "Geist Mono", monospace;
 
   /* Spacing */
   --spacing-xs: 0.5rem;
@@ -398,6 +410,7 @@ transition: 200ms
 ## ✅ RACCOMANDAZIONI PER INTEGRAZIONE
 
 ### Priorità 1 (Essenziale):
+
 1. ✅ Applicare **dark theme** al KBLI Navigator
 2. ✅ Cambiare font a **Geist** (o Google Fonts alternativo simile)
 3. ✅ Aggiungere **header identico** di balizero.com
@@ -405,12 +418,14 @@ transition: 200ms
 5. ✅ Usare **stessi colori** (blue accent, dark bg)
 
 ### Priorità 2 (Importante):
+
 6. ✅ Card style coerente (elevated bg, subtle border)
 7. ✅ Buttons style matching (blue primary)
 8. ✅ Typography scale identica
 9. ✅ Navigation pills sotto header
 
 ### Priorità 3 (Miglioramenti):
+
 10. ✅ Smooth transitions e hover effects
 11. ✅ Responsive breakpoints matching
 12. ✅ Icons style coerente
@@ -420,6 +435,7 @@ transition: 200ms
 ## 🚀 PROSSIMI PASSI
 
 **Opzione A: Integrazione Completa** (2-3 ore)
+
 1. Estrarre header/footer HTML+CSS da balizero.com
 2. Applicare dark theme a KBLI Navigator
 3. Sostituire font con Geist
@@ -427,12 +443,14 @@ transition: 200ms
 5. Test responsive
 
 **Opzione B: Integrazione Light** (1 ora)
+
 1. Solo colori dark theme
 2. Font Geist (o Inter come fallback)
 3. Header semplificato con logo
 4. Footer minimale con link
 
 **Opzione C: Standalone con Branding** (30 min)
+
 1. Dark theme colors
 2. Logo Bali Zero
 3. Link "← Back to Balizero.com"
@@ -457,6 +475,7 @@ Per integrazione completa serve:
 ## 💡 CONCLUSIONE
 
 **Balizero.com ha**:
+
 - ✅ Design professionale e moderno
 - ✅ Dark theme elegante e coerente
 - ✅ Branding forte (logo, colori, typography)
@@ -464,6 +483,7 @@ Per integrazione completa serve:
 - ✅ B2B service positioning chiaro
 
 **KBLI Navigator attualmente**:
+
 - ❌ Light theme (non dark)
 - ❌ Font diverso (non Geist)
 - ❌ Nessun header/footer balizero.com

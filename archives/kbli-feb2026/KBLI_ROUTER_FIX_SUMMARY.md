@@ -11,6 +11,7 @@
 ### 1. Direct Lookup (lines ~740-770)
 
 **OLD**: Query `kg_nodes` table
+
 ```python
 row = await conn.fetchrow(
     "SELECT entity_id, name, description, properties FROM kg_nodes WHERE entity_id = $1",
@@ -19,6 +20,7 @@ row = await conn.fetchrow(
 ```
 
 **NEW**: Query `kbli_documents` table with fallback
+
 ```python
 row = await conn.fetchrow(
     "SELECT kode_kbli, judul, content, metadata FROM kbli_documents WHERE kode_kbli = $1",
@@ -53,20 +55,23 @@ async def _fetch_parent_documents_from_kbli_table(codes: list[str], pool) -> dic
 ### 3. Updated `_generate_kbli_explanation` Function
 
 **OLD Signature**:
+
 ```python
 async def _generate_kbli_explanation(query: str, results: list[KBLISearchResult]) -> str:
 ```
 
 **NEW Signature**:
+
 ```python
 async def _generate_kbli_explanation(
-    query: str, 
+    query: str,
     results: list[KBLISearchResult],
     parent_docs: dict[str, str] = None
 ) -> str:
 ```
 
 **Context Building Logic**:
+
 ```python
 if parent_docs and r.code in parent_docs:
     full_content = parent_docs[r.code]
@@ -82,6 +87,7 @@ else:
 ### 4. Chat Endpoint Integration (line ~1149-1153)
 
 **NEW Code**:
+
 ```python
 # Fetch full parent documents from kbli_documents table for complete context
 codes_to_fetch = [r.code for r in results if r.code != "N/A"]
@@ -92,6 +98,7 @@ answer = await _generate_kbli_explanation(kbli_request.query, results, parent_do
 ```
 
 **Flow**:
+
 1. Qdrant search returns child chunks with codes
 2. Extract codes from results
 3. Fetch full parent docs from `kbli_documents`
@@ -102,6 +109,7 @@ answer = await _generate_kbli_explanation(kbli_request.query, results, parent_do
 ## Architecture
 
 ### Before (OLD)
+
 ```
 User Query
   ↓
@@ -115,6 +123,7 @@ Response: "verify at OSS" (generic)
 ```
 
 ### After (NEW)
+
 ```
 User Query
   ↓
@@ -132,18 +141,22 @@ Response: Detailed licensing/sanksi information
 ## Expected Behavior
 
 ### Test Query 1: "56101 sanksi mikro kecil"
+
 **Before**: "verify sanksi at OSS"  
 **After**: "Sanksi Administratif: Peringatan (Peringatan tertulis), Denda (Denda administratif), Penghentian (Penghentian sementara), Pencabutan (Pencabutan persyaratan dasar, PB, dan/atau PB UMKU)"
 
 ### Test Query 2: "restaurant licensing requirements bali"
+
 **Before**: "KBLI 56101, PMA TERBUKA, verify at OSS"  
 **After**: Full detail including:
+
 - Persyaratan Dokumen (list)
 - Kewajiban Pelaku Usaha (list)
 - Perizinan Berusaha UMKU (Label HSP)
 - Sanksi (4 types)
 
 ### Test Query 3: "what UMKU requirements for 56101"
+
 **Before**: "verify at OSS"  
 **After**: "PB UMKU: Label Higiene Sanitasi Pangan (HSP)"
 
@@ -152,11 +165,13 @@ Response: Detailed licensing/sanksi information
 ## Backward Compatibility
 
 ### Fallback Chain
+
 1. **Primary**: `kbli_documents` table (1563 codes)
 2. **Fallback**: `kg_nodes` table (legacy codes)
 3. **Hardcoded**: `KNOWN_KBLI_CODES` dict (synthetic fallback)
 
 ### Migration Path
+
 - **Current**: Both `kbli_documents` + `kg_nodes` supported
 - **Future**: Deprecate `kg_nodes` for KBLI, migrate to `kbli_documents` only
 
@@ -165,14 +180,17 @@ Response: Detailed licensing/sanksi information
 ## Performance Impact
 
 ### Query Count
+
 - **Before**: 1 query (kg_nodes lookup or Qdrant only)
 - **After**: 2 queries (Qdrant search + kbli_documents bulk fetch)
 
 ### Response Size
+
 - **Before**: ~500 chars context to LLM
 - **After**: ~5000-15000 chars context to LLM (full parent docs)
 
 ### Latency
+
 - **Before**: ~1-2s (Qdrant + LLM)
 - **After**: ~1.5-2.5s (Qdrant + PostgreSQL + LLM)
 - **Trade-off**: +0.5s latency for 10x better response quality
@@ -182,6 +200,7 @@ Response: Detailed licensing/sanksi information
 ## Testing
 
 ### Local Test (Recommended Before Deploy)
+
 ```bash
 cd ~/Projects/nuzantara/apps/backend-rag
 source venv313/bin/activate  # Python 3.13 venv
@@ -199,6 +218,7 @@ curl -X POST http://localhost:8080/api/v1/kbli-notebook/chat \
 ```
 
 ### Production Test
+
 ```bash
 # After deploy
 curl -X POST https://zantara.balizero.com/api/v1/kbli-notebook/chat \
@@ -223,6 +243,7 @@ curl -X POST https://zantara.balizero.com/api/v1/kbli-notebook/chat \
 ## Rollback Plan
 
 If retrieval fails:
+
 ```bash
 cd ~/Projects/nuzantara/apps/backend-rag/backend/app/routers
 cp kbli_notebook.py.backup kbli_notebook.py

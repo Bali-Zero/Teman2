@@ -11,19 +11,25 @@
 ## 🖥️ Come fare Hard Refresh
 
 ### Su Mac:
+
 ```
 Cmd + Shift + R
 ```
+
 oppure
+
 ```
 Cmd + Option + R
 ```
 
 ### Su Windows/Linux:
+
 ```
 Ctrl + Shift + R
 ```
+
 oppure
+
 ```
 Ctrl + F5
 ```
@@ -50,17 +56,20 @@ Dopo il hard refresh, testa questi codici:
 ### Opzione 1: Clear Browser Cache Manualmente
 
 **Chrome/Edge**:
+
 1. Apri DevTools (F12)
 2. Right-click sul pulsante Refresh
 3. Scegli "Empty Cache and Hard Reload"
 
 **Safari**:
+
 1. Safari → Settings → Advanced
 2. Check "Show Develop menu"
 3. Develop → Empty Caches
 4. Poi refresh (Cmd+R)
 
 **Firefox**:
+
 1. Ctrl+Shift+Delete (Cmd+Shift+Delete su Mac)
 2. Select "Cached Web Content"
 3. Click "Clear Now"
@@ -76,12 +85,14 @@ Dopo il hard refresh, testa questi codici:
 ## 📊 Database VERIFICATO Corretto
 
 Il database è stato verificato con script Python:
+
 - ✅ Totale: 1,562 codici
 - ✅ Low Risk: 425 (27.2%)
 - ✅ Medium Risk: 386 (24.7%)
 - ✅ High Risk: 751 (48.1%)
 
 Spot checks:
+
 - ✅ 01111 (Agricultura) → Medium Risk
 - ✅ 62191 (IT E-commerce) → Medium Risk
 - ✅ 56101 (Restaurant) → High Risk
@@ -91,6 +102,7 @@ Il problema è SOLO la cache del browser!
 ---
 
 **File verificati**:
+
 - `/app/kbli-navigator-premium.html` ✅
 - `/deploy/ready-to-deploy/index.html` ✅
 

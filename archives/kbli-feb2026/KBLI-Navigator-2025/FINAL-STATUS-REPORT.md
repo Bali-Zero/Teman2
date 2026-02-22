@@ -11,6 +11,7 @@
 ### ✅ COMPLETED (100%)
 
 #### 1. KBLI Navigator App
+
 - **Status**: Production ready
 - **Location**: `/deployment-package/index.html` (780KB)
 - **Features**:
@@ -25,6 +26,7 @@
   - ✅ 0.58ms average search speed
 
 #### 2. Homepage Integration Package
+
 - **Status**: Assets ready, code written
 - **Claude Code Status**: ✅ Homepage modifications completed
 - **Assets Created**:
@@ -40,6 +42,7 @@
   - ✅ Watch & Listen → KBLI 2025 Deep Dive podcast
 
 #### 3. Documentation
+
 - ✅ \`DEPLOY-NOW.md\` - Comprehensive deployment guide
 - ✅ \`CLAUDE-CODE-IMPLEMENTATION-TASK.md\` - Homepage integration instructions
 - ✅ \`HOMEPAGE-INTEGRATION-PACKAGE.md\` - Complete content package
@@ -52,6 +55,7 @@
 ## 🚀 DEPLOYMENT PLAN
 
 ### What Claude Code Has Already Done:
+
 1. ✅ Modified homepage \`app/page.tsx\` or equivalent
 2. ✅ Updated Featured Collection section with KBLI Navigator
 3. ✅ Replaced 3 articles in Latest Insights section
@@ -63,14 +67,18 @@
 **Option A: Production Deployment to balizero.com** (Recommended)
 
 \`\`\`bash
+
 # 1. Upload KBLI Navigator app
+
 scp deployment-package/index.html user@balizero.com:/var/www/balizero.com/kbli-navigator/
 
 # 2. Upload all images for homepage
-scp deployment-package/*.png user@balizero.com:/var/www/balizero.com/public/images/
+
+scp deployment-package/\*.png user@balizero.com:/var/www/balizero.com/public/images/
 
 # 3. Deploy homepage changes (already done by Claude Code, just push to production)
-git add app/page.tsx public/images/*.png
+
+git add app/page.tsx public/images/\*.png
 git commit -m "feat: integrate KBLI 2025 Navigator into homepage
 
 - Add KBLI Navigator app at /kbli-navigator
@@ -84,11 +92,13 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 git push origin main
 
 # 4. Verify deployment
+
 curl https://balizero.com/
 curl https://balizero.com/kbli-navigator/
 \`\`\`
 
 **Result**:
+
 - Homepage: \`https://balizero.com/\` (with KBLI Navigator integration)
 - App: \`https://balizero.com/kbli-navigator/\`
 - Images: Served from \`/images/\` directory
@@ -102,6 +112,7 @@ curl https://balizero.com/kbli-navigator/
 **Visit**: \`https://balizero.com/\`
 
 **Verify**:
+
 - [ ] Featured Collection shows "KBLI 2025 Navigator" with hero image
 - [ ] "Explore Navigator →" button works
 - [ ] 3 new articles visible:
@@ -119,6 +130,7 @@ curl https://balizero.com/kbli-navigator/
 **Visit**: \`https://balizero.com/kbli-navigator/\`
 
 **Verify**:
+
 - [ ] Page loads in < 3 seconds
 - [ ] Header shows "KBLI 2025 Navigator Pro" with Bali Zero logo
 - [ ] Search functionality works:
@@ -139,6 +151,7 @@ curl https://balizero.com/kbli-navigator/
 ### 3. User Flow Test
 
 **Complete journey**:
+
 1. [ ] Land on \`https://balizero.com/\`
 2. [ ] Click "Explore Navigator →" from Featured Collection
 3. [ ] Arrives at \`https://balizero.com/kbli-navigator/\`
@@ -159,13 +172,13 @@ curl https://balizero.com/kbli-navigator/
 
 \`\`\`
 deployment-package/
-├── index.html                    (780KB) ← KBLI Navigator app
-├── kbli-2025-hero-cover.png     (95KB)  ← Featured Collection hero
-├── article-1-kbli-changes.png   (24KB)  ← Article 1 cover
-├── article-2-risk-levels.png    (25KB)  ← Article 2 cover
-├── article-3-finding-code.png   (24KB)  ← Article 3 cover
-├── podcast-kbli-2025.png        (124KB) ← Podcast cover
-└── README.md                            ← Quick reference
+├── index.html (780KB) ← KBLI Navigator app
+├── kbli-2025-hero-cover.png (95KB) ← Featured Collection hero
+├── article-1-kbli-changes.png (24KB) ← Article 1 cover
+├── article-2-risk-levels.png (25KB) ← Article 2 cover
+├── article-3-finding-code.png (24KB) ← Article 3 cover
+├── podcast-kbli-2025.png (124KB) ← Podcast cover
+└── README.md ← Quick reference
 \`\`\`
 
 **Total size**: ~1.1 MB
@@ -175,6 +188,7 @@ deployment-package/
 ## 🎯 SUCCESS CRITERIA
 
 ### Day 1 Goals:
+
 - [ ] Homepage deployed with KBLI Navigator integration
 - [ ] KBLI Navigator accessible at \`/kbli-navigator\`
 - [ ] All 5 images loading correctly
@@ -183,6 +197,7 @@ deployment-package/
 - [ ] No critical errors
 
 ### Week 1 Goals:
+
 - [ ] 500+ unique visitors to KBLI Navigator
 - [ ] 2,000+ searches performed
 - [ ] Average session duration: 5+ minutes
@@ -194,6 +209,7 @@ deployment-package/
 ## 🐛 KNOWN ISSUES & LIMITATIONS
 
 ### Minor Issues (Non-blocking):
+
 1. **Zantara AI**: Currently simulated for demo purposes
    - Status: Cosmetic only
    - Impact: None (users can still use search/filters)
@@ -207,6 +223,7 @@ deployment-package/
    - Impact: None (can create full articles later)
 
 ### No Critical Issues:
+
 - ✅ Database: 100% verified, all 1,562 codes present
 - ✅ Search: Tested, working perfectly
 - ✅ Performance: Optimized, < 1ms search time
@@ -220,21 +237,27 @@ deployment-package/
 **Quick Commands** (if you have server access):
 
 \`\`\`bash
+
 # 1. Create directory
+
 mkdir -p /var/www/balizero.com/kbli-navigator
 
 # 2. Upload KBLI Navigator
+
 scp deployment-package/index.html user@balizero.com:/var/www/balizero.com/kbli-navigator/
 
 # 3. Upload images
-scp deployment-package/*.png user@balizero.com:/var/www/balizero.com/public/images/
+
+scp deployment-package/\*.png user@balizero.com:/var/www/balizero.com/public/images/
 
 # 4. Set permissions
+
 chmod 644 /var/www/balizero.com/kbli-navigator/index.html
-chmod 644 /var/www/balizero.com/public/images/*.png
+chmod 644 /var/www/balizero.com/public/images/\*.png
 
 # 5. Git commit homepage changes (if not done yet)
-git add app/page.tsx public/images/*.png
+
+git add app/page.tsx public/images/\*.png
 git commit -m "feat: integrate KBLI 2025 Navigator
 
 - Add KBLI Navigator at /kbli-navigator
@@ -245,6 +268,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 git push origin main
 
 # 6. Test
+
 curl https://balizero.com/
 curl https://balizero.com/kbli-navigator/
 \`\`\`
@@ -254,6 +278,7 @@ curl https://balizero.com/kbli-navigator/
 ## 🎯 FINAL CHECKLIST
 
 ### Pre-Deployment:
+
 - [x] KBLI Navigator tested (47 tests, 95.7% pass rate)
 - [x] Database verified (1,562 codes, 100% accurate)
 - [x] Homepage modifications completed (by Claude Code)
@@ -262,6 +287,7 @@ curl https://balizero.com/kbli-navigator/
 - [x] Deployment package ready
 
 ### Deployment:
+
 - [ ] Upload \`index.html\` to \`/kbli-navigator/\`
 - [ ] Upload 5 images to \`/images/\`
 - [ ] Push homepage changes to production
@@ -269,6 +295,7 @@ curl https://balizero.com/kbli-navigator/
 - [ ] Clear CDN cache (if applicable)
 
 ### Post-Deployment:
+
 - [ ] Test all homepage sections
 - [ ] Test KBLI Navigator functionality
 - [ ] Verify all links work

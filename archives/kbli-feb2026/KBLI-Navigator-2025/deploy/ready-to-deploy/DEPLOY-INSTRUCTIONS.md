@@ -3,6 +3,7 @@
 ## App pronta per il deployment su balizero.com
 
 ### 📦 File inclusi
+
 - `index.html` (755 KB) - App completa con:
   - Database KBLI 2025 (1,562 codici, 22 settori)
   - Zantara AI chatbot con ~95% accuracy
@@ -26,6 +27,7 @@ cd ~/Desktop/KBLI-Navigator-2025/deploy
 ```
 
 Lo script:
+
 1. Clona il repo `Balizero1987/Teman2`
 2. Crea `/apps/mouth/public/kbli-navigator/`
 3. Copia `index.html`
@@ -41,6 +43,7 @@ Lo script:
 Se lo script automatico fallisce:
 
 ### Step 1: Clone del repo
+
 ```bash
 cd ~/Desktop
 git clone git@github.com:Balizero1987/Teman2.git _temp_deploy
@@ -48,6 +51,7 @@ cd _temp_deploy
 ```
 
 ### Step 2: Crea directory e copia file
+
 ```bash
 mkdir -p apps/mouth/public/kbli-navigator
 cp ~/Desktop/KBLI-Navigator-2025/deploy/ready-to-deploy/index.html \
@@ -55,6 +59,7 @@ cp ~/Desktop/KBLI-Navigator-2025/deploy/ready-to-deploy/index.html \
 ```
 
 ### Step 3: Commit e push
+
 ```bash
 git add apps/mouth/public/kbli-navigator/
 git commit -m "feat: add KBLI 2025 Navigator Premium web app
@@ -72,13 +77,16 @@ git push origin main
 ```
 
 ### Step 4: Cleanup
+
 ```bash
 cd ~/Desktop
 rm -rf _temp_deploy
 ```
 
 ### Step 5: Verifica deployment
+
 Aspetta ~60 secondi per il deploy automatico di Vercel, poi visita:
+
 - https://balizero.com/kbli-navigator/
 
 ---
@@ -88,17 +96,20 @@ Aspetta ~60 secondi per il deploy automatico di Vercel, poi visita:
 Se vuoi deployare l'app separatamente da balizero.com:
 
 ### Netlify Drop
+
 1. Vai su https://app.netlify.com/drop
 2. Trascina `index.html` nella pagina
 3. Ottieni URL tipo: `https://kbli-navigator-xyz.netlify.app`
 
 ### GitHub Pages
+
 1. Crea nuovo repo su GitHub: `kbli-navigator-2025`
 2. Upload `index.html` → rinomina in `index.html`
 3. Settings → Pages → Deploy from `main` branch
 4. URL: `https://USERNAME.github.io/kbli-navigator-2025/`
 
 ### Vercel (standalone)
+
 ```bash
 cd ~/Desktop/KBLI-Navigator-2025/deploy/ready-to-deploy
 vercel --prod
@@ -124,6 +135,7 @@ Dopo il deployment, verifica che:
 ## 🤖 Features Implementate
 
 ### Database
+
 - ✅ 1,562 codici KBLI 2025
 - ✅ 22 settori (A-V)
 - ✅ PMA status (Open/Restricted/Closed)
@@ -131,6 +143,7 @@ Dopo il deployment, verifica che:
 - ✅ Keywords bi-direzionali
 
 ### Zantara AI (95% accuracy)
+
 - ✅ Pattern recognition per 10+ tipi di query
 - ✅ Database search con scoring
 - ✅ EN→ID translation (80+ termini)
@@ -141,6 +154,7 @@ Dopo il deployment, verifica che:
 - ✅ Stats e comparazioni KBLI 2020 vs 2025
 
 ### UI/UX
+
 - ✅ Design responsive
 - ✅ Dark mode
 - ✅ Gradiente Indonesia flag 🇮🇩
@@ -155,6 +169,7 @@ Dopo il deployment, verifica che:
 ## 📞 Support
 
 Problemi con il deploy?
+
 - WhatsApp: https://wa.me/6281299967842
 - Email: antonellosiano@gmail.com
 

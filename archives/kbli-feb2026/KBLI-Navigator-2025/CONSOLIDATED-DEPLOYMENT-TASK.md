@@ -9,6 +9,7 @@
 ## 📦 WHAT YOU HAVE
 
 You (Claude Code) have already completed:
+
 - ✅ Homepage modifications (`app/page.tsx` or equivalent)
 - ✅ Featured Collection → KBLI Navigator section
 - ✅ Latest Insights → 3 KBLI articles
@@ -183,11 +184,12 @@ curl -I https://balizero.com/images/kbli-2025-hero-cover.png
 Visit: `https://balizero.com/`
 
 **Check**:
+
 - [ ] Featured Collection shows "KBLI 2025 Navigator" with puzzle hero image
 - [ ] "Explore Navigator →" button present and clickable
 - [ ] 3 articles visible with correct covers:
   - [ ] Article 1: "KBLI 2025: What Changed" (Business badge)
-  - [ ] Article 2: "High-Risk vs Low-Risk" (Immigration badge)  
+  - [ ] Article 2: "High-Risk vs Low-Risk" (Immigration badge)
   - [ ] Article 3: "Finding Your Code" (Business badge)
 - [ ] Podcast section shows "KBLI 2025 Deep Dive" with microphone cover
 - [ ] All images load correctly (no broken images)
@@ -200,6 +202,7 @@ Visit: `https://balizero.com/`
 Visit: `https://balizero.com/kbli-navigator/`
 
 **Check**:
+
 - [ ] Page loads successfully (< 3 seconds)
 - [ ] Header shows "KBLI 2025 Navigator Pro" with Bali Zero logo
 - [ ] Search bar visible and functional
@@ -214,6 +217,7 @@ Visit: `https://balizero.com/kbli-navigator/`
 ### 3. User Flow Test
 
 **Complete Journey**:
+
 1. [ ] Start at `https://balizero.com/`
 2. [ ] Click "Explore Navigator →" from Featured Collection
 3. [ ] Verify arrives at `/kbli-navigator/`
@@ -229,6 +233,7 @@ Visit: `https://balizero.com/kbli-navigator/`
 ### 4. Performance Test
 
 **Metrics**:
+
 - [ ] Homepage load: < 2 seconds
 - [ ] KBLI Navigator load: < 3 seconds
 - [ ] Search response: < 1 second
@@ -238,11 +243,13 @@ Visit: `https://balizero.com/kbli-navigator/`
 ### 5. Mobile Test
 
 **Devices to test**:
+
 - [ ] iPhone (Safari)
 - [ ] Android (Chrome)
 - [ ] Tablet (iPad)
 
 **Verify**:
+
 - [ ] Layout adapts correctly
 - [ ] Touch targets large enough
 - [ ] Text readable without zoom
@@ -255,6 +262,7 @@ Visit: `https://balizero.com/kbli-navigator/`
 ### Issue: Images don't load
 
 **Check**:
+
 ```bash
 # Verify images uploaded
 ssh user@balizero.com "ls -lh /var/www/balizero.com/public/images/*.png"
@@ -265,6 +273,7 @@ ssh user@balizero.com "ls -l /var/www/balizero.com/public/images/*.png"
 ```
 
 **Fix**:
+
 ```bash
 # Set correct permissions
 ssh user@balizero.com "chmod 644 /var/www/balizero.com/public/images/*.png"
@@ -273,12 +282,14 @@ ssh user@balizero.com "chmod 644 /var/www/balizero.com/public/images/*.png"
 ### Issue: KBLI Navigator shows 404
 
 **Check**:
+
 ```bash
 # Verify index.html exists
 ssh user@balizero.com "ls -lh /var/www/balizero.com/kbli-navigator/index.html"
 ```
 
 **Fix**:
+
 ```bash
 # Re-upload if missing
 scp deployment-package/index.html user@balizero.com:/var/www/balizero.com/kbli-navigator/
@@ -287,17 +298,20 @@ scp deployment-package/index.html user@balizero.com:/var/www/balizero.com/kbli-n
 ### Issue: Search doesn't work
 
 **Check**:
+
 - Open browser console (F12)
 - Look for JavaScript errors
 - Verify no CSP (Content Security Policy) blocking inline scripts
 
 **Fix**:
+
 - If CSP error, adjust server headers to allow inline scripts
 - KBLI Navigator uses inline JS by design (self-contained)
 
 ### Issue: Homepage changes not visible
 
 **Check**:
+
 ```bash
 # Verify git push succeeded
 git log -1
@@ -308,6 +322,7 @@ git log -1
 ```
 
 **Fix**:
+
 ```bash
 # If using Vercel/Netlify, trigger rebuild
 vercel --prod --force
@@ -323,6 +338,7 @@ netlify deploy --prod --force
 ## 📊 SUCCESS METRICS
 
 ### Day 1 Goals:
+
 - [ ] 0 deployment errors
 - [ ] All links functional
 - [ ] 50+ unique visitors to /kbli-navigator
@@ -330,6 +346,7 @@ netlify deploy --prod --force
 - [ ] < 10% bounce rate
 
 ### Week 1 Goals:
+
 - [ ] 500+ unique visitors
 - [ ] 2,000+ searches
 - [ ] 5+ min average session
@@ -340,12 +357,14 @@ netlify deploy --prod --force
 ## 📞 SUPPORT RESOURCES
 
 **Documentation**:
+
 - `FINAL-STATUS-REPORT.md` - Complete project status
 - `DEPLOY-NOW.md` - Detailed deployment options
 - `TESTING-SUMMARY.md` - Test results (95.7% pass rate)
 - `OPTIMIZATION-RECOMMENDATIONS.md` - Future improvements
 
 **Quick Reference**:
+
 - Deployment package location: `/deployment-package/`
 - Total files to deploy: 6 (1 HTML + 5 PNG)
 - Total size: ~1.1 MB
