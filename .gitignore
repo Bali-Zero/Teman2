@@ -383,3 +383,8 @@ service_zone_finder.py
 # API keys
 sk-*
 
+
+# Temporary files
+codebase_parts/
+openclaw
+
