@@ -12,10 +12,10 @@ interface ClientKanbanProps {
 
 const COLUMNS = [
   { id: "lead", title: "Leads", color: "bg-blue-500" },
-  { id: "prospect", title: "Prospects", color: "bg-purple-500" },
   { id: "active", title: "Active", color: "bg-green-500" },
+  { id: "completed", title: "Completed", color: "bg-purple-500" },
   { id: "inactive", title: "Inactive", color: "bg-gray-500" },
-  { id: "completed", title: "Completed", color: "bg-indigo-500" },
+  { id: "lost", title: "Lost", color: "bg-red-500" },
 ];
 
 // Estimated height for ClientCard (for virtualization)
