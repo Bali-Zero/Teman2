@@ -92,6 +92,7 @@ class MetricsCollector {
 
   /**
    * Flush metrics to backend
+   * NOTE: Endpoint not yet implemented, silently skip
    */
   async flush(): Promise<void> {
     if (this.metrics.length === 0) return;
@@ -99,33 +100,10 @@ class MetricsCollector {
     const metricsToSend = [...this.metrics];
     this.metrics = [];
 
-    try {
-      // Send to backend metrics endpoint
-      const { api } = await import("./api");
-      const token = api.getToken();
-      const csrfToken = api.getCsrfToken();
-
-      if (!token) return;
-
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      };
-
-      if (csrfToken) {
-        headers["X-CSRF-Token"] = csrfToken;
-      }
-
-      await fetch("/api/metrics/frontend", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ metrics: metricsToSend }),
-      });
-    } catch (error) {
-      // Silently fail - metrics are not critical
-      // Re-add metrics if flush failed
-      this.metrics.unshift(...metricsToSend);
-    }
+    // TODO: Enable when backend endpoint /api/metrics/frontend is implemented
+    // Currently the endpoint returns 404, so we skip the network call
+    // Metrics are still collected locally and available via getMetrics()
+    return;
   }
 
   /**
