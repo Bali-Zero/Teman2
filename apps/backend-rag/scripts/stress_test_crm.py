@@ -79,7 +79,7 @@ class CRMStressTester:
         return {
             "client_id": client_id,
             "practice_type_code": random.choice(types),
-            "status": random.choice(["inquiry", "quotation_sent", "in_progress", "completed"]),
+            "status": random.choice(["inquiry", "waiting_documents", "on_process", "completed"]),
             "notes": f"Load Test Case {self._random_string()}",
             "priority": random.choice(["normal", "high", "urgent"]),
         }

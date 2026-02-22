@@ -319,7 +319,7 @@ class TestCRMBulkOperationsIntegration:
 
             # Create practices in different statuses
             practice_ids = []
-            statuses = ["inquiry", "quotation_sent", "payment_pending"]
+            statuses = ["inquiry", "waiting_documents", "sending_invoice"]
             for status in statuses:
                 for _ in range(3):
                     practice_id = await conn.fetchval(

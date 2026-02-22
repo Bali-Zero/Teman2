@@ -175,11 +175,11 @@ class TestPortalServiceSimple:
             # Test all status mappings
             status_map = {
                 "inquiry": 10,
-                "quotation_sent": 20,
-                "payment_pending": 30,
-                "in_progress": 50,
-                "waiting_documents": 40,
-                "submitted_to_gov": 70,
+                "waiting_documents": 20,
+                "sending_invoice": 30,
+                "waiting_payment": 40,
+                "on_process": 60,
+                "submitted_to_gov": 80,
                 "approved": 90,
                 "completed": 100,
             }
