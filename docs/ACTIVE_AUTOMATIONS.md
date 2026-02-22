@@ -1,6 +1,6 @@
 # 🔄 Active Automations - Nuzantara CRM
 
-> Last updated: 2026-02-22
+> Last updated: 2026-02-22 (Added Document Upload v2.0)
 >
 > This document lists ONLY the automations that are **actually running** in production.
 
@@ -10,10 +10,10 @@
 
 | Category                             | Count  |
 | ------------------------------------ | ------ |
-| **Real-time Triggers**               | 6      |
+| **Real-time Triggers**               | 7      |
 | **Scheduled (Autonomous Scheduler)** | 5      |
 | **Background Services**              | 3      |
-| **TOTAL ACTIVE**                     | **14** |
+| **TOTAL ACTIVE**                     | **15** |
 
 ---
 
@@ -107,11 +107,41 @@ Creates standardized folder structure in Google Drive:
 
 ---
 
+### 7. Document Upload Notification 📄 (NEW v2.0)
+
+**Trigger:** Client uploads document via Portal (`/api/portal/documents/upload`)  
+**File:** `services/portal/portal_service.py`  
+**What it does:**
+
+1. **Virus Scan:** Checks for malware (extensions, patterns)
+2. **Google Drive Upload:** Saves to structured folder:
+   ```
+   Zantara Portal Uploads/
+   └── {client_id}_{name}/
+       └── {document_type}/
+           └── {timestamp}_{file}
+   ```
+3. **OCR (Gemini Vision):** Extracts text from PDF/images (same as passport box)
+4. **Expiry Detection:** Auto-detects passport/visa/kitas expiry dates
+5. **Database Save:** Stores metadata, Drive ID, OCR text, expiry date
+6. **Timeline Event:** Creates client-visible event
+7. **Email Notification:** Sends to assigned lead with:
+   - File details
+   - Google Drive link
+   - Detected expiry date
+   - Link to client workspace
+
+**Email sent via:** Zoho Mail API
+
+**Full documentation:** [docs/DOCUMENT_UPLOAD_ENHANCEMENT.md](./DOCUMENT_UPLOAD_ENHANCEMENT.md)
+
+---
+
 ## ⏰ SCHEDULED AUTOMATIONS (Autonomous Scheduler)
 
 These run continuously within the backend application.
 
-### 7. Self-Healing Monitor
+### 8. Self-Healing Monitor
 
 **Interval:** Every 5 minutes  
 **What it does:**
@@ -122,7 +152,7 @@ These run continuously within the backend application.
 
 ---
 
-### 8. Conversation Trainer
+### 9. Conversation Trainer
 
 **Interval:** Every 6 hours  
 **What it does:**
@@ -134,7 +164,7 @@ These run continuously within the backend application.
 
 ---
 
-### 9. Renewal Alerts Checker
+### 10. Renewal Alerts Checker
 
 **Interval:** Every 12 hours  
 **What it does:**
@@ -145,7 +175,7 @@ These run continuously within the backend application.
 
 ---
 
-### 10. Golden Routes Seeder
+### 11. Golden Routes Seeder
 
 **Trigger:** Application startup (one-time)  
 **What it does:**
@@ -157,7 +187,7 @@ Seeds common query patterns to `golden_routes` table for faster routing:
 
 ---
 
-### 11. Birthday Notifier 🎂
+### 12. Birthday Notifier 🎂
 
 **Interval:** Every 24 hours (≈8:00 AM Bali time)  
 **File:** `services/crm/birthday_notifier_service.py`  
@@ -176,7 +206,7 @@ Seeds common query patterns to `golden_routes` table for faster routing:
 
 ---
 
-### 12. Conversation Cleanup
+### 13. Conversation Cleanup
 
 **Interval:** Every 24 hours  
 **What it does:**
@@ -189,7 +219,7 @@ Seeds common query patterns to `golden_routes` table for faster routing:
 
 ## 🔧 BACKGROUND SERVICES
 
-### 13. Health Monitor
+### 14. Health Monitor
 
 **Interval:** Every 60 seconds  
 **What it does:**
