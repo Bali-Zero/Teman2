@@ -46,25 +46,26 @@ import {
   initializeAnalytics,
 } from "@/lib/analytics";
 
-// NEW WORKFLOW (Feb 2026):
-// inquiry → waiting_documents → sending_invoice → waiting_payment → on_process → submitted_to_gov → approved → completed
+// SIMPLIFIED WORKFLOW (Feb 2026) - 5 Steps:
+// inquiry → waiting_documents → sending_invoice → on_process → completed
+//
+// NOTE: waiting_payment, submitted_to_gov, approved are now internal substates
+// handled within the main workflow steps
 //
 // LEGACY STATUS (for backward compatibility):
-// quotation_sent, payment_pending, in_progress
+// quotation_sent, payment_pending, waiting_payment, in_progress, submitted_to_gov, approved
 
 type CaseStatus =
   | "inquiry"
   | "waiting_documents"
   | "sending_invoice"
-  | "waiting_payment"
   | "on_process"
-  | "submitted_to_gov"
-  | "approved"
   | "completed";
 
 // Backend status values mapped to frontend display names and kanban columns
+// Simplified 5-step workflow
 const STATUS_OPTIONS: { value: string; label: string; column: CaseStatus }[] = [
-  // New workflow states
+  // Main workflow states (5 steps)
   { value: "inquiry", label: "Inquiry", column: "inquiry" },
   {
     value: "waiting_documents",
@@ -76,20 +77,9 @@ const STATUS_OPTIONS: { value: string; label: string; column: CaseStatus }[] = [
     label: "Sending Invoice",
     column: "sending_invoice",
   },
-  {
-    value: "waiting_payment",
-    label: "Waiting Payment",
-    column: "waiting_payment",
-  },
   { value: "on_process", label: "On Process", column: "on_process" },
-  {
-    value: "submitted_to_gov",
-    label: "Submitted to Gov",
-    column: "submitted_to_gov",
-  },
-  { value: "approved", label: "Approved", column: "approved" },
   { value: "completed", label: "Completed", column: "completed" },
-  // Legacy states (for backward compatibility with existing processes)
+  // Legacy states mapped to simplified workflow
   {
     value: "quotation_sent",
     label: "Quotation Sent (Legacy)",
@@ -98,9 +88,28 @@ const STATUS_OPTIONS: { value: string; label: string; column: CaseStatus }[] = [
   {
     value: "payment_pending",
     label: "Payment Pending (Legacy)",
-    column: "waiting_payment",
+    column: "sending_invoice",
   },
-  { value: "in_progress", label: "In Progress (Legacy)", column: "on_process" },
+  {
+    value: "waiting_payment",
+    label: "Waiting Payment (Legacy)",
+    column: "sending_invoice",
+  },
+  {
+    value: "in_progress",
+    label: "In Progress (Legacy)",
+    column: "on_process",
+  },
+  {
+    value: "submitted_to_gov",
+    label: "Submitted to Gov (Legacy)",
+    column: "on_process",
+  },
+  {
+    value: "approved",
+    label: "Approved (Legacy)",
+    column: "on_process",
+  },
 ];
 
 type ViewMode = "kanban" | "list";
@@ -283,22 +292,30 @@ export default function PratichePage() {
   };
 
   const getStatusColumn = (status: string): CaseStatus => {
-    // New workflow states
+    // Simplified 5-step workflow
     if (status === "inquiry" || status === "request") return "inquiry";
     if (status === "waiting_documents") return "waiting_documents";
     if (status === "sending_invoice") return "sending_invoice";
-    if (status === "waiting_payment") return "waiting_payment";
     if (status === "on_process" || status === "active") return "on_process";
-    if (status === "submitted_to_gov") return "submitted_to_gov";
-    if (status === "approved") return "approved";
     if (status === "completed" || status === "done") return "completed";
 
-    // Legacy states mapping (for backward compatibility)
-    if (status === "quotation_sent") return "sending_invoice";
-    if (status === "payment_pending") return "waiting_payment";
-    if (status === "in_progress") return "on_process";
-    if (status === "quote") return "sending_invoice";
-    if (status === "quotation") return "sending_invoice";
+    // Legacy/internal states mapped to simplified workflow
+    // waiting_payment, payment_pending → sending_invoice (payment follow-up)
+    if (status === "waiting_payment" || status === "payment_pending") {
+      return "sending_invoice";
+    }
+    // submitted_to_gov, approved, in_progress → on_process (government work)
+    if (
+      status === "submitted_to_gov" ||
+      status === "approved" ||
+      status === "in_progress"
+    ) {
+      return "on_process";
+    }
+    // quote, quotation → sending_invoice
+    if (status === "quotation_sent" || status === "quote" || status === "quotation") {
+      return "sending_invoice";
+    }
 
     return "inquiry";
   };
@@ -396,7 +413,7 @@ export default function PratichePage() {
   );
 
   // Memoize practices by status to avoid unnecessary recalculations
-  // Updated for new workflow: inquiry → waiting_documents → sending_invoice → waiting_payment → on_process → submitted_to_gov → approved → completed
+  // Simplified 5-step workflow: inquiry → waiting_documents → sending_invoice → on_process → completed
   const practicesByStatus = useMemo(
     () => ({
       inquiry: filteredPractices.filter(
@@ -408,17 +425,8 @@ export default function PratichePage() {
       sending_invoice: filteredPractices.filter(
         (p) => getStatusColumn(p.status) === "sending_invoice",
       ),
-      waiting_payment: filteredPractices.filter(
-        (p) => getStatusColumn(p.status) === "waiting_payment",
-      ),
       on_process: filteredPractices.filter(
         (p) => getStatusColumn(p.status) === "on_process",
-      ),
-      submitted_to_gov: filteredPractices.filter(
-        (p) => getStatusColumn(p.status) === "submitted_to_gov",
-      ),
-      approved: filteredPractices.filter(
-        (p) => getStatusColumn(p.status) === "approved",
       ),
       completed: filteredPractices.filter(
         (p) => getStatusColumn(p.status) === "completed",
@@ -629,18 +637,15 @@ export default function PratichePage() {
         )}
       </div>
 
-      {/* Kanban Board View - New Workflow 2026 */}
+      {/* Kanban Board View - Simplified 5-Step Workflow */}
       {viewMode === "kanban" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4 overflow-x-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 overflow-x-auto">
           {(
             [
               "Inquiry",
               "Waiting Documents",
               "Sending Invoice",
-              "Waiting Payment",
               "On Process",
-              "Submitted to Gov",
-              "Approved",
               "Completed",
             ] as const
           ).map((column, idx) => {
@@ -648,23 +653,17 @@ export default function PratichePage() {
               "inquiry",
               "waiting_documents",
               "sending_invoice",
-              "waiting_payment",
               "on_process",
-              "submitted_to_gov",
-              "approved",
               "completed",
             ][idx] as CaseStatus;
             const columnPractices = practicesByStatus[statusKey] || [];
 
-            // Color coding for each step
+            // Color coding for each step (5-step workflow)
             const stepColors = [
               "bg-gray-400", // Inquiry
               "bg-orange-400", // Waiting Documents
-              "bg-yellow-400", // Sending Invoice
-              "bg-amber-500", // Waiting Payment
-              "bg-blue-500", // On Process
-              "bg-indigo-500", // Submitted to Gov
-              "bg-purple-500", // Approved
+              "bg-yellow-400", // Sending Invoice (includes payment follow-up)
+              "bg-blue-500", // On Process (includes submitted/approved)
               "bg-green-500", // Completed
             ];
 
@@ -973,10 +972,12 @@ export default function PratichePage() {
                                 inquiry: "bg-gray-400",
                                 waiting_documents: "bg-orange-400",
                                 sending_invoice: "bg-yellow-400",
-                                waiting_payment: "bg-amber-500",
+                                // Legacy states mapped to sending_invoice
+                                waiting_payment: "bg-yellow-400",
                                 on_process: "bg-blue-500",
-                                submitted_to_gov: "bg-indigo-500",
-                                approved: "bg-purple-500",
+                                // Legacy states mapped to on_process
+                                submitted_to_gov: "bg-blue-500",
+                                approved: "bg-blue-500",
                                 completed: "bg-green-500",
                               }[getStatusColumn(practice.status)] ||
                               "bg-gray-400"
@@ -1167,13 +1168,13 @@ export default function PratichePage() {
                 <div className="flex items-center gap-2">
                   <span
                     className={`w-2 h-2 rounded-full ${
-                      option.column === "inquiry"
-                        ? "bg-blue-500"
-                        : option.column === "quotation"
-                          ? "bg-yellow-500"
-                          : option.column === "in_progress"
-                            ? "bg-purple-500"
-                            : "bg-green-500"
+                      {
+                        inquiry: "bg-gray-400",
+                        waiting_documents: "bg-orange-400",
+                        sending_invoice: "bg-yellow-400",
+                        on_process: "bg-blue-500",
+                        completed: "bg-green-500",
+                      }[option.column] || "bg-gray-400"
                     }`}
                   />
                   {option.label}

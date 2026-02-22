@@ -97,7 +97,7 @@ const mockPractices: Practice[] = [
     client_lead: "anton@balizero.com",
     practice_type_id: 3,
     practice_type_code: "property_purchase",
-    status: "in_progress",
+    status: "on_process",
     priority: "normal",
     payment_status: "pending",
     notes: "Villa purchase in Canggu",
@@ -239,13 +239,14 @@ describe("Cases Page", () => {
   });
 
   describe("Kanban View", () => {
-    it("should display Kanban board with 4 columns", async () => {
+    it("should display Kanban board with 5 columns", async () => {
       render(<PratichePage />);
 
       await waitFor(() => {
         expect(screen.getByText("Inquiry")).toBeInTheDocument();
-        expect(screen.getByText("Quotation")).toBeInTheDocument();
-        expect(screen.getByText("In Progress")).toBeInTheDocument();
+        expect(screen.getByText("Waiting Documents")).toBeInTheDocument();
+        expect(screen.getByText("Sending Invoice")).toBeInTheDocument();
+        expect(screen.getByText("On Process")).toBeInTheDocument();
         expect(screen.getByText("Completed")).toBeInTheDocument();
       });
     });
@@ -280,8 +281,9 @@ describe("Cases Page", () => {
       // (the actual count value may vary, so we just verify the columns are rendered)
       await waitFor(() => {
         expect(screen.getByText("Inquiry")).toBeInTheDocument();
-        expect(screen.getByText("Quotation")).toBeInTheDocument();
-        expect(screen.getByText("In Progress")).toBeInTheDocument();
+        expect(screen.getByText("Waiting Documents")).toBeInTheDocument();
+        expect(screen.getByText("Sending Invoice")).toBeInTheDocument();
+        expect(screen.getByText("On Process")).toBeInTheDocument();
         expect(screen.getByText("Completed")).toBeInTheDocument();
       });
     });
@@ -449,16 +451,16 @@ describe("Cases Page", () => {
       const filtersButton = screen.getByRole("button", { name: /Filters/i });
       await user.click(filtersButton);
 
-      // Select "In Progress" status
+      // Select "On Process" status
       const statusSelect = screen.getByLabelText(/Status/i);
-      await user.selectOptions(statusSelect, "in_progress");
+      await user.selectOptions(statusSelect, "on_process");
 
       await waitFor(() => {
         expect(screen.getByText("Bob Johnson")).toBeInTheDocument();
         expect(screen.queryByText("John Doe")).not.toBeInTheDocument();
         expect(analytics.trackFilterApplied).toHaveBeenCalledWith(
           "status",
-          "in_progress",
+          "on_process",
         );
       });
     });
@@ -591,7 +593,7 @@ describe("Cases Page", () => {
         await waitFor(() => {
           expect(screen.getByText("Update Status")).toBeInTheDocument();
           expect(screen.getByText("Inquiry")).toBeInTheDocument();
-          expect(screen.getByText("Quotation Sent")).toBeInTheDocument();
+          expect(screen.getByText("Sending Invoice")).toBeInTheDocument();
         });
       }
     });
@@ -614,20 +616,20 @@ describe("Cases Page", () => {
       if (menuButtons[0]) {
         await user.click(menuButtons[0]);
 
-        // Click on "In Progress" status
-        const inProgressOption = screen.getByText("In Progress");
-        await user.click(inProgressOption);
+        // Click on "On Process" status
+        const onProcessOption = screen.getByText("On Process");
+        await user.click(onProcessOption);
 
         await waitFor(() => {
           expect(api.crm.updatePractice).toHaveBeenCalledWith(
             1,
-            { status: "in_progress" },
+            { status: "on_process" },
             "zero@balizero.com",
           );
           expect(analytics.trackCaseStatusChanged).toHaveBeenCalledWith(
             1,
             "inquiry",
-            "in_progress",
+            "on_process",
           );
         });
       }
@@ -861,14 +863,14 @@ describe("Cases Page", () => {
       if (menuButtons[0]) {
         await user.click(menuButtons[0]);
 
-        const inProgressOption = screen.getByText("In Progress");
-        await user.click(inProgressOption);
+        const onProcessOption = screen.getByText("On Process");
+        await user.click(onProcessOption);
 
         await waitFor(() => {
           expect(analytics.trackCaseStatusChanged).toHaveBeenCalledWith(
             1,
             "inquiry",
-            "in_progress",
+            "on_process",
           );
         });
       }
