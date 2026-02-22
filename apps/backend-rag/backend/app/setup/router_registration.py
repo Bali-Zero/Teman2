@@ -200,6 +200,7 @@ def include_routers(api: FastAPI) -> None:
     from backend.app.routers import (
         admin_drive_auth,
         admin_drive_health,
+        admin_drive_refresh,
         admin_zoho_auth,
         test_drive,
         test_drive_create,
@@ -211,6 +212,7 @@ def include_routers(api: FastAPI) -> None:
     )
     api.include_router(admin_drive_auth.router)
     api.include_router(admin_drive_health.router)
+    api.include_router(admin_drive_refresh.router)
     api.include_router(admin_zoho_auth.router)
     api.include_router(test_drive.router)
     api.include_router(test_drive_create.router)
