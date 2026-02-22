@@ -17,11 +17,13 @@ Current images are "molto brutte" (very ugly). We need premium quality - Apple/T
 ## 📄 YOUR TASK FILE
 
 **READ THIS FIRST**:
+
 ```
 /sessions/practical-inspiring-galileo/mnt/Desktop/KBLI-Navigator-2025/CLAUDE-CODE-VISUAL-ASSETS-TASK.md
 ```
 
 This file contains:
+
 - Complete specs for all 5 images
 - Detailed design concepts
 - Color palette (strict)
@@ -62,6 +64,7 @@ This file contains:
 **Primary**: `canvas-design` skill
 
 **Alternative**: If canvas-design can't achieve quality level:
+
 - Three.js for 3D rendering
 - Blender (if available)
 - Custom canvas manipulation
@@ -74,6 +77,7 @@ This file contains:
 **Target**: 9.5/10 (premium advertising agency level)
 
 **Style Reference**:
+
 - Apple product photography
 - Stripe/Plaid fintech branding
 - High-end watch photography (Rolex/Omega)
@@ -93,11 +97,13 @@ This file contains:
 ## 📁 SAVE LOCATION
 
 Save all 5 images to:
+
 ```
 /sessions/practical-inspiring-galileo/mnt/Desktop/KBLI-Navigator-2025/deployment-package/
 ```
 
 Filenames (with `-v2` to distinguish from old versions):
+
 - `kbli-2025-hero-cover-v2.png`
 - `article-1-kbli-changes-v2.png`
 - `article-2-risk-levels-v2.png`

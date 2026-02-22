@@ -13,6 +13,7 @@
 Modify balizero.com homepage to feature KBLI Navigator tool prominently. Replace existing sections with new KBLI-focused content and images.
 
 **Changes required**:
+
 1. Replace "Complete Guide to Living in Bali" featured section → **KBLI 2025 Navigator**
 2. Replace 3 articles in "Latest Insights" → **3 KBLI articles**
 3. Replace podcast in "Watch & Listen" → **KBLI 2025 Deep Dive podcast**
@@ -26,6 +27,7 @@ Modify balizero.com homepage to feature KBLI Navigator tool prominently. Replace
 **Location**: `/public/images/` (or wherever balizero.com stores homepage images)
 
 **Files** (all in current directory):
+
 ```
 kbli-2025-hero-cover.png       (1200x600px, ~150KB)
 article-1-kbli-changes.png     (800x450px, ~80KB)
@@ -35,6 +37,7 @@ podcast-kbli-2025.png          (800x800px, ~120KB)
 ```
 
 **Upload command** (example):
+
 ```bash
 # If using SCP
 scp kbli-2025-hero-cover.png user@balizero.com:/var/www/public/images/
@@ -64,7 +67,7 @@ scp podcast-kbli-2025.png user@balizero.com:/var/www/public/images/
   <div className="featured-grid">
     <div className="featured-image">
       <Image
-        src="/images/living-in-bali-guide.jpg"  // or similar
+        src="/images/living-in-bali-guide.jpg" // or similar
         alt="Complete Guide to Living in Bali"
         // ...
       />
@@ -114,8 +117,18 @@ scp podcast-kbli-2025.png user@balizero.com:/var/www/public/images/
         className="btn-primary inline-flex items-center gap-2"
       >
         Explore Navigator
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 5l7 7-7 7"
+          />
         </svg>
       </Link>
     </div>
@@ -133,14 +146,10 @@ scp podcast-kbli-2025.png user@balizero.com:/var/www/public/images/
 // Current code with Maritime Chaos, Tax Shock, 0% Tax articles (REMOVE)
 <div className="insights-grid grid grid-cols-1 md:grid-cols-3 gap-6">
   {/* Article 1 - Maritime Chaos */}
-  <Link href="/lifestyle/maritime-chaos-komodo">
-    {/* ... */}
-  </Link>
+  <Link href="/lifestyle/maritime-chaos-komodo">{/* ... */}</Link>
 
   {/* Article 2 - Tax Shock */}
-  <Link href="/tax-legal/pajak-hiburan-tax-shock">
-    {/* ... */}
-  </Link>
+  <Link href="/tax-legal/pajak-hiburan-tax-shock">{/* ... */}</Link>
 
   {/* Article 3 - 0% Tax */}
   <Link href="/tax-legal/indonesia-zero-tax-foreign-income-2026">
@@ -154,7 +163,6 @@ scp podcast-kbli-2025.png user@balizero.com:/var/www/public/images/
 ```tsx
 // NEW CODE (ADD)
 <div className="insights-grid grid grid-cols-1 md:grid-cols-3 gap-6">
-
   {/* Article 1: KBLI 2025 Changes */}
   <Link
     href="/kbli-navigator"
@@ -179,9 +187,10 @@ scp podcast-kbli-2025.png user@balizero.com:/var/www/public/images/
         KBLI 2025: What Changed for Foreign Investors
       </h3>
       <p className="text-foreground-secondary text-sm mb-4">
-        The new KBLI 2025 classification system brings significant changes for foreign
-        businesses operating in Indonesia. From restructured categories to updated PMA
-        restrictions, understand what the 1,562 codes mean for your business strategy.
+        The new KBLI 2025 classification system brings significant changes for
+        foreign businesses operating in Indonesia. From restructured categories
+        to updated PMA restrictions, understand what the 1,562 codes mean for
+        your business strategy.
       </p>
       <div className="flex items-center gap-2 text-xs text-foreground-secondary">
         <span>5 min read</span>
@@ -215,9 +224,10 @@ scp podcast-kbli-2025.png user@balizero.com:/var/www/public/images/
         High-Risk vs Low-Risk Business Codes Explained
       </h3>
       <p className="text-foreground-secondary text-sm mb-4">
-        KBLI 2025 introduces a sophisticated 4-level risk assessment system that directly
-        impacts foreign worker permits, investment requirements, and compliance obligations.
-        Learn how L, ML, MH, and H classifications affect your operations.
+        KBLI 2025 introduces a sophisticated 4-level risk assessment system that
+        directly impacts foreign worker permits, investment requirements, and
+        compliance obligations. Learn how L, ML, MH, and H classifications
+        affect your operations.
       </p>
       <div className="flex items-center gap-2 text-xs text-foreground-secondary">
         <span>4 min read</span>
@@ -251,9 +261,9 @@ scp podcast-kbli-2025.png user@balizero.com:/var/www/public/images/
         Finding Your Perfect KBLI Code in 30 Seconds
       </h3>
       <p className="text-foreground-secondary text-sm mb-4">
-        With 1,562 codes to choose from, finding the right classification can feel
-        overwhelming. Our KBLI Navigator uses AI-powered search and intelligent
-        categorization to help you identify the perfect code—fast.
+        With 1,562 codes to choose from, finding the right classification can
+        feel overwhelming. Our KBLI Navigator uses AI-powered search and
+        intelligent categorization to help you identify the perfect code—fast.
       </p>
       <div className="flex items-center gap-2 text-xs text-foreground-secondary">
         <span>3 min read</span>
@@ -262,7 +272,6 @@ scp podcast-kbli-2025.png user@balizero.com:/var/www/public/images/
       </div>
     </div>
   </Link>
-
 </div>
 ```
 
@@ -287,13 +296,15 @@ scp podcast-kbli-2025.png user@balizero.com:/var/www/public/images/
 <div className="podcast-section">
   <div className="section-header mb-8">
     <h2 className="text-3xl font-bold mb-2">Watch & Listen</h2>
-    <Link href="/kbli-navigator" className="text-accent hover:underline text-sm">
+    <Link
+      href="/kbli-navigator"
+      className="text-accent hover:underline text-sm"
+    >
       Explore Navigator →
     </Link>
   </div>
 
   <div className="podcast-grid grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-
     {/* Podcast Cover */}
     <div className="podcast-cover">
       <Image
@@ -314,27 +325,45 @@ scp podcast-kbli-2025.png user@balizero.com:/var/www/public/images/
       <h3 className="text-3xl font-bold mb-3">KBLI 2025 Deep Dive</h3>
 
       <p className="text-lg text-foreground-secondary mb-6">
-        Expert analysis of Indonesia's new business classification system. Everything
-        foreign investors need to know about the 1,562 codes, risk levels, PMA restrictions,
-        and practical implementation strategies.
+        Expert analysis of Indonesia's new business classification system.
+        Everything foreign investors need to know about the 1,562 codes, risk
+        levels, PMA restrictions, and practical implementation strategies.
       </p>
 
       <div className="space-y-3 mb-6 text-sm text-foreground-secondary">
         <div className="flex items-center gap-2">
-          <svg className="w-5 h-5 text-accent" fill="currentColor" viewBox="0 0 20 20">
+          <svg
+            className="w-5 h-5 text-accent"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
             <path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" />
           </svg>
           <span>28 minutes of expert insights</span>
         </div>
         <div className="flex items-center gap-2">
-          <svg className="w-5 h-5 text-accent" fill="currentColor" viewBox="0 0 20 20">
+          <svg
+            className="w-5 h-5 text-accent"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
             <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
           </svg>
-          <span>Immigration consultants, tax specialists, business advisors</span>
+          <span>
+            Immigration consultants, tax specialists, business advisors
+          </span>
         </div>
         <div className="flex items-center gap-2">
-          <svg className="w-5 h-5 text-accent" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+          <svg
+            className="w-5 h-5 text-accent"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path
+              fillRule="evenodd"
+              d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+              clipRule="evenodd"
+            />
           </svg>
           <span>Real-world case studies and practical guidance</span>
         </div>
@@ -346,7 +375,11 @@ scp podcast-kbli-2025.png user@balizero.com:/var/www/public/images/
           className="btn-primary inline-flex items-center gap-2"
         >
           <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+            <path
+              fillRule="evenodd"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
+              clipRule="evenodd"
+            />
           </svg>
           Explore Navigator
         </Link>
@@ -359,7 +392,6 @@ scp podcast-kbli-2025.png user@balizero.com:/var/www/public/images/
         </Link>
       </div>
     </div>
-
   </div>
 </div>
 ```
@@ -428,6 +460,7 @@ scp podcast-kbli-2025.png user@balizero.com:/var/www/public/images/
 After implementation, verify:
 
 ### Visual Checks:
+
 - [ ] All 5 images load correctly
 - [ ] Images are properly sized (no distortion)
 - [ ] Hero section displays KBLI Navigator prominently
@@ -435,6 +468,7 @@ After implementation, verify:
 - [ ] Podcast section has proper layout (image left, content right on desktop)
 
 ### Functional Checks:
+
 - [ ] All links point to `/kbli-navigator`
 - [ ] Hover effects work on article cards
 - [ ] Buttons have proper hover states
@@ -442,6 +476,7 @@ After implementation, verify:
 - [ ] Images load with proper alt text (accessibility)
 
 ### Performance Checks:
+
 - [ ] Images are optimized (total < 500KB for all 5)
 - [ ] No console errors
 - [ ] Page loads in < 2s on 3G
@@ -451,27 +486,33 @@ After implementation, verify:
 ## 🚨 POTENTIAL ISSUES & SOLUTIONS
 
 ### Issue 1: Images don't load
+
 **Solution**: Check image paths match your public directory structure
+
 ```tsx
 // If images are in /public/images/
-src="/images/kbli-2025-hero-cover.png"
+src = "/images/kbli-2025-hero-cover.png";
 
 // If images are in /public/assets/
-src="/assets/kbli-2025-hero-cover.png"
+src = "/assets/kbli-2025-hero-cover.png";
 ```
 
 ### Issue 2: Tailwind classes not working
+
 **Solution**: Ensure classes are in your `tailwind.config.js` safelist or use custom CSS
 
 ### Issue 3: Layout breaks on mobile
+
 **Solution**: Check responsive grid classes:
+
 ```tsx
 // Ensure these patterns exist
-className="grid grid-cols-1 md:grid-cols-3 gap-6"  // Articles
-className="grid grid-cols-1 lg:grid-cols-2 gap-8"  // Podcast
+className = "grid grid-cols-1 md:grid-cols-3 gap-6"; // Articles
+className = "grid grid-cols-1 lg:grid-cols-2 gap-8"; // Podcast
 ```
 
 ### Issue 4: Links go to 404
+
 **Solution**: Verify `/kbli-navigator` route exists or update to correct path
 
 ---
@@ -479,16 +520,19 @@ className="grid grid-cols-1 lg:grid-cols-2 gap-8"  // Podcast
 ## 📊 EXPECTED OUTCOME
 
 **Before**:
+
 - Featured: "Complete Guide to Living in Bali"
 - Articles: Maritime Chaos, Tax Shock, 0% Tax
 - Podcast: Tax Strategies for Digital Nomads
 
 **After**:
+
 - Featured: **KBLI 2025 Navigator** with hero image
 - Articles: **3 KBLI-focused articles** with custom covers
 - Podcast: **KBLI 2025 Deep Dive** with professional cover
 
 **User Flow**:
+
 ```
 Homepage → Sees KBLI Navigator (multiple touch points)
          → Clicks any link

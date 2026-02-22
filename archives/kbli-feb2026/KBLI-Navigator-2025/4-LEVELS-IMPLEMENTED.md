@@ -16,25 +16,25 @@ Hai avuto ragione! Non sono 3 livelli (L, M, H) ma **4 livelli distinti**:
 
 ## 📊 Distribuzione Database
 
-| Livello | Codici | Percentuale |
-|---------|--------|-------------|
-| **L** (Low) | 430 | 27.5% |
-| **ML** (Medium Low) | 392 | 25.1% |
-| **MH** (Medium High) | 365 | 23.4% |
-| **H** (High) | 375 | 24.0% |
-| **TOTALE** | **1,562** | **100%** |
+| Livello              | Codici    | Percentuale |
+| -------------------- | --------- | ----------- |
+| **L** (Low)          | 430       | 27.5%       |
+| **ML** (Medium Low)  | 392       | 25.1%       |
+| **MH** (Medium High) | 365       | 23.4%       |
+| **H** (High)         | 375       | 24.0%       |
+| **TOTALE**           | **1,562** | **100%**    |
 
 ---
 
 ## 🔍 Codici Verificati
 
-| Codice | Attività | Risk Level |
-|--------|----------|------------|
-| 01111 | Pertanian Jagung (Agriculture) | **ML** ✅ |
-| **56101** | **Restaurant/Food Service** | **MH** ✅ |
-| 62191 | E-commerce IT Development | **ML** ✅ |
-| 10435 | Palm Oil Processing | **L** ✅ |
-| 01443 | Goat Dairy Farming | **L** ✅ |
+| Codice    | Attività                       | Risk Level |
+| --------- | ------------------------------ | ---------- |
+| 01111     | Pertanian Jagung (Agriculture) | **ML** ✅  |
+| **56101** | **Restaurant/Food Service**    | **MH** ✅  |
+| 62191     | E-commerce IT Development      | **ML** ✅  |
+| 10435     | Palm Oil Processing            | **L** ✅   |
+| 01443     | Goat Dairy Farming             | **L** ✅   |
 
 **56101 è ora correttamente "MH" (Medium High)!** 🎯
 
@@ -54,10 +54,8 @@ Hai avuto ragione! Non sono 3 livelli (L, M, H) ma **4 livelli distinti**:
 ### 2. **Filtri Code Finder** (4 pulsanti)
 
 ```html
-Low Risk      (430) ← Verde
-Medium Low    (392) ← Blu
-Medium High   (365) ← Arancione
-High Risk     (375) ← Rosso
+Low Risk (430) ← Verde Medium Low (392) ← Blu Medium High (365) ← Arancione High
+Risk (375) ← Rosso
 ```
 
 ### 3. **renderCard Function**
@@ -66,17 +64,17 @@ Aggiornata per mostrare tutti e 4 i badge correttamente:
 
 ```javascript
 const riskLabels = {
-  L: 'Low Risk',
-  ML: 'Medium Low',
-  MH: 'Medium High',
-  H: 'High Risk'
+  L: "Low Risk",
+  ML: "Medium Low",
+  MH: "Medium High",
+  H: "High Risk",
 };
 
 const riskClasses = {
-  L: 'badge-risk-low',
-  ML: 'badge-risk-med-low',
-  MH: 'badge-risk-med-high',
-  H: 'badge-risk-high'
+  L: "badge-risk-low",
+  ML: "badge-risk-med-low",
+  MH: "badge-risk-med-high",
+  H: "badge-risk-high",
 };
 ```
 
@@ -96,10 +94,13 @@ Ora mostra 4 livelli quando rispondi a "stats" o "how many":
 Quando spieghi un codice, distingue tra ML e MH:
 
 ```javascript
-risk === 'L' ? 'Low Risk (NIB only)' :
-risk === 'ML' ? 'Medium Low Risk (NIB + Standard Certificate)' :
-risk === 'MH' ? 'Medium High Risk (NIB + Standard Certificate)' :
-'High Risk (NIB + Business License)'
+risk === "L"
+  ? "Low Risk (NIB only)"
+  : risk === "ML"
+    ? "Medium Low Risk (NIB + Standard Certificate)"
+    : risk === "MH"
+      ? "Medium High Risk (NIB + Standard Certificate)"
+      : "High Risk (NIB + Business License)";
 ```
 
 ---
@@ -110,6 +111,7 @@ risk === 'MH' ? 'Medium High Risk (NIB + Standard Certificate)' :
 ✅ `/deploy/ready-to-deploy/index.html` - Deployment file
 
 Entrambi i file ora hanno:
+
 - Database con 4 livelli (L, ML, MH, H)
 - UI con 4 badge e 4 filtri
 - Zantara aggiornato per riconoscere 4 livelli
@@ -119,6 +121,7 @@ Entrambi i file ora hanno:
 ## 🧪 Come Testare (dopo Hard Refresh)
 
 ### Test 1: Code Finder Filters
+
 1. Vai a "Code Finder"
 2. Verifica che ci siano **4 filtri risk** (non 3):
    - Low Risk (430)
@@ -127,11 +130,13 @@ Entrambi i file ora hanno:
    - High Risk (375)
 
 ### Test 2: Search Specifici
+
 1. Search "**56101**" → Badge deve essere **"Medium High"** (arancione)
 2. Search "**01111**" → Badge deve essere **"Medium Low"** (blu)
 3. Search "**10435**" → Badge deve essere **"Low Risk"** (verde)
 
 ### Test 3: Zantara Stats
+
 1. Apri Zantara chat
 2. Scrivi "**how many codes**"
 3. Risposta deve mostrare:
@@ -143,6 +148,7 @@ Entrambi i file ora hanno:
    ```
 
 ### Test 4: Zantara Conversational
+
 1. Scrivi "**speak about 56101**"
 2. Risposta deve dire "**Medium High Risk** (NIB + Standard Certificate)"
 
@@ -155,11 +161,13 @@ Il tuo browser sta ancora mostrando la versione vecchia in **cache**!
 ### Come fare Hard Refresh:
 
 **Mac**:
+
 ```
 Cmd + Shift + R
 ```
 
 **Windows/Linux**:
+
 ```
 Ctrl + Shift + R
 ```

@@ -33,11 +33,13 @@ Il mapping originale era **sbagliato**:
 ## 📊 Distribuzione Corretta
 
 **PRIMA** (sbagliata):
+
 - Low (L): 425 codici
 - Medium (M): 386 codici
 - High (H): 751 codici ← troppi!
 
 **DOPO** (corretta):
+
 - Low (L): **430** codici (27.5%)
 - Medium (M): **757** codici (48.5%) ← ora corretto!
 - High (H): **375** codici (24.0%) ← ridotto
@@ -51,6 +53,7 @@ Il mapping originale era **sbagliato**:
 ✅ **376 codici** aggiornati da "H" → "M"
 
 Esempi di codici corretti:
+
 - 01111 (Pertanian Jagung): H → M ✅
 - **56101 (Restaurant)**: H → M ✅ ← IL TUO ESEMPIO!
 - 62191 (E-commerce IT): rimasto M ✅
@@ -60,12 +63,12 @@ Esempi di codici corretti:
 
 ## 🧪 Verifica Codici Specifici
 
-| Codice | Attività | Risk Corretto |
-|--------|----------|---------------|
-| **56101** | **Restaurant (fixed food)** | **M** ✅ |
-| 56102 | Mobile food service | M ✅ |
-| 01111 | Corn agriculture | M ✅ |
-| 62191 | E-commerce IT | M ✅ |
+| Codice    | Attività                    | Risk Corretto |
+| --------- | --------------------------- | ------------- |
+| **56101** | **Restaurant (fixed food)** | **M** ✅      |
+| 56102     | Mobile food service         | M ✅          |
+| 01111     | Corn agriculture            | M ✅          |
+| 62191     | E-commerce IT               | M ✅          |
 
 ---
 
@@ -85,11 +88,13 @@ Il tuo browser sta ancora mostrando la versione vecchia in **cache**.
 ### Come fare Hard Refresh:
 
 **Mac**:
+
 ```
 Cmd + Shift + R
 ```
 
 **Windows/Linux**:
+
 ```
 Ctrl + Shift + R
 ```
@@ -109,8 +114,8 @@ Dopo il hard refresh, verifica:
 1. **Search "restaurant"** → 56101 deve mostrare badge **Medium Risk** (non High)
 2. **Code Finder filters**:
    - Low Risk: (430) codes
-   - Medium Risk: (757) codes  ← aumentato!
-   - High Risk: (375) codes  ← diminuito!
+   - Medium Risk: (757) codes ← aumentato!
+   - High Risk: (375) codes ← diminuito!
 
 3. **Search "56101"** → Card deve mostrare:
    ```
@@ -124,6 +129,7 @@ Dopo il hard refresh, verifica:
 ## 🎓 Lezione Appresa
 
 Nel sistema di licensing indonesiano (PP 5/2021):
+
 - "Rendah" = Low Risk (solo NIB)
 - "Menengah" (qualsiasi variante) = Medium Risk (NIB + Sertifikat Standar)
 - "Tinggi" = High Risk (NIB + Izin Berusaha)

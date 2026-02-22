@@ -8,6 +8,7 @@
 ## 📦 PACKAGE CONTENTS
 
 ### Visual Assets Created:
+
 1. ✅ `kbli-2025-hero-cover.png` (1200x600px) - Featured Collection hero
 2. ✅ `article-1-kbli-changes.png` (800x450px) - Article cover
 3. ✅ `article-2-risk-levels.png` (800x450px) - Article cover
@@ -19,9 +20,11 @@
 ## 🎯 SECTION 1: Featured Collection
 
 ### Replace:
+
 "The Complete Guide to Living in Bali"
 
 ### With:
+
 **KBLI 2025 Navigator**
 
 ### Content:
@@ -33,11 +36,13 @@
 **Heading**: `Navigate Indonesia's New Business Classification System`
 
 **Description**:
+
 ```
 Instant access to all 1,562 KBLI 2025 codes with intelligent search, 4-level risk assessment, PMA status tracking, and AI-powered guidance. Whether you're setting up a PT PMA, applying for a work permit, or conducting business analysis, find the perfect classification code in seconds.
 ```
 
 **Features List**:
+
 - 🔍 Smart search with EN/ID bilingual support
 - 📊 4-level risk assessment (L, ML, MH, H)
 - 🌍 PMA status for all codes (Open, Restricted, Closed)
@@ -62,11 +67,13 @@ Instant access to all 1,562 KBLI 2025 codes with intelligent search, 4-level ris
 **Title**: `KBLI 2025: What Changed for Foreign Investors`
 
 **Preview Text**:
+
 ```
 The new KBLI 2025 classification system brings significant changes for foreign businesses operating in Indonesia. From restructured categories to updated PMA restrictions, understand what the 1,562 codes mean for your business strategy and compliance requirements.
 ```
 
 **Meta Info**:
+
 - Read time: `5 min read`
 - Views: `12,430 views` (or actual)
 - Category: `Business`
@@ -94,11 +101,13 @@ Understanding these changes is no longer optional. With the transition period en
 **Title**: `High-Risk vs Low-Risk Business Codes Explained`
 
 **Preview Text**:
+
 ```
 KBLI 2025 introduces a sophisticated 4-level risk assessment system that directly impacts foreign worker permits, investment requirements, and compliance obligations. Learn how L, ML, MH, and H risk classifications affect your business operations.
 ```
 
 **Meta Info**:
+
 - Read time: `4 min read`
 - Views: `9,150 views`
 - Category: `Immigration`
@@ -126,11 +135,13 @@ The practical implications are immediate. A restaurant (code 56101, Medium-High 
 **Title**: `Finding Your Perfect KBLI Code in 30 Seconds`
 
 **Preview Text**:
+
 ```
 With 1,562 codes to choose from, finding the right classification can feel overwhelming. Our KBLI Navigator uses AI-powered search and intelligent categorization to help you identify the perfect code for your business activity—fast.
 ```
 
 **Meta Info**:
+
 - Read time: `3 min read`
 - Views: `18,920 views`
 - Category: `Business`
@@ -152,9 +163,11 @@ The secret is word-boundary matching technology that prioritizes exact matches w
 ## 🎙️ SECTION 3: Watch & Listen (Podcast)
 
 ### Replace:
+
 "Tax Strategies for Digital Nomads in Indonesia" podcast
 
 ### With:
+
 **KBLI 2025 Deep Dive Podcast**
 
 ### Content:
@@ -168,6 +181,7 @@ The secret is word-boundary matching technology that prioritizes exact matches w
 **Subtitle**: `Understanding Indonesia's New Business Classification System`
 
 **Description**:
+
 ```
 Join our experts as they break down the KBLI 2025 classification system in detail. From the 4-level risk framework to PMA restrictions, sector classifications to practical implementation strategies—this comprehensive guide covers everything foreign investors need to know about Indonesia's new business codes.
 
@@ -175,12 +189,14 @@ Featuring interviews with immigration consultants, tax specialists, and business
 ```
 
 **Episode Details**:
+
 - Duration: `28 min`
 - Release: `February 2026`
 - Format: `Audio + Transcript`
 - Host: `Bali Zero Expert Team`
 
 **Topics Covered**:
+
 - 📊 Overview of KBLI 2025 structure (1,562 codes, 22 sectors)
 - ⚠️ 4-level risk system and business implications
 - 🌍 PMA status categories (Open, Restricted, Closed)
@@ -227,10 +243,7 @@ Replace the existing "Complete Guide to Living in Bali" section with:
         Instant access to all 1,562 KBLI 2025 codes with intelligent search,
         4-level risk assessment, PMA status tracking, and AI-powered guidance.
       </p>
-      <Link
-        href="/kbli-navigator"
-        className="btn-primary"
-      >
+      <Link href="/kbli-navigator" className="btn-primary">
         Explore Navigator →
       </Link>
     </div>
@@ -257,8 +270,8 @@ Replace the 3 articles in the "Latest Insights" section:
       <span className="badge badge-business">Business</span>
       <h3>KBLI 2025: What Changed for Foreign Investors</h3>
       <p>
-        The new KBLI 2025 classification system brings significant changes
-        for foreign businesses operating in Indonesia.
+        The new KBLI 2025 classification system brings significant changes for
+        foreign businesses operating in Indonesia.
       </p>
       <div className="article-meta">
         <span>5 min read</span>
@@ -281,8 +294,8 @@ Replace the 3 articles in the "Latest Insights" section:
       <span className="badge badge-immigration">Immigration</span>
       <h3>High-Risk vs Low-Risk Business Codes Explained</h3>
       <p>
-        KBLI 2025 introduces a sophisticated 4-level risk assessment system
-        that directly impacts foreign worker permits.
+        KBLI 2025 introduces a sophisticated 4-level risk assessment system that
+        directly impacts foreign worker permits.
       </p>
       <div className="article-meta">
         <span>4 min read</span>
@@ -305,8 +318,8 @@ Replace the 3 articles in the "Latest Insights" section:
       <span className="badge badge-business">Business</span>
       <h3>Finding Your Perfect KBLI Code in 30 Seconds</h3>
       <p>
-        Our KBLI Navigator uses AI-powered search and intelligent
-        categorization to help you identify the perfect code.
+        Our KBLI Navigator uses AI-powered search and intelligent categorization
+        to help you identify the perfect code.
       </p>
       <div className="article-meta">
         <span>3 min read</span>
@@ -339,8 +352,8 @@ Replace existing podcast section:
       <h3 className="text-3xl font-bold mb-2">KBLI 2025 Deep Dive</h3>
       <p className="text-foreground-secondary mb-4">
         Expert analysis of Indonesia's new business classification system.
-        Everything foreign investors need to know about the 1,562 codes,
-        risk levels, and PMA restrictions.
+        Everything foreign investors need to know about the 1,562 codes, risk
+        levels, and PMA restrictions.
       </p>
       <div className="podcast-meta">
         <span>🎧 28 minutes</span>
@@ -349,10 +362,7 @@ Replace existing podcast section:
         <span>•</span>
         <span>Practical guidance</span>
       </div>
-      <Link
-        href="/kbli-navigator"
-        className="btn-secondary mt-4"
-      >
+      <Link href="/kbli-navigator" className="btn-secondary mt-4">
         Explore Navigator →
       </Link>
     </div>
@@ -383,7 +393,9 @@ If using Tailwind CSS (already in balizero.com), most classes work. If custom CS
 
 /* Article cards hover effect */
 .article-card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .article-card:hover {
@@ -405,6 +417,7 @@ If using Tailwind CSS (already in balizero.com), most classes work. If custom CS
 ## 📋 IMPLEMENTATION CHECKLIST
 
 ### Step 1: Upload Images
+
 - [ ] Upload `kbli-2025-hero-cover.png` to `/public/images/`
 - [ ] Upload `article-1-kbli-changes.png` to `/public/images/`
 - [ ] Upload `article-2-risk-levels.png` to `/public/images/`
@@ -412,12 +425,14 @@ If using Tailwind CSS (already in balizero.com), most classes work. If custom CS
 - [ ] Upload `podcast-kbli-2025.png` to `/public/images/`
 
 ### Step 2: Modify Homepage
+
 - [ ] Replace Featured Collection section
 - [ ] Replace 3 articles in Latest Insights
 - [ ] Replace podcast in Watch & Listen
 - [ ] Update all links to `/kbli-navigator`
 
 ### Step 3: Test
+
 - [ ] Check image loading
 - [ ] Test all links work
 - [ ] Verify responsive design (mobile/tablet)
@@ -425,6 +440,7 @@ If using Tailwind CSS (already in balizero.com), most classes work. If custom CS
 - [ ] Test accessibility (alt text, etc.)
 
 ### Step 4: Deploy
+
 - [ ] Commit changes to repository
 - [ ] Deploy to production
 - [ ] Verify on live site
@@ -434,17 +450,20 @@ If using Tailwind CSS (already in balizero.com), most classes work. If custom CS
 ## 🎨 DESIGN NOTES
 
 **Visual Consistency**:
+
 - All images use balizero.com color palette (dark blues, teals, gold)
 - Sophisticated, professional aesthetic
 - Museum-quality craftsmanship
 - Culturally respectful Indonesian elements
 
 **Typography**:
+
 - Matches existing balizero.com font system
 - Clear hierarchy
 - Readable at all sizes
 
 **Content Strategy**:
+
 - All articles link to `/kbli-navigator`
 - Content is SEO-optimized
 - Clear calls-to-action
@@ -455,6 +474,7 @@ If using Tailwind CSS (already in balizero.com), most classes work. If custom CS
 ## 📊 EXPECTED RESULTS
 
 **User Flow**:
+
 1. User lands on balizero.com homepage
 2. Sees KBLI 2025 Navigator prominently featured
 3. Multiple entry points (hero, 3 articles, podcast)
@@ -462,12 +482,14 @@ If using Tailwind CSS (already in balizero.com), most classes work. If custom CS
 5. Uses the tool
 
 **SEO Benefits**:
+
 - KBLI 2025-related keywords
 - Internal linking structure
 - Fresh, relevant content
 - Increased time on site
 
 **Conversion Goals**:
+
 - Drive traffic to KBLI Navigator
 - Position Bali Zero as KBLI 2025 authority
 - Increase user engagement
@@ -478,6 +500,7 @@ If using Tailwind CSS (already in balizero.com), most classes work. If custom CS
 ## 📞 SUPPORT
 
 For questions or modifications:
+
 - Technical: Modify HTML/CSS as needed
 - Content: All text is editable
 - Images: All source files provided

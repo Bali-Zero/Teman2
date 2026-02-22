@@ -11,6 +11,7 @@
 **Location**: `/deployment-package/`
 
 **Contents**:
+
 ```
 deployment-package/
 ├── index.html                      (780KB) ← Main app
@@ -30,6 +31,7 @@ deployment-package/
 ### **Option A: Deploy to balizero.com/kbli-navigator** (Recommended)
 
 **1. Upload via SCP**:
+
 ```bash
 # Upload KBLI Navigator app
 scp deployment-package/index.html user@balizero.com:/var/www/balizero.com/kbli-navigator/
@@ -39,16 +41,19 @@ scp deployment-package/*.png user@balizero.com:/var/www/balizero.com/public/imag
 ```
 
 **2. Or use FTP/SFTP**:
+
 - Upload `index.html` to `/public_html/kbli-navigator/`
 - Upload `*.png` to `/public_html/images/`
 
 **3. Or use hosting control panel**:
+
 - Navigate to File Manager
 - Create folder: `kbli-navigator`
 - Upload `index.html` to that folder
 - Upload images to `images` folder
 
 **Result**:
+
 - App: `https://balizero.com/kbli-navigator/`
 - Images: Used by homepage modifications
 
@@ -96,6 +101,7 @@ vercel --prod
 ## ✅ POST-DEPLOYMENT CHECKLIST
 
 ### 1. Verify App Works
+
 - [ ] Visit deployment URL
 - [ ] Test search (try "restaurant", "software", "56101")
 - [ ] Check Zantara AI responds
@@ -105,17 +111,20 @@ vercel --prod
 - [ ] Check mobile responsive
 
 ### 2. Test Performance
+
 - [ ] Page loads in < 3 seconds
 - [ ] Search responds instantly
 - [ ] No console errors (F12)
 - [ ] Images load correctly
 
 ### 3. SEO & Metadata
+
 - [ ] Title shows: "KBLI 2025 Navigator Pro — balizero.com"
 - [ ] Favicon appears
 - [ ] Meta description present
 
 ### 4. Links & Navigation
+
 - [ ] All internal links work
 - [ ] Back to balizero.com works (if added)
 - [ ] Zantara button functional
@@ -127,11 +136,13 @@ vercel --prod
 ### If you need to change the title:
 
 **Line 6** in `index.html`:
+
 ```html
 <title>KBLI 2025 Navigator Pro — balizero.com</title>
 ```
 
 Change to:
+
 ```html
 <title>Your Custom Title Here</title>
 ```
@@ -139,20 +150,27 @@ Change to:
 ### If you need to add analytics:
 
 **Before `</head>` tag**, add:
+
 ```html
 <!-- Google Analytics -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=YOUR-GA-ID"></script>
+<script
+  async
+  src="https://www.googletagmanager.com/gtag/js?id=YOUR-GA-ID"
+></script>
 <script>
   window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'YOUR-GA-ID');
+  function gtag() {
+    dataLayer.push(arguments);
+  }
+  gtag("js", new Date());
+  gtag("config", "YOUR-GA-ID");
 </script>
 ```
 
 ### If you need to add custom domain redirect:
 
 Add in `<head>`:
+
 ```html
 <link rel="canonical" href="https://balizero.com/kbli-navigator/" />
 ```
@@ -164,6 +182,7 @@ Add in `<head>`:
 **For**: `kbli.balizero.com`
 
 **DNS Records to add**:
+
 ```
 Type: CNAME
 Host: kbli
@@ -172,6 +191,7 @@ TTL: 3600
 ```
 
 Or:
+
 ```
 Type: A
 Host: kbli
@@ -188,18 +208,21 @@ TTL: 3600
 ### Recommended to track:
 
 **User metrics**:
+
 - Page views
 - Search queries (most popular terms)
 - Avg. session duration
 - Bounce rate
 
 **Performance metrics**:
+
 - Page load time
 - Search response time
 - Error rate
 - Mobile vs desktop usage
 
 **Business metrics**:
+
 - Conversions (if tracking)
 - Referral sources
 - Popular KBLI codes searched
@@ -209,24 +232,31 @@ TTL: 3600
 ## 🐛 TROUBLESHOOTING
 
 ### Issue: Page shows blank
+
 **Solution**: Check browser console (F12) for errors
 
 ### Issue: Search doesn't work
+
 **Solution**: Ensure JavaScript is enabled, check console
 
 ### Issue: Images don't load
+
 **Solution**:
+
 - Check image paths in HTML
 - Verify images uploaded to correct directory
 - Check file permissions (644 for files)
 
 ### Issue: Mobile layout broken
+
 **Solution**:
+
 - Clear browser cache
 - Test in incognito mode
 - Check viewport meta tag present
 
 ### Issue: Zantara doesn't respond
+
 **Solution**: This is normal - Zantara is simulated for demo purposes
 
 ---
@@ -234,17 +264,20 @@ TTL: 3600
 ## 🔄 UPDATES & MAINTENANCE
 
 ### To update content:
+
 1. Edit `index.html` locally
 2. Test changes (open in browser)
 3. Upload updated file
 4. Clear cache: `Ctrl+F5` or `Cmd+Shift+R`
 
 ### To add new KBLI codes:
+
 1. Locate `const K=[...]` in HTML (line ~2000)
 2. Add new entry: `['code','title','sector','pma',maxForeign,'risk','kondisi','keywords']`
 3. Save and upload
 
 ### To change colors/theme:
+
 1. Locate CSS variables in `<style>` section
 2. Modify color values
 3. Save and upload
@@ -264,12 +297,14 @@ TTL: 3600
 ## 🎉 SUCCESS METRICS
 
 **Day 1 Goals**:
+
 - [ ] 50+ unique visitors
 - [ ] 200+ searches
 - [ ] 5 min avg. session duration
 - [ ] <10% bounce rate
 
 **Week 1 Goals**:
+
 - [ ] 500+ unique visitors
 - [ ] 2,000+ searches
 - [ ] Identify top 10 searched codes
@@ -280,15 +315,18 @@ TTL: 3600
 ## 📞 SUPPORT
 
 **Technical issues**:
+
 - Check TROUBLESHOOTING section above
 - Review browser console for errors
 - Test in different browsers
 
 **Content updates**:
+
 - Modify `index.html` directly
 - All data is embedded in single file
 
 **Feature requests**:
+
 - Document in IMPROVEMENTS-LOG.md
 - Prioritize based on user feedback
 
@@ -297,6 +335,7 @@ TTL: 3600
 ## 🔐 SECURITY NOTES
 
 **Already implemented**:
+
 - ✅ No external dependencies (all self-contained)
 - ✅ No backend/database required
 - ✅ No user data collection
@@ -304,6 +343,7 @@ TTL: 3600
 - ✅ Client-side only execution
 
 **Recommended**:
+
 - Use HTTPS (SSL certificate)
 - Set security headers
 - Regular backups
@@ -314,6 +354,7 @@ TTL: 3600
 ## 📋 DEPLOYMENT CHECKLIST
 
 ### Pre-Deployment:
+
 - [x] All tests passed (45/47)
 - [x] Database verified (100%)
 - [x] Performance optimized
@@ -321,6 +362,7 @@ TTL: 3600
 - [x] Documentation complete
 
 ### Deployment:
+
 - [ ] Files uploaded to server
 - [ ] URL accessible
 - [ ] Homepage images uploaded
@@ -328,6 +370,7 @@ TTL: 3600
 - [ ] SSL certificate active
 
 ### Post-Deployment:
+
 - [ ] Functional testing complete
 - [ ] Performance verified
 - [ ] SEO metadata confirmed
@@ -339,6 +382,7 @@ TTL: 3600
 ## 🎯 QUICK START COMMANDS
 
 **For VPS/Dedicated Server**:
+
 ```bash
 # Create directory
 mkdir -p /var/www/balizero.com/kbli-navigator
@@ -354,6 +398,7 @@ curl https://balizero.com/kbli-navigator/
 ```
 
 **For shared hosting**:
+
 1. Login to cPanel/hosting panel
 2. Go to File Manager
 3. Navigate to `public_html`
@@ -366,6 +411,7 @@ curl https://balizero.com/kbli-navigator/
 ## 🚀 YOU'RE READY!
 
 **Everything is production-ready**:
+
 - ✅ App tested (95.7% pass rate)
 - ✅ Database verified (100% accurate)
 - ✅ Performance optimized
@@ -373,12 +419,14 @@ curl https://balizero.com/kbli-navigator/
 - ✅ Assets prepared
 
 **Just**:
+
 1. Upload `index.html` to your server
 2. Upload `*.png` to images folder
 3. Test the URL
 4. Done! 🎉
 
 **Questions?** Check:
+
 - TESTING-SUMMARY.md (test results)
 - OPTIMIZATION-RECOMMENDATIONS.md (improvements)
 - FINAL-STATUS-REPORT.md (complete status)

@@ -18,11 +18,13 @@ Risolti tutti e 3 gli issue identificati nel test di 100 domande. Success rate m
 **Soluzione**: Aggiunto pattern dedicato con risposta completa e formattata
 
 **Pattern regex**:
+
 ```javascript
-/^(help|what can you do|capabilities|how (can|do) (you|i) use|apa yang bisa|bantuan)/
+/^(help|what can you do|capabilities|how (can|do) (you|i) use|apa yang bisa|bantuan)/;
 ```
 
 **Risposta generata**:
+
 ```
 🔍 Find KBLI codes — Search by business activity
 📋 Check specific codes — Look up any 5-digit code
@@ -33,6 +35,7 @@ Risolti tutti e 3 gli issue identificati nel test di 100 domande. Success rate m
 ```
 
 **Test results**:
+
 - ✅ "help" → 516 chars, risposta completa
 - ✅ "what can you do" → 516 chars, risposta completa
 - ✅ "bantuan" → funziona (indonesiano)
@@ -46,6 +49,7 @@ Risolti tutti e 3 gli issue identificati nel test di 100 domande. Success rate m
 **Soluzione**: Pattern semplificato con word boundary per NIB/OSS
 
 **Pattern regex**:
+
 ```javascript
 /\b(nib|oss)\b/i ||
 /(online single submission|how.*(register|apply|start).*(business|company)|
@@ -53,6 +57,7 @@ Risolti tutti e 3 gli issue identificati nel test di 100 domande. Success rate m
 ```
 
 **Risposta generata** (724 caratteri):
+
 ```
 Business Registration in Indonesia (OSS System)
 
@@ -72,6 +77,7 @@ Business Registration in Indonesia (OSS System)
 ```
 
 **Test results**:
+
 - ✅ "NIB requirements" → OSS info (era: code search)
 - ✅ "OSS system" → OSS info (era: code search)
 - ✅ "how to register a business" → OSS info (già funzionava)
@@ -86,15 +92,18 @@ Business Registration in Indonesia (OSS System)
 **Soluzione**: Pattern flessibile che cattura entrambi i casi e risponde appropriatamente
 
 **Pattern regex**:
+
 ```javascript
-/(how many|berapa (banyak|jumlah)).*(code|codes|kode|sector|sectors|sektor|kategori)/i
+/(how many|berapa (banyak|jumlah)).*(code|codes|kode|sector|sectors|sektor|kategori)/i;
 ```
 
 **Logica**:
+
 - Se contiene "sector/sektor/kategori" → lista 22 settori A-V con conteggi
 - Altrimenti → database overview con statistiche complete
 
 **Risposta per "how many codes"**:
+
 ```
 KBLI 2025 Database Overview:
 • Total codes: 1562
@@ -108,6 +117,7 @@ KBLI 2025 Database Overview:
 ```
 
 **Risposta per "how many sectors"**:
+
 ```
 KBLI 2025 has 22 sectors (Kategori A–V):
 
@@ -119,6 +129,7 @@ V — International Orgs. (1 codes)
 ```
 
 **Test results**:
+
 - ✅ "how many codes" → database overview (era: no match)
 - ✅ "how many sectors" → lista completa (già funzionava)
 - ✅ "berapa kode" → database overview (indonesiano)
@@ -132,17 +143,18 @@ V — International Orgs. (1 codes)
 **Soluzione**: Espanso pattern risk level per catturare query standalone su licensing
 
 **Pattern regex modificato**:
+
 ```javascript
 // BEFORE:
-/(what|explain|meaning|mean|tell).*(risk|risiko|licensing|license)/i
-
-// AFTER:
-(/(what|explain|meaning|mean|tell).*(risk|risiko)/i ||
- /(licensing|license|perizinan).*(requirement|persyaratan)/i) &&
-!/(nib|oss|register)/i
+/(what|explain|meaning|mean|tell).*(risk|risiko|licensing|license)/i(
+  // AFTER:
+  /(what|explain|meaning|mean|tell).*(risk|risiko)/i ||
+    /(licensing|license|perizinan).*(requirement|persyaratan)/i,
+) && !/(nib|oss|register)/i;
 ```
 
 **Test results**:
+
 - ✅ "licensing requirements" → Risk-Based Licensing info (era: no match)
 - ✅ "license requirements" → Risk-Based Licensing info
 - ✅ "persyaratan perizinan" → Risk-Based Licensing info (indonesiano)
@@ -151,25 +163,27 @@ V — International Orgs. (1 codes)
 
 ## 📊 Performance Metrics — Before vs After
 
-| Metrica | Before | After | Miglioramento |
-|---------|--------|-------|---------------|
-| **Success Rate** | 86% | ~95% | +9% |
-| **Help queries** | 0/5 | 5/5 | +100% |
-| **Procedural queries** | 2/5 | 5/5 | +60% |
-| **"How many X" queries** | 1/2 | 2/2 | +50% |
-| **Licensing queries** | 0/3 | 3/3 | +100% |
+| Metrica                  | Before | After | Miglioramento |
+| ------------------------ | ------ | ----- | ------------- |
+| **Success Rate**         | 86%    | ~95%  | +9%           |
+| **Help queries**         | 0/5    | 5/5   | +100%         |
+| **Procedural queries**   | 2/5    | 5/5   | +60%          |
+| **"How many X" queries** | 1/2    | 2/2   | +50%          |
+| **Licensing queries**    | 0/3    | 3/3   | +100%         |
 
 ---
 
 ## 🔍 Testing Coverage
 
 **Categorie testate** (7 query problematiche):
+
 - ✅ Help/capabilities (2 query)
 - ✅ NIB/OSS/registration (3 query)
 - ✅ "How many X" flexible (2 query)
 - ✅ Licensing requirements (1 query bonus)
 
 **Lingue testate**:
+
 - ✅ Inglese
 - ✅ Indonesiano
 
@@ -182,11 +196,13 @@ V — International Orgs. (1 codes)
 **Righe modificate**: ~40 righe nella funzione `generateResponse()`
 
 **Nuovi pattern aggiunti**: 3
+
 1. Help/capabilities (riga ~3347)
 2. Procedural queries NIB/OSS (riga ~3360)
 3. "How many X" flexible (riga ~3454)
 
 **Pattern modificati**: 1
+
 1. Risk level explanation (riga ~3408) — espanso per licensing
 
 **Dimensione file**: 755 KB (invariata)
@@ -200,6 +216,7 @@ V — International Orgs. (1 codes)
 **Regression test**: Tutte le 100 query originali continuano a funzionare (nessun breaking change)
 
 **Edge cases verificati**:
+
 - ✅ Query miste EN/ID
 - ✅ Query con/senza punteggiatura
 - ✅ Query maiuscole/minuscole
@@ -222,12 +239,14 @@ V — International Orgs. (1 codes)
 ## 📈 Impact Analysis
 
 **User experience improvements**:
+
 1. **Help discoverability** — Gli utenti possono ora scoprire le capabilities di Zantara
 2. **Procedural guidance** — Info complete su NIB/OSS invece di codici irrilevanti
 3. **Flexible queries** — Pattern più naturali accettati ("how many codes" funziona)
 4. **Licensing clarity** — Query su licensing danno info risk-based invece di errore
 
 **Business impact**:
+
 - Riduzione frustrazione utente (~9% more queries answered correctly)
 - Miglior onboarding (help disponibile)
 - Più utile per newcomers (spiegazioni procedurali OSS/NIB)
@@ -246,12 +265,14 @@ V — International Orgs. (1 codes)
 ## 📋 Future Enhancements (Optional)
 
 ### Priority Low
+
 1. 💡 Pattern per "export/import company" (attualmente no match)
 2. 💡 Pattern per "logistics company" (attualmente no match)
 3. 💡 Supporto typos comuni (licencing, registraton, etc.)
 4. 💡 Context-aware responses (se utente già chiese codice, follow-up dovrebbe riferirsi ad esso)
 
 ### Already Excellent
+
 - ✅ Code search (82% accuracy)
 - ✅ Sector information (100%)
 - ✅ Bilingual support (100%)
@@ -259,5 +280,5 @@ V — International Orgs. (1 codes)
 
 ---
 
-*Implementato e testato con successo — Ready for deployment*
-*KBLI Navigator Premium v3.1 — balizero.com*
+_Implementato e testato con successo — Ready for deployment_
+_KBLI Navigator Premium v3.1 — balizero.com_

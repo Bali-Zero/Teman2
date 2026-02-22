@@ -3,30 +3,37 @@
 **Total Codes Processed**: 1562
 
 ## Stage 1: Automated Fixes
+
 - **Uraian fields fixed**: 9
 - **Per_skala fields fixed**: 31
 - **Total auto-fixes**: 40
 
 ## Stage 2: High-Traffic Codes Requiring Review
+
 **4 high-traffic codes flagged**:
 
 ### 47191 — PERDAGANGAN ECERAN BERBAGAI MACAM BARANG YANG UTAMANYA BUKAN MAKANAN, MINUMAN, ATAU TEMBAKAU DENGAN SISTEM SWALAYAN
+
 **Uraian**: Kelompok ini mencakup perdagangan eceran berbagai jenis barang
 **Issue**: truncated_uraian
 
 ### 55101 — AKTIVITAS HOTEL BINTANG LIMA
+
 **Uraian**: Kelompok ini mencakup kegiatan penyediaan akomodasi yang biasanya berbasis harian atau mingguan, untuk tinggal dalam jangka waktu yang singkat, memenuhi ketentuan sebagai hotel bintang lima, serta menggunakan sebagian atau seluruh bangunan. Kelompok ini mencakup penyediaan akomodasi yang dilengkapi dengan perabot di ruang tamu dan suite. Berbagai layanan tambahan
 **Issue**: truncated_uraian
 
 ### 56101 — AKTIVITAS PENYEDIAAN MAKANAN DI BANGUNAN TETAP
+
 **Uraian**: Kelompok ini mencakup aktivitas penyediaan layanan makanan kepada pelanggan yang bertempat di sebagian atau seluruh bangunan tetap/ permanen, tidak bisa dibongkar pasang, tidak berpindahpindah dan tidak dapat dipindahkan, baik yang menyediakan pelayanan di meja melalui proses memasak terlebih dahulu sesuai dengan pesanan, maupun pelanggan mengambil sendiri/ diambilkan dari etalase makanan yang telah tersedia (prasmanan). Konsumsi dapat dilakukan di tempat tersebut, dibawa pulang atau diantar ke rumah. Kelompok ini mencakup pengoperasian - restoran; - rumah makan; - kantin/ kafetaria; - restora
 **Issue**: truncated_uraian
 
 ### 56210 — AKTIVITAS JASA BOGA UNTUK ACARA TERTENTU (EVENT CATERING)
+
 **Uraian**: Kelompok ini mencakup aktivitas penyiapan dan penyediaan makanan atas dasar kontrak perjanjian dengan pelanggan, di lokasi yang ditentukan oleh pelanggan untuk suatu acara tertentu. Kelompok ini mencakup jasa penyediaan makanan jadi (siap dikonsumsi) yang terselenggara melalui pesanan-pesanan acara kantor, perayaan, pesta, seminar, rapat, dan sejenisnya. Biasanya, makanan siap saji diantar ke tempat kerja, pesta, seminar, rapat, dan sejenisnya, berikut pramusaji yang akan melayani tamutamu/peserta seminar atau rapat pada saat pesta, seminar/kegiatan acara berlangsung. Kelompok ini ti
 **Issue**: truncated_uraian
 
 ## Stage 3: All Flagged Cases (Manual Review Needed)
+
 **Total flagged**: 500
 
 ### First 50 flagged codes:
@@ -181,8 +188,8 @@
 - **10731** — INDUSTRI PENGOLAHAN KAKAO
   Uraian: Kelompok ini mencakup kegiatan pengolahan biji kakao menjadi bubuk kakao, mentega kakao, lemak kakao...
 
-
 ## Summary
+
 - ✅ **OK**: 1053 codes
 - 🔧 **Auto-fixed**: 9 codes
 - ⚠️ **Needs review**: 500 codes
