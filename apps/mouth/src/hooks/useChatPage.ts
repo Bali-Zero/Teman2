@@ -117,6 +117,8 @@ export function useChatPage(): UseChatPageReturn {
     isLoading: isSessionLoading,
   } = useConversationPersistence();
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [messages, setMessages] = useState<OptimisticMessage[]>([]);
 
   // Update loading state when session is ready
   useEffect(() => {
@@ -124,7 +126,54 @@ export function useChatPage(): UseChatPageReturn {
       setIsInitialLoading(false);
     }
   }, [isSessionLoading]);
-  const [messages, setMessages] = useState<OptimisticMessage[]>([]);
+
+  // Load conversation history when sessionId is restored from sessionStorage
+  useEffect(() => {
+    if (!sessionId || isSessionLoading) return;
+    if (messages.length > 0) return;
+
+    const loadHistory = async () => {
+      setIsHistoryLoading(true);
+      try {
+        const history = await api.getConversationHistory(sessionId);
+        if (
+          history.success &&
+          history.messages.length > 0 &&
+          isMountedRef.current
+        ) {
+          setMessages(
+            history.messages.map((m) => ({
+              id: generateId(),
+              role: m.role as "user" | "assistant",
+              content: m.content,
+              sources: m.sources as Source[] | undefined,
+              imageUrl: m.imageUrl,
+              timestamp: new Date(),
+              isPending: false,
+            })),
+          );
+          logger.info("Conversation history restored", {
+            component: "useChatPage",
+            action: "loadHistory",
+            metadata: { sessionId, messageCount: history.messages.length },
+          });
+        }
+      } catch (error) {
+        logger.warn("Could not load conversation history", {
+          component: "useChatPage",
+          action: "loadHistory",
+          metadata: { sessionId, error: String(error) },
+        });
+      } finally {
+        if (isMountedRef.current) {
+          setIsHistoryLoading(false);
+        }
+      }
+    };
+
+    loadHistory();
+  }, [sessionId, isSessionLoading]);
+
   const [currentStatus, setCurrentStatus] = useState("");
   const [streamingSteps, setStreamingSteps] = useState<Array<AgentStep>>([]);
   const [userName, setUserName] = useState<string>("");
@@ -634,7 +683,7 @@ export function useChatPage(): UseChatPageReturn {
     sessionId,
     messages,
     displayMessages,
-    isInitialLoading,
+    isInitialLoading: isInitialLoading || isHistoryLoading,
     userName,
     userAvatar,
     showUserMenu,
