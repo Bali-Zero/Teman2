@@ -6676,7 +6676,7 @@
       "patch": {
         "tags": ["crm-practices"],
         "summary": "Update Practice",
-        "description": "Update practice information.\n\nAccess Control:\nAll authenticated users can update any practice.\n\nCommon status values:\n- inquiry\n- quotation_sent\n- payment_pending\n- in_progress\n- waiting_documents\n- submitted_to_gov\n- approved\n- completed\n- cancelled",
+        "description": "Update practice information.\n\nAccess Control:\nAll authenticated users can update any practice.\n\nCommon status values:\n- inquiry\n- sending_invoice\n- waiting_payment\n- on_process\n- waiting_documents\n- submitted_to_gov\n- approved\n- completed\n- cancelled",
         "operationId": "update_practice_api_crm_practices__practice_id__patch",
         "security": [
           {
@@ -6920,7 +6920,7 @@
       "post": {
         "tags": ["crm-practices"],
         "summary": "Regenerate Invoice",
-        "description": "Manually regenerate and resend invoice for a practice.\n\nUse cases:\n- Client lost the invoice email\n- Need to send updated invoice with corrected amount\n- Previous automation failed\n- Invoice generation was skipped (e.g., practice created before automation implemented)\n\nThis endpoint triggers the same workflow as the automatic invoice generation,\nbut can be called manually for any practice in 'quotation_sent' status.\n\nReturns:\n    dict: Invoice generation result with file IDs, links, and notification status",
+        "description": "Manually regenerate and resend invoice for a practice.\n\nUse cases:\n- Client lost the invoice email\n- Need to send updated invoice with corrected amount\n- Previous automation failed\n- Invoice generation was skipped (e.g., practice created before automation implemented)\n\nThis endpoint triggers the same workflow as the automatic invoice generation,\nbut can be called manually for any practice in 'sending_invoice' status.\n\nReturns:\n    dict: Invoice generation result with file IDs, links, and notification status",
         "operationId": "regenerate_invoice_api_crm_practices__practice_id__regenerate_invoice_post",
         "security": [
           {

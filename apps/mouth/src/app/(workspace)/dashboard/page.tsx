@@ -23,7 +23,7 @@ import {
 import type { PraticaPreview, WhatsAppMessage } from "@/components/dashboard";
 import { DashboardErrorBoundary } from "@/components/ErrorBoundary";
 import { useDashboardData } from "@/hooks/useDashboardData";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { dashboardApi } from "@/lib/api/dashboard/dashboard.api";
 import {
   useEnhancedAnalytics,
@@ -74,6 +74,7 @@ export default function DashboardPage() {
   const mobile = useMobileOptimization();
   const funnel = useFunnelAnalytics();
   const ai = useAIInsights();
+  const queryClient = useQueryClient();
 
   // Performance tracking
   const startTime = React.useRef(performance.now());
@@ -410,8 +411,9 @@ export default function DashboardPage() {
                   );
                 // Send real-time update
                 realtime.sendDashboardUpdate("delete", "case", id);
-                // TODO: Add queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-                // after successful delete to refresh the interactions list
+                // Invalidate cache to refresh the interactions list
+                queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+                queryClient.invalidateQueries({ queryKey: ["interactions"] });
               } catch (error) {
                 const errorMessage =
                   error instanceof Error ? error.message : String(error);
