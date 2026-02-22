@@ -157,7 +157,7 @@ Be specific and factual."""
         else:
             if limit:
                 to_enrich = to_enrich[:limit]
-            self.log(f"📊 Found {len(to_enrich)} sources to enrich (out of {len(sources)} total)")
+            self.log(f"📊 Found {len(to_enrich)} sources to enrich (out of {len(all_sources)} total)")
         
         self.stats['total'] = len(to_enrich)
         
