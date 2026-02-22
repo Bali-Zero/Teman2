@@ -22,28 +22,30 @@ Questa guida definisce come orchestrare tutti questi strumenti per massimizzare 
 
 ### Abbonamenti Premium Attivi
 
-| Provider       | Piano       | Costo/mese | Modello Principale        | Uso Primario                |
-| -------------- | ----------- | ---------- | ------------------------- | --------------------------- |
-| **Anthropic**  | MAX 200     | ~$100-200  | Claude Opus 4.5           | Coding, reasoning complesso |
-| **Google**     | AI Ultra    | $249.99    | Gemini 3 Pro + Deep Think | Antigravity IDE, ricerca    |
-| **Cursor**     | Ultra       | ~$20       | GPT-5, Sonnet 4           | IDE AI-first                |
-| **Windsurf**   | Pro         | ~$20       | Codeium models            | Editor veloce               |
-| **Perplexity** | Pro         | ~$20       | Multi-model               | Ricerca AI                  |
-| **OpenAI**     | Codex OAuth | Incluso    | GPT-5.2, o3               | Codex CLI                   |
-| **ChatGPT**    | Pro         | ~$200      | GPT-5                     | Conversazione               |
+| Provider       | Piano       | Costo/mese | Modello Principale                            | Uso Primario                      |
+| -------------- | ----------- | ---------- | --------------------------------------------- | --------------------------------- |
+| **Anthropic**  | MAX 200     | ~$100-200  | Claude Opus 4.6                               | Coding, reasoning complesso       |
+| **Google**     | AI Ultra    | $249.99    | Gemini 3 Pro + Deep Think                     | Antigravity IDE, ricerca          |
+| **Cursor**     | Ultra       | ~$20       | GPT-5, Sonnet 4                               | IDE AI-first                      |
+| **Windsurf**   | Pro         | ~$20       | Codeium models                                | Editor veloce                     |
+| **Perplexity** | Pro         | ~$20       | Multi-model                                   | Ricerca AI                        |
+| **OpenAI**     | Codex OAuth | Incluso    | GPT-5.2, o3                                   | Codex CLI                         |
+| **ChatGPT**    | Pro         | ~$200      | GPT-5                                         | Conversazione                     |
+| **Opencode**   | Open Source | Gratis     | Multi-model (Anthropic, OpenAI, Gemini, ecc.) | TUI agent, multi-provider, web UI |
 
 ### Software Installato
 
 #### IDE con Agent Mode
 
-| App             | Versione | CLI           | Agent Mode | Specialità                       |
-| --------------- | -------- | ------------- | ---------- | -------------------------------- |
-| **Claude Code** | 2.1.9    | `claude`      | Full       | Coding complesso, MCP, subagents |
-| **Antigravity** | 1.104.0  | `antigravity` | Full       | Multi-agent parallelo, Gemini 3  |
-| **Cursor**      | 2.4.21   | `cursor`      | Full       | IDE AI-first, velocità           |
-| **Windsurf**    | 1.106.0  | `windsurf`    | Full       | Cascade agent, edit mode         |
-| **Gemini CLI**  | 0.26.0   | `gemini`      | Full       | Q&A, summaries                   |
-| **Codex CLI**   | 0.77.0   | `codex`       | Full       | OpenAI agent, sandbox            |
+| App             | Versione | CLI           | Agent Mode | Specialità                                                       |
+| --------------- | -------- | ------------- | ---------- | ---------------------------------------------------------------- |
+| **Claude Code** | 2.1.9    | `claude`      | Full       | Coding complesso, MCP, subagents                                 |
+| **Opencode**    | 1.2.10   | `opencode`    | Full       | TUI/Web UI, multi-provider, MCP, PR review, sessioni esportabili |
+| **Antigravity** | 1.104.0  | `antigravity` | Full       | Multi-agent parallelo, Gemini 3                                  |
+| **Cursor**      | 2.4.21   | `cursor`      | Full       | IDE AI-first, velocità                                           |
+| **Windsurf**    | 1.106.0  | `windsurf`    | Full       | Cascade agent, edit mode                                         |
+| **Gemini CLI**  | 0.26.0   | `gemini`      | Full       | Q&A, summaries                                                   |
+| **Codex CLI**   | 0.77.0   | `codex`       | Full       | OpenAI agent, sandbox                                            |
 
 #### Assistenti Conversazionali (App)
 
@@ -178,20 +180,99 @@ antigravity chat --mode agent --planning "Add real-time notifications"
 
 ---
 
-## 4. Strategia di Orchestrazione
+## 4. Opencode - Il TUI/Web Agent Multi-Provider
+
+### Cos'è Opencode
+
+**Opencode** è un agente CLI open-source (v1.2.10) con TUI interattiva e Web UI opzionale, che supporta nativamente tutti i principali provider AI (Anthropic, OpenAI, Google, Ollama, ecc.) e il protocollo MCP.
+
+**Repository:** https://github.com/sst/opencode
+**Installato:** `~/.opencode/bin/opencode`
+
+### Feature Chiave
+
+| Feature             | Descrizione                                              |
+| ------------------- | -------------------------------------------------------- |
+| **TUI interattiva** | Interfaccia terminale fluida, no GUI richiesta           |
+| **Web UI**          | `opencode web` apre browser per sessioni visive          |
+| **Multi-provider**  | Anthropic, OpenAI, Gemini, Ollama, ecc. in un unico tool |
+| **MCP nativo**      | Supporto Model Context Protocol integrato                |
+| **PR Review**       | `opencode pr <number>` — checkout + review diretto       |
+| **ACP server**      | Agent Client Protocol per integrazione con altri agent   |
+| **Sessioni export** | Export/import JSON per riprendere sessioni               |
+| **GitHub agent**    | Integrazione GitHub nativa                               |
+| **Token stats**     | `opencode stats` per tracciare utilizzo e costi          |
+| **Headless mode**   | `opencode serve` per uso in pipeline/CI                  |
+
+### Comandi Principali
+
+```bash
+# Avvio TUI nel progetto corrente
+opencode
+
+# Web UI
+opencode web
+
+# Eseguire un task direttamente
+opencode run "Analizza i test che falliscono e proponi fix"
+
+# Review PR GitHub
+opencode pr 123
+
+# Lista modelli disponibili
+opencode models
+
+# Stats utilizzo token/costo
+opencode stats
+
+# Aggiornamento
+opencode upgrade
+```
+
+### Uso per Nuzantara
+
+```bash
+# Debug veloce con modello a scelta
+opencode run "Controlla reasoning.py e spiega il flusso evidence scoring"
+
+# PR review integrata
+opencode pr 45
+
+# Sessione salvabile e riprendibile
+opencode export <sessionID> > session-backup.json
+opencode import session-backup.json
+```
+
+### Quando Usare Opencode vs Claude Code
+
+| Scenario                                        | Tool           |
+| ----------------------------------------------- | -------------- |
+| Coding complesso con MCP servers personalizzati | Claude Code    |
+| TUI leggera, switch rapido tra modelli          | Opencode       |
+| Web UI senza IDE                                | Opencode web   |
+| PR review da terminale                          | Opencode       |
+| Task con subagents Claude                       | Claude Code    |
+| Headless in pipeline CI                         | Opencode serve |
+
+---
+
+## 5. Strategia di Orchestrazione
 
 ### Matrice Decisionale: Quale Tool Usare
 
-| Scenario                         | Tool Primario            | Perché                              |
-| -------------------------------- | ------------------------ | ----------------------------------- |
-| **Bug fix rapido**               | Cursor                   | Veloce, context switching minimo    |
-| **Feature complessa multi-file** | Claude Code              | Reasoning profondo, MCP servers     |
-| **Refactoring architetturale**   | Antigravity              | 8 agent paralleli, planning mode    |
-| **Ricerca + coding**             | Perplexity → Claude Code | Ricerca con fonti → implementazione |
-| **Debug produzione**             | Claude Code + Fly MCP    | Accesso diretto a logs e metriche   |
-| **Quick Q&A su codice**          | Gemini CLI               | Veloce, in-terminal                 |
-| **Prototipo UI**                 | Windsurf                 | Cascade mode, veloce                |
-| **Task delegato da mobile**      | RIRI/Clawdbot            | Via WhatsApp/Telegram               |
+| Scenario                         | Tool Primario            | Perché                               |
+| -------------------------------- | ------------------------ | ------------------------------------ |
+| **Bug fix rapido**               | Cursor / Opencode        | Veloce, context switching minimo     |
+| **Feature complessa multi-file** | Claude Code              | Reasoning profondo, MCP servers      |
+| **Refactoring architetturale**   | Antigravity              | 8 agent paralleli, planning mode     |
+| **Ricerca + coding**             | Perplexity → Claude Code | Ricerca con fonti → implementazione  |
+| **Debug produzione**             | Claude Code + Fly MCP    | Accesso diretto a logs e metriche    |
+| **Quick Q&A su codice**          | Gemini CLI / Opencode    | Veloce, in-terminal, switch modello  |
+| **PR review da terminale**       | Opencode                 | `opencode pr <n>` — checkout diretto |
+| **Switch rapido tra modelli**    | Opencode                 | Multi-provider in un comando         |
+| **Prototipo UI**                 | Windsurf                 | Cascade mode, veloce                 |
+| **Task delegato da mobile**      | RIRI/Clawdbot            | Via WhatsApp/Telegram                |
+| **Sessione da Web UI**           | Opencode web             | Browser, no IDE, qualsiasi device    |
 
 ### Workflow Quotidiano Suggerito
 
@@ -202,7 +283,9 @@ antigravity chat --mode agent --planning "Add real-time notifications"
 Durante il giorno:
 ├── Task coding complessi → Claude Code
 ├── Refactoring parallelo → Antigravity (8 agents)
-├── Bug fix veloci → Cursor
+├── Bug fix veloci → Cursor / Opencode
+├── PR review → Opencode (opencode pr <n>)
+├── Switch modello rapido → Opencode TUI
 ├── Ricerca → Perplexity Pro
 ├── Q&A rapido → Gemini CLI
 └── Mobile/Away → RIRI via WhatsApp
@@ -388,10 +471,11 @@ Se questi strumenti risparmiano **20+ ore/settimana** di lavoro:
 Hai un **arsenale AI enterprise-grade** che pochi sviluppatori al mondo possiedono. La chiave è:
 
 1. **RIRI** come gateway centrale per notifiche e delegazione
-2. **Claude Code** per coding complesso e reasoning
-3. **Antigravity** per refactoring parallelo
-4. **Cursor/Windsurf** per task veloci
-5. **Perplexity** per ricerca
+2. **Claude Code** per coding complesso e reasoning con MCP
+3. **Opencode** per TUI/Web multi-provider, PR review, switch modello rapido
+4. **Antigravity** per refactoring parallelo
+5. **Cursor/Windsurf** per task veloci in IDE
+6. **Perplexity** per ricerca
 
 Con questa orchestrazione, puoi operare come un **team di 5-10 sviluppatori** mantenendo il controllo di una sola persona.
 
