@@ -1,91 +1,39 @@
-# Next Steps - Conversation Persistence
+# Next Steps - KBLI 2025 Migration & Content Strategy
 
-**Situazione**: ✅ Codice implementato, endpoint deployato, JWT_SECRET diverso in produzione (corretto)
+**Situation**: ✅ KBLI Batch 2 Articles Published (12/12)
 
 ---
 
 ## 🎯 Azione Immediata
 
-### Test Locale (5 minuti)
+### 1. Monitoraggio SEO (24-48h)
 
-```bash
-# Terminal 1: Avvia backend locale
-cd apps/backend-rag/backend
-uvicorn backend.app.main_cloud:app --reload --port 8080
+- Verificare indicizzazione su Google Search Console per i nuovi slug `kbli-2025-*`.
+- Controllare impression e click rate per `kbli-2025-foreign-ownership-pma-guide`.
 
-# Terminal 2: Esegui test
-cd apps/backend-rag
-./scripts/test_local.sh
-```
+### 2. Social Distribution
 
-**Questo verificherà:**
-
-- ✅ Endpoint `/webhook/chat` funziona
-- ✅ Messaggi vengono salvati in DB
-- ✅ History viene recuperata
-- ✅ Context viene mantenuto
+- Preparare thread LinkedIn/Twitter basati sugli "AI Snippet" generati nel frontmatter degli articoli.
+- Focus su: "Fiktif Positif" (Hospitality) e "Category J vs K" (IT).
 
 ---
 
-## 📋 Dopo Test Locale OK
+## 📋 Prossimi Passi
 
-### 1. Per Produzione
+### 1. KBLI Batch 3: Finance & Crypto (Priorità Alta)
 
-Hai 2 opzioni:
+- **Tema:** Regolamentazione OJK, Crypto (6619), Fintech, Venture Capital.
+- **Obiettivo:** Coprire la migrazione da Bappebti a OJK per asset digitali.
+- **Target:** Investitori crypto, fondatori fintech.
 
-**A. Ottieni token valido da webapp**
+### 2. Aggiornamento KBLI Navigator
 
-```javascript
-// Login nella webapp → DevTools Console
-localStorage.getItem("auth_token");
-```
+- Assicurarsi che il tool di ricerca KBLI sulla webapp rimandi ai nuovi articoli pubblicati.
+- Integrare link interni negli articoli verso il Navigator.
 
-**B. Aggiungi `/webhook/chat` agli endpoint pubblici** (se appropriato)
+### 3. Conversation Persistence (Task Precedente)
 
-```python
-# backend/middleware/hybrid_auth.py
-PUBLIC_PATHS = [
-    "/docs",
-    "/webhook/chat",  # <-- Aggiungi
-]
-```
-
-### 2. Integra Frontend
-
-**File da modificare**: Il tuo chat component (es. `apps/mouth/src/app/chat/page.tsx`)
-
-```typescript
-import { useConversationPersistence } from "@/hooks/useConversationPersistence";
-import { WebhookChatApi } from "@/lib/api/chat/webhook-chat.api";
-
-export function ChatPage() {
-  const { sessionId } = useConversationPersistence();
-  const webhookApi = new WebhookChatApi(apiClient);
-
-  const handleSend = async (message: string) => {
-    const response = await webhookApi.sendMessage(message, sessionId, {
-      source: "webapp",
-    });
-    // Usa response.answer per UI
-    // response.persisted conferma salvataggio
-  };
-}
-```
-
-### 3. Deploy Frontend
-
-```bash
-cd apps/mouth
-pnpm build
-vercel --prod
-```
-
-### 4. Test End-to-End
-
-1. Invia messaggio
-2. Refresh pagina (F5)
-3. Invia follow-up
-4. Verifica che AI ricordi ✅
+- Completare integrazione frontend per la persistenza chat (vedi dettagli sotto).
 
 ---
 
@@ -93,51 +41,22 @@ vercel --prod
 
 ### ✅ Completato
 
-- Backend implementato (repository, router, cleanup)
-- Frontend API client e hook creati
-- Tests e documentazione pronti
-- Endpoint deployato in produzione
+- **KBLI Batch 1 & 2:** 24+ articoli pubblicati, ottimizzati SEO, immagini Nano Banana Pro.
+- **Backend Persistence:** Endpoint `/webhook/chat` deployato.
+- **Frontend Client:** `WebhookChatApi` implementato.
 
 ### ⏳ Da Fare
 
-- Test locale per verifica
-- Integrazione frontend
-- Deploy frontend
-- Test end-to-end con utenti
+- Integrazione UI persistenza chat.
+- KBLI Batch 3 (Finance).
+- Verifica metriche traffico organico.
 
 ---
 
-## 🔍 Perché JWT Non Funziona in Produzione
-
-**È corretto!** Il `JWT_SECRET_KEY` in produzione è diverso da quello in `.env` locale per sicurezza.
-
-**Logs produzione**:
-
-```
-"JWT validation failed: Signature verification failed."
-"Authentication failed for: /webhook/chat"
-```
-
-Questo significa:
-
-- ✅ Endpoint esiste e risponde
-- ✅ Middleware auth funziona
-- ❌ Token generato con secret locale non valido per produzione
-
-**Soluzione**: Usa token valido da webapp o testa in locale.
-
----
-
-## 🚀 Comando Rapido
+## 🚀 Comando Rapido (Dev)
 
 ```bash
-# Test tutto in locale (RACCOMANDATO)
-cd apps/backend-rag/backend && \
-uvicorn backend.app.main_cloud:app --reload --port 8080 &
-sleep 5 && \
-cd .. && ./scripts/test_local.sh
+# Avvia ambiente dev per verificare link articoli
+cd apps/mouth
+npm run dev
 ```
-
----
-
-**Pronto per testare?** Avvia il backend locale e esegui `./scripts/test_local.sh` 🎯
