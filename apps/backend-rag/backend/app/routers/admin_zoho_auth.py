@@ -95,3 +95,71 @@ async def admin_zoho_callback(
             "error": str(e),
             "traceback": traceback.format_exc()
         }
+
+
+@router.get("/admin/zoho/debug-callback")
+async def admin_zoho_debug_callback(
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+):
+    """
+    Debug endpoint to capture OAuth callback parameters.
+    Use this when normal callback fails. It displays the code for easy copy-paste.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"Zoho OAuth Debug - code: {code[:50] if code else 'None'}..., state: {state}, error: {error}")
+    
+    if code:
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Zoho OAuth - Code Captured</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }}
+                .code-box {{ background: #f4f4f4; padding: 15px; border-radius: 5px; word-break: break-all; font-family: monospace; }}
+                .btn {{ background: #4CAF50; color: white; padding: 10px 20px; border: none; cursor: pointer; margin: 10px 5px; }}
+                .btn-copy {{ background: #2196F3; }}
+                .success {{ color: green; }}
+            </style>
+        </head>
+        <body>
+            <h1>✓ Zoho Authorization Code Captured!</h1>
+            <p class="success">The authorization code has been captured successfully.</p>
+            
+            <h3>Authorization Code:</h3>
+            <div class="code-box" id="auth-code">{code}</div>
+            <button class="btn btn-copy" onclick="copyCode()">Copy Code</button>
+            
+            <h3>Next Step:</h3>
+            <p>Call the callback endpoint with this code:</p>
+            <div class="code-box">
+                GET /admin/zoho/callback?code=...&secret=zantara-admin-2026
+            </div>
+            
+            <form action="/api/admin/zoho/callback" method="get">
+                <input type="hidden" name="code" value="{code}">
+                <input type="hidden" name="secret" value="zantara-admin-2026">
+                <button type="submit" class="btn">Complete Authentication</button>
+            </form>
+            
+            <script>
+                function copyCode() {{
+                    const code = document.getElementById('auth-code').innerText;
+                    navigator.clipboard.writeText(code);
+                    alert('Code copied to clipboard!');
+                }}
+            </script>
+        </body>
+        </html>
+        """
+        from fastapi.responses import HTMLResponse
+        return HTMLResponse(content=html_content)
+    
+    if error:
+        return {"error": error, "message": "OAuth failed"}
+    
+    return {"message": "No code provided"}

@@ -260,7 +260,8 @@ export default function NewsPageClient({
                   <Link href="/kbli-navigator">
                     <article className="group">
                       <div className="aspect-[16/10] relative overflow-hidden rounded-lg mb-5 bg-[#0a1628]">
-                        {article.coverImage && typeof article.coverImage === "string" ? (
+                        {article.coverImage &&
+                        typeof article.coverImage === "string" ? (
                           <Image
                             src={article.coverImage}
                             alt={article.title || ""}

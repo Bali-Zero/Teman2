@@ -1,18 +1,29 @@
 "use client";
 
 import React from "react";
-import { User, Mail, Phone, MapPin, Globe, Edit2, MessageCircle, CreditCard, Plane } from "lucide-react";
+import {
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  Globe,
+  Edit2,
+  MessageCircle,
+  CreditCard,
+  Plane,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function TestClientPage() {
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6">Layout /clients/[id] - 3 Colonne</h1>
-        
+        <h1 className="text-2xl font-bold mb-6">
+          Layout /clients/[id] - 3 Colonne
+        </h1>
+
         {/* 3 Columns */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          
           {/* COL 1: Client Info + WhatsApp Avatar */}
           <div className="space-y-4">
             <div className="rounded-xl border bg-card overflow-hidden">
@@ -37,7 +48,7 @@ export default function TestClientPage() {
                   </Button>
                 </div>
               </div>
-              
+
               <div className="p-4 space-y-3">
                 <div className="flex items-start gap-2">
                   <User className="w-4 h-4 text-muted-foreground mt-0.5" />
@@ -83,13 +94,17 @@ export default function TestClientPage() {
             <div className="flex items-center gap-2 px-4 py-3 border-b">
               <CreditCard className="w-5 h-5 text-primary" />
               <h3 className="font-semibold">Passport</h3>
-              <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-bold bg-blue-500/20 text-blue-400">M</span>
+              <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-bold bg-blue-500/20 text-blue-400">
+                M
+              </span>
             </div>
             <div className="p-4">
               <div className="aspect-[3/2] rounded-lg border-2 border-dashed border-border bg-muted/50 flex items-center justify-center mb-4">
                 <div className="text-center">
                   <CreditCard className="w-12 h-12 text-muted-foreground/50 mx-auto mb-2" />
-                  <p className="text-xs text-muted-foreground">Passport document</p>
+                  <p className="text-xs text-muted-foreground">
+                    Passport document
+                  </p>
                 </div>
               </div>
               <div className="space-y-2">
@@ -99,10 +114,16 @@ export default function TestClientPage() {
                 </div>
                 <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-yellow-700 dark:text-yellow-400">Expiry:</span>
-                    <span className="font-semibold text-yellow-700 dark:text-yellow-400">15 Aug 2026</span>
+                    <span className="text-yellow-700 dark:text-yellow-400">
+                      Expiry:
+                    </span>
+                    <span className="font-semibold text-yellow-700 dark:text-yellow-400">
+                      15 Aug 2026
+                    </span>
                   </div>
-                  <p className="text-[10px] text-yellow-700 dark:text-yellow-400 mt-1">⚠️ 5 months - Contact embassy</p>
+                  <p className="text-[10px] text-yellow-700 dark:text-yellow-400 mt-1">
+                    ⚠️ 5 months - Contact embassy
+                  </p>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">DOB:</span>
@@ -136,8 +157,12 @@ export default function TestClientPage() {
                 </div>
                 <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-green-700 dark:text-green-400">Exp Visa:</span>
-                    <span className="font-semibold text-green-700 dark:text-green-400">1 Feb 2026</span>
+                    <span className="text-green-700 dark:text-green-400">
+                      Exp Visa:
+                    </span>
+                    <span className="font-semibold text-green-700 dark:text-green-400">
+                      1 Feb 2026
+                    </span>
                   </div>
                 </div>
                 <div className="flex justify-between text-sm p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
@@ -147,11 +172,11 @@ export default function TestClientPage() {
               </div>
             </div>
           </div>
-
         </div>
 
         <p className="mt-6 text-sm text-muted-foreground">
-          👆 Clicca sull'avatar verde in alto a destra della colonna "Client Info" per aprire WhatsApp
+          👆 Clicca sull'avatar verde in alto a destra della colonna "Client
+          Info" per aprire WhatsApp
         </p>
       </div>
     </div>

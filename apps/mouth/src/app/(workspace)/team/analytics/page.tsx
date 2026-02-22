@@ -2,14 +2,14 @@
 
 /**
  * Team Analytics Dashboard
- * 
+ *
  * Comprehensive team performance analytics:
  * - Individual performance metrics
  * - Team comparisons and rankings
  * - Workload distribution
  * - Response time analytics
  * - Client satisfaction scores
- * 
+ *
  * @ai_onboarding - Strict TypeScript, mobile-first design
  */
 
@@ -82,15 +82,15 @@ interface ComparisonData {
 // COMPONENTS
 // ================================================
 
-const StatCard = ({ 
-  title, 
-  value, 
-  subtitle, 
-  trend, 
-  icon: Icon, 
+const StatCard = ({
+  title,
+  value,
+  subtitle,
+  trend,
+  icon: Icon,
   color,
-  loading 
-}: { 
+  loading,
+}: {
   title: string;
   value: string | number;
   subtitle?: string;
@@ -99,7 +99,9 @@ const StatCard = ({
   color: string;
   loading?: boolean;
 }) => (
-  <div className={`rounded-xl border p-4 sm:p-6 bg-${color}-500/5 border-${color}-500/20`}>
+  <div
+    className={`rounded-xl border p-4 sm:p-6 bg-${color}-500/5 border-${color}-500/20`}
+  >
     <div className="flex items-start justify-between">
       <div>
         <p className="text-xs sm:text-sm text-muted-foreground">{title}</p>
@@ -108,9 +110,13 @@ const StatCard = ({
         ) : (
           <>
             <p className="text-xl sm:text-2xl font-bold mt-1">{value}</p>
-            {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
+            {subtitle && (
+              <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
+            )}
             {trend !== undefined && (
-              <span className={`text-xs font-medium ${trend >= 0 ? "text-green-500" : "text-red-500"}`}>
+              <span
+                className={`text-xs font-medium ${trend >= 0 ? "text-green-500" : "text-red-500"}`}
+              >
                 {trend >= 0 ? "↑" : "↓"} {Math.abs(trend).toFixed(1)}%
               </span>
             )}
@@ -124,19 +130,19 @@ const StatCard = ({
   </div>
 );
 
-const LeaderboardRow = ({ 
-  rank, 
-  member, 
+const LeaderboardRow = ({
+  rank,
+  member,
   score,
-  metric
-}: { 
-  rank: number; 
-  member: PerformanceMetrics; 
+  metric,
+}: {
+  rank: number;
+  member: PerformanceMetrics;
   score: number;
   metric: string;
 }) => {
   const medals = ["🥇", "🥈", "🥉"];
-  
+
   return (
     <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
       <div className="w-8 text-center font-bold text-lg">
@@ -152,24 +158,29 @@ const LeaderboardRow = ({
         </p>
       </div>
       <div className="text-right">
-        <p className="font-bold">{metric === "revenue" ? 
-          new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", notation: "compact" }).format(score) :
-          Math.round(score).toLocaleString()
-        }</p>
+        <p className="font-bold">
+          {metric === "revenue"
+            ? new Intl.NumberFormat("id-ID", {
+                style: "currency",
+                currency: "IDR",
+                notation: "compact",
+              }).format(score)
+            : Math.round(score).toLocaleString()}
+        </p>
         <p className="text-xs text-muted-foreground capitalize">{metric}</p>
       </div>
     </div>
   );
 };
 
-const ProgressRing = ({ 
-  value, 
-  max, 
-  label, 
-  size = 80 
-}: { 
-  value: number; 
-  max: number; 
+const ProgressRing = ({
+  value,
+  max,
+  label,
+  size = 80,
+}: {
+  value: number;
+  max: number;
   label: string;
   size?: number;
 }) => {
@@ -222,9 +233,13 @@ export default function TeamAnalyticsPage() {
   const router = useRouter();
   const { error: showError } = useToast();
   const [isLoading, setIsLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState<"week" | "month" | "quarter" | "year">("month");
-  const [selectedMetric, setSelectedMetric] = useState<"revenue" | "clients" | "conversion" | "satisfaction">("revenue");
-  
+  const [timeRange, setTimeRange] = useState<
+    "week" | "month" | "quarter" | "year"
+  >("month");
+  const [selectedMetric, setSelectedMetric] = useState<
+    "revenue" | "clients" | "conversion" | "satisfaction"
+  >("revenue");
+
   const [performance, setPerformance] = useState<PerformanceMetrics[]>([]);
   const [activity, setActivity] = useState<ActivityMetrics[]>([]);
   const [comparison, setComparison] = useState<ComparisonData[]>([]);
@@ -232,21 +247,46 @@ export default function TeamAnalyticsPage() {
   const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
-      
+
       const [perfRes, activityRes] = await Promise.all([
         api.get<PerformanceMetrics[]>("/api/crm/analytics/team/performance"),
-        api.get<ActivityMetrics[]>(`/api/crm/analytics/team/activity?range=${timeRange}`),
+        api.get<ActivityMetrics[]>(
+          `/api/crm/analytics/team/activity?range=${timeRange}`,
+        ),
       ]);
-      
+
       setPerformance(perfRes);
       setActivity(activityRes);
-      
+
       // Generate comparison data
       const compData: ComparisonData[] = [
-        { metric: "Total Clients", current: perfRes.reduce((a, b) => a + b.total_clients, 0), previous: 145, change: 12.5 },
-        { metric: "Revenue", current: perfRes.reduce((a, b) => a + b.revenue_generated, 0), previous: 850000000, change: 18.3 },
-        { metric: "Conversion Rate", current: perfRes.reduce((a, b) => a + b.conversion_rate, 0) / perfRes.length, previous: 42, change: 5.2 },
-        { metric: "Avg Response", current: perfRes.reduce((a, b) => a + b.avg_response_time_hours, 0) / perfRes.length, previous: 4.2, change: -15.3 },
+        {
+          metric: "Total Clients",
+          current: perfRes.reduce((a, b) => a + b.total_clients, 0),
+          previous: 145,
+          change: 12.5,
+        },
+        {
+          metric: "Revenue",
+          current: perfRes.reduce((a, b) => a + b.revenue_generated, 0),
+          previous: 850000000,
+          change: 18.3,
+        },
+        {
+          metric: "Conversion Rate",
+          current:
+            perfRes.reduce((a, b) => a + b.conversion_rate, 0) / perfRes.length,
+          previous: 42,
+          change: 5.2,
+        },
+        {
+          metric: "Avg Response",
+          current:
+            perfRes.reduce((a, b) => a + b.avg_response_time_hours, 0) /
+            perfRes.length,
+          previous: 4.2,
+          change: -15.3,
+        },
       ];
       setComparison(compData);
     } catch (err) {
@@ -264,22 +304,31 @@ export default function TeamAnalyticsPage() {
   // Calculate stats
   const totalRevenue = performance.reduce((a, b) => a + b.revenue_generated, 0);
   const totalClients = performance.reduce((a, b) => a + b.total_clients, 0);
-  const avgConversion = performance.length > 0 
-    ? performance.reduce((a, b) => a + b.conversion_rate, 0) / performance.length 
-    : 0;
-  const avgSatisfaction = performance.length > 0
-    ? performance.reduce((a, b) => a + (b.satisfaction_score || 0), 0) / performance.length
-    : 0;
+  const avgConversion =
+    performance.length > 0
+      ? performance.reduce((a, b) => a + b.conversion_rate, 0) /
+        performance.length
+      : 0;
+  const avgSatisfaction =
+    performance.length > 0
+      ? performance.reduce((a, b) => a + (b.satisfaction_score || 0), 0) /
+        performance.length
+      : 0;
 
   // Sort for leaderboard
   const sortedByMetric = useMemo(() => {
     return [...performance].sort((a, b) => {
       switch (selectedMetric) {
-        case "revenue": return b.revenue_generated - a.revenue_generated;
-        case "clients": return b.total_clients - a.total_clients;
-        case "conversion": return b.conversion_rate - a.conversion_rate;
-        case "satisfaction": return (b.satisfaction_score || 0) - (a.satisfaction_score || 0);
-        default: return 0;
+        case "revenue":
+          return b.revenue_generated - a.revenue_generated;
+        case "clients":
+          return b.total_clients - a.total_clients;
+        case "conversion":
+          return b.conversion_rate - a.conversion_rate;
+        case "satisfaction":
+          return (b.satisfaction_score || 0) - (a.satisfaction_score || 0);
+        default:
+          return 0;
       }
     });
   }, [performance, selectedMetric]);
@@ -321,7 +370,12 @@ export default function TeamAnalyticsPage() {
             <option value="quarter">This Quarter</option>
             <option value="year">This Year</option>
           </select>
-          <Button variant="outline" size="sm" onClick={fetchData} disabled={isLoading}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchData}
+            disabled={isLoading}
+          >
             <Activity className="w-4 h-4" />
           </Button>
         </div>
@@ -375,13 +429,15 @@ export default function TeamAnalyticsPage() {
               Performance Leaderboard
             </h2>
             <div className="flex gap-1">
-              {(["revenue", "clients", "conversion", "satisfaction"] as const).map((m) => (
+              {(
+                ["revenue", "clients", "conversion", "satisfaction"] as const
+              ).map((m) => (
                 <button
                   key={m}
                   onClick={() => setSelectedMetric(m)}
                   className={`px-3 py-1 text-xs rounded-md transition-colors capitalize ${
-                    selectedMetric === m 
-                      ? "bg-[var(--accent)] text-white" 
+                    selectedMetric === m
+                      ? "bg-[var(--accent)] text-white"
                       : "text-muted-foreground hover:bg-muted"
                   }`}
                 >
@@ -390,7 +446,7 @@ export default function TeamAnalyticsPage() {
               ))}
             </div>
           </div>
-          
+
           {isLoading ? (
             <div className="flex justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin" />
@@ -403,10 +459,13 @@ export default function TeamAnalyticsPage() {
                   rank={idx}
                   member={member}
                   score={
-                    selectedMetric === "revenue" ? member.revenue_generated :
-                    selectedMetric === "clients" ? member.total_clients :
-                    selectedMetric === "conversion" ? member.conversion_rate :
-                    member.satisfaction_score || 0
+                    selectedMetric === "revenue"
+                      ? member.revenue_generated
+                      : selectedMetric === "clients"
+                        ? member.total_clients
+                        : selectedMetric === "conversion"
+                          ? member.conversion_rate
+                          : member.satisfaction_score || 0
                   }
                   metric={selectedMetric}
                 />
@@ -424,14 +483,16 @@ export default function TeamAnalyticsPage() {
               Team Overview
             </h2>
             <div className="grid grid-cols-2 gap-4">
-              <ProgressRing 
-                value={performance.filter(p => p.conversion_rate > 50).length} 
+              <ProgressRing
+                value={performance.filter((p) => p.conversion_rate > 50).length}
                 max={performance.length || 1}
                 label="High Performers"
                 size={80}
               />
-              <ProgressRing 
-                value={performance.filter(p => p.satisfaction_score > 4).length}
+              <ProgressRing
+                value={
+                  performance.filter((p) => p.satisfaction_score > 4).length
+                }
                 max={performance.length || 1}
                 label="Top Rated"
                 size={80}
@@ -445,10 +506,15 @@ export default function TeamAnalyticsPage() {
             <div className="space-y-4">
               {comparison.map((item, idx) => (
                 <div key={idx} className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">{item.metric}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {item.metric}
+                  </span>
                   <div className="flex items-center gap-2">
-                    <span className={`text-sm font-medium ${item.change >= 0 ? "text-green-500" : "text-red-500"}`}>
-                      {item.change >= 0 ? "+" : ""}{item.change.toFixed(1)}%
+                    <span
+                      className={`text-sm font-medium ${item.change >= 0 ? "text-green-500" : "text-red-500"}`}
+                    >
+                      {item.change >= 0 ? "+" : ""}
+                      {item.change.toFixed(1)}%
                     </span>
                   </div>
                 </div>
@@ -468,15 +534,21 @@ export default function TeamAnalyticsPage() {
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
                   <Mail className="w-4 h-4 text-blue-500" />
-                  <span className="text-sm">{activity.reduce((a, b) => a + b.emails, 0)} emails</span>
+                  <span className="text-sm">
+                    {activity.reduce((a, b) => a + b.emails, 0)} emails
+                  </span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Calendar className="w-4 h-4 text-green-500" />
-                  <span className="text-sm">{activity.reduce((a, b) => a + b.meetings, 0)} meetings</span>
+                  <span className="text-sm">
+                    {activity.reduce((a, b) => a + b.meetings, 0)} meetings
+                  </span>
                 </div>
                 <div className="flex items-center gap-3">
                   <UserCheck className="w-4 h-4 text-purple-500" />
-                  <span className="text-sm">{activity.reduce((a, b) => a + b.tasks, 0)} tasks</span>
+                  <span className="text-sm">
+                    {activity.reduce((a, b) => a + b.tasks, 0)} tasks
+                  </span>
                 </div>
               </div>
             )}

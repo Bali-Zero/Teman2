@@ -28,45 +28,53 @@ export const FileUploadField = React.memo(function FileUploadField({
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  const validateFile = useCallback((file: File): string | null => {
-    if (maxSize && file.size > maxSize) {
-      return `File size must be less than ${(maxSize / 1024 / 1024).toFixed(1)}MB`;
-    }
-    
-    if (accept) {
-      const acceptedTypes = accept.split(",").map(t => t.trim().toLowerCase());
-      const fileExt = file.name.split(".").pop()?.toLowerCase() || "";
-      const isAccepted = acceptedTypes.some(type => {
-        if (type.startsWith(".")) {
-          return fileExt === type.slice(1);
-        }
-        return file.type.includes(type);
-      });
-      
-      if (!isAccepted) {
-        return `File type must be: ${accept}`;
+  const validateFile = useCallback(
+    (file: File): string | null => {
+      if (maxSize && file.size > maxSize) {
+        return `File size must be less than ${(maxSize / 1024 / 1024).toFixed(1)}MB`;
       }
-    }
-    
-    return null;
-  }, [accept, maxSize]);
 
-  const handleFile = useCallback((file: File) => {
-    const validationError = validateFile(file);
-    if (validationError) {
-      onFileSelect(null, validationError);
-      setSelectedFile(null);
-      return;
-    }
-    
-    setSelectedFile(file);
-    onFileSelect(file, null);
-  }, [validateFile, onFileSelect]);
+      if (accept) {
+        const acceptedTypes = accept
+          .split(",")
+          .map((t) => t.trim().toLowerCase());
+        const fileExt = file.name.split(".").pop()?.toLowerCase() || "";
+        const isAccepted = acceptedTypes.some((type) => {
+          if (type.startsWith(".")) {
+            return fileExt === type.slice(1);
+          }
+          return file.type.includes(type);
+        });
+
+        if (!isAccepted) {
+          return `File type must be: ${accept}`;
+        }
+      }
+
+      return null;
+    },
+    [accept, maxSize],
+  );
+
+  const handleFile = useCallback(
+    (file: File) => {
+      const validationError = validateFile(file);
+      if (validationError) {
+        onFileSelect(null, validationError);
+        setSelectedFile(null);
+        return;
+      }
+
+      setSelectedFile(file);
+      onFileSelect(file, null);
+    },
+    [validateFile, onFileSelect],
+  );
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (e.type === "dragenter" || e.type === "dragover") {
       setDragActive(true);
     } else if (e.type === "dragleave") {
@@ -74,23 +82,29 @@ export const FileUploadField = React.memo(function FileUploadField({
     }
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFile(e.dataTransfer.files[0]);
-    }
-  }, [handleFile]);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragActive(false);
 
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    
-    if (e.target.files && e.target.files[0]) {
-      handleFile(e.target.files[0]);
-    }
-  }, [handleFile]);
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        handleFile(e.dataTransfer.files[0]);
+      }
+    },
+    [handleFile],
+  );
+
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      e.preventDefault();
+
+      if (e.target.files && e.target.files[0]) {
+        handleFile(e.target.files[0]);
+      }
+    },
+    [handleFile],
+  );
 
   const clearFile = useCallback(() => {
     setSelectedFile(null);
@@ -123,10 +137,10 @@ export const FileUploadField = React.memo(function FileUploadField({
             htmlFor={id}
             className={cn(
               "flex items-center gap-2 p-2 border-2 border-dashed rounded-lg cursor-pointer transition-colors",
-              dragActive 
-                ? "border-[var(--accent)] bg-[var(--accent)]/5" 
+              dragActive
+                ? "border-[var(--accent)] bg-[var(--accent)]/5"
                 : "border-muted-foreground/25 hover:border-muted-foreground/50",
-              error && "border-destructive bg-destructive/5"
+              error && "border-destructive bg-destructive/5",
             )}
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
@@ -134,7 +148,9 @@ export const FileUploadField = React.memo(function FileUploadField({
             onDrop={handleDrop}
           >
             <Upload className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Click or drop file</span>
+            <span className="text-sm text-muted-foreground">
+              Click or drop file
+            </span>
             <input
               id={id}
               type="file"
@@ -144,7 +160,7 @@ export const FileUploadField = React.memo(function FileUploadField({
             />
           </label>
         )}
-        
+
         {error && (
           <div className="flex items-center gap-1 text-xs text-destructive">
             <AlertCircle className="w-3 h-3" />
@@ -158,7 +174,7 @@ export const FileUploadField = React.memo(function FileUploadField({
   return (
     <div className={cn("space-y-2", className)}>
       <label className="text-sm font-medium">{label}</label>
-      
+
       {selectedFile ? (
         <div className="flex items-center gap-3 p-3 border rounded-lg bg-muted">
           <FileText className="w-8 h-8 text-[var(--accent)]" />
@@ -181,10 +197,10 @@ export const FileUploadField = React.memo(function FileUploadField({
           htmlFor={id}
           className={cn(
             "flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed rounded-lg cursor-pointer transition-colors min-h-[120px]",
-            dragActive 
-              ? "border-[var(--accent)] bg-[var(--accent)]/5" 
+            dragActive
+              ? "border-[var(--accent)] bg-[var(--accent)]/5"
               : "border-muted-foreground/25 hover:border-muted-foreground/50",
-            error && "border-destructive bg-destructive/5"
+            error && "border-destructive bg-destructive/5",
           )}
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
@@ -193,9 +209,12 @@ export const FileUploadField = React.memo(function FileUploadField({
         >
           <Upload className="w-8 h-8 text-muted-foreground" />
           <div className="text-center">
-            <p className="text-sm font-medium">Click to upload or drag and drop</p>
+            <p className="text-sm font-medium">
+              Click to upload or drag and drop
+            </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {accept.replace(/\./g, "").toUpperCase()} up to {(maxSize / 1024 / 1024).toFixed(0)}MB
+              {accept.replace(/\./g, "").toUpperCase()} up to{" "}
+              {(maxSize / 1024 / 1024).toFixed(0)}MB
             </p>
           </div>
           <input
@@ -207,7 +226,7 @@ export const FileUploadField = React.memo(function FileUploadField({
           />
         </label>
       )}
-      
+
       {error && (
         <div className="flex items-center gap-1.5 text-sm text-destructive">
           <AlertCircle className="w-4 h-4" />

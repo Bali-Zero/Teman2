@@ -19,6 +19,7 @@ from backend.app.utils.logging_utils import get_logger
 from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
 from backend.services.integrations.zoho_email_service import ZohoEmailService
 from backend.services.invoicing.invoice_generator import InvoiceGenerator
+from backend.app.modules.notifications.service import SMTPProvider
 
 logger = get_logger(__name__)
 
@@ -30,15 +31,20 @@ SYSTEM_EMAIL_ADDRESS = "zero@balizero.com"
 # Accounting email for invoice notifications
 ACCOUNTING_EMAIL = "asya@balizero.com"
 
+# Fallback SMTP sender (Gmail)
+SMTP_SENDER_EMAIL = "zero@balizero.com"
+SMTP_SENDER_NAME = "Bali Zero AI"
+
 
 class InvoiceAutomationService:
-    """Handles automated invoice generation and distribution via Zoho Email."""
+    """Handles automated invoice generation and distribution via Zoho Email or SMTP fallback."""
 
     def __init__(self, db_pool: asyncpg.Pool):
         self.db_pool = db_pool
         self.drive_service = ServiceAccountDriveService()
         self.zoho_email_service = ZohoEmailService(db_pool)
         self.invoice_generator = InvoiceGenerator()
+        self.smtp_provider = SMTPProvider()  # Fallback SMTP (Gmail)
 
     async def trigger_on_sending_invoice(
         self,
@@ -196,11 +202,11 @@ class InvoiceAutomationService:
         pdf_bytes: bytes,
         filename: str,
         amount: float,
-    ) -> None:
-        """Send invoice email to client with PDF attachment."""
+    ) -> bool:
+        """Send invoice email to client with PDF attachment via Zoho or SMTP fallback."""
         subject = f"Invoice {invoice_number} from Zantara Indonesia"
         
-        body = f"""Dear {client_name},
+        body_text = f"""Dear {client_name},
 
 Thank you for choosing Zantara Indonesia for your immigration services.
 
@@ -223,23 +229,46 @@ This is an automated email. Please do not reply to this email.
 For support: support@balizero.com | WhatsApp: +62 859 0436 9574
 """
 
-        # Upload attachment first
-        attachment = await self.zoho_email_service.upload_attachment(
-            user_id=SYSTEM_EMAIL_USER_ID,
-            filename=filename,
-            content=pdf_bytes,
-            content_type="application/pdf",
-        )
-
-        # Send email with attachment
-        await self.zoho_email_service.send_email(
-            user_id=SYSTEM_EMAIL_USER_ID,
-            to=[client_email],
-            subject=subject,
-            content=body,
-            attachments=[attachment],
-            is_html=False,
-        )
+        # Try Zoho Email first
+        try:
+            attachment = await self.zoho_email_service.upload_attachment(
+                user_id=SYSTEM_EMAIL_USER_ID,
+                filename=filename,
+                content=pdf_bytes,
+                content_type="application/pdf",
+            )
+            await self.zoho_email_service.send_email(
+                user_id=SYSTEM_EMAIL_USER_ID,
+                to=[client_email],
+                subject=subject,
+                content=body_text,
+                attachments=[attachment],
+                is_html=False,
+            )
+            logger.info(f"Invoice email sent to {client_email} via Zoho")
+            return True
+        except Exception as zoho_error:
+            logger.warning(f"Zoho email failed, trying SMTP: {zoho_error}")
+            
+            # Fallback to SMTP
+            try:
+                success = await self.smtp_provider.send_email(
+                    to_email=client_email,
+                    subject=subject,
+                    html_body=body_text.replace("\n", "<br>"),
+                    text_body=body_text,
+                    from_email=SMTP_SENDER_EMAIL,
+                    from_name=SMTP_SENDER_NAME,
+                    attachments=[{"filename": filename, "content": pdf_bytes, "content_type": "application/pdf"}],
+                )
+                if success:
+                    logger.info(f"Invoice email sent to {client_email} via SMTP")
+                    return True
+                else:
+                    raise Exception("SMTP send failed")
+            except Exception as smtp_error:
+                logger.error(f"Both Zoho and SMTP failed: {smtp_error}")
+                raise
 
     async def _send_accounting_notification(
         self,
@@ -248,11 +277,11 @@ For support: support@balizero.com | WhatsApp: +62 859 0436 9574
         invoice_number: str,
         pdf_bytes: bytes,
         filename: str,
-    ) -> None:
-        """Send notification email to accounting (Asya)."""
+    ) -> bool:
+        """Send notification email to accounting (Asya) via Zoho or SMTP fallback."""
         subject = f"🎉 New Invoice {invoice_number} - {client_data['full_name']}"
         
-        body = f"""Hi Asya!
+        body_text = f"""Hi Asya!
 
 Hope you're having a great day! ☺️
 
@@ -286,23 +315,46 @@ Zantara CRM Assistant 🤖
 P.S. This is an automated email, but the appreciation for your hard work is 100% genuine! 😊
 """
 
-        # Upload attachment first
-        attachment = await self.zoho_email_service.upload_attachment(
-            user_id=SYSTEM_EMAIL_USER_ID,
-            filename=filename,
-            content=pdf_bytes,
-            content_type="application/pdf",
-        )
-
-        # Send email with attachment
-        await self.zoho_email_service.send_email(
-            user_id=SYSTEM_EMAIL_USER_ID,
-            to=[ACCOUNTING_EMAIL],
-            subject=subject,
-            content=body,
-            attachments=[attachment],
-            is_html=False,
-        )
+        # Try Zoho Email first
+        try:
+            attachment = await self.zoho_email_service.upload_attachment(
+                user_id=SYSTEM_EMAIL_USER_ID,
+                filename=filename,
+                content=pdf_bytes,
+                content_type="application/pdf",
+            )
+            await self.zoho_email_service.send_email(
+                user_id=SYSTEM_EMAIL_USER_ID,
+                to=[ACCOUNTING_EMAIL],
+                subject=subject,
+                content=body_text,
+                attachments=[attachment],
+                is_html=False,
+            )
+            logger.info(f"Accounting notification sent to {ACCOUNTING_EMAIL} via Zoho")
+            return True
+        except Exception as zoho_error:
+            logger.warning(f"Zoho email failed, trying SMTP: {zoho_error}")
+            
+            # Fallback to SMTP
+            try:
+                success = await self.smtp_provider.send_email(
+                    to_email=ACCOUNTING_EMAIL,
+                    subject=subject,
+                    html_body=body_text.replace("\n", "<br>"),
+                    text_body=body_text,
+                    from_email=SMTP_SENDER_EMAIL,
+                    from_name=SMTP_SENDER_NAME,
+                    attachments=[{"filename": filename, "content": pdf_bytes, "content_type": "application/pdf"}],
+                )
+                if success:
+                    logger.info(f"Accounting notification sent to {ACCOUNTING_EMAIL} via SMTP")
+                    return True
+                else:
+                    raise Exception("SMTP send failed")
+            except Exception as smtp_error:
+                logger.error(f"Both Zoho and SMTP failed: {smtp_error}")
+                raise
 
     async def _fetch_practice_data(self, practice_id: int) -> dict | None:
         """Fetch practice data from database."""
@@ -351,9 +403,22 @@ P.S. This is an automated email, but the appreciation for your hard work is 100%
             )
 
             # Merge with new invoice info
-            documents = existing_docs or {}
-            if isinstance(documents, str):
-                documents = json.loads(documents)
+            documents = {}
+            if existing_docs:
+                if isinstance(existing_docs, str):
+                    try:
+                        # Handle double-encoded JSON
+                        docs_str = existing_docs.strip()
+                        if docs_str:
+                            parsed = json.loads(docs_str)
+                            # Handle case where JSON is double-encoded (string inside string)
+                            if isinstance(parsed, str):
+                                parsed = json.loads(parsed)
+                            documents = parsed if isinstance(parsed, dict) else {}
+                    except (json.JSONDecodeError, TypeError):
+                        documents = {}
+                elif isinstance(existing_docs, dict):
+                    documents = existing_docs
 
             documents["invoice"] = invoice_info
 

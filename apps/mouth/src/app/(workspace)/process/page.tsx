@@ -46,26 +46,61 @@ import {
   initializeAnalytics,
 } from "@/lib/analytics";
 
-type CaseStatus = "inquiry" | "quotation" | "in_progress" | "completed";
+// NEW WORKFLOW (Feb 2026):
+// inquiry → waiting_documents → sending_invoice → waiting_payment → on_process → submitted_to_gov → approved → completed
+//
+// LEGACY STATUS (for backward compatibility):
+// quotation_sent, payment_pending, in_progress
 
-// Backend status values mapped to frontend display names
+type CaseStatus =
+  | "inquiry"
+  | "waiting_documents"
+  | "sending_invoice"
+  | "waiting_payment"
+  | "on_process"
+  | "submitted_to_gov"
+  | "approved"
+  | "completed";
+
+// Backend status values mapped to frontend display names and kanban columns
 const STATUS_OPTIONS: { value: string; label: string; column: CaseStatus }[] = [
+  // New workflow states
   { value: "inquiry", label: "Inquiry", column: "inquiry" },
-  { value: "quotation_sent", label: "Quotation Sent", column: "quotation" },
-  { value: "payment_pending", label: "Payment Pending", column: "quotation" },
-  { value: "in_progress", label: "In Progress", column: "in_progress" },
   {
     value: "waiting_documents",
     label: "Waiting Documents",
-    column: "in_progress",
+    column: "waiting_documents",
   },
+  {
+    value: "sending_invoice",
+    label: "Sending Invoice",
+    column: "sending_invoice",
+  },
+  {
+    value: "waiting_payment",
+    label: "Waiting Payment",
+    column: "waiting_payment",
+  },
+  { value: "on_process", label: "On Process", column: "on_process" },
   {
     value: "submitted_to_gov",
     label: "Submitted to Gov",
-    column: "in_progress",
+    column: "submitted_to_gov",
   },
-  { value: "approved", label: "Approved", column: "completed" },
+  { value: "approved", label: "Approved", column: "approved" },
   { value: "completed", label: "Completed", column: "completed" },
+  // Legacy states (for backward compatibility with existing processes)
+  {
+    value: "quotation_sent",
+    label: "Quotation Sent (Legacy)",
+    column: "sending_invoice",
+  },
+  {
+    value: "payment_pending",
+    label: "Payment Pending (Legacy)",
+    column: "waiting_payment",
+  },
+  { value: "in_progress", label: "In Progress (Legacy)", column: "on_process" },
 ];
 
 type ViewMode = "kanban" | "list";
@@ -248,23 +283,23 @@ export default function PratichePage() {
   };
 
   const getStatusColumn = (status: string): CaseStatus => {
+    // New workflow states
     if (status === "inquiry" || status === "request") return "inquiry";
-    if (
-      status === "quotation_sent" ||
-      status === "payment_pending" ||
-      status === "quotation" ||
-      status === "quote"
-    )
-      return "quotation";
-    if (
-      status === "in_progress" ||
-      status === "waiting_documents" ||
-      status === "submitted_to_gov" ||
-      status === "active"
-    )
-      return "in_progress";
-    if (status === "completed" || status === "approved" || status === "done")
-      return "completed";
+    if (status === "waiting_documents") return "waiting_documents";
+    if (status === "sending_invoice") return "sending_invoice";
+    if (status === "waiting_payment") return "waiting_payment";
+    if (status === "on_process" || status === "active") return "on_process";
+    if (status === "submitted_to_gov") return "submitted_to_gov";
+    if (status === "approved") return "approved";
+    if (status === "completed" || status === "done") return "completed";
+
+    // Legacy states mapping (for backward compatibility)
+    if (status === "quotation_sent") return "sending_invoice";
+    if (status === "payment_pending") return "waiting_payment";
+    if (status === "in_progress") return "on_process";
+    if (status === "quote") return "sending_invoice";
+    if (status === "quotation") return "sending_invoice";
+
     return "inquiry";
   };
 
@@ -361,16 +396,29 @@ export default function PratichePage() {
   );
 
   // Memoize practices by status to avoid unnecessary recalculations
+  // Updated for new workflow: inquiry → waiting_documents → sending_invoice → waiting_payment → on_process → submitted_to_gov → approved → completed
   const practicesByStatus = useMemo(
     () => ({
       inquiry: filteredPractices.filter(
         (p) => getStatusColumn(p.status) === "inquiry",
       ),
-      quotation: filteredPractices.filter(
-        (p) => getStatusColumn(p.status) === "quotation",
+      waiting_documents: filteredPractices.filter(
+        (p) => getStatusColumn(p.status) === "waiting_documents",
       ),
-      in_progress: filteredPractices.filter(
-        (p) => getStatusColumn(p.status) === "in_progress",
+      sending_invoice: filteredPractices.filter(
+        (p) => getStatusColumn(p.status) === "sending_invoice",
+      ),
+      waiting_payment: filteredPractices.filter(
+        (p) => getStatusColumn(p.status) === "waiting_payment",
+      ),
+      on_process: filteredPractices.filter(
+        (p) => getStatusColumn(p.status) === "on_process",
+      ),
+      submitted_to_gov: filteredPractices.filter(
+        (p) => getStatusColumn(p.status) === "submitted_to_gov",
+      ),
+      approved: filteredPractices.filter(
+        (p) => getStatusColumn(p.status) === "approved",
       ),
       completed: filteredPractices.filter(
         (p) => getStatusColumn(p.status) === "completed",
@@ -514,8 +562,12 @@ export default function PratichePage() {
                 >
                   <option value="">All statuses</option>
                   <option value="inquiry">Inquiry</option>
-                  <option value="quotation">Quotation</option>
-                  <option value="in_progress">In Progress</option>
+                  <option value="waiting_documents">Waiting Documents</option>
+                  <option value="sending_invoice">Sending Invoice</option>
+                  <option value="waiting_payment">Waiting Payment</option>
+                  <option value="on_process">On Process</option>
+                  <option value="submitted_to_gov">Submitted to Gov</option>
+                  <option value="approved">Approved</option>
                   <option value="completed">Completed</option>
                 </select>
               </div>
@@ -577,175 +629,192 @@ export default function PratichePage() {
         )}
       </div>
 
-      {/* Kanban Board View */}
+      {/* Kanban Board View - New Workflow 2026 */}
       {viewMode === "kanban" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {(["Inquiry", "Quotation", "In Progress", "Completed"] as const).map(
-            (column, idx) => {
-              const statusKey = [
-                "inquiry",
-                "quotation",
-                "in_progress",
-                "completed",
-              ][idx] as CaseStatus;
-              const columnPractices = practicesByStatus[statusKey] || [];
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4 overflow-x-auto">
+          {(
+            [
+              "Inquiry",
+              "Waiting Documents",
+              "Sending Invoice",
+              "Waiting Payment",
+              "On Process",
+              "Submitted to Gov",
+              "Approved",
+              "Completed",
+            ] as const
+          ).map((column, idx) => {
+            const statusKey = [
+              "inquiry",
+              "waiting_documents",
+              "sending_invoice",
+              "waiting_payment",
+              "on_process",
+              "submitted_to_gov",
+              "approved",
+              "completed",
+            ][idx] as CaseStatus;
+            const columnPractices = practicesByStatus[statusKey] || [];
 
-              return (
-                <div
-                  key={column}
-                  className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]/50 p-4 flex flex-col h-full min-h-[500px]"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`w-2 h-2 rounded-full ${
-                          idx === 0
-                            ? "bg-blue-500"
-                            : idx === 1
-                              ? "bg-yellow-500"
-                              : idx === 2
-                                ? "bg-purple-500"
-                                : "bg-green-500"
-                        }`}
-                      />
-                      <h3 className="font-semibold text-[var(--foreground)]">
-                        {column}
-                      </h3>
-                    </div>
-                    <span className="text-xs px-2 py-1 rounded-full bg-[var(--background-elevated)] text-[var(--foreground-muted)]">
-                      {columnPractices.length}
-                    </span>
+            // Color coding for each step
+            const stepColors = [
+              "bg-gray-400", // Inquiry
+              "bg-orange-400", // Waiting Documents
+              "bg-yellow-400", // Sending Invoice
+              "bg-amber-500", // Waiting Payment
+              "bg-blue-500", // On Process
+              "bg-indigo-500", // Submitted to Gov
+              "bg-purple-500", // Approved
+              "bg-green-500", // Completed
+            ];
+
+            return (
+              <div
+                key={column}
+                className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]/50 p-4 flex flex-col h-full min-h-[500px] min-w-[280px]"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`w-2 h-2 rounded-full ${stepColors[idx]}`}
+                    />
+                    <h3 className="font-semibold text-[var(--foreground)] text-sm">
+                      {column}
+                    </h3>
                   </div>
+                  <span className="text-xs px-2 py-1 rounded-full bg-[var(--background-elevated)] text-[var(--foreground-muted)]">
+                    {columnPractices.length}
+                  </span>
+                </div>
 
-                  <div className="flex-1 space-y-3">
-                    {isLoading ? (
-                      <div data-testid="loading-skeleton">
-                        <SkeletonCard />
-                        <SkeletonCard />
-                        <SkeletonCard />
-                      </div>
-                    ) : columnPractices.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center h-32 border border-dashed border-[var(--border)] rounded-lg bg-[var(--background-elevated)]/30">
-                        <FolderKanban className="w-8 h-8 text-[var(--foreground-muted)] opacity-20 mb-2" />
-                        <p className="text-xs text-[var(--foreground-muted)]">
-                          No process
-                        </p>
-                      </div>
-                    ) : (
-                      columnPractices.map((practice) => (
-                        <div
-                          key={practice.id}
-                          className={`p-3 rounded-lg border bg-[var(--background-elevated)] cursor-pointer transition-all hover:shadow-md relative group ${
-                            updatingId === practice.id
-                              ? "opacity-70 pointer-events-none"
-                              : ""
-                          } ${
-                            selectedPractice?.id === practice.id
-                              ? "border-[var(--accent)] ring-1 ring-[var(--accent)]/30"
-                              : "border-[var(--border)] hover:border-[var(--accent)]/30"
-                          }`}
-                          onClick={() => router.push(`/process/${practice.id}`)}
-                        >
-                          {updatingId === practice.id && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-[var(--background-elevated)]/80 rounded-lg z-10">
-                              <Loader2 className="w-5 h-5 animate-spin text-[var(--accent)]" />
-                            </div>
-                          )}
-
-                          {/* Card Header */}
-                          <div className="flex items-start justify-between mb-1">
-                            <p className="text-sm font-medium text-[var(--foreground)] line-clamp-2 pr-6">
-                              {practice.practice_type_code
-                                ?.toUpperCase()
-                                .replace(/_/g, " ") || "Process"}
-                            </p>
-
-                            {/* 3-Dot Menu Trigger */}
-                            <button
-                              className="absolute top-3 right-2 p-1 rounded-md text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background-secondary)] opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={(e) => handleMenuClick(e, practice)}
-                            >
-                              <MoreVertical className="w-4 h-4" />
-                            </button>
+                <div className="flex-1 space-y-3">
+                  {isLoading ? (
+                    <div data-testid="loading-skeleton">
+                      <SkeletonCard />
+                      <SkeletonCard />
+                      <SkeletonCard />
+                    </div>
+                  ) : columnPractices.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-32 border border-dashed border-[var(--border)] rounded-lg bg-[var(--background-elevated)]/30">
+                      <FolderKanban className="w-8 h-8 text-[var(--foreground-muted)] opacity-20 mb-2" />
+                      <p className="text-xs text-[var(--foreground-muted)]">
+                        No process
+                      </p>
+                    </div>
+                  ) : (
+                    columnPractices.map((practice) => (
+                      <div
+                        key={practice.id}
+                        className={`p-3 rounded-lg border bg-[var(--background-elevated)] cursor-pointer transition-all hover:shadow-md relative group ${
+                          updatingId === practice.id
+                            ? "opacity-70 pointer-events-none"
+                            : ""
+                        } ${
+                          selectedPractice?.id === practice.id
+                            ? "border-[var(--accent)] ring-1 ring-[var(--accent)]/30"
+                            : "border-[var(--border)] hover:border-[var(--accent)]/30"
+                        }`}
+                        onClick={() => router.push(`/process/${practice.id}`)}
+                      >
+                        {updatingId === practice.id && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-[var(--background-elevated)]/80 rounded-lg z-10">
+                            <Loader2 className="w-5 h-5 animate-spin text-[var(--accent)]" />
                           </div>
+                        )}
 
-                          <p className="text-xs text-[var(--foreground-muted)] truncate mb-2">
-                            {practice.client_name || "Unknown Client"}
+                        {/* Card Header */}
+                        <div className="flex items-start justify-between mb-1">
+                          <p className="text-sm font-medium text-[var(--foreground)] line-clamp-2 pr-6">
+                            {practice.practice_type_code
+                              ?.toUpperCase()
+                              .replace(/_/g, " ") || "Process"}
                           </p>
 
-                          <div className="flex items-center justify-between">
-                            {practice.client_lead ? (
-                              <div className="flex items-center gap-1.5 bg-[var(--accent)]/10 px-2 py-0.5 rounded text-[var(--accent)]">
-                                <User className="w-3 h-3" />
-                                <p className="text-[10px] font-medium truncate max-w-[80px]">
-                                  {practice.client_lead.split("@")[0]}
-                                </p>
-                              </div>
-                            ) : (
-                              <div />
-                            )}
-                            <span className="text-[10px] text-[var(--foreground-muted)]">
-                              #{practice.id}
-                            </span>
-                          </div>
+                          {/* 3-Dot Menu Trigger */}
+                          <button
+                            className="absolute top-3 right-2 p-1 rounded-md text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background-secondary)] opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => handleMenuClick(e, practice)}
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                        </div>
 
-                          {/* Quick Actions */}
-                          <div className="flex items-center gap-1 mt-3 pt-2 border-t border-[var(--border)]">
-                            {practice.client_phone && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const phone = practice.client_phone?.replace(
-                                    /\D/g,
-                                    "",
-                                  );
-                                  window.open(
-                                    `https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your process...`,
-                                    "_blank",
-                                  );
-                                }}
-                                className="p-1.5 rounded hover:bg-green-500/20 text-green-500 transition-colors"
-                                title="WhatsApp"
-                              >
-                                <MessageCircle className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                            {practice.client_email && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  window.open(
-                                    `mailto:${practice.client_email}`,
-                                    "_blank",
-                                  );
-                                }}
-                                className="p-1.5 rounded hover:bg-blue-500/20 text-blue-500 transition-colors"
-                                title="Email"
-                              >
-                                <Mail className="w-3.5 h-3.5" />
-                              </button>
-                            )}
+                        <p className="text-xs text-[var(--foreground-muted)] truncate mb-2">
+                          {practice.client_name || "Unknown Client"}
+                        </p>
+
+                        <div className="flex items-center justify-between">
+                          {practice.client_lead ? (
+                            <div className="flex items-center gap-1.5 bg-[var(--accent)]/10 px-2 py-0.5 rounded text-[var(--accent)]">
+                              <User className="w-3 h-3" />
+                              <p className="text-[10px] font-medium truncate max-w-[80px]">
+                                {practice.client_lead.split("@")[0]}
+                              </p>
+                            </div>
+                          ) : (
+                            <div />
+                          )}
+                          <span className="text-[10px] text-[var(--foreground-muted)]">
+                            #{practice.id}
+                          </span>
+                        </div>
+
+                        {/* Quick Actions */}
+                        <div className="flex items-center gap-1 mt-3 pt-2 border-t border-[var(--border)]">
+                          {practice.client_phone && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                router.push(
-                                  `/clients/${practice.client_id}?tab=documents`,
+                                const phone = practice.client_phone?.replace(
+                                  /\D/g,
+                                  "",
+                                );
+                                window.open(
+                                  `https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your process...`,
+                                  "_blank",
                                 );
                               }}
-                              className="p-1.5 rounded hover:bg-orange-500/20 text-orange-500 transition-colors ml-auto"
-                              title="View Documents"
+                              className="p-1.5 rounded hover:bg-green-500/20 text-green-500 transition-colors"
+                              title="WhatsApp"
                             >
-                              <FileText className="w-3.5 h-3.5" />
+                              <MessageCircle className="w-3.5 h-3.5" />
                             </button>
-                          </div>
+                          )}
+                          {practice.client_email && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(
+                                  `mailto:${practice.client_email}`,
+                                  "_blank",
+                                );
+                              }}
+                              className="p-1.5 rounded hover:bg-blue-500/20 text-blue-500 transition-colors"
+                              title="Email"
+                            >
+                              <Mail className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(
+                                `/clients/${practice.client_id}?tab=documents`,
+                              );
+                            }}
+                            className="p-1.5 rounded hover:bg-orange-500/20 text-orange-500 transition-colors ml-auto"
+                            title="View Documents"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                          </button>
                         </div>
-                      ))
-                    )}
-                  </div>
+                      </div>
+                    ))
+                  )}
                 </div>
-              );
-            },
-          )}
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -900,15 +969,17 @@ export default function PratichePage() {
                         <div className="inline-flex items-center gap-1">
                           <span
                             className={`w-2 h-2 rounded-full ${
-                              getStatusColumn(practice.status) === "inquiry"
-                                ? "bg-blue-500"
-                                : getStatusColumn(practice.status) ===
-                                    "quotation"
-                                  ? "bg-yellow-500"
-                                  : getStatusColumn(practice.status) ===
-                                      "in_progress"
-                                    ? "bg-purple-500"
-                                    : "bg-green-500"
+                              {
+                                inquiry: "bg-gray-400",
+                                waiting_documents: "bg-orange-400",
+                                sending_invoice: "bg-yellow-400",
+                                waiting_payment: "bg-amber-500",
+                                on_process: "bg-blue-500",
+                                submitted_to_gov: "bg-indigo-500",
+                                approved: "bg-purple-500",
+                                completed: "bg-green-500",
+                              }[getStatusColumn(practice.status)] ||
+                              "bg-gray-400"
                             }`}
                           />
                           <span className="text-[var(--foreground)]">

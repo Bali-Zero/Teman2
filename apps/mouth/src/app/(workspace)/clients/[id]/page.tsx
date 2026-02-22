@@ -660,13 +660,13 @@ export default function ClientDetailPage() {
               {client.company_name && ` • ${client.company_name}`}
             </p>
           </div>
-          
+
           {/* Leader Avatar - Next to client name */}
           {client.assigned_to && (
             <a
               href={`https://wa.me/${(() => {
-                const phone = client.phone?.replace(/\D/g, '') || '';
-                return phone.startsWith('0') ? '62' + phone.slice(1) : phone;
+                const phone = client.phone?.replace(/\D/g, "") || "";
+                return phone.startsWith("0") ? "62" + phone.slice(1) : phone;
               })()}`}
               target="_blank"
               rel="noopener noreferrer"
@@ -685,7 +685,9 @@ export default function ClientDetailPage() {
                 </div>
               )}
               <div className="flex flex-col">
-                <span className="text-xs text-[var(--foreground-muted)]">Assigned to</span>
+                <span className="text-xs text-[var(--foreground-muted)]">
+                  Assigned to
+                </span>
                 <span className="text-sm font-medium text-[var(--foreground)] capitalize">
                   {client.assigned_to.split("@")[0]}
                 </span>
@@ -943,9 +945,16 @@ function OverviewTab({
           {/* Client Info Card */}
           <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden flex-1 flex flex-col h-full">
             <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
-              <h3 className="font-semibold text-[var(--foreground)]">Client Info</h3>
+              <h3 className="font-semibold text-[var(--foreground)]">
+                Client Info
+              </h3>
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onEditClick}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={onEditClick}
+                >
                   <Edit2 className="w-3.5 h-3.5" />
                 </Button>
               </div>
@@ -957,67 +966,123 @@ function OverviewTab({
                   <User className="w-4 h-4 text-[var(--accent)]" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs text-[var(--foreground-muted)]">Full Name</p>
+                  <p className="text-xs text-[var(--foreground-muted)]">
+                    Full Name
+                  </p>
                   <p className="text-base font-semibold">{client.full_name}</p>
                 </div>
               </div>
-              
+
               <div className="border-t border-[var(--border)]" />
-              
+
               {/* Email - Always visible */}
               <div className="flex items-start gap-3">
                 <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
                   <Mail className="w-4 h-4 text-blue-500" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs text-[var(--foreground-muted)]">Email</p>
-                  <p className="text-sm font-medium truncate">{client.email || <span className="text-[var(--foreground-muted)] italic">Not provided</span>}</p>
+                  <p className="text-xs text-[var(--foreground-muted)]">
+                    Email
+                  </p>
+                  <p className="text-sm font-medium truncate">
+                    {client.email || (
+                      <span className="text-[var(--foreground-muted)] italic">
+                        Not provided
+                      </span>
+                    )}
+                  </p>
                 </div>
               </div>
-              
+
               {/* Phone - Always visible */}
               <div className="flex items-start gap-3">
                 <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center">
                   <Phone className="w-4 h-4 text-green-500" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs text-[var(--foreground-muted)]">Phone</p>
-                  <p className="text-sm font-medium">{client.phone ? formatPhoneNumber(client.phone) : <span className="text-[var(--foreground-muted)] italic">Not provided</span>}</p>
+                  <p className="text-xs text-[var(--foreground-muted)]">
+                    Phone
+                  </p>
+                  <p className="text-sm font-medium">
+                    {client.phone ? (
+                      formatPhoneNumber(client.phone)
+                    ) : (
+                      <span className="text-[var(--foreground-muted)] italic">
+                        Not provided
+                      </span>
+                    )}
+                  </p>
                 </div>
               </div>
-              
+
               {/* Nationality - Always visible */}
               <div className="flex items-start gap-3">
                 <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center">
                   <Globe className="w-4 h-4 text-purple-500" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs text-[var(--foreground-muted)]">Nationality</p>
-                  <p className="text-sm font-medium">{client.nationality || <span className="text-[var(--foreground-muted)] italic">Not provided</span>}</p>
+                  <p className="text-xs text-[var(--foreground-muted)]">
+                    Nationality
+                  </p>
+                  <p className="text-sm font-medium">
+                    {client.nationality || (
+                      <span className="text-[var(--foreground-muted)] italic">
+                        Not provided
+                      </span>
+                    )}
+                  </p>
                 </div>
               </div>
-              
+
               {/* Address - Always visible */}
               <div className="flex items-start gap-3">
                 <div className="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center">
                   <MapPin className="w-4 h-4 text-orange-500" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs text-[var(--foreground-muted)]">Address</p>
-                  <p className="text-sm font-medium">{client.address || <span className="text-[var(--foreground-muted)] italic">Not provided</span>}</p>
+                  <p className="text-xs text-[var(--foreground-muted)]">
+                    Address
+                  </p>
+                  <p className="text-sm font-medium">
+                    {client.address || (
+                      <span className="text-[var(--foreground-muted)] italic">
+                        Not provided
+                      </span>
+                    )}
+                  </p>
                 </div>
               </div>
-              
+
               {/* Gender - Always visible */}
               <div className="flex items-start gap-3">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${client.gender === 'M' ? 'bg-blue-500/10' : client.gender === 'F' ? 'bg-pink-500/10' : 'bg-gray-500/10'}`}>
-                  <span className={`text-sm font-bold ${client.gender === 'M' ? 'text-blue-500' : client.gender === 'F' ? 'text-pink-500' : 'text-gray-500'}`}>
-                    {client.gender === 'M' ? '♂' : client.gender === 'F' ? '♀' : '—'}
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center ${client.gender === "M" ? "bg-blue-500/10" : client.gender === "F" ? "bg-pink-500/10" : "bg-gray-500/10"}`}
+                >
+                  <span
+                    className={`text-sm font-bold ${client.gender === "M" ? "text-blue-500" : client.gender === "F" ? "text-pink-500" : "text-gray-500"}`}
+                  >
+                    {client.gender === "M"
+                      ? "♂"
+                      : client.gender === "F"
+                        ? "♀"
+                        : "—"}
                   </span>
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs text-[var(--foreground-muted)]">Gender</p>
-                  <p className="text-sm font-medium">{client.gender === 'M' ? 'Male' : client.gender === 'F' ? 'Female' : <span className="text-[var(--foreground-muted)] italic">Not provided</span>}</p>
+                  <p className="text-xs text-[var(--foreground-muted)]">
+                    Gender
+                  </p>
+                  <p className="text-sm font-medium">
+                    {client.gender === "M" ? (
+                      "Male"
+                    ) : client.gender === "F" ? (
+                      "Female"
+                    ) : (
+                      <span className="text-[var(--foreground-muted)] italic">
+                        Not provided
+                      </span>
+                    )}
+                  </p>
                 </div>
               </div>
             </div>
@@ -1028,14 +1093,18 @@ function OverviewTab({
             <div className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-3">
               <div className="flex items-center gap-1.5 mb-1">
                 <Users className="w-3.5 h-3.5 text-blue-500" />
-                <span className="text-[10px] text-[var(--foreground-muted)]">Family</span>
+                <span className="text-[10px] text-[var(--foreground-muted)]">
+                  Family
+                </span>
               </div>
               <p className="text-lg font-bold">{stats.family_count}</p>
             </div>
             <div className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-3">
               <div className="flex items-center gap-1.5 mb-1">
                 <FileText className="w-3.5 h-3.5 text-purple-500" />
-                <span className="text-[10px] text-[var(--foreground-muted)]">Docs</span>
+                <span className="text-[10px] text-[var(--foreground-muted)]">
+                  Docs
+                </span>
               </div>
               <p className="text-lg font-bold">{stats.documents_count}</p>
             </div>
@@ -1044,14 +1113,18 @@ function OverviewTab({
 
         {/* COLUMN 2: Passport */}
         <div className="flex flex-col h-full">
-          <PassportCard client={client} documents={documents} formatDate={formatDate} />
+          <PassportCard
+            client={client}
+            documents={documents}
+            formatDate={formatDate}
+          />
         </div>
 
         {/* COLUMN 3: Visa */}
         <div className="flex flex-col h-full">
-          <VisaCard 
-            client={client} 
-            documents={documents} 
+          <VisaCard
+            client={client}
+            documents={documents}
             activePractices={activePractices}
             formatDate={formatDate}
             formatCurrency={formatCurrency}
@@ -3488,14 +3561,14 @@ function CompanyTab({
 // TAX TYPES AND INTERFACES
 // ============================================
 type TaxYear = 2024 | 2025 | 2026;
-type TaxSection = 'personal' | 'annual' | 'monthly' | 'lkpm';
+type TaxSection = "personal" | "annual" | "monthly" | "lkpm";
 
 interface TaxDocument {
   id?: string;
   file?: File;
   fileName?: string;
   uploadedAt?: string;
-  status: 'pending' | 'uploaded' | 'verified';
+  status: "pending" | "uploaded" | "verified";
 }
 
 interface PersonalTaxData {
@@ -3552,7 +3625,7 @@ function TaxTab({
   formatDate: (d: string) => string;
 }) {
   const [selectedYear, setSelectedYear] = useState<TaxYear>(2025);
-  const [activeSection, setActiveSection] = useState<TaxSection>('personal');
+  const [activeSection, setActiveSection] = useState<TaxSection>("personal");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
@@ -3562,7 +3635,11 @@ function TaxTab({
     annualCompany: new Date(selectedYear, 3, 30), // April 30
   };
 
-  const handleFileUpload = async (section: TaxSection, docType: string, file: File) => {
+  const handleFileUpload = async (
+    section: TaxSection,
+    docType: string,
+    file: File,
+  ) => {
     setIsUploading(true);
     setUploadError(null);
     try {
@@ -3600,14 +3677,14 @@ function TaxTab({
   );
 
   // File upload workspace component
-  const UploadWorkspace = ({ 
-    section, 
-    title, 
+  const UploadWorkspace = ({
+    section,
+    title,
     description,
-    docTypes 
-  }: { 
-    section: TaxSection; 
-    title: string; 
+    docTypes,
+  }: {
+    section: TaxSection;
+    title: string;
     description: string;
     docTypes: { key: string; label: string; hint: string }[];
   }) => (
@@ -3616,13 +3693,18 @@ function TaxTab({
         <h4 className="font-semibold text-[var(--foreground)]">{title}</h4>
         <p className="text-xs text-[var(--foreground-muted)]">{description}</p>
       </div>
-      
+
       <div className="space-y-3">
         {docTypes.map((doc) => (
-          <div key={doc.key} className="border border-dashed border-[var(--border)] rounded-lg p-3">
+          <div
+            key={doc.key}
+            className="border border-dashed border-[var(--border)] rounded-lg p-3"
+          >
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium">{doc.label}</span>
-              <span className="text-xs text-[var(--foreground-muted)]">{doc.hint}</span>
+              <span className="text-xs text-[var(--foreground-muted)]">
+                {doc.hint}
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -3640,16 +3722,14 @@ function TaxTab({
                 htmlFor={`${section}-${doc.key}`}
                 className="flex-1 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
               >
-                {isUploading ? 'Uploading...' : `Select ${doc.label} file`}
+                {isUploading ? "Uploading..." : `Select ${doc.label} file`}
               </label>
             </div>
           </div>
         ))}
       </div>
-      
-      {uploadError && (
-        <p className="text-xs text-red-500">{uploadError}</p>
-      )}
+
+      {uploadError && <p className="text-xs text-red-500">{uploadError}</p>}
     </div>
   );
 
@@ -3660,49 +3740,105 @@ function TaxTab({
         title: "Personal Tax Documents",
         description: `Deadline: March 31, ${selectedYear}`,
         docTypes: [
-          { key: 'form1770', label: 'Form 1770', hint: 'Annual Tax Return' },
-          { key: 'buktiPotong', label: 'Bukti Potong', hint: 'Withholding Tax Slips' },
-          { key: 'sptTahunan', label: 'SPT Tahunan', hint: 'Annual Tax Report' },
-          { key: 'bupot1721', label: 'Bukti Potong 1721', hint: 'Employment Income' },
-          { key: 'bupot1721A1', label: 'Bukti Potong 1721-A1', hint: 'Annual Tax Slip' },
-        ]
+          { key: "form1770", label: "Form 1770", hint: "Annual Tax Return" },
+          {
+            key: "buktiPotong",
+            label: "Bukti Potong",
+            hint: "Withholding Tax Slips",
+          },
+          {
+            key: "sptTahunan",
+            label: "SPT Tahunan",
+            hint: "Annual Tax Report",
+          },
+          {
+            key: "bupot1721",
+            label: "Bukti Potong 1721",
+            hint: "Employment Income",
+          },
+          {
+            key: "bupot1721A1",
+            label: "Bukti Potong 1721-A1",
+            hint: "Annual Tax Slip",
+          },
+        ],
       },
       annual: {
         title: "Annual Company Tax",
         description: `Deadline: April 30, ${selectedYear}`,
         docTypes: [
-          { key: 'sptTahunanBadan', label: 'SPT Tahunan Badan', hint: 'Corporate Annual Tax Return' },
-          { key: 'laporanKeuangan', label: 'Laporan Keuangan', hint: 'Financial Statements' },
-          { key: 'buktiPembayaran', label: 'Bukti Pembayaran', hint: 'Payment Receipts' },
-          { key: 'formTaxAmnesty', label: 'Form Tax Amnesty', hint: 'If applicable' },
-          { key: 'neraca', label: 'Neraca', hint: 'Balance Sheet' },
-          { key: 'labaRugi', label: 'Laba Rugi', hint: 'Profit & Loss' },
-        ]
+          {
+            key: "sptTahunanBadan",
+            label: "SPT Tahunan Badan",
+            hint: "Corporate Annual Tax Return",
+          },
+          {
+            key: "laporanKeuangan",
+            label: "Laporan Keuangan",
+            hint: "Financial Statements",
+          },
+          {
+            key: "buktiPembayaran",
+            label: "Bukti Pembayaran",
+            hint: "Payment Receipts",
+          },
+          {
+            key: "formTaxAmnesty",
+            label: "Form Tax Amnesty",
+            hint: "If applicable",
+          },
+          { key: "neraca", label: "Neraca", hint: "Balance Sheet" },
+          { key: "labaRugi", label: "Laba Rugi", hint: "Profit & Loss" },
+        ],
       },
       monthly: {
         title: "Monthly Company Reports",
         description: "Due monthly by the 20th",
         docTypes: [
-          { key: 'pph21', label: 'PPH 21', hint: 'Employee Income Tax' },
-          { key: 'pph23', label: 'PPH 23', hint: 'Services Withholding Tax' },
-          { key: 'ppn', label: 'PPN', hint: 'VAT Return' },
-          { key: 'pph25', label: 'PPH 25', hint: 'Installment Tax' },
-          { key: 'pph4ayat2', label: 'PPH 4(2)', hint: 'Final Income Tax' },
-          { key: 'pph26', label: 'PPH 26', hint: 'Foreign Tax' },
-        ]
+          { key: "pph21", label: "PPH 21", hint: "Employee Income Tax" },
+          { key: "pph23", label: "PPH 23", hint: "Services Withholding Tax" },
+          { key: "ppn", label: "PPN", hint: "VAT Return" },
+          { key: "pph25", label: "PPH 25", hint: "Installment Tax" },
+          { key: "pph4ayat2", label: "PPH 4(2)", hint: "Final Income Tax" },
+          { key: "pph26", label: "PPH 26", hint: "Foreign Tax" },
+        ],
       },
       lkpm: {
         title: "LKPM Quarterly Reports",
         description: "Investment Activity Reports",
         docTypes: [
-          { key: 'lkpmReport', label: 'LKPM Report', hint: 'Main Investment Report' },
-          { key: 'realisasiInvestasi', label: 'Realisasi Investasi', hint: 'Investment Realization' },
-          { key: 'laporanTenagaKerja', label: 'Laporan Tenaga Kerja', hint: 'Employment Report' },
-          { key: 'laporanProduksi', label: 'Laporan Produksi', hint: 'Production Report' },
-          { key: 'rawMaterial', label: 'Raw Material Usage', hint: 'Import/Local breakdown' },
-          { key: 'exportValue', label: 'Export Value', hint: 'Export realization' },
-        ]
-      }
+          {
+            key: "lkpmReport",
+            label: "LKPM Report",
+            hint: "Main Investment Report",
+          },
+          {
+            key: "realisasiInvestasi",
+            label: "Realisasi Investasi",
+            hint: "Investment Realization",
+          },
+          {
+            key: "laporanTenagaKerja",
+            label: "Laporan Tenaga Kerja",
+            hint: "Employment Report",
+          },
+          {
+            key: "laporanProduksi",
+            label: "Laporan Produksi",
+            hint: "Production Report",
+          },
+          {
+            key: "rawMaterial",
+            label: "Raw Material Usage",
+            hint: "Import/Local breakdown",
+          },
+          {
+            key: "exportValue",
+            label: "Export Value",
+            hint: "Export realization",
+          },
+        ],
+      },
     };
 
     const config = configs[activeSection];
@@ -3710,41 +3846,49 @@ function TaxTab({
   };
 
   // Tax cards
-  const TaxCard = ({ 
-    title, 
-    subtitle, 
-    deadline, 
-    icon: Icon, 
+  const TaxCard = ({
+    title,
+    subtitle,
+    deadline,
+    icon: Icon,
     color,
     section,
-    onClick 
-  }: { 
-    title: string; 
-    subtitle: string; 
-    deadline: Date; 
-    icon: any; 
+    onClick,
+  }: {
+    title: string;
+    subtitle: string;
+    deadline: Date;
+    icon: any;
     color: string;
     section: TaxSection;
     onClick: () => void;
   }) => {
     const isOverdue = new Date() > deadline;
-    const daysUntil = Math.ceil((deadline.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-    
+    const daysUntil = Math.ceil(
+      (deadline.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24),
+    );
+
     return (
-      <div 
+      <div
         onClick={onClick}
         className={`rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-5 cursor-pointer transition-all hover:border-[var(--accent)] ${
-          activeSection === section ? 'ring-2 ring-[var(--accent)]' : ''
+          activeSection === section ? "ring-2 ring-[var(--accent)]" : ""
         }`}
       >
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className={`w-12 h-12 rounded-xl ${color} flex items-center justify-center`}>
+            <div
+              className={`w-12 h-12 rounded-xl ${color} flex items-center justify-center`}
+            >
               <Icon className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h4 className="font-semibold text-[var(--foreground)]">{title}</h4>
-              <p className="text-xs text-[var(--foreground-muted)]">{subtitle}</p>
+              <h4 className="font-semibold text-[var(--foreground)]">
+                {title}
+              </h4>
+              <p className="text-xs text-[var(--foreground-muted)]">
+                {subtitle}
+              </p>
             </div>
           </div>
           {isOverdue ? (
@@ -3764,8 +3908,12 @@ function TaxTab({
 
         <div className="mt-4 pt-4 border-t border-[var(--border)]">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-[var(--foreground-muted)]">Deadline</span>
-            <span className={`text-sm font-medium ${isOverdue ? 'text-red-400' : daysUntil <= 30 ? 'text-yellow-400' : 'text-emerald-400'}`}>
+            <span className="text-sm text-[var(--foreground-muted)]">
+              Deadline
+            </span>
+            <span
+              className={`text-sm font-medium ${isOverdue ? "text-red-400" : daysUntil <= 30 ? "text-yellow-400" : "text-emerald-400"}`}
+            >
               {formatDate(deadline.toISOString())}
             </span>
           </div>
@@ -3799,9 +3947,9 @@ function TaxTab({
             icon={User}
             color="bg-gradient-to-br from-emerald-500 to-teal-600"
             section="personal"
-            onClick={() => setActiveSection('personal')}
+            onClick={() => setActiveSection("personal")}
           />
-          
+
           <TaxCard
             title="Annual Company Tax"
             subtitle="Corporate SPT Tahunan Badan"
@@ -3809,9 +3957,9 @@ function TaxTab({
             icon={Building2}
             color="bg-gradient-to-br from-blue-500 to-cyan-600"
             section="annual"
-            onClick={() => setActiveSection('annual')}
+            onClick={() => setActiveSection("annual")}
           />
-          
+
           <TaxCard
             title="Monthly Reports"
             subtitle="PPH 21, 23, PPN, PPH 25"
@@ -3819,9 +3967,9 @@ function TaxTab({
             icon={Calendar}
             color="bg-gradient-to-br from-purple-500 to-pink-600"
             section="monthly"
-            onClick={() => setActiveSection('monthly')}
+            onClick={() => setActiveSection("monthly")}
           />
-          
+
           {/* LKPM with 4 quarters */}
           <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-5">
             <div className="flex items-center justify-between mb-4">
@@ -3830,35 +3978,39 @@ function TaxTab({
                   <FileText className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-[var(--foreground)]">LKPM</h4>
-                  <p className="text-xs text-[var(--foreground-muted)]">Laporan Kegiatan Penanaman Modal</p>
+                  <h4 className="font-semibold text-[var(--foreground)]">
+                    LKPM
+                  </h4>
+                  <p className="text-xs text-[var(--foreground-muted)]">
+                    Laporan Kegiatan Penanaman Modal
+                  </p>
                 </div>
               </div>
               <Button
-                variant={activeSection === 'lkpm' ? "default" : "outline"}
+                variant={activeSection === "lkpm" ? "default" : "outline"}
                 size="sm"
-                onClick={() => setActiveSection('lkpm')}
+                onClick={() => setActiveSection("lkpm")}
               >
                 Manage
               </Button>
             </div>
-            
+
             <div className="grid grid-cols-4 gap-2">
               {[1, 2, 3, 4].map((q) => (
-                <div 
+                <div
                   key={q}
                   className={`text-center p-3 rounded-lg border ${
-                    activeSection === 'lkpm' 
-                      ? 'border-[var(--accent)] bg-[var(--accent)]/10' 
-                      : 'border-[var(--border)]'
+                    activeSection === "lkpm"
+                      ? "border-[var(--accent)] bg-[var(--accent)]/10"
+                      : "border-[var(--border)]"
                   }`}
                 >
                   <p className="text-lg font-bold">Q{q}</p>
                   <p className="text-xs text-[var(--foreground-muted)]">
-                    {q === 1 && 'Jan-Mar'}
-                    {q === 2 && 'Apr-Jun'}
-                    {q === 3 && 'Jul-Sep'}
-                    {q === 4 && 'Oct-Dec'}
+                    {q === 1 && "Jan-Mar"}
+                    {q === 2 && "Apr-Jun"}
+                    {q === 3 && "Jul-Sep"}
+                    {q === 4 && "Oct-Dec"}
                   </p>
                 </div>
               ))}
@@ -3905,23 +4057,35 @@ const FileUploadField = memo(function FileUploadField({
 }: FileUploadFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      // Validate file size (10MB max)
-      if (selectedFile.size > 10 * 1024 * 1024) {
-        toast.error("File too large", { description: "Maximum size is 10MB" });
-        return;
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const selectedFile = e.target.files?.[0];
+      if (selectedFile) {
+        // Validate file size (10MB max)
+        if (selectedFile.size > 10 * 1024 * 1024) {
+          toast.error("File too large", {
+            description: "Maximum size is 10MB",
+          });
+          return;
+        }
+        // Validate file type
+        const allowedTypes = [
+          "application/pdf",
+          "image/jpeg",
+          "image/jpg",
+          "image/png",
+        ];
+        if (!allowedTypes.includes(selectedFile.type)) {
+          toast.error("Invalid file type", {
+            description: "Please upload PDF, JPG, or PNG",
+          });
+          return;
+        }
+        onChange(selectedFile);
       }
-      // Validate file type
-      const allowedTypes = ["application/pdf", "image/jpeg", "image/jpg", "image/png"];
-      if (!allowedTypes.includes(selectedFile.type)) {
-        toast.error("Invalid file type", { description: "Please upload PDF, JPG, or PNG" });
-        return;
-      }
-      onChange(selectedFile);
-    }
-  }, [onChange]);
+    },
+    [onChange],
+  );
 
   const handleClear = useCallback(() => {
     onClear();
@@ -3934,7 +4098,9 @@ const FileUploadField = memo(function FileUploadField({
     <div className={className}>
       <label className="block text-xs font-medium mb-1.5">
         {label}
-        {subLabel && <span className="text-[var(--foreground-muted)]"> {subLabel}</span>}
+        {subLabel && (
+          <span className="text-[var(--foreground-muted)]"> {subLabel}</span>
+        )}
       </label>
       <div className="flex items-center gap-2">
         <input
@@ -3949,9 +4115,10 @@ const FileUploadField = memo(function FileUploadField({
           htmlFor={id}
           className={`
             flex-1 px-3 py-2 rounded-lg border border-dashed cursor-pointer transition-colors text-sm truncate
-            ${error 
-              ? "border-red-500 bg-red-500/10 text-red-500" 
-              : "border-[var(--border)] bg-[var(--background-secondary)] hover:border-[var(--accent)]"
+            ${
+              error
+                ? "border-red-500 bg-red-500/10 text-red-500"
+                : "border-[var(--border)] bg-[var(--background-secondary)] hover:border-[var(--accent)]"
             }
           `}
         >
@@ -3984,28 +4151,33 @@ function useCompanyForm(clientId: number, onSuccess: () => void) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isExtractingNpwp, setIsExtractingNpwp] = useState(false);
   const [isExtractingNib, setIsExtractingNib] = useState(false);
-  const [uploadErrors, setUploadErrors] = useState<Partial<Record<DocumentType, string>>>({});
+  const [uploadErrors, setUploadErrors] = useState<
+    Partial<Record<DocumentType, string>>
+  >({});
   const [errors, setErrors] = useState<FormErrors>({});
   const [documents, setDocuments] = useState<CompanyDocuments>({});
   const [formData, setFormData] = useState<CompanyFormData>(INITIAL_FORM_DATA);
 
-  const updateField = useCallback(<K extends keyof CompanyFormData>(
-    field: K, 
-    value: CompanyFormData[K]
-  ) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when field is updated
-    if (errors[field as keyof FormErrors]) {
-      setErrors(prev => ({ ...prev, [field]: undefined }));
-    }
-  }, [errors]);
+  const updateField = useCallback(
+    <K extends keyof CompanyFormData>(field: K, value: CompanyFormData[K]) => {
+      setFormData((prev) => ({ ...prev, [field]: value }));
+      // Clear error when field is updated
+      if (errors[field as keyof FormErrors]) {
+        setErrors((prev) => ({ ...prev, [field]: undefined }));
+      }
+    },
+    [errors],
+  );
 
-  const updateDocument = useCallback((type: DocumentType, file: File | undefined) => {
-    setDocuments(prev => ({ ...prev, [type]: file }));
-    if (uploadErrors[type]) {
-      setUploadErrors(prev => ({ ...prev, [type]: undefined }));
-    }
-  }, [uploadErrors]);
+  const updateDocument = useCallback(
+    (type: DocumentType, file: File | undefined) => {
+      setDocuments((prev) => ({ ...prev, [type]: file }));
+      if (uploadErrors[type]) {
+        setUploadErrors((prev) => ({ ...prev, [type]: undefined }));
+      }
+    },
+    [uploadErrors],
+  );
 
   const validateForm = useCallback((): boolean => {
     const newErrors: FormErrors = {};
@@ -4056,13 +4228,19 @@ function useCompanyForm(clientId: number, onSuccess: () => void) {
     setIsExtractingNpwp(true);
     try {
       const base64 = await fileToBase64(documents.npwp);
-      const response = await api.post("/api/crm/clients/extract-npwp", {
+      const response = (await api.post("/api/crm/clients/extract-npwp", {
         file: base64,
         file_name: documents.npwp.name,
-      }) as { success: boolean; npwp?: string; address?: string; city?: string; message?: string };
+      })) as {
+        success: boolean;
+        npwp?: string;
+        address?: string;
+        city?: string;
+        message?: string;
+      };
 
       if (response.success) {
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
           npwp_company: response.npwp || prev.npwp_company,
           registered_address: response.address || prev.registered_address,
@@ -4093,13 +4271,19 @@ function useCompanyForm(clientId: number, onSuccess: () => void) {
     setIsExtractingNib(true);
     try {
       const base64 = await fileToBase64(documents.nib);
-      const response = await api.post("/api/crm/clients/extract-nib", {
+      const response = (await api.post("/api/crm/clients/extract-nib", {
         file: base64,
         file_name: documents.nib.name,
-      }) as { success: boolean; nib?: string; company_name?: string; kbli_code?: string; message?: string };
+      })) as {
+        success: boolean;
+        nib?: string;
+        company_name?: string;
+        kbli_code?: string;
+        message?: string;
+      };
 
       if (response.success) {
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
           nib: response.nib || prev.nib,
           company_name: response.company_name || prev.company_name,
@@ -4163,9 +4347,9 @@ function useCompanyForm(clientId: number, onSuccess: () => void) {
             });
           } catch (err) {
             logger.error(`Failed to upload ${type}:`, {}, err as Error);
-            setUploadErrors(prev => ({ 
-              ...prev, 
-              [type as DocumentType]: "Upload failed" 
+            setUploadErrors((prev) => ({
+              ...prev,
+              [type as DocumentType]: "Upload failed",
             }));
           }
         });
@@ -4214,7 +4398,13 @@ function useCompanyForm(clientId: number, onSuccess: () => void) {
 // ============================================
 // ADD COMPANY MODAL - TYPES
 // ============================================
-type DocumentType = 'akta' | 'sk' | 'businessId' | 'nib' | 'npwp' | 'profilePerseroan';
+type DocumentType =
+  | "akta"
+  | "sk"
+  | "businessId"
+  | "nib"
+  | "npwp"
+  | "profilePerseroan";
 
 interface CompanyDocuments {
   akta?: File;
@@ -4274,7 +4464,11 @@ const INITIAL_FORM_DATA: CompanyFormData = {
 // ============================================
 // ADD COMPANY MODAL
 // ============================================
-function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps) {
+function AddCompanyModal({
+  clientId,
+  onClose,
+  onSuccess,
+}: AddCompanyModalProps) {
   const {
     formData,
     documents,
@@ -4317,7 +4511,13 @@ function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps)
           </Button>
         </div>
 
-        <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="space-y-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            submit();
+          }}
+          className="space-y-4"
+        >
           {/* Company Basic Info */}
           <div className="space-y-3">
             <h4 className="text-sm font-medium text-[var(--foreground)] flex items-center gap-2">
@@ -4333,9 +4533,7 @@ function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps)
                 <input
                   type="text"
                   value={formData.company_name}
-                  onChange={(e) =>
-                    updateField('company_name', e.target.value)
-                  }
+                  onChange={(e) => updateField("company_name", e.target.value)}
                   className={inputClass}
                   placeholder="e.g. PT Bali Investment Mandiri"
                   required
@@ -4348,9 +4546,7 @@ function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps)
                 </label>
                 <select
                   value={formData.company_type}
-                  onChange={(e) =>
-                    updateField('company_type', e.target.value)
-                  }
+                  onChange={(e) => updateField("company_type", e.target.value)}
                   className={inputClass}
                 >
                   <option value="PT PMA">PT PMA</option>
@@ -4367,9 +4563,7 @@ function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps)
                 <input
                   type="text"
                   value={formData.kbli_code}
-                  onChange={(e) =>
-                    updateField('kbli_code', e.target.value)
-                  }
+                  onChange={(e) => updateField("kbli_code", e.target.value)}
                   className={inputClass}
                   placeholder="e.g. 68111"
                 />
@@ -4388,27 +4582,31 @@ function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps)
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium mb-1.5">
-                  NIB (Business ID) <span className="text-[var(--foreground-muted)]">- Number</span>
+                  NIB (Business ID){" "}
+                  <span className="text-[var(--foreground-muted)]">
+                    - Number
+                  </span>
                 </label>
                 <input
                   type="text"
                   value={formData.nib}
-                  onChange={(e) =>
-                    updateField('nib', e.target.value)
-                  }
+                  onChange={(e) => updateField("nib", e.target.value)}
                   className={inputClass}
                   placeholder="Nomor Induk Berusaha"
                 />
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1.5">
-                  NIB Document <span className="text-[var(--foreground-muted)]">- Upload + OCR</span>
+                  NIB Document{" "}
+                  <span className="text-[var(--foreground-muted)]">
+                    - Upload + OCR
+                  </span>
                 </label>
                 <div className="flex items-center gap-2">
                   <input
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={(e) => updateDocument('nib', e.target.files?.[0])}
+                    onChange={(e) => updateDocument("nib", e.target.files?.[0])}
                     className="hidden"
                     id="nib-doc-upload"
                   />
@@ -4440,7 +4638,7 @@ function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps)
                         variant="ghost"
                         size="sm"
                         className="h-8 w-8 p-0 text-red-500"
-                        onClick={() => updateDocument('nib', undefined)}
+                        onClick={() => updateDocument("nib", undefined)}
                       >
                         <X className="w-4 h-4" />
                       </Button>
@@ -4454,27 +4652,33 @@ function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps)
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium mb-1.5">
-                  NPWP Company <span className="text-[var(--foreground-muted)]">- Number (auto from OCR)</span>
+                  NPWP Company{" "}
+                  <span className="text-[var(--foreground-muted)]">
+                    - Number (auto from OCR)
+                  </span>
                 </label>
                 <input
                   type="text"
                   value={formData.npwp_company}
-                  onChange={(e) =>
-                    updateField('npwp_company', e.target.value)
-                  }
+                  onChange={(e) => updateField("npwp_company", e.target.value)}
                   className={inputClass}
                   placeholder="Company Tax ID"
                 />
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1.5">
-                  NPWP Document <span className="text-[var(--foreground-muted)]">- Upload + OCR</span>
+                  NPWP Document{" "}
+                  <span className="text-[var(--foreground-muted)]">
+                    - Upload + OCR
+                  </span>
                 </label>
                 <div className="flex items-center gap-2">
                   <input
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={(e) => updateDocument('npwp', e.target.files?.[0])}
+                    onChange={(e) =>
+                      updateDocument("npwp", e.target.files?.[0])
+                    }
                     className="hidden"
                     id="npwp-upload"
                   />
@@ -4506,7 +4710,7 @@ function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps)
                         variant="ghost"
                         size="sm"
                         className="h-8 w-8 p-0 text-red-500"
-                        onClick={() => updateDocument('npwp', undefined)}
+                        onClick={() => updateDocument("npwp", undefined)}
                       >
                         <X className="w-4 h-4" />
                       </Button>
@@ -4527,14 +4731,14 @@ function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps)
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {/* AKTA */}
               <div>
-                <label className="block text-xs font-medium mb-1.5">
-                  AKTA
-                </label>
+                <label className="block text-xs font-medium mb-1.5">AKTA</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={(e) => updateDocument('akta', e.target.files?.[0])}
+                    onChange={(e) =>
+                      updateDocument("akta", e.target.files?.[0])
+                    }
                     className="hidden"
                     id="akta-upload"
                   />
@@ -4550,7 +4754,7 @@ function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps)
                       variant="ghost"
                       size="sm"
                       className="h-8 w-8 p-0 text-red-500"
-                      onClick={() => updateDocument('akta', undefined)}
+                      onClick={() => updateDocument("akta", undefined)}
                     >
                       <X className="w-4 h-4" />
                     </Button>
@@ -4560,14 +4764,12 @@ function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps)
 
               {/* SK */}
               <div>
-                <label className="block text-xs font-medium mb-1.5">
-                  SK
-                </label>
+                <label className="block text-xs font-medium mb-1.5">SK</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={(e) => updateDocument('sk', e.target.files?.[0])}
+                    onChange={(e) => updateDocument("sk", e.target.files?.[0])}
                     className="hidden"
                     id="sk-upload"
                   />
@@ -4583,7 +4785,7 @@ function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps)
                       variant="ghost"
                       size="sm"
                       className="h-8 w-8 p-0 text-red-500"
-                      onClick={() => updateDocument('sk', undefined)}
+                      onClick={() => updateDocument("sk", undefined)}
                     >
                       <X className="w-4 h-4" />
                     </Button>
@@ -4600,7 +4802,9 @@ function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps)
                   <input
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={(e) => updateDocument('businessId', e.target.files?.[0])}
+                    onChange={(e) =>
+                      updateDocument("businessId", e.target.files?.[0])
+                    }
                     className="hidden"
                     id="business-id-upload"
                   />
@@ -4608,7 +4812,9 @@ function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps)
                     htmlFor="business-id-upload"
                     className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--background-secondary)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
                   >
-                    {documents.businessId ? documents.businessId.name : "Upload Business ID"}
+                    {documents.businessId
+                      ? documents.businessId.name
+                      : "Upload Business ID"}
                   </label>
                   {documents.businessId && (
                     <Button
@@ -4616,7 +4822,7 @@ function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps)
                       variant="ghost"
                       size="sm"
                       className="h-8 w-8 p-0 text-red-500"
-                      onClick={() => updateDocument('businessId', undefined)}
+                      onClick={() => updateDocument("businessId", undefined)}
                     >
                       <X className="w-4 h-4" />
                     </Button>
@@ -4633,7 +4839,9 @@ function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps)
                   <input
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={(e) => updateDocument('profilePerseroan', e.target.files?.[0])}
+                    onChange={(e) =>
+                      updateDocument("profilePerseroan", e.target.files?.[0])
+                    }
                     className="hidden"
                     id="profile-perseroan-upload"
                   />
@@ -4641,7 +4849,9 @@ function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps)
                     htmlFor="profile-perseroan-upload"
                     className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--background-secondary)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
                   >
-                    {documents.profilePerseroan ? documents.profilePerseroan.name : "Upload Profile Perseroan"}
+                    {documents.profilePerseroan
+                      ? documents.profilePerseroan.name
+                      : "Upload Profile Perseroan"}
                   </label>
                   {documents.profilePerseroan && (
                     <Button
@@ -4649,7 +4859,9 @@ function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps)
                       variant="ghost"
                       size="sm"
                       className="h-8 w-8 p-0 text-red-500"
-                      onClick={() => updateDocument('profilePerseroan', undefined)}
+                      onClick={() =>
+                        updateDocument("profilePerseroan", undefined)
+                      }
                     >
                       <X className="w-4 h-4" />
                     </Button>
@@ -4674,7 +4886,7 @@ function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps)
                 <textarea
                   value={formData.registered_address}
                   onChange={(e) =>
-                    updateField('registered_address', e.target.value)
+                    updateField("registered_address", e.target.value)
                   }
                   className={inputClass}
                   rows={2}
@@ -4690,9 +4902,7 @@ function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps)
                   <input
                     type="text"
                     value={formData.city}
-                    onChange={(e) =>
-                      updateField('city', e.target.value)
-                    }
+                    onChange={(e) => updateField("city", e.target.value)}
                     className={inputClass}
                     placeholder="e.g. Denpasar"
                   />
@@ -4705,9 +4915,7 @@ function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps)
                   <input
                     type="text"
                     value={formData.province}
-                    onChange={(e) =>
-                      updateField('province', e.target.value)
-                    }
+                    onChange={(e) => updateField("province", e.target.value)}
                     className={inputClass}
                     placeholder="e.g. Bali"
                   />
@@ -4721,7 +4929,7 @@ function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps)
                     type="email"
                     value={formData.company_email}
                     onChange={(e) =>
-                      updateField('company_email', e.target.value)
+                      updateField("company_email", e.target.value)
                     }
                     className={inputClass}
                     placeholder="company@email.com"
@@ -4736,9 +4944,7 @@ function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps)
                 <input
                   type="tel"
                   value={formData.company_phone}
-                  onChange={(e) =>
-                    updateField('company_phone', e.target.value)
-                  }
+                  onChange={(e) => updateField("company_phone", e.target.value)}
                   className={inputClass}
                   placeholder="+62 xxx xxxx xxxx"
                 />
@@ -4760,9 +4966,7 @@ function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps)
                 </label>
                 <select
                   value={formData.role}
-                  onChange={(e) =>
-                    updateField('role', e.target.value)
-                  }
+                  onChange={(e) => updateField("role", e.target.value)}
                   className={inputClass}
                 >
                   <option value="Director">Director</option>
@@ -4785,7 +4989,7 @@ function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps)
                   step="0.01"
                   value={formData.ownership_percentage}
                   onChange={(e) =>
-                    updateField('ownership_percentage', e.target.value)
+                    updateField("ownership_percentage", e.target.value)
                   }
                   className={inputClass}
                   placeholder="e.g. 51"
@@ -4798,9 +5002,7 @@ function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModalProps)
                 type="checkbox"
                 id="is_primary"
                 checked={formData.is_primary}
-                onChange={(e) =>
-                  updateField('is_primary', e.target.checked)
-                }
+                onChange={(e) => updateField("is_primary", e.target.checked)}
                 className="rounded border-[var(--border)] bg-[var(--background-secondary)]"
               />
               <label
