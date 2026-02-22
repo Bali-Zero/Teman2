@@ -11,10 +11,9 @@
 | Category | Count |
 |----------|-------|
 | **Real-time Triggers** | 6 |
-| **Scheduled (GitHub Actions)** | 2 |
 | **Scheduled (Autonomous Scheduler)** | 5 |
 | **Background Services** | 3 |
-| **TOTAL ACTIVE** | **16** |
+| **TOTAL ACTIVE** | **14** |
 
 ---
 
@@ -96,52 +95,11 @@ Creates standardized folder structure in Google Drive:
 
 ---
 
-## 📅 SCHEDULED AUTOMATIONS (GitHub Actions)
-
-These run on schedule via GitHub Actions workflows.
-
-### 7. Deadline Checker
-**Schedule:** Daily at 6:00 AM SGT  
-**File:** `.github/workflows/deadline-checker-daily.yml`  
-**What it does:**
-
-**Tax Reminders:**
-- T-30 days: Info reminder
-- T-14 days: Warning
-- T-7 days: **Telegram alert + Email**
-- T-1 day: Critical
-
-**Visa Expiry:**
-- T-90 days: Email renewal notice
-- T-60 days: Create renewal practice
-- T-30 days: Telegram alert + status → 'expiring_soon'
-
----
-
-### 8. Auto-Practice Creator
-**Schedule:** Daily at 7:00 AM SGT  
-**File:** `.github/workflows/auto-practice-creator-daily.yml`  
-**What it does:**
-1. Finds visas expiring in exactly 60 days
-2. Creates renewal practice automatically
-3. Assigns to client's agent
-4. Creates timeline event for client visibility
-
-**Visa → Practice mapping:**
-| Visa Type | Practice Type |
-|-----------|--------------|
-| kitas_work | KITAS_RENEWAL |
-| kitas_spouse | KITAS_SPOUSE_RENEWAL |
-| kitap | KITAP_RENEWAL |
-| tourist_visa | TOURIST_VISA_EXTENSION |
-
----
-
 ## ⏰ SCHEDULED AUTOMATIONS (Autonomous Scheduler)
 
 These run continuously within the backend application.
 
-### 9. Self-Healing Monitor
+### 7. Self-Healing Monitor
 **Interval:** Every 5 minutes  
 **What it does:**
 - Monitors Qdrant, PostgreSQL, AI Router health
@@ -150,7 +108,7 @@ These run continuously within the backend application.
 
 ---
 
-### 10. Conversation Trainer
+### 8. Conversation Trainer
 **Interval:** Every 6 hours  
 **What it does:**
 1. Analyzes last 7 days of high-rated conversations
@@ -160,7 +118,7 @@ These run continuously within the backend application.
 
 ---
 
-### 11. Renewal Alerts Checker
+### 9. Renewal Alerts Checker
 **Interval:** Every 12 hours  
 **What it does:**
 1. Checks practices expiring in 90/60/30 days
@@ -169,7 +127,7 @@ These run continuously within the backend application.
 
 ---
 
-### 12. Golden Routes Seeder
+### 10. Golden Routes Seeder
 **Trigger:** Application startup (one-time)  
 **What it does:**
 Seeds common query patterns to `golden_routes` table for faster routing:
@@ -179,7 +137,7 @@ Seeds common query patterns to `golden_routes` table for faster routing:
 
 ---
 
-### 13. Birthday Notifier 🎂
+### 11. Birthday Notifier 🎂
 **Interval:** Every 24 hours (≈8:00 AM Bali time)  
 **File:** `services/crm/birthday_notifier_service.py`  
 **What it does:**
@@ -196,7 +154,7 @@ Seeds common query patterns to `golden_routes` table for faster routing:
 
 ---
 
-### 14. Conversation Cleanup
+### 12. Conversation Cleanup
 **Interval:** Every 24 hours  
 **What it does:**
 1. Anonymizes user data older than 7 days
@@ -207,7 +165,7 @@ Seeds common query patterns to `golden_routes` table for faster routing:
 
 ## 🔧 BACKGROUND SERVICES
 
-### 15. Health Monitor
+### 13. Health Monitor
 **Interval:** Every 60 seconds  
 **What it does:**
 - Checks health of all external services
@@ -216,7 +174,7 @@ Seeds common query patterns to `golden_routes` table for faster routing:
 
 ---
 
-### 16. Auto-Logout Monitor
+### 14. Auto-Logout Monitor
 **Trigger:** Continuous  
 **What it does:**
 - Monitors team member activity
@@ -230,6 +188,8 @@ These were removed from the codebase or explicitly disabled:
 
 | Automation | Reason |
 |------------|--------|
+| Deadline Checker (GitHub) | Removed - functionality covered by Autonomous Scheduler tasks |
+| Auto-Practice Creator (GitHub) | Removed - functionality to be reimplemented in scheduler |
 | Knowledge Graph Builder | **Too expensive** - caused 3.9M Rp (€230) in Gemini API costs in Jan 2026 |
 | Client Value Predictor | Skeleton implementation - only logged, no real functionality |
 | Load Testing Workflow | Not configured, never worked properly |
