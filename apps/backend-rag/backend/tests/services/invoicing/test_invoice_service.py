@@ -7,9 +7,9 @@ from backend.services.invoicing.invoice_service import *
 
 
 @pytest.mark.skip(reason="Auto-generated skeleton")
-async def test_trigger_on_quotation_sent_skeleton():
-    # TODO: Implement test logic for trigger_on_quotation_sent
-    # result = await trigger_on_quotation_sent(...)
+async def test_trigger_on_sending_invoice_skeleton():
+    # TODO: Implement test logic for trigger_on_sending_invoice
+    # result = await trigger_on_sending_invoice(...)
     assert True
 
 

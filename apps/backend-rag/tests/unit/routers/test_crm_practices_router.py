@@ -1271,7 +1271,7 @@ class TestEdgeCases:
             json={
                 "client_id": 1,
                 "practice_type_code": "KITAS",
-                "status": "quotation_sent",
+                "status": "sending_invoice",
                 "priority": "urgent",
                 "quoted_price": "2000.00",
                 "assigned_to": "user@example.com",
