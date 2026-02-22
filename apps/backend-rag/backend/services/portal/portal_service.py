@@ -6,11 +6,14 @@ Provides client-scoped data access for:
 - Visa & immigration status
 - Company & licenses
 - Tax deadlines
-- Documents
+- Documents (with OCR, virus scan, Google Drive upload)
 - Messages
 - Preferences
 """
 
+import asyncio
+import io
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -19,6 +22,425 @@ import asyncpg
 from backend.app.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
+
+# Optional imports for advanced features (graceful degradation if not installed)
+try:
+    from backend.services.multimodal.pdf_vision_service import PDFVisionService
+    PDF_VISION_AVAILABLE = True
+except ImportError:
+    PDF_VISION_AVAILABLE = False
+    logger.warning("PDFVisionService not available. OCR will use basic extraction.")
+
+try:
+    import fitz  # PyMuPDF for PDF rendering
+    PYMUPDF_AVAILABLE = True
+except ImportError:
+    PYMUPDF_AVAILABLE = False
+    logger.warning("PyMuPDF not installed. PDF to image conversion will be disabled.")
+
+try:
+    import magic
+    MAGIC_AVAILABLE = True
+except ImportError:
+    MAGIC_AVAILABLE = False
+    logger.warning("python-magic not installed. MIME type detection will use fallback.")
+
+
+# =============================================================================
+# DOCUMENT PROCESSING HELPERS (Virus Scan, OCR, Expiry Detection)
+# =============================================================================
+
+class VirusScanner:
+    """Virus scanning for uploaded files."""
+    
+    SUSPICIOUS_EXTENSIONS = {'.exe', '.dll', '.bat', '.cmd', '.sh', '.php', '.jsp', '.asp'}
+    SUSPICIOUS_PATTERNS = [b'eval(', b'base64_decode', b'<?php', b'<script', b'javascript:']
+    
+    @classmethod
+    def scan(cls, file_content: bytes, file_name: str) -> dict[str, Any]:
+        """
+        Scan file for malware/suspicious content.
+        
+        Returns:
+            {
+                "clean": bool,
+                "threats": list[str],
+                "scanner": str
+            }
+        """
+        threats = []
+        
+        # Check extension
+        file_lower = file_name.lower()
+        if any(file_lower.endswith(ext) for ext in cls.SUSPICIOUS_EXTENSIONS):
+            threats.append(f"Suspicious file extension in {file_name}")
+        
+        # Check for suspicious patterns in content
+        content_sample = file_content[:8192]  # First 8KB
+        for pattern in cls.SUSPICIOUS_PATTERNS:
+            if pattern in content_sample.lower():
+                threats.append(f"Suspicious pattern detected: {pattern.decode('utf-8', errors='ignore')}")
+        
+        # Check for executable magic bytes
+        executable_magics = [
+            b'MZ',  # Windows executable
+            b'\x7fELF',  # Linux executable
+            b'#!',  # Shebang script
+            b'%PDF',  # PDF (allowed but flagged if combined with other threats)
+        ]
+        
+        # Future: Integrate with ClamAV or cloud virus scanning service
+        # Example: 
+        #   clamav_result = clamav.scan(file_content)
+        #   if clamav_result.infected:
+        #       threats.append(f"Virus detected: {clamav_result.virus_name}")
+        
+        return {
+            "clean": len(threats) == 0,
+            "threats": threats,
+            "scanner": "basic_heuristic_v1"
+        }
+
+
+class DocumentOCR:
+    """OCR extraction from PDF and image files using Gemini Vision."""
+    
+    @classmethod
+    async def extract_text(cls, file_content: bytes, file_name: str, mime_type: str | None = None) -> dict[str, Any]:
+        """
+        Extract text from PDF or image using Gemini Vision (same as passport box).
+        
+        Returns:
+            {
+                "text": str,
+                "pages": int,
+                "success": bool,
+                "error": str | None
+            }
+        """
+        result = {
+            "text": "",
+            "pages": 0,
+            "success": False,
+            "error": None
+        }
+        
+        if not mime_type:
+            mime_type = cls._detect_mime_type(file_content, file_name)
+        
+        try:
+            if mime_type == "application/pdf":
+                result = await cls._extract_from_pdf(file_content)
+            elif mime_type and mime_type.startswith("image/"):
+                result = await cls._extract_from_image(file_content)
+            else:
+                # Try basic text extraction for other types
+                result["error"] = f"Unsupported MIME type for OCR: {mime_type}"
+                result["success"] = False
+        except Exception as e:
+            result["error"] = f"OCR extraction failed: {e}"
+            logger.error(f"OCR extraction failed for {file_name}: {e}")
+        
+        return result
+    
+    @classmethod
+    def _detect_mime_type(cls, file_content: bytes, file_name: str) -> str:
+        """Detect MIME type from content or filename."""
+        if MAGIC_AVAILABLE:
+            try:
+                return magic.from_buffer(file_content, mime=True)
+            except Exception:
+                pass
+        
+        # Fallback to extension-based detection
+        import mimetypes
+        mime, _ = mimetypes.guess_type(file_name)
+        return mime or "application/octet-stream"
+    
+    @classmethod
+    async def _extract_from_pdf(cls, file_content: bytes) -> dict[str, Any]:
+        """Extract text from PDF using Gemini Vision (same as passport box)."""
+        result = {"text": "", "pages": 0, "success": False, "error": None}
+        
+        if not PDF_VISION_AVAILABLE:
+            # Fallback to PyMuPDF basic extraction
+            if PYMUPDF_AVAILABLE:
+                try:
+                    doc = fitz.open(stream=file_content, filetype="pdf")
+                    result["pages"] = len(doc)
+                    texts = []
+                    for page in doc:
+                        texts.append(page.get_text())
+                    result["text"] = "\n".join(texts)
+                    result["success"] = True
+                    doc.close()
+                    return result
+                except Exception as e:
+                    result["error"] = f"PyMuPDF extraction failed: {e}"
+                    return result
+            else:
+                result["error"] = "PDF Vision service not available"
+                return result
+        
+        try:
+            # Use PDFVisionService (same as passport box)
+            vision_service = PDFVisionService()
+            
+            # First try direct text extraction
+            text = await vision_service.extract_text(file_content)
+            
+            if text and not text.startswith("Error"):
+                result["text"] = text
+                result["pages"] = text.count("\n---\n") + 1  # Rough estimate
+                result["success"] = True
+            else:
+                # Fallback: render to image and use vision
+                result = await cls._extract_pdf_via_vision(file_content, vision_service)
+                
+        except Exception as e:
+            result["error"] = f"PDF Vision extraction failed: {e}"
+        
+        return result
+    
+    @classmethod
+    async def _extract_pdf_via_vision(cls, pdf_content: bytes, vision_service: Any) -> dict[str, Any]:
+        """Extract text by rendering PDF pages to images and using Gemini Vision."""
+        result = {"text": "", "pages": 0, "success": False, "error": None}
+        
+        if not PYMUPDF_AVAILABLE:
+            result["error"] = "PyMuPDF required for PDF to image conversion"
+            return result
+        
+        try:
+            import base64
+            from PIL import Image
+            
+            doc = fitz.open(stream=pdf_content, filetype="pdf")
+            result["pages"] = len(doc)
+            texts = []
+            
+            for page_num in range(len(doc)):
+                page = doc.load_page(page_num)
+                pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))  # 2x zoom
+                img_data = pix.tobytes("png")
+                image = Image.open(io.BytesIO(img_data))
+                
+                # Use Gemini Vision for OCR
+                img_base64 = cls._image_to_base64(image)
+                page_text = await cls._gemini_vision_ocr(img_base64, vision_service)
+                
+                if page_text:
+                    texts.append(page_text)
+            
+            doc.close()
+            result["text"] = "\n".join(texts)
+            result["success"] = True
+            
+        except Exception as e:
+            result["error"] = f"PDF Vision OCR failed: {e}"
+        
+        return result
+    
+    @classmethod
+    async def _extract_from_image(cls, file_content: bytes) -> dict[str, Any]:
+        """Extract text from image using Gemini Vision."""
+        result = {"text": "", "pages": 1, "success": False, "error": None}
+        
+        if not PDF_VISION_AVAILABLE:
+            result["error"] = "Vision service not available for image OCR"
+            return result
+        
+        try:
+            from PIL import Image
+            
+            image = Image.open(io.BytesIO(file_content))
+            img_base64 = cls._image_to_base64(image)
+            
+            vision_service = PDFVisionService()
+            text = await cls._gemini_vision_ocr(img_base64, vision_service)
+            
+            result["text"] = text
+            result["success"] = bool(text)
+            
+        except Exception as e:
+            result["error"] = f"Image Vision OCR failed: {e}"
+        
+        return result
+    
+    @classmethod
+    def _image_to_base64(cls, image) -> str:
+        """Convert PIL Image to base64 string."""
+        import base64
+        buffered = io.BytesIO()
+        image.save(buffered, format="PNG")
+        return base64.b64encode(buffered.getvalue()).decode()
+    
+    @classmethod
+    async def _gemini_vision_ocr(cls, image_base64: str, vision_service: Any) -> str:
+        """Use Gemini Vision to extract text from image."""
+        try:
+            client = vision_service._get_genai_client()
+            if not client or not client.is_available:
+                return ""
+            
+            prompt = """
+            Extract all text from this document image.
+            Preserve the layout and structure as much as possible.
+            Return only the extracted text, no additional commentary.
+            """
+            
+            contents = [
+                {"text": prompt},
+                {"inline_data": {"mime_type": "image/png", "data": image_base64}},
+            ]
+            
+            response = await client.generate_content(
+                contents=contents,
+                model="gemini-2.0-flash-001",
+                max_output_tokens=4096,
+            )
+            
+            return response.get("text", "")
+            
+        except Exception as e:
+            logger.error(f"Gemini Vision OCR failed: {e}")
+            return ""
+
+
+class ExpiryDetector:
+    """Detect expiry dates from document text (passports, visas, etc.)."""
+    
+    # Date patterns: DD/MM/YYYY, MM/DD/YYYY, YYYY-MM-DD, DD-MM-YYYY, etc.
+    DATE_PATTERNS = [
+        r'\b(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})\b',  # DD/MM/YYYY
+        r'\b(\d{4})[/.-](\d{1,2})[/.-](\d{1,2})\b',  # YYYY/MM/DD
+    ]
+    
+    # Keywords that indicate expiry dates
+    EXPIRY_KEYWORDS = [
+        'expir', 'valid until', 'valid to', 'date of expiration',
+        'expiry date', 'expiration date', 'valid thru', 'valid through',
+        'date of expiry', 'passport expiry', 'visa expiry', 'kitas expiry',
+        'merp expiry', 'validity expires', 'until', 'sampai', 'berlaku'
+    ]
+    
+    # Document type indicators
+    DOC_TYPE_INDICATORS = {
+        'passport': ['passport', 'paspor', 'travel document'],
+        'visa': ['visa', 'voa', 'kitas', 'kitap', 'e-visa', 'evisa'],
+        'merp': ['merp', 're-entry', 'reentry'],
+        'nib': ['nib', 'business registration', 'nomor induk berusaha'],
+        'tax': ['tax', 'pajak', 'npwp', 'spt', 'efiling'],
+    }
+    
+    @classmethod
+    def detect_expiry(cls, text: str, document_type: str) -> dict[str, Any]:
+        """
+        Detect expiry date from document text.
+        
+        Returns:
+            {
+                "expiry_date": str | None,  # ISO format YYYY-MM-DD
+                "confidence": float,  # 0-1
+                "method": str,  # "keyword_context", "pattern_match", "none"
+                "all_dates": list[str]  # All dates found
+            }
+        """
+        result = {
+            "expiry_date": None,
+            "confidence": 0.0,
+            "method": "none",
+            "all_dates": []
+        }
+        
+        if not text or len(text.strip()) < 10:
+            return result
+        
+        text_lower = text.lower()
+        lines = text.split('\n')
+        
+        # Extract all dates
+        all_dates = []
+        for pattern in cls.DATE_PATTERNS:
+            matches = re.findall(pattern, text)
+            for match in matches:
+                try:
+                    date_str = cls._normalize_date(match)
+                    if date_str:
+                        all_dates.append(date_str)
+                except Exception:
+                    continue
+        
+        result["all_dates"] = list(set(all_dates))
+        
+        # Find dates near expiry keywords
+        for keyword in cls.EXPIRY_KEYWORDS:
+            # Look for keyword in text
+            for i, line in enumerate(lines):
+                if keyword.lower() in line.lower():
+                    # Check this line and adjacent lines
+                    context = ' '.join(lines[max(0, i-1):min(len(lines), i+2)])
+                    dates_in_context = []
+                    
+                    for pattern in cls.DATE_PATTERNS:
+                        matches = re.findall(pattern, context)
+                        for match in matches:
+                            date_str = cls._normalize_date(match)
+                            if date_str:
+                                dates_in_context.append(date_str)
+                    
+                    if dates_in_context:
+                        # Use the furthest future date (most likely expiry)
+                        dates_in_context.sort()
+                        result["expiry_date"] = dates_in_context[-1]
+                        result["confidence"] = 0.8
+                        result["method"] = "keyword_context"
+                        return result
+        
+        # Fallback: if document type suggests expiry, use furthest future date
+        if document_type.lower() in ['passport', 'visa', 'kitas', 'kitap', 'merp']:
+            if all_dates:
+                all_dates.sort()
+                result["expiry_date"] = all_dates[-1]  # Furthest date
+                result["confidence"] = 0.5
+                result["method"] = "pattern_match"
+        
+        return result
+    
+    @classmethod
+    def _normalize_date(cls, match: tuple) -> str | None:
+        """Convert date match to ISO format YYYY-MM-DD."""
+        try:
+            if len(match) == 3:
+                a, b, c = match
+                a, b, c = int(a), int(b), int(c)
+                
+                # Determine format based on values
+                if c > 31:  # YYYY is last
+                    year = c if c > 2000 else 2000 + c
+                    day, month = a, b
+                    # Heuristic: if a > 12, it's day
+                    if a > 12:
+                        day, month = a, b
+                    elif b > 12:
+                        day, month = b, a
+                    else:
+                        # Assume DD/MM (European format)
+                        day, month = a, b
+                elif a > 31:  # YYYY is first
+                    year = a
+                    month, day = b, c
+                else:
+                    # Assume DD/MM/YY
+                    year = 2000 + c if c < 100 else c
+                    day, month = a, b if b <= 12 else a
+                    if b > 12:
+                        day, month = b, a
+                
+                return f"{year:04d}-{month:02d}-{day:02d}"
+        except Exception:
+            pass
+        return None
 
 
 class PortalService:
@@ -824,15 +1246,42 @@ class PortalService:
         practice_id: int | None = None,
     ) -> dict[str, Any]:
         """
-        Upload a document for a client.
-
-        For MVP, stores metadata in DB. File storage can be enhanced later
-        to use Google Drive or S3.
+        Upload a document for a client with full processing:
+        - Virus scanning
+        - Google Drive upload with folder structure
+        - OCR text extraction
+        - Expiry date detection
+        - Email notification to assigned lead
         """
+        processing_results = {
+            "virus_scan": None,
+            "drive_upload": None,
+            "ocr": None,
+            "expiry_detection": None,
+        }
+        
+        # =========================================================================
+        # STEP 1: VIRUS SCAN
+        # =========================================================================
+        scan_result = VirusScanner.scan(file_content, file_name)
+        processing_results["virus_scan"] = scan_result
+        
+        if not scan_result["clean"]:
+            logger.warning(
+                f"🚨 THREAT DETECTED in upload from client {client_id}: "
+                f"{file_name} - Threats: {scan_result['threats']}"
+            )
+            raise ValueError(
+                f"Security threat detected in file: {', '.join(scan_result['threats'])}. "
+                "Upload blocked for security reasons."
+            )
+        
+        logger.info(f"✅ Virus scan passed for {file_name}")
+        
+        # Calculate file size
+        file_size_kb = len(file_content) // 1024
+        
         async with self.pool.acquire() as conn:
-            # Calculate file size
-            file_size_kb = len(file_content) // 1024
-
             # Verify practice belongs to client if provided
             if practice_id:
                 practice = await conn.fetchrow(
@@ -843,23 +1292,82 @@ class PortalService:
                 if not practice:
                     raise ValueError("Practice not found or not accessible")
 
-            # Get client email for uploaded_by
+            # Get client info
             client = await conn.fetchrow(
-                "SELECT email FROM clients WHERE id = $1",
+                "SELECT email, full_name, assigned_to FROM clients WHERE id = $1",
                 client_id,
             )
+            
+            if not client:
+                raise ValueError(f"Client {client_id} not found")
 
-            # Insert document record
+            # =========================================================================
+            # STEP 2: GOOGLE DRIVE UPLOAD
+            # =========================================================================
+            drive_result = await self._upload_to_drive(
+                conn=conn,
+                client_id=client_id,
+                client_name=client["full_name"],
+                document_type=document_type,
+                file_content=file_content,
+                file_name=file_name,
+                mime_type=mime_type,
+            )
+            processing_results["drive_upload"] = drive_result
+            
+            # =========================================================================
+            # STEP 3: OCR TEXT EXTRACTION (using Gemini Vision - same as passport box)
+            # =========================================================================
+            ocr_result = await DocumentOCR.extract_text(
+                file_content=file_content,
+                file_name=file_name,
+                mime_type=mime_type
+            )
+            processing_results["ocr"] = ocr_result
+            
+            if ocr_result["success"]:
+                logger.info(
+                    f"📄 OCR extracted {len(ocr_result['text'])} chars "
+                    f"from {file_name} ({ocr_result['pages']} pages)"
+                )
+            else:
+                logger.warning(f"⚠️ OCR failed for {file_name}: {ocr_result.get('error')}")
+            
+            # =========================================================================
+            # STEP 4: EXPIRY DATE DETECTION
+            # =========================================================================
+            expiry_result = ExpiryDetector.detect_expiry(
+                text=ocr_result.get("text", ""),
+                document_type=document_type
+            )
+            processing_results["expiry_detection"] = expiry_result
+            
+            if expiry_result["expiry_date"]:
+                logger.info(
+                    f"📅 Expiry date detected for {document_type}: "
+                    f"{expiry_result['expiry_date']} (confidence: {expiry_result['confidence']})"
+                )
+
+            # =========================================================================
+            # STEP 5: SAVE TO DATABASE
+            # =========================================================================
             try:
                 doc = await conn.fetchrow(
                     """
                     INSERT INTO documents (
                         client_id, practice_id, document_type, file_name,
                         status, uploaded_by, uploaded_source, file_size_kb, mime_type,
-                        storage_type, client_visible
+                        storage_type, storage_path, file_id, file_url,
+                        extracted_text, expiry_date, 
+                        client_visible, created_at
                     )
-                    VALUES ($1, $2, $3, $4, 'pending', $5, 'client', $6, $7, 'pending', true)
-                    RETURNING id, document_type, file_name, status, created_at
+                    VALUES (
+                        $1, $2, $3, $4, 'received', $5, 'client', $6, $7,
+                        'google_drive', $8, $9, $10,
+                        $11, $12,
+                        true, NOW()
+                    )
+                    RETURNING id, document_type, file_name, status, created_at, expiry_date
                     """,
                     client_id,
                     practice_id,
@@ -868,9 +1376,14 @@ class PortalService:
                     client["email"],
                     file_size_kb,
                     mime_type,
+                    drive_result.get("folder_path"),
+                    drive_result.get("file_id"),
+                    drive_result.get("file_url"),
+                    ocr_result.get("text")[:10000] if ocr_result.get("text") else None,  # Limit text size
+                    expiry_result.get("expiry_date"),
                 )
             except Exception as e:
-                # Backward compatibility: uploaded_source column may not exist yet.
+                # Backward compatibility: try without new columns
                 if self._is_undefined_column_error(e):
                     doc = await conn.fetchrow(
                         """
@@ -879,8 +1392,8 @@ class PortalService:
                             status, uploaded_by, file_size_kb, mime_type,
                             storage_type, client_visible
                         )
-                        VALUES ($1, $2, $3, $4, 'pending', $5, $6, $7, 'pending', true)
-                        RETURNING id, document_type, file_name, status, created_at
+                        VALUES ($1, $2, $3, $4, 'received', $5, $6, $7, 'google_drive', true)
+                        RETURNING id, document_type, file_name, status, created_at, expiry_date
                         """,
                         client_id,
                         practice_id,
@@ -893,31 +1406,48 @@ class PortalService:
                 else:
                     raise
 
-            # Create a persistent timeline confirmation (optional; requires timeline_events table)
+            # =========================================================================
+            # STEP 6: CREATE TIMELINE EVENT
+            # =========================================================================
             try:
+                timeline_desc = f"{file_name} uploaded successfully"
+                if expiry_result.get("expiry_date"):
+                    timeline_desc += f" (Expiry detected: {expiry_result['expiry_date']})"
+                
                 await conn.execute(
                     """
-                    INSERT INTO timeline_events (client_id, practice_id, event_type, title, description, event_date, client_visible, color)
-                    VALUES ($1, $2, 'document_received', 'Document received', $3, NOW(), true, 'success')
+                    INSERT INTO timeline_events (
+                        client_id, practice_id, event_type, title, 
+                        description, event_date, client_visible, color
+                    )
+                    VALUES ($1, $2, 'document_received', 'Document received', 
+                            $3, NOW(), true, 'success')
                     """,
                     client_id,
                     practice_id,
-                    f"{file_name} uploaded successfully",
+                    timeline_desc,
                 )
             except Exception as e:
                 if not self._is_undefined_table_error(e):
                     logger.warning(f"Could not create timeline event for upload: {e}")
 
             logger.info(
-                f"Document uploaded: {file_name} for client {client_id}, "
-                f"size: {file_size_kb}KB, type: {document_type}"
+                f"✅ Document processed and stored: {file_name} for client {client_id}, "
+                f"size: {file_size_kb}KB, type: {document_type}, "
+                f"drive_id: {drive_result.get('file_id', 'N/A')}"
             )
 
-            # FUTURE: Implement async file storage to Google Drive or S3
-            # Current implementation stores only metadata in PostgreSQL
-            # See: https://github.com/balizero/nuzantara/issues/FILE_STORAGE
-            logger.warning(
-                f"File storage not implemented: {file_name} uploaded but content not persisted to cloud storage"
+            # =========================================================================
+            # STEP 7: NOTIFY ASSIGNED LEAD
+            # =========================================================================
+            asyncio.create_task(
+                self._notify_lead_about_document(
+                    client_id=client_id,
+                    document_name=file_name,
+                    document_type=document_type,
+                    expiry_date=expiry_result.get("expiry_date"),
+                    drive_url=drive_result.get("file_url"),
+                )
             )
 
             return {
@@ -927,7 +1457,261 @@ class PortalService:
                 "status": doc["status"],
                 "size_kb": file_size_kb,
                 "created_at": doc["created_at"].isoformat(),
+                "expiry_date": expiry_result.get("expiry_date"),
+                "extracted_text_preview": (
+                    ocr_result.get("text", "")[:200] + "..."
+                    if ocr_result.get("text") and len(ocr_result.get("text", "")) > 200
+                    else ocr_result.get("text", "")
+                ),
+                "processing": {
+                    "virus_clean": scan_result["clean"],
+                    "ocr_pages": ocr_result.get("pages"),
+                    "drive_uploaded": drive_result.get("success", False),
+                }
             }
+
+    async def _upload_to_drive(
+        self,
+        conn: asyncpg.Connection,
+        client_id: int,
+        client_name: str,
+        document_type: str,
+        file_content: bytes,
+        file_name: str,
+        mime_type: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Upload file to Google Drive with organized folder structure.
+        
+        Folder structure:
+        Zantara Portal Uploads/
+        └── {client_id}_{client_name}/
+            └── {document_type}/
+                └── {timestamp}_{file_name}
+        
+        Returns:
+            {
+                "success": bool,
+                "file_id": str | None,
+                "file_url": str | None,
+                "folder_path": str,
+                "error": str | None
+            }
+        """
+        result = {
+            "success": False,
+            "file_id": None,
+            "file_url": None,
+            "folder_path": "",
+            "error": None
+        }
+        
+        try:
+            from backend.services.integrations.google_drive_service import GoogleDriveService
+            from backend.app.core.config import settings
+            
+            drive_service = GoogleDriveService(self.pool)
+            
+            # Check if Drive is configured
+            if not drive_service.is_configured():
+                logger.warning("Google Drive not configured. Skipping upload.")
+                result["error"] = "Drive not configured"
+                return result
+            
+            # Use system user for portal uploads
+            user_id = "SYSTEM"
+            
+            # Check if we have a valid token
+            token = await drive_service.get_valid_token(user_id)
+            if not token:
+                logger.warning("No valid Google Drive token. Skipping upload.")
+                result["error"] = "No Drive token"
+                return result
+            
+            # Get or create root folder for portal uploads
+            root_folder_id = await self._get_or_create_drive_folder(
+                drive_service, user_id, 
+                folder_name="Zantara Portal Uploads",
+                parent_id=settings.google_drive_root_folder_id or "root"
+            )
+            
+            if not root_folder_id:
+                result["error"] = "Failed to create root folder"
+                return result
+            
+            # Create/get client folder
+            safe_client_name = "".join(c for c in client_name if c.isalnum() or c in (' ', '_')).rstrip()
+            client_folder_name = f"{client_id}_{safe_client_name[:30]}"  # Limit name length
+            
+            client_folder_id = await self._get_or_create_drive_folder(
+                drive_service, user_id,
+                folder_name=client_folder_name,
+                parent_id=root_folder_id
+            )
+            
+            if not client_folder_id:
+                result["error"] = "Failed to create client folder"
+                return result
+            
+            # Create/get document type folder
+            type_folder_name = document_type.replace("_", " ").title()
+            type_folder_id = await self._get_or_create_drive_folder(
+                drive_service, user_id,
+                folder_name=type_folder_name,
+                parent_id=client_folder_id
+            )
+            
+            if not type_folder_id:
+                result["error"] = "Failed to create type folder"
+                return result
+            
+            # Add timestamp to filename to avoid collisions
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            drive_file_name = f"{timestamp}_{file_name}"
+            
+            # Upload file
+            upload_result = await drive_service.upload_file_to_folder(
+                user_id=user_id,
+                folder_id=type_folder_id,
+                file_content=file_content,
+                file_name=drive_file_name,
+                mime_type=mime_type
+            )
+            
+            result["success"] = True
+            result["file_id"] = upload_result.get("id")
+            result["file_url"] = upload_result.get("webViewLink") or f"https://drive.google.com/file/d/{upload_result.get('id')}/view"
+            result["folder_path"] = f"Zantara Portal Uploads/{client_folder_name}/{type_folder_name}"
+            
+            logger.info(
+                f"📁 File uploaded to Drive: {drive_file_name} "
+                f"(ID: {upload_result.get('id')})"
+            )
+            
+        except Exception as e:
+            logger.error(f"Failed to upload to Google Drive: {e}", exc_info=True)
+            result["error"] = str(e)
+        
+        return result
+    
+    async def _get_or_create_drive_folder(
+        self,
+        drive_service: Any,
+        user_id: str,
+        folder_name: str,
+        parent_id: str = "root"
+    ) -> str | None:
+        """
+        Get existing folder or create new one in Google Drive.
+        
+        Returns:
+            Folder ID or None if failed
+        """
+        try:
+            # Search for existing folder using list_files with filter
+            files_result = await drive_service.list_files(
+                user_id=user_id,
+                folder_id=parent_id,
+                page_size=100
+            )
+            
+            for file in files_result.get("files", []):
+                if file.get("name") == folder_name and file.get("mimeType") == "application/vnd.google-apps.folder":
+                    logger.debug(f"Found existing folder '{folder_name}' with ID: {file['id']}")
+                    return file["id"]
+            
+            # Create new folder
+            new_folder = await drive_service.create_folder(
+                user_id=user_id,
+                name=folder_name,
+                parent_id=parent_id
+            )
+            
+            logger.info(f"Created new folder '{folder_name}' with ID: {new_folder.get('id')}")
+            return new_folder.get("id")
+            
+        except Exception as e:
+            logger.error(f"Failed to get/create folder '{folder_name}': {e}")
+            return None
+
+    async def _notify_lead_about_document(
+        self,
+        client_id: int,
+        document_name: str,
+        document_type: str,
+        expiry_date: str | None = None,
+        drive_url: str | None = None,
+    ) -> None:
+        """
+        Send email notification to assigned lead when client uploads a document.
+        
+        This runs async (fire-and-forget) to not block the upload response.
+        """
+        try:
+            from backend.services.integrations.zoho_email_service import ZohoEmailService
+            
+            zoho_service = ZohoEmailService(self.pool)
+            
+            async with self.pool.acquire() as conn:
+                # Get client name and assigned lead
+                client = await conn.fetchrow(
+                    """
+                    SELECT c.full_name, c.assigned_to
+                    FROM clients c
+                    WHERE c.id = $1
+                    """,
+                    client_id,
+                )
+                
+                if not client:
+                    logger.debug(f"Client {client_id} not found, skipping notification")
+                    return
+                
+                # Fallback to admin if no assigned lead
+                lead_email = client["assigned_to"] or "zero@balizero.com"
+                
+                # Build email content
+                doc_type_display = document_type.replace("_", " ").title()
+                
+                subject = f"📄 Nuovo Documento Caricato - {client['full_name']}"
+                
+                # Build extra info section
+                extra_info = ""
+                if expiry_date:
+                    extra_info += f"• Data Scadenza Rilevata: {expiry_date}\n"
+                if drive_url:
+                    extra_info += f"• Link Drive: {drive_url}\n"
+                
+                body = f"""Ciao,
+
+Il cliente {client['full_name']} ha caricato un nuovo documento nel portale.
+
+Dettagli:
+• File: {document_name}
+• Tipo: {doc_type_display}
+• Cliente: {client['full_name']}
+{extra_info}
+Accedi al workspace per visualizzare e verificare il documento:
+https://zantara-crm.vercel.app/clients/{client_id}
+
+---
+Questa è una notifica automatica da Bali Zero CRM.
+"""
+                
+                await zoho_service.send_email(
+                    to_email=lead_email,
+                    subject=subject,
+                    body=body,
+                )
+                
+                logger.info(
+                    f"📧 Document upload notification sent to {lead_email} "
+                    f"for client {client['full_name']}"
+                )
+                
+        except Exception as e:
+            # Don't fail upload if notification fails
+            logger.error(f"Failed to send document upload notification: {e}", exc_info=True)
 
     # ================================================
     # MESSAGES

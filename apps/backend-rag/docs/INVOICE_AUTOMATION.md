@@ -22,25 +22,26 @@ Quando una pratica viene impostata su **"Sending Invoice"**:
 
 ### Zoho Invoice API
 
-| Parametro | Valore |
-|-----------|--------|
-| Client ID | `1000.PRPSP7KG3NZU9KYCVMZHGSGFXYSJMZ` |
-| Account | zero@balizero.com |
-| Scope | `ZohoInvoice.fullaccess.all` |
-| Token Scadenza | Auto-refresh (refresh token valido) |
+| Parametro      | Valore                                |
+| -------------- | ------------------------------------- |
+| Client ID      | `1000.PRPSP7KG3NZU9KYCVMZHGSGFXYSJMZ` |
+| Account        | zero@balizero.com                     |
+| Scope          | `ZohoInvoice.fullaccess.all`          |
+| Token Scadenza | Auto-refresh (refresh token valido)   |
 
 ### SMTP Configuration (Zoho Mail Pro)
 
-| Parametro | Valore |
-|-----------|--------|
-| Host | `smtppro.zoho.com` |
-| Port | `587` |
-| Encryption | STARTTLS |
-| Username | `zero@balizero.com` |
-| Sender Name | `Bali Zero AI` |
+| Parametro    | Valore              |
+| ------------ | ------------------- |
+| Host         | `smtppro.zoho.com`  |
+| Port         | `587`               |
+| Encryption   | STARTTLS            |
+| Username     | `zero@balizero.com` |
+| Sender Name  | `Bali Zero AI`      |
 | Sender Email | `zero@balizero.com` |
 
 **Environment Variables:**
+
 ```bash
 SMTP_HOST=smtppro.zoho.com
 SMTP_PORT=587
@@ -58,7 +59,6 @@ L'email ha un sistema di fallback a due livelli:
 1. **Primario:** Zoho Mail API (via OAuth)
    - Usa token OAuth con scope `ZohoMail.messages.ALL`
    - Richiede configurazione API in Zoho Mail (non attualmente attiva)
-   
 2. **Fallback:** SMTP Zoho Pro
    - Attivato automaticamente se Zoho API fallisce
    - Funziona con configurazione SMTP standard
@@ -69,12 +69,14 @@ L'email ha un sistema di fallback a due livelli:
 ## Destinatari Email
 
 ### Email al Cliente
+
 - **Da:** Bali Zero AI <zero@balizero.com>
 - **A:** [Email cliente dalla pratica]
 - **Oggetto:** Invoice [NUMERO] from Bali Zero AI
 - **Allegato:** PDF Fattura
 
 ### Email a Asya (Notifica)
+
 - **Da:** Bali Zero AI <zero@balizero.com>
 - **A:** asya@balizero.com
 - **Oggetto:** 🎉 New Invoice [NUMERO] - [Nome Cliente]
@@ -86,6 +88,7 @@ L'email ha un sistema di fallback a due livelli:
 ## Google Drive Backup
 
 I PDF delle fatture vengono caricati automaticamente nella cartella Google Drive del cliente:
+
 - **Location:** `{client_drive_folder_id}`
 - **Filename:** `Invoice_INV-YYYYMMDD-XXXXX.pdf`
 - **Link:** Disponibile nel campo `drive_link` della pratica
@@ -118,6 +121,7 @@ L'automazione parte automaticamente in background.
 ## Test e Verifica
 
 ### Test SMTP
+
 ```bash
 fly ssh console --app nuzantara-rag
 python3 -c "
@@ -135,6 +139,7 @@ asyncio.run(smtp.send_email(
 ```
 
 ### Test Automazione Completa
+
 ```bash
 # Via SSH su Fly.io
 python3 << 'PYEOF'
@@ -159,15 +164,18 @@ PYEOF
 ## Troubleshooting
 
 ### Errore "Authentication Failed"
+
 - Verificare che SMTP_PASSWORD sia corretta
 - Per Zoho: usare la password normale dell'account (non App Password)
 - Verificare che l'account non abbia 2FA che blocca SMTP
 
 ### Errore "URL_RULE_NOT_CONFIGURED"
+
 - Normale se Zoho Mail API non è configurata
 - Il sistema passa automaticamente a SMTP fallback
 
 ### Email non arrivano
+
 1. Controllare SPAM/Junk folder
 2. Verificare che l'email del cliente esista
 3. Controllare i log: `fly logs --app nuzantara-rag`
@@ -176,11 +184,11 @@ PYEOF
 
 ## Stato Token OAuth
 
-| Servizio | Stato | Scadenza |
-|----------|-------|----------|
-| Zoho Invoice API | ✅ Attivo | Auto-refresh |
-| Zoho Mail API | ⚠️ Non configurato | N/A |
-| SMTP Zoho | ✅ Attivo | Permanente |
+| Servizio         | Stato              | Scadenza     |
+| ---------------- | ------------------ | ------------ |
+| Zoho Invoice API | ✅ Attivo          | Auto-refresh |
+| Zoho Mail API    | ⚠️ Non configurato | N/A          |
+| SMTP Zoho        | ✅ Attivo          | Permanente   |
 
 ---
 
@@ -196,6 +204,7 @@ PYEOF
 ## Ultimo Aggiornamento
 
 **22 Febbraio 2026**
+
 - ✅ Configurazione SMTP Zoho Pro completata
 - ✅ Fallback SMTP attivato
 - ✅ Test invio email riuscito

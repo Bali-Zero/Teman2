@@ -2,7 +2,7 @@
 ZANTARA Multi-Personality Service
 
 Gestisce le diverse personalità dell'AI system:
-- Jaksel: Indonesian slang (Amanda, Anton, Krisna, Dea, etc.)
+- Jaksel: Indonesian slang (Anton, Krisna, Dea, etc.)
 - ZERO: Italian style (Zero, Nina)
 - Professional: Standard English/Indonesian
 - Custom: Basato sulle preferenze del team member
@@ -55,7 +55,6 @@ class PersonalityService:
 
         # JAKSEL PERSONALITY (Indonesian slang users)
         jaksel_members = [
-            "amanda",
             "anton",
             "krisna",
             "adi",

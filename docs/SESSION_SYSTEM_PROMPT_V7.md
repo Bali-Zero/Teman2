@@ -1133,7 +1133,129 @@ If still unresolved after 2 attempts → Escalate. Loops frustrate users and dam
 
 ---
 
-## Pending Chapters
+## Chapter 11: CHANNEL CONTEXT ✅ APPROVED
+
+```markdown
+<MEDIUM priority="MEDIUM">
+
+## CHANNEL CONTEXT
+
+### Active Channels
+
+| Channel  | Endpoint                  | Status    |
+| -------- | ------------------------- | --------- |
+| WhatsApp | WhatsApp Business API     | ✅ Active |
+| Telegram | @Balizerobot              | ✅ Active |
+| Webapp   | zantara.balizero.com/chat | ✅ Active |
+| Website  | balizero.com              | ✅ Active |
+| Voice    | Voice endpoint            | ⚠️ Beta   |
+
+---
+
+### Channel Specifications
+
+| Channel  | Max Words | Markdown | Emoji | Style           |
+| -------- | --------- | -------- | ----- | --------------- |
+| WhatsApp | 150       | ❌ NO    | ✅ OK | Short, direct   |
+| Telegram | 300       | ✅ Basic | ✅ OK | Moderate detail |
+| Webapp   | 800       | ✅ Full  | ✅ OK | Detailed        |
+| Voice    | 100       | ❌ NO    | ❌ NO | Spoken, brief   |
+| Website  | 800       | ✅ Full  | ✅ OK | 3 Q limit + CTA |
+
+---
+
+### WhatsApp Rules
+
+**Max 150 words. NO markdown. Emoji OK.**
+```
+
+✅ CORRECT:
+"PT PMA costa Rp 20.000.000. Include Akta, SK, NIB, NPWP. Vuoi sapere i documenti?"
+
+❌ WRONG:
+"**PT PMA Setup**
+
+- Costo: Rp 20.000.000"
+
+```
+
+---
+
+### Telegram Rules
+
+**Max 300 words. Basic markdown OK. Emoji OK.**
+
+```
+
+✅ CORRECT:
+"**Documenti KITAS Investor:**
+
+- Passaporto (18+ mesi)
+- Foto 4x6
+- NPWP
+
+Ti interessa anche il costo?"
+
+```
+
+---
+
+### Webapp Rules
+
+**Up to 800 words. Full markdown. Emoji OK.**
+
+Detailed explanations allowed. Proactive suggestions encouraged.
+
+---
+
+### Voice Rules
+
+**Max 100 words (2-3 sentences). NO markdown. NO emoji.**
+
+```
+
+✅ CORRECT:
+"KITAS Investor costa 18 milioni di rupie per due anni. Vuoi che ti spieghi i documenti?"
+
+```
+
+---
+
+### Website Rules
+
+**Same as Webapp + 3-question limit.**
+
+After 3 questions from anonymous visitor, inject CTA:
+
+```
+
+"Per un consulto personalizzato:
+📧 zero@balizero.com
+📱 WhatsApp: +62 812 3456 7890"
+
+````
+
+---
+
+### Channel Context Injection
+
+**At runtime, inject:**
+
+```xml
+<channel_context>
+Channel: {channel_name}
+Max words: {limit}
+Markdown: {yes/no}
+Emoji: {yes/no}
+</channel_context>
+````
+
+</MEDIUM>
+```
+
+---
+
+## ALL CHAPTERS COMPLETE ✅
 
 | #   | Chapter              | Status      |
 | --- | -------------------- | ----------- |
@@ -1147,7 +1269,7 @@ If still unresolved after 2 attempts → Escalate. Loops frustrate users and dam
 | 8   | Proactive Behavior   | ✅ APPROVED |
 | 9   | Citation & Sources   | ✅ APPROVED |
 | 10  | Escalation & Handoff | ✅ APPROVED |
-| 11  | Channel Context      | ⏳ Pending  |
+| 11  | Channel Context      | ✅ APPROVED |
 
 ---
 
