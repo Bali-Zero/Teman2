@@ -195,6 +195,18 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(google_drive.router)
     api.include_router(documents_proxy.router)  # Proxy Drive files without Google branding
     api.include_router(team_drive.router)  # Service Account based - for Zoho team members
+    
+    # Admin Drive Auth (Temporary - for system user OAuth)
+    from backend.app.routers import admin_drive_auth, admin_zoho_auth, test_drive, test_drive_create, test_invoice, test_list_practices, test_update_client, test_zoho_status, test_invoice_debug
+    api.include_router(admin_drive_auth.router)
+    api.include_router(admin_zoho_auth.router)
+    api.include_router(test_drive.router)
+    api.include_router(test_drive_create.router)
+    api.include_router(test_invoice.router)
+    api.include_router(test_list_practices.router)
+    api.include_router(test_update_client.router)
+    api.include_router(test_zoho_status.router)
+    api.include_router(test_invoice_debug.router)
 
     # Blog routers
     api.include_router(newsletter.router)

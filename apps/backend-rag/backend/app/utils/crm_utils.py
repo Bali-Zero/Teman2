@@ -62,6 +62,69 @@ def is_super_admin(user: dict) -> bool:
     return email in SUPER_ADMIN_EMAILS
 
 
+async def verify_client_access(
+    client_id: int,
+    current_user: dict,
+    conn,
+    allow_assigned: bool = True,
+) -> tuple[bool, str | None]:
+    """
+    Verify if a user has access to a specific client.
+
+    Args:
+        client_id: The client ID to check
+        current_user: User dictionary from authentication
+        conn: Database connection
+        allow_assigned: If True, allows access to assigned team members (not just admins)
+
+    Returns:
+        tuple: (has_access, assigned_to_email or None)
+               has_access is True if user is admin OR (allow_assigned AND is the assigned user)
+
+    Raises:
+        HTTPException: 403 if access denied, 404 if client not found
+    """
+    from fastapi import HTTPException
+
+    user_email = current_user.get("email", "").lower()
+
+    # Admins always have access
+    if is_crm_admin(current_user):
+        # Still fetch assigned_to for audit purposes
+        row = await conn.fetchrow(
+            "SELECT assigned_to FROM clients WHERE id = $1",
+            client_id,
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail="Client not found")
+        return True, row["assigned_to"]
+
+    # Non-admins: fetch client and check assignment
+    row = await conn.fetchrow(
+        "SELECT id, assigned_to FROM clients WHERE id = $1",
+        client_id,
+    )
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    assigned_to = row["assigned_to"]
+
+    # If allowing assigned access, check if user is the assigned team member
+    if allow_assigned and assigned_to and assigned_to.lower() == user_email:
+        return True, assigned_to
+
+    # Access denied
+    logger.warning(
+        f"RBAC: User {user_email} denied access to client {client_id} "
+        f"(assigned_to: {assigned_to})"
+    )
+    raise HTTPException(
+        status_code=403,
+        detail="You don't have permission to access this client. Only admins or the assigned team member can access it.",
+    )
+
+
 def extract_json_from_llm_response(text: str) -> dict | None:
     """
     Extract JSON from LLM response, handling code fences and chain-of-thought reasoning.
