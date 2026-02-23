@@ -991,7 +991,7 @@ async def get_practices_stats(
             is_crm_admin(current_user)
         else:
             # Fallback
-            logger.warning("get_practices_stats called without valid user context")
+            logger.debug("get_practices_stats called without user context (internal call)")
 
         async with db_pool.acquire() as conn:
             # Stats are currently global but we could filter by team_member
