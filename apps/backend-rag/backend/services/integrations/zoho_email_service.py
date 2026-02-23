@@ -240,7 +240,7 @@ class ZohoEmailService:
 
             if response.status_code >= 400:
                 error_data = response.json() if response.content else {}
-                logger.error(
+                logger.warning(
                     f"[Email API] Error: {method} {endpoint} user={user_id} "
                     f"status={response.status_code} error={error_data}"
                 )

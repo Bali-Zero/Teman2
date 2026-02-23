@@ -467,8 +467,8 @@ async def get_neural_pulse(
             async with db_pool.acquire() as conn:
                 # Check last conversation - use session_id as identifier since title may not exist
                 last_conv = await conn.fetchval(
-                    """SELECT session_id FROM conversations 
-                       ORDER BY updated_at DESC LIMIT 1"""
+                    """SELECT session_id FROM conversations
+                       ORDER BY created_at DESC LIMIT 1"""
                 )
                 if last_conv:
                     last_activity = f"Last chat: {last_conv[:30]}..."
