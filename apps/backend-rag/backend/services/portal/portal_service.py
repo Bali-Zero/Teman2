@@ -2353,12 +2353,9 @@ Questa è una notifica automatica da Bali Zero CRM.
         """Convert status to progress percentage."""
         progress_map = {
             "inquiry": 10,
-            "waiting_documents": 20,
-            "sending_invoice": 30,
-            "waiting_payment": 40,
-            "on_process": 60,
-            "submitted_to_gov": 80,
-            "approved": 90,
+            "waiting_documents": 30,
+            "sending_invoice": 50,
+            "on_process": 75,
             "completed": 100,
         }
         return progress_map.get(status, 0)

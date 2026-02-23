@@ -807,7 +807,7 @@ async def get_client_summary(
                             p
                             for p in practices
                             if p["status"]
-                            in ["inquiry", "in_progress", "waiting_documents", "submitted_to_gov"]
+                            in ["inquiry", "waiting_documents", "sending_invoice", "on_process"]
                         ]
                     ),
                     "completed": len([p for p in practices if p["status"] == "completed"]),

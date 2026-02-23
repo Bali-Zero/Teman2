@@ -106,7 +106,7 @@ class Practice(SQLModel, table=True):
         default="inquiry",
         max_length=50,
         index=True,
-    )  # 'inquiry', 'sending_invoice', 'waiting_payment', 'on_process', 'waiting_documents', 'submitted_to_gov', 'approved', 'completed', 'cancelled'
+    )  # 'inquiry', 'waiting_documents', 'sending_invoice', 'on_process', 'completed'
     priority: str = Field(default="normal", max_length=20)  # 'low', 'normal', 'high', 'urgent'
 
     # Dates

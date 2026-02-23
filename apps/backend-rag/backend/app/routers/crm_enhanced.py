@@ -425,9 +425,8 @@ async def get_client_profile(
             ORDER BY
                 CASE p.status
                     WHEN 'on_process' THEN 1
-                    WHEN 'in_progress' THEN 1
-                    WHEN 'waiting_documents' THEN 2
-                    WHEN 'submitted_to_gov' THEN 3
+                    WHEN 'sending_invoice' THEN 2
+                    WHEN 'waiting_documents' THEN 3
                     ELSE 4
                 END,
                 p.created_at DESC
