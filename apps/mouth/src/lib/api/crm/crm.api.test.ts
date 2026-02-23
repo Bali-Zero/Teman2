@@ -651,33 +651,6 @@ describe("CrmApi", () => {
       });
     });
 
-    describe("getAutoCRMStats", () => {
-      it("should fetch AUTO CRM extraction stats", async () => {
-        const mockStats = {
-          total_extractions: 50,
-          successful_extractions: 45,
-          failed_extractions: 5,
-          clients_created: 30,
-          clients_updated: 10,
-          practices_created: 20,
-          last_24h: { extractions: 5, clients: 3, practices: 2 },
-          last_7d: { extractions: 50, clients: 30, practices: 20 },
-          extraction_confidence_avg: 0.85,
-          top_practice_types: [],
-          recent_extractions: [],
-        };
-
-        mockClient.request.mockResolvedValue(mockStats);
-
-        const result = await crmApi.getAutoCRMStats(7);
-
-        expect(mockClient.request).toHaveBeenCalledWith(
-          "/api/crm/auto/stats?days=7",
-        );
-        expect(result.total_extractions).toBe(50);
-      });
-    });
-
     describe("getClientSummary", () => {
       it("should fetch complete client summary", async () => {
         const mockSummary = {

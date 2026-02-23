@@ -8,7 +8,6 @@ import type {
   CreateClientParams,
   CreatePracticeParams,
   RenewalAlert,
-  AutoCRMStats,
   ClientSummary,
   ClientProfile,
   FamilyMember,
@@ -284,15 +283,6 @@ export class CrmApi {
         body: JSON.stringify(data),
       },
       60000, // 60 second timeout for creation
-    );
-  }
-
-  /**
-   * Get AUTO CRM extraction statistics
-   */
-  async getAutoCRMStats(days: number = 7): Promise<AutoCRMStats> {
-    return this.client.request<AutoCRMStats>(
-      `/api/crm/auto/stats?days=${days}`,
     );
   }
 
