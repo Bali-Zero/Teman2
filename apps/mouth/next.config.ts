@@ -86,6 +86,25 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        // Force no-cache for kbli-navigator proxy routes
+        source: "/kbli-navigator",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+        ],
+      },
+      {
+        source: "/kbli-navigator/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+        ],
+      },
+      {
         // Cache static assets for 1 year (immutable)
         source: "/_next/static/:path*",
         headers: [
