@@ -38,35 +38,20 @@ const STATUS_INFO: Record<
     color: "blue",
     icon: <AlertCircle className="w-4 h-4" />,
   },
-  quotation_sent: {
-    label: "Quotation Sent",
-    color: "yellow",
-    icon: <FileText className="w-4 h-4" />,
-  },
-  payment_pending: {
-    label: "Payment Pending",
-    color: "orange",
-    icon: <DollarSign className="w-4 h-4" />,
-  },
-  in_progress: {
-    label: "In Progress",
-    color: "purple",
-    icon: <Clock className="w-4 h-4" />,
-  },
   waiting_documents: {
     label: "Waiting Documents",
     color: "amber",
     icon: <FileText className="w-4 h-4" />,
   },
-  submitted_to_gov: {
-    label: "Submitted to Gov",
-    color: "indigo",
-    icon: <FileText className="w-4 h-4" />,
+  sending_invoice: {
+    label: "Sending Invoice",
+    color: "orange",
+    icon: <DollarSign className="w-4 h-4" />,
   },
-  approved: {
-    label: "Approved",
-    color: "green",
-    icon: <CheckCircle2 className="w-4 h-4" />,
+  on_process: {
+    label: "On Process",
+    color: "purple",
+    icon: <Clock className="w-4 h-4" />,
   },
   completed: {
     label: "Completed",
@@ -879,12 +864,9 @@ export default function CaseDetailPage() {
                   className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
                 >
                   <option value="inquiry">Inquiry</option>
-                  <option value="quotation_sent">Quotation Sent</option>
-                  <option value="payment_pending">Payment Pending</option>
-                  <option value="in_progress">In Progress</option>
                   <option value="waiting_documents">Waiting Documents</option>
-                  <option value="submitted_to_gov">Submitted to Gov</option>
-                  <option value="approved">Approved</option>
+                  <option value="sending_invoice">Sending Invoice</option>
+                  <option value="on_process">On Process</option>
                   <option value="completed">Completed</option>
                 </select>
               </div>
