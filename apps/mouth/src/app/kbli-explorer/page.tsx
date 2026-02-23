@@ -39,6 +39,9 @@ import MatchScoreRing from "./components/MatchScoreRing";
 import RiskGauge from "./components/RiskGauge";
 import ComparisonModal from "./components/ComparisonModal";
 import { useTypewriter } from "./hooks/useTypewriter";
+import LegacyAlert from "./components/LegacyAlert";
+import BlackBookModal from "./components/BlackBookModal";
+import { KBLI_CONCORDANCE_2025 } from "./concordance";
 
 // =============================================================================
 // CONSTANTS & HELPERS
@@ -284,8 +287,10 @@ const ChatMessage = ({
 
 const WelcomeOnboarding = ({
   onChipClick,
+  onOpenBlackBook,
 }: {
   onChipClick: (query: string) => void;
+  onOpenBlackBook: () => void;
 }) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
@@ -293,6 +298,34 @@ const WelcomeOnboarding = ({
     exit={{ opacity: 0, y: -20 }}
     className="max-w-2xl mx-auto text-center py-4 md:py-8"
   >
+    {/* 2025 Transition Banner */}
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: 0.2 }}
+      className="mb-10 p-1 rounded-xl bg-gradient-to-r from-[#D4B483]/40 via-[#D4B483]/10 to-transparent border border-[#D4B483]/30"
+    >
+      <div className="bg-[#050507] rounded-lg p-4 md:p-6 flex flex-col md:flex-row items-center gap-6 text-left">
+        <div className="relative shrink-0">
+          <div className="w-16 h-20 bg-[#0A0C10] border border-[#D4B483]/40 rounded shadow-2xl flex items-center justify-center p-2 text-center transform -rotate-2">
+            <div className="text-[5px] uppercase tracking-wider text-[#D4B483]">KBLI 2025 Dossier</div>
+          </div>
+          <div className="absolute -top-2 -right-2 bg-red-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full animate-pulse shadow-lg">RESTRICTED</div>
+        </div>
+        <div className="flex-1">
+          <h4 className="text-white font-serif text-lg mb-1">Are your company codes still valid?</h4>
+          <p className="text-[#888] text-xs leading-relaxed mb-4">Hundreds of KBLI 2020 codes were revoked on Dec 17. The KBLI 2025 transition starts now.</p>
+          <button 
+            onClick={onOpenBlackBook}
+            className="flex items-center gap-2 text-[#D4B483] text-[10px] font-bold uppercase tracking-widest hover:text-white transition-colors group"
+          >
+            <span>Get the 2025 Black Book</span>
+            <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+          </button>
+        </div>
+      </div>
+    </motion.div>
+
     <h1 className="text-2xl md:text-4xl font-serif text-[#F0F0F0] leading-tight mb-3">
       What business do you want to start in Indonesia?
     </h1>
@@ -887,6 +920,11 @@ export default function KBLIExplorerPage() {
   const [compareMode, setCompareMode] = useState(false);
   const [compareSelection, setCompareSelection] = useState<string[]>([]);
   const [compareOpen, setCompareOpen] = useState(false);
+  
+  // Black Book Funnel (2025 Transition)
+  const [isBlackBookOpen, setIsBlackBookOpen] = useState(false);
+  const [detectedLegacyCode, setDetectedLegacyCode] = useState<string | undefined>();
+  
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const isWelcome = messages.length === 0;
@@ -922,6 +960,12 @@ export default function KBLIExplorerPage() {
   const handleInspect = useCallback(async (code: string) => {
     setIsInspecting(true);
     setInspectorOpen(true);
+    
+    // Check if it's a legacy code to trigger the funnel later
+    if (KBLI_CONCORDANCE_2025[code]) {
+      setDetectedLegacyCode(code);
+    }
+
     try {
       const detail = await kbliApi.inspect(code);
       setActiveKBLI(detail);
@@ -958,8 +1002,17 @@ export default function KBLIExplorerPage() {
 
         if (response.results && response.results.length > 0) {
           handleInspect(response.results[0].code);
+          
+          // Trigger legacy detection from results
+          const firstLegacy = response.results.find(r => KBLI_CONCORDANCE_2025[r.code]);
+          if (firstLegacy) setDetectedLegacyCode(firstLegacy.code);
+          
         } else if (response.detected_kbli.length > 0) {
           handleInspect(response.detected_kbli[0]);
+          
+          // Trigger legacy detection from detected codes
+          const firstLegacy = response.detected_kbli.find(c => KBLI_CONCORDANCE_2025[c]);
+          if (firstLegacy) setDetectedLegacyCode(firstLegacy);
         }
       } catch {
         toast.error("Failed to process request");
@@ -1047,6 +1100,26 @@ export default function KBLIExplorerPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-6 space-y-8">
+          <section>
+            <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#333] mb-4 px-2">
+              2025 Transition
+            </h3>
+            <button 
+              onClick={() => setIsBlackBookOpen(true)}
+              className="w-full group p-4 rounded-lg bg-gradient-to-br from-[#D4B483]/20 to-[#0A0C10] border border-[#D4B483]/30 hover:border-[#D4B483] transition-all text-left"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded bg-[#0F1115] text-[#D4B483] border border-[#D4B483]/20">
+                  <FileText size={14} />
+                </div>
+                <span className="text-xs font-bold text-white tracking-wide">KBLI 2025 BLACK BOOK</span>
+              </div>
+              <p className="text-[10px] text-[#888] leading-tight group-hover:text-[#CCC] transition-colors">
+                Download the dossier on revoked codes and the 2025 compliance moats.
+              </p>
+            </button>
+          </section>
+
           <section>
             <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#333] mb-4 px-2">
               Official Sources
@@ -1228,6 +1301,7 @@ export default function KBLIExplorerPage() {
                 <WelcomeOnboarding
                   key="welcome"
                   onChipClick={handleChipClick}
+                  onOpenBlackBook={() => setIsBlackBookOpen(true)}
                 />
               ) : (
                 <motion.div
@@ -1236,6 +1310,14 @@ export default function KBLIExplorerPage() {
                   animate={{ opacity: 1 }}
                   className="space-y-8 md:space-y-12"
                 >
+                  {/* Show Legacy Alert if a critical code is detected in current session */}
+                  {detectedLegacyCode && (
+                    <LegacyAlert 
+                      code={detectedLegacyCode} 
+                      onOpenBlackBook={() => setIsBlackBookOpen(true)} 
+                    />
+                  )}
+
                   {messages.map((msg, idx) => (
                     <div key={idx} className="space-y-4">
                       <ChatMessage
@@ -1343,6 +1425,13 @@ export default function KBLIExplorerPage() {
         codes={compareSelection}
         open={compareOpen}
         onOpenChange={setCompareOpen}
+      />
+
+      {/* Black Book Lead Funnel */}
+      <BlackBookModal 
+        isOpen={isBlackBookOpen} 
+        onClose={() => setIsBlackBookOpen(false)} 
+        detectedCode={detectedLegacyCode}
       />
     </div>
   );
