@@ -206,7 +206,7 @@ class ActivityLoggingMiddleware(BaseHTTPMiddleware):
 
             # Log slow requests
             if response_time_ms > 1000:
-                logger.warning(
+                logger.debug(
                     f"⏱️ Slow request: {request.method} {request.url.path} ({response_time_ms}ms)",
                     extra={
                         "method": request.method,

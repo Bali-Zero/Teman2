@@ -125,14 +125,14 @@ async def websocket_endpoint(websocket: WebSocket):
             token = params.get("token", [None])[0]
 
     if not token:
-        logger.warning("⚠️ WebSocket connection rejected: No token provided")
+        logger.debug("⚠️ WebSocket connection rejected: No token provided")
         await websocket.close(code=4003, reason="Authentication required")
         return
 
     user_id = await get_current_user_ws(token)
 
     if not user_id:
-        logger.warning("⚠️ WebSocket connection rejected: Invalid token")
+        logger.debug("⚠️ WebSocket connection rejected: Invalid token")
         await websocket.close(code=4003, reason="Invalid token")  # Forbidden
         return
 
