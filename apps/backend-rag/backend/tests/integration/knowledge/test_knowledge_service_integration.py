@@ -124,7 +124,7 @@ class TestKnowledgeServiceIntegration:
 
     @pytest.mark.asyncio
     async def test_pricing_query_routing(self, knowledge_service_integration):
-        """Test that pricing queries are correctly routed to bali_zero_pricing"""
+        """Test that pricing queries are correctly routed to bali_zero_pricing_hybrid"""
         pricing_queries = [
             "Quanto costa?",
             "What is the price?",
@@ -136,7 +136,7 @@ class TestKnowledgeServiceIntegration:
             result = await knowledge_service_integration.search(query=query, user_level=1, limit=5)
 
             # Verify routing to pricing collection
-            assert result["collection_used"] == "bali_zero_pricing"
+            assert result["collection_used"] == "bali_zero_pricing_hybrid"
 
             # Verify pricing-specific metadata
             if result["results"]:

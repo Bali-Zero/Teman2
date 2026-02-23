@@ -51,7 +51,7 @@ class CollectionWarmupService:
 
         # Priority collections to warm up (based on usage frequency from analytics)
         self.priority_collections = [
-            "bali_zero_pricing",  # 60% of queries - pricing questions
+            "bali_zero_pricing_hybrid",  # 60% of queries - pricing questions
             "visa_oracle",  # 25% of queries - visa regulations
             "tax_genius",  # 10% of queries - tax information
         ]
@@ -124,7 +124,7 @@ class CollectionWarmupService:
            - Expected: ~500ms-2s (one-time cost)
 
         2. Collection Warmup (by priority):
-           - bali_zero_pricing (60% of queries)
+           - bali_zero_pricing_hybrid (60% of queries)
            - visa_oracle (25% of queries)
            - tax_genius (10% of queries)
            - Each: ~200-500ms per collection

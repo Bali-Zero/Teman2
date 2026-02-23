@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 CollectionName = Literal[
     "visa_oracle",
     "immigration_circulars",  # Kemnaker/Imigrasi circulars (SE, policy updates)
-    "kbli_eye",
+    "kbli_2025_final",
     "kbli_comprehensive",
     "tax_genius",
     "legal_architect",
@@ -462,8 +462,8 @@ class QueryRouter:
     FALLBACK_CHAINS = {
         "visa_oracle": ["immigration_circulars", "legal_architect", "tax_genius"],  # Circulars first for TKA/policy queries
         "immigration_circulars": ["visa_oracle", "legal_architect"],  # Circulars fallback to main visa
-        "kbli_eye": ["legal_architect", "tax_genius", "visa_oracle"],
-        "kbli_comprehensive": ["kbli_eye", "legal_architect", "tax_genius"],
+        "kbli_2025_final": ["legal_architect", "tax_genius", "visa_oracle"],
+        "kbli_comprehensive": ["kbli_2025_final", "legal_architect", "tax_genius"],
         "tax_genius": [
             "tax_knowledge",
             "tax_updates",
@@ -471,7 +471,7 @@ class QueryRouter:
         ],  # NEW: Tax Genius fallback chain
         "tax_knowledge": ["tax_genius", "tax_updates", "legal_architect"],
         "tax_updates": ["tax_genius", "tax_knowledge", "legal_updates"],
-        "legal_architect": ["legal_updates", "kbli_eye", "tax_genius"],
+        "legal_architect": ["legal_updates", "kbli_2025_final", "tax_genius"],
         "legal_updates": ["legal_architect", "tax_updates", "visa_oracle"],
         "property_knowledge": ["property_listings", "legal_architect", "visa_oracle"],
         "property_listings": ["property_knowledge", "legal_architect", "tax_knowledge"],
@@ -479,7 +479,7 @@ class QueryRouter:
         "bali_zero_team": [
             "visa_oracle",
             "legal_architect",
-            "kbli_eye",
+            "kbli_2025_final",
         ],  # Team fallback to main company collections
     }
 

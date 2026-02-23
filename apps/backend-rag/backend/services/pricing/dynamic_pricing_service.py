@@ -6,12 +6,12 @@ costs from multiple Oracle collections.
 
 Example: "PT PMA Restaurant in Seminyak, 3 foreign directors"
 → Aggregates costs from:
-  - KBLI setup (kbli_eye)
+  - KBLI setup (kbli_2025_final)
   - Legal incorporation (legal_architect)
   - Tax registration (tax_genius)
   - Visa costs (visa_oracle) x3
   - Location requirements (property_knowledge)
-  - Service fees (bali_zero_pricing)
+  - Service fees (bali_zero_pricing_hybrid)
 
 → Output: Detailed breakdown + total investment + timeline
 """
@@ -217,14 +217,14 @@ class DynamicPricingService:
                 extracted_costs = self.extract_costs_from_text(text, oracle_name)
                 all_costs.extend(extracted_costs)
 
-        # Step 3: Also query bali_zero_pricing directly
+        # Step 3: Also query bali_zero_pricing_hybrid directly
         pricing_results = await self.search.search(
-            query=scenario, user_level=user_level, limit=5, collection_override="bali_zero_pricing"
+            query=scenario, user_level=user_level, limit=5, collection_override="bali_zero_pricing_hybrid"
         )
 
         for result in pricing_results.get("results", []):
             text = result.get("text", "")
-            extracted_costs = self.extract_costs_from_text(text, "bali_zero_pricing")
+            extracted_costs = self.extract_costs_from_text(text, "bali_zero_pricing_hybrid")
             all_costs.extend(extracted_costs)
 
         logger.info(f"   Extracted {len(all_costs)} cost items from Oracles")

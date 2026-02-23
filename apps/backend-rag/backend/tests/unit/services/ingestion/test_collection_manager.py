@@ -62,10 +62,10 @@ class TestCollectionManager:
         with patch("backend.core.qdrant_db.QdrantClient") as mock_qdrant_class:
             mock_client = MagicMock()
             mock_qdrant_class.return_value = mock_client
-            # kbli_eye has alias kbli_unified
-            result = collection_manager.get_collection("kbli_eye")
+            # kbli_2025_final has alias kbli_unified
+            result = collection_manager.get_collection("kbli_2025_final")
             assert result is not None
-            assert "kbli_eye" in collection_manager._collections_cache
+            assert "kbli_2025_final" in collection_manager._collections_cache
 
     def test_list_collections(self, collection_manager):
         """Test listing all collections"""

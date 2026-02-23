@@ -34,7 +34,7 @@ async def audit_kb():
     client = QdrantClient(url=qdrant_url, api_key=qdrant_api_key)
 
     # Collections to audit
-    collections = ["legal_unified", "visa_oracle", "bali_zero_pricing", "kbli_unified"]
+    collections = ["legal_unified", "visa_oracle", "bali_zero_pricing_hybrid"]
 
     print("\n🧠 DEEP AUDIT FOR DATA EXISTENCE\n" + "=" * 50)
 

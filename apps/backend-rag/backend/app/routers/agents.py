@@ -530,7 +530,7 @@ async def cross_oracle_synthesis(
     Search across multiple Oracle collections and synthesize integrated recommendations.
 
     Example: "I want to open a restaurant in Canggu"
-    → Queries: kbli_eye, legal_architect, tax_genius, visa_oracle, property_knowledge
+    → Queries: kbli_2025_final, legal_architect, tax_genius, visa_oracle, property_knowledge
     → Synthesizes: Integrated plan with KBLI code, legal structure, tax obligations, etc.
     """
     # Get the service from backend.app.state (initialized in app.setup.service_initializer)
@@ -622,7 +622,7 @@ async def run_autonomous_research(
     to answer complex or ambiguous queries without human intervention.
 
     Example: "How to open a crypto company in Indonesia?"
-    → Iteration 1: Search kbli_eye → "crypto" not in KBLI
+    → Iteration 1: Search kbli_2025_final → "crypto" not in KBLI
     → Iteration 2: Expand to legal_updates → finds OJK crypto regulation
     → Iteration 3: Search tax_genius → crypto tax treatment
     → Synthesis: Comprehensive answer

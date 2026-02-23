@@ -5,7 +5,7 @@ Orchestrates queries across multiple Oracle collections and synthesizes
 integrated recommendations using ZANTARA AI.
 
 Example Scenario: "I want to open a restaurant in Canggu"
-→ Queries: kbli_eye, legal_architect, tax_genius, visa_oracle, property_knowledge, bali_zero_pricing
+→ Queries: kbli_2025_final, legal_architect, tax_genius, visa_oracle, property_knowledge, bali_zero_pricing_hybrid
 → Synthesizes: Integrated plan with KBLI code, legal structure, tax obligations,
                staff visa requirements, location requirements, timeline, and total investment
 
@@ -72,8 +72,8 @@ class CrossOracleSynthesisService:
                 "hotel",
                 "villa",
             ],
-            "required_oracles": ["kbli_eye", "legal_architect", "tax_genius"],
-            "optional_oracles": ["visa_oracle", "property_knowledge", "bali_zero_pricing"],
+            "required_oracles": ["kbli_2025_final", "legal_architect", "tax_genius"],
+            "optional_oracles": ["visa_oracle", "property_knowledge", "bali_zero_pricing_hybrid"],
         },
         "visa_application": {
             "keywords": [
@@ -87,7 +87,7 @@ class CrossOracleSynthesisService:
                 "foreigner",
             ],
             "required_oracles": ["visa_oracle"],
-            "optional_oracles": ["legal_architect", "tax_genius", "bali_zero_pricing"],
+            "optional_oracles": ["legal_architect", "tax_genius", "bali_zero_pricing_hybrid"],
         },
         "property_investment": {
             "keywords": [
@@ -107,7 +107,7 @@ class CrossOracleSynthesisService:
                 "tax_genius",
                 "visa_oracle",
                 "property_listings",
-                "bali_zero_pricing",
+                "bali_zero_pricing_hybrid",
             ],
         },
         "tax_optimization": {
@@ -122,7 +122,7 @@ class CrossOracleSynthesisService:
                 "fiscal",
             ],
             "required_oracles": ["tax_genius"],
-            "optional_oracles": ["legal_architect", "kbli_eye", "tax_updates"],
+            "optional_oracles": ["legal_architect", "kbli_2025_final", "tax_updates"],
         },
         "compliance_check": {
             "keywords": [
@@ -134,7 +134,7 @@ class CrossOracleSynthesisService:
                 "license",
                 "izin",
             ],
-            "required_oracles": ["legal_architect", "kbli_eye"],
+            "required_oracles": ["legal_architect", "kbli_2025_final"],
             "optional_oracles": ["tax_genius", "visa_oracle", "legal_updates", "tax_updates"],
         },
     }

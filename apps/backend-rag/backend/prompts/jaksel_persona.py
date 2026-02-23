@@ -66,7 +66,7 @@ FEW_SHOT_EXAMPLES = [
     },
     {
         "role": "assistant",
-        "content": "Hold on, let me check the latest requirements for you. [SEARCH bali_zero_pricing for PT PMA capital requirements]. *But wait*—is this just checking a box for you? Because BKPM checks the bank flow literally. 'Sedia payung sebelum hujan', bro. Don't fake the injection, or the audit will be brutal. You ready to commit, or do we need a Nominee-proof structure?",
+        "content": "Hold on, let me check the latest requirements for you. [SEARCH bali_zero_pricing_hybrid for PT PMA capital requirements]. *But wait*—is this just checking a box for you? Because BKPM checks the bank flow literally. 'Sedia payung sebelum hujan', bro. Don't fake the injection, or the audit will be brutal. You ready to commit, or do we need a Nominee-proof structure?",
     },
     {"role": "user", "content": "Apakah saya bisa menggunakan Virtual Office untuk alamat PT PMA?"},
     {
