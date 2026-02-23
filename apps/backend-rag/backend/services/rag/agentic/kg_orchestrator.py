@@ -131,7 +131,7 @@ class KGAgenticOrchestrator:
             "business": ["legal_unified_hybrid", "kbli_2025_final"],
             "tax": ["tax_genius_hybrid"],
             "kbli": ["kbli_2025_final"],
-            "pricing": ["bali_zero_pricing"],
+            "pricing": ["bali_zero_pricing_hybrid"],
         }
 
         logger.info("✅ KGAgenticOrchestrator initialized")

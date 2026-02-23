@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 CollectionName = Literal[
     "visa_oracle",
     "immigration_circulars",  # Kemnaker/Imigrasi circulars (SE, policy updates)
-    "kbli_eye",
+    "kbli_2025_final",
     "kbli_comprehensive",
     "tax_genius",
     "legal_architect",
@@ -23,7 +23,7 @@ CollectionName = Literal[
     "property_listings",
     "property_knowledge",
     "legal_updates",
-    "bali_zero_pricing",
+    "bali_zero_pricing_hybrid",
     "kb_indonesian",
     "cultural_insights",
     "bali_zero_team",
@@ -49,8 +49,8 @@ class FallbackManagerService:
             "visa_oracle",
             "legal_architect",
         ],  # Circulars fallback to main visa
-        "kbli_eye": ["legal_architect", "tax_genius", "visa_oracle"],
-        "kbli_comprehensive": ["kbli_eye", "legal_architect", "tax_genius"],
+        "kbli_2025_final": ["legal_architect", "tax_genius", "visa_oracle"],
+        "kbli_comprehensive": ["kbli_2025_final", "legal_architect", "tax_genius"],
         "tax_genius": [
             "tax_knowledge",
             "tax_updates",
@@ -58,20 +58,20 @@ class FallbackManagerService:
         ],
         "tax_knowledge": ["tax_genius", "tax_updates", "legal_architect"],
         "tax_updates": ["tax_genius", "tax_knowledge", "legal_updates"],
-        "legal_architect": ["legal_updates", "kbli_eye", "tax_genius"],
+        "legal_architect": ["legal_updates", "kbli_2025_final", "tax_genius"],
         "legal_updates": ["legal_architect", "tax_updates", "visa_oracle"],
         "property_knowledge": ["property_listings", "legal_architect", "visa_oracle"],
         "property_listings": ["property_knowledge", "legal_architect", "tax_knowledge"],
         "training_conversations_hybrid": [
             "legal_architect",
             "tax_genius",
-            "kbli_eye",
+            "kbli_2025_final",
         ],  # Business setup fallback to legal/tax/kbli
         "zantara_books": ["visa_oracle"],  # Books is standalone, default fallback
         "bali_zero_team": [
             "visa_oracle",
             "legal_architect",
-            "kbli_eye",
+            "kbli_2025_final",
         ],  # Team fallback to main company collections
         "kbli_2025_final": [
             "training_conversations_hybrid",

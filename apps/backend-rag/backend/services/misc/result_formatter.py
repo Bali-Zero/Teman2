@@ -23,7 +23,7 @@ def format_search_results(
     Score Calculation:
     1. Base score: 1 / (1 + distance) - converts cosine distance to similarity
     2. Primary boost: +20% for results from primary collection
-    3. Pricing boost: +15% for bali_zero_pricing collection
+    3. Pricing boost: +15% for bali_zero_pricing_hybrid collection
     4. Team boost: +15% for bali_zero_team collection
     5. Capping: Max score = 0.99 to preserve ranking stability
 
@@ -57,7 +57,7 @@ def format_search_results(
         ...     "metadatas": [{"type": "visa"}]
         ... }
         >>> results = format_search_results(
-        ...     raw, "bali_zero_pricing", primary_collection="visa_oracle"
+        ...     raw, "bali_zero_pricing_hybrid", primary_collection="visa_oracle"
         ... )
         >>> print(results[0]["score"])  # 0.9185 (base + pricing boost)
     """
@@ -81,7 +81,7 @@ def format_search_results(
         if primary_collection and collection_name == primary_collection:
             score = min(SearchConstants.MAX_SCORE, score * SearchConstants.PRIMARY_COLLECTION_BOOST)
 
-        if collection_name == "bali_zero_pricing":
+        if collection_name == "bali_zero_pricing_hybrid":
             score = min(SearchConstants.MAX_SCORE, score + SearchConstants.PRICING_SCORE_BOOST)
 
         if collection_name == "bali_zero_team":
@@ -98,7 +98,7 @@ def format_search_results(
             metadata["is_primary"] = collection_name == primary_collection
 
         # Add pricing priority flag
-        if collection_name == "bali_zero_pricing":
+        if collection_name == "bali_zero_pricing_hybrid":
             metadata["pricing_priority"] = "high"
 
         # Get document content

@@ -58,7 +58,7 @@ class TestResultFormatter:
             "distances": [0.1],
             "metadatas": [{"tier": "S", "source": "test"}],
         }
-        formatted = format_search_results(raw_results, "bali_zero_pricing")
+        formatted = format_search_results(raw_results, "bali_zero_pricing_hybrid")
         assert isinstance(formatted, list)
         assert len(formatted) == 1
         assert formatted[0]["score"] > 0

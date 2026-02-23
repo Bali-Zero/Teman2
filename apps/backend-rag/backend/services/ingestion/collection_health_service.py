@@ -87,9 +87,9 @@ class CollectionHealthService:
         # Per-collection metrics tracking
         self.metrics = {
             # Initialize 14 collections
-            "bali_zero_pricing": self._init_metrics("bali_zero_pricing"),
+            "bali_zero_pricing_hybrid": self._init_metrics("bali_zero_pricing_hybrid"),
             "visa_oracle": self._init_metrics("visa_oracle"),
-            "kbli_eye": self._init_metrics("kbli_eye"),
+            "kbli_2025_final": self._init_metrics("kbli_2025_final"),
             "tax_genius": self._init_metrics("tax_genius"),
             "legal_architect": self._init_metrics("legal_architect"),
             "kb_indonesian": self._init_metrics("kb_indonesian"),

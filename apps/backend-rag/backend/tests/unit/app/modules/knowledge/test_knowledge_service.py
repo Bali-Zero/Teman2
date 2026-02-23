@@ -107,8 +107,8 @@ class TestKnowledgeService:
             query="how much does it cost", user_level=1, limit=5
         )
         assert isinstance(result, dict)
-        # Should route to bali_zero_pricing collection
-        assert result["collection_used"] == "bali_zero_pricing"
+        # Should route to bali_zero_pricing_hybrid collection
+        assert result["collection_used"] == "bali_zero_pricing_hybrid"
 
     @pytest.mark.asyncio
     async def test_search_collection_not_found(self, knowledge_service, mock_qdrant_client):
@@ -197,8 +197,8 @@ class TestKnowledgeService:
         assert result["results"][2]["id"] == "id3"
 
     @pytest.mark.asyncio
-    async def test_search_bali_zero_pricing_score_bias(self, knowledge_service, mock_qdrant_client):
-        """Test search with bali_zero_pricing collection adds score bias"""
+    async def test_search_bali_zero_pricing_hybrid_score_bias(self, knowledge_service, mock_qdrant_client):
+        """Test search with bali_zero_pricing_hybrid collection adds score bias"""
         mock_qdrant_client.search = AsyncMock(
             return_value={
                 "documents": [["pricing doc"]],
@@ -208,7 +208,7 @@ class TestKnowledgeService:
             }
         )
         result = await knowledge_service.search(query="how much", user_level=1, limit=5)
-        assert result["collection_used"] == "bali_zero_pricing"
+        assert result["collection_used"] == "bali_zero_pricing_hybrid"
         assert result["results"][0]["metadata"].get("pricing_priority") == "high"
         # Score should be biased (original score + 0.15, capped at 1.0)
         assert result["results"][0]["score"] > 0.9
@@ -340,4 +340,4 @@ class TestKnowledgeService:
                 }
             )
             result = await knowledge_service.search(query=query, user_level=1, limit=5)
-            assert result["collection_used"] == "bali_zero_pricing"
+            assert result["collection_used"] == "bali_zero_pricing_hybrid"

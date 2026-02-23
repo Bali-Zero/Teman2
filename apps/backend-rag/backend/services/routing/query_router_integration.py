@@ -116,12 +116,12 @@ class QueryRouterIntegration:
         # Detect pricing query
         is_pricing = self.is_pricing_query(query)
         if is_pricing:
-            # Route to bali_zero_pricing (29 docs) with legal_unified_hybrid as fallback
-            collection_name = "bali_zero_pricing"
-            logger.info("💰 PRICING QUERY DETECTED → Routing to bali_zero_pricing (primary)")
+            # Route to bali_zero_pricing_hybrid (29 docs) with legal_unified_hybrid as fallback
+            collection_name = "bali_zero_pricing_hybrid"
+            logger.info("💰 PRICING QUERY DETECTED → Routing to bali_zero_pricing_hybrid (primary)")
             return {
                 "collection_name": collection_name,
-                "collections": ["bali_zero_pricing", "legal_unified_hybrid"],
+                "collections": ["bali_zero_pricing_hybrid", "legal_unified_hybrid"],
                 "confidence": 0.95,
                 "is_pricing": True,
             }

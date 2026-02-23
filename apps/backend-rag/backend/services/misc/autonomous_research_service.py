@@ -5,7 +5,7 @@ Self-directed research agent that iteratively explores Qdrant collections
 to answer complex or ambiguous queries without human intervention.
 
 Example: "How to open a crypto company in Indonesia?"
-→ Iteration 1: Search kbli_eye → "crypto" not in KBLI database
+→ Iteration 1: Search kbli_2025_final → "crypto" not in KBLI database
 → Iteration 2: Expand to legal_updates → finds OJK crypto regulation 2024
 → Iteration 3: Search tax_genius → crypto tax treatment
 → Iteration 4: Search visa_oracle → fintech director visa requirements

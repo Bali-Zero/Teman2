@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 CollectionName = Literal[
     "visa_oracle",
-    "kbli_eye",
+    "kbli_2025_final",
     "kbli_comprehensive",
     "tax_genius",
     "legal_architect",
@@ -20,7 +20,7 @@ CollectionName = Literal[
     "property_listings",
     "property_knowledge",
     "legal_updates",
-    "bali_zero_pricing",
+    "bali_zero_pricing_hybrid",
     "kb_indonesian",
     "cultural_insights",
     "bali_zero_team",

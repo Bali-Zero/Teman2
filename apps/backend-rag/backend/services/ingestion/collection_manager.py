@@ -51,10 +51,10 @@ class CollectionManager:
                 "description": "Shared knowledge from users",
             },
             # Core collections
-            "bali_zero_pricing": {"priority": "high", "doc_count": 29},
+            "bali_zero_pricing_hybrid": {"priority": "high", "doc_count": 29},
             "bali_zero_team": {"priority": "high", "doc_count": 22},
             "visa_oracle": {"priority": "high", "doc_count": 1612},
-            "kbli_eye": {"priority": "high", "doc_count": 8886, "alias": "kbli_2025_final"},
+            "kbli_2025_final": {"priority": "high", "doc_count": 8886, "alias": "kbli_2025_final"},
             "tax_genius": {"priority": "high", "doc_count": 895},
             "legal_architect": {"priority": "high", "doc_count": 5041, "alias": "legal_unified"},
             "legal_unified": {"priority": "high", "doc_count": 5041},
