@@ -141,7 +141,7 @@ async def search_shared_memory(
                         SELECT
                             c.*,
                             COUNT(DISTINCT p.id) as total_practices,
-                            COUNT(DISTINCT CASE WHEN p.status IN ('inquiry', 'in_progress', 'waiting_documents', 'submitted_to_gov') THEN p.id END) as active_practices
+                            COUNT(DISTINCT CASE WHEN p.status IN ('inquiry', 'waiting_documents', 'sending_invoice', 'on_process') THEN p.id END) as active_practices
                         FROM clients c
                         LEFT JOIN practices p ON c.id = p.client_id
                         WHERE (c.full_name ILIKE $1 OR c.email ILIKE $2)
@@ -198,20 +198,18 @@ async def search_shared_memory(
                 if "active" in query_lower or "in progress" in query_lower:
                     status_filter = [
                         "inquiry",
-                        "sending_invoice",
-                        "waiting_payment",
-                        "on_process",
                         "waiting_documents",
-                        "submitted_to_gov",
+                        "sending_invoice",
+                        "on_process",
                     ]
                 elif "completed" in query_lower:
                     status_filter = ["completed"]
                 else:
                     status_filter = [
                         "inquiry",
-                        "on_process",
                         "waiting_documents",
-                        "submitted_to_gov",
+                        "sending_invoice",
+                        "on_process",
                     ]  # default to active
 
                 practice_rows = await conn.fetch(
@@ -254,7 +252,7 @@ async def search_shared_memory(
                     JOIN practice_types pt ON p.practice_type_id = pt.id
                     JOIN clients c ON p.client_id = c.id
                     WHERE p.priority IN ('high', 'urgent')
-                    AND p.status IN ('inquiry', 'on_process', 'waiting_documents', 'submitted_to_gov')
+                    AND p.status IN ('inquiry', 'waiting_documents', 'sending_invoice', 'on_process')
                     {"" if user_is_admin else f"AND LOWER(c.assigned_to) = '{user_email}'"}
                     ORDER BY
                         CASE p.priority
@@ -480,7 +478,7 @@ async def get_client_full_context(
                             p
                             for p in practices
                             if p["status"]
-                            in ["inquiry", "on_process", "waiting_documents", "submitted_to_gov"]
+                            in ["inquiry", "waiting_documents", "sending_invoice", "on_process"]
                         ]
                     ),
                     "completed": len([p for p in practices if p["status"] == "completed"]),
@@ -555,7 +553,7 @@ async def get_team_overview(
                 SELECT assigned_to, COUNT(*) as count
                 FROM practices
                 WHERE assigned_to IS NOT NULL
-                AND status IN ('inquiry', 'on_process', 'waiting_documents', 'submitted_to_gov')
+                AND status IN ('inquiry', 'waiting_documents', 'sending_invoice', 'on_process')
                 GROUP BY assigned_to
                 ORDER BY count DESC
                 """
@@ -597,7 +595,7 @@ async def get_team_overview(
                     COUNT(p.id) as count
                 FROM practices p
                 JOIN practice_types pt ON p.practice_type_id = pt.id
-                WHERE p.status IN ('inquiry', 'on_process', 'waiting_documents', 'submitted_to_gov')
+                WHERE p.status IN ('inquiry', 'waiting_documents', 'sending_invoice', 'on_process')
                 GROUP BY pt.code, pt.name
                 ORDER BY count DESC
                 """

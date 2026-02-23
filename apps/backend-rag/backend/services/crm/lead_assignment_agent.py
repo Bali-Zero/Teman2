@@ -211,7 +211,7 @@ async def assign_lead(state: LeadAssignmentState, db_pool: "asyncpg.Pool") -> Le
                        COUNT(p.id) as active_practices
                 FROM team_members tm
                 LEFT JOIN practices p ON p.assigned_to = tm.email
-                    AND p.status IN ('inquiry', 'in_progress', 'waiting_documents', 'submitted_to_gov')
+                    AND p.status IN ('inquiry', 'waiting_documents', 'sending_invoice', 'on_process')
                 WHERE tm.active = true
                   AND tm.role IN ({role_placeholders})
                   AND LOWER(tm.department) = LOWER(${len(role_list) + 1})
@@ -248,7 +248,7 @@ async def assign_lead(state: LeadAssignmentState, db_pool: "asyncpg.Pool") -> Le
                        COUNT(p.id) as active_practices
                 FROM team_members tm
                 LEFT JOIN practices p ON p.assigned_to = tm.email
-                    AND p.status IN ('inquiry', 'in_progress', 'waiting_documents', 'submitted_to_gov')
+                    AND p.status IN ('inquiry', 'waiting_documents', 'sending_invoice', 'on_process')
                 WHERE tm.active = true
                   AND tm.role IN ({role_placeholders})
                 GROUP BY tm.email, tm.full_name, tm.department

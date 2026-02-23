@@ -75,12 +75,8 @@ class PracticeValidator(BaseModel):
             "inquiry",
             "waiting_documents",
             "sending_invoice",
-            "waiting_payment",
             "on_process",
-            "submitted_to_gov",
-            "approved",
             "completed",
-            "cancelled",
         }
         if v not in allowed:
             raise ValueError(f"Status must be one of: {allowed}")

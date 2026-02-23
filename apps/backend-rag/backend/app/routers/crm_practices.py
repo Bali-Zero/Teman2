@@ -60,12 +60,8 @@ STATUS_VALUES = {
     "inquiry",
     "waiting_documents",
     "sending_invoice",
-    "waiting_payment",
     "on_process",
-    "submitted_to_gov",
-    "approved",
     "completed",
-    "cancelled",
 }
 
 # ================================================
@@ -551,12 +547,8 @@ async def update_practice(
     - inquiry
     - waiting_documents
     - sending_invoice
-    - waiting_payment
     - on_process
-    - submitted_to_gov
-    - approved
     - completed
-    - cancelled
     """
     user_email = current_user.get("email", "unknown")
     try:
@@ -690,11 +682,9 @@ async def update_practice(
                 if is_visible:
                     status_event_map = {
                         "waiting_documents": ("document_request", "Documents needed", "warning"),
-                        "payment_pending": ("payment_due", "Payment needed", "warning"),
-                        "submitted_to_gov": ("milestone", "Application submitted", "info"),
-                        "approved": ("milestone", "Application approved", "success"),
+                        "sending_invoice": ("payment_due", "Invoice sent", "warning"),
+                        "on_process": ("milestone", "Application in process", "info"),
                         "completed": ("completion", "Case completed", "success"),
-                        "cancelled": ("status_change", "Case cancelled", "error"),
                     }
 
                     if updates.status in status_event_map:
@@ -1043,7 +1033,7 @@ async def get_practices_stats(
                 """
                 SELECT COUNT(*) as count
                 FROM practices
-                WHERE status IN ('inquiry', 'in_progress', 'waiting_documents', 'submitted_to_gov')
+                WHERE status IN ('inquiry', 'waiting_documents', 'sending_invoice', 'on_process')
                 """
             )
 
