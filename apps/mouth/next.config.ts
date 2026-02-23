@@ -174,11 +174,19 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  // KBLI Navigator 2025: DISABLED - serving local static file
-  // Previously proxied to: kbli-navigator-rebuild.vercel.app
+  // KBLI Navigator 2025: Proxy /kbli-navigator/* to the standalone Vercel app
+  // The new app uses basePath=/kbli-navigator, so paths match 1:1
   async rewrites() {
     return [
-      // Proxy disabled - using local public/kbli-navigator/index.html
+      {
+        source: "/kbli-navigator",
+        destination: "https://kbli-navigator-rebuild.vercel.app/kbli-navigator",
+      },
+      {
+        source: "/kbli-navigator/:path*",
+        destination:
+          "https://kbli-navigator-rebuild.vercel.app/kbli-navigator/:path*",
+      },
     ];
   },
 
