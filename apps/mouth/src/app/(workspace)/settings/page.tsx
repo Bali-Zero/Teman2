@@ -14,8 +14,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-import { Sparkles } from "lucide-react";
-
 const settingsSections = [
   {
     title: "Profile",
@@ -52,12 +50,6 @@ const settingsSections = [
     description: "Manage API keys",
     icon: Key,
     href: "/settings/api",
-  },
-  {
-    title: "AUTO CRM",
-    description: "AI-powered CRM extraction settings and statistics",
-    icon: Sparkles,
-    href: "/settings/auto-crm",
   },
 ];
 

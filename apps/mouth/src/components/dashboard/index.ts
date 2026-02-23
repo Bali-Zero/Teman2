@@ -4,7 +4,6 @@ export type { PraticaPreview } from "./PratichePreview";
 export { WhatsAppPreview } from "./WhatsAppPreview";
 export type { WhatsAppMessage } from "./WhatsAppPreview";
 export { AiPulseWidget } from "./AiPulseWidget";
-export { AutoCRMWidget } from "./AutoCRMWidget";
 export { FinancialRealityWidget } from "./FinancialRealityWidget";
 export { NusantaraHealthWidget } from "./NusantaraHealthWidget";
 export { EmailPreview } from "./EmailPreview";

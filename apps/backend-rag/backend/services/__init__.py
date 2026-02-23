@@ -47,10 +47,8 @@ from .analytics import (
 # CRM services
 from .crm import (
     AICRMExtractor,
-    AutoCRMService,
     CollaboratorProfile,
     CollaboratorService,
-    get_auto_crm_service,
     get_extractor,
 )
 
@@ -301,8 +299,6 @@ __all__ = [
     "PriorityOverrideService",
     "RoutingStatsService",
     # CRM
-    "AutoCRMService",
-    "get_auto_crm_service",
     "AICRMExtractor",
     "get_extractor",
     "CollaboratorService",

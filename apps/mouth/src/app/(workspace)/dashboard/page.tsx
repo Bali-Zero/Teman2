@@ -16,7 +16,6 @@ import {
   WhatsAppPreview,
   AiPulseWidget,
   FinancialRealityWidget,
-  AutoCRMWidget,
   FeaturedArticlesWidget,
   HomepagePreviewWidget,
 } from "@/components/dashboard";
@@ -276,9 +275,6 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="rounded-xl border-2 border-sky-500/40 bg-sky-500/10 p-1 h-fit">
-                <AutoCRMWidget />
-              </div>
             </div>
 
             {revenue && (
@@ -288,13 +284,6 @@ export default function DashboardPage() {
               />
             )}
           </>
-        )}
-
-        {/* Team widgets */}
-        {!isZero && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-4 duration-700">
-            <AutoCRMWidget />
-          </div>
         )}
 
         {/* Stats Cards */}

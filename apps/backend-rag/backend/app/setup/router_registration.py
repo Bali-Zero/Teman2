@@ -37,7 +37,6 @@ def include_routers(api: FastAPI) -> None:
         collective_memory,
         conversations,
         crm_analytics,  # [NEW] CRM Analytics dashboard
-        crm_auto,
         crm_clients,
         crm_company,  # [NEW] Company-Centric CRM
         crm_enhanced,
@@ -68,7 +67,6 @@ def include_routers(api: FastAPI) -> None:
         news,
         newsletter,
         nusantara_health,
-        omnichannel_workflow,
         oracle_ingest,
         oracle_universal,
         performance,
@@ -135,7 +133,6 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(crm_practices.router)
     api.include_router(crm_shared_memory.router)
     api.include_router(crm_analytics.router)  # [NEW] CRM Analytics dashboard
-    api.include_router(crm_auto.router)
     api.include_router(crm_portal_integration.router)  # Team ↔ Portal integration
 
     # Notification router (Automated email alerts)
@@ -183,7 +180,6 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(
         whatsapp_conversations.router
     )  # Omnichannel WhatsApp conversations API (dashboard only)
-    api.include_router(omnichannel_workflow.router)  # [NEW] Omnichannel Workflow & CRM Enrichment
     api.include_router(instagram_chat.router)  # Instagram DM auto-reply via RAG
     api.include_router(webhooks.router)  # External webhooks (OpenClaw, etc.)
     api.include_router(

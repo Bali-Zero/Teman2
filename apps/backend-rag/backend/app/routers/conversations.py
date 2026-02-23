@@ -38,37 +38,6 @@ DEFAULT_CONVERSATION_MESSAGES_LIMIT = 20  # Default messages to return in histor
 SUMMARY_MAX_LENGTH = 200  # Max length for auto-generated summaries
 
 
-# Import auto-CRM service (lazy import to avoid circular dependencies)
-_auto_crm_service = None
-
-
-def get_auto_crm() -> Any:
-    """
-    Lazy import of auto-CRM service
-
-    REFACTORED: Service now requires async initialization (connect() must be called).
-    For lazy initialization, we check if pool exists and connect if needed.
-
-    SECURITY: Fixed circular dependency by using proper import structure instead of sys.path manipulation.
-    """
-    global _auto_crm_service
-    if _auto_crm_service is None:
-        try:
-            # SECURITY: Use proper import instead of sys.path.append to avoid circular dependencies
-            from backend.services.crm.auto_crm_service import get_auto_crm_service
-
-            _auto_crm_service = get_auto_crm_service()
-            # Note: connect() should be called during app startup (main_cloud.py)
-            # For lazy initialization, we could connect here, but it's better to do it at startup
-            log_success(logger, "Auto-CRM service loaded")
-        except ImportError as e:
-            log_warning(logger, f"Auto-CRM service not available (import error): {e}")
-            _auto_crm_service = False  # Mark as unavailable
-        except Exception as e:
-            log_warning(logger, f"Auto-CRM service not available: {e}")
-            _auto_crm_service = False  # Mark as unavailable
-    return _auto_crm_service if _auto_crm_service else None
-
 
 async def _generate_and_update_title(
     conversation_id: int, first_user_message: str, db_pool: asyncpg.Pool
@@ -358,53 +327,11 @@ async def save_conversation(
     # If both failed, then we have a problem
     # But we already tried memory cache.
 
-    # Auto-populate CRM (don't fail if this fails)
-    crm_result = {}
-    if db_success:  # Only try CRM if DB save worked, as it likely depends on DB
-        auto_crm = get_auto_crm()
-
-        if auto_crm and len(request.messages) > 0:
-            try:
-                log_success(
-                    logger,
-                    "Processing conversation for CRM auto-population",
-                    conversation_id=conversation_id,
-                )
-
-                crm_result = await auto_crm.process_conversation(
-                    conversation_id=conversation_id,
-                    messages=request.messages,
-                    user_email=user_email,
-                    team_member=(
-                        request.metadata.get("team_member", "system")
-                        if request.metadata
-                        else "system"
-                    ),
-                    db_pool=db_pool,  # Pass centralized pool
-                )
-
-                if crm_result.get("success"):
-                    log_success(
-                        logger,
-                        "Auto-CRM processed successfully",
-                        client_id=crm_result.get("client_id"),
-                        practice_id=crm_result.get("practice_id"),
-                    )
-                else:
-                    log_warning(logger, f"Auto-CRM failed: {crm_result.get('error')}")
-
-            except Exception as crm_error:
-                log_error(logger, "Auto-CRM processing error", error=crm_error, exc_info=True)
-                crm_result = {"processed": False, "error": str(crm_error)}
-        else:
-            crm_result = {"processed": False, "reason": "auto-crm not available"}
-
     return {
         "success": True,  # Always return true to keep chat alive
         "conversation_id": conversation_id,
         "messages_saved": len(request.messages),
         "user_email": user_email,
-        "crm": crm_result,
         "persistence_mode": "db" if db_success else "memory_fallback",
     }
 

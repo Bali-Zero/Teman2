@@ -59,7 +59,6 @@ const navColors: Record<string, { cssClass: string; activeColor: string }> = {
   "/intelligence": { cssClass: "nav-icon-orange", activeColor: "#FB923C" },
   "/chat": { cssClass: "nav-icon-purple", activeColor: "#A78BFA" },
   "/dream": { cssClass: "nav-icon-indigo", activeColor: "#818CF8" },
-  "/omnichannel": { cssClass: "nav-icon-emerald", activeColor: "#34D399" },
   "/whatsapp": { cssClass: "nav-icon-emerald", activeColor: "#34D399" },
   "/email": { cssClass: "nav-icon-sky", activeColor: "#38BDF8" },
   "/clients": { cssClass: "nav-icon-teal", activeColor: "#2DD4BF" },
@@ -120,7 +119,7 @@ export function AppSidebar({
     const Icon = iconMap[item.icon] || Home;
     const active = isActive(item.href);
     const badge =
-      item.href === "/whatsapp" || item.href === "/omnichannel"
+      item.href === "/whatsapp"
         ? unreadWhatsApp
         : item.badge;
     const colors = navColors[item.href] || {
