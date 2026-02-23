@@ -26,7 +26,6 @@ const INTERNAL_ROUTES = [
   "/portal",
   "/analytics",
   "/intelligence",
-  "/omnichannel",
   "/calendar",
   "/notifications",
 ];

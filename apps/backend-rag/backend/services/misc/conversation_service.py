@@ -14,26 +14,11 @@ logger = get_logger(__name__)
 class ConversationService:
     """
     Service for managing conversation persistence and retrieval.
-    Handles saving to PostgreSQL, Memory Cache fallback, and triggering Auto-CRM.
+    Handles saving to PostgreSQL and Memory Cache fallback.
     """
 
     def __init__(self, db_pool: asyncpg.Pool):
         self.db_pool = db_pool
-        self._auto_crm_service = None
-
-    def _get_auto_crm(self):
-        """Lazy load Auto-CRM service"""
-        if self._auto_crm_service is None:
-            try:
-                from backend.services.crm.auto_crm_service import get_auto_crm_service
-
-                self._auto_crm_service = get_auto_crm_service()
-            except ImportError:
-                self._auto_crm_service = False
-            except Exception as e:
-                logger.warning(f"Auto-CRM service not available: {e}")
-                self._auto_crm_service = False
-        return self._auto_crm_service if self._auto_crm_service else None
 
     async def save_conversation(
         self,
@@ -100,30 +85,11 @@ class ConversationService:
             if not db_success:
                 logger.info("⚠️ Continuing with memory-only persistence")
 
-        crm_result = {}
-        if db_success:
-            auto_crm = self._get_auto_crm()
-            if auto_crm and len(messages) > 0:
-                try:
-                    crm_result = await auto_crm.process_conversation(
-                        conversation_id=conversation_id,
-                        messages=messages,
-                        user_email=user_email,
-                        team_member=metadata.get("team_member", "system"),
-                        db_pool=self.db_pool,
-                    )
-                except Exception as crm_error:
-                    logger.error(f"Auto-CRM processing error: {crm_error}")
-                    crm_result = {"processed": False, "error": str(crm_error)}
-            else:
-                crm_result = {"processed": False, "reason": "auto-crm not available"}
-
         return {
             "success": True,
             "conversation_id": conversation_id,
             "messages_saved": len(messages),
             "user_email": user_email,
-            "crm": crm_result,
             "persistence_mode": "db" if db_success else "memory_fallback",
             "session_id": session_id,
         }

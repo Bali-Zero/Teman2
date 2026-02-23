@@ -98,7 +98,6 @@ vi.mock("@/components/dashboard", () => ({
     <div data-testid="financial-widget">Revenue: {revenue.total_revenue}</div>
   ),
   NusantaraHealthWidget: () => <div data-testid="nusantara-widget">Health</div>,
-  AutoCRMWidget: () => <div data-testid="auto-crm-widget">Auto CRM</div>,
   GrafanaWidget: () => <div data-testid="grafana-widget">Grafana</div>,
   FeaturedArticlesWidget: () => (
     <div data-testid="featured-articles-widget">Featured Articles</div>
