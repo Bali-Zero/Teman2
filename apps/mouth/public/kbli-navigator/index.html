@@ -3187,43 +3187,7 @@ function renderCard(d){
   }
   details+='<div class="detail-item"><div class="detail-label">Source</div><div class="detail-val">Perpres 10/2021, 49/2021, 14/2024</div></div>';
   
-  // Add images for specific KBLI codes
-  let kbliImage = '';
-  if(code === '55101') {
-    kbliImage = hotelImage;
-  }
-  else if(code === '55102') {
-    kbliImage = '<div style="width:100%;height:220px;overflow:hidden;border-radius:12px 12px 0 0;"><img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/4gxYSUNDX1BST0ZJTEUAAQEAAAxITGlubwIQAABtbnRyUkdCIFhZWiAHzgACAAkABgAxAABhY3NwTVNGVAAAAABJRUMgc1JHQgAAAAAAAAAAAAAAAAAA9tYAAQAAAADTLUhQICAAAAAAAAAAAAAAA...truncated" style="width:100%;height:100%;object-fit:cover;" alt="KBLI 55102"></div>';
-  }
-  else if(code === '56101') {
-    kbliImage = '<div style="width:100%;height:220px;overflow:hidden;border-radius:12px 12px 0 0;"><img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/4gxYSUNDX1BST0ZJTEUAAQEAAAxITGlubwIQAABtbnRyUkdCIFhZWiAHzgACAAkABgAxAABhY3NwTVNGVAAAAABJRUMgc1JHQgAAAAAAAAAAAAAAAAAA9tYAAQAAAADTLUhQICAAAAAAAAAAAAAAA...truncated" style="width:100%;height:100%;object-fit:cover;" alt="KBLI 56101"></div>';
-  }
-  else if(code === '68100') {
-    kbliImage = '<div style="width:100%;height:220px;overflow:hidden;border-radius:12px 12px 0 0;"><img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/4gxYSUNDX1BST0ZJTEUAAQEAAAxITGlubwIQAABtbnRyUkdCIFhZWiAHzgACAAkABgAxAABhY3NwTVNGVAAAAABJRUMgc1JHQgAAAAAAAAAAAAAAAAAA9tYAAQAAAADTLUhQICAAAAAAAAAAAAAAA...truncated" style="width:100%;height:100%;object-fit:cover;" alt="KBLI 68100"></div>';
-  }
-  else if(code === '93110') {
-    kbliImage = '<div style="width:100%;height:220px;overflow:hidden;border-radius:12px 12px 0 0;"><img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/4gxYSUNDX1BST0ZJTEUAAQEAAAxITGlubwIQAABtbnRyUkdCIFhZWiAHzgACAAkABgAxAABhY3NwTVNGVAAAAABJRUMgc1JHQgAAAAAAAAAAAAAAAAAA9tYAAQAAAADTLUhQICAAAAAAAAAAAAAAA...truncated" style="width:100%;height:100%;object-fit:cover;" alt="KBLI 93110"></div>';
-  }
-  else if(code === '96022') {
-    kbliImage = '<div style="width:100%;height:220px;overflow:hidden;border-radius:12px 12px 0 0;"><img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/4gxYSUNDX1BST0ZJTEUAAQEAAAxITGlubwIQAABtbnRyUkdCIFhZWiAHzgACAAkABgAxAABhY3NwTVNGVAAAAABJRUMgc1JHQgAAAAAAAAAAAAAAAAAA9tYAAQAAAADTLUhQICAAAAAAAAAAAAAAA...truncated" style="width:100%;height:100%;object-fit:cover;" alt="KBLI 96022"></div>';
-  }
-  else if(code === '47111') {
-    kbliImage = '<div style="width:100%;height:220px;overflow:hidden;border-radius:12px 12px 0 0;"><img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/4gxYSUNDX1BST0ZJTEUAAQEAAAxITGlubwIQAABtbnRyUkdCIFhZWiAHzgACAAkABgAxAABhY3NwTVNGVAAAAABJRUMgc1JHQgAAAAAAAAAAAAAAAAAA9tYAAQAAAADTLUhQICAAAAAAAAAAAAAAA...truncated" style="width:100%;height:100%;object-fit:cover;" alt="KBLI 47111"></div>';
-  }
-  else if(code === '56102') {
-    kbliImage = '<div style="width:100%;height:220px;overflow:hidden;border-radius:12px 12px 0 0;"><img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/4gxYSUNDX1BST0ZJTEUAAQEAAAxITGlubwIQAABtbnRyUkdCIFhZWiAHzgACAAkABgAxAABhY3NwTVNGVAAAAABJRUMgc1JHQgAAAAAAAAAAAAAAAAAA9tYAAQAAAADTLUhQICAAAAAAAAAAAAAAA...truncated" style="width:100%;height:100%;object-fit:cover;" alt="KBLI 56102"></div>';
-  }
-  else if(code === '41011') {
-    kbliImage = '<div style="width:100%;height:220px;overflow:hidden;border-radius:12px 12px 0 0;"><img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/4gxYSUNDX1BST0ZJTEUAAQEAAAxITGlubwIQAABtbnRyUkdCIFhZWiAHzgACAAkABgAxAABhY3NwTVNGVAAAAABJRUMgc1JHQgAAAAAAAAAAAAAAAAAA9tYAAQAAAADTLUhQICAAAAAAAAAAAAAAA...truncated" style="width:100%;height:100%;object-fit:cover;" alt="KBLI 41011"></div>';
-  }
-  else if(code === '62001') {
-    kbliImage = '<div style="width:100%;height:220px;overflow:hidden;border-radius:12px 12px 0 0;"><img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/4gxYSUNDX1BST0ZJTEUAAQEAAAxITGlubwIQAABtbnRyUkdCIFhZWiAHzgACAAkABgAxAABhY3NwTVNGVAAAAABJRUMgc1JHQgAAAAAAAAAAAAAAAAAA9tYAAQAAAADTLUhQICAAAAAAAAAAAAAAA...truncated" style="width:100%;height:100%;object-fit:cover;" alt="KBLI 62001"></div>';
-  }
-  else if(code === '64100') {
-    kbliImage = '<div style="width:100%;height:220px;overflow:hidden;border-radius:12px 12px 0 0;"><img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/4gxYSUNDX1BST0ZJTEUAAQEAAAxITGlubwIQAABtbnRyUkdCIFhZWiAHzgACAAkABgAxAABhY3NwTVNGVAAAAABJRUMgc1JHQgAAAAAAAAAAAAAAAAAA9tYAAQAAAADTLUhQICAAAAAAAAAAAAAAA...truncated" style="width:100%;height:100%;object-fit:cover;" alt="KBLI 64100"></div>';
-  }
-  
-  return '<div class="code-card" onclick="toggleCard(this)">' + hotelImage + '<div class="card-head"><span class="code-num">'+code+'</span><div class="card-info"><div class="card-title">'+title+'</div><div class="card-meta">Section '+sec+' &bull; '+sectorName+'</div></div><div class="card-badges">'+pmaBadge+riskBadge+'</div><svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div><div class="card-detail"><div class="card-detail-inner"><div class="detail-grid">'+details+'</div><div class="detail-actions"><button class="dbtn dbtn-primary" onclick="event.stopPropagation();openChat()">Ask Zantara AI</button></div></div></div></div>';
+  return '<div class="code-card" onclick="toggleCard(this)"><div class="card-head"><span class="code-num">'+code+'</span><div class="card-info"><div class="card-title">'+title+'</div><div class="card-meta">Section '+sec+' &bull; '+sectorName+'</div></div><div class="card-badges">'+pmaBadge+riskBadge+'</div><svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div><div class="card-detail"><div class="card-detail-inner"><div class="detail-grid">'+details+'</div><div class="detail-actions"><button class="dbtn dbtn-primary" onclick="event.stopPropagation();openChat()">Ask Zantara AI</button></div></div></div></div>';
 }
 
 function applyKBLIFilter(){
