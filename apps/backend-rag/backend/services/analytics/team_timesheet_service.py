@@ -262,9 +262,9 @@ class TeamTimesheetService:
                 "is_online": status["is_online"] if status else False,
                 "last_action": status["last_action_bali"].isoformat() if status else None,
                 "last_action_type": status["action_type"] if status else None,
-                "today_hours": float(today_hours["hours_worked"]) if today_hours else 0.0,
-                "week_hours": float(week_summary["total_hours"]) if week_summary else 0.0,
-                "week_days": int(week_summary["days_worked"]) if week_summary else 0,
+                "today_hours": float(today_hours["hours_worked"]) if today_hours and today_hours["hours_worked"] is not None else 0.0,
+                "week_hours": float(week_summary["total_hours"]) if week_summary and week_summary["total_hours"] is not None else 0.0,
+                "week_days": int(week_summary["days_worked"]) if week_summary and week_summary["days_worked"] is not None else 0,
             }
 
     async def get_team_online_status(self) -> list[dict[str, Any]]:
