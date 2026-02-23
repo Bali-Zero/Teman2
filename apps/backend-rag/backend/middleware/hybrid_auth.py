@@ -326,7 +326,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
 
                 # Fail-Closed: authentication required for non-public endpoints
                 if not auth_result:
-                    logger.warning(
+                    logger.debug(
                         f"Authentication failed for: {request.url.path} from {request.client.host}"
                     )
                     from fastapi.responses import JSONResponse
@@ -552,7 +552,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
                     return jwt_user
                 else:
                     # JWT provided but invalid = immediate failure
-                    logger.warning(f"Invalid Header JWT from {client_host}")
+                    logger.debug(f"Invalid Header JWT from {client_host}")
                     return None
             else:
                 logger.warning("JWT authentication bypassed by configuration")
@@ -636,10 +636,10 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             }
 
         except JWTError as e:
-            logger.warning(f"JWT validation failed: {e}")
+            logger.debug(f"JWT validation failed: {e}")
             return None
         except Exception as e:
-            logger.warning(f"Unexpected JWT error: {e}")
+            logger.debug(f"Unexpected JWT error: {e}")
             return None
 
     def get_auth_stats(self) -> dict[str, Any]:
