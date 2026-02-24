@@ -21,9 +21,15 @@
     },
     "nuzantara-fetch": {
       "command": "uvx",
-      "args": [
-        "mcp-server-fetch"
-      ]
+      "args": ["mcp-server-fetch"]
+    },
+    "nuzantara-mcp-browser": {
+      "command": "python3",
+      "args": ["apps/nuzantara-mcp-browser/nuzantara_mcp_browser/server.py"],
+      "cwd": "/Users/nuzantara/Desktop/nuzantara",
+      "env": {
+        "PYTHONPATH": "apps/nuzantara-mcp-browser"
+      }
     }
   }
 }
