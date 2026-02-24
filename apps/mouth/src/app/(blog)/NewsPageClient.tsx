@@ -455,11 +455,19 @@ function CollageCard({
   article,
   className = "",
   showCTA = false,
+  imagePosition = "center",
 }: {
   article: ArticleListItem;
   className?: string;
   showCTA?: boolean;
+  imagePosition?: "center" | "top" | "bottom";
 }) {
+  const positionClass =
+    imagePosition === "top"
+      ? "object-top"
+      : imagePosition === "bottom"
+        ? "object-bottom"
+        : "object-center";
   return (
     <Link
       href={`/${article.category}/${article.slug}`}
@@ -470,7 +478,7 @@ function CollageCard({
           src={article.coverImage}
           alt={article.title}
           fill
-          className="object-cover group-hover:scale-105 transition-transform duration-700"
+          className={`object-cover ${positionClass} group-hover:scale-105 transition-transform duration-700`}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
 
