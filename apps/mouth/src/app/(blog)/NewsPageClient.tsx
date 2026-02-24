@@ -46,9 +46,9 @@ export default function NewsPageClient({
   // Fallback a MOCK_ARTICLES se il server non fornisce articoli
   const articles = serverArticles?.length > 0 ? serverArticles : MOCK_ARTICLES;
 
-  // Get specific articles for the asymmetric collage - KBLI 2025 GREAT TRANSITION FEATURED
+  // Get specific articles for the asymmetric collage - SLOW PARALYSIS FEATURED
   const mainNews1 = articles.find(
-    (a) => a.slug === "kbli-2025-great-transition",
+    (a) => a.slug === "slow-paralysis-kbli-2025",
   ); // RIGHT - large - MAIN FEATURE
   const mainNews2 = articles.find(
     (a) => a.slug === "constitutional-clash-bank-statements",
