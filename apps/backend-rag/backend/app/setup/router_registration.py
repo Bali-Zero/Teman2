@@ -58,6 +58,8 @@ def include_routers(api: FastAPI) -> None:
         instagram_chat,
         intel,
         kbli_notebook,
+        kg_agentic,
+        lam_memory,  # [LAM] Episodic memory for agent layer
         knowledge_activity,
         knowledge_visa,
         legal_ingest,
@@ -108,10 +110,12 @@ def include_routers(api: FastAPI) -> None:
 
     # Agent routers
     api.include_router(agent.router)  # [NEW] LangGraph agentic layer
+    api.include_router(lam_memory.router)  # [LAM] Episodic memory
     api.include_router(agents.router)
     api.include_router(autonomous_agents.router)
     api.include_router(autonomous_execution.router)  # Phase 7 POC: Autonomous task execution
     api.include_router(agentic_rag.router)
+    api.include_router(kg_agentic.router)
 
     # Generals Multi-Agent System router
     from backend.generals.task_coordinator import router as generals_router
@@ -181,6 +185,7 @@ def include_routers(api: FastAPI) -> None:
         whatsapp_conversations.router
     )  # Omnichannel WhatsApp conversations API (dashboard only)
     api.include_router(instagram_chat.router)  # Instagram DM auto-reply via RAG
+    api.include_router(instagram_chat.webhook_router)  # [NEW] Instagram webhook
     api.include_router(webhooks.router)  # External webhooks (OpenClaw, etc.)
     api.include_router(
         messaging_identity.router
@@ -207,6 +212,7 @@ def include_routers(api: FastAPI) -> None:
         test_update_client,
         test_zoho_status,
     )
+
     api.include_router(admin_drive_auth.router)
     api.include_router(admin_drive_health.router)
     api.include_router(admin_drive_refresh.router)

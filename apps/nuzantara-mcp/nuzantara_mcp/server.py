@@ -96,6 +96,10 @@ from nuzantara_mcp.tools.invoicing import register as register_invoicing
 from nuzantara_mcp.tools.compliance import register as register_compliance
 from nuzantara_mcp.tools.generals import register as register_generals
 
+# --- LAM: Memory + Heartbeat ---
+from nuzantara_mcp.tools.memory import register as register_memory
+from nuzantara_mcp.workflows.heartbeat import register as register_heartbeat
+
 # --- Prompts, Resources, Chains ---
 from nuzantara_mcp.prompts.templates import register as register_prompts
 from nuzantara_mcp.resources.config import register as register_resources
@@ -120,6 +124,10 @@ register_pricing(mcp, _call, _call_safe)
 register_invoicing(mcp, _call, _call_safe)
 register_compliance(mcp, _call, _call_safe)
 register_generals(mcp, _call, _call_safe)
+
+# LAM: memory + grounding
+register_memory(mcp, _call, _call_safe)
+register_heartbeat(mcp, _call, _call_safe)
 
 # Prompts, resources, chains
 register_prompts(mcp)
