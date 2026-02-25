@@ -13,6 +13,39 @@ from typing import Any, Callable, Optional
 logger = logging.getLogger("nuzantara-mcp.chains")
 
 
+async def _reflect_and_save(
+    _call_safe: Callable,
+    chain_name: str,
+    summary: str,
+    outcome: str,
+    log: list,
+) -> None:
+    """
+    Post-chain reflection: save an episodic memory of what just happened.
+    Called at the end of every chain to build the LAM's long-term memory.
+    """
+    try:
+        errors = [s.get("detail") for s in log if s.get("status") == "error"]
+        content = (
+            f"Chain '{chain_name}' completed. {summary}. "
+            f"Steps: {len(log)}. Errors: {errors if errors else 'none'}."
+        )
+        await _call_safe(
+            "/api/memory/lam/episodes",
+            method="POST",
+            json={
+                "content": content,
+                "agent": "chains",
+                "tags": [chain_name, "chain_reflection"],
+                "outcome": outcome,
+                "metadata": {"chain": chain_name, "steps": len(log), "errors": errors},
+            },
+        )
+        logger.debug(f"Reflection saved for chain '{chain_name}'")
+    except Exception as e:
+        logger.warning(f"Reflection save failed for '{chain_name}': {e}")
+
+
 def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
     # =========================================================================
     # CHAIN 1: Daily Ops Autopilot
@@ -122,7 +155,13 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
         except Exception as e:
             log.append({"step": "send_report", "status": "error", "detail": str(e)})
 
-        return {"chain": "daily_ops_autopilot", "report": report, "log": log}
+        result = {"chain": "daily_ops_autopilot", "report": report, "log": log}
+        await _reflect_and_save(_call_safe, "daily_ops_autopilot",
+            f"Reminders={report.get('expiry_alerts',{}).get('reminders_sent',0)}, "
+            f"Articles={report.get('intel',{}).get('articles_composed',0)}",
+            "success" if not any(s.get("status") == "error" for s in log) else "partial",
+            log)
+        return result
 
     # =========================================================================
     # CHAIN 2: New Client Onboarding
@@ -261,7 +300,12 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
         except Exception:
             pass
 
-        return {"chain": "new_client_onboarding", "result": result, "log": log}
+        res = {"chain": "new_client_onboarding", "result": result, "log": log}
+        await _reflect_and_save(_call_safe, "new_client_onboarding",
+            f"Client={name}, email={email}, visa={result.get('recommended_visa','?')}",
+            "success" if not any(s.get("status") == "error" for s in log) else "partial",
+            log)
+        return res
 
     # =========================================================================
     # CHAIN 3: Practice Lifecycle Manager
@@ -344,7 +388,11 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
             pass
 
         log.append({"step": "lifecycle_check", "status": "ok", "practices_checked": len(practices)})
-        return {"chain": "practice_lifecycle", "stats": stats, "log": log}
+        res = {"chain": "practice_lifecycle", "stats": stats, "log": log}
+        await _reflect_and_save(_call_safe, "practice_lifecycle",
+            f"Checked={len(practices)}, renewals={stats.get('renewals_created',0)}, reminders={stats.get('reminders_sent',0)}",
+            "success", log)
+        return res
 
     # =========================================================================
     # CHAIN 4: Intel Pipeline Autopilot
@@ -434,7 +482,12 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
         except Exception:
             pass
 
-        return {"chain": "intel_pipeline", "stats": stats, "log": log}
+        res = {"chain": "intel_pipeline", "stats": stats, "log": log}
+        await _reflect_and_save(_call_safe, "intel_pipeline",
+            f"Scraped={stats.get('scraped',0)}, approved={stats.get('approved',0)}, published={stats.get('published',0)}",
+            "success" if not any(s.get("status") == "error" for s in log) else "partial",
+            log)
+        return res
 
     # =========================================================================
     # CHAIN 5: Weekly Report Generator
@@ -523,7 +576,11 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
         except Exception:
             pass
 
-        return {"chain": "weekly_report", "report": report}
+        res = {"chain": "weekly_report", "report": report}
+        await _reflect_and_save(_call_safe, "weekly_report",
+            f"Week={report.get('week_of','?')}, sent to {send_to}",
+            "success", [])
+        return res
 
     # =========================================================================
     # CHAIN 6: Client Health Monitor
@@ -616,7 +673,12 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
         except Exception as e:
             log.append({"step": "stalled_practices", "status": "error", "detail": str(e)})
 
-        return {"chain": "client_health_monitor", "stats": stats, "log": log}
+        res = {"chain": "client_health_monitor", "stats": stats, "log": log}
+        await _reflect_and_save(_call_safe, "client_health_monitor",
+            f"At-risk={stats.get('at_risk_clients',0)}, stalled_reminders={stats.get('stalled_reminders',0)}",
+            "success" if not any(s.get("status") == "error" for s in log) else "partial",
+            log)
+        return res
 
     # =========================================================================
     # CHAIN 7: Compliance Autopilot
@@ -731,7 +793,12 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
                         stats["practices_created"] += 1
             log.append({"step": "auto_practices", "status": "ok", "created": stats["practices_created"]})
 
-        return {"chain": "compliance_autopilot", "stats": stats, "log": log}
+        res = {"chain": "compliance_autopilot", "stats": stats, "log": log}
+        await _reflect_and_save(_call_safe, "compliance_autopilot",
+            f"Critical={stats.get('critical_compliance_items',0)}, notifications={stats.get('notifications_sent',0)}, practices={stats.get('practices_created',0)}",
+            "success" if not any(s.get("status") == "error" for s in log) else "partial",
+            log)
+        return res
 
     # =========================================================================
     # CHAIN 8: Full Client Journey Accelerator
@@ -852,9 +919,14 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
         result_data["monitoring_task"] = task
         log.append({"step": "submit_monitoring", "status": "ok" if not task.get("error") else "error"})
 
-        return {
+        res = {
             "chain": "journey_accelerator",
             "journey_id": journey_id,
             "data": result_data,
             "log": log,
         }
+        await _reflect_and_save(_call_safe, "journey_accelerator",
+            f"Client={client_name}, journey_type={journey_type}, journey_id={journey_id}",
+            "success" if not any(s.get("status") == "error" for s in log) else "partial",
+            log)
+        return res
