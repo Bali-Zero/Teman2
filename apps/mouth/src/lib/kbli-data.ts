@@ -581,9 +581,7 @@ export function getRelatedCodes(code: string, limit: number = 6): KBLICode[] {
 /**
  * Get section metadata for a given section letter.
  */
-export function getSectionMeta(
-  sectionId: string,
-): {
+export function getSectionMeta(sectionId: string): {
   nameEn: string;
   nameId: string;
   icon: string;
