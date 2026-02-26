@@ -34,12 +34,14 @@
 ## 2. Claude Code Behavior Rules (IMPORTANT)
 
 **DO NOT ask the user to write code.** You are authorized to edit, write, and execute code directly.
+
 - Use `Edit`, `Write`, `Bash` without asking permission
 - `defaultMode: acceptEdits` means act first, ask if blocked
 - Only ask if you genuinely need user input (e.g., choosing between multiple valid approaches)
 - **NEVER** ask "should I write this?" or "do you want me to...?" — just do it
 
 **Exception:** Only ask for decisions on:
+
 - Architecture choices with trade-offs (use `AskUserQuestion`)
 - Production deployments (use risk/reversibility judgment)
 - Destructive operations (rm, git reset --hard, etc.)
