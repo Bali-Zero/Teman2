@@ -13,7 +13,7 @@ import math
 
 from i18n_dashboard import T, set_language, get_language
 
-API_URL = "http://192.168.0.19:8001"
+API_URL = "http://localhost:8000"
 
 st.set_page_config(page_title="Nuzantara Prime", layout="wide", page_icon="💎")
 
@@ -181,6 +181,16 @@ def point_in_polygon_osm(lat: float, lon: float, coords: list) -> bool:
     return inside
 
 
+def _get_polygon_rings(geom: dict) -> list[list]:
+    """Extract outer rings from Polygon or MultiPolygon geometry."""
+    gtype = geom.get("type", "")
+    if gtype == "Polygon":
+        return [geom["coordinates"][0]]
+    elif gtype == "MultiPolygon":
+        return [poly[0] for poly in geom["coordinates"]]
+    return []
+
+
 def lookup_tabanan_zone(lat: float, lon: float) -> dict | None:
     """Cerca la zona OSM Tabanan per un punto lat/lon. Ritorna le properties o None."""
     data = load_tabanan_geojson()
@@ -188,12 +198,14 @@ def lookup_tabanan_zone(lat: float, lon: float) -> dict | None:
     best_dist = 9999.0
     for feat in data.get("features", []):
         geom = feat.get("geometry", {})
-        if geom.get("type") != "Polygon":
+        rings = _get_polygon_rings(geom)
+        if not rings:
             continue
-        coords = geom["coordinates"][0]
-        if point_in_polygon_osm(lat, lon, coords):
-            return feat["properties"]
-        # fallback: distanza al centroide
+        for coords in rings:
+            if point_in_polygon_osm(lat, lon, coords):
+                return feat["properties"]
+        # fallback: distanza al centroide del primo ring
+        coords = rings[0]
         cx = sum(c[0] for c in coords) / len(coords)
         cy = sum(c[1] for c in coords) / len(coords)
         dist = ((cx - lon) ** 2 + (cy - lat) ** 2) ** 0.5
@@ -205,7 +217,6 @@ def lookup_tabanan_zone(lat: float, lon: float) -> dict | None:
     return None
 
 
-@st.cache_data(ttl=3600)
 @st.cache_data(ttl=3600)
 def load_osm_geojson(directory: str, code_pattern: str, label: str, max_per_file: int = 3000):
     """Carica zone OSM da una directory di kecamatan.
@@ -610,6 +621,7 @@ if mode == "📍 Land Intel":
         LayerControl(collapsed=False).add_to(m_li)
         st_folium(m_li, height=480, use_container_width=True)
 
+    # ── Fetch BATARA on button click, cache in session_state ──
     if btn_intel:
         with st.spinner(T("querying_batara")):
             try:
@@ -632,527 +644,635 @@ if mode == "📍 Land Intel":
                     st.stop()
 
                 geom0 = geom_list[0]
-                zone = geom0.get("zone", {})
-                location = geom0.get("location", {})
-                reqs = zone.get("zone_intensity_requirements", [])
-                req = reqs[0] if reqs else {}
-
-                zone_code = zone.get("code", "N/A")
-                zone_name = zone.get("name", "N/A")
-                zone_def  = zone.get("definition", "")
-                desa      = location.get("name", "N/A")
-                kdb       = req.get("maximum_kdb", "N/A")
-                klb       = req.get("maximum_klb", "N/A")
-                kdh       = req.get("mininum_kdh", "N/A")
-                tb        = req.get("old_building_height", "N/A")
-                gsb       = req.get("old_minimum_gsb", "N/A")
-
-                st.divider()
-
-                zone_color_str = zone.get("color", "180 180 180")
-                hex_col, _ = batara_color_to_hex(zone_color_str)
-                st.markdown(f"""
-                <div style="background:{hex_col}33; padding:14px; border-radius:8px;
-                            border-left:6px solid {hex_col}; margin-bottom:16px;">
-                    <h2 style="margin:0">{zone_code} — {zone_name}</h2>
-                    <p style="margin:4px 0 0 0; color:#555; font-size:0.9em">{desa} &nbsp;|&nbsp; {zone_def[:120]}{"..." if len(zone_def)>120 else ""}</p>
-                </div>
-                """, unsafe_allow_html=True)
-
-                # Parametri urbanistici
-                col_urb, col_roi = st.columns(2)
-                with col_urb:
-                    st.subheader(T("urban_params"))
-                    u1, u2, u3, u4 = st.columns(4)
-                    u1.metric("KDB", kdb)
-                    u2.metric("KLB", klb)
-                    u3.metric("KDH", kdh)
-                    u4.metric(T("max_height"), tb)
-                    st.caption(f"GSB: {gsb}")
-                    try:
-                        elev_r = requests.get(
-                            "https://api.open-elevation.com/api/v1/lookup",
-                            params={"locations": f"{lat_in},{lon_in}"},
-                            timeout=8,
-                        )
-                        elev_m = elev_r.json()["results"][0]["elevation"]
-
-                        if elev_m < 3:
-                            elev_risk = T("flood_risk_high")
-                        elif elev_m < 8:
-                            elev_risk = T("low_zone_check")
-                        else:
-                            elev_risk = T("safe_elevation")
-
-                        dlat = math.radians(lat_in - (-8.723))
-                        dlon = math.radians(lon_in - 115.168)
-                        a = math.sin(dlat/2)**2 + math.cos(math.radians(lat_in)) * math.cos(math.radians(-8.723)) * math.sin(dlon/2)**2
-                        dist_coast_km = 6371 * 2 * math.asin(math.sqrt(a))
-                        sea_view = elev_m > 15 and dist_coast_km < 3
-
-                        e1, e2 = st.columns(2)
-                        e1.metric(T("elevation_asl"), f"{elev_m:.1f} m", delta=elev_risk, delta_color="off")
-                        e2.metric(T("coast_distance"), f"{dist_coast_km:.1f} km",
-                                  delta=T("sea_view_possible") if sea_view else None, delta_color="off")
-                    except Exception:
-                        st.caption(T("elevation_unavailable"))
-
-                with col_roi:
-                    st.subheader(T("roi_projected"))
-                    if zone_code in [z for z in zone_options]:
-                        try:
-                            roi_payload = {
-                                "land_size_m2": li_size,
-                                "price_total_idr": li_price,
-                                "zone_code": zone_code,
-                            }
-                            rr = requests.post(f"{API_URL}/calculator",
-                                               json=roi_payload, timeout=10).json()
-                            gs = rr.get("golden_strategy", {})
-                            urb = rr.get("urbanistica", {})
-                            st.metric(T("optimal_roi"), f"{gs.get('roi', 0):.2f}%")
-                            st.metric(T("break_even"), f"{gs.get('bey', 0):.1f} {T('years')}")
-                            st.info(f"**{gs.get('build')}** + **{gs.get('yield')}**")
-                            st.caption(f"Buildable: {urb.get('max_build_m2')} m²  |  Footprint: {urb.get('max_footprint')} m²")
-                        except Exception:
-                            st.warning(T("roi_unavailable"))
-                    else:
-                        st.warning(T("zone_not_in_roi_db", zone_code=zone_code))
-
-                # Sensitivity matrix
-                if zone_code in zone_options:
-                    st.subheader(T("sensitivity_matrix"))
-                    try:
-                        matrix = rr.get("sensitivity_matrix", {})
-                        rows = []
-                        for bk, yields in matrix.items():
-                            row = {T("construction_cost"): bk.replace("_", " ")}
-                            for yk, mv in yields.items():
-                                roi_v = mv["roi_pct"]
-                                tag = " 🔥" if roi_v >= 12 else " ✅" if roi_v >= 8 else " 🟡" if roi_v >= 4 else " 🔴"
-                                row[yk.replace("_", " ")] = f"{roi_v:.2f}%{tag}"
-                            rows.append(row)
-                        st.table(pd.DataFrame(rows).set_index(T("construction_cost")))
-                    except Exception:
-                        pass
-
-                extra_fields = {
-                    "kkop_1": T("overlay_kkop"),
-                    "lp2b_2": T("overlay_lp2b"),
-                    "krb_03": T("overlay_krb"),
-                    "teb_05": T("overlay_teb"),
-                    "cagbud": T("overlay_cagbud"),
-                    "resair": T("overlay_resair"),
-                }
-                vincoli = {label: geom0.get(field) for field, label in extra_fields.items()
-                           if geom0.get(field) not in (None, "", "0", 0)}
-                if vincoli:
-                    with st.expander(T("constraints_detected")):
-                        for label, val in vincoli.items():
-                            st.markdown(f"- **{label}**: {val}")
-                else:
-                    st.success(T("no_constraints"))
-
-                # ── KBLI COMPLIANCE CHECK ────────────────────────────────
-                st.subheader(T("kbli_compliance_title"))
-                kbli_input = st.text_input(
-                    T("kbli_code_input"),
-                    key="kbli_compliance_input",
-                )
-                kbli_col1, kbli_col2 = st.columns([1, 3])
-                with kbli_col1:
-                    kbli_pma = st.checkbox(T("pma_foreign"), value=True, key="kbli_pma_check")
-                with kbli_col2:
-                    kbli_btn = st.button(T("verify_compliance"), key="kbli_validate_btn")
-
-                if kbli_btn and kbli_input:
-                    try:
-                        kbli_resp = requests.post(
-                            f"{API_URL}/api/dashboard/map/validate-property",
-                            json={
-                                "kbli_code": kbli_input.strip(),
-                                "is_pma": kbli_pma,
-                                "location": "Bali",
-                            },
-                            timeout=5,
-                        )
-                        if kbli_resp.status_code == 200:
-                            kd = kbli_resp.json()
-                            audit = kd.get("audit", kd)
-                            state = audit.get("state", kd.get("state", "UNKNOWN"))
-
-                            badge_colors = {
-                                "APPROVED": ("#198754", "✅"),
-                                "WARNING": ("#fd7e14", "⚠️"),
-                                "REJECTED": ("#dc3545", "❌"),
-                                "ERROR": ("#6c757d", "🔴"),
-                            }
-                            color, icon = badge_colors.get(state, ("#6c757d", "❓"))
-
-                            title = kd.get("title", kbli_input)
-                            reason = audit.get("reason_code", kd.get("reason_code", ""))
-                            oss_risk = audit.get("oss_risk", "")
-
-                            st.markdown(f"""
-                            <div style="background:{color}22; padding:14px; border-radius:8px;
-                                        border-left:6px solid {color}; margin:8px 0;">
-                                <span style="font-size:1.3em">{icon} <b>{state}</b></span>
-                                &nbsp;—&nbsp; <b>{kd.get('kbli_2025', kbli_input)}</b> {title}
-                                <br><span style="color:#555; font-size:0.85em">
-                                    {T("reason")}: {reason.replace('_', ' ')}
-                                    {f' | {T("oss_risk")}: {oss_risk}' if oss_risk else ''}
-                                </span>
-                            </div>
-                            """, unsafe_allow_html=True)
-
-                            pma = kd.get("pma_logic", {})
-                            if pma:
-                                st.caption(
-                                    f"{T('max_foreign_ownership')}: {pma.get('max_foreign_ownership', '?')}%"
-                                    f" | {T('umkm_reserved')}: {T('yes') if pma.get('is_umkm_reserved') else T('no')}"
-                                )
-                        else:
-                            st.warning(T("backend_error"))
-                    except requests.exceptions.ConnectionError:
-                        st.caption(T("backend_unreachable_kbli"))
-                    except Exception as kbli_err:
-                        st.caption(T("kbli_unavailable", err=kbli_err))
-                elif kbli_btn and not kbli_input:
-                    st.info(T("enter_kbli_code"))
-
-                # ── ANALISI INVESTIMENTO UNIFICATA ──────────────────────
-                st.subheader(T("invest_title"))
-                st.caption(T("invest_caption"))
-                invest_btn = st.button(
-                    T("invest_title"),
-                    use_container_width=True,
-                    type="secondary",
-                    key="invest_analysis_btn",
-                )
-
-                if invest_btn:
-                    invest_payload = {
-                        "lat": lat_in,
-                        "lon": lon_in,
-                        "is_pma": kbli_pma,
-                        "land_size_m2": li_size,
-                        "price_idr": li_price,
-                    }
-                    # Include KBLI code if provided
-                    _kbli_val = st.session_state.get("kbli_compliance_input", "").strip()
-                    if _kbli_val:
-                        invest_payload["kbli_code"] = _kbli_val
-
-                    try:
-                        inv_resp = requests.post(
-                            f"{API_URL}/api/dashboard/map/analyze-investment",
-                            json=invest_payload,
-                            timeout=25,
-                        )
-                        if inv_resp.status_code == 200:
-                            inv = inv_resp.json()
-                            verdict = inv.get("verdict", {})
-                            risk = verdict.get("risk_level", "UNKNOWN")
-                            can = verdict.get("can_invest", False)
-
-                            # Verdict box
-                            v_colors = {"LOW": "#198754", "MEDIUM": "#fd7e14", "HIGH": "#dc3545"}
-                            v_icons = {"LOW": "✅", "MEDIUM": "⚠️", "HIGH": "❌"}
-                            v_col = v_colors.get(risk, "#6c757d")
-                            v_ico = v_icons.get(risk, "❓")
-
-                            st.markdown(f"""
-                            <div style="background:{v_col}22; padding:16px; border-radius:10px;
-                                        border-left:6px solid {v_col}; margin:12px 0;">
-                                <span style="font-size:1.5em">{v_ico} <b>{T('investable') if can else T('not_investable')}</b></span>
-                                <span style="float:right; background:{v_col}; color:white; padding:4px 12px;
-                                             border-radius:4px; font-weight:bold;">{risk} RISK</span>
-                                <br><span style="color:#555; font-size:0.9em; margin-top:6px; display:block;">
-                                    {verdict.get('summary', '')}
-                                </span>
-                            </div>
-                            """, unsafe_allow_html=True)
-
-                            # 3-column detail cards
-                            inv_c1, inv_c2, inv_c3 = st.columns(3)
-
-                            with inv_c1:
-                                st.markdown(f"**{T('zone_rdtr')}**")
-                                z = inv.get("zone", {})
-                                if z and z.get("source") != "unavailable":
-                                    st.metric(T("zone"), z.get("code", "N/A"))
-                                    st.caption(f"{z.get('name', '')} — {z.get('desa', '')}")
-                                    st.caption(f"KDB {z.get('kdb')} | KLB {z.get('klb')} | KDH {z.get('kdh')}")
-                                else:
-                                    st.caption(T("batara_unavailable"))
-
-                            with inv_c2:
-                                st.markdown(f"**{T('kbli_compliance')}**")
-                                k = inv.get("kbli")
-                                if k:
-                                    k_st = k.get("state", "?")
-                                    k_colors = {"APPROVED": "🟢", "WARNING": "🟡", "REJECTED": "🔴"}
-                                    st.metric(T("status"), f"{k_colors.get(k_st, '⚪')} {k_st}")
-                                    st.caption(f"{k.get('code', '')} {k.get('title', '')}")
-                                    if k.get("oss_risk"):
-                                        st.caption(f"{T('oss_risk')}: {k['oss_risk']}")
-                                else:
-                                    st.caption(T("no_kbli_provided"))
-
-                            with inv_c3:
-                                st.markdown(f"**{T('roi_projection')}**")
-                                r = inv.get("roi", {})
-                                gs = r.get("golden_strategy", {})
-                                if gs.get("roi"):
-                                    st.metric("ROI", f"{gs['roi']:.1f}%")
-                                    st.metric(T("break_even"), f"{gs.get('bey', '?')} {T('years')}")
-                                    st.caption(f"{gs.get('build', '')} + {gs.get('yield', '')}")
-                                elif r.get("error"):
-                                    st.caption(T("roi_not_calculable", err=r['error']))
-                                else:
-                                    st.caption(T("insufficient_data_roi"))
-
-                        else:
-                            st.warning(T("backend_http_error", code=inv_resp.status_code))
-                    except requests.exceptions.ConnectionError:
-                        st.warning(T("backend_unreachable_invest"))
-                    except Exception as inv_err:
-                        st.warning(T("invest_unavailable", err=inv_err))
-
-                # ── WALK SCORE + NOISE MAP ───────────────────────────────
-                st.subheader(T("urban_context"))
+                # Cache full BATARA response in session_state
+                st.session_state["li_geom0"] = geom0
+                st.session_state["li_coords"] = (lat_in, lon_in)
+                st.session_state["li_sizes"] = (li_size, li_price)
+            except requests.exceptions.Timeout:
+                st.error(T("batara_timeout"))
+            except Exception as e:
+                st.session_state.pop("li_geom0", None)
+                st.warning(T("batara_fallback_gistaru", err_type=type(e).__name__))
+                # Try GISTARU fallback
                 try:
-                    overpass_url_ctx = "https://overpass-api.de/api/interpreter"
-                    q_walk = f"""
+                    gr = requests.post(
+                        f"{API_URL}/api/dashboard/map/gistaru-zone",
+                        json={"lat": lat_in, "lon": lon_in}, timeout=60,
+                    )
+                    gd = gr.json()
+                    if gd.get("found"):
+                        st.session_state["li_gistaru"] = gd
+                        st.session_state["li_coords"] = (lat_in, lon_in)
+                        st.session_state["li_sizes"] = (li_size, li_price)
+                except Exception:
+                    pass
+
+    # ── Render from session_state (survives KBLI / Invest button reruns) ──
+    _li_show = (
+        st.session_state.get("li_coords") == (lat_in, lon_in)
+        and "li_geom0" in st.session_state
+    )
+    if _li_show:
+        geom0 = st.session_state["li_geom0"]
+        zone = geom0.get("zone", {})
+        location = geom0.get("location", {})
+        reqs = zone.get("zone_intensity_requirements", [])
+        req = reqs[0] if reqs else {}
+
+        zone_code = zone.get("code", "N/A")
+        zone_name = zone.get("name", "N/A")
+        zone_def  = zone.get("definition", "")
+        desa      = location.get("name", "N/A")
+        kdb       = req.get("maximum_kdb", "N/A")
+        klb       = req.get("maximum_klb", "N/A")
+        kdh       = req.get("mininum_kdh", "N/A")
+        tb        = req.get("old_building_height", "N/A")
+        gsb       = req.get("old_minimum_gsb", "N/A")
+
+        st.divider()
+
+        zone_color_str = zone.get("color", "180 180 180")
+        hex_col, _ = batara_color_to_hex(zone_color_str)
+        st.markdown(f"""
+        <div style="background:{hex_col}33; padding:14px; border-radius:8px;
+                    border-left:6px solid {hex_col}; margin-bottom:16px;">
+            <h2 style="margin:0">{zone_code} — {zone_name}</h2>
+            <p style="margin:4px 0 0 0; color:#555; font-size:0.9em">{desa} &nbsp;|&nbsp; {zone_def[:120]}{"..." if len(zone_def)>120 else ""}</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Parametri urbanistici
+        col_urb, col_roi = st.columns(2)
+        with col_urb:
+            st.subheader(T("urban_params"))
+            u1, u2, u3, u4 = st.columns(4)
+            u1.metric("KDB", kdb)
+            u2.metric("KLB", klb)
+            u3.metric("KDH", kdh)
+            u4.metric(T("max_height"), tb)
+            st.caption(f"GSB: {gsb}")
+            try:
+                # Primary: open-elevation.com | Fallback: open-meteo.com
+                try:
+                    elev_r = requests.get(
+                        "https://api.open-elevation.com/api/v1/lookup",
+                        params={"locations": f"{lat_in},{lon_in}"},
+                        timeout=6,
+                    )
+                    elev_m = elev_r.json()["results"][0]["elevation"]
+                except Exception:
+                    elev_r2 = requests.get(
+                        "https://api.open-meteo.com/v1/elevation",
+                        params={"latitude": lat_in, "longitude": lon_in},
+                        timeout=6,
+                    )
+                    elev_m = elev_r2.json()["elevation"][0]
+
+                # Bali coastline reference points (~3-5 km spacing)
+                _coast_pts = [
+                    (-8.5920, 115.0890),  # Tanah Lot west
+                    (-8.6250, 115.1100),  # Pererenan
+                    (-8.6380, 115.1300),  # Canggu / Echo Beach
+                    (-8.6480, 115.1460),  # Berawa
+                    (-8.6520, 115.1570),  # Seminyak / Petitenget
+                    (-8.6700, 115.1630),  # Legian
+                    (-8.6950, 115.1680),  # Kuta Beach
+                    (-8.7230, 115.1680),  # Jimbaran south
+                    (-8.7650, 115.1550),  # Dreamland / Bingin
+                    (-8.8150, 115.0920),  # Uluwatu south tip
+                    (-8.8290, 115.1250),  # Suluban / Blue Point
+                    (-8.7910, 115.1700),  # Padang Padang
+                    (-8.8100, 115.2300),  # Nusa Dua south
+                    (-8.7740, 115.2350),  # Nusa Dua north / BTDC
+                    (-8.7540, 115.2620),  # Tanjung Benoa
+                    (-8.7250, 115.2530),  # Serangan island
+                    (-8.6840, 115.2620),  # Sanur south
+                    (-8.6640, 115.2660),  # Sanur north
+                    (-8.6120, 115.2710),  # Ketewel / Gianyar coast
+                    (-8.5440, 115.3260),  # Sukawati coast
+                    (-8.5260, 115.3700),  # Klungkung coast
+                    (-8.5070, 115.4430),  # Candidasa / Karangasem
+                    (-8.4600, 115.4800),  # Padang Bai
+                    (-8.4200, 115.5050),  # Amed west
+                    (-8.3500, 115.5800),  # Amed east / Tulamben
+                    (-8.3180, 115.4130),  # East Singaraja coast
+                    (-8.1520, 115.0600),  # Lovina Beach
+                    (-8.1100, 115.0900),  # Lovina west / Kalibukbuk
+                    (-8.1600, 115.1800),  # Singaraja harbour
+                    (-8.2350, 115.2800),  # Tejakula coast
+                    (-8.2870, 115.1700),  # Pemuteran / West Bali
+                    (-8.3300, 115.0900),  # Menjangan area
+                    (-8.3810, 114.9550),  # Gilimanuk
+                    (-8.4500, 114.9600),  # Negara coast
+                    (-8.5240, 114.9700),  # Balian Beach / Tabanan west
+                    (-8.5600, 115.0300),  # Soka Beach
+                ]
+                dist_coast_km = min(
+                    6371 * 2 * math.asin(math.sqrt(
+                        math.sin(math.radians(lat_in - clat) / 2) ** 2
+                        + math.cos(math.radians(lat_in)) * math.cos(math.radians(clat))
+                        * math.sin(math.radians(lon_in - clon) / 2) ** 2
+                    ))
+                    for clat, clon in _coast_pts
+                )
+
+                # Flood risk: combine elevation + coast proximity
+                if elev_m < 3 and dist_coast_km < 2:
+                    elev_risk = T("flood_risk_high")
+                elif elev_m < 5 and dist_coast_km < 1:
+                    elev_risk = T("flood_risk_high")
+                elif elev_m < 8 and dist_coast_km < 1.5:
+                    elev_risk = T("low_zone_check")
+                else:
+                    elev_risk = T("safe_elevation")
+
+                # Sea view: hillside properties close to coast
+                sea_view = (
+                    (elev_m > 15 and dist_coast_km < 3)
+                    or (elev_m > 8 and dist_coast_km < 0.8)
+                )
+
+                e1, e2 = st.columns(2)
+                e1.metric(T("elevation_asl"), f"{elev_m:.1f} m", delta=elev_risk, delta_color="off")
+                e2.metric(T("coast_distance"), f"{dist_coast_km:.1f} km",
+                          delta=T("sea_view_possible") if sea_view else None, delta_color="off")
+            except Exception:
+                st.caption(T("elevation_unavailable"))
+
+        with col_roi:
+            st.subheader(T("roi_projected"))
+            if zone_code in [z for z in zone_options]:
+                try:
+                    roi_payload = {
+                        "land_size_m2": li_size,
+                        "price_total_idr": li_price,
+                        "zone_code": zone_code,
+                    }
+                    rr = requests.post(f"{API_URL}/calculator",
+                                       json=roi_payload, timeout=10).json()
+                    gs = rr.get("golden_strategy", {})
+                    urb = rr.get("urbanistica", {})
+                    st.metric(T("optimal_roi"), f"{gs.get('roi', 0):.2f}%")
+                    st.metric(T("break_even"), f"{gs.get('bey', 0):.1f} {T('years')}")
+                    st.info(f"**{gs.get('build')}** + **{gs.get('yield')}**")
+                    st.caption(f"Buildable: {urb.get('max_build_m2')} m²  |  Footprint: {urb.get('max_footprint')} m²")
+                except Exception:
+                    st.warning(T("roi_unavailable"))
+            else:
+                st.warning(T("zone_not_in_roi_db", zone_code=zone_code))
+
+        # Sensitivity matrix
+        if zone_code in zone_options:
+            st.subheader(T("sensitivity_matrix"))
+            try:
+                matrix = rr.get("sensitivity_matrix", {})
+                rows = []
+                for bk, yields in matrix.items():
+                    row = {T("construction_cost"): bk.replace("_", " ")}
+                    for yk, mv in yields.items():
+                        roi_v = mv["roi_pct"]
+                        tag = " 🔥" if roi_v >= 12 else " ✅" if roi_v >= 8 else " 🟡" if roi_v >= 4 else " 🔴"
+                        row[yk.replace("_", " ")] = f"{roi_v:.2f}%{tag}"
+                    rows.append(row)
+                st.table(pd.DataFrame(rows).set_index(T("construction_cost")))
+            except Exception:
+                pass
+
+        extra_fields = {
+            "kkop_1": T("overlay_kkop"),
+            "lp2b_2": T("overlay_lp2b"),
+            "krb_03": T("overlay_krb"),
+            "teb_05": T("overlay_teb"),
+            "cagbud": T("overlay_cagbud"),
+            "resair": T("overlay_resair"),
+        }
+        vincoli = {label: geom0.get(field) for field, label in extra_fields.items()
+                   if geom0.get(field) not in (None, "", "0", 0)}
+        if vincoli:
+            with st.expander(T("constraints_detected")):
+                for label, val in vincoli.items():
+                    st.markdown(f"- **{label}**: {val}")
+        else:
+            st.success(T("no_constraints"))
+
+        # ── KBLI COMPLIANCE CHECK ────────────────────────────────
+        st.subheader(T("kbli_compliance_title"))
+        kbli_input = st.text_input(
+            T("kbli_code_input"),
+            key="kbli_compliance_input",
+        )
+        kbli_col1, kbli_col2 = st.columns([1, 3])
+        with kbli_col1:
+            kbli_pma = st.checkbox(T("pma_foreign"), value=True, key="kbli_pma_check")
+        with kbli_col2:
+            kbli_btn = st.button(T("verify_compliance"), key="kbli_validate_btn")
+
+        if kbli_btn and kbli_input:
+            try:
+                kbli_resp = requests.post(
+                    f"{API_URL}/api/dashboard/map/validate-property",
+                    json={
+                        "kbli_code": kbli_input.strip(),
+                        "is_pma": kbli_pma,
+                        "location": "Bali",
+                    },
+                    timeout=5,
+                )
+                if kbli_resp.status_code == 200:
+                    kd = kbli_resp.json()
+                    audit = kd.get("audit", kd)
+                    state = audit.get("state", kd.get("state", "UNKNOWN"))
+
+                    badge_colors = {
+                        "APPROVED": ("#198754", "✅"),
+                        "WARNING": ("#fd7e14", "⚠️"),
+                        "REJECTED": ("#dc3545", "❌"),
+                        "ERROR": ("#6c757d", "🔴"),
+                    }
+                    color, icon = badge_colors.get(state, ("#6c757d", "❓"))
+
+                    title = kd.get("title", kbli_input)
+                    reason = audit.get("reason_code", kd.get("reason_code", ""))
+                    oss_risk = audit.get("oss_risk", "")
+
+                    st.markdown(f"""
+                    <div style="background:{color}22; padding:14px; border-radius:8px;
+                                border-left:6px solid {color}; margin:8px 0;">
+                        <span style="font-size:1.3em">{icon} <b>{state}</b></span>
+                        &nbsp;—&nbsp; <b>{kd.get('kbli_2025', kbli_input)}</b> {title}
+                        <br><span style="color:#555; font-size:0.85em">
+                            {T("reason")}: {reason.replace('_', ' ')}
+                            {f' | {T("oss_risk")}: {oss_risk}' if oss_risk else ''}
+                        </span>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    pma = kd.get("pma_logic", {})
+                    if pma:
+                        st.caption(
+                            f"{T('max_foreign_ownership')}: {pma.get('max_foreign_ownership', '?')}%"
+                            f" | {T('umkm_reserved')}: {T('yes') if pma.get('is_umkm_reserved') else T('no')}"
+                        )
+                else:
+                    st.warning(T("backend_error"))
+            except requests.exceptions.ConnectionError:
+                st.caption(T("backend_unreachable_kbli"))
+            except Exception as kbli_err:
+                st.caption(T("kbli_unavailable", err=kbli_err))
+        elif kbli_btn and not kbli_input:
+            st.info(T("enter_kbli_code"))
+
+        # ── ANALISI INVESTIMENTO UNIFICATA ──────────────────────
+        st.subheader(T("invest_title"))
+        st.caption(T("invest_caption"))
+        invest_btn = st.button(
+            T("invest_title"),
+            use_container_width=True,
+            type="secondary",
+            key="invest_analysis_btn",
+        )
+
+        if invest_btn:
+            invest_payload = {
+                "lat": lat_in,
+                "lon": lon_in,
+                "is_pma": kbli_pma,
+                "land_size_m2": li_size,
+                "price_idr": li_price,
+            }
+            # Include KBLI code if provided
+            _kbli_val = st.session_state.get("kbli_compliance_input", "").strip()
+            if _kbli_val:
+                invest_payload["kbli_code"] = _kbli_val
+
+            try:
+                inv_resp = requests.post(
+                    f"{API_URL}/api/dashboard/map/analyze-investment",
+                    json=invest_payload,
+                    timeout=25,
+                )
+                if inv_resp.status_code == 200:
+                    inv = inv_resp.json()
+                    verdict = inv.get("verdict", {})
+                    risk = verdict.get("risk_level", "UNKNOWN")
+                    can = verdict.get("can_invest", False)
+
+                    # Verdict box
+                    v_colors = {"LOW": "#198754", "MEDIUM": "#fd7e14", "HIGH": "#dc3545"}
+                    v_icons = {"LOW": "✅", "MEDIUM": "⚠️", "HIGH": "❌"}
+                    v_col = v_colors.get(risk, "#6c757d")
+                    v_ico = v_icons.get(risk, "❓")
+
+                    st.markdown(f"""
+                    <div style="background:{v_col}22; padding:16px; border-radius:10px;
+                                border-left:6px solid {v_col}; margin:12px 0;">
+                        <span style="font-size:1.5em">{v_ico} <b>{T('investable') if can else T('not_investable')}</b></span>
+                        <span style="float:right; background:{v_col}; color:white; padding:4px 12px;
+                                     border-radius:4px; font-weight:bold;">{risk} RISK</span>
+                        <br><span style="color:#555; font-size:0.9em; margin-top:6px; display:block;">
+                            {verdict.get('summary', '')}
+                        </span>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    # 3-column detail cards
+                    inv_c1, inv_c2, inv_c3 = st.columns(3)
+
+                    with inv_c1:
+                        st.markdown(f"**{T('zone_rdtr')}**")
+                        z = inv.get("zone", {})
+                        if z and z.get("source") != "unavailable":
+                            st.metric(T("zone"), z.get("code", "N/A"))
+                            st.caption(f"{z.get('name', '')} — {z.get('desa', '')}")
+                            st.caption(f"KDB {z.get('kdb')} | KLB {z.get('klb')} | KDH {z.get('kdh')}")
+                        else:
+                            st.caption(T("batara_unavailable"))
+
+                    with inv_c2:
+                        st.markdown(f"**{T('kbli_compliance')}**")
+                        k = inv.get("kbli")
+                        if k:
+                            k_st = k.get("state", "?")
+                            k_colors = {"APPROVED": "🟢", "WARNING": "🟡", "REJECTED": "🔴"}
+                            st.metric(T("status"), f"{k_colors.get(k_st, '⚪')} {k_st}")
+                            st.caption(f"{k.get('code', '')} {k.get('title', '')}")
+                            if k.get("oss_risk"):
+                                st.caption(f"{T('oss_risk')}: {k['oss_risk']}")
+                        else:
+                            st.caption(T("no_kbli_provided"))
+
+                    with inv_c3:
+                        st.markdown(f"**{T('roi_projection')}**")
+                        r = inv.get("roi", {})
+                        gs = r.get("golden_strategy", {})
+                        if gs.get("roi"):
+                            st.metric("ROI", f"{gs['roi']:.1f}%")
+                            st.metric(T("break_even"), f"{gs.get('bey', '?')} {T('years')}")
+                            st.caption(f"{gs.get('build', '')} + {gs.get('yield', '')}")
+                        elif r.get("error"):
+                            st.caption(T("roi_not_calculable", err=r['error']))
+                        else:
+                            st.caption(T("insufficient_data_roi"))
+
+                else:
+                    st.warning(T("backend_http_error", code=inv_resp.status_code))
+            except requests.exceptions.ConnectionError:
+                st.warning(T("backend_unreachable_invest"))
+            except Exception as inv_err:
+                st.warning(T("invest_unavailable", err=inv_err))
+
+        # ── WALK SCORE + NOISE MAP ───────────────────────────────
+        st.subheader(T("urban_context"))
+        try:
+            overpass_url_ctx = "https://overpass-api.de/api/interpreter"
+            # Amenity score: proximity to daily-life services (NOT true walkability)
+            q_walk = f"""
 [out:json][timeout:25];
 (
-  node["natural"="beach"](around:3000,{lat_in},{lon_in});
-  node["shop"~"supermarket|convenience"](around:1000,{lat_in},{lon_in});
-  node["amenity"~"hospital|clinic"](around:2000,{lat_in},{lon_in});
+  node["shop"~"supermarket|convenience"](around:800,{lat_in},{lon_in});
+  way["shop"~"supermarket|convenience"](around:800,{lat_in},{lon_in});
+  node["amenity"~"restaurant|cafe"](around:600,{lat_in},{lon_in});
+  node["amenity"~"hospital|clinic|doctors"](around:2000,{lat_in},{lon_in});
   node["amenity"="atm"](around:1000,{lat_in},{lon_in});
   node["amenity"="pharmacy"](around:1000,{lat_in},{lon_in});
+  node["natural"="beach"](around:2000,{lat_in},{lon_in});
 );
 out body;
 """
-                    rq_walk = requests.post(overpass_url_ctx, data={"data": q_walk}, timeout=30)
-                    walk_els = rq_walk.json().get("elements", []) if rq_walk.status_code == 200 else []
+            rq_walk = requests.post(overpass_url_ctx, data={"data": q_walk}, timeout=30)
+            walk_els = rq_walk.json().get("elements", []) if rq_walk.status_code == 200 else []
 
-                    beach = sum(1 for e in walk_els if e.get("tags", {}).get("natural") == "beach")
-                    supermarket = sum(1 for e in walk_els if "supermarket" in e.get("tags", {}).get("shop", "") or "convenience" in e.get("tags", {}).get("shop", ""))
-                    hospital = sum(1 for e in walk_els if "hospital" in e.get("tags", {}).get("amenity", "") or "clinic" in e.get("tags", {}).get("amenity", ""))
-                    atm = sum(1 for e in walk_els if e.get("tags", {}).get("amenity") == "atm")
-                    pharmacy = sum(1 for e in walk_els if e.get("tags", {}).get("amenity") == "pharmacy")
+            supermarket = sum(1 for e in walk_els if any(k in e.get("tags", {}).get("shop", "") for k in ("supermarket", "convenience")))
+            restaurant = sum(1 for e in walk_els if e.get("tags", {}).get("amenity") in ("restaurant", "cafe"))
+            hospital = sum(1 for e in walk_els if e.get("tags", {}).get("amenity") in ("hospital", "clinic", "doctors"))
+            atm = sum(1 for e in walk_els if e.get("tags", {}).get("amenity") == "atm")
+            pharmacy = sum(1 for e in walk_els if e.get("tags", {}).get("amenity") == "pharmacy")
+            beach = sum(1 for e in walk_els if e.get("tags", {}).get("natural") == "beach")
 
-                    walk_score = min(100, (
-                        min(beach, 2) * 20 +
-                        min(supermarket, 2) * 15 +
-                        min(hospital, 1) * 15 +
-                        min(atm, 3) * 10 +
-                        min(pharmacy, 2) * 10
-                    ))
+            # Weighted: shops(25) + food(25) + health(20) + finance(15) + beach(15) = 100
+            walk_score = min(100, (
+                min(supermarket, 3) * 8 +       # max 24 — daily shopping
+                min(restaurant, 4) * 6 +         # max 24 — food & drink
+                min(hospital, 1) * 12 +          # max 12 — medical access
+                min(pharmacy, 1) * 8 +           # max 8  — pharmacy
+                min(atm, 2) * 7 +                # max 14 — financial
+                min(beach, 1) * 8 +              # max 8  — lifestyle (Bali context)
+                (10 if supermarket >= 2 and restaurant >= 2 else 0)  # density bonus
+            ))
 
-                    q_noise = f"""
+            q_noise = f"""
 [out:json][timeout:15];
 (
-  node["amenity"~"bar|pub|nightclub"](around:300,{lat_in},{lon_in});
-  way["highway"~"primary|secondary"](around:150,{lat_in},{lon_in});
+  node["amenity"~"bar|pub|nightclub|biergarten"](around:400,{lat_in},{lon_in});
+  way["amenity"~"bar|pub|nightclub|biergarten"](around:400,{lat_in},{lon_in});
+  way["highway"~"primary|trunk|motorway"](around:100,{lat_in},{lon_in});
+  way["highway"="secondary"](around:80,{lat_in},{lon_in});
+  node["leisure"="bleaching"](around:300,{lat_in},{lon_in});
 );
-out count;
+out body;
 """
-                    rq_noise = requests.post(overpass_url_ctx, data={"data": q_noise}, timeout=20)
-                    noise_count = int(rq_noise.json()["elements"][0]["tags"].get("total", 0)) if rq_noise.status_code == 200 else 0
+            rq_noise = requests.post(overpass_url_ctx, data={"data": q_noise}, timeout=20)
+            noise_els = rq_noise.json().get("elements", []) if rq_noise.status_code == 200 else []
+            # Separate nightlife vs traffic noise
+            bars = sum(1 for e in noise_els if e.get("tags", {}).get("amenity") in ("bar", "pub", "nightclub", "biergarten"))
+            roads = sum(1 for e in noise_els if e.get("tags", {}).get("highway") in ("primary", "trunk", "motorway", "secondary"))
+            noise_score = bars * 2 + roads  # bars weigh more (night disturbance)
 
-                    if noise_count == 0:
-                        noise_label = T("silent")
-                        noise_yield = T("noise_yield_quiet")
-                    elif noise_count <= 3:
-                        noise_label = T("moderate")
-                        noise_yield = T("noise_yield_moderate")
-                    else:
-                        noise_label = T("noisy")
-                        noise_yield = T("noise_yield_noisy")
+            if noise_score == 0:
+                noise_label = T("silent")
+                noise_yield = T("noise_yield_quiet")
+            elif noise_score <= 4:
+                noise_label = T("moderate")
+                noise_yield = T("noise_yield_moderate")
+            else:
+                noise_label = T("noisy")
+                noise_yield = T("noise_yield_noisy")
 
-                    ws_label = T("walk_excellent") if walk_score >= 70 else T("walk_good") if walk_score >= 40 else T("walk_isolated")
+            ws_label = T("walk_excellent") if walk_score >= 65 else T("walk_good") if walk_score >= 35 else T("walk_isolated")
 
-                    w1, w2 = st.columns(2)
-                    w1.metric(T("walk_score"), f"{walk_score}/100", delta=ws_label, delta_color="off")
-                    w2.metric(T("noise_level"), noise_label, delta=noise_yield, delta_color="off")
+            w1, w2 = st.columns(2)
+            w1.metric(T("walk_score"), f"{walk_score}/100", delta=ws_label, delta_color="off")
+            w2.metric(T("noise_level"), noise_label, delta=noise_yield, delta_color="off")
 
-                except Exception as ctx_err:
-                    st.caption(T("urban_context_unavailable", err=ctx_err))
+        except Exception as ctx_err:
+            st.caption(T("urban_context_unavailable", err=ctx_err))
 
-                # ── BPN CATASTO ──────────────────────────────────────
-                st.subheader(T("bpn_catasto"))
-                bpn_feats = []
-                try:
-                    bpn_params = {
-                        "SERVICE": "WMS", "VERSION": "1.3.0", "REQUEST": "GetFeatureInfo",
-                        "FORMAT": "image/png", "TRANSPARENT": "true",
-                        "QUERY_LAYERS": "bhumi_persil", "LAYERS": "bhumi_persil",
-                        "INFO_FORMAT": "application/json",
-                        "I": "50", "J": "50", "CRS": "EPSG:4326", "STYLES": "",
-                        "WIDTH": "101", "HEIGHT": "101",
-                        "BBOX": f"{lat_in-0.001},{lon_in-0.001},{lat_in+0.001},{lon_in+0.001}",
-                    }
-                    bpn_r = requests.get(
-                        "https://bhumi.atrbpn.go.id/mprx/service",
-                        params=bpn_params,
-                        headers={"Referer": "https://bhumi.atrbpn.go.id/peta", "User-Agent": "Mozilla/5.0"},
-                        timeout=10,
-                    )
-                    bpn_feats = bpn_r.json().get("features", [])
+        # ── BPN CATASTO ──────────────────────────────────────
+        st.subheader(T("bpn_catasto"))
+        bpn_feats = []
+        try:
+            bpn_params = {
+                "SERVICE": "WMS", "VERSION": "1.3.0", "REQUEST": "GetFeatureInfo",
+                "FORMAT": "image/png", "TRANSPARENT": "true",
+                "QUERY_LAYERS": "bhumi_persil", "LAYERS": "bhumi_persil",
+                "INFO_FORMAT": "application/json",
+                "I": "50", "J": "50", "CRS": "EPSG:4326", "STYLES": "",
+                "WIDTH": "101", "HEIGHT": "101",
+                "BBOX": f"{lat_in-0.001},{lon_in-0.001},{lat_in+0.001},{lon_in+0.001}",
+            }
+            bpn_r = requests.get(
+                "https://bhumi.atrbpn.go.id/mprx/service",
+                params=bpn_params,
+                headers={"Referer": "https://bhumi.atrbpn.go.id/peta", "User-Agent": "Mozilla/5.0"},
+                timeout=10,
+            )
+            bpn_feats = bpn_r.json().get("features", [])
 
-                    if bpn_feats:
-                        for bf in bpn_feats:
-                            bp = bf.get("properties", {})
-                            tipehak = bp.get("tipehak", "N/A")
-                            luas_bpn = bp.get("luas", "N/A")
-                            nomor = bp.get("nomor", "N/A")
-                            tahun = bp.get("tahun", "N/A")
-                            nib_bpn = bp.get("nib") or "—"
-                            akurasi = bp.get("akurasibidang") or "—"
+            if bpn_feats:
+                for bf in bpn_feats:
+                    bp = bf.get("properties", {})
+                    tipehak = bp.get("tipehak", "N/A")
+                    luas_bpn = bp.get("luas", "N/A")
+                    nomor = bp.get("nomor", "N/A")
+                    tahun = bp.get("tahun", "N/A")
+                    nib_bpn = bp.get("nib") or "—"
+                    akurasi = bp.get("akurasibidang") or "—"
 
-                            hak_color = {
-                                "Hak Milik": "#198754",
-                                "Hak Guna Bangunan": "#0d6efd",
-                                "Hak Pakai": "#fd7e14",
-                                "Hak Guna Usaha": "#dc3545",
-                            }.get(tipehak, "#6c757d")
+                    hak_color = {
+                        "Hak Milik": "#198754",
+                        "Hak Guna Bangunan": "#0d6efd",
+                        "Hak Pakai": "#fd7e14",
+                        "Hak Guna Usaha": "#dc3545",
+                    }.get(tipehak, "#6c757d")
 
-                            st.markdown(f"""
-                            <div style="background:{hak_color}22; padding:12px; border-radius:8px;
-                                        border-left:5px solid {hak_color}; margin-bottom:8px;">
-                                <b style="color:{hak_color}; font-size:1.1em">{tipehak}</b>
-                            </div>
-                            """, unsafe_allow_html=True)
+                    st.markdown(f"""
+                    <div style="background:{hak_color}22; padding:12px; border-radius:8px;
+                                border-left:5px solid {hak_color}; margin-bottom:8px;">
+                        <b style="color:{hak_color}; font-size:1.1em">{tipehak}</b>
+                    </div>
+                    """, unsafe_allow_html=True)
 
-                            b1, b2, b3, b4 = st.columns(4)
-                            b1.metric("Luas BPN", f"{luas_bpn:,} m²" if isinstance(luas_bpn, (int,float)) else luas_bpn)
-                            b2.metric(T("registration_year"), tahun)
-                            b3.metric("NIB", nib_bpn)
-                            b4.metric(T("accuracy"), akurasi)
-                            st.caption(f"{T('certificate_number')}: `{nomor}`")
+                    b1, b2, b3, b4 = st.columns(4)
+                    b1.metric("Luas BPN", f"{luas_bpn:,} m²" if isinstance(luas_bpn, (int,float)) else luas_bpn)
+                    b2.metric(T("registration_year"), tahun)
+                    b3.metric("NIB", nib_bpn)
+                    b4.metric(T("accuracy"), akurasi)
+                    st.caption(f"{T('certificate_number')}: `{nomor}`")
 
-                            if bf.get("geometry"):
-                                folium.GeoJson(
-                                    {"type": "FeatureCollection", "features": [bf]},
-                                    name="Bidang Tanah BPN",
-                                    style_function=lambda x, c=hak_color: {
-                                        "color": c, "weight": 2.5,
-                                        "fillColor": c, "fillOpacity": 0.15,
-                                    },
-                                    tooltip=folium.GeoJsonTooltip(
-                                        fields=["tipehak", "luas", "nomor"],
-                                        aliases=["Tipe Hak:", "Luas (m²):", "Nomor:"],
-                                    ),
-                                ).add_to(m_li)
-                    else:
-                        st.info(T("no_bpn_parcel"))
+                    if bf.get("geometry"):
+                        folium.GeoJson(
+                            {"type": "FeatureCollection", "features": [bf]},
+                            name="Bidang Tanah BPN",
+                            style_function=lambda x, c=hak_color: {
+                                "color": c, "weight": 2.5,
+                                "fillColor": c, "fillOpacity": 0.15,
+                            },
+                            tooltip=folium.GeoJsonTooltip(
+                                fields=["tipehak", "luas", "nomor"],
+                                aliases=["Tipe Hak:", "Luas (m²):", "Nomor:"],
+                            ),
+                        ).add_to(m_li)
+            else:
+                st.info(T("no_bpn_parcel"))
 
-                except Exception as bpn_err:
-                    st.warning(T("bpn_unreachable", err=bpn_err))
+        except Exception as bpn_err:
+            st.warning(T("bpn_unreachable", err=bpn_err))
 
-                # ── AIRBNB DENSITY (OSM Overpass) ─────────────────────
-                st.subheader(T("tourism_density"))
-                try:
-                    overpass_url = "https://overpass-api.de/api/interpreter"
-                    density_results = {}
-                    for radius, label in [(500, "500m"), (1000, "1km"), (2000, "2km")]:
-                        q = f"""
-[out:json][timeout:20];
+        # ── AIRBNB DENSITY (OSM Overpass) ─────────────────────
+        st.subheader(T("tourism_density"))
+        try:
+            overpass_url = "https://overpass-api.de/api/interpreter"
+            # Single query for 2km radius, then filter by distance for sub-radii
+            q_density = f"""
+[out:json][timeout:25];
 (
-  node["tourism"~"villa|guest_house|hotel"](around:{radius},{lat_in},{lon_in});
-  way["tourism"~"villa|guest_house|hotel"](around:{radius},{lat_in},{lon_in});
+  node["tourism"~"villa|guest_house|hotel|hostel|apartment"](around:2000,{lat_in},{lon_in});
+  way["tourism"~"villa|guest_house|hotel|hostel|apartment"](around:2000,{lat_in},{lon_in});
 );
-out count;
+out center;
 """
-                        rq = requests.post(overpass_url, data={"data": q}, timeout=25)
-                        if rq.status_code == 200 and rq.text.strip():
-                            total = rq.json()["elements"][0]["tags"]["total"]
-                            density_results[label] = int(total)
+            rq_dens = requests.post(overpass_url, data={"data": q_density}, timeout=30)
+            density_results = {}
+            _all_tourism_els = []
+            if rq_dens.status_code == 200 and rq_dens.text.strip():
+                _all_tourism_els = rq_dens.json().get("elements", [])
+                for radius, label in [(500, "500m"), (1000, "1km"), (2000, "2km")]:
+                    count = 0
+                    for el in _all_tourism_els:
+                        c = el.get("center", el)
+                        elat, elon = c.get("lat"), c.get("lon")
+                        if elat and elon:
+                            # Fast approximate distance (good enough for <5km)
+                            dlat_r = math.radians(lat_in - elat)
+                            dlon_r = math.radians(lon_in - elon)
+                            a_d = dlat_r**2 + (dlon_r * math.cos(math.radians(lat_in)))**2
+                            dist_m = 6371000 * math.sqrt(a_d)
+                            if dist_m <= radius:
+                                count += 1
+                    density_results[label] = count
 
-                    if density_results:
-                        d1, d2, d3 = st.columns(3)
-                        cols = [d1, d2, d3]
-                        thresholds = {"500m": (10, 25), "1km": (30, 70), "2km": (80, 150)}
-                        for i, (label, count) in enumerate(density_results.items()):
-                            low, high = thresholds.get(label, (20, 50))
-                            if count >= high:
-                                signal = "🔴 " + T("saturated_zone")
-                            elif count >= low:
-                                signal = "🟡 " + T("active_market")
-                            else:
-                                signal = "🟢 " + T("low_competition")
-                            cols[i].metric(T("structures_within", label=label), count, delta=signal, delta_color="off")
-
-                        q_map = f"""
-[out:json][timeout:20];
-(
-  node["tourism"~"villa|guest_house"](around:1000,{lat_in},{lon_in});
-  way["tourism"~"villa|guest_house"](around:1000,{lat_in},{lon_in});
-);
-out center tags;
-"""
-                        rq2 = requests.post(overpass_url, data={"data": q_map}, timeout=25)
-                        if rq2.status_code == 200 and rq2.text.strip():
-                            osm_els = rq2.json().get("elements", [])
-                            for el in osm_els:
-                                c = el.get("center", el)
-                                elat = c.get("lat")
-                                elon = c.get("lon")
-                                if elat and elon:
-                                    name = el.get("tags", {}).get("name", "Villa")
-                                    tourism = el.get("tags", {}).get("tourism", "villa")
-                                    folium.CircleMarker(
-                                        [elat, elon],
-                                        radius=5,
-                                        color="#FF6B35",
-                                        fill=True,
-                                        fill_color="#FF6B35",
-                                        fill_opacity=0.6,
-                                        tooltip=f"{tourism}: {name}",
-                                    ).add_to(m_li)
-
-                        st.caption(T("osm_source_note"))
+            if density_results:
+                d1, d2, d3 = st.columns(3)
+                cols = [d1, d2, d3]
+                thresholds = {"500m": (10, 25), "1km": (30, 70), "2km": (80, 150)}
+                for i, (label, count) in enumerate(density_results.items()):
+                    low, high = thresholds.get(label, (20, 50))
+                    if count >= high:
+                        signal = "🔴 " + T("saturated_zone")
+                    elif count >= low:
+                        signal = "🟡 " + T("active_market")
                     else:
-                        st.info(T("density_unavailable"))
+                        signal = "🟢 " + T("low_competition")
+                    cols[i].metric(T("structures_within", label=label), count, delta=signal, delta_color="off")
 
-                except Exception as osm_err:
-                    st.warning(T("osm_unreachable", err=osm_err))
+                if _all_tourism_els:
+                    for el in _all_tourism_els:
+                        c = el.get("center", el)
+                        elat = c.get("lat")
+                        elon = c.get("lon")
+                        if elat and elon:
+                            name = el.get("tags", {}).get("name", "Villa")
+                            tourism = el.get("tags", {}).get("tourism", "villa")
+                            folium.CircleMarker(
+                                [elat, elon],
+                                radius=5,
+                                color="#FF6B35",
+                                fill=True,
+                                fill_color="#FF6B35",
+                                fill_opacity=0.6,
+                                tooltip=f"{tourism}: {name}",
+                            ).add_to(m_li)
 
-                # ── AI ASSESSMENT (Qwen 32B locale) ───────────────────
-                st.subheader(T("ai_assessment"))
-                st.caption(T("ai_caption"))
+                st.caption(T("osm_source_note"))
+            else:
+                st.info(T("density_unavailable"))
 
-                _bpn_str = ""
-                try:
-                    if bpn_feats:
-                        bp0 = bpn_feats[0].get("properties", {})
-                        _bpn_str = (
-                            f"Tipo diritto: {bp0.get('tipehak','N/A')}, "
-                            f"Luas: {bp0.get('luas','N/A')} m², "
-                            f"Anno: {bp0.get('tahun','N/A')}, "
-                            f"NIB: {bp0.get('nib') or '—'}"
-                        )
-                except Exception:
-                    _bpn_str = T("unavailable")
+        except Exception as osm_err:
+            st.warning(T("osm_unreachable", err=osm_err))
 
-                _vincoli_str = ", ".join(vincoli.keys()) if "vincoli" in locals() and vincoli else T("none_detected")
-                _density_str = ", ".join(
-                    f"{k}: {v} strutture" for k, v in density_results.items()
-                ) if "density_results" in locals() and density_results else T("unavailable")
+        # ── AI ASSESSMENT (Qwen 32B locale) ───────────────────
+        st.subheader(T("ai_assessment"))
+        st.caption(T("ai_caption"))
 
-                _roi_str = ""
-                try:
-                    if "gs" in locals():
-                        _roi_str = f"ROI: {gs.get('roi',0):.2f}%, Break-even: {gs.get('bey',0):.1f} {T('years')}, {T('pdf_strategy')}: {gs.get('build','')} + {gs.get('yield','')}"
-                    else:
-                        _roi_str = T("unavailable")
-                except Exception:
-                    _roi_str = T("unavailable")
+        _bpn_str = ""
+        try:
+            if bpn_feats:
+                bp0 = bpn_feats[0].get("properties", {})
+                _bpn_str = (
+                    f"Tipo diritto: {bp0.get('tipehak','N/A')}, "
+                    f"Luas: {bp0.get('luas','N/A')} m², "
+                    f"Anno: {bp0.get('tahun','N/A')}, "
+                    f"NIB: {bp0.get('nib') or '—'}"
+                )
+        except Exception:
+            _bpn_str = T("unavailable")
 
-                _ai_lang = T("ai_prompt_lang")
-                ai_prompt = f"""Sei un consulente immobiliare specializzato in Bali. Analizza questo terreno e dai un giudizio professionale CONCISO (max 200 parole) in {_ai_lang}.
+        _vincoli_str = ", ".join(vincoli.keys()) if "vincoli" in locals() and vincoli else T("none_detected")
+        _density_str = ", ".join(
+            f"{k}: {v} strutture" for k, v in density_results.items()
+        ) if "density_results" in locals() and density_results else T("unavailable")
+
+        _roi_str = ""
+        try:
+            if "gs" in locals():
+                _roi_str = f"ROI: {gs.get('roi',0):.2f}%, Break-even: {gs.get('bey',0):.1f} {T('years')}, {T('pdf_strategy')}: {gs.get('build','')} + {gs.get('yield','')}"
+            else:
+                _roi_str = T("unavailable")
+        except Exception:
+            _roi_str = T("unavailable")
+
+        _ai_lang = T("ai_prompt_lang")
+        ai_prompt = f"""Sei un consulente immobiliare specializzato in Bali. Analizza questo terreno e dai un giudizio professionale CONCISO (max 200 parole) in {_ai_lang}.
 
 DATI TERRENO:
 - Coordinate: {lat_in:.6f}, {lon_in:.6f}
@@ -1176,297 +1296,154 @@ MERCATO TURISTICO (OSM):
 
 Dai un giudizio su: (1) potenziale di sviluppo, (2) rischi principali, (3) raccomandazione finale (acquista/valuta/evita) con breve motivazione."""
 
-                if st.button(T("generate_ai_report"), key="ai_report_btn"):
-                    try:
-                        ollama_url = "http://localhost:11434/api/generate"
-                        payload_ai = {
-                            "model": "qwen2.5-coder:32b-instruct-q4_K_M",
-                            "prompt": ai_prompt,
-                            "stream": True,
-                            "options": {"num_predict": 300, "temperature": 0.3},
-                        }
-                        ai_placeholder = st.empty()
-                        ai_text = ""
-                        with st.spinner(T("qwen_processing")):
-                            resp_ai = requests.post(
-                                ollama_url, json=payload_ai, stream=True, timeout=120
-                            )
-                            for line in resp_ai.iter_lines():
-                                if line:
-                                    try:
-                                        chunk = json.loads(line.decode("utf-8"))
-                                        ai_text += chunk.get("response", "")
-                                        ai_placeholder.markdown(ai_text + "▌")
-                                        if chunk.get("done"):
-                                            break
-                                    except Exception:
-                                        pass
-                        ai_placeholder.markdown(ai_text)
-                    except requests.exceptions.ConnectionError:
-                        st.error(T("ollama_unreachable"))
-                    except Exception as ai_err:
-                        st.error(T("ai_error", err=ai_err))
-
-                # ── CSV EXPORT ────────────────────────────────────────────
-                st.divider()
-                export_data = {
-                    "timestamp": [pd.Timestamp.now().isoformat()],
-                    "lat": [lat_in],
-                    "lon": [lon_in],
-                    "indirizzo": [st.session_state.get("geo_label", "")],
-                    "zona_code": [zone_code],
-                    "zona_name": [zone_name],
-                    "desa": [desa],
-                    "kdb": [kdb],
-                    "klb": [klb],
-                    "kdh": [kdh],
-                    "altezza_max": [tb],
-                    "superficie_m2": [li_size],
-                    "prezzo_idr": [li_price],
-                    "prezzo_usd": [round(li_price * fx_usd, 0) if fx_usd else None],
-                    "roi_pct": [gs.get("roi") if "gs" in locals() else None],
-                    "break_even_anni": [gs.get("bey") if "gs" in locals() else None],
-                    "bpn_tipehak": [bpn_feats[0].get("properties", {}).get("tipehak") if bpn_feats else None],
-                    "bpn_luas_m2": [bpn_feats[0].get("properties", {}).get("luas") if bpn_feats else None],
-                    "bpn_nomor": [bpn_feats[0].get("properties", {}).get("nomor") if bpn_feats else None],
-                    "vincoli": [", ".join(vincoli.keys()) if "vincoli" in locals() and vincoli else ""],
-                    "walk_score": [walk_score if "walk_score" in locals() else None],
-                    "noise_level": [noise_label if "noise_label" in locals() else None],
-                    "elevazione_m": [elev_m if "elev_m" in locals() else None],
-                    "densita_500m": [density_results.get("500m") if "density_results" in locals() else None],
-                    "densita_1km": [density_results.get("1km") if "density_results" in locals() else None],
-                    "densita_2km": [density_results.get("2km") if "density_results" in locals() else None],
+        if st.button(T("generate_ai_report"), key="ai_report_btn"):
+            try:
+                ollama_url = "http://localhost:11434/api/generate"
+                payload_ai = {
+                    "model": "qwen2.5-coder:32b-instruct-q4_K_M",
+                    "prompt": ai_prompt,
+                    "stream": True,
+                    "options": {"num_predict": 300, "temperature": 0.3},
                 }
-                export_df = pd.DataFrame(export_data)
-                csv_bytes = export_df.to_csv(index=False).encode("utf-8")
-                fname = f"land_intel_{lat_in:.4f}_{lon_in:.4f}_{pd.Timestamp.now().strftime('%Y%m%d')}.csv"
-                st.download_button(T("export_csv"), data=csv_bytes, file_name=fname, mime="text/csv")
-                # ── SALVA TERRENO ─────────────────────────────────────
-                st.subheader(T("save_land"))
-                if db_ok:
-                    nota_input = st.text_area(T("note_optional"), key="nota_salvataggio", height=80)
-                    if st.button(T("save_to_archive"), key="save_parcel_btn"):
-                        conn_s = get_pg_conn()
-                        if conn_s:
+                ai_placeholder = st.empty()
+                ai_text = ""
+                with st.spinner(T("qwen_processing")):
+                    resp_ai = requests.post(
+                        ollama_url, json=payload_ai, stream=True, timeout=120
+                    )
+                    for line in resp_ai.iter_lines():
+                        if line:
                             try:
-                                with conn_s.cursor() as cur:
-                                    cur.execute("""
-                                        INSERT INTO saved_parcels
-                                        (lat, lon, indirizzo, zona_code, zona_name, desa,
-                                         superficie_m2, prezzo_idr, roi_pct, walk_score,
-                                         noise_level, elevazione_m, bpn_tipehak, densita_1km, note)
-                                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                                    """, (
-                                        lat_in, lon_in,
-                                        st.session_state.get("geo_label", ""),
-                                        zone_code, zone_name, desa,
-                                        li_size, li_price,
-                                        gs.get("roi") if "gs" in locals() else None,
-                                        walk_score if "walk_score" in locals() else None,
-                                        noise_label if "noise_label" in locals() else None,
-                                        elev_m if "elev_m" in locals() else None,
-                                        bpn_feats[0].get("properties", {}).get("tipehak") if bpn_feats else None,
-                                        density_results.get("1km") if "density_results" in locals() else None,
-                                        nota_input or None,
-                                    ))
-                                    conn_s.commit()
-                                st.success(T("land_saved"))
-                            except Exception as save_err:
-                                st.error(T("save_error", err=save_err))
-                            finally:
-                                conn_s.close()
-                        else:
-                            st.warning(T("pg_unreachable"))
-                else:
-                    st.caption(T("db_unavailable"))
+                                chunk = json.loads(line.decode("utf-8"))
+                                ai_text += chunk.get("response", "")
+                                ai_placeholder.markdown(ai_text + "▌")
+                                if chunk.get("done"):
+                                    break
+                            except Exception:
+                                pass
+                ai_placeholder.markdown(ai_text)
+            except requests.exceptions.ConnectionError:
+                st.error(T("ollama_unreachable"))
+            except Exception as ai_err:
+                st.error(T("ai_error", err=ai_err))
 
-                # ── ANALYTICS LOG (silent) ────────────────────────────
-                _log_analytics_lookup(
-                    user_email="dashboard_user",
-                    kbli_code=st.session_state.get("kbli_compliance_input"),
-                    location=f"{lat_in},{lon_in}",
-                    notes=f"zone={zone_code}, size={li_size}m2",
-                )
-
-                # ── PDF EXPORT ────────────────────────────────────────
-                pdf_data = {
-                    "timestamp": pd.Timestamp.now().strftime("%d/%m/%Y %H:%M"),
-                    "lat": lat_in,
-                    "lon": lon_in,
-                    "zona_code": zone_code,
-                    "zona_name": zone_name,
-                    "desa": desa,
-                    "kdb": kdb, "klb": klb, "kdh": kdh, "tb": tb, "gsb": gsb,
-                    "superficie_m2": li_size,
-                    "prezzo_idr": li_price,
-                    "prezzo_usd": round(li_price * fx_usd, 0) if fx_usd else None,
-                    "roi_pct": gs.get("roi") if "gs" in locals() else None,
-                    "break_even": gs.get("bey") if "gs" in locals() else None,
-                    "strategia": f"{gs.get('build','')} + {gs.get('yield','')}" if "gs" in locals() else None,
-                    "bpn_tipehak": bpn_feats[0].get("properties", {}).get("tipehak") if bpn_feats else None,
-                    "bpn_luas": bpn_feats[0].get("properties", {}).get("luas") if bpn_feats else None,
-                    "bpn_nomor": bpn_feats[0].get("properties", {}).get("nomor") if bpn_feats else None,
-                    "bpn_tahun": bpn_feats[0].get("properties", {}).get("tahun") if bpn_feats else None,
-                    "walk_score": walk_score if "walk_score" in locals() else None,
-                    "noise_label": noise_label if "noise_label" in locals() else None,
-                    "elev_m": elev_m if "elev_m" in locals() else None,
-                    "dist_coast_km": dist_coast_km if "dist_coast_km" in locals() else None,
-                    "densita_500m": density_results.get("500m") if "density_results" in locals() else None,
-                    "densita_1km": density_results.get("1km") if "density_results" in locals() else None,
-                    "densita_2km": density_results.get("2km") if "density_results" in locals() else None,
-                    "vincoli": list(vincoli.keys()) if "vincoli" in locals() and vincoli else [],
-                }
-                try:
-                    pdf_bytes = generate_pdf(pdf_data)
-                    pdf_fname = f"land_intel_{lat_in:.4f}_{lon_in:.4f}_{pd.Timestamp.now().strftime('%Y%m%d')}.pdf"
-                    st.download_button(T("export_pdf"), data=pdf_bytes, file_name=pdf_fname, mime="application/pdf")
-                except Exception as pdf_err:
-                    st.warning(T("pdf_error", err=pdf_err))
-
-
-
-            except requests.exceptions.Timeout:
-                st.error(T("batara_timeout"))
-            except Exception as e:
-                # ── GISTARU RDTR fallback (primary) → OSM (secondary) ──
-                st.warning(T("batara_fallback_gistaru", err_type=type(e).__name__))
-                gistaru_zone = None
-                try:
-                    gr = requests.post(
-                        f"{API_URL}/api/dashboard/map/gistaru-zone",
-                        json={"lat": lat_in, "lon": lon_in},
-                        timeout=20,
-                    )
-                    gd = gr.json()
-                    if gd.get("found"):
-                        gistaru_zone = gd
-                except Exception:
-                    pass
-
-                if gistaru_zone:
-                    z_code = gistaru_zone.get("code", "N/A")
-                    z_name = gistaru_zone.get("name", "N/A")
-                    z_sub = gistaru_zone.get("sub_name", "")
-                    z_desa = gistaru_zone.get("desa", "N/A")
-                    z_kec = gistaru_zone.get("kecamatan", "")
-                    z_kab = gistaru_zone.get("kabupaten", "")
-                    z_overlays = gistaru_zone.get("overlays", {})
-
-                    # Zone color based on code prefix
-                    zone_colors = {
-                        "R": "#0d6efd", "K": "#fd7e14", "W": "#198754",
-                        "P": "#20c997", "PS": "#6f42c1", "RTH": "#28a745",
-                        "SPU": "#17a2b8", "I": "#dc3545",
-                    }
-                    z_color = "#6c757d"
-                    for prefix, color in zone_colors.items():
-                        if z_code.startswith(prefix):
-                            z_color = color
-                            break
-
-                    st.divider()
-                    st.markdown(f"""
-                    <div style="background:{z_color}22; padding:14px; border-radius:8px;
-                                border-left:6px solid {z_color}; margin-bottom:16px;">
-                        <h2 style="margin:0">{z_code} — {z_name}</h2>
-                        <p style="margin:4px 0 0 0; color:#555; font-size:0.9em">
-                            {z_sub + " · " if z_sub else ""}{z_desa}, {z_kec}
-                            &nbsp;|&nbsp; {z_kab}
-                            &nbsp;|&nbsp; <em>Fonte: GISTARU RDTR (ATR/BPN)</em>
-                        </p>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                    st.info(T("gistaru_no_kdb"))
-
-                    # Show overlay constraints if any
-                    if z_overlays:
-                        with st.expander(T("overlay_constraints"), expanded=True):
-                            overlay_labels = {
-                                "KKOP_1": "KKOP (Keselamatan Operasi Penerbangan)",
-                                "LP2B_2": "LP2B (Lahan Pertanian Pangan Berkelanjutan)",
-                                "KRB_03": "KRB (Kawasan Rawan Bencana)",
-                                "TEB_05": "TEB (Tsunami / Tata Eling Bencana)",
-                                "CAGBUD": "Cagar Budaya",
-                                "RESAIR": "Resapan Air",
-                                "SEMPDN": "Sempadan",
-                                "HANKAM": "Hankam (Pertahanan & Keamanan)",
-                            }
-                            for key, val in z_overlays.items():
-                                label = overlay_labels.get(key, key)
-                                st.warning(f"⚠️ **{label}**: {val}")
-
-                    st.subheader(T("area_context"))
-                    st.caption(
-                        f"Zona RDTR: **{z_code} {z_name}** · "
-                        f"Desa: **{z_desa}** · Kecamatan: **{z_kec}** · "
-                        f"Kabupaten: **{z_kab}**"
-                    )
-
-                    # ── BPN CATASTO (funziona su tutta Bali) ──────────────
-                    st.subheader(T("bpn_catasto_gistaru"))
+        # ── CSV EXPORT ────────────────────────────────────────────
+        st.divider()
+        export_data = {
+            "timestamp": [pd.Timestamp.now().isoformat()],
+            "lat": [lat_in],
+            "lon": [lon_in],
+            "indirizzo": [st.session_state.get("geo_label", "")],
+            "zona_code": [zone_code],
+            "zona_name": [zone_name],
+            "desa": [desa],
+            "kdb": [kdb],
+            "klb": [klb],
+            "kdh": [kdh],
+            "altezza_max": [tb],
+            "superficie_m2": [li_size],
+            "prezzo_idr": [li_price],
+            "prezzo_usd": [round(li_price * fx_usd, 0) if fx_usd else None],
+            "roi_pct": [gs.get("roi") if "gs" in locals() else None],
+            "break_even_anni": [gs.get("bey") if "gs" in locals() else None],
+            "bpn_tipehak": [bpn_feats[0].get("properties", {}).get("tipehak") if bpn_feats else None],
+            "bpn_luas_m2": [bpn_feats[0].get("properties", {}).get("luas") if bpn_feats else None],
+            "bpn_nomor": [bpn_feats[0].get("properties", {}).get("nomor") if bpn_feats else None],
+            "vincoli": [", ".join(vincoli.keys()) if "vincoli" in locals() and vincoli else ""],
+            "walk_score": [walk_score if "walk_score" in locals() else None],
+            "noise_level": [noise_label if "noise_label" in locals() else None],
+            "elevazione_m": [elev_m if "elev_m" in locals() else None],
+            "densita_500m": [density_results.get("500m") if "density_results" in locals() else None],
+            "densita_1km": [density_results.get("1km") if "density_results" in locals() else None],
+            "densita_2km": [density_results.get("2km") if "density_results" in locals() else None],
+        }
+        export_df = pd.DataFrame(export_data)
+        csv_bytes = export_df.to_csv(index=False).encode("utf-8")
+        fname = f"land_intel_{lat_in:.4f}_{lon_in:.4f}_{pd.Timestamp.now().strftime('%Y%m%d')}.csv"
+        st.download_button(T("export_csv"), data=csv_bytes, file_name=fname, mime="text/csv")
+        # ── SALVA TERRENO ─────────────────────────────────────
+        st.subheader(T("save_land"))
+        if db_ok:
+            nota_input = st.text_area(T("note_optional"), key="nota_salvataggio", height=80)
+            if st.button(T("save_to_archive"), key="save_parcel_btn"):
+                conn_s = get_pg_conn()
+                if conn_s:
                     try:
-                        bpn_params_tab = {
-                            "SERVICE": "WMS", "VERSION": "1.3.0",
-                            "REQUEST": "GetFeatureInfo",
-                            "FORMAT": "image/png", "TRANSPARENT": "true",
-                            "QUERY_LAYERS": "bhumi_persil", "LAYERS": "bhumi_persil",
-                            "INFO_FORMAT": "application/json",
-                            "I": "50", "J": "50", "CRS": "EPSG:4326",
-                            "WIDTH": "101", "HEIGHT": "101",
-                            "BBOX": f"{lat_in-0.001},{lon_in-0.001},{lat_in+0.001},{lon_in+0.001}",
-                        }
-                        bpn_r_tab = requests.get(
-                            "https://bhumi.atrbpn.go.id/mprx/service",
-                            params=bpn_params_tab,
-                            headers={"Referer": "https://bhumi.atrbpn.go.id/peta", "User-Agent": "Mozilla/5.0"},
-                            timeout=12,
-                        )
-                        bpn_feats_tab = bpn_r_tab.json().get("features", [])
-                        if bpn_feats_tab:
-                            for bf in bpn_feats_tab:
-                                bp = bf.get("properties", {})
-                                tipehak = bp.get("tipehak", "N/A")
-                                hak_color = {"Hak Milik": "#198754", "Hak Guna Bangunan": "#0d6efd",
-                                             "Hak Pakai": "#fd7e14", "Hak Guna Usaha": "#dc3545"}.get(tipehak, "#6c757d")
-                                st.markdown(f"""
-                                <div style="background:{hak_color}22; padding:12px; border-radius:8px;
-                                            border-left:5px solid {hak_color}; margin:8px 0;">
-                                    <b>{tipehak}</b> &nbsp;·&nbsp;
-                                    Luas: <b>{bp.get('luas','N/A')} m²</b> &nbsp;·&nbsp;
-                                    NIB: <b>{bp.get('nib') or '—'}</b> &nbsp;·&nbsp;
-                                    No.: <b>{bp.get('nomor','N/A')}</b> &nbsp;·&nbsp;
-                                    Tahun: <b>{bp.get('tahun','N/A')}</b>
-                                </div>
-                                """, unsafe_allow_html=True)
-                        else:
-                            st.info(T("no_bpn_parcel_short"))
-                    except Exception as bpn_tab_err:
-                        st.warning(T("bpn_unreachable", err=bpn_tab_err))
-
+                        with conn_s.cursor() as cur:
+                            cur.execute("""
+                                INSERT INTO saved_parcels
+                                (lat, lon, indirizzo, zona_code, zona_name, desa,
+                                 superficie_m2, prezzo_idr, roi_pct, walk_score,
+                                 noise_level, elevazione_m, bpn_tipehak, densita_1km, note)
+                                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                            """, (
+                                lat_in, lon_in,
+                                st.session_state.get("geo_label", ""),
+                                zone_code, zone_name, desa,
+                                li_size, li_price,
+                                gs.get("roi") if "gs" in locals() else None,
+                                walk_score if "walk_score" in locals() else None,
+                                noise_label if "noise_label" in locals() else None,
+                                elev_m if "elev_m" in locals() else None,
+                                bpn_feats[0].get("properties", {}).get("tipehak") if bpn_feats else None,
+                                density_results.get("1km") if "density_results" in locals() else None,
+                                nota_input or None,
+                            ))
+                            conn_s.commit()
+                        st.success(T("land_saved"))
+                    except Exception as save_err:
+                        st.error(T("save_error", err=save_err))
+                    finally:
+                        conn_s.close()
                 else:
-                    # OSM fallback (last resort)
-                    osm_zone = lookup_tabanan_zone(lat_in, lon_in)
-                    if osm_zone:
-                        z_code = osm_zone.get("_zone_code", "OSM")
-                        z_name = osm_zone.get("_zone_name", osm_zone.get("zona", "N/A"))
-                        z_color = osm_zone.get("_zone_color", "#cccccc")
-                        z_village = osm_zone.get("village", "N/A")
-                        z_source = osm_zone.get("_source", "OSM")
-                        st.divider()
-                        st.markdown(f"""
-                        <div style="background:{z_color}44; padding:14px; border-radius:8px;
-                                    border-left:6px solid {z_color}; margin-bottom:16px;">
-                            <h2 style="margin:0">{z_code} — {z_name}</h2>
-                            <p style="margin:4px 0 0 0; color:#555; font-size:0.9em">
-                                {z_village} &nbsp;|&nbsp;
-                                <em>Fonte: {z_source}</em>
-                            </p>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        st.info(T("tabanan_no_rdtr"))
-                    else:
-                        st.error(T("no_zone_found"))
+                    st.warning(T("pg_unreachable"))
+        else:
+            st.caption(T("db_unavailable"))
+
+        # ── ANALYTICS LOG (silent) ────────────────────────────
+        _log_analytics_lookup(
+            user_email="dashboard_user",
+            kbli_code=st.session_state.get("kbli_compliance_input"),
+            location=f"{lat_in},{lon_in}",
+            notes=f"zone={zone_code}, size={li_size}m2",
+        )
+
+        # ── PDF EXPORT ────────────────────────────────────────
+        pdf_data = {
+            "timestamp": pd.Timestamp.now().strftime("%d/%m/%Y %H:%M"),
+            "lat": lat_in,
+            "lon": lon_in,
+            "zona_code": zone_code,
+            "zona_name": zone_name,
+            "desa": desa,
+            "kdb": kdb, "klb": klb, "kdh": kdh, "tb": tb, "gsb": gsb,
+            "superficie_m2": li_size,
+            "prezzo_idr": li_price,
+            "prezzo_usd": round(li_price * fx_usd, 0) if fx_usd else None,
+            "roi_pct": gs.get("roi") if "gs" in locals() else None,
+            "break_even": gs.get("bey") if "gs" in locals() else None,
+            "strategia": f"{gs.get('build','')} + {gs.get('yield','')}" if "gs" in locals() else None,
+            "bpn_tipehak": bpn_feats[0].get("properties", {}).get("tipehak") if bpn_feats else None,
+            "bpn_luas": bpn_feats[0].get("properties", {}).get("luas") if bpn_feats else None,
+            "bpn_nomor": bpn_feats[0].get("properties", {}).get("nomor") if bpn_feats else None,
+            "bpn_tahun": bpn_feats[0].get("properties", {}).get("tahun") if bpn_feats else None,
+            "walk_score": walk_score if "walk_score" in locals() else None,
+            "noise_label": noise_label if "noise_label" in locals() else None,
+            "elev_m": elev_m if "elev_m" in locals() else None,
+            "dist_coast_km": dist_coast_km if "dist_coast_km" in locals() else None,
+            "densita_500m": density_results.get("500m") if "density_results" in locals() else None,
+            "densita_1km": density_results.get("1km") if "density_results" in locals() else None,
+            "densita_2km": density_results.get("2km") if "density_results" in locals() else None,
+            "vincoli": list(vincoli.keys()) if "vincoli" in locals() and vincoli else [],
+        }
+        try:
+            pdf_bytes = generate_pdf(pdf_data)
+            pdf_fname = f"land_intel_{lat_in:.4f}_{lon_in:.4f}_{pd.Timestamp.now().strftime('%Y%m%d')}.pdf"
+            st.download_button(T("export_pdf"), data=pdf_bytes, file_name=pdf_fname, mime="application/pdf")
+        except Exception as pdf_err:
+            st.warning(T("pdf_error", err=pdf_err))
+
+
 
 elif mode == "🧭 Zone Finder":
     st.title(T("opp_finder_title"))
