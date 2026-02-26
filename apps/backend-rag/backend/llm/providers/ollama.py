@@ -216,3 +216,11 @@ class OllamaProvider(LLMProvider):
         except Exception as e:
             logger.error(f"Ollama streaming error: {e}")
             raise RuntimeError(f"Ollama streaming failed: {e}")
+
+    async def stream(
+        self, messages: list[LLMMessage], temperature: float = 0.7, **kwargs
+    ) -> AsyncIterator[str]:
+        """Stream response - yields content chunks (LLMProvider interface)."""
+        async for resp in self.generate_stream(messages, temperature=temperature, **kwargs):
+            if resp.content:
+                yield resp.content

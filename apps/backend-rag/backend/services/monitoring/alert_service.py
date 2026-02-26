@@ -290,8 +290,8 @@ class AlertService:
         error_detail: str | None = None,
         request_id: str | None = None,
         user_agent: str | None = None,
-    ) -> None:
-        """Send alert for HTTP errors (4xx/5xx)"""
+    ) -> dict[str, bool]:
+        """Send alert for HTTP errors (4xx/5xx). Returns send_alert results."""
         # Determine alert level
         if status_code >= 500:
             level = AlertLevel.CRITICAL if status_code >= 503 else AlertLevel.ERROR
@@ -317,7 +317,7 @@ class AlertService:
         if error_detail:
             metadata["error_detail"] = error_detail[:500]
 
-        await self.send_alert(title=title, message=message, level=level, metadata=metadata)
+        return await self.send_alert(title=title, message=message, level=level, metadata=metadata)
 
     async def send_latency_alert(
         self,
@@ -327,8 +327,8 @@ class AlertService:
         threshold_ms: float,
         request_id: str | None = None,
         user_agent: str | None = None,
-    ) -> None:
-        """Send alert for high latency"""
+    ) -> dict[str, bool]:
+        """Send alert for high latency. Returns send_alert results."""
         title = f"High Latency: {duration_ms:.0f}ms"
         message = f"{method} {path} took {duration_ms:.0f}ms (threshold: {threshold_ms:.0f}ms)"
 
@@ -343,7 +343,7 @@ class AlertService:
 
         level = AlertLevel.WARNING
 
-        await self.send_alert(title=title, message=message, level=level, metadata=metadata)
+        return await self.send_alert(title=title, message=message, level=level, metadata=metadata)
 
     async def send_resource_alert(
         self,

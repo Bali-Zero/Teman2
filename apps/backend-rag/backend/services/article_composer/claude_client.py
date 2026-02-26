@@ -152,7 +152,7 @@ def get_anthropic_client() -> anthropic.Anthropic:
             anthropic.APITimeoutError,
         )
     ),
-    before_sleep=before_sleep_log(logger, "WARNING"),
+    before_sleep=before_sleep_log(logger, logging.WARNING),
     reraise=True,
 )
 async def call_claude_with_retry(

@@ -740,6 +740,7 @@ class MetricsCollector:
     stream_fatal_error_total = stream_fatal_error_total
     stream_event_none_total = stream_event_none_total
     stream_event_invalid_type_total = stream_event_invalid_type_total
+    stream_event_validation_failed_total = stream_event_validation_failed_total
 
     def __init__(self):
         self.session_count = 0

@@ -415,9 +415,8 @@ class AgenticRAGOrchestrator:
         correlation_id = str(uuid.uuid4())
 
         # Security: Validate user_id format
-        if user_id and user_id != "anonymous":
-            if not isinstance(user_id, str) or len(user_id) < 1:
-                raise ValueError("Invalid user_id format")
+        if user_id == "" or (user_id and user_id != "anonymous" and (not isinstance(user_id, str) or len(user_id) < 1)):
+            raise ValueError("Invalid user_id format")
 
         # Initialize tool execution counter for rate limiting
         tool_execution_counter = {"count": 0}

@@ -149,7 +149,7 @@ class IntelAnalyticsService:
             )
 
         # Generate daily trends
-        analytics["daily_trends"] = self._generate_daily_trends(days, staging_dir)
+        analytics["daily_trends"] = self._generate_daily_trends(days)
 
         logger.info(
             "Analytics calculated",

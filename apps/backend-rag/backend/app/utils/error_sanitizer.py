@@ -11,15 +11,16 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 # Patterns that might indicate sensitive data
+# Order matters: bearer before token so "bearer abc123" is matched before "token: bearer"
 SENSITIVE_PATTERNS = [
     re.compile(r"password[=:]\s*\S+", re.IGNORECASE),
     re.compile(r"passwd[=:]\s*\S+", re.IGNORECASE),
     re.compile(r"pwd[=:]\s*\S+", re.IGNORECASE),
     re.compile(r"secret[=:]\s*\S+", re.IGNORECASE),
+    re.compile(r"bearer\s+\S+", re.IGNORECASE),
     re.compile(r"token[=:]\s*\S+", re.IGNORECASE),
     re.compile(r"api[_-]?key[=:]\s*\S+", re.IGNORECASE),
     re.compile(r"auth[=:]\s*\S+", re.IGNORECASE),
-    re.compile(r"bearer\s+\S+", re.IGNORECASE),
     re.compile(r"basic\s+[a-zA-Z0-9+/=]+", re.IGNORECASE),
     re.compile(r"-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----"),
     re.compile(r"AKIA[0-9A-Z]{16}"),  # AWS Access Key ID pattern
