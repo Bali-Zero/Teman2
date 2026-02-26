@@ -3,7 +3,6 @@
  * Replaces 7 separate API calls with 1 optimized call using React Query
  */
 
-import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   dashboardApi,
@@ -90,86 +89,25 @@ export function useDashboardData() {
     retry: 2, // Retry failed requests 2 times
   });
 
-  // Log error details when error occurs
-  if (error) {
-    logger.error(
-      "Dashboard error state detected",
-      {
-        component: "useDashboardData",
-        action: "error_state",
-        metadata: {
-          error:
-            error instanceof Error
-              ? {
-                  message: error.message,
-                  name: error.name,
-                  stack: error.stack,
-                }
-              : error,
-          hasData: !!data,
-          timestamp: new Date().toISOString(),
-        },
-      },
-      error instanceof Error ? error : new Error(String(error)),
-    );
-  }
-
-  // Extract data with fallbacks (memoized to prevent unnecessary recalculations)
-  const user = useMemo(
-    () => data?.user || { email: "", role: "", is_admin: false },
-    [data?.user],
-  );
-
-  const stats = useMemo(
-    () =>
-      data?.stats || {
-        activeCases: 0,
-        criticalDeadlines: 0,
-        whatsappUnread: 0,
-        emailUnread: 0,
-        hoursWorked: "0h 0m",
-      },
-    [data?.stats],
-  );
-
-  const practices = useMemo(
-    () => data?.data?.practices || [],
-    [data?.data?.practices],
-  );
-
-  const interactions = useMemo(
-    () => data?.data?.interactions || [],
-    [data?.data?.interactions],
-  );
-
-  const emailStats = useMemo(
-    () => data?.data?.email || { connected: false, unread_count: 0 },
-    [data?.data?.email],
-  );
-
-  const systemStatus = useMemo(
-    () => data?.system_status || "degraded",
-    [data?.system_status],
-  );
-
-  // Check if user is admin (using is_admin field from API)
-  const isZero = useMemo(() => user.is_admin, [user.is_admin]);
-
-  // Computed values (memoized to prevent recalculation on every render)
-  const totalUnread = useMemo(
-    () => stats.whatsappUnread + stats.emailUnread,
-    [stats.whatsappUnread, stats.emailUnread],
-  );
-
-  const isHealthy = useMemo(() => systemStatus === "healthy", [systemStatus]);
-
-  // Admin-only data
-  const revenue = useMemo(() => data?.revenue || null, [data?.revenue]);
-
-  const revenueGrowth = useMemo(
-    () => data?.revenue_growth ?? null,
-    [data?.revenue_growth],
-  );
+  // Extract data with fallbacks — plain derivations, no useMemo needed
+  // (these only recompute when `data` changes, which is already controlled by React Query)
+  const user = data?.user || { email: "", role: "", is_admin: false };
+  const stats = data?.stats || {
+    activeCases: 0,
+    criticalDeadlines: 0,
+    whatsappUnread: 0,
+    emailUnread: 0,
+    hoursWorked: "0h 0m",
+  };
+  const practices = data?.data?.practices || [];
+  const interactions = data?.data?.interactions || [];
+  const emailStats = data?.data?.email || { connected: false, unread_count: 0 };
+  const systemStatus = data?.system_status || "degraded";
+  const isZero = user.is_admin;
+  const totalUnread = stats.whatsappUnread + stats.emailUnread;
+  const isHealthy = systemStatus === "healthy";
+  const revenue = data?.revenue || null;
+  const revenueGrowth = data?.revenue_growth ?? null;
 
   return {
     // Data

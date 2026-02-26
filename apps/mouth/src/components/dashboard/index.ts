@@ -13,3 +13,6 @@ export {
   HomepagePreviewWidget,
   HomepagePreviewCompact,
 } from "./HomepagePreviewWidget";
+export { MiniBarChart } from "./MiniBarChart";
+export { MiniSparkline } from "./MiniSparkline";
+export { CaseDistribution } from "./CaseDistribution";

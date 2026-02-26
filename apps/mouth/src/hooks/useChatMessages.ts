@@ -70,14 +70,13 @@ export function useChatMessages(): UseChatMessagesReturn {
   const appendToLastAssistantContent = useCallback(
     (chunk: string) => {
       safeSetMessages((prev) => {
-        const newMessages = [...prev];
-        const lastMsg = newMessages[newMessages.length - 1];
-        if (lastMsg?.role === "assistant") {
-          newMessages[newMessages.length - 1] = {
-            ...lastMsg,
-            content: lastMsg.content + chunk,
-          };
-        }
+        const lastIdx = prev.length - 1;
+        if (lastIdx < 0 || prev[lastIdx].role !== "assistant") return prev;
+        const lastMsg = prev[lastIdx];
+        const updated = { ...lastMsg, content: lastMsg.content + chunk };
+        // Reuse the array up to lastIdx to avoid cloning all elements
+        const newMessages = prev.slice(0, lastIdx);
+        newMessages.push(updated);
         return newMessages;
       });
     },
