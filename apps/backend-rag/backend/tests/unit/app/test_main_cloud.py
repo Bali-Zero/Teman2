@@ -34,12 +34,11 @@ class TestMainCloud:
     async def test_on_startup(self):
         """Test startup handler"""
         with (
-            patch("backend.app.main_cloud.initialize_services") as mock_init_services,
-            patch("backend.app.main_cloud.initialize_plugins") as mock_init_plugins,
-            patch("backend.app.main_cloud.AlertService") as mock_alert,
+            patch("backend.app.setup.service_initializer.initialize_services", new_callable=AsyncMock) as mock_init_services,
+            patch("backend.app.setup.plugin_initializer.initialize_plugins", new_callable=AsyncMock) as mock_init_plugins,
+            patch("backend.services.monitoring.alert_service.AlertService") as mock_alert,
         ):
-            mock_init_services.return_value = None
-            mock_init_plugins.return_value = None
+            mock_alert.return_value = MagicMock()
 
             await on_startup()
 

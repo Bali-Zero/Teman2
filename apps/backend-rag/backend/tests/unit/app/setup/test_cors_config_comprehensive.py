@@ -109,5 +109,6 @@ class TestRegisterCorsMiddleware:
             kwargs = call_args[1]
             assert "allow_origins" in kwargs
             assert kwargs["allow_credentials"] is True
-            assert kwargs["allow_methods"] == ["*"]
-            assert kwargs["allow_headers"] == ["*"]
+            assert kwargs["allow_methods"] == ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+            assert "Content-Type" in kwargs["allow_headers"]
+            assert "Authorization" in kwargs["allow_headers"]

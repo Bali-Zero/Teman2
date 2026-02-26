@@ -22,6 +22,8 @@ class TestObservabilitySetup:
         """Test basic observability setup (Prometheus only)"""
         mock_app = MagicMock()
         mock_instrumentator_instance = MagicMock()
+        # Chain: instrument(app).expose(app)
+        mock_instrumentator_instance.instrument.return_value = mock_instrumentator_instance
         mock_instrumentator.return_value = mock_instrumentator_instance
 
         with patch("backend.app.core.config.settings") as mock_settings:
@@ -51,16 +53,19 @@ class TestObservabilitySetup:
         """Test observability setup with OpenTelemetry gRPC (local Jaeger)"""
         mock_app = MagicMock()
         mock_instrumentator_instance = MagicMock()
+        mock_instrumentator_instance.instrument.return_value = mock_instrumentator_instance
         mock_instrumentator.return_value = mock_instrumentator_instance
+        mock_resource.create.return_value = MagicMock()
+
+        mock_settings = MagicMock()
+        mock_settings.otel_enabled = True
+        mock_settings.otel_service_name = "test-service"
+        mock_settings.environment = "test"
+        mock_settings.otel_exporter_endpoint = "http://localhost:4317"
+        mock_settings.otel_exporter_headers = None  # No headers = gRPC mode
 
         with patch("backend.app.setup.observability.OTEL_AVAILABLE", True):
-            with patch("backend.app.core.config.settings") as mock_settings:
-                mock_settings.otel_enabled = True
-                mock_settings.otel_service_name = "test-service"
-                mock_settings.environment = "test"
-                mock_settings.otel_exporter_endpoint = "http://localhost:4317"
-                mock_settings.otel_exporter_headers = None  # No headers = gRPC mode
-
+            with patch("backend.app.setup.observability.settings", mock_settings):
                 mock_tracer_provider_instance = MagicMock()
                 mock_tracer_provider.return_value = mock_tracer_provider_instance
                 mock_trace.get_tracer_provider.return_value = MagicMock()
@@ -97,19 +102,20 @@ class TestObservabilitySetup:
         """Test observability setup with OpenTelemetry HTTP (Grafana Cloud)"""
         mock_app = MagicMock()
         mock_instrumentator_instance = MagicMock()
+        mock_instrumentator_instance.instrument.return_value = mock_instrumentator_instance
         mock_instrumentator.return_value = mock_instrumentator_instance
+        mock_resource.create.return_value = MagicMock()
+
+        mock_settings = MagicMock()
+        mock_settings.otel_enabled = True
+        mock_settings.otel_service_name = "test-service"
+        mock_settings.environment = "test"
+        mock_settings.otel_exporter_endpoint = "https://otel-collector.grafana.net"
+        mock_settings.otel_exporter_headers = "Authorization=Basic token123"  # Headers = HTTP mode
 
         with patch("backend.app.setup.observability.OTEL_AVAILABLE", True):
             with patch("backend.app.setup.observability.OTEL_HTTP_AVAILABLE", True):
-                with patch("backend.app.core.config.settings") as mock_settings:
-                    mock_settings.otel_enabled = True
-                    mock_settings.otel_service_name = "test-service"
-                    mock_settings.environment = "test"
-                    mock_settings.otel_exporter_endpoint = "https://otel-collector.grafana.net"
-                    mock_settings.otel_exporter_headers = (
-                        "Authorization=Basic token123"  # Headers = HTTP mode
-                    )
-
+                with patch("backend.app.setup.observability.settings", mock_settings):
                     mock_tracer_provider_instance = MagicMock()
                     mock_tracer_provider.return_value = mock_tracer_provider_instance
                     mock_trace.get_tracer_provider.return_value = MagicMock()
@@ -203,26 +209,29 @@ class TestObservabilitySetup:
                 mock_instrumentator.assert_called_once()
 
     @patch("backend.app.setup.observability.Instrumentator")
+    @patch("backend.app.setup.observability.trace")
     @patch("backend.app.setup.observability.OTLPHttpSpanExporter")
     def test_setup_observability_http_headers_parsing(
-        self, mock_http_exporter, mock_instrumentator
+        self, mock_http_exporter, mock_trace, mock_instrumentator
     ):
         """Test parsing of multiple HTTP headers"""
         mock_app = MagicMock()
         mock_instrumentator_instance = MagicMock()
+        mock_instrumentator_instance.instrument.return_value = mock_instrumentator_instance
         mock_instrumentator.return_value = mock_instrumentator_instance
+
+        mock_settings = MagicMock()
+        mock_settings.otel_enabled = True
+        mock_settings.otel_service_name = "test-service"
+        mock_settings.environment = "test"
+        mock_settings.otel_exporter_endpoint = "https://otel-collector.grafana.net"
+        mock_settings.otel_exporter_headers = (
+            "Authorization=Basic token123, X-Custom-Header=custom-value"
+        )
 
         with patch("backend.app.setup.observability.OTEL_AVAILABLE", True):
             with patch("backend.app.setup.observability.OTEL_HTTP_AVAILABLE", True):
-                with patch("backend.app.core.config.settings") as mock_settings:
-                    mock_settings.otel_enabled = True
-                    mock_settings.otel_service_name = "test-service"
-                    mock_settings.environment = "test"
-                    mock_settings.otel_exporter_endpoint = "https://otel-collector.grafana.net"
-                    mock_settings.otel_exporter_headers = (
-                        "Authorization=Basic token123, X-Custom-Header=custom-value"
-                    )
-
+                with patch("backend.app.setup.observability.settings", mock_settings):
                     mock_trace.get_tracer_provider.return_value = MagicMock()
                     mock_http_exporter_instance = MagicMock()
                     mock_http_exporter.return_value = mock_http_exporter_instance

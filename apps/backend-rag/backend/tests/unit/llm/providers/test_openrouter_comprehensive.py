@@ -13,8 +13,10 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent.parent / "backe
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from backend.llm.base import LLMMessage
+from backend.llm.base import LLMMessage, LLMResponse
 from backend.llm.providers.openrouter import OpenRouterProvider
+
+_OPENROUTER_CLIENT_PATH = "backend.services.llm_clients.openrouter_client.OpenRouterClient"
 
 
 @pytest.fixture
@@ -23,13 +25,14 @@ def mock_openrouter_client():
     client = MagicMock()
     client.api_key = "test_key"
     client.complete = AsyncMock()
+    client.complete_stream = AsyncMock()
     return client
 
 
 @pytest.fixture
 def openrouter_provider(mock_openrouter_client):
     """Create OpenRouterProvider instance"""
-    with patch("backend.llm.providers.openrouter.OpenRouterClient") as mock_client_class:
+    with patch(_OPENROUTER_CLIENT_PATH) as mock_client_class:
         mock_client_class.return_value = mock_openrouter_client
         provider = OpenRouterProvider(tier="rag")
         return provider
@@ -40,7 +43,7 @@ class TestOpenRouterProvider:
 
     def test_init(self):
         """Test initialization"""
-        with patch("backend.llm.providers.openrouter.OpenRouterClient") as mock_client_class:
+        with patch(_OPENROUTER_CLIENT_PATH) as mock_client_class:
             mock_client = MagicMock()
             mock_client.api_key = "test_key"
             mock_client_class.return_value = mock_client
@@ -51,7 +54,7 @@ class TestOpenRouterProvider:
 
     def test_init_without_api_key(self):
         """Test initialization without API key"""
-        with patch("backend.llm.providers.openrouter.OpenRouterClient") as mock_client_class:
+        with patch(_OPENROUTER_CLIENT_PATH) as mock_client_class:
             mock_client = MagicMock()
             mock_client.api_key = None
             mock_client_class.return_value = mock_client
@@ -72,23 +75,21 @@ class TestOpenRouterProvider:
         """Test successful generation"""
         mock_response = MagicMock()
         mock_response.content = "Test response"
-        mock_response.model = "test-model"
-        mock_response.usage = MagicMock()
-        mock_response.usage.prompt_tokens = 10
-        mock_response.usage.completion_tokens = 20
+        mock_response.model_used = "test-model"
+        mock_response.total_tokens = 30
 
         mock_openrouter_client.complete.return_value = mock_response
 
         messages = [LLMMessage(role="user", content="Test message")]
         response = await openrouter_provider.generate(messages)
 
-        assert isinstance(response, LLMMessage)
+        assert isinstance(response, LLMResponse)
         assert response.content == "Test response"
 
     @pytest.mark.asyncio
     async def test_generate_unavailable(self):
         """Test generation when provider unavailable"""
-        with patch("backend.llm.providers.openrouter.OpenRouterClient") as mock_client_class:
+        with patch(_OPENROUTER_CLIENT_PATH) as mock_client_class:
             mock_client = MagicMock()
             mock_client.api_key = None
             mock_client_class.return_value = mock_client
@@ -101,14 +102,18 @@ class TestOpenRouterProvider:
 
     @pytest.mark.asyncio
     async def test_generate_stream(self, openrouter_provider, mock_openrouter_client):
-        """Test streaming generation"""
-        mock_chunk = MagicMock()
-        mock_chunk.content = "chunk"
-        mock_openrouter_client.complete.return_value = [mock_chunk]
+        """Test streaming generation via stream()"""
+        async def mock_stream(*args, **kwargs):
+            yield "chunk1"
+            yield "chunk2"
+
+        mock_openrouter_client.complete_stream = mock_stream
 
         messages = [LLMMessage(role="user", content="Test")]
-        async for chunk in openrouter_provider.generate_stream(messages):
-            assert chunk is not None
+        chunks = []
+        async for chunk in openrouter_provider.stream(messages):
+            chunks.append(chunk)
+        assert chunks == ["chunk1", "chunk2"]
 
     def test_tier_mapping(self):
         """Test tier mapping"""
@@ -120,7 +125,7 @@ class TestOpenRouterProvider:
         }
 
         for tier_name in tier_map:
-            with patch("backend.llm.providers.openrouter.OpenRouterClient") as mock_client_class:
+            with patch(_OPENROUTER_CLIENT_PATH) as mock_client_class:
                 mock_client = MagicMock()
                 mock_client.api_key = "test_key"
                 mock_client_class.return_value = mock_client

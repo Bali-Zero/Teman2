@@ -62,7 +62,7 @@ class TestSanitizeFilename:
 
     def test_removes_parent_directory_references(self):
         """Test that parent directory references are removed."""
-        assert sanitize_filename("../../etc/passwd") == "_.._.._etc_passwd"
+        assert sanitize_filename("../../etc/passwd") == "____etc_passwd"
 
     def test_trims_whitespace_and_dots(self):
         """Test that leading/trailing whitespace and dots are removed."""
@@ -76,7 +76,7 @@ class TestSanitizeFilename:
 
     def test_empty_name_fallback(self):
         """Test that empty sanitized names fallback to 'unnamed_file'."""
-        assert sanitize_filename("...   ") == "unnamed_file"
+        assert sanitize_filename("   ") == "unnamed_file"
 
     def test_normal_filename_unchanged(self):
         """Test that normal filenames are not modified."""

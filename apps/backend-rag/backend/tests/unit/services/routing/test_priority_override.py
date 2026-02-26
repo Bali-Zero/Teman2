@@ -31,19 +31,19 @@ class TestPriorityOverrideService:
         assert len(priority_override.team_patterns) > 0
 
     def test_check_priority_overrides_identity(self, priority_override):
-        """Test checking priority override for identity query"""
+        """Test identity query - TeamKnowledgeTool handles, returns None"""
         result = priority_override.check_priority_overrides("chi sono io")
-        assert result == "bali_zero_team"
+        assert result is None
 
     def test_check_priority_overrides_team(self, priority_override):
-        """Test checking priority override for team query"""
+        """Test team query - TeamKnowledgeTool handles, returns None"""
         result = priority_override.check_priority_overrides("chi lavora nel team")
-        assert result == "bali_zero_team"
+        assert result is None
 
     def test_check_priority_overrides_founder(self, priority_override):
-        """Test checking priority override for founder query"""
+        """Test founder query - TeamKnowledgeTool handles, returns None"""
         result = priority_override.check_priority_overrides("chi è il fondatore")
-        assert result == "bali_zero_team"
+        assert result is None
 
     def test_check_priority_overrides_backend_services(self, priority_override):
         """Test checking priority override for backend services query"""

@@ -47,7 +47,6 @@ class TestConversationService:
         service = ConversationService(db_pool=pool)
 
         assert service.db_pool == pool
-        assert service._auto_crm_service is None
 
     @pytest.mark.asyncio
     async def test_save_conversation_success(self, conversation_service, mock_db_pool):
@@ -205,28 +204,16 @@ class TestConversationService:
 
         messages = [{"role": "user", "content": "I need a KITAS"}]
 
-        mock_auto_crm = AsyncMock()
-        mock_auto_crm.process_conversation = AsyncMock(
-            return_value={
-                "success": True,
-                "client_id": 1,
-                "client_created": True,
-            }
-        )
-
         with patch("backend.services.misc.conversation_service.get_memory_cache") as mock_cache:
             mock_cache_instance = MagicMock()
             mock_cache.return_value = mock_cache_instance
 
-            with patch.object(conversation_service, "_get_auto_crm", return_value=mock_auto_crm):
-                result = await conversation_service.save_conversation(
-                    user_email="test@example.com",
-                    messages=messages,
-                )
+            result = await conversation_service.save_conversation(
+                user_email="test@example.com",
+                messages=messages,
+            )
 
-                assert result["success"] is True
-                # Auto-CRM should be called
-                mock_auto_crm.process_conversation.assert_called_once()
+            assert result["success"] is True
 
     @pytest.mark.asyncio
     async def test_save_conversation_auto_crm_not_available(
@@ -245,13 +232,12 @@ class TestConversationService:
             mock_cache_instance = MagicMock()
             mock_cache.return_value = mock_cache_instance
 
-            with patch.object(conversation_service, "_get_auto_crm", return_value=None):
-                result = await conversation_service.save_conversation(
-                    user_email="test@example.com",
-                    messages=messages,
-                )
+            result = await conversation_service.save_conversation(
+                user_email="test@example.com",
+                messages=messages,
+            )
 
-                assert result["success"] is True
+            assert result["success"] is True
 
     @pytest.mark.asyncio
     async def test_get_history_success(self, conversation_service, mock_db_pool):
@@ -313,43 +299,22 @@ class TestConversationService:
             assert result is not None
             assert result["source"] in ["memory_cache", "fallback_failed"]
 
+    @pytest.mark.skip(reason="Auto-CRM removed from ConversationService")
     def test_get_auto_crm_lazy_load(self, conversation_service):
-        """Test lazy loading of Auto-CRM service"""
-        assert conversation_service._auto_crm_service is None
+        """Auto-CRM removed - test skipped"""
+        pass
 
-        with patch("backend.services.crm.auto_crm_service.get_auto_crm_service") as mock_get:
-            mock_service = MagicMock()
-            mock_get.return_value = mock_service
-
-            result = conversation_service._get_auto_crm()
-
-            assert result == mock_service
-            assert conversation_service._auto_crm_service == mock_service
-
+    @pytest.mark.skip(reason="Auto-CRM removed from ConversationService")
     def test_get_auto_crm_import_error(self, conversation_service):
-        """Test handling import error for Auto-CRM"""
-        with patch("builtins.__import__", side_effect=ImportError("No module")):
-            result = conversation_service._get_auto_crm()
+        """Auto-CRM removed - test skipped"""
+        pass
 
-            assert result is None
-            assert conversation_service._auto_crm_service is False
-
+    @pytest.mark.skip(reason="Auto-CRM removed from ConversationService")
     def test_get_auto_crm_general_error(self, conversation_service):
-        """Test handling general error for Auto-CRM"""
-        with patch(
-            "backend.services.crm.auto_crm_service.get_auto_crm_service",
-            side_effect=Exception("Error"),
-        ):
-            result = conversation_service._get_auto_crm()
+        """Auto-CRM removed - test skipped"""
+        pass
 
-            assert result is None
-            assert conversation_service._auto_crm_service is False
-
+    @pytest.mark.skip(reason="Auto-CRM removed from ConversationService")
     def test_get_auto_crm_cached(self, conversation_service):
-        """Test that Auto-CRM service is cached"""
-        mock_service = MagicMock()
-        conversation_service._auto_crm_service = mock_service
-
-        result = conversation_service._get_auto_crm()
-
-        assert result == mock_service
+        """Auto-CRM removed - test skipped"""
+        pass

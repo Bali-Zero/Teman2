@@ -82,12 +82,16 @@ class TestIntelStagingService:
 
     def test_check_duplicate_found(self, service):
         """Test duplicate detection when duplicate exists."""
+        from datetime import datetime, timedelta
+
         item_id = "test_item_123"
+        # Use recent date so it's within the default 7-day window
+        recent_date = (datetime.utcnow() - timedelta(days=1)).strftime("%Y-%m-%dT00:00:00")
         staging_data = {
             "item_id": item_id,
             "title": "Test Article",
             "source_url": "https://example.com/article",
-            "detected_at": "2026-01-13T00:00:00",
+            "detected_at": recent_date,
         }
 
         # Save first item

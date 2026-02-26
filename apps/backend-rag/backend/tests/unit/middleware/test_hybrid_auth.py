@@ -121,7 +121,8 @@ async def test_dispatch_options(middleware, mock_request):
 
 @pytest.mark.asyncio
 async def test_dispatch_public(middleware, mock_request):
-    mock_request.url.path = "/health"
+    # Use /api/auth/login (not /health) so we exercise full public-endpoint flow + logging
+    mock_request.url.path = "/api/auth/login"
     mock_request.headers = {"user-agent": "test-agent"}
     call_next = AsyncMock(return_value=Response("OK"))
 
@@ -134,7 +135,7 @@ async def test_dispatch_public(middleware, mock_request):
         call_args = mock_logger.info.call_args
         assert call_args[0][0] == "Public endpoint accessed"
         assert "extra" in call_args[1]
-        assert call_args[1]["extra"]["endpoint"] == "/health"
+        assert call_args[1]["extra"]["endpoint"] == "/api/auth/login"
         assert call_args[1]["extra"]["method"] == "GET"
         assert call_args[1]["extra"]["event_type"] == "public_endpoint_access"
 
@@ -159,9 +160,11 @@ async def test_temporary_endpoints_removed(middleware, mock_request):
 @pytest.mark.asyncio
 async def test_dispatch_auth_success(middleware, mock_request):
     mock_request.url.path = "/api/protected"
+    middleware.api_auth_enabled = True
     with patch.object(
         middleware,
         "authenticate_request",
+        new_callable=AsyncMock,
         return_value={"email": "test@test.com", "auth_method": "jwt"},
     ):
         call_next = AsyncMock(return_value=Response("OK"))
@@ -174,17 +177,22 @@ async def test_dispatch_auth_success(middleware, mock_request):
 @pytest.mark.asyncio
 async def test_dispatch_auth_fail(middleware, mock_request):
     mock_request.url.path = "/api/protected"
-    with patch.object(middleware, "authenticate_request", return_value=None):
+    middleware.api_auth_enabled = True
+    with patch.object(
+        middleware, "authenticate_request", new_callable=AsyncMock, return_value=None
+    ):
         response = await middleware.dispatch(mock_request, AsyncMock())
         assert response.status_code == 401
-        assert "Authentication required" in str(response.body)  # or detail check logic
+        assert "Authentication required" in str(response.body)
 
 
 @pytest.mark.asyncio
 async def test_dispatch_http_exception(middleware, mock_request):
     mock_request.url.path = "/api/protected"
-    # Authenticate successfully but call_next raises HTTPException
-    with patch.object(middleware, "authenticate_request", return_value={"email": "test"}):
+    middleware.api_auth_enabled = True
+    with patch.object(
+        middleware, "authenticate_request", new_callable=AsyncMock, return_value={"email": "test"}
+    ):
         call_next = AsyncMock(side_effect=HTTPException(status_code=400, detail="Bad Request"))
         response = await middleware.dispatch(mock_request, call_next)
         assert response.status_code == 400
@@ -193,10 +201,11 @@ async def test_dispatch_http_exception(middleware, mock_request):
 @pytest.mark.asyncio
 async def test_dispatch_http_exception_complex_detail(middleware, mock_request):
     mock_request.url.path = "/api/protected"
-    # Detail is a dict with non-serializable object?
-    # Middleware sanitizes it.
+    middleware.api_auth_enabled = True
     detail = {"msg": "Error", "obj": object()}
-    with patch.object(middleware, "authenticate_request", return_value={"email": "test"}):
+    with patch.object(
+        middleware, "authenticate_request", new_callable=AsyncMock, return_value={"email": "test"}
+    ):
         call_next = AsyncMock(side_effect=HTTPException(status_code=400, detail=detail))
         response = await middleware.dispatch(mock_request, call_next)
         assert response.status_code == 400
@@ -206,7 +215,13 @@ async def test_dispatch_http_exception_complex_detail(middleware, mock_request):
 @pytest.mark.asyncio
 async def test_dispatch_unhandled_exception(middleware, mock_request):
     mock_request.url.path = "/api/protected"
-    with patch.object(middleware, "authenticate_request", side_effect=ValueError("System Error")):
+    middleware.api_auth_enabled = True
+    with patch.object(
+        middleware,
+        "authenticate_request",
+        new_callable=AsyncMock,
+        side_effect=ValueError("System Error"),
+    ):
         response = await middleware.dispatch(mock_request, AsyncMock())
         assert response.status_code == 503
         assert "Authentication service temporarily unavailable" in str(response.body)
@@ -215,9 +230,12 @@ async def test_dispatch_unhandled_exception(middleware, mock_request):
 @pytest.mark.asyncio
 async def test_dispatch_db_pool_exception(middleware, mock_request):
     mock_request.url.path = "/api/protected"
-    # Simulate an error that mentions "Pool" or "asyncpg"
+    middleware.api_auth_enabled = True
     with patch.object(
-        middleware, "authenticate_request", side_effect=Exception("asyncpg connection failed")
+        middleware,
+        "authenticate_request",
+        new_callable=AsyncMock,
+        side_effect=Exception("asyncpg connection failed"),
     ):
         response = await middleware.dispatch(mock_request, AsyncMock())
         assert response.status_code == 503

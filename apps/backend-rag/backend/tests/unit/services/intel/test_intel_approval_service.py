@@ -53,8 +53,10 @@ class TestIntelApprovalService:
     @patch("backend.services.intel.intel_approval_service.get_chat_ids")
     @patch("backend.services.intel.intel_approval_service.get_team_config")
     @patch("backend.services.intel.intel_approval_service.telegram_bot")
+    @patch("builtins.open", create=True)
     async def test_send_approval_notification_success(
         self,
+        mock_open,
         mock_bot,
         mock_get_config,
         mock_get_chat_ids,
@@ -66,6 +68,9 @@ class TestIntelApprovalService:
         mock_get_config.return_value = mock_team_config
         mock_get_chat_ids.return_value = [123456]
         mock_bot.send_message = AsyncMock()
+        mock_open.return_value.__enter__ = lambda s: s
+        mock_open.return_value.__exit__ = lambda s, *a: None
+        mock_open.return_value.write = lambda s: None
 
         result = await service.send_approval_notification("visa", "test_item_123", mock_item_data)
 
@@ -126,8 +131,10 @@ class TestIntelApprovalService:
     @patch("backend.services.intel.intel_approval_service.get_chat_ids")
     @patch("backend.services.intel.intel_approval_service.get_team_config")
     @patch("backend.services.intel.intel_approval_service.telegram_bot")
+    @patch("builtins.open", create=True)
     async def test_send_approval_notification_with_enriched_data(
         self,
+        mock_open,
         mock_bot,
         mock_get_config,
         mock_get_chat_ids,
@@ -139,6 +146,9 @@ class TestIntelApprovalService:
         mock_get_config.return_value = mock_team_config
         mock_get_chat_ids.return_value = [123456]
         mock_bot.send_message = AsyncMock()
+        mock_open.return_value.__enter__ = lambda s: s
+        mock_open.return_value.__exit__ = lambda s, *a: None
+        mock_open.return_value.write = lambda s: None
 
         enriched_data = {
             "enriched_title": "Enriched Title",

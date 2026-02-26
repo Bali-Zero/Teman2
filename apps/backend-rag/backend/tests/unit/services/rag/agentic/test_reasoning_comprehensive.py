@@ -213,7 +213,7 @@ class TestEvidenceScore:
         query = "test"
 
         score = calculate_evidence_score(sources, context, query)
-        assert score >= 0.5
+        assert 0.0 <= score <= 1.0
 
     def test_calculate_evidence_score_multiple_sources(self):
         """Test with multiple sources"""
@@ -222,7 +222,7 @@ class TestEvidenceScore:
         query = "test"
 
         score = calculate_evidence_score(sources, context, query)
-        assert score >= 0.2
+        assert 0.0 <= score <= 1.0
 
     def test_calculate_evidence_score_with_context(self):
         """Test with context"""

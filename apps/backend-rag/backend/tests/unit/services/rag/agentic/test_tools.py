@@ -95,14 +95,18 @@ class TestVisionTool:
     @pytest.mark.asyncio
     async def test_execute(self):
         """Test executing vision analysis"""
-        with patch("backend.services.rag.agentic.tools.VisionRAGService") as mock_vision:
+        with (
+            patch("backend.services.rag.agentic.tools.VisionRAGService") as mock_vision,
+            patch("backend.app.core.config.settings") as mock_settings,
+        ):
+            mock_settings.get_vision_allowed_dirs = ["/tmp", "/app/uploads"]
             mock_service = MagicMock()
-            mock_service.process_pdf = AsyncMock(return_value={"text": "Test"})
+            mock_service.process_pdf = AsyncMock(return_value=MagicMock(text_content="Test"))
             mock_service.query_with_vision = AsyncMock(return_value={"answer": "Result"})
             mock_vision.return_value = mock_service
 
             tool = VisionTool()
-            result = await tool.execute(file_path="test.pdf", query="What is this?")
+            result = await tool.execute(file_path="/tmp/test.pdf", query="What is this?")
             assert "Result" in result
 
     @pytest.mark.asyncio

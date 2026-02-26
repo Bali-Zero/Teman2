@@ -24,7 +24,11 @@ class TestCacheService:
         mock_redis = AsyncMock()
         mock_redis.ping = AsyncMock(return_value=True)
 
-        with patch("redis.asyncio.from_url", return_value=mock_redis):
+        with patch(
+            "backend.services.article_composer.cache.redis.from_url",
+            new_callable=AsyncMock,
+            return_value=mock_redis,
+        ):
             await cache_service.initialize()
 
             # Verify Redis client was set and enabled after ping

@@ -77,18 +77,18 @@ class TestAutoIngestionOrchestrator:
 
     def test_get_due_sources_enabled_only(self, auto_ingestion_orchestrator):
         """Test getting only enabled sources"""
-        # Disable a source
+        # Disable all sources
         for source in auto_ingestion_orchestrator.sources.values():
             source.enabled = False
-            break
 
         sources = auto_ingestion_orchestrator.get_due_sources()
         assert len(sources) == 0  # All disabled
 
     def test_get_due_sources_with_last_scraped(self, auto_ingestion_orchestrator):
         """Test getting sources due based on last_scraped"""
-        # Set last_scraped to past (more than frequency hours ago)
+        # Set last_scraped to past (more than frequency hours ago) for one source
         for source in auto_ingestion_orchestrator.sources.values():
+            source.enabled = True  # Ensure enabled (may be disabled by other tests)
             source.last_scraped = (datetime.now() - timedelta(hours=25)).isoformat()
             source.scrape_frequency_hours = 24
             break
@@ -98,17 +98,14 @@ class TestAutoIngestionOrchestrator:
 
     def test_get_due_sources_not_due(self, auto_ingestion_orchestrator):
         """Test getting sources not due yet"""
-        # Set last_scraped to recent (less than frequency hours ago)
+        # Set last_scraped to recent for ALL sources (less than frequency hours ago)
         for source in auto_ingestion_orchestrator.sources.values():
             source.last_scraped = (datetime.now() - timedelta(hours=1)).isoformat()
             source.scrape_frequency_hours = 24
-            break
 
-        # Count due sources before
-        all_due = len([s for s in auto_ingestion_orchestrator.sources.values() if s.enabled])
         sources = auto_ingestion_orchestrator.get_due_sources()
-        # Should have fewer due sources now
-        assert len(sources) < all_due
+        # None should be due (all scraped 1 hour ago, frequency 24h)
+        assert len(sources) == 0
 
     @pytest.mark.asyncio
     async def test_scrape_source_no_scraper(self, auto_ingestion_orchestrator):

@@ -16,6 +16,21 @@ if str(backend_path) not in sys.path:
 from backend.services.routing.golden_router_service import GoldenRouterService
 
 
+def _make_pool_with_conn(mock_conn):
+    """Create mock pool where acquire() returns async context manager yielding conn."""
+    mock_pool = MagicMock()
+
+    class _AcquireCM:
+        async def __aenter__(self):
+            return mock_conn
+
+        async def __aexit__(self, *args):
+            return None
+
+    mock_pool.acquire.return_value = _AcquireCM()
+    return mock_pool
+
+
 class TestGoldenRouterService:
     """Tests for GoldenRouterService"""
 
@@ -46,12 +61,12 @@ class TestGoldenRouterService:
         assert service.search_service == mock_search
 
     @pytest.mark.asyncio
-    @patch("backend.services.routing.golden_router_service.asyncpg.create_pool")
+    @patch("backend.services.routing.golden_router_service.asyncpg.create_pool", new_callable=AsyncMock)
     @patch("backend.app.core.config.settings")
     async def test_get_db_pool(self, mock_settings, mock_create_pool):
         """Test getting database pool"""
         mock_settings.database_url = "postgresql://test"
-        mock_pool = AsyncMock()
+        mock_pool = MagicMock()
         mock_create_pool.return_value = mock_pool
 
         service = GoldenRouterService()
@@ -61,12 +76,12 @@ class TestGoldenRouterService:
         mock_create_pool.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("backend.services.routing.golden_router_service.asyncpg.create_pool")
+    @patch("backend.services.routing.golden_router_service.asyncpg.create_pool", new_callable=AsyncMock)
     @patch("backend.app.core.config.settings")
     async def test_get_db_pool_cached(self, mock_settings, mock_create_pool):
         """Test getting database pool uses cache"""
         mock_settings.database_url = "postgresql://test"
-        mock_pool = AsyncMock()
+        mock_pool = MagicMock()
         mock_create_pool.return_value = mock_pool
 
         service = GoldenRouterService()
@@ -93,11 +108,9 @@ class TestGoldenRouterService:
     @patch.object(GoldenRouterService, "_get_db_pool")
     async def test_initialize_empty_routes(self, mock_get_pool):
         """Test initialization with no routes in database"""
-        mock_pool = AsyncMock()
         mock_conn = AsyncMock()
-        mock_pool.acquire.return_value.__aenter__.return_value = mock_conn
-        mock_conn.fetch.return_value = []
-        mock_get_pool.return_value = mock_pool
+        mock_conn.fetch = AsyncMock(return_value=[])
+        mock_get_pool.return_value = _make_pool_with_conn(mock_conn)
 
         service = GoldenRouterService()
         await service.initialize()
@@ -111,10 +124,6 @@ class TestGoldenRouterService:
     @patch("backend.services.routing.golden_router_service.asyncio.create_task")
     async def test_initialize_with_routes(self, mock_create_task, mock_get_pool):
         """Test initialization with routes in database"""
-        mock_pool = AsyncMock()
-        mock_conn = AsyncMock()
-        mock_pool.acquire.return_value.__aenter__.return_value = mock_conn
-
         mock_row = MagicMock()
         mock_row.__getitem__.side_effect = lambda key: {
             "route_id": "route1",
@@ -124,9 +133,9 @@ class TestGoldenRouterService:
             "collections": ["collection1"],
             "routing_hints": '{"hint": "value"}',
         }[key]
-        mock_conn.fetch.return_value = [mock_row]
-
-        mock_get_pool.return_value = mock_pool
+        mock_conn = AsyncMock()
+        mock_conn.fetch = AsyncMock(return_value=[mock_row])
+        mock_get_pool.return_value = _make_pool_with_conn(mock_conn)
 
         service = GoldenRouterService()
         await service.initialize()
@@ -193,10 +202,9 @@ class TestGoldenRouterService:
     @patch.object(GoldenRouterService, "_get_db_pool")
     async def test_update_usage_stats(self, mock_get_pool):
         """Test updating route usage statistics"""
-        mock_pool = AsyncMock()
         mock_conn = AsyncMock()
-        mock_pool.acquire.return_value.__aenter__.return_value = mock_conn
-        mock_get_pool.return_value = mock_pool
+        mock_conn.execute = AsyncMock()
+        mock_get_pool.return_value = _make_pool_with_conn(mock_conn)
 
         service = GoldenRouterService()
         await service._update_usage_stats("route1")
@@ -210,11 +218,9 @@ class TestGoldenRouterService:
     @patch.object(GoldenRouterService, "_get_db_pool")
     async def test_update_usage_stats_error(self, mock_get_pool):
         """Test updating route usage stats handles errors"""
-        mock_pool = AsyncMock()
         mock_conn = AsyncMock()
-        mock_pool.acquire.return_value.__aenter__.return_value = mock_conn
-        mock_conn.execute.side_effect = Exception("DB error")
-        mock_get_pool.return_value = mock_pool
+        mock_conn.execute = AsyncMock(side_effect=Exception("DB error"))
+        mock_get_pool.return_value = _make_pool_with_conn(mock_conn)
 
         service = GoldenRouterService()
         # Should not raise, just log warning
@@ -225,10 +231,9 @@ class TestGoldenRouterService:
     @patch.object(GoldenRouterService, "_get_db_pool")
     async def test_add_route(self, mock_get_pool, mock_initialize):
         """Test adding a new route"""
-        mock_pool = AsyncMock()
         mock_conn = AsyncMock()
-        mock_pool.acquire.return_value.__aenter__.return_value = mock_conn
-        mock_get_pool.return_value = mock_pool
+        mock_conn.execute = AsyncMock()
+        mock_get_pool.return_value = _make_pool_with_conn(mock_conn)
 
         service = GoldenRouterService()
         route_id = await service.add_route(
@@ -248,10 +253,9 @@ class TestGoldenRouterService:
     @patch.object(GoldenRouterService, "_get_db_pool")
     async def test_add_route_with_defaults(self, mock_get_pool, mock_initialize):
         """Test adding route with default collections"""
-        mock_pool = AsyncMock()
         mock_conn = AsyncMock()
-        mock_pool.acquire.return_value.__aenter__.return_value = mock_conn
-        mock_get_pool.return_value = mock_pool
+        mock_conn.execute = AsyncMock()
+        mock_get_pool.return_value = _make_pool_with_conn(mock_conn)
 
         service = GoldenRouterService()
         route_id = await service.add_route(
@@ -261,8 +265,8 @@ class TestGoldenRouterService:
 
         assert route_id.startswith("route_")
         call_args = mock_conn.execute.call_args
-        # Should use default collection "legal_unified"
-        assert call_args[0][4] == ["legal_unified"]
+        # Should use default collection "legal_unified" (6th arg: route_id, query, doc_ids, ch_ids, collections)
+        assert call_args[0][5] == ["legal_unified"]
 
     @pytest.mark.asyncio
     async def test_close(self):

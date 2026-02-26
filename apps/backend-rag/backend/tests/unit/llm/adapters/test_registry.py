@@ -22,13 +22,13 @@ class TestModelType:
 
     def test_model_type_values(self):
         """Test ModelType enum values"""
-        assert ModelType.GEMINI_3_FLASH.value == "gemini-2.0-flash-001"
-        assert ModelType.GEMINI_FLASH.value == "gemini-2.0-flash"
+        assert ModelType.GEMINI_FLASH.value == "gemini-2.5-flash"
+        assert ModelType.GEMINI_FLASH_FALLBACK.value == "gemini-2.0-flash-001"
 
     def test_model_type_enum(self):
         """Test ModelType enum creation"""
-        assert isinstance(ModelType.GEMINI_3_FLASH, ModelType)
         assert isinstance(ModelType.GEMINI_FLASH, ModelType)
+        assert isinstance(ModelType.GEMINI_FLASH_FALLBACK, ModelType)
 
 
 class TestAdapterRegistry:
@@ -36,15 +36,15 @@ class TestAdapterRegistry:
 
     def test_registry_contains_models(self):
         """Test that registry contains expected models"""
-        assert ModelType.GEMINI_3_FLASH in ADAPTER_REGISTRY
         assert ModelType.GEMINI_FLASH in ADAPTER_REGISTRY
+        assert ModelType.GEMINI_FLASH_FALLBACK in ADAPTER_REGISTRY
 
     def test_registry_has_adapters(self):
         """Test that registry has adapter classes"""
         from backend.llm.adapters.gemini import GeminiAdapter
 
-        assert ADAPTER_REGISTRY[ModelType.GEMINI_3_FLASH] == GeminiAdapter
         assert ADAPTER_REGISTRY[ModelType.GEMINI_FLASH] == GeminiAdapter
+        assert ADAPTER_REGISTRY[ModelType.GEMINI_FLASH_FALLBACK] == GeminiAdapter
 
 
 class TestGetAdapter:
@@ -68,14 +68,14 @@ class TestGetAdapter:
         """Test getting adapter with partial match (contains 'gemini')"""
         from backend.llm.adapters.gemini import GeminiAdapter
 
-        result = get_adapter("gemini-something-else")
+        result = get_adapter("gemini-2.5-flash")
         assert isinstance(result, GeminiAdapter)
 
     def test_get_adapter_partial_match_case_insensitive(self):
         """Test getting adapter with partial match case insensitive"""
         from backend.llm.adapters.gemini import GeminiAdapter
 
-        result = get_adapter("GEMINI-SOMETHING")
+        result = get_adapter("GEMINI-2.5-FLASH")
         assert isinstance(result, GeminiAdapter)
 
     def test_get_adapter_invalid_model_name(self):

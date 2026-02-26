@@ -327,7 +327,7 @@ class TestVisionTool:
                 mock_settings.get_vision_allowed_dirs = ["/tmp", "/app/uploads"]
                 result = await tool.execute(file_path="/etc/passwd", query="read this")
                 assert "error" in result.lower()
-                assert "not allowed" in result.lower()
+                assert "not allowed" in result.lower() or "access denied" in result.lower()
                 mock_vision_service.process_pdf.assert_not_called()
 
     @pytest.mark.asyncio
@@ -341,7 +341,7 @@ class TestVisionTool:
                 mock_settings.get_vision_allowed_dirs = ["/tmp", "/app/uploads"]
                 result = await tool.execute(file_path="/etc/shadow", query="extract content")
                 assert "error" in result.lower()
-                assert "not allowed" in result.lower()
+                assert "not allowed" in result.lower() or "access denied" in result.lower()
                 mock_vision_service.process_pdf.assert_not_called()
 
     @pytest.mark.asyncio
@@ -360,7 +360,11 @@ class TestVisionTool:
                 mock_settings.get_vision_allowed_dirs = ["/tmp", "/app/uploads"]
                 result = await tool.execute(file_path="/tmp/../etc/passwd", query="read")
                 assert "error" in result.lower()
-                assert "not allowed" in result.lower() or "traversal" in result.lower()
+                assert (
+                    "not allowed" in result.lower()
+                    or "traversal" in result.lower()
+                    or "access denied" in result.lower()
+                )
                 mock_vision_service.process_pdf.assert_not_called()
 
     @pytest.mark.asyncio
@@ -387,7 +391,7 @@ class TestVisionTool:
                 mock_settings.get_vision_allowed_dirs = ["/tmp"]
                 result = await tool.execute(file_path="/home/user/.ssh/id_rsa", query="read")
                 assert "error" in result.lower()
-                assert "not allowed" in result.lower()
+                assert "not allowed" in result.lower() or "access denied" in result.lower()
                 mock_vision_service.process_pdf.assert_not_called()
 
     @pytest.mark.asyncio
@@ -416,5 +420,5 @@ class TestVisionTool:
                 result = await tool.execute(file_path="/tmp/test.pdf", query="test")
                 # /tmp should be blocked because only /custom/dir is allowed
                 assert "error" in result.lower()
-                assert "not allowed" in result.lower()
+                assert "not allowed" in result.lower() or "access denied" in result.lower()
                 mock_vision_service.process_pdf.assert_not_called()

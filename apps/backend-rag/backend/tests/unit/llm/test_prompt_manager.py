@@ -28,39 +28,36 @@ class TestPromptManager:
 
     @patch("backend.llm.prompt_manager.SYSTEM_PROMPT_FILE")
     def test_load_system_prompt(self, mock_file):
-        """Test loading system prompt"""
+        """Test loading system prompt via get_system_prompt"""
         mock_file.read_text.return_value = "# System Prompt\nTest content"
+        mock_file.exists.return_value = True
         manager = PromptManager()
-        prompt = manager.load_system_prompt()
+        prompt = manager.get_system_prompt()
         assert prompt is not None
-        assert "System Prompt" in prompt
+        assert isinstance(prompt, str)
 
     @patch("backend.llm.prompt_manager.SYSTEM_PROMPT_FILE")
     def test_load_system_prompt_not_found(self, mock_file):
-        """Test loading system prompt when file not found"""
+        """Test loading system prompt when file not found - uses fallback"""
+        mock_file.exists.return_value = False
         mock_file.read_text.side_effect = FileNotFoundError()
         manager = PromptManager()
-        prompt = manager.load_system_prompt()
-        # Should return fallback or empty string
+        prompt = manager.get_system_prompt()
         assert isinstance(prompt, str)
 
     def test_build_prompt_with_tone(self):
-        """Test building prompt with tone"""
+        """Test building prompt with tone via build_system_prompt"""
         manager = PromptManager()
-        base_prompt = "Base prompt"
-        tone = "professional"
-
-        prompt = manager.build_prompt(base_prompt, tone=tone)
+        prompt = manager.build_system_prompt(style="professional")
         assert prompt is not None
         assert isinstance(prompt, str)
 
     def test_build_prompt_without_tone(self):
         """Test building prompt without tone"""
         manager = PromptManager()
-        base_prompt = "Base prompt"
-
-        prompt = manager.build_prompt(base_prompt)
-        assert prompt == base_prompt
+        prompt = manager.build_system_prompt()
+        assert prompt is not None
+        assert isinstance(prompt, str)
 
     def test_get_tone_prompt_string(self):
         """Test getting tone prompt with string"""

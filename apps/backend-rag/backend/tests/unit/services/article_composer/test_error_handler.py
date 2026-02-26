@@ -86,7 +86,7 @@ class TestHandleAnthropicError:
     def test_handle_timeout_error(self):
         """Test handling timeout error"""
         mock_request = MagicMock()
-        error = anthropic.APITimeoutError("Request timed out", request=mock_request)
+        error = anthropic.APITimeoutError(request=mock_request)
 
         http_exception = handle_anthropic_error(
             error, article_title="Test", category="business", request_id="test-123"
@@ -114,9 +114,8 @@ class TestHandleAnthropicError:
 
     def test_handle_generic_api_error(self):
         """Test handling generic API error"""
-        mock_response = MagicMock()
-        mock_response.request = MagicMock()
-        error = anthropic.APIError("Generic error", response=mock_response, body=None, request=None)
+        mock_request = MagicMock()
+        error = anthropic.APIError("Generic error", request=mock_request, body=None)
 
         http_exception = handle_anthropic_error(
             error, article_title="Test", category="business", request_id="test-123"

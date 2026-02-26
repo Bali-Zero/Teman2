@@ -16,7 +16,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from backend.app.dependencies import get_database_pool
+from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.routers.feedback import router
 
 
@@ -49,6 +49,7 @@ def app(mock_db_pool):
     app = FastAPI()
     app.include_router(router)
     app.dependency_overrides[get_database_pool] = lambda: mock_db_pool
+    app.dependency_overrides[get_current_user] = lambda: {"email": "admin@example.com", "role": "admin"}
     return app
 
 

@@ -100,7 +100,9 @@ def auth_headers():
 
 
 def test_get_request_trace(mock_settings, auth_headers):
-    with patch("middleware.request_tracing.RequestTracingMiddleware.get_trace") as mock_get:
+    with patch(
+        "backend.middleware.request_tracing.RequestTracingMiddleware.get_trace"
+    ) as mock_get:
         mock_get.return_value = {"id": "123"}
         response = client.get("/api/debug/request/123", headers=auth_headers)
         assert response.status_code == 200
@@ -108,7 +110,9 @@ def test_get_request_trace(mock_settings, auth_headers):
 
 
 def test_get_request_trace_not_found(mock_settings, auth_headers):
-    with patch("middleware.request_tracing.RequestTracingMiddleware.get_trace") as mock_get:
+    with patch(
+        "backend.middleware.request_tracing.RequestTracingMiddleware.get_trace"
+    ) as mock_get:
         mock_get.return_value = None
         response = client.get("/api/debug/request/123", headers=auth_headers)
         assert response.status_code == 404
@@ -166,7 +170,9 @@ def test_get_services_status_registry_fail(mock_settings, auth_headers):
 
 
 def test_get_recent_traces(mock_settings, auth_headers):
-    with patch("middleware.request_tracing.RequestTracingMiddleware.get_recent_traces") as mock_get:
+    with patch(
+        "backend.middleware.request_tracing.RequestTracingMiddleware.get_recent_traces"
+    ) as mock_get:
         mock_get.return_value = [{"id": "1"}]
         response = client.get("/api/debug/traces/recent", headers=auth_headers)
         assert response.status_code == 200
@@ -241,34 +247,57 @@ def test_qdrant_collection_stats(mock_settings, auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_parent_documents_public_success():
-    with patch("asyncpg.connect", new_callable=AsyncMock) as mock_connect:
-        mock_conn = AsyncMock()
-        mock_conn.fetch.return_value = [
-            {
-                "id": 1,
-                "document_id": "doc1",
-                "type": "bab",
-                "title": "Bab I",
-                "char_count": 100,
-                "pasal_count": 5,
-                "created_at": "2023-01-01",
-            }
-        ]
-        mock_connect.return_value = mock_conn
+async def test_parent_documents_success(mock_settings, auth_headers):
+    """Test parent-documents endpoint (uses require_team_member, needs admin)"""
+    from backend.app.dependencies import require_team_member
 
-        # Needs direct async call or TestClient
-        response = client.get("/api/debug/parent-documents-public/doc1")
-        assert response.status_code == 200
-        assert response.json()["total_bab"] == 1
+    async def mock_team_member():
+        return {"role": "admin", "email": "admin@test.com"}
+
+    app.dependency_overrides[require_team_member] = mock_team_member
+    try:
+        with patch("asyncpg.connect", new_callable=AsyncMock) as mock_connect:
+            mock_conn = AsyncMock()
+            mock_conn.fetch = AsyncMock(
+                return_value=[
+                    {
+                        "id": 1,
+                        "document_id": "doc1",
+                        "type": "bab",
+                        "title": "Bab I",
+                        "char_count": 100,
+                        "pasal_count": 5,
+                        "created_at": "2023-01-01",
+                    }
+                ]
+            )
+            mock_conn.close = AsyncMock()
+            mock_connect.return_value = mock_conn
+
+            response = client.get("/api/debug/parent-documents/doc1")
+            assert response.status_code == 200
+            assert response.json()["success"] is True
+            assert response.json()["total_bab"] == 1
+    finally:
+        app.dependency_overrides.pop(require_team_member, None)
 
 
 @pytest.mark.asyncio
-async def test_parent_documents_public_fail():
-    with patch("asyncpg.connect", side_effect=Exception("DB Fail")):
-        response = client.get("/api/debug/parent-documents-public/doc1")
-        assert response.status_code == 200  # Returns 200 with success=False
-        assert response.json()["success"] is False
+async def test_parent_documents_fail(mock_settings, auth_headers):
+    """Test parent-documents when DB fails"""
+    from backend.app.dependencies import require_team_member
+
+    async def mock_team_member():
+        return {"role": "admin", "email": "admin@test.com"}
+
+    app.dependency_overrides[require_team_member] = mock_team_member
+    try:
+        with patch("asyncpg.connect", AsyncMock(side_effect=Exception("DB Fail"))):
+            response = client.get("/api/debug/parent-documents/doc1")
+            assert response.status_code == 200
+            assert response.json()["success"] is False
+    finally:
+        app.dependency_overrides.pop(require_team_member, None)
 
 
 @pytest.mark.asyncio
