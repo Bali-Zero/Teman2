@@ -133,10 +133,6 @@ export function generateArticleMetadata(article: Article): Metadata {
           }
         : {}),
       citation_publisher: "Bali Zero",
-      // Article freshness signal (critical for AI citation - 2x citation rate for <30 day content)
-      ...(article.updatedAt
-        ? { "article:modified_time": new Date(article.updatedAt).toISOString() }
-        : {}),
     },
     openGraph: {
       type: "article",

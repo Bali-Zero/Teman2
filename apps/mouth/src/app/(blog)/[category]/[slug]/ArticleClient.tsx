@@ -38,9 +38,21 @@ interface ArticleWithMDX extends Article {
   mdxSource?: MDXRemoteSerializeResult;
 }
 
+/** Serialized article from server (dates are ISO strings, not Date objects) */
+type SerializedArticle = Omit<
+  ArticleWithMDX,
+  "createdAt" | "updatedAt" | "publishedAt"
+> & {
+  createdAt: string;
+  updatedAt: string;
+  publishedAt: string | null;
+};
+
 interface ArticleClientProps {
   category: string;
   slug: string;
+  /** Pre-fetched article from server component for SSR — avoids client-side fetch */
+  initialArticle?: SerializedArticle | null;
 }
 
 // Strip JSX components from content for markdown fallback
@@ -59,12 +71,26 @@ function stripJsxComponents(content: string): string {
   return stripped.trim();
 }
 
-export function ArticleClient({ category, slug }: ArticleClientProps) {
-  const [article, setArticle] = React.useState<ArticleWithMDX | null>(null);
+export function ArticleClient({
+  category,
+  slug,
+  initialArticle,
+}: ArticleClientProps) {
+  const [article, setArticle] = React.useState<ArticleWithMDX | null>(() => {
+    if (!initialArticle) return null;
+    return {
+      ...initialArticle,
+      createdAt: new Date(initialArticle.createdAt),
+      updatedAt: new Date(initialArticle.updatedAt),
+      publishedAt: initialArticle.publishedAt
+        ? new Date(initialArticle.publishedAt)
+        : undefined,
+    } as ArticleWithMDX;
+  });
   const [relatedArticles, setRelatedArticles] = React.useState<
     ArticleListItem[]
   >([]);
-  const [loading, setLoading] = React.useState(true);
+  const [loading, setLoading] = React.useState(!initialArticle);
   const [copied, setCopied] = React.useState(false);
 
   // Reserved workspace paths - redirect to workspace if accessed
@@ -88,8 +114,10 @@ export function ArticleClient({ category, slug }: ArticleClientProps) {
     }
   }, [category, slug]);
 
-  // Fetch article
+  // Fetch article only if not provided via SSR
   React.useEffect(() => {
+    if (initialArticle) return;
+
     async function fetchArticle() {
       setLoading(true);
       try {
@@ -111,7 +139,7 @@ export function ArticleClient({ category, slug }: ArticleClientProps) {
     }
 
     fetchArticle();
-  }, [slug, category]);
+  }, [slug, category, initialArticle]);
 
   // Copy link to clipboard
   const copyLink = async () => {
@@ -310,16 +338,22 @@ export function ArticleClient({ category, slug }: ArticleClientProps) {
                           {children}
                         </h1>
                       ),
-                      h2: ({ children }) => (
-                        <h2 className="font-serif text-3xl md:text-4xl font-bold text-white mt-10 mb-4 scroll-mt-24">
-                          {children}
-                        </h2>
-                      ),
-                      h3: ({ children }) => (
-                        <h3 className="font-serif text-2xl md:text-3xl font-semibold text-white mt-8 mb-3 scroll-mt-24">
-                          {children}
-                        </h3>
-                      ),
+                      h2: ({ children }) => {
+                        const id = typeof children === "string" ? children.toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-") : "";
+                        return (
+                          <h2 id={id} className="font-serif text-3xl md:text-4xl font-bold text-white mt-10 mb-4 scroll-mt-24">
+                            {children}
+                          </h2>
+                        );
+                      },
+                      h3: ({ children }) => {
+                        const id = typeof children === "string" ? children.toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-") : "";
+                        return (
+                          <h3 id={id} className="font-serif text-2xl md:text-3xl font-semibold text-white mt-8 mb-3 scroll-mt-24">
+                            {children}
+                          </h3>
+                        );
+                      },
                       p: ({ children }) => (
                         <p className="text-white/80 leading-relaxed mb-5 text-xl">
                           {children}

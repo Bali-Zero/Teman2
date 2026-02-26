@@ -734,17 +734,22 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
                 days = item.get("days_remaining", "?")
 
                 if c_id:
-                    # WhatsApp
-                    await _call_safe("/api/communications/whatsapp/send", method="POST", json={
-                        "client_id": c_id,
-                        "message": f"⚠️ URGENT: {title} expires in {days} days. Please contact us immediately.",
-                    })
+                    # WhatsApp (need phone from client data)
+                    client_data = await _call_safe(f"/api/crm/clients/{c_id}")
+                    phone = client_data.get("phone") if isinstance(client_data, dict) else None
+                    if phone:
+                        await _call_safe("/api/whatsapp/send", method="POST", json={
+                            "phone": phone,
+                            "message": f"⚠️ URGENT: {title} expires in {days} days. Please contact us immediately.",
+                        })
                     # Email
-                    await _call_safe("/api/communications/email/send", method="POST", json={
-                        "client_id": c_id,
-                        "subject": f"URGENT: {title} - Action Required",
-                        "body": f"Your {title} deadline is in {days} days. Please contact our team to ensure timely renewal.",
-                    })
+                    client_email = client_data.get("email") if isinstance(client_data, dict) else None
+                    if client_email:
+                        await _call_safe("/api/zoho/emails", method="POST", json={
+                            "to": client_email,
+                            "subject": f"URGENT: {title} - Action Required",
+                            "body": f"Your {title} deadline is in {days} days. Please contact our team to ensure timely renewal.",
+                        })
                     # Portal
                     await _call_safe("/api/portal/messages", method="POST", json={
                         "client_id": c_id,
@@ -860,9 +865,8 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
         client = await _call_safe(f"/api/crm/clients/{client_id}")
         client_name = client.get("name") or client.get("full_name") or "Client"
         folder = await _call_safe(
-            "/api/google-drive/client-folder",
+            f"/api/crm/drive-folders/{client_id}",
             method="POST",
-            json={"client_id": client_id, "client_name": client_name},
         )
         result_data["drive_folder"] = folder
         log.append({"step": "create_drive_folder", "status": "ok" if not folder.get("error") else "error"})
@@ -898,10 +902,12 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
             "subject": f"Journey Started: {journey_type.replace('_', ' ').title()}",
             "body": welcome,
         })
-        await _call_safe("/api/communications/whatsapp/send", method="POST", json={
-            "client_id": client_id,
-            "message": welcome,
-        })
+        client_phone = client.get("phone") if isinstance(client, dict) else None
+        if client_phone:
+            await _call_safe("/api/whatsapp/send", method="POST", json={
+                "phone": client_phone,
+                "message": welcome,
+            })
         log.append({"step": "welcome_messages", "status": "ok"})
 
         # Step 6: Submit monitoring task to generals

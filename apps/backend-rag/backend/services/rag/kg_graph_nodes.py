@@ -14,7 +14,6 @@ Reference: memory/langgraph-kg-evolution-plan.md
 """
 
 import logging
-import re
 import time
 from typing import Any
 
@@ -88,13 +87,13 @@ async def understand_query_node(
         Updated state with intent and extracted_entities populated
     """
     logger.info(f"🔍 [Understand Query] Processing: {state['query'][:100]}...")
-    
-    query_lower = state['query'].lower()
-    
+
+    query_lower = state["query"].lower()
+
     # Pre-check for domain-specific queries (fast-path before LLM call)
     # This prevents visa/tax/property queries from being misclassified
     domain_hints = _detect_domain_from_query(query_lower)
-    
+
     # Build extraction prompt with enhanced domain guidance
     system_prompt = """You are an expert in Indonesian business and immigration law.
 Extract the following from the user's query:
@@ -158,7 +157,7 @@ Return ONLY a JSON object:
         parsed = json.loads(response.content)
         state["intent"] = parsed.get("intent")
         state["extracted_entities"] = parsed.get("entities", [])
-        
+
         # Store domain for routing decisions
         domain = parsed.get("domain", domain_hints.get("domain", "general"))
         state["domain"] = domain
@@ -188,24 +187,36 @@ Return ONLY a JSON object:
 def _detect_domain_from_query(query_lower: str) -> dict:
     """
     Fast domain detection without LLM call.
-    
+
     Used for fallback when LLM parsing fails, and to validate
     LLM classification against explicit domain keywords.
-    
+
     Returns dict with domain, intent, and entities.
     """
-    result = {
-        "domain": "general",
-        "intent": "general",
-        "entities": []
-    }
-    
+    result = {"domain": "general", "intent": "general", "entities": []}
+
     # Visa domain detection
     visa_keywords = [
-        "kitas", "kitap", "vitas", "visa", "work permit", "izin kerja",
-        "rptka", "imta", "immigration", "imigrasi", "stay permit",
-        "izin tinggal", "foreign worker", "tenaga kerja asing", "tka",
-        "e28", "e31", "e33", "e-visa", "evisa"
+        "kitas",
+        "kitap",
+        "vitas",
+        "visa",
+        "work permit",
+        "izin kerja",
+        "rptka",
+        "imta",
+        "immigration",
+        "imigrasi",
+        "stay permit",
+        "izin tinggal",
+        "foreign worker",
+        "tenaga kerja asing",
+        "tka",
+        "e28",
+        "e31",
+        "e33",
+        "e-visa",
+        "evisa",
     ]
     if any(kw in query_lower for kw in visa_keywords):
         result["domain"] = "visa"
@@ -218,11 +229,20 @@ def _detect_domain_from_query(query_lower: str) -> dict:
         elif "vitas" in query_lower:
             result["entities"].append("VITAS")
         return result
-    
+
     # Tax domain detection
     tax_keywords = [
-        "npwp", "pph", "ppn", "pbb", "tax", "pajak", "tasse",
-        "fiscal", "vat", "income tax", "spt"
+        "npwp",
+        "pph",
+        "ppn",
+        "pbb",
+        "tax",
+        "pajak",
+        "tasse",
+        "fiscal",
+        "vat",
+        "income tax",
+        "spt",
     ]
     if any(kw in query_lower for kw in tax_keywords):
         result["domain"] = "tax"
@@ -234,12 +254,20 @@ def _detect_domain_from_query(query_lower: str) -> dict:
         elif "ppn" in query_lower:
             result["entities"].append("PPN")
         return result
-    
+
     # Property domain detection
     property_keywords = [
-        "hak pakai", "hgb", "hak milik", "hak guna bangunan",
-        "property", "villa", "real estate", "tanah", "land",
-        "hak sewa", "sertifikat"
+        "hak pakai",
+        "hgb",
+        "hak milik",
+        "hak guna bangunan",
+        "property",
+        "villa",
+        "real estate",
+        "tanah",
+        "land",
+        "hak sewa",
+        "sertifikat",
     ]
     if any(kw in query_lower for kw in property_keywords):
         result["domain"] = "property"
@@ -249,7 +277,7 @@ def _detect_domain_from_query(query_lower: str) -> dict:
         elif "hgb" in query_lower:
             result["entities"].append("HGB")
         return result
-    
+
     return result
 
 
@@ -273,65 +301,77 @@ NON_KBLI_ENTITY_TYPES = {"visa_type", "tax_concept", "tax_code", "property_type"
 def _is_non_kbli_entity(entity_str: str, entity_type: str | None = None) -> bool:
     """
     Check if an entity should NOT be matched against KBLI codes.
-    
+
     Args:
         entity_str: The entity string from extraction
         entity_type: Optional entity type hint
-        
+
     Returns:
         True if entity is visa/tax/property (non-KBLI)
     """
     entity_lower = entity_str.lower()
-    
+
     # Check explicit entity type
     if entity_type and entity_type in NON_KBLI_ENTITY_TYPES:
         return True
-    
+
     # Check for visa-related entities
     visa_patterns = [
-        "kitas", "kitap", "vitas", "visa", "e28", "e31", "e33", 
-        "imta", "rptka", "work_permit", "stay_permit"
+        "kitas",
+        "kitap",
+        "vitas",
+        "visa",
+        "e28",
+        "e31",
+        "e33",
+        "imta",
+        "rptka",
+        "work_permit",
+        "stay_permit",
     ]
     if any(pattern in entity_lower for pattern in visa_patterns):
         return True
-    
+
     # Check for tax-related entities
     tax_patterns = ["npwp", "pph", "ppn", "pbb", "spt", "tax_"]
     if any(pattern in entity_lower for pattern in tax_patterns):
         return True
-    
+
     # Check for property-related entities
     property_patterns = ["hak_pakai", "hgb", "hak_milik", "property_", "shm_"]
     if any(pattern in entity_lower for pattern in property_patterns):
         return True
-    
+
     return False
 
 
 def _get_entity_type_filter(entity_str: str) -> list[str] | None:
     """
     Get the expected entity types for a given entity string.
-    
+
     Returns list of entity types to filter by, or None for no filter.
     """
     entity_lower = entity_str.lower()
-    
+
     # Visa entities
-    if any(pattern in entity_lower for pattern in ["kitas", "kitap", "vitas", "e28", "e31", "e33", "imta", "rptka"]):
+    if any(
+        pattern in entity_lower
+        for pattern in ["kitas", "kitap", "vitas", "e28", "e31", "e33", "imta", "rptka"]
+    ):
         return ["visa", "permit", "immigration"]
-    
+
     # Tax entities
     if any(pattern in entity_lower for pattern in ["npwp", "pph", "ppn", "pbb"]):
         return ["tax", "permit"]
-    
+
     # Property entities
     if any(pattern in entity_lower for pattern in ["hak_pakai", "hgb", "hak_milik", "shm"]):
         return ["property", "permit"]
-    
+
     # KBLI entities
     if entity_str.isdigit() and len(entity_str) == 5:
         return ["kbli", "business_code"]
-    
+
     return None
 
 
@@ -344,7 +384,7 @@ async def resolve_entities_node(
 
     Uses PostgreSQL similarity search to find KG entities that match
     the extracted entity strings from the query.
-    
+
     IMPORTANT: This version properly handles entity type detection to avoid
     matching visa/tax/property queries against KBLI codes.
 
@@ -370,7 +410,9 @@ async def resolve_entities_node(
         for entity_str in state["extracted_entities"]:
             # Check if this is a non-KBLI entity (visa, tax, property)
             if _is_non_kbli_entity(entity_str):
-                logger.info(f"🛂 [Resolve] Non-KBLI entity detected, skipping KG lookup: {entity_str}")
+                logger.info(
+                    f"🛂 [Resolve] Non-KBLI entity detected, skipping KG lookup: {entity_str}"
+                )
                 # For non-KBLI entities, we mark them as "unresolved" for KG purposes
                 # They will be handled by domain-specific subgraphs instead
                 continue
@@ -489,68 +531,67 @@ async def traverse_graph_node(
 
     async with db_pool.acquire() as conn:
         for depth in range(max_depth):
-            logger.info(f"🔍 [Traverse] Depth {depth + 1}/{max_depth}, frontier size: {len(frontier)}")
+            logger.info(
+                f"🔍 [Traverse] Depth {depth + 1}/{max_depth}, frontier size: {len(frontier)}"
+            )
 
             if not frontier:
                 break
 
+            # Filter out already-visited entities before querying
+            unvisited = [eid for eid in frontier if eid not in visited]
+            if not unvisited:
+                break
+
+            visited.update(unvisited)
+
+            # Batch query: fetch all edges for the entire frontier in one round-trip
+            edges = await conn.fetch(
+                """
+                SELECT e.source_entity_id,
+                       e.relationship_type, e.target_entity_id,
+                       s.name as source_name, s.entity_type as source_type,
+                       t.name as target_name, t.entity_type as target_type,
+                       t.confidence as target_confidence,
+                       e.confidence as edge_confidence,
+                       e.source_collection as edge_source_collection,
+                       t.source_collection as target_source_collection,
+                       t.created_at as target_created_at,
+                       e.created_at as edge_created_at
+                FROM kg_edges e
+                JOIN kg_nodes s ON e.source_entity_id = s.entity_id
+                JOIN kg_nodes t ON e.target_entity_id = t.entity_id
+                WHERE e.source_entity_id = ANY($1::text[])
+                  AND e.relationship_type IN ('REQUIRES', 'ENABLES', 'PART_OF')
+                  AND t.confidence > 0.7
+                ORDER BY t.confidence DESC
+                """,
+                unvisited,
+            )
+
             next_frontier = []
 
-            for source_entity_id in frontier:
-                if source_entity_id in visited:
-                    continue
-                visited.add(source_entity_id)
+            for edge in edges:
+                chain_element = {
+                    "source_entity_id": edge["source_entity_id"],
+                    "source_name": edge["source_name"],
+                    "source_type": edge["source_type"],
+                    "relationship_type": edge["relationship_type"],
+                    "target_entity_id": edge["target_entity_id"],
+                    "target_name": edge["target_name"],
+                    "target_type": edge["target_type"],
+                    "depth": depth + 1,
+                    "edge_confidence": edge.get("edge_confidence"),
+                    "edge_source_collection": edge.get("edge_source_collection"),
+                    "target_source_collection": edge.get("target_source_collection"),
+                    "target_created_at": edge.get("target_created_at"),
+                    "edge_created_at": edge.get("edge_created_at"),
+                }
 
-                # Get outgoing edges (REQUIRES, ENABLES, PART_OF only)
-                edges = await conn.fetch(
-                    """
-                    SELECT e.relationship_type, e.target_entity_id,
-                           s.name as source_name, s.entity_type as source_type,
-                           t.name as target_name, t.entity_type as target_type,
-                           t.confidence as target_confidence,
-                           e.confidence as edge_confidence,
-                           e.source_collection as edge_source_collection,
-                           t.source_collection as target_source_collection,
-                           t.created_at as target_created_at,
-                           e.created_at as edge_created_at
-                    FROM kg_edges e
-                    JOIN kg_nodes s ON e.source_entity_id = s.entity_id
-                    JOIN kg_nodes t ON e.target_entity_id = t.entity_id
-                    WHERE e.source_entity_id = $1
-                      AND e.relationship_type IN ('REQUIRES', 'ENABLES', 'PART_OF')
-                      AND t.confidence > 0.7
-                    ORDER BY t.confidence DESC
-                    LIMIT 20
-                    """,
-                    source_entity_id,
-                )
+                chains.append([chain_element])
 
-                for edge in edges:
-                    # Build chain element
-                    chain_element = {
-                        "source_entity_id": source_entity_id,
-                        "source_name": edge["source_name"],
-                        "source_type": edge["source_type"],
-                        "relationship_type": edge["relationship_type"],
-                        "target_entity_id": edge["target_entity_id"],
-                        "target_name": edge["target_name"],
-                        "target_type": edge["target_type"],
-                        "depth": depth + 1,
-                        # Phase 2: Enriched fields for confidence scoring
-                        # Use .get() for backward compatibility with mocks/older schemas
-                        "edge_confidence": edge.get("edge_confidence"),
-                        "edge_source_collection": edge.get("edge_source_collection"),
-                        "target_source_collection": edge.get("target_source_collection"),
-                        "target_created_at": edge.get("target_created_at"),
-                        "edge_created_at": edge.get("edge_created_at"),
-                    }
-
-                    # Add to chains (group by path)
-                    chains.append([chain_element])
-
-                    # Add target to next frontier (if not visited)
-                    if edge["target_entity_id"] not in visited:
-                        next_frontier.append(edge["target_entity_id"])
+                if edge["target_entity_id"] not in visited:
+                    next_frontier.append(edge["target_entity_id"])
 
             frontier = next_frontier
 
@@ -603,7 +644,7 @@ async def reason_over_graph_node(
     # Format chains for LLM context
     graph_context = format_chains_for_llm(state["relationship_chains"])
 
-    system_prompt = f"""You are analyzing a Knowledge Graph to answer: "{state['query']}"
+    system_prompt = f"""You are analyzing a Knowledge Graph to answer: "{state["query"]}"
 
 The graph contains Indonesian business and immigration regulations.
 Use the relationship chains below to construct a logical answer.
@@ -639,7 +680,9 @@ Provide:
     duration = time.time() - start_time
     kg_llm_reasoning_duration_seconds.observe(duration)
 
-    logger.info(f"✅ [Reason] Reasoning complete, {len(evidence)} evidence pieces extracted ({duration:.2f}s)")
+    logger.info(
+        f"✅ [Reason] Reasoning complete, {len(evidence)} evidence pieces extracted ({duration:.2f}s)"
+    )
 
     return state
 
@@ -713,7 +756,7 @@ async def synthesize_workflow_node(
         "source": "graph_traversal",
         "confidence": breakdown.overall,
         "confidence_breakdown": asdict(breakdown),
-        "generated_at": "2026-02-09",  # TODO: Use actual timestamp
+        "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
 
     state["workflow"] = workflow
