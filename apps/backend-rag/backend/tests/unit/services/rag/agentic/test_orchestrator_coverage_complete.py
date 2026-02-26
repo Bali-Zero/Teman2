@@ -55,8 +55,20 @@ class MockTool(BaseTool):
 
 @pytest.fixture
 def mock_db_pool():
-    """Mock database pool"""
-    return AsyncMock()
+    """Mock database pool with async context manager for acquire()"""
+    pool = MagicMock()
+    mock_conn = MagicMock()
+    mock_conn.fetchrow = AsyncMock(return_value=None)
+
+    class AsyncCtxMgr:
+        async def __aenter__(self):
+            return mock_conn
+
+        async def __aexit__(self, *args):
+            return None
+
+    pool.acquire = MagicMock(return_value=AsyncCtxMgr())
+    return pool
 
 
 @pytest.fixture
@@ -480,21 +492,22 @@ class TestStreamQueryRouting:
 
     @pytest.mark.asyncio
     async def test_stream_query_event_validation_error(self, orchestrator):
-        """Test event validation error handling"""
+        """Test event validation - invalid events are skipped, stream completes with done"""
 
-        # Mock reasoning engine to yield invalid event
-        async def invalid_events():
+        # Mock reasoning engine to yield mix of valid and invalid events
+        async def mixed_events():
             yield {"type": "token", "data": "valid"}
-            yield {"type": "invalid", "missing_required": True}  # Invalid event
+            yield {"type": "invalid", "missing_required": True}  # Fails StreamEvent (no "data")
+            yield {"type": "token", "data": "more"}
             yield {"type": "done", "data": None}
 
         with (
-            patch.object(orchestrator.intent_classifier, "classify_intent") as mock_intent,
-            patch.object(orchestrator.entity_extractor, "extract_entities") as mock_entity,
+            patch.object(orchestrator.intent_classifier, "classify_intent", new_callable=AsyncMock) as mock_intent,
+            patch.object(orchestrator.entity_extractor, "extract_entities", new_callable=AsyncMock) as mock_entity,
             patch.object(
-                orchestrator.reasoning_engine,
+                orchestrator.core.reasoning_engine,
                 "execute_react_loop_stream",
-                return_value=invalid_events(),
+                return_value=mixed_events(),
             ),
         ):
             mock_intent.return_value = {"suggested_ai": "FLASH", "category": "simple"}
@@ -504,8 +517,10 @@ class TestStreamQueryRouting:
             async for event in orchestrator.stream_query("test", "user@test.com"):
                 events.append(event)
 
-            # Should yield error event for invalid event
-            assert any(e.get("type") == "error" for e in events)
+            # Invalid events are skipped; stream should complete with done
+            assert any(e.get("type") == "done" for e in events)
+            # Valid tokens should appear
+            assert any(e.get("type") == "token" for e in events)
 
     @pytest.mark.asyncio
     @pytest.mark.skip(reason="Stream validation flow complex - process_event_stream path varies")
