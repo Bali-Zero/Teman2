@@ -110,12 +110,12 @@ class TestEmbeddingsGenerator:
         mock_item2.embedding = [0.2] * 1536
         mock_response.data = [mock_item1, mock_item2]
 
-        # Async mock for embeddings.create
         mock_client.embeddings.create = AsyncMock(return_value=mock_response)
         mock_openai_class.return_value = mock_client
 
         generator = EmbeddingsGenerator(provider="openai", api_key="test-key")
-        result = await generator.generate_embeddings(["text1", "text2"])
+        # Use unique texts to avoid cache hit from other tests
+        result = await generator.generate_embeddings(["openai_test_1", "openai_test_2"])
         assert len(result) == 2
         assert len(result[0]) == 1536
 
@@ -231,7 +231,7 @@ class TestEmbeddingsGenerator:
     @pytest.mark.asyncio
     @patch("sentence_transformers.SentenceTransformer")
     async def test_generate_embeddings_function(self, mock_st):
-        """Test convenience function"""
+        """Test convenience function - uses sentence-transformers when no api_key"""
         import numpy as np
 
         mock_transformer = MagicMock()
@@ -239,12 +239,12 @@ class TestEmbeddingsGenerator:
         mock_transformer.encode.return_value = np.array([[0.1] * 384])
         mock_st.return_value = mock_transformer
 
-        # Note: since the module level function uses synchronous EmbeddingsGenerator internally
-        # we might need to await it if we made the top level function async.
-        # Let's check generate_embeddings in embeddings.py
-        result = await generate_embeddings(
-            ["test"], api_key=None
-        )  # Error expected if generate_embeddings is sync
+        mock_settings = MagicMock()
+        mock_settings.embedding_provider = "sentence-transformers"
+        mock_settings.embedding_model = None
+        mock_settings.openai_api_key = None
+        with patch("backend.core.embeddings._default_settings", mock_settings):
+            result = await generate_embeddings(["test_func_unique"], api_key=None)
         assert len(result) == 1
         assert len(result[0]) == 384
 

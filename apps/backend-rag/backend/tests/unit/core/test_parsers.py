@@ -191,7 +191,7 @@ class TestAutoDetectAndParse:
         try:
             result = auto_detect_and_parse(temp_path)
             assert result == "PDF content"
-            mock_extract.assert_called_once_with(temp_path)
+            mock_extract.assert_called_once_with(temp_path, use_ocr=False)
         finally:
             os.unlink(temp_path)
 

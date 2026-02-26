@@ -51,12 +51,17 @@ class TestAnalyticsAggregator:
     @pytest.mark.asyncio
     async def test_get_overview_stats_with_pool(self, analytics_aggregator):
         """Test getting overview stats with database pool"""
-        mock_pool = AsyncMock()
+        from contextlib import asynccontextmanager
+
         mock_conn = AsyncMock()
-        mock_conn.__aenter__ = AsyncMock(return_value=mock_conn)
-        mock_conn.__aexit__ = AsyncMock(return_value=None)
         mock_conn.fetchval = AsyncMock(return_value=10)
-        mock_pool.acquire = AsyncMock(return_value=mock_conn)
+
+        @asynccontextmanager
+        async def mock_acquire():
+            yield mock_conn
+
+        mock_pool = MagicMock()
+        mock_pool.acquire = mock_acquire
         analytics_aggregator.app_state.db_pool = mock_pool
         stats = await analytics_aggregator.get_overview_stats()
         assert stats is not None

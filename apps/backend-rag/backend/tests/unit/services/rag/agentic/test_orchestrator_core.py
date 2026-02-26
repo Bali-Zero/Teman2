@@ -144,7 +144,9 @@ async def test_check_semantic_cache_miss(orchestrator_core, mock_semantic_cache)
 @pytest.mark.asyncio
 async def test_extract_entities_and_kg_context(orchestrator_core, mock_entity_extractor):
     """Test entity and KG context extraction"""
-    entities, context = await orchestrator_core.extract_entities_and_kg_context("test query")
+    entities, context, workflow_result = await orchestrator_core.extract_entities_and_kg_context(
+        "test query"
+    )
 
     assert entities == {"person": "John"}
     assert isinstance(context, str)
@@ -163,7 +165,9 @@ async def test_extract_entities_and_kg_context_with_kg(orchestrator_core, mock_e
     mock_kg.get_context_for_query = AsyncMock(return_value=kg_context)
     orchestrator_core.kg_retrieval = mock_kg
 
-    entities, context = await orchestrator_core.extract_entities_and_kg_context("test query")
+    entities, context, workflow_result = await orchestrator_core.extract_entities_and_kg_context(
+        "test query"
+    )
 
     assert "KNOWN ENTITIES" in context
     assert "KG summary" in context

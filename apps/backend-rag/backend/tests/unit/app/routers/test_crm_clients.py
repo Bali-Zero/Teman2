@@ -304,7 +304,7 @@ class TestDeleteClient:
         pool, conn = mock_db_pool
 
         mock_row = MagicMock()
-        mock_row.__getitem__ = lambda self, key: {"id": 1}[key]
+        mock_row.__getitem__ = lambda self, key: {"id": 1, "assigned_to": "test@example.com"}[key]
 
         conn.fetchrow = AsyncMock(return_value=mock_row)
         conn.execute = AsyncMock()

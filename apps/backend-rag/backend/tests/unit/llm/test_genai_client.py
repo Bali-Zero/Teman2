@@ -88,6 +88,8 @@ class TestGenAIClient:
 
     def test_get_genai_client_singleton(self):
         """Test singleton pattern"""
+        import backend.llm.genai_client as genai_client_module
+
         with (
             patch("backend.llm.genai_client.genai") as mock_genai,
             patch("backend.llm.genai_client.GENAI_AVAILABLE", True),
@@ -95,11 +97,8 @@ class TestGenAIClient:
             mock_client = MagicMock()
             mock_genai.Client.return_value = mock_client
 
-            # Reset singleton
-
-            llm.genai_client._client_instance = None
+            genai_client_module._client_instance = None
 
             client1 = get_genai_client()
             client2 = get_genai_client()
-            # Should return same instance
             assert client1 is client2

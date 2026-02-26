@@ -87,7 +87,9 @@ def orchestrator_setup(mock_tools, mock_db_pool, mock_retriever, mock_semantic_c
         patch("backend.services.rag.agentic.orchestrator.ReasoningEngine") as mock_reasoning,
         patch("backend.services.rag.agentic.orchestrator.EntityExtractionService") as mock_entity,
         patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
-        patch("backend.services.rag.agentic.orchestrator.FollowupService"),
+        patch(
+            "backend.services.rag.agentic.orchestrator.FollowupService"
+        ) as mock_followup_class,
         patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
         patch(
             "backend.services.rag.agentic.orchestrator.ContextWindowManager"
@@ -135,6 +137,10 @@ def orchestrator_setup(mock_tools, mock_db_pool, mock_retriever, mock_semantic_c
             "trimmed_messages": [],
         }
         mock_context_window.return_value = mock_context_window_instance
+
+        mock_followup_instance = MagicMock()
+        mock_followup_instance.get_followups = AsyncMock(return_value=[])
+        mock_followup_class.return_value = mock_followup_instance
 
         orchestrator = AgenticRAGOrchestrator(
             tools=mock_tools,
@@ -338,29 +344,23 @@ class TestProcessQueryGates:
         }
         mock_clarification.generate_clarification_request.return_value = "Cosa intendi esattamente?"
 
-        orch.clarification_service = mock_clarification
-        # Also set on core.query_gates so the gate can access it
-        if hasattr(orch, "core") and hasattr(orch.core, "query_gates"):
-            orch.core.query_gates.clarification_service = mock_clarification
+        orch.core.query_gates.clarification_service = mock_clarification
 
-        with patch(
-            "backend.services.rag.agentic.orchestrator.get_user_context"
-        ) as mock_get_context:
-            mock_get_context.return_value = {
-                "profile": None,
-                "facts": [],
-                "collective_facts": [],
-                "history": [],
-            }
+        # Gate runs only when conversation_history is non-empty; ensure get_full_context returns it
+        conv_history = [{"role": "user", "content": "Ciao"}]
+        default_ctx = {"profile": None, "facts": [], "collective_facts": [], "history": []}
+        orch.core.context_manager.get_full_context = AsyncMock(
+            return_value=(default_ctx, conv_history)
+        )
 
-            result = await orch.process_query(
-                "Quanto costa?", "user@test.com",
-                conversation_history=[{"role": "user", "content": "Ciao"}],
-            )
+        result = await orch.process_query(
+            "Quanto costa?", "user@test.com",
+            conversation_history=conv_history,
+        )
 
-            assert result.model_used == "clarification-gate"
-            assert result.is_ambiguous is True
-            assert result.verification_status == "skipped"
+        assert result.model_used == "clarification-gate"
+        assert result.is_ambiguous is True
+        assert result.verification_status == "skipped"
 
     async def test_clarification_gate_low_confidence(self, orchestrator_setup):
         """Test clarification gate with low confidence (should not trigger)"""
@@ -405,16 +405,9 @@ class TestProcessQueryGates:
         """Test out-of-domain detection gate"""
         orch = orchestrator_setup["orchestrator"]
 
-        with (
-            patch("backend.services.rag.agentic.orchestrator.get_user_context") as mock_get_context,
-            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
-        ):
-            mock_get_context.return_value = {
-                "profile": None,
-                "facts": [],
-                "collective_facts": [],
-                "history": [],
-            }
+        with patch(
+            "backend.services.rag.agentic.query_gates.is_out_of_domain"
+        ) as mock_ood:
             mock_ood.return_value = (True, "medical")
 
             result = await orch.process_query("Come curare il mal di testa?", "user@test.com")
@@ -980,8 +973,10 @@ class TestStreamQueryGates:
             async for event in orch.stream_query("Test query", "user@test.com"):
                 events.append(event)
 
+            # Cache hit yields metadata with status "success" and route "cache"
             assert any(
-                e.get("type") == "metadata" and e.get("data", {}).get("status") == "cache-hit"
+                e.get("type") == "metadata"
+                and e.get("data", {}).get("route") == "cache"
                 for e in events
             )
 
@@ -1200,11 +1195,10 @@ class TestSaveConversationMemory:
         mock_result.processing_time_ms = 100.0
         mock_memory.process_conversation = AsyncMock(return_value=mock_result)
 
-        with patch.object(orch, "_get_memory_orchestrator", return_value=mock_memory):
-            await orch._save_conversation_memory("test_user", "query", "answer")
+        orch.memory_handler.get_memory_orchestrator = AsyncMock(return_value=mock_memory)
+        await orch._save_conversation_memory("test_user", "query", "answer")
 
-            # Should have called process_conversation
-            mock_memory.process_conversation.assert_called_once()
+        mock_memory.process_conversation.assert_called_once()
 
     async def test_save_memory_exception_handling(self, orchestrator_setup):
         """Test memory save exception handling"""
@@ -1213,12 +1207,10 @@ class TestSaveConversationMemory:
         mock_memory = AsyncMock()
         mock_memory.process_conversation = AsyncMock(side_effect=ValueError("DB error"))
 
-        with patch.object(orch, "_get_memory_orchestrator", return_value=mock_memory):
-            # Should not raise, just log warning
-            await orch._save_conversation_memory("test_user", "query", "answer")
+        orch.memory_handler.get_memory_orchestrator = AsyncMock(return_value=mock_memory)
+        await orch._save_conversation_memory("test_user", "query", "answer")
 
-            # Should have attempted to process
-            mock_memory.process_conversation.assert_called_once()
+        mock_memory.process_conversation.assert_called_once()
 
 
 @pytest.mark.asyncio

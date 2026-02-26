@@ -26,13 +26,16 @@ def verification_service():
     with (
         patch("backend.services.rag.verification_service.GENAI_AVAILABLE", True),
         patch("backend.services.rag.verification_service.GenAIClient") as mock_client_class,
-        patch("backend.app.core.config.settings") as mock_settings,
+        patch("backend.services.rag.verification_service.settings") as mock_settings,
     ):
         mock_settings.google_api_key = "test_key"
         mock_client = MagicMock()
         mock_client.is_available = True
+        mock_client.generate_content = AsyncMock()
         mock_client_class.return_value = mock_client
-        return VerificationService()
+        service = VerificationService()
+        service._genai_client = mock_client
+        return service
 
 
 @pytest.fixture
@@ -40,10 +43,13 @@ def verification_service_no_genai():
     """Create VerificationService instance without GenAI"""
     with (
         patch("backend.services.rag.verification_service.GENAI_AVAILABLE", False),
-        patch("backend.app.core.config.settings") as mock_settings,
+        patch("backend.services.rag.verification_service.settings") as mock_settings,
     ):
         mock_settings.google_api_key = None
-        return VerificationService()
+        service = VerificationService()
+        service._genai_client = None
+        service._get_genai_client = lambda: None
+        return service
 
 
 class TestVerificationService:
@@ -82,17 +88,9 @@ class TestVerificationService:
     @pytest.mark.asyncio
     async def test_verify_response_with_context(self, verification_service):
         """Test verifying response with context"""
-        mock_response = {
-            "is_valid": True,
-            "status": "verified",
-            "score": 0.9,
-            "reasoning": "Answer is supported",
-            "corrected_answer": None,
-            "missing_citations": [],
-        }
-
-        verification_service._genai_client.generate_text = AsyncMock(
-            return_value='{"is_valid": true, "status": "verified", "score": 0.9, "reasoning": "Answer is supported", "corrected_answer": null, "missing_citations": []}'
+        mock_json = '{"is_valid": true, "status": "verified", "score": 0.9, "reasoning": "Answer is supported", "corrected_answer": null, "missing_citations": []}'
+        verification_service._genai_client.generate_content = AsyncMock(
+            return_value={"text": mock_json}
         )
 
         result = await verification_service.verify_response(
@@ -246,6 +244,7 @@ class TestVerificationServiceInit:
         """Test initialization without API key"""
         with (
             patch("backend.services.rag.verification_service.GENAI_AVAILABLE", True),
+            patch("backend.services.rag.verification_service.GenAIClient") as mock_client_class,
             patch("backend.services.rag.verification_service.settings") as mock_settings,
         ):
             mock_settings.google_api_key = None

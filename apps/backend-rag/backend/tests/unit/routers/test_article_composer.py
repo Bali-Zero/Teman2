@@ -134,6 +134,7 @@ def mock_anthropic_response():
 # --- COMPOSE ENDPOINT TESTS ---
 
 
+@pytest.mark.skip(reason="Article composer compose endpoint disabled (501)")
 @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
 @patch("backend.app.routers.article_composer.anthropic.Anthropic")
 def test_compose_article_success(
@@ -159,6 +160,7 @@ def test_compose_article_success(
     assert "image_prompt" not in data["article"]  # Verify image_prompt removed
 
 
+@pytest.mark.skip(reason="Article composer compose endpoint disabled (501)")
 @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
 @patch("backend.app.routers.article_composer.anthropic.Anthropic")
 def test_compose_article_priority_word_count(mock_anthropic_class, test_client):
@@ -226,6 +228,7 @@ def test_compose_article_priority_word_count(mock_anthropic_class, test_client):
         assert word_count >= expected_words - 50  # Allow some variance
 
 
+@pytest.mark.skip(reason="Article composer compose endpoint disabled (501)")
 @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
 @patch("backend.app.routers.article_composer.anthropic.Anthropic")
 def test_compose_article_json_cleanup(mock_anthropic_class, test_client, sample_compose_request):
@@ -287,6 +290,7 @@ def test_compose_article_json_cleanup(mock_anthropic_class, test_client, sample_
         assert data["success"] is True
 
 
+@pytest.mark.skip(reason="Article composer compose endpoint disabled (501)")
 @patch.dict("os.environ", {}, clear=True)
 def test_compose_article_missing_api_key(test_client, sample_compose_request):
     """Test compose fails gracefully when API key is missing"""
@@ -296,6 +300,7 @@ def test_compose_article_missing_api_key(test_client, sample_compose_request):
     assert "API key not configured" in response.json()["detail"]
 
 
+@pytest.mark.skip(reason="Article composer compose endpoint disabled (501)")
 @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
 @patch("backend.app.routers.article_composer.anthropic.Anthropic")
 def test_compose_article_json_parse_error(
@@ -318,6 +323,7 @@ def test_compose_article_json_parse_error(
     assert "Failed to parse Claude response" in data["error"]
 
 
+@pytest.mark.skip(reason="Article composer compose endpoint disabled (501)")
 @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
 @patch("backend.app.routers.article_composer.anthropic.Anthropic")
 def test_compose_article_api_error(mock_anthropic_class, test_client, sample_compose_request):
@@ -596,6 +602,7 @@ def test_build_enrichment_prompt_priority_instructions():
 # --- INTEGRATION TEST ---
 
 
+@pytest.mark.skip(reason="Article composer compose endpoint disabled (501)")
 @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
 @patch("backend.app.routers.article_composer.anthropic.Anthropic")
 @patch("backend.services.integrations.github_publisher.github_publisher")

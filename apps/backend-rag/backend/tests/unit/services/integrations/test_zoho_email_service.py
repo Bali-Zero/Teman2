@@ -495,14 +495,20 @@ class TestStatusOperations:
     @pytest.mark.asyncio
     async def test_delete_emails(self, zoho_email_service):
         """Test deleting emails (move to trash)"""
-        with patch.object(zoho_email_service, "_request", new_callable=AsyncMock) as mock_request:
-            mock_request.return_value = {}
+        with (
+            patch.object(zoho_email_service, "list_folders", new_callable=AsyncMock) as mock_folders,
+            patch.object(zoho_email_service, "move_to_folder", new_callable=AsyncMock) as mock_move,
+        ):
+            mock_folders.return_value = [
+                {"folder_id": "trash_123", "folder_type": "trash", "folder_name": "Trash"}
+            ]
+            mock_move.return_value = True
 
             result = await zoho_email_service.delete_emails("user1", ["msg1", "msg2"])
 
             assert result is True
-            call_args = mock_request.call_args
-            assert call_args[1]["json_data"]["mode"] == "moveToTrash"
+            mock_folders.assert_called_once_with("user1")
+            mock_move.assert_called_once_with("user1", ["msg1", "msg2"], "trash_123")
 
 
 class TestAttachmentOperations:
@@ -553,11 +559,11 @@ class TestAttachmentOperations:
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client_class.return_value = mock_client
 
-            att_id = await zoho_email_service.upload_attachment(
+            result = await zoho_email_service.upload_attachment(
                 "user1", "test.pdf", b"pdf content", "application/pdf"
             )
 
-            assert att_id == "new_att_1"
+            assert result["attachment_id"] == "new_att_1"
 
     @pytest.mark.asyncio
     async def test_upload_attachment_error(self, zoho_email_service, mock_oauth_service):
@@ -565,13 +571,16 @@ class TestAttachmentOperations:
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_response = MagicMock()
             mock_response.status_code = 413
+            mock_response.json.return_value = {
+                "data": {"errorCode": "FILE_TOO_LARGE", "message": "File too large"}
+            }
             mock_client = AsyncMock()
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
             mock_client.__aexit__ = AsyncMock(return_value=None)
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client_class.return_value = mock_client
 
-            with pytest.raises(ValueError, match="Failed to upload"):
+            with pytest.raises(ValueError, match="Upload failed"):
                 await zoho_email_service.upload_attachment(
                     "user1", "large.zip", b"content", "application/zip"
                 )

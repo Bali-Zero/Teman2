@@ -56,9 +56,11 @@ class TestCircuitBreaker:
 
     def test_circuit_breaker_open_rejects(self):
         """Test OPEN circuit rejects calls"""
-        cb = CircuitBreaker(failure_threshold=1)
+        import time
+
+        cb = CircuitBreaker(failure_threshold=1, recovery_timeout=60)
         cb.state = CircuitState.OPEN
-        cb.last_failure_time = 0  # Set to past
+        cb.last_failure_time = time.time()  # Recent - don't attempt reset yet
 
         func = MagicMock(return_value="success")
 
@@ -141,15 +143,13 @@ class TestCallClaudeWithRetry:
     @pytest.mark.asyncio
     @patch("backend.services.article_composer.claude_client.get_anthropic_client")
     async def test_retry_on_rate_limit(self, mock_get_client):
-        """Test retry on rate limit error"""
-        mock_client = MagicMock()
+        """Test retry on rate limit error - circuit breaker raises, propagates"""
         mock_response = MagicMock()
-        mock_response.request = MagicMock()
         rate_limit_error = anthropic.RateLimitError(
             "Rate limit exceeded", response=mock_response, body=None
         )
 
-        # Mock circuit breaker to raise rate limit error
+        # Mock circuit breaker to raise rate limit error (avoids tenacity retry logging)
         with patch(
             "backend.services.article_composer.claude_client._claude_circuit_breaker"
         ) as mock_cb:

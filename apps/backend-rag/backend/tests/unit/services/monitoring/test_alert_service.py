@@ -189,6 +189,8 @@ class TestAlertService:
         with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.slack_webhook_url = None
             mock_settings.discord_webhook_url = None
+            mock_settings.telegram_bot_token = None
+            mock_settings.telegram_admin_chat_id = None
             service = AlertService()
 
             results = await service.send_http_error_alert(
@@ -207,6 +209,8 @@ class TestAlertService:
         with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.slack_webhook_url = None
             mock_settings.discord_webhook_url = None
+            mock_settings.telegram_bot_token = None
+            mock_settings.telegram_admin_chat_id = None
             service = AlertService()
 
             results = await service.send_http_error_alert(
@@ -220,6 +224,8 @@ class TestAlertService:
         with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.slack_webhook_url = None
             mock_settings.discord_webhook_url = None
+            mock_settings.telegram_bot_token = None
+            mock_settings.telegram_admin_chat_id = None
             service = AlertService()
 
             results = await service.send_http_error_alert(
@@ -233,6 +239,8 @@ class TestAlertService:
         with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.slack_webhook_url = None
             mock_settings.discord_webhook_url = None
+            mock_settings.telegram_bot_token = None
+            mock_settings.telegram_admin_chat_id = None
             service = AlertService()
 
             results = await service.send_latency_alert(

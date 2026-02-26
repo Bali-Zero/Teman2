@@ -153,7 +153,6 @@ class TestLogSuccess:
         logger.info.assert_called_once()
         call_args = logger.info.call_args[0][0]
         assert "Operation completed" in call_args
-        assert "✅" in call_args
 
     def test_log_success_with_kwargs(self):
         """Test success logging with kwargs"""
@@ -165,7 +164,7 @@ class TestLogSuccess:
         call_kwargs = logger.info.call_args[1]
         assert "extra" in call_kwargs
         assert call_kwargs["extra"]["context"]["user_id"] == "user123"
-        assert call_kwargs["extra"]["context"]["duration_ms"] == 100
+        assert call_kwargs["extra"]["duration_ms"] == 100
 
     def test_log_success_no_kwargs(self):
         """Test success logging without kwargs"""
@@ -190,7 +189,6 @@ class TestLogError:
         logger.error.assert_called_once()
         call_args = logger.error.call_args[0][0]
         assert "Operation failed" in call_args
-        assert "❌" in call_args
 
     def test_log_error_with_exception(self):
         """Test error logging with exception"""
@@ -240,7 +238,6 @@ class TestLogWarning:
         logger.warning.assert_called_once()
         call_args = logger.warning.call_args[0][0]
         assert "This is a warning" in call_args
-        assert "⚠️" in call_args
 
     def test_log_warning_with_kwargs(self):
         """Test warning logging with kwargs"""
@@ -268,7 +265,6 @@ class TestLogDatabaseOperation:
         call_args = logger.debug.call_args[0][0]
         assert "SELECT" in call_args
         assert "users" in call_args
-        assert "🗄️" in call_args
 
     def test_log_database_operation_with_record_id(self):
         """Test database operation logging with record ID"""

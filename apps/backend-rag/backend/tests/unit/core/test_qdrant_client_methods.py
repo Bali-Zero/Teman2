@@ -138,11 +138,13 @@ class TestQdrantClientDelete:
     @pytest.mark.asyncio
     async def test_delete_exception(self, client):
         """Test delete with exception"""
+        from backend.core.exceptions import QdrantConnectionError
+
         with patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client:
             mock_http_client = await mock_get_client()
             mock_http_client.post = AsyncMock(side_effect=Exception("Connection error"))
 
-            with pytest.raises(ConnectionError):
+            with pytest.raises(QdrantConnectionError):
                 await client.delete(["1"])
 
 

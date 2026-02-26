@@ -189,6 +189,7 @@ class TestCollectiveMemory:
         collective_memory_service.set_pool(mock_db_pool)
         assert collective_memory_service.pool == mock_db_pool
 
+    @pytest.mark.skip(reason="_get_embedder removed from CollectiveMemoryService")
     def test_get_embedder(self, collective_memory_service):
         """Test getting embedder"""
         # Reset embedder to None to force initialization

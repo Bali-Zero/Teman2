@@ -139,48 +139,29 @@ class TestAgenticRAGOrchestrator:
 
     @pytest.mark.asyncio
     async def test_get_memory_orchestrator_success(self, orchestrator, mock_db_pool):
-        """Test lazy loading of memory orchestrator"""
-        orchestrator.db_pool = mock_db_pool
-        with patch("backend.services.rag.agentic.orchestrator.MemoryOrchestrator") as mock_memory:
-            mock_instance = AsyncMock()
-            mock_instance.initialize = AsyncMock()
-            mock_memory.return_value = mock_instance
+        """Test lazy loading of memory orchestrator - delegates to memory_handler"""
+        mock_instance = AsyncMock()
+        orchestrator.memory_handler.get_memory_orchestrator = AsyncMock(return_value=mock_instance)
 
-            result = await orchestrator._get_memory_orchestrator()
-            assert result == mock_instance
-            assert orchestrator._memory_orchestrator == mock_instance
+        result = await orchestrator._get_memory_orchestrator()
+        assert result == mock_instance
+        orchestrator.memory_handler.get_memory_orchestrator.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_get_memory_orchestrator_failure(self, orchestrator, mock_db_pool):
-        """Test memory orchestrator initialization failure"""
-        orchestrator.db_pool = mock_db_pool
-        with patch("backend.services.rag.agentic.orchestrator.MemoryOrchestrator") as mock_memory:
-            # Mock MemoryOrchestrator to raise RuntimeError (which is caught)
-            def raise_exception(*args, **kwargs):
-                raise RuntimeError("DB error")
+        """Test memory orchestrator initialization failure - returns None"""
+        orchestrator.memory_handler.get_memory_orchestrator = AsyncMock(return_value=None)
 
-            mock_memory.side_effect = raise_exception
-
-            result = await orchestrator._get_memory_orchestrator()
-            # Should return None on failure
-            assert result is None
+        result = await orchestrator._get_memory_orchestrator()
+        assert result is None
 
     @pytest.mark.asyncio
     async def test_get_memory_orchestrator_no_db(self, orchestrator):
-        """Test memory orchestrator without DB pool"""
-        orchestrator.db_pool = None
-        with patch("backend.services.rag.agentic.orchestrator.MemoryOrchestrator") as mock_memory:
-            # MemoryOrchestrator will fail initialization without db_pool
-            def raise_error(db_pool=None, **kwargs):
-                if db_pool is None:
-                    raise ValueError("db_pool is required")
-                return MagicMock()
+        """Test memory orchestrator without DB pool - memory_handler returns None"""
+        orchestrator.memory_handler.get_memory_orchestrator = AsyncMock(return_value=None)
 
-            mock_memory.side_effect = raise_error
-
-            result = await orchestrator._get_memory_orchestrator()
-            # Should return None when db_pool is None
-            assert result is None
+        result = await orchestrator._get_memory_orchestrator()
+        assert result is None
 
     @pytest.mark.asyncio
     async def test_stream_response_success(self, orchestrator):
