@@ -173,6 +173,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             # PREVIEW ENDPOINTS (Public for content preview)
             # ========================================================================
             "/preview/",  # BUSINESS: Article preview pages for Telegram approval - no indexing, public preview
+            "/api/dashboard/map/",  # BUSINESS: Streamlit dashboard — KBLI validation, client geo, risk zones, stats
             # ========================================================================
             # INTERNAL SERVICE ENDPOINTS - REMOVED FROM PUBLIC (Now require API key)
             # ========================================================================
@@ -249,7 +250,13 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
         if self._is_protected_infra_endpoint(request):
             return True
 
-        is_public = any(path.startswith(endpoint) for endpoint in self.public_endpoints)
+        # Root path: exact match only (avoid "/" matching every path via startswith)
+        if path in ("/", ""):
+            return True
+
+        is_public = any(
+            path.startswith(ep) for ep in self.public_endpoints if ep not in ("/", "")
+        )
 
         # Debug log for KBLI endpoints
         if "kbli" in path.lower():
@@ -283,10 +290,12 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
 
             # Step 1: Check if this is a public endpoint
             if self.is_public_endpoint(request):
-                # Skip verbose logging for health check (called every 15s by Fly)
                 path = request.url.path
                 if path in ("/health", "/api/health"):
-                    return await call_next(request)
+                    # Skip verbose logging for health check (called every 15s by Fly)
+                    response = await call_next(request)
+                    response.headers["X-Auth-Type"] = "public"
+                    return response
 
                 # Log structured access to public endpoints for security audit
                 correlation_id = _get_correlation_id(request)
