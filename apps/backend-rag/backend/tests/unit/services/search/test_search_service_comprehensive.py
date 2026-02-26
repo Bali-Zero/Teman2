@@ -354,7 +354,16 @@ class TestSearchService:
     @pytest.mark.asyncio
     async def test_search_with_conflict_resolution_error(self, search_service):
         """Test search with conflict resolution error handling"""
-        search_service.query_router.route_query = MagicMock(side_effect=Exception("Router error"))
+        # First call raises, second call (fallback search) returns valid routing
+        valid_routing = {
+            "collection_name": "legal_unified",
+            "collections": ["legal_unified"],
+            "confidence": 0.9,
+            "is_pricing": False,
+        }
+        search_service.query_router.route_query = MagicMock(
+            side_effect=[Exception("Router error"), valid_routing]
+        )
 
         # Should fallback to simple search
         result = await search_service.search_with_conflict_resolution(
@@ -449,7 +458,7 @@ class TestSearchService:
     async def test_prepare_search_context(self, search_service):
         """Test _prepare_search_context"""
         embedding, collection, vector_db, chroma_filter, tier_values = (
-            search_service._prepare_search_context(
+            await search_service._prepare_search_context(
                 query="test",
                 user_level=1,
                 tier_filter=None,
@@ -469,7 +478,7 @@ class TestSearchService:
         )
 
         embedding, collection, vector_db, chroma_filter, tier_values = (
-            search_service._prepare_search_context(
+            await search_service._prepare_search_context(
                 query="test",
                 user_level=2,
                 tier_filter=None,
@@ -483,7 +492,7 @@ class TestSearchService:
     async def test_prepare_search_context_apply_filters_false(self, search_service):
         """Test _prepare_search_context with apply_filters=False"""
         embedding, collection, vector_db, chroma_filter, tier_values = (
-            search_service._prepare_search_context(
+            await search_service._prepare_search_context(
                 query="test query",
                 user_level=1,
                 tier_filter=None,
@@ -514,7 +523,7 @@ class TestSearchService:
         search_service.collection_manager.get_collection.side_effect = [None, mock_client]
 
         embedding, collection, vector_db, chroma_filter, tier_values = (
-            search_service._prepare_search_context(
+            await search_service._prepare_search_context(
                 query="test query",
                 user_level=1,
                 tier_filter=None,
@@ -531,7 +540,7 @@ class TestSearchService:
         search_service.collection_manager.get_collection.return_value = None
 
         with pytest.raises(ValueError, match="Failed to initialize default collection"):
-            search_service._prepare_search_context(
+            await search_service._prepare_search_context(
                 query="test query",
                 user_level=1,
                 tier_filter=None,
@@ -542,10 +551,10 @@ class TestSearchService:
     @pytest.mark.asyncio
     async def test_prepare_search_context_empty_embedding(self, search_service):
         """Test _prepare_search_context when embedding generation fails"""
-        search_service.embedder.generate_query_embedding.return_value = []
+        search_service.embedder.generate_query_embedding = AsyncMock(return_value=[])
 
         with pytest.raises(ValueError, match="Failed to generate query embedding"):
-            search_service._prepare_search_context(
+            await search_service._prepare_search_context(
                 query="test",
                 user_level=1,
                 tier_filter=None,
@@ -959,8 +968,24 @@ class TestSearchService:
             }
         )
 
-        # First collection not found
-        search_service.collection_manager.get_collection.side_effect = [None, MagicMock()]
+        # First collection not found, second returns mock client with async search
+        mock_client = MagicMock()
+        mock_client.search = AsyncMock(
+            return_value={
+                "ids": ["1"],
+                "documents": ["doc"],
+                "metadatas": [{}],
+                "distances": [0.1],
+                "total_found": 1,
+            }
+        )
+        search_service.collection_manager.get_collection.side_effect = [None, mock_client]
+
+        # Mock conflict resolver to return proper structure
+        search_service.conflict_resolver.detect_conflicts = MagicMock(return_value=[])
+        search_service.conflict_resolver.resolve_conflicts = MagicMock(
+            return_value=([], [])
+        )
 
         result = await search_service.search_with_conflict_resolution(
             query="test", user_level=1, limit=5
@@ -1037,8 +1062,15 @@ class TestSearchService:
     @pytest.mark.asyncio
     async def test_search_with_conflict_resolution_runtime_error(self, search_service):
         """Test search_with_conflict_resolution handles RuntimeError"""
+        # First call raises, second call (fallback search) returns valid routing
+        valid_routing = {
+            "collection_name": "legal_unified",
+            "collections": ["legal_unified"],
+            "confidence": 0.9,
+            "is_pricing": False,
+        }
         search_service.query_router.route_query = MagicMock(
-            side_effect=RuntimeError("Runtime error")
+            side_effect=[RuntimeError("Runtime error"), valid_routing]
         )
 
         result = await search_service.search_with_conflict_resolution(

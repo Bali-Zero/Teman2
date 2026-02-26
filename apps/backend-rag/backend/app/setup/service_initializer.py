@@ -1070,7 +1070,7 @@ async def initialize_services(app: FastAPI) -> None:
     # await _init_generals(app, db_pool)
 
     # 12. LangGraph Agent Layer - Inject services into workflow nodes
-    print("DEBUG: Injecting services into LangGraph agent nodes...", flush=True)
+    logger.debug("Injecting services into LangGraph agent nodes...")
     try:
         from backend.app.agents.graph import set_llm_gateway, set_search_service
         from backend.services.rag.agentic.llm_gateway import LLMGateway

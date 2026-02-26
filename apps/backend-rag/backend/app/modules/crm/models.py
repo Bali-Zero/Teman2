@@ -3,11 +3,16 @@ NUZANTARA PRIME - CRM Module Data Layer
 SQLModel models for CRM system (clients, practices, interactions)
 """
 
+from __future__ import annotations
+
 from datetime import datetime
 from typing import Any
 
 from sqlalchemy import DECIMAL, JSON, Column, Text
 from sqlmodel import Field, Relationship, SQLModel
+
+# ClientCompanyLink in company_models; import here for Relationship resolution (no circular: company_models doesn't import models at runtime)
+from backend.app.modules.crm.company_models import ClientCompanyLink
 
 
 class Client(SQLModel, table=True):

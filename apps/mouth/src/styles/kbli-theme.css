@@ -1,0 +1,55 @@
+/* KBLI Navigator theme — extends the existing dark design system */
+/* Used by globals.css and KBLI components */
+
+:root {
+  /* Base backgrounds (used by globals.css :root mapping) */
+  --kbli-bg-base: #0f0f11;
+  --kbli-bg-elevated: #16161a;
+  --kbli-bg-surface: #1c1c21;
+  --kbli-bg-surface-hover: #24242a;
+
+  /* Text */
+  --kbli-text-primary: #fafafa;
+  --kbli-text-secondary: #a1a1aa;
+  --kbli-text-muted: #71717a;
+
+  /* Borders */
+  --kbli-border: rgba(255, 255, 255, 0.08);
+  --kbli-border-hover: rgba(255, 255, 255, 0.12);
+
+  /* KBLI brand colors — warm dark with amber accent */
+  --kbli-bg-primary: #0f0f11;
+  --kbli-bg-secondary: #16161a;
+  --kbli-bg-card: #1c1c21;
+  --kbli-bg-card-hover: #24242a;
+
+  --kbli-accent: #f59e0b;
+  --kbli-accent-hover: #fbbf24;
+  --kbli-accent-muted: rgba(245, 158, 11, 0.15);
+  --kbli-accent-subtle: rgba(245, 158, 11, 0.08);
+
+  /* PMA status colors */
+  --kbli-pma-open: #22c55e;
+  --kbli-pma-open-bg: rgba(34, 197, 94, 0.12);
+  --kbli-pma-restricted: #f59e0b;
+  --kbli-pma-restricted-bg: rgba(245, 158, 11, 0.12);
+  --kbli-pma-closed: #ef4444;
+  --kbli-pma-closed-bg: rgba(239, 68, 68, 0.12);
+
+  /* Risk level colors */
+  --kbli-risk-low: #22c55e;
+  --kbli-risk-medium-low: #3b82f6;
+  --kbli-risk-medium-high: #f59e0b;
+  --kbli-risk-high: #ef4444;
+
+  /* Zantara AI accent */
+  --kbli-zantara: #818cf8;
+  --kbli-zantara-bg: rgba(129, 140, 248, 0.1);
+  --kbli-zantara-glow: 0 0 20px rgba(129, 140, 248, 0.15);
+
+  /* Transition mapping colors */
+  --kbli-map-unchanged: #6b7280;
+  --kbli-map-renamed: #3b82f6;
+  --kbli-map-merged: #f59e0b;
+  --kbli-map-new: #22c55e;
+}

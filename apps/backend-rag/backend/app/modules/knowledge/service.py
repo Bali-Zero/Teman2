@@ -82,9 +82,6 @@ class KnowledgeService:
             "kbli_comprehensive": QdrantClient(
                 qdrant_url=qdrant_url, collection_name="kbli_2025_final"
             ),
-            "kbli_2025_final": QdrantClient(
-                qdrant_url=qdrant_url, collection_name="kbli_2025_final"
-            ),
             "zantara_books": QdrantClient(qdrant_url=qdrant_url, collection_name="knowledge_base"),
             "cultural_insights": QdrantClient(
                 qdrant_url=qdrant_url, collection_name="knowledge_base"
