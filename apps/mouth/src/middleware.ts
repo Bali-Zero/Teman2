@@ -99,6 +99,16 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  // === REDIRECT 308: /kbli-navigator → /kbli ===
+  // Legacy KBLI Navigator URL redirect (must be in middleware to take priority
+  // over the (blog)/[category] catch-all route which would otherwise match first)
+  if (pathname === "/kbli-navigator" || pathname.startsWith("/kbli-navigator/")) {
+    const newPath = pathname.replace("/kbli-navigator", "/kbli") || "/kbli";
+    const url = request.nextUrl.clone();
+    url.pathname = newPath;
+    return NextResponse.redirect(url, 308);
+  }
+
   // === REDIRECT 301: mo.balizero.com → balizero.com ===
   // SEO: Prevent duplicate content and consolidate domain authority
   if (hostname === MOBILE_DOMAIN || hostname === `www.${MOBILE_DOMAIN}`) {
