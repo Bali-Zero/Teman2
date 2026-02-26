@@ -343,6 +343,15 @@ async function fetchKBLI(code: string): Promise<KBLIResponse | null> {
 - **Pricing:** `PRICING_REFERENCE.md`
 - **Visa Info:** `VISA_TYPES_REFERENCE.md`
 
+### KBLI Navigator (Frontend)
+
+| Route | Description |
+|-------|-------------|
+| `/kbli` | KBLI 2025 Navigator homepage (Next.js) |
+| `/kbli/[code]` | KBLI code detail page (1,563 SSG pages) |
+| `/kbli-navigator` | **Redirect** → `/kbli` (permanent 301) |
+| `/kbli-explorer` | AI chat explorer (complementary) |
+
 ---
 
 ## 13. Pre-Deploy Checklist
@@ -368,7 +377,7 @@ fly deploy --strategy rolling
 
 ---
 
-**Last Updated:** 2026-02-24
+**Last Updated:** 2026-02-27
 **Maintained by:** Bali Zero AI Team
 
 ---
