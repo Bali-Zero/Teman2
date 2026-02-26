@@ -115,4 +115,7 @@ def sanitize_filename(filename: str) -> str:
         name, ext = Path(sanitized).stem, Path(sanitized).suffix
         sanitized = name[: 255 - len(ext)] + ext
 
-    return sanitized or "unnamed_file"
+    # Empty or only dots/underscores -> fallback
+    if not sanitized or all(c in "._ " for c in sanitized):
+        return "unnamed_file"
+    return sanitized

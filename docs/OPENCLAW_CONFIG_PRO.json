@@ -3,7 +3,8 @@
     "machine": "Mac Pro",
     "user": "zero@balizero.com",
     "description": "OpenClaw configuration for Mac Pro — Gemini 3 Pro stable with zero@balizero.com",
-    "lastUpdated": "2026-02-27"
+    "lastUpdated": "2026-02-27",
+    "optimizations": "M4 Pro 48GB: increased memory buffer, heartbeat 2h, rate limit 20/min"
   },
   "auth": {
     "profiles": {
@@ -36,8 +37,15 @@
       "workspace": "/Users/nuzantara/.openclaw/workspace",
       "compaction": {
         "mode": "safeguard",
-        "reserveTokensFloor": 20000,
-        "maxHistoryShare": 0.15
+        "reserveTokensFloor": 26000,
+        "maxHistoryShare": 0.22,
+        "memoryFlush": {
+          "enabled": true,
+          "softThresholdTokens": 6500
+        }
+      },
+      "heartbeat": {
+        "every": "2h"
       }
     }
   },
@@ -76,9 +84,9 @@
     },
     "auth": {
       "mode": "token",
-      "token": null,
+      "token": "",
       "rateLimit": {
-        "maxAttempts": 10,
+        "maxAttempts": 20,
         "windowMs": 60000,
         "lockoutMs": 300000
       }

@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "nuzantara-mcp": {
+      "command": "/Users/nuzantara/Desktop/nuzantara/apps/nuzantara-mcp/.venv/bin/python",
+      "args": ["apps/nuzantara-mcp/nuzantara_mcp/server.py"],
+      "cwd": "/Users/nuzantara/Desktop/nuzantara",
+      "env": {
+        "PYTHONPATH": "apps/nuzantara-mcp"
+      }
+    },
+    "nuzantara-mcp-advanced": {
+      "command": "/Users/nuzantara/Desktop/nuzantara/apps/nuzantara-mcp-advanced/.venv/bin/python",
+      "args": ["apps/nuzantara-mcp-advanced/nuzantara_mcp_advanced/server.py"],
+      "cwd": "/Users/nuzantara/Desktop/nuzantara",
+      "env": {
+        "PYTHONPATH": "apps/nuzantara-mcp-advanced"
+      }
+    },
+    "nuzantara-fetch": {
+      "command": "uvx",
+      "args": ["mcp-server-fetch"]
+    }
+  }
+}
