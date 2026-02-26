@@ -9,9 +9,8 @@ const withBundleAnalyzer = bundleAnalyzer({
 const nextConfig: NextConfig = {
   output: "standalone",
   reactStrictMode: true,
-  // Force ignore errors for immediate deployment
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
 
   // ⚡ Bundle optimization

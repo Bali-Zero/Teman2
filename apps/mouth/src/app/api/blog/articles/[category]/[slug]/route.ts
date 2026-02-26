@@ -124,9 +124,9 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   );
 }
 
-// Mock article for demo/development
+// Mock article for demo/development — Partial because not all fields are populated
 function getMockArticle(category: string, slug: string): Article | null {
-  const mockArticles: Record<string, Article> = {
+  const mockArticles: Record<string, Partial<Article>> = {
     "immigration/golden-visa-revolution": {
       id: "1",
       slug: "golden-visa-revolution",
@@ -323,87 +323,133 @@ Under OSS-RBA, businesses are classified by risk level:
       commentCount: 8,
       locale: "en",
     },
-    "tax-legal/tax-deadlines-2026": {
-      id: "3",
-      slug: "tax-deadlines-2026",
-      title: "Tax Deadlines 2026: What Every Expat in Indonesia Needs to Know",
+    "property/capital-evolution-bkpm-5-2025": {
+      id: "capital-evolution",
+      slug: "capital-evolution-bkpm-5-2025",
+      title: "Capital Evolution: How BKPM 5/2025 Saved Property Investors",
       excerpt:
-        "Key dates and obligations for personal and corporate tax filings. Coretax system now fully operational.",
+        "The 10B IDR rule is no longer a barrier. Learn how your villa's physical value now secures your 100% ownership.",
       content: `
-# Tax Deadlines 2026
+# Capital Evolution: BKPM 5/2025
 
-Stay compliant with Indonesia's tax requirements. The new **Coretax** system is now fully operational for all filings.
+For years, the **10 Billion IDR** barrier was the "monster under the bed" for small and medium investors in Bali. But with the enforcement of **BKPM Regulation No. 5 of 2025**, the paradigm has shifted.
 
-## Personal Tax (PPh 21)
+## The Heart of the Reform
 
-| Deadline | Obligation |
-|----------|------------|
-| Monthly (10th) | Employer withholding deposit |
-| Monthly (20th) | Monthly tax report (SPT Masa) via Coretax |
-| March 31, 2026 | Annual personal tax return |
+The BKPM has finally decoupled the **Paid-up Capital (Modal Disetor)** from the **Total Investment Value**.
 
-## Corporate Tax (PPh 25/29)
+- **Paid-up Capital:** Now only **Rp 2.5 Billion** required for hospitality PT PMAs.
+- **Total Investment:** Must still exceed Rp 10 Billion, but here's the game-changer: **The physical value of your land and building now counts toward this threshold.**
 
-| Deadline | Obligation |
-|----------|------------|
-| Monthly (15th) | Installment payment |
-| April 30, 2026 | Annual corporate tax return |
+## The 12-Month Lock-up Rule
 
-## VAT (PPN) - Now 12%
+Attention: this capital isn't "free." Our latest analysis confirms that paid-up capital is subject to a **12-month lock-up period**. It can only be used for documented business purposes (construction, asset purchase, operations).
 
-- Monthly reporting by the end of the following month
-- Payment by the 15th of the following month
-- **Note:** VAT increased to 12% as of January 2025
+## Why it Saves You
 
-## Key Changes for 2026
-
-1. **Coretax Integration** - All filings now through the new system
-2. **VAT at 12%** - Full implementation from 2025
-3. **NIK as NPWP** - National ID now serves as tax number
-4. **Digital Services Tax** - Expanded to include more platforms
-5. **Carbon Tax** - Wider industry coverage
-
-## Penalties for Late Filing
-
-- 2% per month for late payment
-- IDR 100,000 - 1,000,000 for late reporting
-- Additional penalties for intentional non-compliance
-
----
-
-*Need tax assistance? [Schedule a consultation](/contact) with our tax experts.*
+If your villa is valued at Rp 8 Billion and you have paid in Rp 2.5 Billion, you are technically above the Rp 10 Billion threshold without needing further cash injections. **Bali Zero** helps certify this value for BKPM audits.
       `,
-      coverImage: "/static/blog/tax-calendar.jpg",
-      category: "tax-legal",
-      tags: ["tax", "deadlines", "compliance", "indonesia", "coretax"],
+      coverImage: "/static/insights/property/unnamed-4.jpg",
+      category: "property",
       author: {
         id: "zantara-ai",
         name: "Zantara AI",
-        avatar: "/static/zantara-avatar.png",
-        role: "AI Research Assistant",
+        avatar: "/static/zantara-lotus.png",
+        role: "AI Business Advisor",
         isAI: true,
       },
-      publishedAt: new Date("2025-12-28"),
-      updatedAt: new Date("2025-12-28"),
+      publishedAt: new Date("2026-02-23"),
       readingTime: 8,
-      viewCount: 6234,
-      featured: false,
+      viewCount: 12450,
+      featured: true,
       trending: true,
       aiGenerated: true,
       status: "published",
-      seoTitle: "Indonesia Tax Deadlines 2026: Expat Guide | Bali Zero",
-      seoDescription:
-        "Complete 2026 tax calendar for expats in Indonesia. Personal, corporate, and VAT deadlines with Coretax integration.",
-      relatedArticleIds: ["oss-2-complete-guide", "golden-visa-revolution"],
-      coverImageAlt: "Indonesia Tax Calendar 2026",
-      createdAt: new Date("2025-12-28"),
-      shareCount: 89,
-      likeCount: 45,
-      commentCount: 5,
-      locale: "en",
+    },
+    "property/ota-delisting-bali-2026": {
+      id: "ota-delisting",
+      slug: "ota-delisting-bali-2026",
+      title: "Digital Darwinism: The March 31 OTA Cut-off",
+      excerpt:
+        "Airbnb and Booking.com are syncing with the NIB database. Wrong code? Your listing goes dark with no warning.",
+      content: `
+# Digital Darwinism: March 31
+
+March 31, 2026, is not an administrative date—it's a digital **kill switch**. The Indonesian Ministry of Tourism has completed API integration with major OTAs (Airbnb, Booking.com, Expedia).
+
+## Automatic Execution
+
+The **OSS-RBA** system now communicates in real-time with booking platforms. If your listing is categorized as a "Villa" but your NIB shows code **68111 (Real Estate)**, the algorithm detects the mismatch.
+
+**Result:** Immediate delisting. No warning email, no human appeal.
+
+## The Tax Mismatch
+
+Our research shows integration goes beyond OSS. It crosses data with **SITP (Tourist Tax)**. If you operate under 68111, you are technically paying the wrong taxes. Airbnb delisting is just step one; step two is a retroactive tax audit.
+
+## Corrective Action
+
+Migrating to **KBLI 2025 (Code 55203)** is the only escape. Note: this requires your villa to be in a **Pink Zone (Tourism)**. If you are in an agricultural zone, "Digital Darwinism" has already selected you for extinction.
+      `,
+      coverImage: "/static/insights/property/unnamed-3.jpg",
+      category: "property",
+      author: {
+        id: "zantara-ai",
+        name: "Zantara AI",
+        avatar: "/static/zantara-lotus.png",
+        role: "AI Research",
+        isAI: true,
+      },
+      publishedAt: new Date("2026-02-24"),
+      readingTime: 10,
+      viewCount: 18920,
+      featured: true,
+      trending: true,
+      aiGenerated: true,
+      status: "published",
+    },
+    "property/glamping-trap-kbli-55209": {
+      id: "glamping-trap",
+      slug: "glamping-trap-kbli-55209",
+      title: "The Glamping Trap: Why 55209 is a Compliance Minefield",
+      excerpt:
+        "KBLI 55209 strictly prohibits daily housekeeping. Using it for luxury resorts is an invitation for NIB revocation.",
+      content: `
+# The Glamping Trap: KBLI 55209
+
+KBLI **55209** ("Other accommodation") has become the favorite refuge for those wanting to avoid strict hotel requirements. Glamping, bungalows, treehouses: they seem agile. In reality, they are a legal minefield.
+
+## The Service Paradox
+
+The official 2025 text for 55209 contains a lethal clause: **"Daily housekeeping service is not permitted."** If you run a luxury eco-resort under this code but remake the beds every morning, you are operating outside your license.
+
+## Review Intelligence
+
+The government doesn't need to enter your property to fine you. Authorities have started using **Review Scraping** software. A TripAdvisor review praising "excellent daily cleaning" is now sufficient documentary evidence to revoke a 55209 NIB.
+
+## Strategic Choice
+
+If your brand promises luxury and high-touch service, 55209 is your worst enemy. The solution is migration to **55106 (Non-star Hotel)** or **55203 (Villa)**, accepting the capital requirements but guaranteeing legal survival.
+      `,
+      coverImage: "/static/insights/property/unnamed-5.jpg",
+      category: "property",
+      author: {
+        id: "zantara-ai",
+        name: "Zantara AI",
+        avatar: "/static/zantara-lotus.png",
+        role: "AI Business Advisor",
+        isAI: true,
+      },
+      publishedAt: new Date("2026-02-25"),
+      readingTime: 7,
+      viewCount: 9420,
+      featured: true,
+      trending: true,
+      aiGenerated: true,
+      status: "published",
     },
   };
 
   const key = `${category}/${slug}`;
-  return mockArticles[key] || null;
+  return (mockArticles[key] as Article) || null;
 }
