@@ -8,7 +8,6 @@ Provides:
 - Dashboard aggregation queries (failed queries, collection hit rates, volume, satisfaction)
 """
 
-import logging
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -281,13 +280,17 @@ class QueryAnalyticsRepository:
                     """,
                     cutoff,
                 )
-                return dict(row) if row else {
-                    "thumbs_up": 0,
-                    "thumbs_down": 0,
-                    "total_feedback": 0,
-                    "total_queries": 0,
-                    "satisfaction_percent": None,
-                }
+                return (
+                    dict(row)
+                    if row
+                    else {
+                        "thumbs_up": 0,
+                        "thumbs_down": 0,
+                        "total_feedback": 0,
+                        "total_queries": 0,
+                        "satisfaction_percent": None,
+                    }
+                )
 
         except Exception as e:
             log_error(logger, "Failed to get satisfaction score", error=e)

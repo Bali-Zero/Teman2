@@ -86,9 +86,9 @@ class OrchestratorMetricsManager:
                     search_latency_accum += tool_time
 
         # Calculate timing breakdown
+        timings["tools"] = tool_latency_accum
         if tool_latency_accum > 0:
             timings["search"] = search_latency_accum
-            timings["tools"] = tool_latency_accum
             # LLM time = total reasoning time minus tool execution time
             timings["llm"] = max(0, reasoning_duration - tool_latency_accum)
         else:

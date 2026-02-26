@@ -30,6 +30,7 @@ def mock_app():
     app.state.autonomous_scheduler = None
     app.state.metrics_pusher_task = None
     app.state.daily_notifier = None
+    app.state.weekly_reporter = None
     app.state.ts_service = None
     app.state.db_health_check_task = None
     app.on_event = MagicMock()

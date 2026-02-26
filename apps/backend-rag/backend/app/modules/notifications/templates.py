@@ -7,17 +7,14 @@ Languages supported:
 - English (en) - Default
 - Italian (it)
 - Indonesian (id)
-- Russian (ru)
-- French (fr)
-- German (de)
-- Spanish (es)
-- Chinese (zh)
-- Japanese (ja)
 """
 
-from typing import Dict
+import logging
+import re
+
 from .models import AlertType
 
+logger = logging.getLogger(__name__)
 
 # Indonesian blessing phrases for birthdays
 INDONESIAN_BLESSINGS = [
@@ -27,7 +24,7 @@ INDONESIAN_BLESSINGS = [
 ]
 
 
-EMAIL_TEMPLATES: Dict[str, Dict[AlertType, Dict[str, str]]] = {
+EMAIL_TEMPLATES: dict[str, dict[AlertType, dict[str, str]]] = {
     "en": {
         AlertType.PASSPORT_WARNING: {
             "subject": "Passport Renewal Reminder - Action Required",
@@ -97,6 +94,23 @@ EMAIL_TEMPLATES: Dict[str, Dict[AlertType, Dict[str, str]]] = {
 <p><strong>Bali Zero Team</strong></p>
 """,
         },
+        AlertType.VISA_WARNING: {
+            "subject": "Visa Renewal Reminder - Plan Ahead",
+            "body": """
+<h2>Hello {full_name},</h2>
+
+<p>This is a friendly reminder that your <strong>{visa_type}</strong> visa will expire in <strong>{days_remaining} days</strong> ({expiry_date}).</p>
+
+<div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0;">
+    <strong>⚠️ Important:</strong><br>
+    We recommend starting the renewal process now to avoid any disruptions to your stay in Indonesia.
+</div>
+
+<p>Contact us to discuss your renewal options and timeline.</p>
+
+<p>Best regards,<br><strong>The Bali Zero Team</strong></p>
+""",
+        },
         AlertType.VISA_CRITICAL: {
             "subject": "URGENT: Visa Renewal Planning Required",
             "body": """
@@ -121,6 +135,30 @@ EMAIL_TEMPLATES: Dict[str, Dict[AlertType, Dict[str, str]]] = {
 </ul>
 
 <p>📧 Contact: support@balizero.com<br>
+📱 WhatsApp: +62 821-4745-1775</p>
+
+<p><strong>Bali Zero Team</strong></p>
+""",
+        },
+        AlertType.VISA_EXPIRED: {
+            "subject": "CRITICAL: Your Visa Has Expired",
+            "body": """
+<h2>Hello {full_name},</h2>
+
+<div style="background: #721c24; color: white; padding: 15px; margin: 20px 0; border-radius: 5px;">
+    <strong>⛔ CRITICAL:</strong><br>
+    Your {visa_type} visa expired on {expiry_date}.
+</div>
+
+<p><strong>Immediate Actions Required:</strong></p>
+<ol>
+    <li>Contact us <strong>immediately</strong> to discuss your options</li>
+    <li>Overstay penalties accumulate daily</li>
+    <li>Do not attempt to leave Indonesia without resolving your visa status</li>
+</ol>
+
+<p><strong>Emergency Contacts:</strong><br>
+📧 support@balizero.com<br>
 📱 WhatsApp: +62 821-4745-1775</p>
 
 <p><strong>Bali Zero Team</strong></p>
@@ -168,10 +206,6 @@ EMAIL_TEMPLATES: Dict[str, Dict[AlertType, Dict[str, str]]] = {
 <p>Se hai bisogno di assistenza, contatta il tuo account manager.</p>
 
 <p>Cordiali saluti,<br><strong>Il Team Bali Zero</strong></p>
-<p style="font-style: italic; color: #666;">
-    <strong>Auspicio indonesiano:</strong><br>
-    {indonesian_blessing}
-</p>
 """,
         },
         AlertType.PASSPORT_CRITICAL: {
@@ -192,10 +226,47 @@ EMAIL_TEMPLATES: Dict[str, Dict[AlertType, Dict[str, str]]] = {
 </ul>
 
 <p><strong>Team Bali Zero</strong></p>
-<p style="font-style: italic; color: #666;">
-    <strong>Auspicio indonesiano:</strong><br>
-    {indonesian_blessing}
-</p>
+""",
+        },
+        AlertType.PASSPORT_EXPIRED: {
+            "subject": "CRITICO: Il Tuo Passaporto È Scaduto",
+            "body": """
+<h2>Ciao {full_name},</h2>
+
+<div style="background: #721c24; color: white; padding: 15px; margin: 20px 0; border-radius: 5px;">
+    <strong>⛔ CRITICO:</strong><br>
+    Il tuo passaporto è scaduto il {expiry_date}.
+</div>
+
+<p><strong>Azioni Immediate Richieste:</strong></p>
+<ol>
+    <li>Contatta immediatamente la tua ambasciata per il rinnovo d'emergenza</li>
+    <li>Non puoi viaggiare internazionalmente con un passaporto scaduto</li>
+    <li>Informaci della tua situazione per assisterti</li>
+</ol>
+
+<p><strong>Contatti di Emergenza:</strong><br>
+📧 support@balizero.com<br>
+📱 WhatsApp: +62 821-4745-1775</p>
+
+<p><strong>Team Bali Zero</strong></p>
+""",
+        },
+        AlertType.VISA_WARNING: {
+            "subject": "Promemoria Rinnovo Visto - Pianifica in Anticipo",
+            "body": """
+<h2>Ciao {full_name},</h2>
+
+<p>Questo è un promemoria che il tuo visto <strong>{visa_type}</strong> scadrà tra <strong>{days_remaining} giorni</strong> ({expiry_date}).</p>
+
+<div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0;">
+    <strong>⚠️ Importante:</strong><br>
+    Ti consigliamo di iniziare il processo di rinnovo ora per evitare interruzioni al tuo soggiorno in Indonesia.
+</div>
+
+<p>Contattaci per discutere le opzioni e la tempistica del rinnovo.</p>
+
+<p>Cordiali saluti,<br><strong>Il Team Bali Zero</strong></p>
 """,
         },
         AlertType.VISA_CRITICAL: {
@@ -215,10 +286,30 @@ EMAIL_TEMPLATES: Dict[str, Dict[AlertType, Dict[str, str]]] = {
 </ul>
 
 <p><strong>Team Bali Zero</strong></p>
-<p style="font-style: italic; color: #666;">
-    <strong>Auspicio indonesiano:</strong><br>
-    {indonesian_blessing}
-</p>
+""",
+        },
+        AlertType.VISA_EXPIRED: {
+            "subject": "CRITICO: Il Tuo Visto È Scaduto",
+            "body": """
+<h2>Ciao {full_name},</h2>
+
+<div style="background: #721c24; color: white; padding: 15px; margin: 20px 0; border-radius: 5px;">
+    <strong>⛔ CRITICO:</strong><br>
+    Il tuo visto {visa_type} è scaduto il {expiry_date}.
+</div>
+
+<p><strong>Azioni Immediate Richieste:</strong></p>
+<ol>
+    <li>Contattaci <strong>immediatamente</strong> per discutere le opzioni</li>
+    <li>Le penalità per overstay si accumulano giornalmente</li>
+    <li>Non tentare di lasciare l'Indonesia senza risolvere il tuo status</li>
+</ol>
+
+<p><strong>Contatti di Emergenza:</strong><br>
+📧 support@balizero.com<br>
+📱 WhatsApp: +62 821-4745-1775</p>
+
+<p><strong>Team Bali Zero</strong></p>
 """,
         },
         AlertType.BIRTHDAY: {
@@ -278,6 +369,47 @@ EMAIL_TEMPLATES: Dict[str, Dict[AlertType, Dict[str, str]]] = {
 <p><strong>Tim Bali Zero</strong></p>
 """,
         },
+        AlertType.PASSPORT_EXPIRED: {
+            "subject": "KRITIS: Paspor Anda Telah Berakhir",
+            "body": """
+<h2>Halo {full_name},</h2>
+
+<div style="background: #721c24; color: white; padding: 15px; margin: 20px 0; border-radius: 5px;">
+    <strong>⛔ KRITIS:</strong><br>
+    Paspor Anda berakhir pada {expiry_date}.
+</div>
+
+<p><strong>Tindakan Segera Diperlukan:</strong></p>
+<ol>
+    <li>Segera hubungi kedutaan Anda untuk perpanjangan darurat</li>
+    <li>Anda tidak dapat bepergian internasional dengan paspor yang telah berakhir</li>
+    <li>Informasikan situasi Anda kepada kami agar kami dapat membantu</li>
+</ol>
+
+<p><strong>Kontak Darurat:</strong><br>
+📧 support@balizero.com<br>
+📱 WhatsApp: +62 821-4745-1775</p>
+
+<p><strong>Tim Bali Zero</strong></p>
+""",
+        },
+        AlertType.VISA_WARNING: {
+            "subject": "Pengingat Perpanjangan Visa - Rencanakan Sekarang",
+            "body": """
+<h2>Halo {full_name},</h2>
+
+<p>Ini adalah pengingat bahwa visa <strong>{visa_type}</strong> Anda akan berakhir dalam <strong>{days_remaining} hari</strong> ({expiry_date}).</p>
+
+<div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0;">
+    <strong>⚠️ Penting:</strong><br>
+    Kami menyarankan untuk memulai proses perpanjangan sekarang agar tidak terjadi gangguan pada masa tinggal Anda di Indonesia.
+</div>
+
+<p>Hubungi kami untuk mendiskusikan opsi dan jadwal perpanjangan.</p>
+
+<p>Salam,<br><strong>Tim Bali Zero</strong></p>
+""",
+        },
         AlertType.VISA_CRITICAL: {
             "subject": "PENTING: Perencanaan Perpanjangan Visa Diperlukan",
             "body": """
@@ -293,6 +425,30 @@ EMAIL_TEMPLATES: Dict[str, Dict[AlertType, Dict[str, str]]] = {
     <li>Hubungi kami untuk memulai proses perpanjangan, ATAU</li>
     <li>Komunikasikan tanggal keberangkatan Anda dari Indonesia</li>
 </ul>
+
+<p><strong>Tim Bali Zero</strong></p>
+""",
+        },
+        AlertType.VISA_EXPIRED: {
+            "subject": "KRITIS: Visa Anda Telah Berakhir",
+            "body": """
+<h2>Halo {full_name},</h2>
+
+<div style="background: #721c24; color: white; padding: 15px; margin: 20px 0; border-radius: 5px;">
+    <strong>⛔ KRITIS:</strong><br>
+    Visa {visa_type} Anda berakhir pada {expiry_date}.
+</div>
+
+<p><strong>Tindakan Segera Diperlukan:</strong></p>
+<ol>
+    <li>Hubungi kami <strong>segera</strong> untuk mendiskusikan opsi</li>
+    <li>Denda overstay bertambah setiap hari</li>
+    <li>Jangan mencoba meninggalkan Indonesia tanpa menyelesaikan status visa Anda</li>
+</ol>
+
+<p><strong>Kontak Darurat:</strong><br>
+📧 support@balizero.com<br>
+📱 WhatsApp: +62 821-4745-1775</p>
 
 <p><strong>Tim Bali Zero</strong></p>
 """,
@@ -321,15 +477,48 @@ EMAIL_TEMPLATES: Dict[str, Dict[AlertType, Dict[str, str]]] = {
 }
 
 
-def get_template(language: str, alert_type: AlertType) -> Dict[str, str]:
+def get_template(language: str, alert_type: AlertType) -> dict[str, str]:
     """
     Get email template for a specific language and alert type.
-    Falls back to English if language not found.
+    Falls back to English if language or alert type not found.
     """
     lang_templates = EMAIL_TEMPLATES.get(language, EMAIL_TEMPLATES["en"])
-    return lang_templates.get(alert_type, EMAIL_TEMPLATES["en"][alert_type])
+    template = lang_templates.get(alert_type)
+    if template:
+        return template
+    # Fallback to English for this alert type
+    en_template = EMAIL_TEMPLATES["en"].get(alert_type)
+    if en_template:
+        logger.warning(
+            "Template fallback to English: alert_type=%s language=%s",
+            alert_type,
+            language,
+        )
+        return en_template
+    # Last resort: generic fallback
+    logger.warning(
+        "No template found for alert_type=%s language=%s", alert_type, language
+    )
+    return {
+        "subject": f"Notification: {alert_type.value}",
+        "body": f"<p>Alert: {alert_type.value}</p>",
+    }
 
 
-def format_template(template: str, **kwargs) -> str:
-    """Format email template with provided variables."""
-    return template.format(**kwargs)
+def format_template(template: str, **kwargs: str) -> str:
+    """Format email template with provided variables, ignoring missing keys."""
+    try:
+        return template.format(**kwargs)
+    except KeyError:
+        # Replace missing keys with empty string in a single pass
+        result = template
+        for match in re.finditer(r"\{(\w+)\}", template):
+            key = match.group(1)
+            if key not in kwargs:
+                result = result.replace(f"{{{key}}}", "")
+        # Now format only with the keys we have — use format_map to avoid
+        # KeyError on any remaining curly braces (e.g. CSS)
+        try:
+            return result.format_map(kwargs)
+        except (KeyError, ValueError):
+            return result

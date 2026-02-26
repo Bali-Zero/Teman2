@@ -219,7 +219,10 @@ class DynamicPricingService:
 
         # Step 3: Also query bali_zero_pricing_hybrid directly
         pricing_results = await self.search.search(
-            query=scenario, user_level=user_level, limit=5, collection_override="bali_zero_pricing_hybrid"
+            query=scenario,
+            user_level=user_level,
+            limit=5,
+            collection_override="bali_zero_pricing_hybrid",
         )
 
         for result in pricing_results.get("results", []):

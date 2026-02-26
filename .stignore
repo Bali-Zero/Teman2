@@ -1,29 +1,4 @@
-# Syncthing ignore patterns for nuzantara
+.claude/worktrees
 
-# Node modules (reinstallabile con pnpm install)
-node_modules/
-
-# Build outputs (rigenerabile)
-.next/
-.turbo/
-dist/
-build/
-
-# Cache
-.cache/
-__pycache__/
-*.pyc
-.pytest_cache/
-
-# Python virtual environments
-.venv/
-venv/
-env/
-
-# Logs
-*.log
-npm-debug.log*
-
-# OS files
-.DS_Store
-Thumbs.db
+# CRITICAL: never sync git internals
+.git/

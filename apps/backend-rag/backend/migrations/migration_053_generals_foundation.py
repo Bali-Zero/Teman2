@@ -25,7 +25,9 @@ Date: 2026-02-12
 
 import logging
 from typing import Any
+
 import asyncpg
+
 from backend.db.migration_base import BaseMigration
 
 logger = logging.getLogger(__name__)
@@ -255,7 +257,9 @@ async def _rollback_migration(conn: Any) -> None:
 
     # Drop triggers first
     await conn.execute("DROP TRIGGER IF EXISTS update_generals_tasks_updated_at ON generals_tasks;")
-    await conn.execute("DROP TRIGGER IF EXISTS update_generals_memory_updated_at ON generals_memory;")
+    await conn.execute(
+        "DROP TRIGGER IF EXISTS update_generals_memory_updated_at ON generals_memory;"
+    )
 
     # Drop function
     await conn.execute("DROP FUNCTION IF EXISTS update_updated_at_column();")

@@ -13,7 +13,6 @@ Refactored: Migrated to asyncpg with connection pooling (2025-12-07)
 import asyncio
 import json
 from datetime import datetime
-from typing import Any
 
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -36,7 +35,6 @@ DEFAULT_LIMIT = 20
 MAX_LIMIT = 1000
 DEFAULT_CONVERSATION_MESSAGES_LIMIT = 20  # Default messages to return in history
 SUMMARY_MAX_LENGTH = 200  # Max length for auto-generated summaries
-
 
 
 async def _generate_and_update_title(

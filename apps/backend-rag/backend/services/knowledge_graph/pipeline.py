@@ -18,7 +18,12 @@ from typing import Any
 import asyncpg
 
 from backend.services.knowledge_graph.coreference import CoreferenceResolver
-from backend.services.knowledge_graph.extractor import ExtractedEntity, ExtractedRelation, ExtractionResult, KGExtractor
+from backend.services.knowledge_graph.extractor import (
+    ExtractedEntity,
+    ExtractedRelation,
+    ExtractionResult,
+    KGExtractor,
+)
 from backend.services.knowledge_graph.quality_filter import KGQualityFilter
 
 logger = logging.getLogger(__name__)

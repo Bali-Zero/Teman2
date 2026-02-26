@@ -10,7 +10,6 @@ import re
 from typing import Any
 
 from backend.app.core.config import settings
-from backend.app.core.constants import EvidenceScoreConstants
 
 logger = logging.getLogger(__name__)
 
@@ -218,32 +217,181 @@ def calculate_evidence_score(
     query_lower = query.lower()
     stop_words = {
         # English stop words
-        "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
-        "have", "has", "had", "do", "does", "did", "will", "would", "could",
-        "should", "may", "might", "can", "shall", "this", "that", "these", "those",
-        "what", "which", "who", "when", "where", "why", "how", "tell", "me",
-        "about", "explain", "information", "with", "for", "from", "into", "during",
-        "including", "until", "against", "among", "through", "during", "before",
-        "after", "above", "below", "between", "under", "again", "further", "then",
-        "once", "here", "there", "when", "where", "why", "how", "all", "any",
-        "both", "each", "few", "more", "most", "other", "some", "such", "only",
-        "own", "same", "so", "than", "too", "very", "just", "and", "but", "or",
-        "yet", "as", "of", "at", "by", "on", "to", "in", "it", "its",
+        "the",
+        "a",
+        "an",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "being",
+        "have",
+        "has",
+        "had",
+        "do",
+        "does",
+        "did",
+        "will",
+        "would",
+        "could",
+        "should",
+        "may",
+        "might",
+        "can",
+        "shall",
+        "this",
+        "that",
+        "these",
+        "those",
+        "what",
+        "which",
+        "who",
+        "when",
+        "where",
+        "why",
+        "how",
+        "tell",
+        "me",
+        "about",
+        "explain",
+        "information",
+        "with",
+        "for",
+        "from",
+        "into",
+        "during",
+        "including",
+        "until",
+        "against",
+        "among",
+        "through",
+        "before",
+        "after",
+        "above",
+        "below",
+        "between",
+        "under",
+        "again",
+        "further",
+        "then",
+        "once",
+        "here",
+        "there",
+        "all",
+        "any",
+        "both",
+        "each",
+        "few",
+        "more",
+        "most",
+        "other",
+        "some",
+        "such",
+        "only",
+        "own",
+        "same",
+        "so",
+        "than",
+        "too",
+        "very",
+        "just",
+        "and",
+        "but",
+        "or",
+        "yet",
+        "as",
+        "of",
+        "at",
+        "by",
+        "on",
+        "to",
+        "in",
+        "it",
+        "its",
         # Italian stop words
-        "questo", "questa", "questi", "queste", "quello", "quella", "quelli", "quelle",
-        "che", "chi", "come", "quando", "dove", "perche", "perché", "dimmi",
-        "spiegami", "informazioni", "sulla", "sullo", "sulle", "sulla", "nel", "nello",
-        "nella", "negli", "nelle", "del", "dello", "della", "dei", "degli", "delle",
-        "al", "allo", "alla", "ai", "agli", "alle", "dal", "dallo", "dalla",
-        "dai", "dagli", "dalle", "sul", "sullo", "sulla", "sui", "sugli", "sulle",
-        "nel", "nello", "nella", "nei", "negli", "nelle", "col", "coi", "con",
-        "per", "tra", "fra", "di", "a", "da", "in", "su", "con", "per",
-        "tra", "fra", "ed", "o", "ma", "se", "non", "anche", "come", "piu",
-        "può", "puo", "deve", "deve", "essere", "avere", "fare", "andare",
+        "questo",
+        "questa",
+        "questi",
+        "queste",
+        "quello",
+        "quella",
+        "quelli",
+        "quelle",
+        "che",
+        "chi",
+        "come",
+        "quando",
+        "dove",
+        "perche",
+        "perché",
+        "dimmi",
+        "spiegami",
+        "informazioni",
+        "sulla",
+        "sullo",
+        "sulle",
+        "nel",
+        "nello",
+        "nella",
+        "negli",
+        "nelle",
+        "del",
+        "dello",
+        "della",
+        "dei",
+        "degli",
+        "delle",
+        "al",
+        "allo",
+        "alla",
+        "ai",
+        "agli",
+        "alle",
+        "dal",
+        "dallo",
+        "dalla",
+        "dai",
+        "dagli",
+        "dalle",
+        "sul",
+        "sui",
+        "sugli",
+        "nei",
+        "col",
+        "coi",
+        "con",
+        "per",
+        "tra",
+        "fra",
+        "di",
+        "da",
+        "su",
+        "ed",
+        "o",
+        "ma",
+        "se",
+        "non",
+        "anche",
+        "piu",
+        "può",
+        "puo",
+        "deve",
+        "essere",
+        "avere",
+        "fare",
+        "andare",
         # Generic words that shouldn't count as matches
-        "query", "question", "ask", "tell", "say", "get", "need", "want",
+        "query",
+        "question",
+        "ask",
+        "say",
+        "get",
+        "need",
+        "want",
     }
-    
+
     # Extract meaningful keywords (length > 3, not stop words)
     # Increased min length to 4 to avoid matching generic short words
     query_words = [
@@ -251,7 +399,7 @@ def calculate_evidence_score(
         for w in query_lower.split()
         if len(w) > 3 and w.strip(".,!?;:()[]{}\"'") not in stop_words
     ]
-    
+
     # Remove duplicates while preserving order
     seen = set()
     query_keywords = []
@@ -262,11 +410,11 @@ def calculate_evidence_score(
 
     # Combine all context for analysis
     context_text = " ".join(context_gathered).lower() if context_gathered else ""
-    
+
     # ========== RELEVANCE SCORING ==========
     # Calculate keyword match ratio - how many query keywords appear in context
     keyword_hits = sum(1 for kw in query_keywords if kw in context_text)
-    
+
     if query_keywords:
         keyword_match_ratio = keyword_hits / len(query_keywords)
     else:
@@ -281,17 +429,17 @@ def calculate_evidence_score(
         kbli_keywords = {"kbli", "classification", "business", "code", "kode", "klasifikasi"}
         tax_keywords = {"tax", "tasse", "pajak", "fiscal", "fiscale", "npwp", "pph"}
         company_keywords = {"pt", "pma", "company", "azienda", "usaha", "perusahaan"}
-        
+
         query_has_visa = any(kw in visa_keywords for kw in query_keywords)
         query_has_kbli = any(kw in kbli_keywords for kw in query_keywords)
         query_has_tax = any(kw in tax_keywords for kw in query_keywords)
         query_has_company = any(kw in company_keywords for kw in query_keywords)
-        
+
         context_has_visa = any(kw in context_text for kw in visa_keywords)
         context_has_kbli = any(kw in context_text for kw in kbli_keywords)
         context_has_tax = any(kw in context_text for kw in tax_keywords)
         context_has_company = any(kw in context_text for kw in company_keywords)
-        
+
         # Detect mismatch: query about X but context about Y (where X != Y)
         # Only flag if context clearly belongs to a different category
         if query_has_visa and (context_has_kbli or context_has_tax) and not context_has_visa:
@@ -300,7 +448,7 @@ def calculate_evidence_score(
             entity_type_mismatch = True
         if query_has_tax and (context_has_visa or context_has_kbli) and not context_has_tax:
             entity_type_mismatch = True
-        
+
         # If mismatch detected, force very low semantic relevance
         if entity_type_mismatch:
             keyword_match_ratio = min(keyword_match_ratio, 0.1)
@@ -308,7 +456,7 @@ def calculate_evidence_score(
     # Semantic relevance score (0.0 - 0.6)
     # Relevance is the PRIMARY factor - source quality only helps if relevance is good
     # - Full match: keyword_match_ratio >= 0.5 → 0.6 points
-    # - Good match: keyword_match_ratio >= 0.3 → 0.4 points  
+    # - Good match: keyword_match_ratio >= 0.3 → 0.4 points
     # - Partial match: keyword_match_ratio >= 0.15 → 0.2 points
     # - Poor match: keyword_match_ratio < 0.15 → 0.0 points (ABSTAIN territory)
     if keyword_match_ratio >= 0.5:
@@ -323,18 +471,14 @@ def calculate_evidence_score(
     # ========== SOURCE QUALITY SCORING ==========
     # Source quality is SECONDARY - it can only boost score if relevance exists
     source_quality_score = 0.0
-    
+
     if sources:
         # Get top source score (best evidence)
-        source_scores = [
-            s.get("score", 0.0) 
-            for s in sources 
-            if isinstance(s, dict)
-        ]
-        
+        source_scores = [s.get("score", 0.0) for s in sources if isinstance(s, dict)]
+
         if source_scores:
             top_score = max(source_scores)
-            
+
             # Source quality based on top score
             # - Score 0.7+ : 0.4 points (excellent)
             # - Score 0.5-0.7: 0.3 points (good)
@@ -350,11 +494,11 @@ def calculate_evidence_score(
                 source_quality_score = 0.1
             else:
                 source_quality_score = 0.0
-    
+
     # ========== FINAL SCORE CALCULATION ==========
     # Semantic relevance is the PRIMARY factor (60-80% weight)
     # Source quality acts as a bonus/boost (20-40% weight)
-    
+
     if semantic_relevance == 0.0:
         # No semantic relevance - score is based only on weak source quality
         # This ensures nonsense queries or complete mismatches score < 0.15

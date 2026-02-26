@@ -6,6 +6,7 @@ Useful for bulk migration and automatic organization of client documents.
 """
 
 import re
+from typing import Any
 
 # Comprehensive keyword mapping for document categorization
 CATEGORIZATION_RULES = {
@@ -61,7 +62,7 @@ CATEGORIZATION_RULES = {
 }
 
 
-def auto_categorize_document(filename: str) -> dict[str, any]:
+def auto_categorize_document(filename: str) -> dict[str, Any]:
     """
     Automatically categorize a document based on its filename.
 
@@ -164,7 +165,7 @@ def _calculate_confidence(filename: str, matched_keyword: str) -> float:
     return 0.6
 
 
-def _fallback_categorization() -> dict[str, any]:
+def _fallback_categorization() -> dict[str, Any]:
     """
     Return fallback categorization for unknown documents.
 
@@ -289,7 +290,7 @@ def extract_person_name(filename: str) -> str | None:
 
 
 # Batch categorization for efficiency
-def auto_categorize_documents_batch(filenames: list[str]) -> list[dict[str, any]]:
+def auto_categorize_documents_batch(filenames: list[str]) -> list[dict[str, Any]]:
     """
     Batch categorize multiple documents.
 
@@ -306,7 +307,7 @@ def auto_categorize_documents_batch(filenames: list[str]) -> list[dict[str, any]
 
 
 # Statistics helper
-def get_categorization_stats(categorizations: list[dict[str, any]]) -> dict[str, any]:
+def get_categorization_stats(categorizations: list[dict[str, Any]]) -> dict[str, Any]:
     """
     Get statistics about a batch of categorizations.
 

@@ -154,11 +154,11 @@ def test_record_rag_metrics(metrics_manager):
 
 def test_record_token_usage(metrics_manager):
     """Test token usage recording"""
-    token_usage = TokenUsage()
-    token_usage.prompt_tokens = 100
-    token_usage.completion_tokens = 50
-    token_usage.total_tokens = 150
-    token_usage.cost_usd = 0.001
+    token_usage = TokenUsage(
+        prompt_tokens=100,
+        completion_tokens=50,
+        cost_usd=0.001,
+    )
 
     with patch(
         "backend.services.rag.agentic.orchestrator_metrics.metrics_collector"
@@ -178,9 +178,11 @@ def test_record_token_usage(metrics_manager):
 
 def test_log_query_completion(metrics_manager, mock_state_with_steps):
     """Test query completion logging"""
-    token_usage = TokenUsage()
-    token_usage.total_tokens = 150
-    token_usage.cost_usd = 0.001
+    token_usage = TokenUsage(
+        prompt_tokens=100,
+        completion_tokens=50,
+        cost_usd=0.001,
+    )
 
     with patch("backend.services.rag.agentic.orchestrator_metrics.logger") as mock_logger:
         metrics_manager.log_query_completion(

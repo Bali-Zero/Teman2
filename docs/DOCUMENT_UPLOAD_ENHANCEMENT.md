@@ -89,17 +89,20 @@ Il sistema di upload documenti del Client Portal è stato completamente rivisita
 **File:** `backend/services/portal/portal_service.py` (linee 53-100)
 
 **Funzionalità:**
+
 - Scansiona file content per pattern malevoli
 - Blocca upload se minaccia rilevata
 - Graceful degradation (continua senza bloccare se errori)
 
 **Pattern rilevati:**
+
 ```python
 SUSPICIOUS_EXTENSIONS = {'.exe', '.dll', '.bat', '.cmd', '.sh', '.php', '.jsp', '.asp'}
 SUSPICIOUS_PATTERNS = [b'eval(', b'base64_decode', b'<?php', b'<script', b'javascript:']
 ```
 
 **Output:**
+
 ```python
 {
     "clean": bool,
@@ -117,15 +120,18 @@ SUSPICIOUS_PATTERNS = [b'eval(', b'base64_decode', b'<?php', b'<script', b'javas
 **Tecnologia:** Gemini-2.0-flash-001 (stessa dei passaporti)
 
 **Flusso PDF:**
+
 1. PyMuPDF renderizza pagine → immagini PNG
 2. Gemini Vision estrae testo da ogni immagine
 3. Concatena testo di tutte le pagine
 
 **Flusso Immagini:**
+
 1. PIL.Image carica l'immagine
 2. Gemini Vision OCR diretto
 
 **Prompt usato:**
+
 ```
 Extract all text from this document image.
 Preserve the layout and structure as much as possible.
@@ -133,11 +139,13 @@ Return only the extracted text, no additional commentary.
 ```
 
 **Fallback chain:**
+
 1. Gemini Vision OCR
 2. PyMuPDF text extraction (nativo)
 3. Empty text (graceful)
 
 **Output:**
+
 ```python
 {
     "text": "PASSPORT\nDate of Expiry: 10/01/2030...",
@@ -154,6 +162,7 @@ Return only the extracted text, no additional commentary.
 **File:** `backend/services/portal/portal_service.py` (linee 313-445)
 
 **Keywords supportate:**
+
 ```python
 EXPIRY_KEYWORDS = [
     'expir', 'valid until', 'valid to', 'date of expiration',
@@ -164,15 +173,18 @@ EXPIRY_KEYWORDS = [
 ```
 
 **Date formats supportati:**
+
 - DD/MM/YYYY, DD-MM-YYYY
-- MM/DD/YYYY, MM-DD-YYYY  
+- MM/DD/YYYY, MM-DD-YYYY
 - YYYY/MM/DD, YYYY-MM-DD
 
 **Logica di detection:**
+
 1. Cerca date vicino a expiry keywords (confidence 0.8)
 2. Fallback: se doc tipo passport/visa/kitas, prendi data più futura (confidence 0.5)
 
 **Output:**
+
 ```python
 {
     "expiry_date": "2030-01-10",  # ISO format
@@ -191,12 +203,14 @@ EXPIRY_KEYWORDS = [
 Upload documento con full processing pipeline.
 
 **Headers:**
+
 ```http
 Authorization: Bearer {jwt_token}
 Content-Type: multipart/form-data
 ```
 
 **Request:**
+
 ```http
 POST /api/portal/documents/upload
 Content-Type: multipart/form-data
@@ -207,6 +221,7 @@ practice_id: int?        # Optional - link to practice
 ```
 
 **Response (Success):**
+
 ```json
 {
   "success": true,
@@ -230,6 +245,7 @@ practice_id: int?        # Optional - link to practice
 ```
 
 **Response (Virus Detected):**
+
 ```json
 {
   "success": false,
@@ -238,6 +254,7 @@ practice_id: int?        # Optional - link to practice
 ```
 
 **Response (Auth Error):**
+
 ```json
 {
   "detail": "Authentication required"
@@ -251,6 +268,7 @@ practice_id: int?        # Optional - link to practice
 Lista documenti del cliente.
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -274,6 +292,7 @@ Lista documenti del cliente.
 Timeline attività (include document upload events).
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -295,39 +314,39 @@ Timeline attività (include document upload events).
 
 ### Tabella: documents
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | SERIAL PK | ID univoco |
-| `client_id` | INT FK → clients(id) | Client owner |
-| `practice_id` | INT FK → practices(id) | Practice link (optional) |
-| `document_type` | VARCHAR(100) | passport, visa, kitas, tax_document, etc. |
-| `file_name` | VARCHAR(255) | Original filename |
-| `status` | VARCHAR(50) | 'received' (was 'pending') |
-| `uploaded_by` | VARCHAR(255) | Client email |
-| `uploaded_source` | VARCHAR(20) | 'client' or 'team' |
-| `file_size_kb` | INT | File size |
-| `mime_type` | VARCHAR(100) | MIME type |
-| `storage_type` | VARCHAR(50) | 'google_drive' (was 'pending') |
-| `storage_path` | VARCHAR(500) | Folder path in Drive |
-| `file_id` | VARCHAR(255) | Google Drive file ID |
-| `file_url` | TEXT | Google Drive view URL |
-| `extracted_text` | TEXT | OCR extracted text (first 10k chars) |
-| `expiry_date` | DATE | Detected expiry date |
-| `client_visible` | BOOLEAN | true |
-| `created_at` | TIMESTAMP | Upload timestamp |
+| Column            | Type                   | Description                               |
+| ----------------- | ---------------------- | ----------------------------------------- |
+| `id`              | SERIAL PK              | ID univoco                                |
+| `client_id`       | INT FK → clients(id)   | Client owner                              |
+| `practice_id`     | INT FK → practices(id) | Practice link (optional)                  |
+| `document_type`   | VARCHAR(100)           | passport, visa, kitas, tax_document, etc. |
+| `file_name`       | VARCHAR(255)           | Original filename                         |
+| `status`          | VARCHAR(50)            | 'received' (was 'pending')                |
+| `uploaded_by`     | VARCHAR(255)           | Client email                              |
+| `uploaded_source` | VARCHAR(20)            | 'client' or 'team'                        |
+| `file_size_kb`    | INT                    | File size                                 |
+| `mime_type`       | VARCHAR(100)           | MIME type                                 |
+| `storage_type`    | VARCHAR(50)            | 'google_drive' (was 'pending')            |
+| `storage_path`    | VARCHAR(500)           | Folder path in Drive                      |
+| `file_id`         | VARCHAR(255)           | Google Drive file ID                      |
+| `file_url`        | TEXT                   | Google Drive view URL                     |
+| `extracted_text`  | TEXT                   | OCR extracted text (first 10k chars)      |
+| `expiry_date`     | DATE                   | Detected expiry date                      |
+| `client_visible`  | BOOLEAN                | true                                      |
+| `created_at`      | TIMESTAMP              | Upload timestamp                          |
 
 ### Tabella: timeline_events
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `client_id` | INT FK | Client reference |
-| `practice_id` | INT FK | Practice reference |
-| `event_type` | VARCHAR(50) | 'document_received' |
-| `title` | VARCHAR(255) | 'Document received' |
-| `description` | TEXT | '{filename} uploaded successfully' |
-| `event_date` | TIMESTAMP | Event timestamp |
-| `client_visible` | BOOLEAN | true |
-| `color` | VARCHAR(20) | 'success' |
+| Column           | Type         | Description                        |
+| ---------------- | ------------ | ---------------------------------- |
+| `client_id`      | INT FK       | Client reference                   |
+| `practice_id`    | INT FK       | Practice reference                 |
+| `event_type`     | VARCHAR(50)  | 'document_received'                |
+| `title`          | VARCHAR(255) | 'Document received'                |
+| `description`    | TEXT         | '{filename} uploaded successfully' |
+| `event_date`     | TIMESTAMP    | Event timestamp                    |
+| `client_visible` | BOOLEAN      | true                               |
+| `color`          | VARCHAR(20)  | 'success'                          |
 
 ---
 
@@ -356,6 +375,7 @@ Zantara Portal Uploads/                    # Root folder
 **Subject:** `📄 Nuovo Documento Caricato - {client_name}`
 
 **Body:**
+
 ```
 Ciao,
 
@@ -382,12 +402,14 @@ Questa è una notifica automatica da Bali Zero CRM.
 ### Requirements
 
 **Nuove dipendenze:**
+
 ```txt
 # requirements.txt e requirements-prod.txt
 python-magic>=0.4.27  # MIME type detection
 ```
 
 **Dipendenze già presenti:**
+
 ```txt
 PyMuPDF>=1.23.0      # PDF rendering
 Pillow>=10.0.0       # Image processing
@@ -408,6 +430,7 @@ curl https://nuzantara-rag.fly.dev/health
 ### Environment Variables
 
 Richiede le stesse variabili di sempre:
+
 ```bash
 DATABASE_URL=postgresql://...
 GOOGLE_DRIVE_CLIENT_ID=...
@@ -430,6 +453,7 @@ python3 test_core_features.py
 ```
 
 **Risultati attesi:**
+
 ```
 🦠 VirusScanner Tests
    ✅ Clean PDF
@@ -477,6 +501,7 @@ curl -X POST https://nuzantara-rag.fly.dev/api/portal/documents/upload
 **Problema:** File pulito bloccato dal virus scanner.
 
 **Soluzione:** Il virus scanner è conservativo. Se un file viene bloccato erroneamente, il cliente può:
+
 1. Cambiare formato (es: da .docx a .pdf)
 2. Contattare il team via email
 3. Il team può uploadare manualmente dal CRM
@@ -490,6 +515,7 @@ curl -X POST https://nuzantara-rag.fly.dev/api/portal/documents/upload
 **Comportamento:** L'upload continua, il file rimane con `storage_type='pending'`.
 
 **Soluzione:**
+
 ```bash
 # Verifica token
 fly ssh console --app nuzantara-rag
@@ -504,6 +530,7 @@ python -c "from backend.services.integrations.google_drive_service import Google
 **Problema:** `extracted_text` è vuoto nel DB.
 
 **Causa possibili:**
+
 - PDF è una scansione di bassa qualità
 - Immagine troppo grande/sfocata
 - Gemini Vision API error
@@ -522,14 +549,14 @@ python -c "from backend.services.integrations.google_drive_service import Google
 
 ## 📈 Performance
 
-| Metrica | Valore |
-|---------|--------|
-| Upload max size | 10 MB |
-| Virus scan | < 10 ms |
-| Drive upload | 1-5 sec (dipende da file size) |
-| OCR (Gemini) | 2-10 sec per pagina |
-| Expiry detection | < 50 ms |
-| Total response | 3-15 sec |
+| Metrica          | Valore                         |
+| ---------------- | ------------------------------ |
+| Upload max size  | 10 MB                          |
+| Virus scan       | < 10 ms                        |
+| Drive upload     | 1-5 sec (dipende da file size) |
+| OCR (Gemini)     | 2-10 sec per pagina            |
+| Expiry detection | < 50 ms                        |
+| Total response   | 3-15 sec                       |
 
 **Note:** Drive upload e OCR sono async (fire-and-forget), non bloccano la risposta HTTP.
 
@@ -549,6 +576,7 @@ python -c "from backend.services.integrations.google_drive_service import Google
 ## 📞 Support
 
 Per issues o domande:
+
 - **Email:** zero@balizero.com
 - **Dashboard:** https://fly.io/apps/nuzantara-rag/monitoring
 - **Logs:** `fly logs --app nuzantara-rag`

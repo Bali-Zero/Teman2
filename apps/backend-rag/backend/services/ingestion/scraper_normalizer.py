@@ -12,7 +12,6 @@ from datetime import datetime
 from typing import Any
 
 from backend.app.metrics import metrics_collector
-
 from backend.services.ingestion.ingestion_logger import IngestionStage, ingestion_logger
 
 logger = logging.getLogger(__name__)

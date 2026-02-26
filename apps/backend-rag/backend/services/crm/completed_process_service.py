@@ -135,10 +135,12 @@ class CompletedProcessService:
                 )
 
                 if result.get("success"):
-                    uploaded.append({
-                        "filename": doc["filename"],
-                        "file_url": result["file_url"],
-                    })
+                    uploaded.append(
+                        {
+                            "filename": doc["filename"],
+                            "file_url": result["file_url"],
+                        }
+                    )
 
                     # Save to database
                     await self._save_final_document_record(
@@ -238,7 +240,7 @@ Great work! The following practice has been successfully completed:
 📋 Practice Details:
 • Client: {client_name}
 • Service: {practice_type}
-• Practice ID: {practice_data['id']}
+• Practice ID: {practice_data["id"]}
 • Status: ✅ COMPLETED
 
 The client has been notified and all final documents have been delivered to their Google Drive folder.

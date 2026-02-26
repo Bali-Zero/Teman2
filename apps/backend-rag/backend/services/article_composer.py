@@ -12,6 +12,7 @@ from unittest.mock import MagicMock
 
 class ErrorCode(Enum):
     """Error codes for article composer."""
+
     VALIDATION_ERROR = "VALIDATION_ERROR"
     ANTHROPIC_ERROR = "ANTHROPIC_ERROR"
     JSON_ERROR = "JSON_ERROR"
@@ -23,6 +24,7 @@ class ErrorCode(Enum):
 
 class APIError(Exception):
     """API Error exception."""
+
     def __init__(self, message: str, code: ErrorCode, status_code: int = 500):
         self.message = message
         self.code = code
@@ -32,6 +34,7 @@ class APIError(Exception):
 
 class ComposeRequestValidator:
     """Validator for compose requests."""
+
     def __init__(self, max_length: int = 10000):
         self.max_length = max_length
 
@@ -69,6 +72,7 @@ def handle_json_error(error: Exception) -> APIError:
 def log_error_with_context(error: Exception, context: dict[str, Any]) -> None:
     """Log error with context."""
     import logging
+
     logger = logging.getLogger(__name__)
     logger.error(f"Error: {error}, Context: {context}")
 

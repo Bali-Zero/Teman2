@@ -31,9 +31,7 @@ def test_channel_message_creation():
 
 def test_channel_message_defaults():
     """Test ChannelMessage default values."""
-    msg = ChannelMessage(
-        user_id="user", session_id="session", text="test"
-    )
+    msg = ChannelMessage(user_id="user", session_id="session", text="test")
 
     assert msg.media is None
     assert msg.metadata == {}

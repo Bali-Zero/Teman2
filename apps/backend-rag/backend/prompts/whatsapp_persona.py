@@ -96,7 +96,9 @@ def build_system_prompt(
             "client_name": f"Il cliente si chiama {client_name}." if client_name else "",
             "detected_lang": f"Lingua rilevata: {detected_language}." if detected_language else "",
             "interests": f"Interessi noti: {', '.join(interests)}." if interests else "",
-            "visas": f"Visti già discussi: {', '.join(visas_discussed)}." if visas_discussed else "",
+            "visas": f"Visti già discussi: {', '.join(visas_discussed)}."
+            if visas_discussed
+            else "",
             "no_context": "Nuovo cliente, nessun contesto precedente.",
             "greeting": "Questo e' il primo messaggio del cliente. Puoi salutare una volta.",
             "no_greeting": "NON salutare. Vai dritto alla risposta.",
@@ -104,7 +106,9 @@ def build_system_prompt(
         },
         "en": {
             "client_name": f"Client name: {client_name}." if client_name else "",
-            "detected_lang": f"Detected language: {detected_language}." if detected_language else "",
+            "detected_lang": f"Detected language: {detected_language}."
+            if detected_language
+            else "",
             "interests": f"Known interests: {', '.join(interests)}." if interests else "",
             "visas": f"Visas discussed: {', '.join(visas_discussed)}." if visas_discussed else "",
             "no_context": "New client, no previous context.",
@@ -114,7 +118,9 @@ def build_system_prompt(
         },
         "id": {
             "client_name": f"Nama klien: {client_name}." if client_name else "",
-            "detected_lang": f"Bahasa terdeteksi: {detected_language}." if detected_language else "",
+            "detected_lang": f"Bahasa terdeteksi: {detected_language}."
+            if detected_language
+            else "",
             "interests": f"Minat: {', '.join(interests)}." if interests else "",
             "visas": f"Visa yang dibahas: {', '.join(visas_discussed)}." if visas_discussed else "",
             "no_context": "Klien baru, tidak ada konteks sebelumnya.",

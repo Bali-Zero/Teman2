@@ -10,10 +10,8 @@ Date: 2026-02-05
 
 import json
 import logging
-import os
 import re
 import time
-
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -92,25 +90,22 @@ KBLI_COLLECTION = "kbli_2025_final"
 async def kbli_llm_health():
     """Check LLM health for KBLI Notebook chat functionality."""
     gateway = _get_llm_gateway()
-    
-    health_status = {
-        "llm_available": False,
-        "models": {},
-        "error": None
-    }
-    
+
+    health_status = {"llm_available": False, "models": {}, "error": None}
+
     try:
         # Check gateway availability
         health_status["llm_available"] = gateway._available
-        
+
         if gateway._available:
             # Run detailed health check
             models_health = await gateway.health_check()
             health_status["models"] = models_health
-            
+
             # Quick test generation
             try:
                 from backend.services.rag.agentic.llm_gateway import TIER_FLASH
+
                 chat = gateway.create_chat_with_history(
                     history_to_use=[],
                     model_tier=TIER_FLASH,
@@ -132,20 +127,19 @@ async def kbli_llm_health():
                         "prompt_tokens": usage.prompt_tokens if usage else 0,
                         "completion_tokens": usage.completion_tokens if usage else 0,
                         "cost_usd": usage.cost_usd if usage else 0.0,
-                    }
+                    },
                 }
             except Exception as test_err:
-                health_status["test_generation"] = {
-                    "success": False,
-                    "error": str(test_err)
-                }
+                health_status["test_generation"] = {"success": False, "error": str(test_err)}
         else:
-            health_status["error"] = "LLM Gateway not available. Check GOOGLE_API_KEY or GOOGLE_APPLICATION_CREDENTIALS."
-            
+            health_status["error"] = (
+                "LLM Gateway not available. Check GOOGLE_API_KEY or GOOGLE_APPLICATION_CREDENTIALS."
+            )
+
     except Exception as e:
         health_status["error"] = f"Health check failed: {str(e)}"
         logger.error(f"❌ LLM health check error: {e}", exc_info=True)
-    
+
     return health_status
 
 
@@ -234,11 +228,11 @@ async def search_kbli(query: str, limit: int = 10, search_service=Depends(get_se
 @router.get("/inspect/{code}", response_model=KBLIDetail)
 async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)):
     """Retrieve deep KG metadata with dynamic TTL based on sector volatility."""
-    from backend.core.cache import cache_manager # Assume we have access to the manager
-    
+    from backend.core.cache import get_cache_service as cache_manager  # Assume we have access to the manager
+
     cache_key = f"kbli_inspect_v2_{code}"
     ttl = get_kbli_ttl(code)
-    
+
     # Try manual cache check
     if cache_manager:
         cached_data = await cache_manager.get(cache_key)
@@ -342,10 +336,10 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)):
                         lic.risk_level = qdrant_risk
 
             logger.info(f"✅ KBLI {code} details retrieved (pma={pma_status}, risk={risk_profile})")
-            
+
             result = KBLIDetail(
                 code=code,
-                title=node["name"].replace(f"KBLI {code}", "").strip() or node["name"],
+                title=node["name"],
                 description=props.get("uraian", node["description"]),
                 pma_status=pma_status,
                 licensing_status=props.get("licensing_status", "REGULATED"),
@@ -353,13 +347,13 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)):
                 risk_profile=risk_profile,
                 licenses=licenses,
                 related_codes=related_codes,
-                expert_legal=props.get("expert_legal")
+                expert_legal=props.get("expert_legal"),
             )
-            
+
             # Save to cache with dynamic TTL
             if cache_manager:
                 await cache_manager.set(cache_key, result.model_dump(), ttl=ttl)
-                
+
             return result
     except HTTPException:
         raise
@@ -496,19 +490,21 @@ _TRANSLATE_SYSTEM = (
 )
 
 
-@cached(ttl=604800, prefix="kbli_translate_v14")  # Cache translations for 7 days (v13: recommendation redirect fix)
+@cached(
+    ttl=604800, prefix="kbli_translate_v14"
+)  # Cache translations for 7 days (v13: recommendation redirect fix)
 async def _translate_query_for_kbli(query: str) -> str:
     """Translate any-language query to Indonesian KBLI search terms."""
     try:
         from backend.services.rag.agentic.llm_gateway import TIER_FLASH
 
         gateway = _get_llm_gateway()
-        
+
         # Check if LLM gateway is available before attempting translation
         if not gateway._available:
             logger.warning("⚠️ LLM Gateway not available for translation, using original query")
             return query
-        
+
         chat = gateway.create_chat_with_history(
             history_to_use=[],
             model_tier=TIER_FLASH,
@@ -522,12 +518,12 @@ async def _translate_query_for_kbli(query: str) -> str:
             enable_function_calling=False,
             conversation_messages=[{"role": "user", "content": query}],
         )
-        
+
         # Validate translation is not empty
         if not translated or not translated.strip():
             logger.warning(f"⚠️ Translation returned empty from {model_used}, using original")
             return query
-            
+
         translated = translated.strip().strip('"').strip("'")
         logger.info(f"🌐 Query translation: '{query}' → '{translated}' (model: {model_used})")
         return translated
@@ -541,22 +537,66 @@ def _detect_language(query: str) -> str:
     words = set(query.lower().split())
     # Indonesian markers
     id_words = {
-        "apa", "bagaimana", "syarat", "usaha", "bisa", "saya", "mau", "buka",
-        "perizinan", "risiko", "modal", "asing", "pma", "lokal", "investasi"
+        "apa",
+        "bagaimana",
+        "syarat",
+        "usaha",
+        "bisa",
+        "saya",
+        "mau",
+        "buka",
+        "perizinan",
+        "risiko",
+        "modal",
+        "asing",
+        "pma",
+        "lokal",
+        "investasi",
     }
     if len(words & id_words) >= 2:
         return "Indonesian"
     # Italian markers
     it_words = {
-        "voglio", "aprire", "quale", "codice", "serve", "come", "sono", "che",
-        "per", "una", "della", "questo", "quanto", "costa", "cosa", "posso",
-        "devo", "fare", "mio", "bisogno", "attivita", "licenza", "negozio",
+        "voglio",
+        "aprire",
+        "quale",
+        "codice",
+        "serve",
+        "come",
+        "sono",
+        "che",
+        "per",
+        "una",
+        "della",
+        "questo",
+        "quanto",
+        "costa",
+        "cosa",
+        "posso",
+        "devo",
+        "fare",
+        "mio",
+        "bisogno",
+        "attivita",
+        "licenza",
+        "negozio",
     }
     if len(words & it_words) >= 2:
         return "Italian"
     # French markers
     fr_words = {
-        "je", "veux", "ouvrir", "quel", "pour", "une", "est", "les", "des", "mon", "faire", "comment",
+        "je",
+        "veux",
+        "ouvrir",
+        "quel",
+        "pour",
+        "une",
+        "est",
+        "les",
+        "des",
+        "mon",
+        "faire",
+        "comment",
     }
     if len(words & fr_words) >= 2:
         return "French"
@@ -568,9 +608,7 @@ def _detect_language(query: str) -> str:
 
 
 async def _generate_kbli_explanation_gemini(
-    query: str, 
-    results: list[KBLISearchResult],
-    parent_docs: dict[str, str] = None
+    query: str, results: list[KBLISearchResult], parent_docs: dict[str, str] = None
 ) -> str:
     """Generate KBLI explanation using Gemini Flash - Fast, Cost-Effective.
 
@@ -581,14 +619,14 @@ async def _generate_kbli_explanation_gemini(
     return await _generate_kbli_explanation(query, results, parent_docs)
 
 
-@cached(ttl=43200, prefix="kbli_explain_v25")  # Cache explanations for 12 hours (v25: 96100 risk scale-dependent: Rendah Mikro-Menengah / Tinggi Besar; all sector 96 PMA=TERBUKA)
+@cached(
+    ttl=43200, prefix="kbli_explain_v25"
+)  # Cache explanations for 12 hours (v25: 96100 risk scale-dependent: Rendah Mikro-Menengah / Tinggi Besar; all sector 96 PMA=TERBUKA)
 async def _generate_kbli_explanation(
-    query: str, 
-    results: list[KBLISearchResult],
-    parent_docs: dict[str, str] = None
+    query: str, results: list[KBLISearchResult], parent_docs: dict[str, str] = None
 ) -> str:
     """Generate a grounded explanation of KBLI search results using LLM.
-    
+
     Args:
         query: User query
         results: Search results with codes and metadata
@@ -604,10 +642,10 @@ async def _generate_kbli_explanation(
     for r in results:
         # Check if we have deep metadata from Postgres/Expert injection
         expert_info = ""
-        if hasattr(r, 'expert_legal') and r.expert_legal:
+        if hasattr(r, "expert_legal") and r.expert_legal:
             ex = r.expert_legal
             expert_info = f"\n  Expert Data (PP 28/2025): Bab {ex.get('bab')}, Pasal {ex.get('pasal')}. PB-UMKU: {', '.join(ex.get('pb_umku', []))}. Note: {ex.get('pma_implications')}"
-        
+
         # Use full parent document content if available, otherwise fall back to truncated description
         if parent_docs and r.code in parent_docs:
             full_content = parent_docs[r.code]
@@ -624,7 +662,7 @@ async def _generate_kbli_explanation(
 
     # Use unified MASTER PROMPT formatted with detected language
     lang_system = KBLI_MASTER_PROMPT.format(lang=lang)
-    
+
     # Build a structured, detailed message that guides comprehensive responses
     message = (
         f"User question: {query}\n\n"
@@ -643,18 +681,20 @@ async def _generate_kbli_explanation(
         from backend.services.rag.agentic.llm_gateway import TIER_FLASH
 
         gateway = _get_llm_gateway()
-        
+
         # Check if LLM gateway is available
         if not gateway._available:
-            logger.error("❌ LLM Gateway not available - check GOOGLE_API_KEY or GOOGLE_APPLICATION_CREDENTIALS")
+            logger.error(
+                "❌ LLM Gateway not available - check GOOGLE_API_KEY or GOOGLE_APPLICATION_CREDENTIALS"
+            )
             raise RuntimeError("LLM service not available")
-        
+
         chat = gateway.create_chat_with_history(
             history_to_use=[],
             model_tier=TIER_FLASH,
             system_instruction=lang_system,
         )
-        
+
         response_text, model_used, resp_obj, usage = await gateway.send_message(
             chat=chat,
             message=message,
@@ -663,15 +703,17 @@ async def _generate_kbli_explanation(
             enable_function_calling=False,
             conversation_messages=[{"role": "user", "content": message}],
         )
-        
+
         # CRITICAL: Validate response is not empty
         if not response_text or not response_text.strip():
             logger.error(f"❌ LLM returned empty response. Model: {model_used}, Usage: {usage}")
             raise RuntimeError(f"LLM returned empty response from model {model_used}")
-        
-        logger.info(f"✅ KBLI explanation generated. Model: {model_used}, Length: {len(response_text)} chars")
+
+        logger.info(
+            f"✅ KBLI explanation generated. Model: {model_used}, Length: {len(response_text)} chars"
+        )
         return response_text
-        
+
     except Exception as e:
         logger.error(f"❌ LLM explanation failed: {type(e).__name__}: {e}")
         # Deterministic fallback: markdown list of results (language-aware)
@@ -687,7 +729,9 @@ async def _generate_kbli_explanation(
 
 
 # Minimum score threshold for ABSTAIN logic
-MIN_RELEVANCE_SCORE = 0.40  # Results below this score trigger ABSTAIN (lowered from 0.60 to reduce false negatives)
+MIN_RELEVANCE_SCORE = (
+    0.40  # Results below this score trigger ABSTAIN (lowered from 0.60 to reduce false negatives)
+)
 
 # Hardcoded known KBLI codes not present in Qdrant collection
 # Used as synthetic fallback when code lookup fails via both PostgreSQL and Qdrant
@@ -751,12 +795,31 @@ KNOWN_KBLI_CODES: dict[str, dict] = {
 
 # Non-business keywords that should trigger helpful redirect
 NON_BUSINESS_KEYWORDS = [
-    "kitas", "kitap", "visa", "immigration", "imigrasi", "passport", "paspor",
-    "stay permit", "work permit", "izin tinggal", "izin kerja", "renewal",
-    "agente immigrazione", "visto", "permesso di soggiorno", "immigrazione",
+    "kitas",
+    "kitap",
+    "visa",
+    "immigration",
+    "imigrasi",
+    "passport",
+    "paspor",
+    "stay permit",
+    "work permit",
+    "izin tinggal",
+    "izin kerja",
+    "renewal",
+    "agente immigrazione",
+    "visto",
+    "permesso di soggiorno",
+    "immigrazione",
     # Recommendation/opinion queries (not KBLI classification)
-    "best restaurant", "best cafe", "best coffee shop", "recommend restaurant",
-    "where to eat", "mana makan", "restoran terbaik", "tempat makan terbaik",
+    "best restaurant",
+    "best cafe",
+    "best coffee shop",
+    "recommend restaurant",
+    "where to eat",
+    "mana makan",
+    "restoran terbaik",
+    "tempat makan terbaik",
 ]
 
 
@@ -769,73 +832,110 @@ def _is_non_business_query(query: str) -> bool:
 def _is_multi_domain_query(query: str) -> bool:
     """
     Check if query spans multiple knowledge domains (KBLI + visa/immigration/legal/tax).
-    
+
     Examples:
     - "Can I open a restaurant with retirement KITAS?" → True (KBLI + visa)
     - "What KBLI code for restaurant?" → False (pure KBLI)
     - "KITAS requirements for foreigners" → False (pure visa, will be deflected)
-    
+
     Returns True only if query mentions BOTH business/KBLI AND visa/legal/tax.
     """
     query_lower = query.lower()
-    
+
     # Domain 1: Business/KBLI indicators
     business_keywords = [
-        "kbli", "business", "open", "start", "restaurant", "cafe", "villa", 
-        "hotel", "company", "pt", "pma", "usaha", "bisnis", "buka", 
-        "restoran", "kafe", "perusahaan", "investor", "investment"
+        "kbli",
+        "business",
+        "open",
+        "start",
+        "restaurant",
+        "cafe",
+        "villa",
+        "hotel",
+        "company",
+        "pt",
+        "pma",
+        "usaha",
+        "bisnis",
+        "buka",
+        "restoran",
+        "kafe",
+        "perusahaan",
+        "investor",
+        "investment",
     ]
     has_business = any(kw in query_lower for kw in business_keywords)
-    
+
     # Domain 2: Visa/immigration indicators
     visa_keywords = [
-        "kitas", "kitap", "visa", "retirement", "work permit", "imta", 
-        "rptka", "tka", "izin kerja", "izin tinggal", "pensiunan"
+        "kitas",
+        "kitap",
+        "visa",
+        "retirement",
+        "work permit",
+        "imta",
+        "rptka",
+        "tka",
+        "izin kerja",
+        "izin tinggal",
+        "pensiunan",
     ]
     has_visa = any(kw in query_lower for kw in visa_keywords)
-    
+
     # Domain 3: Legal/tax indicators
     legal_keywords = [
-        "law", "regulation", "tax", "uu ", "pp ", "permen", 
-        "pajak", "hukum", "peraturan", "ppn", "pph"
+        "law",
+        "regulation",
+        "tax",
+        "uu ",
+        "pp ",
+        "permen",
+        "pajak",
+        "hukum",
+        "peraturan",
+        "ppn",
+        "pph",
     ]
     has_legal = any(kw in query_lower for kw in legal_keywords)
-    
+
     # Multi-domain = business + (visa OR legal)
     is_multi_domain = has_business and (has_visa or has_legal)
-    
+
     if is_multi_domain:
-        logger.info(f"🌐 Multi-domain query detected: business={has_business}, visa={has_visa}, legal={has_legal}")
-    
+        logger.info(
+            f"🌐 Multi-domain query detected: business={has_business}, visa={has_visa}, legal={has_legal}"
+        )
+
     return is_multi_domain
 
 
 async def _fetch_parent_documents_from_kbli_table(codes: list[str], pool) -> dict[str, str]:
     """Fetch full parent documents from kbli_documents table for given KBLI codes.
-    
+
     Returns dict mapping code -> full content from kbli_documents.
     This replaces truncated descriptions with complete parent document content.
     """
     if not codes or not pool:
         return {}
-    
+
     parent_docs = {}
     try:
         async with pool.acquire() as conn:
             rows = await conn.fetch(
-                "SELECT kode_kbli, content FROM kbli_documents WHERE kode_kbli = ANY($1)",
-                codes
+                "SELECT kode_kbli, content FROM kbli_documents WHERE kode_kbli = ANY($1)", codes
             )
             for row in rows:
                 parent_docs[row["kode_kbli"]] = row["content"]
-            
+
             if rows:
-                logger.info(f"✅ Fetched {len(rows)} parent documents from kbli_documents (avg {sum(len(d) for d in parent_docs.values()) // len(parent_docs)} chars)")
+                logger.info(
+                    f"✅ Fetched {len(rows)} parent documents from kbli_documents (avg {sum(len(d) for d in parent_docs.values()) // len(parent_docs)} chars)"
+                )
             else:
                 logger.warning(f"⚠️ No parent documents found in kbli_documents for codes: {codes}")
     except Exception as e:
         logger.error(f"❌ Failed to fetch parent documents: {e}")
-    
+
     return parent_docs
 
 
@@ -848,11 +948,13 @@ async def chat_kbli(
 ):
     """Specialized chat for KBLI Notebook with BPS 2025 focus."""
     logger.info(f"💬 KBLI Chat Request: '{kbli_request.query[:50]}...'")
-    
+
     # Check LLM availability early
     gateway = _get_llm_gateway()
     if not gateway._available:
-        logger.error("❌ LLM Gateway not available - GOOGLE_API_KEY or GOOGLE_APPLICATION_CREDENTIALS may be missing")
+        logger.error(
+            "❌ LLM Gateway not available - GOOGLE_API_KEY or GOOGLE_APPLICATION_CREDENTIALS may be missing"
+        )
     else:
         logger.debug("✅ LLM Gateway is available")
 
@@ -871,13 +973,21 @@ async def chat_kbli(
                     async with pool.acquire() as conn:
                         row = await conn.fetchrow(
                             "SELECT kode_kbli, judul, content, metadata FROM kbli_documents WHERE kode_kbli = $1",
-                            code
+                            code,
                         )
 
                         if row:
-                            metadata = row["metadata"] if isinstance(row["metadata"], dict) else json.loads(row["metadata"])
+                            metadata = (
+                                row["metadata"]
+                                if isinstance(row["metadata"], dict)
+                                else json.loads(row["metadata"])
+                            )
                             # Extract first ~200 chars from content for preview
-                            content_preview = row["content"][:200] + "..." if len(row["content"]) > 200 else row["content"]
+                            content_preview = (
+                                row["content"][:200] + "..."
+                                if len(row["content"]) > 200
+                                else row["content"]
+                            )
                             direct_kbli_match = KBLISearchResult(
                                 code=code,
                                 title=row["judul"],
@@ -886,17 +996,23 @@ async def chat_kbli(
                                 pma_status=metadata.get("pma_status", "Verify at OSS"),
                                 risk_category="Verify at OSS",  # Will be enriched from full content
                             )
-                            logger.info(f"✅ Direct lookup from kbli_documents: {code} ({len(row['content'])} chars)")
+                            logger.info(
+                                f"✅ Direct lookup from kbli_documents: {code} ({len(row['content'])} chars)"
+                            )
                             break
                         else:
                             # Fallback to kg_nodes for backward compatibility
                             entity_id = f"kbli:{code}"
                             kg_row = await conn.fetchrow(
                                 "SELECT entity_id, name, description, properties FROM kg_nodes WHERE entity_id = $1",
-                                entity_id
+                                entity_id,
                             )
                             if kg_row:
-                                props = json.loads(kg_row["properties"]) if isinstance(kg_row["properties"], str) else kg_row["properties"]
+                                props = (
+                                    json.loads(kg_row["properties"])
+                                    if isinstance(kg_row["properties"], str)
+                                    else kg_row["properties"]
+                                )
                                 direct_kbli_match = KBLISearchResult(
                                     code=code,
                                     title=kg_row["name"],
@@ -924,7 +1040,9 @@ async def chat_kbli(
                     pma_status=qdrant_payload.get("pma_status") or "Verify at OSS",
                     risk_category=qdrant_payload.get("kategori_risiko") or "Verify at OSS",
                 )
-                logger.info(f"✅ Found KBLI {code} via Qdrant payload filter: {direct_kbli_match.title}")
+                logger.info(
+                    f"✅ Found KBLI {code} via Qdrant payload filter: {direct_kbli_match.title}"
+                )
 
         # P1 FIX: If still no direct match, check KNOWN_KBLI_CODES hardcoded fallback
         if codes_from_query and not direct_kbli_match:
@@ -939,43 +1057,153 @@ async def chat_kbli(
                     pma_status=known["pma_status"],
                     risk_category=known["risk_category"],
                 )
-                logger.info(f"📖 Found KBLI {code} via hardcoded KNOWN_KBLI_CODES: {known['title']}")
+                logger.info(
+                    f"📖 Found KBLI {code} via hardcoded KNOWN_KBLI_CODES: {known['title']}"
+                )
 
         # P2 FIX: Keyword-to-code injection for activities not in Qdrant
         # Detects activity keywords in query and injects a direct match BEFORE semantic search
         # This prevents wrong codes (e.g. 47901 for online retail instead of 47911)
         _activity_keyword_map: list[tuple[list[str], str]] = [
             # Online retail / e-commerce (handle spaced variants like "e comerce", "e commerce")
-            (["online retail", "e-commerce", "ecommerce", "e commerce", "e comerce",
-              "toko online", "online shop", "internet retail",
-              "digital retail", "online store", "jual online", "perdagangan online"], "47911"),
+            (
+                [
+                    "online retail",
+                    "e-commerce",
+                    "ecommerce",
+                    "e commerce",
+                    "e comerce",
+                    "toko online",
+                    "online shop",
+                    "internet retail",
+                    "digital retail",
+                    "online store",
+                    "jual online",
+                    "perdagangan online",
+                ],
+                "47911",
+            ),
             # Event catering / catering
-            (["event catering", "katering", "catering service", "wedding catering",
-              "jasa boga", "food catering", "corporate catering"], "56210"),
+            (
+                [
+                    "event catering",
+                    "katering",
+                    "catering service",
+                    "wedding catering",
+                    "jasa boga",
+                    "food catering",
+                    "corporate catering",
+                ],
+                "56210",
+            ),
             # Restaurant / coffee shop / cafe
-            (["restaurant", "restoran", "coffee shop", "café", "cafe ", "kafe ", 
-              "kedai kopi", "warung kopi", "tempat makan", "rumah makan"], "56101"),
+            (
+                [
+                    "restaurant",
+                    "restoran",
+                    "coffee shop",
+                    "café",
+                    "cafe ",
+                    "kafe ",
+                    "kedai kopi",
+                    "warung kopi",
+                    "tempat makan",
+                    "rumah makan",
+                ],
+                "56101",
+            ),
             # Bar / nightclub
-            (["bar bali", "open a bar", "nightclub", "klub malam", "diskotek", "buka bar"], "56301"),
+            (
+                ["bar bali", "open a bar", "nightclub", "klub malam", "diskotek", "buka bar"],
+                "56301",
+            ),
             # Art gallery (commercial — selling art)
-            (["art gallery", "galeri seni", "galeri lukisan", "commercial art gallery",
-              "sell paintings", "art shop", "toko seni", "jual lukisan"], "47690"),
+            (
+                [
+                    "art gallery",
+                    "galeri seni",
+                    "galeri lukisan",
+                    "commercial art gallery",
+                    "sell paintings",
+                    "art shop",
+                    "toko seni",
+                    "jual lukisan",
+                ],
+                "47690",
+            ),
             # Hair salon / barbershop
-            (["hair salon", "hair studio", "barbershop", "pangkas rambut", "potong rambut",
-              "salon rambut", "barber shop"], "96210"),
+            (
+                [
+                    "hair salon",
+                    "hair studio",
+                    "barbershop",
+                    "pangkas rambut",
+                    "potong rambut",
+                    "salon rambut",
+                    "barber shop",
+                ],
+                "96210",
+            ),
             # Beauty salon / nail / lash / brow
-            (["nail studio", "nail art", "manicure", "pedicure", "eyelash extension", "lash lift",
-              "brow studio", "sulam alis", "wax studio", "make-up artist", "mua ", "beauty salon",
-              "salon kecantikan", "perawatan kecantikan"], "96220"),
+            (
+                [
+                    "nail studio",
+                    "nail art",
+                    "manicure",
+                    "pedicure",
+                    "eyelash extension",
+                    "lash lift",
+                    "brow studio",
+                    "sulam alis",
+                    "wax studio",
+                    "make-up artist",
+                    "mua ",
+                    "beauty salon",
+                    "salon kecantikan",
+                    "perawatan kecantikan",
+                ],
+                "96220",
+            ),
             # Day spa / sauna
-            (["day spa", "spa harian", "sauna", "steam bath", "pemandian uap", "solarium",
-              "wellness center", "spa bali", "open a spa"], "96230"),
+            (
+                [
+                    "day spa",
+                    "spa harian",
+                    "sauna",
+                    "steam bath",
+                    "pemandian uap",
+                    "solarium",
+                    "wellness center",
+                    "spa bali",
+                    "open a spa",
+                ],
+                "96230",
+            ),
             # Laundry
-            (["laundry", "dry cleaning", "cuci baju", "cuci pakaian", "laundromat",
-              "jasa cuci", "dobi"], "96100"),
+            (
+                [
+                    "laundry",
+                    "dry cleaning",
+                    "cuci baju",
+                    "cuci pakaian",
+                    "laundromat",
+                    "jasa cuci",
+                    "dobi",
+                ],
+                "96100",
+            ),
             # Tattoo studio (permanent — no dedicated BPS code)
-            (["tattoo studio", "tattoo artist", "tato studio", "tattoo shop",
-              "buka tattoo", "open tattoo"], "96900"),
+            (
+                [
+                    "tattoo studio",
+                    "tattoo artist",
+                    "tato studio",
+                    "tattoo shop",
+                    "buka tattoo",
+                    "open tattoo",
+                ],
+                "96900",
+            ),
         ]
         if not direct_kbli_match:
             query_lower_kw = kbli_request.query.lower()
@@ -990,7 +1218,9 @@ async def chat_kbli(
                         pma_status=known["pma_status"],
                         risk_category=known["risk_category"],
                     )
-                    logger.info(f"🎯 Keyword injection: '{query_lower_kw[:40]}' → KBLI {target_code}")
+                    logger.info(
+                        f"🎯 Keyword injection: '{query_lower_kw[:40]}' → KBLI {target_code}"
+                    )
                     break
 
         # Search semantic context with translated query
@@ -998,7 +1228,7 @@ async def chat_kbli(
         try:
             embedding = await search_service.embedder.generate_query_embedding(search_query)
             raw_results = await _search_kbli_qdrant(embedding, 7)
-            
+
             # Deduplicate by code
             seen_codes = set()
             for r in raw_results:
@@ -1019,7 +1249,7 @@ async def chat_kbli(
                 )
                 if len(results) >= 5:
                     break
-            
+
             # Enrichment step: Fetch expert_legal from Postgres for all results
             if pool:
                 async with pool.acquire() as conn:
@@ -1027,13 +1257,19 @@ async def chat_kbli(
                         try:
                             row = await conn.fetchrow(
                                 "SELECT properties FROM kg_nodes WHERE entity_id = $1",
-                                f"kbli:{r.code}"
+                                f"kbli:{r.code}",
                             )
                             if row:
-                                props = json.loads(row["properties"]) if isinstance(row["properties"], str) else row["properties"]
+                                props = (
+                                    json.loads(row["properties"])
+                                    if isinstance(row["properties"], str)
+                                    else row["properties"]
+                                )
                                 if "expert_legal" in props:
                                     results[i].expert_legal = props["expert_legal"]
-                                    logger.info(f"✨ Enriched result {r.code} with Expert Legal data")
+                                    logger.info(
+                                        f"✨ Enriched result {r.code} with Expert Legal data"
+                                    )
                         except Exception as enrich_err:
                             logger.warning(f"Failed to enrich {r.code}: {enrich_err}")
 
@@ -1044,13 +1280,15 @@ async def chat_kbli(
                 before = len(results)
                 results = [r for r in results if r.code.startswith(query_prefix)]
                 if len(results) < before:
-                    logger.info(f"🧹 Filtered Qdrant results by sector prefix '{query_prefix}': {before} → {len(results)}")
+                    logger.info(
+                        f"🧹 Filtered Qdrant results by sector prefix '{query_prefix}': {before} → {len(results)}"
+                    )
 
             # Add direct match at the beginning if found
             if direct_kbli_match and direct_kbli_match.code not in {r.code for r in results}:
                 results.insert(0, direct_kbli_match)
                 logger.info(f"✅ Added direct KBLI match: {direct_kbli_match.code}")
-            
+
             logger.info(f"✅ Found {len(results)} KBLI results from Qdrant")
         except Exception as q_err:
             logger.warning(f"⚠️ Qdrant search failed, falling back to PostgreSQL: {q_err}")
@@ -1061,11 +1299,15 @@ async def chat_kbli(
                     async with db_pool.acquire() as conn:
                         rows = await conn.fetch(
                             "SELECT entity_id, name, description, properties FROM kg_nodes WHERE entity_type = 'kbli' AND (name ILIKE $1 OR entity_id ILIKE $1) LIMIT 5",
-                            f"%{search_query}%"
+                            f"%{search_query}%",
                         )
                         for row in rows:
                             code = row["entity_id"].replace("kbli:", "")
-                            props = json.loads(row["properties"]) if isinstance(row["properties"], str) else row["properties"]
+                            props = (
+                                json.loads(row["properties"])
+                                if isinstance(row["properties"], str)
+                                else row["properties"]
+                            )
                             results.append(
                                 KBLISearchResult(
                                     code=code,
@@ -1073,10 +1315,12 @@ async def chat_kbli(
                                     description=row["description"][:200] + "...",
                                     score=0.8,  # Static score for fallback
                                     pma_status=props.get("pma_status", "UNKNOWN"),
-                                    risk_category=props.get("kategori_risiko", "Unknown")
+                                    risk_category=props.get("kategori_risiko", "Unknown"),
                                 )
                             )
-                        logger.info(f"✅ Found {len(results)} KBLI results from PostgreSQL fallback")
+                        logger.info(
+                            f"✅ Found {len(results)} KBLI results from PostgreSQL fallback"
+                        )
             except Exception as db_err:
                 logger.error(f"❌ PostgreSQL fallback failed: {db_err}")
 
@@ -1092,41 +1336,48 @@ async def chat_kbli(
                 if not pool:
                     logger.warning("⚠️ Database pool unavailable, falling back to KBLI-only mode")
                 else:
-                    orchestrator = KGAgenticOrchestrator(
-                        db_pool=pool,
-                        retriever=search_service
-                    )
-                    
+                    orchestrator = KGAgenticOrchestrator(db_pool=pool, retriever=search_service)
+
                     # Process query with full KG-enhanced reasoning
                     kg_response = await orchestrator.process(
                         query=kbli_request.query,
                         session_id=kbli_request.session_id or "kbli-notebook",
-                        user_id=None
+                        user_id=None,
                     )
-                    
-                    logger.info(f"✅ KG Orchestrator response: {len(kg_response.answer)} chars, {len(kg_response.sources)} sources")
+
+                    logger.info(
+                        f"✅ KG Orchestrator response: {len(kg_response.answer)} chars, {len(kg_response.sources)} sources"
+                    )
                     logger.info(f"📊 Reasoning trace: {kg_response.reasoning_trace[:2]}")
-                    
+
                     # Map KG response to KBLI chat response format
                     # Extract KBLI codes from KG entities if available
                     kg_detected_kbli = detected_kbli.copy()
                     if kg_response.golden_route_matched:
                         logger.info(f"🎯 Golden route matched: {kg_response.golden_route_matched}")
-                    
+
                     # Build suggested queries from KG context
                     suggested_kg = []
                     if detected_kbli:
                         suggested_kg.append(f"What licenses do I need for KBLI {detected_kbli[0]}?")
-                    if "visa" in kbli_request.query.lower() or "kitas" in kbli_request.query.lower():
-                        suggested_kg.append("What are the legal business structures for foreigners in Indonesia?")
+                    if (
+                        "visa" in kbli_request.query.lower()
+                        or "kitas" in kbli_request.query.lower()
+                    ):
+                        suggested_kg.append(
+                            "What are the legal business structures for foreigners in Indonesia?"
+                        )
                         suggested_kg.append("Contact Bali Zero for visa consultation")
-                    
+
                     return KBLINotebookChatResponse(
                         answer=kg_response.answer,
                         detected_kbli=kg_detected_kbli,
                         results=[],  # Don't show KBLI cards (info in answer)
-                        sources=kg_response.sources if kg_response.sources else [{"title": "Multi-domain KG reasoning", "relevance": "High"}],
-                        suggested_queries=suggested_kg or ["Explore more KBLI codes", "Contact Bali Zero team"]
+                        sources=kg_response.sources
+                        if kg_response.sources
+                        else [{"title": "Multi-domain KG reasoning", "relevance": "High"}],
+                        suggested_queries=suggested_kg
+                        or ["Explore more KBLI codes", "Contact Bali Zero team"],
                     )
             except Exception as kg_err:
                 logger.error(f"❌ KG Orchestrator failed, falling back to KBLI-only: {kg_err}")
@@ -1137,7 +1388,13 @@ async def chat_kbli(
             logger.info(f"⚠️ Non-business query detected: '{kbli_request.query[:50]}'")
             query_lang = _detect_language(kbli_request.query)
             query_lower_nb = kbli_request.query.lower()
-            _recommendation_keywords = ["best ", "recommend", "where to eat", "mana makan", "terbaik"]
+            _recommendation_keywords = [
+                "best ",
+                "recommend",
+                "where to eat",
+                "mana makan",
+                "terbaik",
+            ]
             is_recommendation = any(kw in query_lower_nb for kw in _recommendation_keywords)
 
             if is_recommendation:
@@ -1148,7 +1405,11 @@ async def chat_kbli(
                     "business and understand licensing, investment status (PMA), and regulatory requirements.\n\n"
                     "Are you perhaps looking to **open** a restaurant or food business in Bali? I can help with that!"
                 )
-                suggested = ["I want to open a restaurant in Bali", "KBLI code for a cafe or coffee shop", "What KBLI for catering?"]
+                suggested = [
+                    "I want to open a restaurant in Bali",
+                    "KBLI code for a cafe or coffee shop",
+                    "What KBLI for catering?",
+                ]
             elif query_lang == "Indonesian":
                 abstain_answer = (
                     "Pertanyaan ini berkaitan dengan imigrasi atau visa, yang berada di luar keahlian saya.\n\n"
@@ -1159,7 +1420,11 @@ async def chat_kbli(
                     "• Agen imigrasi berlisensi\n\n"
                     "Apakah saya bisa membantu Anda menemukan kode KBLI yang tepat untuk bisnis Anda di Indonesia?"
                 )
-                suggested = ["Buka restoran di Bali", "Kode KBLI untuk impor ekspor", "Hotel dan hospitality KBLI"]
+                suggested = [
+                    "Buka restoran di Bali",
+                    "Kode KBLI untuk impor ekspor",
+                    "Hotel dan hospitality KBLI",
+                ]
             else:
                 abstain_answer = (
                     "This question is about immigration or visas, which is outside my area of expertise.\n\n"
@@ -1171,7 +1436,11 @@ async def chat_kbli(
                     "• An authorized immigration agent\n\n"
                     "Can I help you find the right KBLI code for your business in Indonesia instead?"
                 )
-                suggested = ["I want to open a restaurant in Bali", "KBLI code for import export business", "Hotel and hospitality KBLI"]
+                suggested = [
+                    "I want to open a restaurant in Bali",
+                    "KBLI code for import export business",
+                    "Hotel and hospitality KBLI",
+                ]
             return KBLINotebookChatResponse(
                 answer=abstain_answer,
                 detected_kbli=[],
@@ -1215,8 +1484,22 @@ async def chat_kbli(
         query_lower = kbli_request.query.lower()
         for term, glossary_answer in _glossary_terms.items():
             # Match queries like "what does X mean", "what is X", "explain X", "X meaning", or just the term alone
-            if (term in query_lower and any(kw in query_lower for kw in ["mean", "what", "explain", "definition", "define", "arti", "apa itu", "pengertian"])) \
-               or query_lower.strip() == term:
+            if (
+                term in query_lower
+                and any(
+                    kw in query_lower
+                    for kw in [
+                        "mean",
+                        "what",
+                        "explain",
+                        "definition",
+                        "define",
+                        "arti",
+                        "apa itu",
+                        "pengertian",
+                    ]
+                )
+            ) or query_lower.strip() == term:
                 logger.info(f"📚 Glossary shortcut triggered for term: {term}")
                 return KBLINotebookChatResponse(
                     answer=glossary_answer,
@@ -1233,49 +1516,59 @@ async def chat_kbli(
         # ABSTAIN LOGIC: Filter results by minimum relevance score
         # BUT: Bypass if there's a direct KBLI code match (exact code lookup)
         has_direct_match = direct_kbli_match is not None
-        logger.info(f"🔍 ABSTAIN check: has_direct_match={has_direct_match}, results={len(results)}, codes={codes_from_query}")
+        logger.info(
+            f"🔍 ABSTAIN check: has_direct_match={has_direct_match}, results={len(results)}, codes={codes_from_query}"
+        )
         filtered_results = [r for r in results if r.score >= MIN_RELEVANCE_SCORE]
-        
+
         if not has_direct_match and not filtered_results and results:
-                logger.warning(f"⚠️ All results below threshold {MIN_RELEVANCE_SCORE}. Triggering ABSTAIN.")
-                query_lang = _detect_language(kbli_request.query)
-                if query_lang == "Indonesian":
-                    abstain_answer = (
-                        "Saya tidak menemukan kode KBLI yang sesuai untuk pencarian Anda.\n\n"
-                        "**Coba ubah pertanyaan Anda:**\n"
-                        "• Deskripsikan kegiatan usaha secara spesifik (misalnya 'restoran', 'vila', 'jasa pemrograman')\n"
-                        "• Sebutkan jenis produk atau layanan yang ingin Anda tawarkan\n"
-                        "• Jika Anda sudah mengetahui kode KBLI-nya, masukkan langsung (contoh: '56101')\n\n"
-                        "Saya spesialis KBLI 2025 (Peraturan BPS No. 7/2025) dan siap membantu Anda "
-                        "menemukan kode yang tepat untuk kegiatan usaha di Indonesia."
-                    )
-                    suggested = ["Restoran di Bali", "Impor ekspor Indonesia", "Hotel dan hospitality"]
-                else:
-                    abstain_answer = (
-                        "I could not find a strong KBLI match for your search. This may be because the business activity "
-                        "description needs to be more specific.\n\n"
-                        "**Try rephrasing your question:**\n"
-                        "• Describe the specific business activity (e.g. 'restaurant', 'villa rental', 'software development')\n"
-                        "• Include the type of service or product you plan to offer\n"
-                        "• If you know the KBLI code, enter it directly (e.g. '56101')\n\n"
-                        "I am specialized in KBLI 2025 (BPS Regulation No. 7/2025) and can help you find the right "
-                        "classification code for your business activity in Indonesia."
-                    )
-                    suggested = ["Restaurant in Bali", "Import export Indonesia", "Hotel and hospitality"]
-                return KBLINotebookChatResponse(
-                    answer=abstain_answer,
-                    detected_kbli=[],
-                    results=[],
-                    sources=[],
-                    suggested_queries=suggested,
+            logger.warning(
+                f"⚠️ All results below threshold {MIN_RELEVANCE_SCORE}. Triggering ABSTAIN."
+            )
+            query_lang = _detect_language(kbli_request.query)
+            if query_lang == "Indonesian":
+                abstain_answer = (
+                    "Saya tidak menemukan kode KBLI yang sesuai untuk pencarian Anda.\n\n"
+                    "**Coba ubah pertanyaan Anda:**\n"
+                    "• Deskripsikan kegiatan usaha secara spesifik (misalnya 'restoran', 'vila', 'jasa pemrograman')\n"
+                    "• Sebutkan jenis produk atau layanan yang ingin Anda tawarkan\n"
+                    "• Jika Anda sudah mengetahui kode KBLI-nya, masukkan langsung (contoh: '56101')\n\n"
+                    "Saya spesialis KBLI 2025 (Peraturan BPS No. 7/2025) dan siap membantu Anda "
+                    "menemukan kode yang tepat untuk kegiatan usaha di Indonesia."
                 )
-        
+                suggested = ["Restoran di Bali", "Impor ekspor Indonesia", "Hotel dan hospitality"]
+            else:
+                abstain_answer = (
+                    "I could not find a strong KBLI match for your search. This may be because the business activity "
+                    "description needs to be more specific.\n\n"
+                    "**Try rephrasing your question:**\n"
+                    "• Describe the specific business activity (e.g. 'restaurant', 'villa rental', 'software development')\n"
+                    "• Include the type of service or product you plan to offer\n"
+                    "• If you know the KBLI code, enter it directly (e.g. '56101')\n\n"
+                    "I am specialized in KBLI 2025 (BPS Regulation No. 7/2025) and can help you find the right "
+                    "classification code for your business activity in Indonesia."
+                )
+                suggested = [
+                    "Restaurant in Bali",
+                    "Import export Indonesia",
+                    "Hotel and hospitality",
+                ]
+            return KBLINotebookChatResponse(
+                answer=abstain_answer,
+                detected_kbli=[],
+                results=[],
+                sources=[],
+                suggested_queries=suggested,
+            )
+
         # Use filtered results for explanation (unless we have direct match)
         if has_direct_match and not codes_from_query:
             # Keyword-injected match (no code in query): use ONLY the direct match
             # Prevents LLM from preferring wrong Qdrant results (e.g. 47901 over 47911)
             results = [direct_kbli_match]
-            logger.info(f"🎯 Keyword injection: restricting results to direct match only ({direct_kbli_match.code})")
+            logger.info(
+                f"🎯 Keyword injection: restricting results to direct match only ({direct_kbli_match.code})"
+            )
         elif not has_direct_match:
             results = filtered_results if filtered_results else results
 
@@ -1286,7 +1579,7 @@ async def chat_kbli(
         # Generate explanation via Claude Haiku 4.5 (fast, cost-effective)
         # Falls back to Gemini Flash if Claude unavailable
         answer = await _generate_kbli_explanation_gemini(kbli_request.query, results, parent_docs)
-        
+
         # CRITICAL: Ensure answer is never empty
         if not answer or not answer.strip():
             logger.error("❌ CRITICAL: Answer is empty after _generate_kbli_explanation")
@@ -1314,10 +1607,10 @@ async def chat_kbli(
             else:
                 suggested_queries.append(f"What are the risk requirements for KBLI {top.code}?")
 
-        logger.info(f"✅ KBLI Chat Response: answer_length={len(answer)}, results={len(results)}, detected={detected_kbli}")
-        
+        logger.info(
+            f"✅ KBLI Chat Response: answer_length={len(answer)}, results={len(results)}, detected={detected_kbli}"
+        )
 
-        
         return KBLINotebookChatResponse(
             answer=answer,
             detected_kbli=detected_kbli,

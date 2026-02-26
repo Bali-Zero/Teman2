@@ -5,8 +5,8 @@ This module defines the state schemas used by LangGraph workflows.
 All state classes inherit from TypedDict for type safety.
 """
 
-from typing import TypedDict, List, Optional, Dict, Any
 from datetime import datetime
+from typing import Any, TypedDict
 
 
 class AgentState(TypedDict, total=False):
@@ -22,13 +22,14 @@ class AgentState(TypedDict, total=False):
         step_count: Number of steps executed
         timestamp: When the state was created
     """
+
     question: str
-    documents: List[str]
+    documents: list[str]
     generation: str
-    metadata: Optional[Dict[str, Any]]
-    errors: Optional[List[str]]
-    step_count: Optional[int]
-    timestamp: Optional[datetime]
+    metadata: dict[str, Any] | None
+    errors: list[str] | None
+    step_count: int | None
+    timestamp: datetime | None
 
 
 class RetrievalState(TypedDict, total=False):
@@ -37,16 +38,17 @@ class RetrievalState(TypedDict, total=False):
 
     Adds retrieval-specific fields to the base AgentState.
     """
+
     question: str
-    documents: List[str]
+    documents: list[str]
     generation: str
 
     # Retrieval-specific
-    query_vector: Optional[List[float]]
-    collection_name: Optional[str]
-    top_k: Optional[int]
-    score_threshold: Optional[float]
-    retrieved_scores: Optional[List[float]]
+    query_vector: list[float] | None
+    collection_name: str | None
+    top_k: int | None
+    score_threshold: float | None
+    retrieved_scores: list[float] | None
 
 
 class GradingState(TypedDict, total=False):
@@ -55,14 +57,15 @@ class GradingState(TypedDict, total=False):
 
     Tracks relevance scores and grading decisions.
     """
+
     question: str
-    documents: List[str]
+    documents: list[str]
     generation: str
 
     # Grading-specific
-    relevance_scores: Optional[List[float]]
-    filtered_documents: Optional[List[str]]
-    grading_decision: Optional[str]  # "relevant" | "irrelevant" | "mixed"
+    relevance_scores: list[float] | None
+    filtered_documents: list[str] | None
+    grading_decision: str | None  # "relevant" | "irrelevant" | "mixed"
 
 
 class WorkflowState(TypedDict, total=False):
@@ -72,23 +75,24 @@ class WorkflowState(TypedDict, total=False):
     This is used for complex multi-step workflows that include
     retrieval, grading, and generation.
     """
+
     # Input
     question: str
-    metadata: Optional[Dict[str, Any]]
+    metadata: dict[str, Any] | None
 
     # Retrieval
-    documents: List[str]
-    retrieved_scores: Optional[List[float]]
+    documents: list[str]
+    retrieved_scores: list[float] | None
 
     # Grading
-    relevance_scores: Optional[List[float]]
-    filtered_documents: Optional[List[str]]
+    relevance_scores: list[float] | None
+    filtered_documents: list[str] | None
 
     # Generation
     generation: str
 
     # Execution tracking
-    errors: Optional[List[str]]
-    step_count: Optional[int]
-    timestamp: Optional[datetime]
-    execution_path: Optional[List[str]]  # Track which nodes were executed
+    errors: list[str] | None
+    step_count: int | None
+    timestamp: datetime | None
+    execution_path: list[str] | None  # Track which nodes were executed

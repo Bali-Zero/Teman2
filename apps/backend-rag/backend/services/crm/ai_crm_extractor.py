@@ -3,11 +3,10 @@ ZANTARA CRM - AI Entity Extraction Service
 Uses ZANTARA AI to extract structured data from conversations for CRM auto-population
 """
 
-from typing import Any
-
 import json
 import logging
 from datetime import date, datetime
+from typing import Any
 from uuid import UUID
 
 from backend.app.core.config import settings
@@ -250,7 +249,7 @@ Extract the following information and return ONLY valid JSON (no markdown, no ex
 _extractor_instance: AICRMExtractor | None = None
 
 
-def get_extractor(ai_client: Any=None) -> AICRMExtractor:
+def get_extractor(ai_client: Any = None) -> AICRMExtractor:
     """Get or create singleton extractor instance"""
     global _extractor_instance
 

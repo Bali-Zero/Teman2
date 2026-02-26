@@ -10,7 +10,6 @@ Generates reports with scores and tracks metrics over time.
 Stores results in PostgreSQL for historical tracking.
 """
 
-import asyncio
 import json
 import logging
 import time
@@ -20,7 +19,6 @@ from typing import Any
 
 import asyncpg
 
-from backend.app.core.config import settings
 from backend.app.core.database import get_db_pool
 from backend.app.core.logging_config import get_performance_logger
 from backend.services.rag.evaluation.dataset_builder import (
@@ -33,7 +31,9 @@ from backend.services.rag.evaluation.ragas_evaluator import (
     get_ragas_evaluator,
 )
 from backend.services.rag.hybrid_search import HybridSearchService
-from backend.services.rag.reranker_integration import CrossEncoderRerankerMixin, SearchServiceWithCrossEncoder
+from backend.services.rag.reranker_integration import (
+    CrossEncoderRerankerMixin,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -334,9 +334,7 @@ class RAGBenchmark:
 
         return eval_result, search_meta
 
-    def _generate_placeholder_answer(
-        self, query: str, context: list[str]
-    ) -> str:
+    def _generate_placeholder_answer(self, query: str, context: list[str]) -> str:
         """
         Generate a placeholder answer from context.
 
@@ -463,9 +461,7 @@ class RAGBenchmark:
 
             return benchmark_result
 
-    def _generate_comparison(
-        self, method_results: list[MethodResult]
-    ) -> dict[str, Any]:
+    def _generate_comparison(self, method_results: list[MethodResult]) -> dict[str, Any]:
         """Generate comparison between methods."""
         if not method_results:
             return {}
@@ -488,9 +484,7 @@ class RAGBenchmark:
 
         # Calculate improvements
         if len(method_results) > 1:
-            baseline = next(
-                (m for m in method_results if m.method == "dense"), method_results[0]
-            )
+            baseline = next((m for m in method_results if m.method == "dense"), method_results[0])
             for method_result in method_results:
                 if method_result.method != baseline.method:
                     improvement = (
@@ -500,9 +494,9 @@ class RAGBenchmark:
                         if baseline.overall_score > 0
                         else 0
                     )
-                    comparison["method_scores"][method_result.method][
-                        "improvement_vs_baseline"
-                    ] = round(improvement, 2)
+                    comparison["method_scores"][method_result.method]["improvement_vs_baseline"] = (
+                        round(improvement, 2)
+                    )
 
         return comparison
 
@@ -622,22 +616,26 @@ class RAGBenchmark:
         ]
 
         for method_result in result.method_results:
-            report_lines.extend([
-                f"\nMethod: {method_result.method.upper()}",
-                f"  Overall Score: {method_result.overall_score:.3f}",
-                f"  Duration: {method_result.duration_ms:.0f}ms",
-                "  Metrics:",
-            ])
+            report_lines.extend(
+                [
+                    f"\nMethod: {method_result.method.upper()}",
+                    f"  Overall Score: {method_result.overall_score:.3f}",
+                    f"  Duration: {method_result.duration_ms:.0f}ms",
+                    "  Metrics:",
+                ]
+            )
             for metric, value in method_result.avg_metrics.items():
                 report_lines.append(f"    {metric}: {value:.3f}")
 
-        report_lines.extend([
-            "",
-            "COMPARISON",
-            "-" * 60,
-            f"Best Method: {result.comparison.get('best_method', 'N/A')}",
-            f"Best Score: {result.comparison.get('best_overall_score', 0):.3f}",
-        ])
+        report_lines.extend(
+            [
+                "",
+                "COMPARISON",
+                "-" * 60,
+                f"Best Method: {result.comparison.get('best_method', 'N/A')}",
+                f"Best Score: {result.comparison.get('best_overall_score', 0):.3f}",
+            ]
+        )
 
         method_scores = result.comparison.get("method_scores", {})
         for method, scores in method_scores.items():
@@ -646,12 +644,14 @@ class RAGBenchmark:
                     f"  {method}: +{scores['improvement_vs_baseline']:.1f}% vs baseline"
                 )
 
-        report_lines.extend([
-            "",
-            "=" * 60,
-            "End of Report",
-            "=" * 60,
-        ])
+        report_lines.extend(
+            [
+                "",
+                "=" * 60,
+                "End of Report",
+                "=" * 60,
+            ]
+        )
 
         return "\n".join(report_lines)
 

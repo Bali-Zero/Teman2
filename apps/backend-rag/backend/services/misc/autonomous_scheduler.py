@@ -290,7 +290,7 @@ async def create_and_start_scheduler(
     ai_client,
     search_service,
     auto_ingestion_enabled: bool = False,  # Disabled - scraper not configured
-    self_healing_enabled: bool = True,      # Active - health monitoring
+    self_healing_enabled: bool = True,  # Active - health monitoring
     conversation_trainer_enabled: bool = True,  # Active - learns from conversations
     conversation_cleanup_enabled: bool = True,  # Active - cleans old data
 ) -> AutonomousScheduler:

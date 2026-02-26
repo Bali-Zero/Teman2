@@ -519,10 +519,24 @@ class KGAgenticOrchestrator:
 
             # Build prompt (KBLI-centric for business queries)
             # Detect if query involves business activity (KBLI should be primary)
-            business_keywords = ["restaurant", "cafe", "hotel", "business", "company", "open", "start", 
-                                 "restoran", "kafe", "usaha", "bisnis", "buka", "pt", "pma"]
+            business_keywords = [
+                "restaurant",
+                "cafe",
+                "hotel",
+                "business",
+                "company",
+                "open",
+                "start",
+                "restoran",
+                "kafe",
+                "usaha",
+                "bisnis",
+                "buka",
+                "pt",
+                "pma",
+            ]
             is_business_query = any(kw in query.lower() for kw in business_keywords)
-            
+
             system_prompt = (
                 "You are Zantara AI, expert in Indonesian business regulations (KBLI 2025) and immigration law. "
                 "For business-related questions, ALWAYS structure your answer with the KBLI code as the foundation. "

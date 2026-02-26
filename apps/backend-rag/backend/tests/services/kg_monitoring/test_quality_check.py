@@ -2,18 +2,18 @@
 Tests for QualityCheckService - Phase 8
 """
 
-import pytest
 from datetime import datetime
-from unittest.mock import MagicMock
 
+import pytest
+
+from backend.services.kg_monitoring.auto_ingestion import DocumentType, ExtractedDocument
 from backend.services.kg_monitoring.quality_check import (
+    DimensionScore,
     QualityCheckService,
     QualityDimension,
     QualityLevel,
-    DimensionScore,
     QualityReport,
 )
-from backend.services.kg_monitoring.auto_ingestion import ExtractedDocument, DocumentType
 
 
 class TestQualityLevel:
@@ -259,8 +259,7 @@ class TestQualityCheckService:
 
         report = await service.validate(good_doc)
         relevance_score = next(
-            (d for d in report.dimension_scores if d.dimension == QualityDimension.RELEVANCE),
-            None
+            (d for d in report.dimension_scores if d.dimension == QualityDimension.RELEVANCE), None
         )
         assert relevance_score is not None
         assert relevance_score.score > 0.5

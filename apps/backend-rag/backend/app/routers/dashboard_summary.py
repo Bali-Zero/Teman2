@@ -322,23 +322,25 @@ async def get_dashboard_summary(
                 try:
                     expiry = practice["expiry_date"]
                     today = datetime.now(timezone.utc).date()
-                    
+
                     # Handle different date formats
                     if isinstance(expiry, str):
                         # Parse ISO format date string
-                        expiry_date = datetime.fromisoformat(expiry.replace('Z', '+00:00')).date()
-                    elif hasattr(expiry, 'date'):
+                        expiry_date = datetime.fromisoformat(expiry.replace("Z", "+00:00")).date()
+                    elif hasattr(expiry, "date"):
                         # It's a datetime object
                         expiry_date = expiry.date()
                     else:
                         # It's already a date object
                         expiry_date = expiry
-                    
+
                     days_remaining = (expiry_date - today).days
                 except (ValueError, TypeError) as e:
-                    logger.warning(f"Failed to parse expiry_date for practice {practice.get('id')}: {e}")
+                    logger.warning(
+                        f"Failed to parse expiry_date for practice {practice.get('id')}: {e}"
+                    )
                     days_remaining = None
-            
+
             mapped_practices.append(
                 {
                     "id": practice.get("id"),

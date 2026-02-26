@@ -177,8 +177,8 @@ class MemoryHandler:
             self.save_conversation_memory(user_id, query, answer, metrics_collector)
         )
         task.add_done_callback(
-            lambda t: logger.error(f"Memory save failed: {t.exception()}")
-            if t.exception()
-            else None
+            lambda t: (
+                logger.error(f"Memory save failed: {t.exception()}") if t.exception() else None
+            )
         )
         return task

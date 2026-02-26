@@ -12,7 +12,6 @@ Date: 2026-02-19
 """
 
 import logging
-import os
 
 from backend.llm.genai_client import get_genai_client
 

@@ -17,8 +17,9 @@ Test Coverage:
 Total: 25 tests (exceeds 15-test target)
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from backend.services.rag.multi_agent_coordinator import (
     FinancialAgent,
@@ -29,7 +30,6 @@ from backend.services.rag.multi_agent_coordinator import (
     _merge_agent_outputs,
     requires_multi_agent,
 )
-
 
 # ============================================================================
 # Fixtures
@@ -135,7 +135,9 @@ class TestLegalAgent:
     @pytest.mark.asyncio
     async def test_analyze_returns_legal_analysis(self, mock_llm, mock_kg_retrieval, base_state):
         """LegalAgent returns legal_analysis and agent_outputs."""
-        mock_llm.ainvoke.return_value = MagicMock(content="- NPWP required\n- Akta Pendirian needed")
+        mock_llm.ainvoke.return_value = MagicMock(
+            content="- NPWP required\n- Akta Pendirian needed"
+        )
 
         agent = LegalAgent(mock_llm, mock_kg_retrieval)
         result = await agent.analyze(base_state)
@@ -150,9 +152,11 @@ class TestLegalAgent:
         """LegalAgent uses KG entities when available."""
         kg = MagicMock()
         kg.extract_entities_from_query.return_value = [("PT PMA", "pt_pma")]
-        kg.find_kg_entities = AsyncMock(return_value=[
-            {"entity_id": "pt_pma:1", "entity_type": "pt_pma", "name": "PT PMA Setup"},
-        ])
+        kg.find_kg_entities = AsyncMock(
+            return_value=[
+                {"entity_id": "pt_pma:1", "entity_type": "pt_pma", "name": "PT PMA Setup"},
+            ]
+        )
 
         mock_llm.ainvoke.return_value = MagicMock(content="Legal steps for PT PMA")
 
@@ -207,7 +211,9 @@ class TestFinancialAgent:
 
     def test_extract_service_type_pt_pma(self):
         """Extract business_setup from PT PMA query."""
-        assert FinancialAgent._extract_service_type("How much does PT PMA cost?") == "business_setup"
+        assert (
+            FinancialAgent._extract_service_type("How much does PT PMA cost?") == "business_setup"
+        )
 
     def test_extract_service_type_kitas(self):
         """Extract kitas from KITAS query."""
@@ -233,7 +239,9 @@ class TestTimelineAgent:
     @pytest.mark.asyncio
     async def test_analyze_returns_timeline(self, mock_llm, mock_kg_retrieval, base_state):
         """TimelineAgent returns timeline_estimate."""
-        mock_llm.ainvoke.return_value = MagicMock(content="Phase 1: 7 days\nPhase 2: 14 days\nTotal: 21 days")
+        mock_llm.ainvoke.return_value = MagicMock(
+            content="Phase 1: 7 days\nPhase 2: 14 days\nTotal: 21 days"
+        )
 
         agent = TimelineAgent(mock_llm, mock_kg_retrieval)
         result = await agent.analyze(base_state)
@@ -386,8 +394,14 @@ class TestStateManagement:
     def test_initial_state_structure(self, base_state):
         """Initial state has all required keys."""
         required_keys = {
-            "query", "user_context", "legal_analysis", "financial_breakdown",
-            "timeline_estimate", "agent_outputs", "final_answer", "errors",
+            "query",
+            "user_context",
+            "legal_analysis",
+            "financial_breakdown",
+            "timeline_estimate",
+            "agent_outputs",
+            "final_answer",
+            "errors",
         }
         assert required_keys.issubset(set(base_state.keys()))
 

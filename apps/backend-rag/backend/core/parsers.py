@@ -214,7 +214,7 @@ If the page is blank or contains no text, return an empty string."""
                     logger.info(f"✅ Page {page_num}: extracted {len(page_text)} characters")
                 else:
                     logger.warning(f"⚠️ Page {page_num}: no text extracted")
-                
+
                 # Rate limiting for Gemini Vision (Free Tier: 15 RPM)
                 # 4s delay = 15 RPM
                 await asyncio.sleep(4.0)

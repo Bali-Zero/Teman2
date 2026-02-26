@@ -8,7 +8,6 @@ Provides:
 - Dashboard aggregation queries (follow rate, avg confidence, top workflows)
 """
 
-import logging
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -162,13 +161,17 @@ class WorkflowAnalyticsRepository:
                     """,
                     cutoff,
                 )
-                return dict(row) if row else {
-                    "total_workflows": 0,
-                    "followed_count": 0,
-                    "follow_rate_percent": None,
-                    "avg_confidence": None,
-                    "avg_feedback_score": None,
-                }
+                return (
+                    dict(row)
+                    if row
+                    else {
+                        "total_workflows": 0,
+                        "followed_count": 0,
+                        "follow_rate_percent": None,
+                        "avg_confidence": None,
+                        "avg_feedback_score": None,
+                    }
+                )
 
         except Exception as e:
             log_error(logger, "Failed to get follow rate", error=e)
@@ -180,9 +183,7 @@ class WorkflowAnalyticsRepository:
                 "avg_feedback_score": None,
             }
 
-    async def get_top_workflows(
-        self, limit: int = 10, days: int = 7
-    ) -> list[dict[str, Any]]:
+    async def get_top_workflows(self, limit: int = 10, days: int = 7) -> list[dict[str, Any]]:
         """Top N most generated workflow types by frequency."""
         try:
             cutoff = datetime.now() - timedelta(days=days)
@@ -237,7 +238,9 @@ class WorkflowAnalyticsRepository:
                     {
                         "bucket": r["bucket"].isoformat() if r["bucket"] else None,
                         "workflow_count": r["workflow_count"],
-                        "avg_confidence": float(r["avg_confidence"]) if r["avg_confidence"] else None,
+                        "avg_confidence": float(r["avg_confidence"])
+                        if r["avg_confidence"]
+                        else None,
                         "avg_latency_ms": int(r["avg_latency_ms"] or 0),
                     }
                     for r in rows

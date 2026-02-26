@@ -11,42 +11,42 @@ Author: Nuzantara Team
 Date: 2026-02-09
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 # Import subgraph state types
 from backend.services.rag.kg_subgraph_company import (
     CompanyState,
     build_company_subgraph,
-    identify_company_type_node,
     check_pma_eligibility_node,
     get_capital_requirements_node,
+    identify_company_type_node,
     synthesize_company_workflow_node,
-)
-from backend.services.rag.kg_subgraph_visa import (
-    VisaState,
-    build_visa_subgraph,
-    identify_visa_type_node,
-    check_rptka_requirements_node,
-    get_visa_requirements_node,
-    synthesize_visa_workflow_node,
 )
 from backend.services.rag.kg_subgraph_property import (
     PropertyState,
     build_property_subgraph,
-    identify_property_type_node,
     get_property_requirements_node,
+    identify_property_type_node,
     synthesize_property_workflow_node,
 )
 from backend.services.rag.kg_subgraph_tax import (
     TaxState,
     build_tax_subgraph,
-    identify_tax_type_node,
-    get_tax_obligations_node,
     calculate_tax_requirements_node,
+    get_tax_obligations_node,
+    identify_tax_type_node,
     synthesize_tax_workflow_node,
 )
-
+from backend.services.rag.kg_subgraph_visa import (
+    VisaState,
+    build_visa_subgraph,
+    check_rptka_requirements_node,
+    get_visa_requirements_node,
+    identify_visa_type_node,
+    synthesize_visa_workflow_node,
+)
 
 # ============================================================================
 # Fixtures

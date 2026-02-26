@@ -9,7 +9,6 @@ from datetime import datetime
 from enum import Enum
 
 from backend.app.core.config import settings
-
 from backend.services.compliance.compliance_tracker import ComplianceItem
 from backend.services.compliance.severity_calculator import AlertSeverity
 

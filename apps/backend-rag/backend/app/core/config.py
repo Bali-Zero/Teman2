@@ -3,10 +3,9 @@ NUZANTARA PRIME - Centralized Configuration
 All environment variables centralized using pydantic-settings
 """
 
-from typing import Any
-
 import logging
 import os
+from typing import Any
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
@@ -190,7 +189,9 @@ class Settings(BaseSettings):
     timeout_tool_execution: float = 30.0  # Tool execution timeout
     timeout_streaming: float = 120.0  # Streaming timeout
     timeout_internal_api: float = 5.0  # Internal API calls timeout
-    latency_alert_threshold_ms: float = 20000.0  # Alert if request takes longer than 20s
+    latency_alert_threshold_ms: float = 8000.0  # Alert if request takes longer than 8s (RAG target: <3s)
+    memory_alert_threshold_percent: float = 80.0  # Alert if memory usage exceeds 80% of available
+    cpu_alert_threshold_percent: float = 90.0  # Alert if CPU exceeds 90% sustained
 
     # ========================================
     # RERANKER CONFIGURATION

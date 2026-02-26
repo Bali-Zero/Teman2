@@ -16,7 +16,11 @@ from dataclasses import dataclass
 from difflib import SequenceMatcher
 from typing import Any
 
-from backend.services.knowledge_graph.extractor import ExtractedEntity, ExtractedRelation, ExtractionResult
+from backend.services.knowledge_graph.extractor import (
+    ExtractedEntity,
+    ExtractedRelation,
+    ExtractionResult,
+)
 from backend.services.knowledge_graph.ontology import EntityType, RelationType
 
 logger = logging.getLogger(__name__)

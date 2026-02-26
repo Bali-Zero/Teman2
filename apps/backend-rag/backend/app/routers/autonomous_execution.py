@@ -18,7 +18,6 @@ from pydantic import BaseModel, Field
 
 from backend.services.rag.autonomous_executor import (
     AutonomousExecutor,
-    ExecutionPlan,
 )
 
 logger = logging.getLogger(__name__)

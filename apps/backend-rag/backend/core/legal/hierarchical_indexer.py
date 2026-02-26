@@ -50,7 +50,9 @@ class HierarchicalIndexer:
     Ogni chunk mantiene riferimenti al parent per retrieval espanso.
     """
 
-    def __init__(self, structure_parser, qdrant_client, embeddings, chunker=None, sparse_vectorizer=None):
+    def __init__(
+        self, structure_parser, qdrant_client, embeddings, chunker=None, sparse_vectorizer=None
+    ):
         self.parser = structure_parser
         self.qdrant = qdrant_client
         self.embeddings = embeddings

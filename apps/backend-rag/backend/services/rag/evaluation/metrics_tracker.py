@@ -56,7 +56,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class QueryMetric:
     """Single metric record for a query.
-    
+
     Attributes:
         query_id: Unique query identifier
         user_id: User identifier
@@ -67,6 +67,7 @@ class QueryMetric:
         timestamp: When recorded
         metadata: Additional context
     """
+
     query_id: str
     user_id: str
     experiment: str
@@ -75,7 +76,7 @@ class QueryMetric:
     value: float
     timestamp: datetime = field(default_factory=datetime.utcnow)
     metadata: dict[str, Any] = field(default_factory=dict)
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for database storage."""
         return {
@@ -93,18 +94,18 @@ class QueryMetric:
 class MetricsTracker:
     """
     Metrics tracker for A/B testing with PostgreSQL storage.
-    
+
     Manages persistent storage of query-level metrics for A/B test analysis.
     Provides aggregation functions for computing experiment statistics.
-    
+
     Attributes:
         pool: asyncpg connection pool
         _initialized: Whether tables have been created
-    
+
     Example:
         >>> tracker = MetricsTracker()
         >>> await tracker.initialize()
-        >>> 
+        >>>
         >>> # Record a metric
         >>> await tracker.record_metric(
         ...     experiment="hybrid_vs_dense",
@@ -114,29 +115,29 @@ class MetricsTracker:
         ...     user_id="user123",
         ...     query_id="query456"
         ... )
-        >>> 
+        >>>
         >>> # Get aggregates
         >>> results = await tracker.get_experiment_aggregates(
         ...     experiment="hybrid_vs_dense",
         ...     variants=["dense_only", "hybrid"]
         ... )
     """
-    
+
     def __init__(self, pool: asyncpg.Pool | None = None):
         """
         Initialize MetricsTracker.
-        
+
         Args:
             pool: Optional existing database pool
         """
         self.pool = pool
         self._initialized = False
-        
+
     async def _get_pool(self) -> asyncpg.Pool | None:
         """Get or create database connection pool."""
         if self.pool is not None:
             return self.pool
-        
+
         try:
             self.pool = await asyncpg.create_pool(
                 dsn=settings.database_url,
@@ -148,13 +149,13 @@ class MetricsTracker:
         except Exception as e:
             logger.error(f"Failed to create database pool: {e}")
             return None
-    
+
     async def initialize(self) -> bool:
         """
         Initialize database tables.
-        
+
         Creates the ab_test_metrics table if it doesn't exist.
-        
+
         Returns:
             True if initialization successful
         """
@@ -162,7 +163,7 @@ class MetricsTracker:
         if pool is None:
             logger.warning("Database pool not available, metrics will not be persisted")
             return False
-        
+
         try:
             async with pool.acquire() as conn:
                 # Main metrics table
@@ -180,28 +181,28 @@ class MetricsTracker:
                         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
                     )
                 """)
-                
+
                 # Indexes for efficient querying
                 await conn.execute("""
                     CREATE INDEX IF NOT EXISTS idx_ab_metrics_experiment_variant 
                     ON ab_test_metrics(experiment, variant)
                 """)
-                
+
                 await conn.execute("""
                     CREATE INDEX IF NOT EXISTS idx_ab_metrics_query_id 
                     ON ab_test_metrics(query_id)
                 """)
-                
+
                 await conn.execute("""
                     CREATE INDEX IF NOT EXISTS idx_ab_metrics_timestamp 
                     ON ab_test_metrics(timestamp)
                 """)
-                
+
                 await conn.execute("""
                     CREATE INDEX IF NOT EXISTS idx_ab_metrics_user_experiment 
                     ON ab_test_metrics(user_id, experiment)
                 """)
-                
+
                 # Summary table for faster dashboard queries
                 await conn.execute("""
                     CREATE TABLE IF NOT EXISTS ab_test_summaries (
@@ -218,15 +219,15 @@ class MetricsTracker:
                         UNIQUE(experiment, variant, metric)
                     )
                 """)
-                
+
                 self._initialized = True
                 logger.info("A/B testing metrics tables initialized")
                 return True
-                
+
         except Exception as e:
             logger.error(f"Failed to initialize metrics tables: {e}")
             return False
-    
+
     async def record_metric(
         self,
         experiment: str,
@@ -239,7 +240,7 @@ class MetricsTracker:
     ) -> bool:
         """
         Record a single metric.
-        
+
         Args:
             experiment: Experiment name
             variant: Variant identifier
@@ -248,10 +249,10 @@ class MetricsTracker:
             user_id: Optional user identifier
             query_id: Optional query identifier (generated if not provided)
             metadata: Optional additional context
-            
+
         Returns:
             True if metric was recorded successfully
-            
+
         Example:
             >>> await tracker.record_metric(
             ...     experiment="hybrid_vs_dense",
@@ -267,13 +268,13 @@ class MetricsTracker:
         if pool is None:
             logger.debug(f"Metric not persisted (no DB): {experiment}/{variant}/{metric}={value}")
             return False
-        
+
         if not self._initialized:
             await self.initialize()
-        
+
         query_id = query_id or str(uuid.uuid4())
         user_id = user_id or "anonymous"
-        
+
         try:
             async with pool.acquire() as conn:
                 await conn.execute(
@@ -290,7 +291,7 @@ class MetricsTracker:
                     value,
                     json.dumps(metadata) if metadata else None,
                 )
-                
+
                 # Update summary table
                 await conn.execute(
                     """
@@ -312,13 +313,13 @@ class MetricsTracker:
                     value,
                     value * value,
                 )
-                
+
                 return True
-                
+
         except Exception as e:
             logger.error(f"Failed to record metric: {e}")
             return False
-    
+
     async def record_query_metrics(
         self,
         query_id: str,
@@ -330,9 +331,9 @@ class MetricsTracker:
     ) -> bool:
         """
         Record multiple metrics for a single query.
-        
+
         Efficiently records all metrics for a query in a single transaction.
-        
+
         Args:
             query_id: Unique query identifier
             user_id: User identifier
@@ -340,10 +341,10 @@ class MetricsTracker:
             variant: Variant identifier
             metrics: Dictionary of metric_name -> value
             metadata: Optional additional context
-            
+
         Returns:
             True if all metrics were recorded successfully
-            
+
         Example:
             >>> await tracker.record_query_metrics(
             ...     query_id="query456",
@@ -361,10 +362,10 @@ class MetricsTracker:
         if pool is None:
             logger.debug(f"Metrics not persisted (no DB): {experiment}/{variant}")
             return False
-        
+
         if not self._initialized:
             await self.initialize()
-        
+
         try:
             async with pool.acquire() as conn:
                 async with conn.transaction():
@@ -383,7 +384,7 @@ class MetricsTracker:
                             value,
                             json.dumps(metadata) if metadata else None,
                         )
-                        
+
                         # Update summary
                         await conn.execute(
                             """
@@ -405,13 +406,13 @@ class MetricsTracker:
                             value,
                             value * value,
                         )
-                        
+
                 return True
-                
+
         except Exception as e:
             logger.error(f"Failed to record query metrics: {e}")
             return False
-    
+
     async def get_experiment_aggregates(
         self,
         experiment: str,
@@ -420,18 +421,18 @@ class MetricsTracker:
     ) -> dict[str, dict[str, Any]]:
         """
         Get aggregated metrics for an experiment.
-        
+
         Returns statistics for each variant including count, mean, std dev,
         and min/max values for all tracked metrics.
-        
+
         Args:
             experiment: Experiment name
             variants: Optional list of variants to include (all if None)
             since: Optional start time for metrics
-            
+
         Returns:
             Dictionary mapping variant -> metrics -> statistics
-            
+
         Example:
             >>> results = await tracker.get_experiment_aggregates(
             ...     experiment="hybrid_vs_dense",
@@ -442,23 +443,23 @@ class MetricsTracker:
         pool = await self._get_pool()
         if pool is None:
             return {}
-        
+
         if not self._initialized:
             await self.initialize()
-        
+
         since = since or datetime.utcnow() - timedelta(days=30)
-        
+
         try:
             async with pool.acquire() as conn:
                 # Build query
                 variant_filter = ""
                 params = [experiment, since]
-                
+
                 if variants:
                     variant_placeholders = ", ".join(f"${i + 3}" for i in range(len(variants)))
                     variant_filter = f"AND variant IN ({variant_placeholders})"
                     params.extend(variants)
-                
+
                 # Get aggregates from summary table
                 rows = await conn.fetch(
                     f"""
@@ -478,17 +479,17 @@ class MetricsTracker:
                     """,
                     *params,
                 )
-                
+
                 # Organize results
                 results: dict[str, dict[str, Any]] = {}
-                
+
                 for row in rows:
                     variant = row["variant"]
                     metric = row["metric"]
                     count = row["count"]
                     sum_values = row["sum_values"]
                     sum_squares = row["sum_squares"]
-                    
+
                     if variant not in results:
                         results[variant] = {
                             "variant": variant,
@@ -496,11 +497,11 @@ class MetricsTracker:
                             "metrics": {},
                             "raw": {},
                         }
-                    
+
                     mean = sum_values / count if count > 0 else 0
                     variance = (sum_squares / count) - (mean * mean) if count > 0 else 0
-                    std_dev = variance ** 0.5 if variance > 0 else 0
-                    
+                    std_dev = variance**0.5 if variance > 0 else 0
+
                     results[variant]["metrics"][metric] = {
                         "count": count,
                         "mean": round(mean, 4),
@@ -510,9 +511,9 @@ class MetricsTracker:
                         "sum": round(sum_values, 4),
                     }
                     results[variant]["count"] += count
-                
+
                 # Get raw data for significance testing
-                for variant in (variants or []):
+                for variant in variants or []:
                     if variant not in results:
                         results[variant] = {
                             "variant": variant,
@@ -520,7 +521,7 @@ class MetricsTracker:
                             "metrics": {},
                             "raw": {},
                         }
-                    
+
                     metric_rows = await conn.fetch(
                         """
                         SELECT metric, value
@@ -534,39 +535,39 @@ class MetricsTracker:
                         variant,
                         since,
                     )
-                    
+
                     raw_data: dict[str, list[float]] = {}
                     for row in metric_rows:
                         m = row["metric"]
                         if m not in raw_data:
                             raw_data[m] = []
                         raw_data[m].append(float(row["value"]))
-                    
+
                     results[variant]["raw"] = raw_data
-                
+
                 return results
-                
+
         except Exception as e:
             logger.error(f"Failed to get experiment aggregates: {e}")
             return {}
-    
+
     async def get_metrics_by_query(
         self,
         query_id: str,
     ) -> list[QueryMetric]:
         """
         Get all metrics for a specific query.
-        
+
         Args:
             query_id: Query identifier
-            
+
         Returns:
             List of QueryMetric records
         """
         pool = await self._get_pool()
         if pool is None:
             return []
-        
+
         try:
             async with pool.acquire() as conn:
                 rows = await conn.fetch(
@@ -586,7 +587,7 @@ class MetricsTracker:
                     """,
                     query_id,
                 )
-                
+
                 return [
                     QueryMetric(
                         query_id=row["query_id"],
@@ -600,11 +601,11 @@ class MetricsTracker:
                     )
                     for row in rows
                 ]
-                
+
         except Exception as e:
             logger.error(f"Failed to get metrics by query: {e}")
             return []
-    
+
     async def get_user_exposure(
         self,
         user_id: str,
@@ -612,18 +613,18 @@ class MetricsTracker:
     ) -> list[dict[str, Any]]:
         """
         Get experiment exposure history for a user.
-        
+
         Args:
             user_id: User identifier
             experiment: Optional experiment filter
-            
+
         Returns:
             List of exposure records
         """
         pool = await self._get_pool()
         if pool is None:
             return []
-        
+
         try:
             async with pool.acquire() as conn:
                 if experiment:
@@ -658,13 +659,13 @@ class MetricsTracker:
                         """,
                         user_id,
                     )
-                
+
                 return [dict(row) for row in rows]
-                
+
         except Exception as e:
             logger.error(f"Failed to get user exposure: {e}")
             return []
-    
+
     async def export_experiment_data(
         self,
         experiment: str,
@@ -672,20 +673,20 @@ class MetricsTracker:
     ) -> list[dict[str, Any]]:
         """
         Export raw experiment data for external analysis.
-        
+
         Args:
             experiment: Experiment name
             since: Optional start time filter
-            
+
         Returns:
             List of raw metric records
         """
         pool = await self._get_pool()
         if pool is None:
             return []
-        
+
         since = since or datetime.utcnow() - timedelta(days=30)
-        
+
         try:
             async with pool.acquire() as conn:
                 rows = await conn.fetch(
@@ -707,7 +708,7 @@ class MetricsTracker:
                     experiment,
                     since,
                 )
-                
+
                 return [
                     {
                         "query_id": row["query_id"],
@@ -721,30 +722,30 @@ class MetricsTracker:
                     }
                     for row in rows
                 ]
-                
+
         except Exception as e:
             logger.error(f"Failed to export experiment data: {e}")
             return []
-    
+
     async def get_active_experiments(
         self,
         hours: int = 24,
     ) -> list[dict[str, Any]]:
         """
         Get experiments with activity in the last N hours.
-        
+
         Args:
             hours: Time window in hours
-            
+
         Returns:
             List of active experiment summaries
         """
         pool = await self._get_pool()
         if pool is None:
             return []
-        
+
         since = datetime.utcnow() - timedelta(hours=hours)
-        
+
         try:
             async with pool.acquire() as conn:
                 rows = await conn.fetch(
@@ -763,29 +764,29 @@ class MetricsTracker:
                     """,
                     since,
                 )
-                
+
                 return [dict(row) for row in rows]
-                
+
         except Exception as e:
             logger.error(f"Failed to get active experiments: {e}")
             return []
-    
+
     async def cleanup_old_metrics(self, days: int = 90) -> int:
         """
         Clean up metrics older than specified days.
-        
+
         Args:
             days: Age threshold for deletion
-            
+
         Returns:
             Number of records deleted
         """
         pool = await self._get_pool()
         if pool is None:
             return 0
-        
+
         cutoff = datetime.utcnow() - timedelta(days=days)
-        
+
         try:
             async with pool.acquire() as conn:
                 result = await conn.execute(
@@ -795,13 +796,13 @@ class MetricsTracker:
                     """,
                     cutoff,
                 )
-                
+
                 # Parse result (e.g., "DELETE 150")
                 deleted = int(result.split()[1]) if len(result.split()) > 1 else 0
-                
+
                 logger.info(f"Cleaned up {deleted} old metrics (older than {days} days)")
                 return deleted
-                
+
         except Exception as e:
             logger.error(f"Failed to cleanup old metrics: {e}")
             return 0

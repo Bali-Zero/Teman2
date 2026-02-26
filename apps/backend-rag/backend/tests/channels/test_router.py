@@ -5,8 +5,9 @@ Author: Claude Sonnet
 Date: 2026-02-10
 """
 
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock
 
 from backend.channels.base import BaseChannel, ChannelMessage, ChannelResponse
 from backend.channels.router import ChannelRouter

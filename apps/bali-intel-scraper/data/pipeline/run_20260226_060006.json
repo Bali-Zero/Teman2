@@ -1,0 +1,61 @@
+{
+  "run_id": "20260226_060006",
+  "config": {
+    "mode": "full",
+    "categories": [
+      "immigration",
+      "tax",
+      "legal"
+    ],
+    "limit": 20,
+    "min_score": 40,
+    "skip_images": false,
+    "auto_approve": true,
+    "dry_run": false,
+    "continue_on_error": false,
+    "skip_steps": [
+      "4_images"
+    ]
+  },
+  "started_at": "2026-02-26T06:00:06.410167",
+  "steps": {
+    "1_scraping": {
+      "status": "completed",
+      "timestamp": "2026-02-26T06:04:24.213750",
+      "data": {}
+    },
+    "2_validation": {
+      "status": "completed",
+      "timestamp": "2026-02-26T06:04:24.215042",
+      "data": {
+        "validated": 0,
+        "rejected": 0
+      }
+    },
+    "3_enrichment": {
+      "status": "completed",
+      "timestamp": "2026-02-26T06:04:24.215276",
+      "data": {
+        "enriched": 0
+      }
+    },
+    "5_seo": {
+      "status": "completed",
+      "timestamp": "2026-02-26T06:04:24.215455",
+      "data": {}
+    },
+    "6_approval": {
+      "status": "auto_approved",
+      "timestamp": "2026-02-26T06:04:24.215598",
+      "data": {}
+    },
+    "7_publishing": {
+      "status": "completed",
+      "timestamp": "2026-02-26T06:04:24.215757",
+      "data": {}
+    }
+  },
+  "articles": [],
+  "status": "completed",
+  "completed_at": "2026-02-26T06:04:24.215857"
+}

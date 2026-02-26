@@ -10,8 +10,9 @@ Date: 2026-02-10
 
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
-from typing import Any, AsyncIterator
+from typing import Any
 
 logger = logging.getLogger(__name__)
 

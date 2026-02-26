@@ -99,7 +99,9 @@ class KGExtractor:
         # Build schema prompt
         self.schema_prompt = self._build_schema_prompt()
 
-        logger.warning(f"KGExtractor (Anthropic) initialized with model={model} - DEPRECATED: Use GeminiKGExtractor instead")
+        logger.warning(
+            f"KGExtractor (Anthropic) initialized with model={model} - DEPRECATED: Use GeminiKGExtractor instead"
+        )
 
     def _build_schema_prompt(self) -> str:
         """Build the schema description for prompts"""

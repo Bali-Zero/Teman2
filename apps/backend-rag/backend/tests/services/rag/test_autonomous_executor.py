@@ -8,15 +8,15 @@ Author: Windsurf (QA Engineer)
 Created: 2026-02-09
 """
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from backend.services.rag.autonomous_executor import (
+    TASK_TEMPLATES,
     AutonomousExecutor,
-    ExecutionPlan,
     ExecutionStatus,
     StepSafety,
-    TASK_TEMPLATES,
 )
 
 
@@ -53,9 +53,7 @@ class TestPlanGeneration:
     @pytest.mark.asyncio
     async def test_generate_npwp_plan(self, executor):
         """NPWP query generates a 5-step plan with correct structure."""
-        plan = await executor.create_plan(
-            "Create NPWP for test@example.com", "test@example.com"
-        )
+        plan = await executor.create_plan("Create NPWP for test@example.com", "test@example.com")
 
         assert plan["plan_id"].startswith("plan_")
         assert plan["task_type"] == "npwp_registration"
@@ -93,16 +91,12 @@ class TestPlanGeneration:
     async def test_unknown_task_raises_error(self, executor):
         """Unknown task type raises ValueError."""
         with pytest.raises(ValueError, match="Unknown task type"):
-            await executor.create_plan(
-                "Order pizza for the team", "hungry@example.com"
-            )
+            await executor.create_plan("Order pizza for the team", "hungry@example.com")
 
     @pytest.mark.asyncio
     async def test_plan_stored_in_memory(self, executor):
         """Created plan is stored and retrievable."""
-        plan = await executor.create_plan(
-            "Create NPWP for test@example.com", "test@example.com"
-        )
+        plan = await executor.create_plan("Create NPWP for test@example.com", "test@example.com")
 
         retrieved = executor.get_plan_status(plan["plan_id"])
         assert retrieved is not None
@@ -207,9 +201,7 @@ class TestStepExecution:
         plan = await executor.create_plan("Create NPWP for t@t.com", "t@t.com")
 
         # Don't pre-approve - use a very short timeout so test doesn't hang
-        with patch.object(
-            executor, "_wait_for_approval", return_value=False
-        ):
+        with patch.object(executor, "_wait_for_approval", return_value=False):
             result = await executor.execute_plan(plan["plan_id"])
 
         # Should fail because approval was not granted
@@ -368,9 +360,7 @@ class TestTaskTemplates:
         for task_type, steps in TASK_TEMPLATES.items():
             for i, step in enumerate(steps):
                 for field in required_fields:
-                    assert field in step, (
-                        f"Template {task_type} step {i} missing '{field}'"
-                    )
+                    assert field in step, f"Template {task_type} step {i} missing '{field}'"
 
     def test_critical_steps_have_rollback(self):
         """Critical and irreversible steps must have a rollback_action."""

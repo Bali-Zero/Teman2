@@ -15,11 +15,11 @@ from typing import Any
 
 import asyncpg
 
+from backend.app.modules.notifications.service import SMTPProvider
 from backend.app.utils.logging_utils import get_logger
 from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
 from backend.services.integrations.zoho_email_service import ZohoEmailService
 from backend.services.invoicing.invoice_generator import InvoiceGenerator
-from backend.app.modules.notifications.service import SMTPProvider
 
 logger = get_logger(__name__)
 
@@ -87,7 +87,7 @@ class InvoiceAutomationService:
             logger.info(f"Generating invoice PDF for practice {practice_id}")
             try:
                 invoice_number = self.invoice_generator.generate_invoice_number(practice_id)
-                
+
                 pdf_bytes = self.invoice_generator.generate(
                     practice_id=practice_id,
                     client_name=client_data["full_name"],
@@ -99,10 +99,10 @@ class InvoiceAutomationService:
                     quoted_price=float(practice_data.get("quoted_price", 0)),
                     notes="Thank you for choosing Zantara Indonesia. Payment is due within 7 days.",
                 )
-                
+
                 filename = f"Invoice_{invoice_number}.pdf"
                 logger.info(f"PDF generated: {filename}")
-                
+
             except Exception as pdf_error:
                 logger.error(f"Failed to generate PDF: {pdf_error}")
                 return {"success": False, "error": f"PDF generation failed: {pdf_error}"}
@@ -142,7 +142,7 @@ class InvoiceAutomationService:
                 logger.warning(f"Failed to notify accounting: {notify_error}")
 
             # Step 5: Upload backup PDF to Google Drive
-            logger.info(f"Uploading invoice backup to Google Drive")
+            logger.info("Uploading invoice backup to Google Drive")
             drive_file_id = None
             drive_web_link = None
             try:
@@ -205,7 +205,7 @@ class InvoiceAutomationService:
     ) -> bool:
         """Send invoice email to client with PDF attachment via Zoho or SMTP fallback."""
         subject = f"Invoice {invoice_number} from Zantara Indonesia"
-        
+
         body_text = f"""Dear {client_name},
 
 Thank you for choosing Zantara Indonesia for your immigration services.
@@ -249,7 +249,7 @@ For support: support@balizero.com | WhatsApp: +62 859 0436 9574
             return True
         except Exception as zoho_error:
             logger.warning(f"Zoho email failed, trying SMTP: {zoho_error}")
-            
+
             # Fallback to SMTP
             try:
                 success = await self.smtp_provider.send_email(
@@ -259,7 +259,13 @@ For support: support@balizero.com | WhatsApp: +62 859 0436 9574
                     text_body=body_text,
                     from_email=SMTP_SENDER_EMAIL,
                     from_name=SMTP_SENDER_NAME,
-                    attachments=[{"filename": filename, "content": pdf_bytes, "content_type": "application/pdf"}],
+                    attachments=[
+                        {
+                            "filename": filename,
+                            "content": pdf_bytes,
+                            "content_type": "application/pdf",
+                        }
+                    ],
                 )
                 if success:
                     logger.info(f"Invoice email sent to {client_email} via SMTP")
@@ -280,7 +286,7 @@ For support: support@balizero.com | WhatsApp: +62 859 0436 9574
     ) -> bool:
         """Send notification email to accounting (Asya) via Zoho or SMTP fallback."""
         subject = f"🎉 New Invoice {invoice_number} - {client_data['full_name']}"
-        
+
         body_text = f"""Hi Asya!
 
 Hope you're having a great day! ☺️
@@ -288,13 +294,13 @@ Hope you're having a great day! ☺️
 A new invoice has just been generated and sent to our client. Here's everything you need to know:
 
 👤 Client Details:
-   Name: {client_data['full_name']}
-   Email: {client_data.get('email', 'N/A')}
-   Practice ID: {practice_data['id']}
+   Name: {client_data["full_name"]}
+   Email: {client_data.get("email", "N/A")}
+   Practice ID: {practice_data["id"]}
 
 💰 Invoice Info:
    Invoice Number: {invoice_number}
-   Amount: IDR {float(practice_data.get('quoted_price', 0)):,.0f}
+   Amount: IDR {float(practice_data.get("quoted_price", 0)):,.0f}
 
 📎 PDF Attached to this email
 
@@ -335,7 +341,7 @@ P.S. This is an automated email, but the appreciation for your hard work is 100%
             return True
         except Exception as zoho_error:
             logger.warning(f"Zoho email failed, trying SMTP: {zoho_error}")
-            
+
             # Fallback to SMTP
             try:
                 success = await self.smtp_provider.send_email(
@@ -345,7 +351,13 @@ P.S. This is an automated email, but the appreciation for your hard work is 100%
                     text_body=body_text,
                     from_email=SMTP_SENDER_EMAIL,
                     from_name=SMTP_SENDER_NAME,
-                    attachments=[{"filename": filename, "content": pdf_bytes, "content_type": "application/pdf"}],
+                    attachments=[
+                        {
+                            "filename": filename,
+                            "content": pdf_bytes,
+                            "content_type": "application/pdf",
+                        }
+                    ],
                 )
                 if success:
                     logger.info(f"Accounting notification sent to {ACCOUNTING_EMAIL} via SMTP")

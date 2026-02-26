@@ -4,7 +4,11 @@
  * Supports both synchronous query and SSE streaming.
  */
 
-import type { QueryRequest, QueryResponse, StreamNodeEvent } from "@nuzantara/ts-schemas";
+import type {
+  QueryRequest,
+  QueryResponse,
+  StreamNodeEvent,
+} from "@nuzantara/ts-schemas";
 import { parseSSEStream } from "./sse";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
@@ -75,10 +79,13 @@ export class GraphClient {
 
   /** Clear conversation history for a session (new chat). */
   async clearSession(sessionId: string): Promise<void> {
-    await fetch(`${this.baseUrl}/api/session/${encodeURIComponent(sessionId)}`, {
-      method: "DELETE",
-      headers: this.headers(),
-    });
+    await fetch(
+      `${this.baseUrl}/api/session/${encodeURIComponent(sessionId)}`,
+      {
+        method: "DELETE",
+        headers: this.headers(),
+      },
+    );
   }
 
   /** Health check. */

@@ -111,8 +111,7 @@ class WhatsAppChannelAdapter(BaseChannel):
             }
 
             logger.info(
-                f"📨 WhatsApp message: phone={from_phone}, "
-                f"name={sender_name}, text={text[:50]}..."
+                f"📨 WhatsApp message: phone={from_phone}, name={sender_name}, text={text[:50]}..."
             )
 
             return ChannelMessage(
@@ -205,17 +204,13 @@ class WhatsAppChannelAdapter(BaseChannel):
 
                 await self.send_response(channel_id, final_response)
 
-                logger.info(
-                    f"✅ Completed WhatsApp stream: {len(accumulated_text)} chars"
-                )
+                logger.info(f"✅ Completed WhatsApp stream: {len(accumulated_text)} chars")
 
         except Exception as e:
             logger.error(f"Error streaming to WhatsApp: {e}", exc_info=True)
 
             # Send error message
-            error_text = self.formatter.format_error(
-                "Si è verificato un errore. Riprova."
-            )
+            error_text = self.formatter.format_error("Si è verificato un errore. Riprova.")
             error_response = ChannelResponse(text=error_text, metadata={})
             await self.send_response(channel_id, error_response)
 

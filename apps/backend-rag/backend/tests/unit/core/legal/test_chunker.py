@@ -2,7 +2,8 @@
 Tests for LegalChunker
 """
 
-from unittest.mock import MagicMock, patch
+import pytest
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from backend.core.legal.chunker import LegalChunker, SemanticSplitter
 
@@ -17,38 +18,39 @@ class TestSemanticSplitter:
         assert splitter.embedder == mock_embedder
         assert splitter.threshold == 0.7
 
-    def test_split_text_empty(self):
+    @pytest.mark.asyncio
+    async def test_split_text_empty(self):
         """Test splitting empty text"""
         mock_embedder = MagicMock()
         splitter = SemanticSplitter(mock_embedder)
-        result = splitter.split_text("", max_tokens=100)
+        result = await splitter.split_text("", max_tokens=100)
 
         assert result == []
 
-    def test_split_text_single_sentence(self):
+    @pytest.mark.asyncio
+    async def test_split_text_single_sentence(self):
         """Test splitting text with single sentence"""
         mock_embedder = MagicMock()
         mock_embedder.generate_embeddings.return_value = [[1.0, 0.0]]
         splitter = SemanticSplitter(mock_embedder)
         text = "This is a single sentence."
-        result = splitter.split_text(text, max_tokens=100)
+        result = await splitter.split_text(text, max_tokens=100)
 
         assert len(result) == 1
-        # _split_sentences adds a period, so result will have ".." if original has "."
         assert text in result[0] or result[0] == text
 
-    def test_split_text_multiple_sentences(self):
+    @pytest.mark.asyncio
+    async def test_split_text_multiple_sentences(self):
         """Test splitting text with multiple sentences"""
         mock_embedder = MagicMock()
-        # Mock embeddings: first two similar, third different
-        mock_embedder.generate_embeddings.return_value = [
+        mock_embedder.generate_embeddings = AsyncMock(return_value=[
             [1.0, 0.0, 0.0],
-            [0.9, 0.1, 0.0],  # Similar to first
-            [0.0, 0.0, 1.0],  # Different
-        ]
+            [0.9, 0.1, 0.0],
+            [0.0, 0.0, 1.0],
+        ])
         splitter = SemanticSplitter(mock_embedder, similarity_threshold=0.7)
         text = "First sentence. Second sentence. Third sentence."
-        result = splitter.split_text(text, max_tokens=100)
+        result = await splitter.split_text(text, max_tokens=100)
 
         assert len(result) >= 1
         mock_embedder.generate_embeddings.assert_called_once()
@@ -117,32 +119,35 @@ class TestLegalChunker:
 
         assert chunker.max_pasal_tokens == 1000  # Default from constants
 
+    @pytest.mark.asyncio
     @patch("backend.core.legal.chunker.create_embeddings_generator")
-    def test_chunk_empty_text(self, mock_create_embedder):
+    async def test_chunk_empty_text(self, mock_create_embedder):
         """Test chunking empty text"""
         mock_embedder = MagicMock()
         mock_create_embedder.return_value = mock_embedder
         chunker = LegalChunker()
         metadata = {"type_abbrev": "UU", "number": "12", "year": "2024", "topic": "TEST"}
 
-        result = chunker.chunk("", metadata)
+        result = await chunker.chunk("", metadata)
 
         assert result == []
 
+    @pytest.mark.asyncio
     @patch("backend.core.legal.chunker.create_embeddings_generator")
-    def test_chunk_whitespace_only(self, mock_create_embedder):
+    async def test_chunk_whitespace_only(self, mock_create_embedder):
         """Test chunking whitespace-only text"""
         mock_embedder = MagicMock()
         mock_create_embedder.return_value = mock_embedder
         chunker = LegalChunker()
         metadata = {"type_abbrev": "UU", "number": "12", "year": "2024", "topic": "TEST"}
 
-        result = chunker.chunk("   \n\t  ", metadata)
+        result = await chunker.chunk("   \n\t  ", metadata)
 
         assert result == []
 
+    @pytest.mark.asyncio
     @patch("backend.core.legal.chunker.create_embeddings_generator")
-    def test_chunk_with_pasal_structure(self, mock_create_embedder):
+    async def test_chunk_with_pasal_structure(self, mock_create_embedder):
         """Test chunking text with Pasal structure"""
         mock_embedder = MagicMock()
         mock_create_embedder.return_value = mock_embedder
@@ -154,15 +159,16 @@ Ini adalah konten Pasal 1.
 Pasal 2
 Ini adalah konten Pasal 2."""
 
-        result = chunker.chunk(text, metadata)
+        result = await chunker.chunk(text, metadata)
 
         assert len(result) > 0
         assert all("chunk_index" in chunk for chunk in result)
         assert all("total_chunks" in chunk for chunk in result)
         assert all("has_context" in chunk for chunk in result)
 
+    @pytest.mark.asyncio
     @patch("backend.core.legal.chunker.create_embeddings_generator")
-    def test_chunk_without_pasal_structure(self, mock_create_embedder):
+    async def test_chunk_without_pasal_structure(self, mock_create_embedder):
         """Test chunking text without Pasal structure (fallback)"""
         mock_embedder = MagicMock()
         mock_embedder.generate_embeddings.return_value = [[1.0, 0.0], [0.0, 1.0]]
@@ -172,14 +178,15 @@ Ini adalah konten Pasal 2."""
         text = """This is unstructured text without Pasal markers.
 It should use fallback semantic chunking."""
 
-        result = chunker.chunk(text, metadata)
+        result = await chunker.chunk(text, metadata)
 
         assert len(result) > 0
         assert all("chunk_index" in chunk for chunk in result)
         assert all("total_chunks" in chunk for chunk in result)
 
+    @pytest.mark.asyncio
     @patch("backend.core.legal.chunker.create_embeddings_generator")
-    def test_chunk_with_structure(self, mock_create_embedder):
+    async def test_chunk_with_structure(self, mock_create_embedder):
         """Test chunking with provided structure"""
         mock_embedder = MagicMock()
         mock_create_embedder.return_value = mock_embedder
@@ -197,26 +204,26 @@ It should use fallback semantic chunking."""
         text = """Pasal 1
 Content of Pasal 1."""
 
-        result = chunker.chunk(text, metadata, structure)
+        result = await chunker.chunk(text, metadata, structure)
 
         assert len(result) > 0
 
+    @pytest.mark.asyncio
     @patch("backend.core.legal.chunker.create_embeddings_generator")
-    def test_chunk_large_pasal_split_by_ayat(self, mock_create_embedder):
+    async def test_chunk_large_pasal_split_by_ayat(self, mock_create_embedder):
         """Test chunking large Pasal that gets split by Ayat"""
         mock_embedder = MagicMock()
         mock_create_embedder.return_value = mock_embedder
-        chunker = LegalChunker(max_pasal_tokens=100)  # Small limit
+        chunker = LegalChunker(max_pasal_tokens=100)
         metadata = {"type_abbrev": "UU", "number": "12", "year": "2024", "topic": "TEST"}
-        # Create a large Pasal with Ayat
         large_pasal = (
             """Pasal 1
 (1) First ayat with lots of content. """
             * 50
-        )  # Make it large
+        )
         text = large_pasal
 
-        result = chunker.chunk(text, metadata)
+        result = await chunker.chunk(text, metadata)
 
         assert len(result) > 0
 
@@ -381,8 +388,9 @@ Content of Pasal 2."""
 
         assert bab_context is None
 
+    @pytest.mark.asyncio
     @patch("backend.core.legal.chunker.create_embeddings_generator")
-    def test_fallback_chunking(self, mock_create_embedder):
+    async def test_fallback_chunking(self, mock_create_embedder):
         """Test _fallback_chunking method"""
         mock_embedder = MagicMock()
         mock_embedder.generate_embeddings.return_value = [[1.0, 0.0], [0.0, 1.0]]
@@ -391,7 +399,7 @@ Content of Pasal 2."""
         metadata = {"type_abbrev": "UU", "number": "12", "year": "2024", "topic": "TEST"}
         text = "Unstructured text without Pasal markers."
 
-        chunks = chunker._fallback_chunking(text, metadata)
+        chunks = await chunker._fallback_chunking(text, metadata)
 
         assert len(chunks) > 0
         assert all("chunk_index" in chunk for chunk in chunks)

@@ -29,8 +29,4 @@ Now answer the question directly using the verified data above."""
 
 def build_simple_prompt(rag_results: str, user_memory: str, query: str) -> str:
     """Build simplified prompt for A/B testing."""
-    return SIMPLE_TEMPLATE.format(
-        rag_results=rag_results,
-        user_memory=user_memory,
-        query=query
-    )
+    return SIMPLE_TEMPLATE.format(rag_results=rag_results, user_memory=user_memory, query=query)

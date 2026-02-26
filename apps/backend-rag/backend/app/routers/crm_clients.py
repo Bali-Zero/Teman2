@@ -342,7 +342,9 @@ async def create_client(
                                 client_type=client.client_type,
                             )
                         )
-                        logger.info(f"🚀 Drive folder creation initiated for client {new_client['id']}")
+                        logger.info(
+                            f"🚀 Drive folder creation initiated for client {new_client['id']}"
+                        )
                     except Exception as drive_error:
                         logger.warning(f"Failed to initiate Drive folder creation: {drive_error}")
                         # Don't fail client creation if Drive folder fails
@@ -1476,6 +1478,7 @@ async def delete_client_document(
 # NPWP OCR ENDPOINT
 # ================================================
 
+
 class NpwpExtractRequest(BaseModel):
     file: str  # base64 encoded file
     file_name: str
@@ -1517,7 +1520,9 @@ async def extract_npwp(
 
         # Decode base64 file
         try:
-            file_data = base64.b64decode(request.file.split(",")[-1] if "," in request.file else request.file)
+            file_data = base64.b64decode(
+                request.file.split(",")[-1] if "," in request.file else request.file
+            )
         except Exception as e:
             logger.error(f"Failed to decode base64 file: {e}")
             return NpwpExtractResponse(success=False, message="Invalid file format")
@@ -1592,7 +1597,7 @@ Rules:
             npwp=npwp if npwp else None,
             address=extracted.get("address"),
             city=extracted.get("city"),
-            message=f"OCR completed with confidence {extracted.get('confidence', 'unknown')}"
+            message=f"OCR completed with confidence {extracted.get('confidence', 'unknown')}",
         )
 
     except Exception as e:
@@ -1603,6 +1608,7 @@ Rules:
 # ================================================
 # NIB OCR ENDPOINT
 # ================================================
+
 
 class NibExtractRequest(BaseModel):
     file: str  # base64 encoded file
@@ -1645,7 +1651,9 @@ async def extract_nib(
 
         # Decode base64 file
         try:
-            file_data = base64.b64decode(request.file.split(",")[-1] if "," in request.file else request.file)
+            file_data = base64.b64decode(
+                request.file.split(",")[-1] if "," in request.file else request.file
+            )
         except Exception as e:
             logger.error(f"Failed to decode base64 file: {e}")
             return NibExtractResponse(success=False, message="Invalid file format")
@@ -1720,7 +1728,7 @@ Rules:
             nib=nib if nib else None,
             company_name=extracted.get("company_name"),
             kbli_code=extracted.get("kbli_code"),
-            message=f"OCR completed with confidence {extracted.get('confidence', 'unknown')}"
+            message=f"OCR completed with confidence {extracted.get('confidence', 'unknown')}",
         )
 
     except Exception as e:
@@ -1740,8 +1748,7 @@ async def get_client_required_documents(
         async with db_pool.acquire() as conn:
             # Verify client is viewing their own data
             client = await conn.fetchrow(
-                "SELECT id FROM clients WHERE email = $1",
-                current_user["email"]
+                "SELECT id FROM clients WHERE email = $1", current_user["email"]
             )
 
             if not client or client["id"] != client_id:
@@ -1761,7 +1768,7 @@ async def get_client_required_documents(
                 WHERE p.client_id = $1 AND p.status NOT IN ('completed', 'cancelled')
                 ORDER BY prd.is_required DESC, prd.created_at DESC
                 """,
-                client_id
+                client_id,
             )
 
             return [

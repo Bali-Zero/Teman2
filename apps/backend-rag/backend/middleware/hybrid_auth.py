@@ -97,8 +97,10 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             # ========================================================================
             # INFRASTRUCTURE & MONITORING ENDPOINTS
             # ========================================================================
+            "/",  # BUSINESS: Root path for simple connectivity checks
             "/health",  # BUSINESS: Health checks required by load balancers, monitoring systems
             "/health/",  # BUSINESS: Alternative health check path (common pattern)
+            "/api/health",  # BUSINESS: Alternative health check path
             # SECURITY: /docs, /openapi.json, /redoc, /metrics moved to _is_protected_infra_endpoint()
             # They require admin API key in production, are unrestricted in dev/staging
             # ========================================================================
@@ -161,6 +163,8 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             # ========================================================================
             # BLOG & MARKETING ENDPOINTS (Public for website visitors)
             # ========================================================================
+            "/api/blog/",  # BUSINESS: Public blog articles and content
+            "/api/vitals",  # BUSINESS: Frontend performance telemetry
             "/api/blog/newsletter/subscribe",  # BUSINESS: Newsletter subscription - public marketing endpoint
             "/api/blog/newsletter/confirm",  # BUSINESS: Newsletter confirmation - token-based verification
             "/api/blog/newsletter/unsubscribe",  # BUSINESS: Newsletter unsubscribe - token-based verification (legal requirement)
@@ -193,9 +197,15 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
         )
 
     # Paths that require admin API key in production (docs, metrics)
-    _PROTECTED_INFRA_PATHS = frozenset({
-        "/docs", "/docs/", "/openapi.json", "/api/v1/openapi.json", "/redoc",
-    })
+    _PROTECTED_INFRA_PATHS = frozenset(
+        {
+            "/docs",
+            "/docs/",
+            "/openapi.json",
+            "/api/v1/openapi.json",
+            "/redoc",
+        }
+    )
     _METRICS_PATHS = frozenset({"/metrics", "/metrics/"})
 
     def _is_protected_infra_endpoint(self, request: Request) -> bool:

@@ -17,7 +17,6 @@ import hashlib
 import json
 import logging
 import os
-from typing import Optional
 
 import redis.asyncio as redis
 
@@ -42,7 +41,7 @@ class NotebookLMCacheService:
         await cache.set(question, answer)
     """
 
-    def __init__(self, redis_url: Optional[str] = None):
+    def __init__(self, redis_url: str | None = None):
         """
         Initialize cache service.
 
@@ -50,7 +49,7 @@ class NotebookLMCacheService:
             redis_url: Redis connection URL (defaults to env var REDIS_URL)
         """
         self.redis_url = redis_url or os.getenv("REDIS_URL", "redis://localhost:6379")
-        self.redis_client: Optional[redis.Redis] = None
+        self.redis_client: redis.Redis | None = None
         self.ttl_seconds = 30 * 24 * 60 * 60  # 30 days
         self.cache_prefix = "notebooklm:qa:"
 
@@ -58,9 +57,7 @@ class NotebookLMCacheService:
         """Initialize Redis connection."""
         try:
             self.redis_client = await redis.from_url(
-                self.redis_url,
-                encoding="utf-8",
-                decode_responses=True
+                self.redis_url, encoding="utf-8", decode_responses=True
             )
             # Test connection
             await self.redis_client.ping()
@@ -98,7 +95,7 @@ class NotebookLMCacheService:
         # Hash to fixed length
         return hashlib.md5(normalized.encode()).hexdigest()
 
-    async def get(self, question: str) -> Optional[dict]:
+    async def get(self, question: str) -> dict | None:
         """
         Get cached answer for question.
 
@@ -134,12 +131,7 @@ class NotebookLMCacheService:
             logger.error(f"❌ Cache get error: {e}")
             return None
 
-    async def set(
-        self,
-        question: str,
-        answer: str,
-        metadata: Optional[dict] = None
-    ) -> bool:
+    async def set(self, question: str, answer: str, metadata: dict | None = None) -> bool:
         """
         Cache answer for question.
 
@@ -160,19 +152,18 @@ class NotebookLMCacheService:
 
             # Build cache entry
             from datetime import datetime
+
             cache_entry = {
                 "question": question,
                 "answer": answer,
                 "cached_at": datetime.utcnow().isoformat() + "Z",
                 "source": "cache",
-                "metadata": metadata or {}
+                "metadata": metadata or {},
             }
 
             # Store with TTL
             await self.redis_client.setex(
-                key,
-                self.ttl_seconds,
-                json.dumps(cache_entry, ensure_ascii=False)
+                key, self.ttl_seconds, json.dumps(cache_entry, ensure_ascii=False)
             )
 
             logger.info(f"✅ Cached: {question[:50]}... (TTL: {self.ttl_seconds}s)")
@@ -258,7 +249,7 @@ class NotebookLMCacheService:
                 "total_keys": total_keys,
                 "memory_usage_mb": round(memory_mb, 2),
                 "cache_prefix": self.cache_prefix,
-                "ttl_days": self.ttl_seconds / (24 * 60 * 60)
+                "ttl_days": self.ttl_seconds / (24 * 60 * 60),
             }
         except Exception as e:
             logger.error(f"❌ Cache stats error: {e}")

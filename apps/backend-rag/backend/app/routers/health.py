@@ -287,12 +287,19 @@ async def detailed_health(request: Request) -> dict[str, Any]:
     # Check KG LangGraph Orchestrator (Phase 3)
     try:
         import os
-        kg_langgraph_enabled = os.getenv("ENABLE_KG_LANGGRAPH", "false").lower() in ("true", "1", "yes")
-        
+
+        kg_langgraph_enabled = os.getenv("ENABLE_KG_LANGGRAPH", "false").lower() in (
+            "true",
+            "1",
+            "yes",
+        )
+
         # Get orchestrator from global instance if available
         from backend.app.dependencies import _agentic_rag_orchestrator
-        
-        if _agentic_rag_orchestrator and hasattr(_agentic_rag_orchestrator, 'kg_langgraph_orchestrator'):
+
+        if _agentic_rag_orchestrator and hasattr(
+            _agentic_rag_orchestrator, "kg_langgraph_orchestrator"
+        ):
             kg_orchestrator = _agentic_rag_orchestrator.kg_langgraph_orchestrator
             if kg_orchestrator:
                 services["kg_langgraph"] = {
@@ -307,7 +314,10 @@ async def detailed_health(request: Request) -> dict[str, Any]:
                 services["kg_langgraph"] = {
                     "status": "disabled",
                     "critical": False,
-                    "details": {"enabled": False, "reason": "ENABLE_KG_LANGGRAPH=false or db_pool missing"},
+                    "details": {
+                        "enabled": False,
+                        "reason": "ENABLE_KG_LANGGRAPH=false or db_pool missing",
+                    },
                 }
         else:
             services["kg_langgraph"] = {
@@ -315,7 +325,9 @@ async def detailed_health(request: Request) -> dict[str, Any]:
                 "critical": False,
                 "details": {
                     "enabled": kg_langgraph_enabled,
-                    "reason": "Orchestrator not yet initialized" if kg_langgraph_enabled else "ENABLE_KG_LANGGRAPH=false",
+                    "reason": "Orchestrator not yet initialized"
+                    if kg_langgraph_enabled
+                    else "ENABLE_KG_LANGGRAPH=false",
                 },
             }
     except Exception as e:
@@ -541,3 +553,126 @@ async def knowledge_graph_stats(request: Request) -> dict[str, Any]:
             "error": str(e),
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
+
+
+@router.get("/metrics/summary")
+async def metrics_summary(request: Request) -> dict[str, Any]:
+    """
+    Human-readable JSON metrics summary for debugging and MCP tools.
+
+    Aggregates the most important Prometheus metrics into a single JSON response.
+    Unlike /metrics (Prometheus text format), this is designed for:
+    - curl debugging
+    - MCP check_health_detailed
+    - Dashboard quick-glance
+
+    Returns:
+        dict: Top-level system, RAG, cache, AI, and resource metrics
+    """
+    import time as time_mod
+
+    import psutil as _psutil
+
+    from backend.app.metrics import (
+        BOOT_TIME,
+        metrics_collector,
+    )
+
+    now = datetime.now(timezone.utc)
+    uptime_seconds = time_mod.time() - BOOT_TIME
+
+    # Resource snapshot
+    process = _psutil.Process()
+    mem_info = process.memory_info()
+    rss_mb = mem_info.rss / (1024 * 1024)
+
+    # DB pool
+    db_pool_info = {}
+    db_pool = getattr(request.app.state, "db_pool", None)
+    if db_pool:
+        try:
+            db_pool_info = {
+                "size": db_pool.get_size(),
+                "max_size": db_pool.get_max_size(),
+                "idle": db_pool.get_idle_size(),
+                "saturation_pct": round(
+                    (db_pool.get_size() / db_pool.get_max_size()) * 100, 1
+                )
+                if db_pool.get_max_size() > 0
+                else 0,
+            }
+        except Exception:
+            db_pool_info = {"error": "unavailable"}
+
+    # Health monitor status
+    health_monitor_info = {}
+    health_monitor = getattr(request.app.state, "health_monitor", None)
+    if health_monitor:
+        try:
+            hm_status = health_monitor.get_status()
+            health_monitor_info = {
+                "running": hm_status.get("running", False),
+                "services": hm_status.get("last_status", {}),
+                "resources": hm_status.get("resources", {}),
+            }
+        except Exception:
+            health_monitor_info = {"error": "unavailable"}
+
+    # Alert service channels
+    alert_channels = {}
+    try:
+        from backend.services.monitoring.alert_service import get_alert_service
+
+        alert_svc = get_alert_service()
+        alert_channels = {
+            "telegram": alert_svc.enable_telegram,
+            "slack": alert_svc.enable_slack,
+            "discord": alert_svc.enable_discord,
+            "logging": True,
+        }
+    except Exception:
+        alert_channels = {"error": "unavailable"}
+
+    # Qdrant stats (cached — reuse from health check)
+    qdrant_info = await get_qdrant_stats()
+
+    return {
+        "status": "ok",
+        "timestamp": now.isoformat(),
+        "system": {
+            "uptime_seconds": round(uptime_seconds, 0),
+            "uptime_human": _format_uptime(uptime_seconds),
+            "memory_rss_mb": round(rss_mb, 1),
+            "cpu_percent": process.cpu_percent(interval=None),
+            "pid": process.pid,
+        },
+        "database": {
+            "pool": db_pool_info,
+        },
+        "vector_db": {
+            "collections": qdrant_info.get("collections", 0),
+            "total_documents": qdrant_info.get("total_documents", 0),
+        },
+        "monitoring": {
+            "health_monitor": health_monitor_info,
+            "alert_channels": alert_channels,
+            "latency_threshold_ms": settings.latency_alert_threshold_ms,
+            "memory_threshold_pct": settings.memory_alert_threshold_percent,
+        },
+        "config": {
+            "embedding_model": "text-embedding-3-small",
+            "version": "v100-qdrant",
+        },
+    }
+
+
+def _format_uptime(seconds: float) -> str:
+    """Format uptime seconds into human-readable string."""
+    days = int(seconds // 86400)
+    hours = int((seconds % 86400) // 3600)
+    minutes = int((seconds % 3600) // 60)
+    if days > 0:
+        return f"{days}d {hours}h {minutes}m"
+    if hours > 0:
+        return f"{hours}h {minutes}m"
+    return f"{minutes}m"

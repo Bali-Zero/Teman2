@@ -626,7 +626,7 @@ async def get_profile(
 ) -> dict[str, Any]:
     """
     Get client profile information.
-    
+
     Returns complete profile including:
     - Personal info (name, email, phone, DOB, gender, nationality)
     - Passport info (number, expiry)
@@ -675,8 +675,12 @@ async def get_profile(
                     "whatsapp": row["whatsapp"],
                     "nationality": row["nationality"],
                     "passport_number": row["passport_number"],
-                    "passport_expiry": row["passport_expiry"].isoformat() if row["passport_expiry"] else None,
-                    "date_of_birth": row["date_of_birth"].isoformat() if row["date_of_birth"] else None,
+                    "passport_expiry": row["passport_expiry"].isoformat()
+                    if row["passport_expiry"]
+                    else None,
+                    "date_of_birth": row["date_of_birth"].isoformat()
+                    if row["date_of_birth"]
+                    else None,
                     "gender": row["gender"],
                     "address": row["address"],
                     "member_since": row["created_at"].isoformat() if row["created_at"] else None,
@@ -684,7 +688,9 @@ async def get_profile(
                         "email": row["assigned_to"],
                         "name": row["assigned_to_name"] or row["assigned_to"],
                         "avatar_url": row["assigned_to_avatar"],
-                    } if row["assigned_to"] else None,
+                    }
+                    if row["assigned_to"]
+                    else None,
                 },
             }
     except HTTPException:

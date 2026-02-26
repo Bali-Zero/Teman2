@@ -5,8 +5,9 @@ Author: Claude Sonnet 4.5
 Date: 2026-02-10
 """
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from backend.channels.base import ChannelMessage, ChannelResponse
 from backend.channels.telegram.adapter import TelegramChannelAdapter
@@ -161,11 +162,14 @@ async def test_send_status_update(telegram_adapter):
 @pytest.mark.asyncio
 async def test_stream_response(telegram_adapter):
     """Test streaming response with progressive updates."""
-    with patch.object(
-        telegram_adapter.bot_service, "send_message", new_callable=AsyncMock
-    ) as mock_send, patch.object(
-        telegram_adapter.bot_service, "edit_message_text", new_callable=AsyncMock
-    ) as mock_edit:
+    with (
+        patch.object(
+            telegram_adapter.bot_service, "send_message", new_callable=AsyncMock
+        ) as mock_send,
+        patch.object(
+            telegram_adapter.bot_service, "edit_message_text", new_callable=AsyncMock
+        ) as mock_edit,
+    ):
         # Mock initial message creation
         mock_send.return_value = {
             "ok": True,

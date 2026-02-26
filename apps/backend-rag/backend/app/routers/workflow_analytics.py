@@ -48,9 +48,7 @@ async def get_workflow_dashboard(
     try:
         return await repo.get_dashboard_summary(days=days)
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to load workflow dashboard: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to load workflow dashboard: {str(e)}")
 
 
 @router.get("/workflow-dashboard/top")
@@ -87,9 +85,7 @@ async def get_workflow_volume(
 class WorkflowFeedbackRequest(BaseModel):
     workflow_id: str = Field(..., description="Workflow identifier (e.g. wf-abc123)")
     followed: bool = Field(..., description="Whether the user followed the workflow")
-    feedback_score: float | None = Field(
-        None, ge=0.0, le=5.0, description="Score from 0.0 to 5.0"
-    )
+    feedback_score: float | None = Field(None, ge=0.0, le=5.0, description="Score from 0.0 to 5.0")
     comment: str | None = Field(None, max_length=1000, description="Optional feedback text")
 
 

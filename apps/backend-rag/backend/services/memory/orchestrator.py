@@ -32,7 +32,6 @@ from typing import Any
 import asyncpg
 
 from backend.agents.services.kg_repository import KnowledgeGraphRepository
-
 from backend.services.memory.collective_memory_service import CollectiveMemoryService
 from backend.services.memory.episodic_memory_service import EpisodicMemoryService
 from backend.services.memory.memory_fact_extractor import MemoryFactExtractor

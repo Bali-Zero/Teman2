@@ -95,9 +95,7 @@ class ChannelRateLimiter:
 
         # Remove hour-old counts
         hour_ago = now - 3600
-        self.hour_counts[channel_id] = [
-            t for t in self.hour_counts[channel_id] if t > hour_ago
-        ]
+        self.hour_counts[channel_id] = [t for t in self.hour_counts[channel_id] if t > hour_ago]
 
 
 class MessageDeduplicator:
@@ -169,7 +167,7 @@ class ChannelMetrics:
 
         # Trim old samples
         if len(self.latencies[channel]) > self.max_latency_samples:
-            self.latencies[channel] = self.latencies[channel][-self.max_latency_samples:]
+            self.latencies[channel] = self.latencies[channel][-self.max_latency_samples :]
 
     def record_error(self, channel: str, error_type: str):
         """Record error."""
@@ -179,15 +177,11 @@ class ChannelMetrics:
         """Get statistics for channel."""
         received = self.counters.get(f"{channel}.messages_received", 0)
         sent = self.counters.get(f"{channel}.messages_sent", 0)
-        errors = sum(
-            v for k, v in self.counters.items() if k.startswith(f"{channel}.errors.")
-        )
+        errors = sum(v for k, v in self.counters.items() if k.startswith(f"{channel}.errors."))
 
         latencies = self.latencies.get(channel, [])
         avg_latency = sum(latencies) / len(latencies) if latencies else 0
-        p95_latency = (
-            sorted(latencies)[int(len(latencies) * 0.95)] if latencies else 0
-        )
+        p95_latency = sorted(latencies)[int(len(latencies) * 0.95)] if latencies else 0
 
         success_rate = (sent / received * 100) if received > 0 else 0
 

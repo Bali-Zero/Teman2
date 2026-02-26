@@ -18,8 +18,8 @@ Requirements:
 """
 
 import asyncio
-import sys
 import os
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -47,7 +47,7 @@ async def test_workflow_with_mocked_services():
     }
 
     print(f"\n📝 Question: {question}")
-    print(f"🔧 Mode: Mocked services (no external calls)")
+    print("🔧 Mode: Mocked services (no external calls)")
 
     try:
         result = await invoke_rag_workflow(question=question, metadata=metadata)
@@ -60,10 +60,10 @@ async def test_workflow_with_mocked_services():
         print(f"Step Count: {result.get('step_count', 0)}")
         print(f"Documents Retrieved: {len(result.get('documents', []))}")
         print(f"Filtered Documents: {len(result.get('filtered_documents', []))}")
-        print(f"\n📄 Generation (first 500 chars):")
-        print(result.get('generation', 'No generation')[:500])
+        print("\n📄 Generation (first 500 chars):")
+        print(result.get("generation", "No generation")[:500])
 
-        if result.get('errors'):
+        if result.get("errors"):
             print(f"\n⚠️ Errors: {result.get('errors')}")
 
         return True
@@ -71,6 +71,7 @@ async def test_workflow_with_mocked_services():
     except Exception as e:
         print(f"\n❌ ERROR: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -86,13 +87,13 @@ async def test_workflow_with_real_services():
         print("\n🔧 Initializing services...")
 
         # 1. Initialize SearchService
-        from backend.services.search.search_service import SearchService
-        from backend.services.ingestion.collection_manager import CollectionManager
-        from backend.services.routing.conflict_resolver import ConflictResolver
-        from backend.services.misc.cultural_insights_service import CulturalInsightsService
-        from backend.services.routing.query_router_integration import QueryRouterIntegration
-        from backend.core.embeddings import create_embeddings_generator
         from backend.app.core.config import settings
+        from backend.core.embeddings import create_embeddings_generator
+        from backend.services.ingestion.collection_manager import CollectionManager
+        from backend.services.misc.cultural_insights_service import CulturalInsightsService
+        from backend.services.routing.conflict_resolver import ConflictResolver
+        from backend.services.routing.query_router_integration import QueryRouterIntegration
+        from backend.services.search.search_service import SearchService
 
         print("   → Initializing SearchService...")
         collection_manager = CollectionManager(qdrant_url=settings.qdrant_url)
@@ -100,8 +101,7 @@ async def test_workflow_with_real_services():
         query_router = QueryRouterIntegration()
         embedder = create_embeddings_generator()
         cultural_insights = CulturalInsightsService(
-            collection_manager=collection_manager,
-            embedder=embedder
+            collection_manager=collection_manager, embedder=embedder
         )
 
         search_service = SearchService(
@@ -120,7 +120,7 @@ async def test_workflow_with_real_services():
         print("   ✅ LLMGateway initialized")
 
         # 3. Inject services into agent graph
-        from backend.app.agents.graph import set_search_service, set_llm_gateway
+        from backend.app.agents.graph import set_llm_gateway, set_search_service
 
         print("   → Injecting services into agent graph...")
         set_search_service(search_service)
@@ -151,27 +151,27 @@ async def test_workflow_with_real_services():
         print(f"Step Count: {result.get('step_count', 0)}")
         print(f"Timestamp: {result.get('timestamp')}")
 
-        print(f"\n📊 Retrieval Stats:")
+        print("\n📊 Retrieval Stats:")
         print(f"   Documents Retrieved: {len(result.get('documents', []))}")
         print(f"   Retrieval Scores: {result.get('retrieved_scores', [])[:3]}")
 
-        print(f"\n🔍 Grading Stats:")
+        print("\n🔍 Grading Stats:")
         print(f"   Filtered Documents: {len(result.get('filtered_documents', []))}")
         print(f"   Relevance Scores: {result.get('relevance_scores', [])[:3]}")
 
-        print(f"\n📄 Generated Answer:")
+        print("\n📄 Generated Answer:")
         print("-" * 80)
-        print(result.get('generation', 'No generation'))
+        print(result.get("generation", "No generation"))
         print("-" * 80)
 
-        if result.get('errors'):
+        if result.get("errors"):
             print(f"\n⚠️ Errors: {result.get('errors')}")
 
         # Print sample documents
-        if result.get('documents'):
-            print(f"\n📚 Sample Retrieved Document (first 300 chars):")
+        if result.get("documents"):
+            print("\n📚 Sample Retrieved Document (first 300 chars):")
             print("-" * 80)
-            print(result['documents'][0][:300] + "...")
+            print(result["documents"][0][:300] + "...")
             print("-" * 80)
 
         return True
@@ -179,6 +179,7 @@ async def test_workflow_with_real_services():
     except Exception as e:
         print(f"\n❌ ERROR: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -203,7 +204,7 @@ async def test_workflow_error_handling():
         try:
             result = await invoke_rag_workflow(question=question)
             print(f"   Result: {'✅ Handled' if result else '❌ Failed'}")
-            if result.get('errors'):
+            if result.get("errors"):
                 print(f"   Errors captured: {result['errors'][:1]}")
         except Exception as e:
             print(f"   ❌ Exception: {e}")
@@ -223,7 +224,7 @@ async def run_all_tests():
 
     # Test 1: Mocked services (always runs)
     print("\n" + "🔹" * 40)
-    results['test_1_mocked'] = await test_workflow_with_mocked_services()
+    results["test_1_mocked"] = await test_workflow_with_mocked_services()
 
     # Test 2: Real services (requires credentials)
     print("\n" + "🔹" * 40)
@@ -233,15 +234,15 @@ async def run_all_tests():
     print("   - Backend dependencies installed")
 
     proceed = input("\n❓ Run Test 2 with real services? (y/n): ").strip().lower()
-    if proceed == 'y':
-        results['test_2_real'] = await test_workflow_with_real_services()
+    if proceed == "y":
+        results["test_2_real"] = await test_workflow_with_real_services()
     else:
         print("⏭️  Skipping Test 2")
-        results['test_2_real'] = None
+        results["test_2_real"] = None
 
     # Test 3: Error handling (always runs)
     print("\n" + "🔹" * 40)
-    results['test_3_errors'] = await test_workflow_error_handling()
+    results["test_3_errors"] = await test_workflow_error_handling()
 
     # Summary
     print("\n" + "=" * 80)
@@ -282,7 +283,7 @@ if __name__ == "__main__":
     has_openai_key = bool(os.getenv("OPENAI_API_KEY"))
     has_qdrant_url = bool(os.getenv("QDRANT_URL"))
 
-    print(f"\n🔑 API Keys:")
+    print("\n🔑 API Keys:")
     print(f"   GOOGLE_API_KEY: {'✅ Set' if has_google_key else '❌ Not set'}")
     print(f"   OPENAI_API_KEY: {'✅ Set' if has_openai_key else '❌ Not set'}")
     print(f"   QDRANT_URL: {'✅ Set' if has_qdrant_url else '❌ Not set (will use default)'}")
@@ -302,5 +303,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n\n❌ Fatal error: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

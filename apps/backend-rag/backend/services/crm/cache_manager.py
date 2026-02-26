@@ -201,11 +201,14 @@ class QueryCache:
 
     @staticmethod
     def _normalize_phone(phone: str) -> str:
-        """Normalizza telefono per cache key."""
-        digits = "".join(c for c in phone if c.isdigit())
-        if digits.startswith("0"):
-            digits = "62" + digits[1:]
-        return digits
+        """Normalizza telefono per cache key.
+
+        Uses the canonical E.164 normalization from validators.py.
+        """
+        from backend.services.crm.validators import normalize_phone_e164
+
+        result = normalize_phone_e164(phone)
+        return result or phone
 
     async def invalidate_client(self, client_id: int) -> None:
         """Invalida cache per cliente specifico."""

@@ -3,9 +3,8 @@ Routing Statistics Service
 Responsibility: Track routing statistics and metrics
 """
 
-from typing import Any
-
 import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 

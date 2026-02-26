@@ -94,7 +94,9 @@ class ProcessAutomationService:
                         practice_data=practice_data,
                     )
                     results["team_leader_notified"] = True
-                    logger.info(f"Process start notification sent to team leader {team_leader_email}")
+                    logger.info(
+                        f"Process start notification sent to team leader {team_leader_email}"
+                    )
                 except Exception as e:
                     logger.error(f"Failed to send notification to team leader: {e}")
 
@@ -196,8 +198,8 @@ This one's all yours. Here are the details:
 
 👤 Client: {client_name}
 🔖 Service: {practice_type}
-🆔 Practice ID: {practice_data['id']}
-💰 Amount: {practice_data.get('quoted_price', 'N/A')}
+🆔 Practice ID: {practice_data["id"]}
+💰 Amount: {practice_data.get("quoted_price", "N/A")}
 
 ✅ Asya has confirmed the payment is in, so you're good to go!
 

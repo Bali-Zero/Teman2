@@ -36,36 +36,30 @@ router = APIRouter(prefix="/api/monitoring", tags=["monitoring", "rag"])
 # Pydantic Models
 # ============================================================================
 
+
 class AlertThresholdsRequest(BaseModel):
     """Request model for updating alert thresholds."""
+
     min_score: float = Field(
-        default=0.3,
-        ge=0.0,
-        le=1.0,
-        description="Minimum acceptable retrieval score (0.0-1.0)"
+        default=0.3, ge=0.0, le=1.0, description="Minimum acceptable retrieval score (0.0-1.0)"
     )
     max_abstain_rate: float = Field(
-        default=0.2,
-        ge=0.0,
-        le=1.0,
-        description="Maximum acceptable abstain rate (0.0-1.0)"
+        default=0.2, ge=0.0, le=1.0, description="Maximum acceptable abstain rate (0.0-1.0)"
     )
     max_latency_ms: float = Field(
         default=5000.0,
         ge=100.0,
         le=60000.0,
-        description="Maximum acceptable latency in milliseconds"
+        description="Maximum acceptable latency in milliseconds",
     )
     min_cache_hit_rate: float = Field(
-        default=0.5,
-        ge=0.0,
-        le=1.0,
-        description="Minimum acceptable cache hit rate (0.0-1.0)"
+        default=0.5, ge=0.0, le=1.0, description="Minimum acceptable cache hit rate (0.0-1.0)"
     )
 
 
 class AlertThresholdsResponse(BaseModel):
     """Response model for alert thresholds."""
+
     min_score: float
     max_abstain_rate: float
     max_latency_ms: float
@@ -75,6 +69,7 @@ class AlertThresholdsResponse(BaseModel):
 
 class RetrievalQualityResponse(BaseModel):
     """Response model for retrieval quality metrics."""
+
     time_range: str
     total_queries: int
     timestamp: str
@@ -87,12 +82,14 @@ class RetrievalQualityResponse(BaseModel):
 
 class ScoreTrendResponse(BaseModel):
     """Response model for score trends."""
+
     days: int
     trend: list[dict[str, Any]]
 
 
 class AbstainStatisticsResponse(BaseModel):
     """Response model for abstain statistics."""
+
     period_days: int
     total_abstains: int
     total_queries: int
@@ -103,6 +100,7 @@ class AbstainStatisticsResponse(BaseModel):
 
 class LatencyPercentilesResponse(BaseModel):
     """Response model for latency percentiles."""
+
     period_days: int
     total_queries: int
     percentiles: dict[str, float]
@@ -113,6 +111,7 @@ class LatencyPercentilesResponse(BaseModel):
 
 class ErrorResponse(BaseModel):
     """Error response model."""
+
     detail: str
 
 
@@ -120,37 +119,39 @@ class ErrorResponse(BaseModel):
 # Authentication Helper
 # ============================================================================
 
+
 def verify_admin_access(current_user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
     """
     Verify that the user has admin or founder level access.
-    
+
     Args:
         current_user: Current authenticated user
-        
+
     Returns:
         User dict if authorized
-        
+
     Raises:
         HTTPException: If user lacks required permissions
     """
     allowed_roles = ["admin", "Founder", "founder", "superuser"]
     user_role = current_user.get("role", "").lower()
-    
+
     if user_role not in [r.lower() for r in allowed_roles]:
         logger.warning(
             f"Unauthorized access attempt to monitoring endpoint by user: {current_user.get('id')}"
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied. Admin or Founder role required for monitoring endpoints."
+            detail="Access denied. Admin or Founder role required for monitoring endpoints.",
         )
-    
+
     return current_user
 
 
 # ============================================================================
 # API Endpoints
 # ============================================================================
+
 
 @router.get(
     "/retrieval-quality",
@@ -160,22 +161,22 @@ def verify_admin_access(current_user: dict[str, Any] = Depends(get_current_user)
         500: {"model": ErrorResponse, "description": "Internal server error"},
     },
     summary="Get current retrieval quality metrics",
-    description="Returns comprehensive retrieval quality metrics for the specified time range."
+    description="Returns comprehensive retrieval quality metrics for the specified time range.",
 )
 async def get_retrieval_quality(
     time_range: str = Query(
         default="24h",
         pattern="^(1h|24h|1d|7d|30d)$",
-        description="Time range for metrics aggregation"
+        description="Time range for metrics aggregation",
     ),
     monitor: RetrievalQualityMonitor = Depends(get_retrieval_quality_monitor),
     current_user: dict[str, Any] = Depends(verify_admin_access),
 ) -> dict[str, Any]:
     """
     Get current retrieval quality metrics snapshot.
-    
+
     - **time_range**: Time window for metrics (1h, 24h, 7d, 30d)
-    
+
     Returns:
         Comprehensive metrics including scores, latency, cache rates, and alerts
     """
@@ -183,12 +184,12 @@ async def get_retrieval_quality(
         logger.info(f"Retrieving quality metrics for time_range={time_range}")
         data = await monitor.get_dashboard_data(time_range)
         return data
-        
+
     except Exception as e:
         logger.error(f"Failed to retrieve quality metrics: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve metrics: {str(e)}"
+            detail=f"Failed to retrieve metrics: {str(e)}",
         )
 
 
@@ -201,23 +202,18 @@ async def get_retrieval_quality(
         500: {"model": ErrorResponse, "description": "Internal server error"},
     },
     summary="Get historical score trends",
-    description="Returns daily score trends for the specified number of days."
+    description="Returns daily score trends for the specified number of days.",
 )
 async def get_scores_trend(
-    days: int = Query(
-        default=7,
-        ge=1,
-        le=30,
-        description="Number of days to retrieve (1-30)"
-    ),
+    days: int = Query(default=7, ge=1, le=30, description="Number of days to retrieve (1-30)"),
     monitor: RetrievalQualityMonitor = Depends(get_retrieval_quality_monitor),
     current_user: dict[str, Any] = Depends(verify_admin_access),
 ) -> dict[str, Any]:
     """
     Get historical score trends.
-    
+
     - **days**: Number of days to analyze (1-30)
-    
+
     Returns:
         Daily aggregated scores including average, p95, min, max
     """
@@ -228,12 +224,12 @@ async def get_scores_trend(
             "days": days,
             "trend": trend,
         }
-        
+
     except Exception as e:
         logger.error(f"Failed to retrieve score trends: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve score trends: {str(e)}"
+            detail=f"Failed to retrieve score trends: {str(e)}",
         )
 
 
@@ -246,23 +242,18 @@ async def get_scores_trend(
         500: {"model": ErrorResponse, "description": "Internal server error"},
     },
     summary="Get abstain rate statistics",
-    description="Returns detailed statistics about ABSTAIN responses."
+    description="Returns detailed statistics about ABSTAIN responses.",
 )
 async def get_abstain_statistics(
-    days: int = Query(
-        default=7,
-        ge=1,
-        le=30,
-        description="Number of days to analyze (1-30)"
-    ),
+    days: int = Query(default=7, ge=1, le=30, description="Number of days to analyze (1-30)"),
     monitor: RetrievalQualityMonitor = Depends(get_retrieval_quality_monitor),
     current_user: dict[str, Any] = Depends(verify_admin_access),
 ) -> dict[str, Any]:
     """
     Get abstain rate statistics.
-    
+
     - **days**: Number of days to analyze (1-30)
-    
+
     Returns:
         Abstain statistics including rate by reason and daily breakdown
     """
@@ -270,12 +261,12 @@ async def get_abstain_statistics(
         logger.info(f"Retrieving abstain statistics for days={days}")
         stats = await monitor.get_abstain_statistics(days)
         return stats
-        
+
     except Exception as e:
         logger.error(f"Failed to retrieve abstain statistics: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve abstain statistics: {str(e)}"
+            detail=f"Failed to retrieve abstain statistics: {str(e)}",
         )
 
 
@@ -288,23 +279,18 @@ async def get_abstain_statistics(
         500: {"model": ErrorResponse, "description": "Internal server error"},
     },
     summary="Get latency percentile statistics",
-    description="Returns detailed latency percentile breakdown."
+    description="Returns detailed latency percentile breakdown.",
 )
 async def get_latency_percentiles(
-    days: int = Query(
-        default=7,
-        ge=1,
-        le=30,
-        description="Number of days to analyze (1-30)"
-    ),
+    days: int = Query(default=7, ge=1, le=30, description="Number of days to analyze (1-30)"),
     monitor: RetrievalQualityMonitor = Depends(get_retrieval_quality_monitor),
     current_user: dict[str, Any] = Depends(verify_admin_access),
 ) -> dict[str, Any]:
     """
     Get latency percentile statistics.
-    
+
     - **days**: Number of days to analyze (1-30)
-    
+
     Returns:
         Latency percentiles (p50, p75, p90, p95, p99, p99.9) plus min/max/avg
     """
@@ -312,12 +298,12 @@ async def get_latency_percentiles(
         logger.info(f"Retrieving latency percentiles for days={days}")
         stats = await monitor.get_latency_percentiles(days)
         return stats
-        
+
     except Exception as e:
         logger.error(f"Failed to retrieve latency statistics: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve latency statistics: {str(e)}"
+            detail=f"Failed to retrieve latency statistics: {str(e)}",
         )
 
 
@@ -330,7 +316,7 @@ async def get_latency_percentiles(
         500: {"model": ErrorResponse, "description": "Internal server error"},
     },
     summary="Set alert thresholds",
-    description="Configure alert thresholds for retrieval quality monitoring."
+    description="Configure alert thresholds for retrieval quality monitoring.",
 )
 async def set_alert_thresholds(
     thresholds: AlertThresholdsRequest,
@@ -339,13 +325,13 @@ async def set_alert_thresholds(
 ) -> dict[str, Any]:
     """
     Set alert thresholds for monitoring.
-    
+
     Configure thresholds for:
     - Minimum acceptable retrieval score
     - Maximum acceptable abstain rate
     - Maximum acceptable latency
     - Minimum acceptable cache hit rate
-    
+
     When thresholds are breached, alerts are triggered in the dashboard.
     """
     try:
@@ -354,27 +340,28 @@ async def set_alert_thresholds(
             f"min_score={thresholds.min_score}, "
             f"max_abstain_rate={thresholds.max_abstain_rate}"
         )
-        
+
         new_thresholds = AlertThresholds(
             min_score=thresholds.min_score,
             max_abstain_rate=thresholds.max_abstain_rate,
             max_latency_ms=thresholds.max_latency_ms,
             min_cache_hit_rate=thresholds.min_cache_hit_rate,
         )
-        
+
         monitor.set_alert_thresholds(new_thresholds)
-        
+
         from datetime import datetime
+
         return {
             **new_thresholds.to_dict(),
             "updated_at": datetime.utcnow().isoformat(),
         }
-        
+
     except Exception as e:
         logger.error(f"Failed to set alert thresholds: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to set alert thresholds: {str(e)}"
+            detail=f"Failed to set alert thresholds: {str(e)}",
         )
 
 
@@ -386,7 +373,7 @@ async def set_alert_thresholds(
         500: {"model": ErrorResponse, "description": "Internal server error"},
     },
     summary="Get current alert thresholds",
-    description="Returns the currently configured alert thresholds."
+    description="Returns the currently configured alert thresholds.",
 )
 async def get_alert_thresholds(
     monitor: RetrievalQualityMonitor = Depends(get_retrieval_quality_monitor),
@@ -394,40 +381,41 @@ async def get_alert_thresholds(
 ) -> dict[str, Any]:
     """
     Get current alert threshold configuration.
-    
+
     Returns:
         Current alert thresholds and last updated timestamp
     """
     try:
         thresholds = monitor.get_alert_thresholds()
-        
+
         from datetime import datetime
+
         return {
             **thresholds.to_dict(),
             "updated_at": datetime.utcnow().isoformat(),
         }
-        
+
     except Exception as e:
         logger.error(f"Failed to get alert thresholds: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get alert thresholds: {str(e)}"
+            detail=f"Failed to get alert thresholds: {str(e)}",
         )
 
 
 @router.get(
     "/health",
     summary="Monitoring service health check",
-    description="Returns health status of the monitoring service."
+    description="Returns health status of the monitoring service.",
 )
 async def health_check(
     monitor: RetrievalQualityMonitor = Depends(get_retrieval_quality_monitor),
 ) -> dict[str, Any]:
     """
     Health check endpoint for the monitoring service.
-    
+
     Does not require authentication - useful for load balancers.
-    
+
     Returns:
         Health status and basic service info
     """
@@ -441,7 +429,7 @@ async def health_check(
         logger.error(f"Health check failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Monitoring service unhealthy: {str(e)}"
+            detail=f"Monitoring service unhealthy: {str(e)}",
         )
 
 

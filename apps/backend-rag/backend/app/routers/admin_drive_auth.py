@@ -2,6 +2,7 @@
 Admin Drive Auth - Temporary endpoint to authenticate system user.
 Requires ADMIN_SECRET_KEY header.
 """
+
 import os
 
 from fastapi import APIRouter, Header, HTTPException
@@ -10,22 +11,23 @@ from backend.app.core.config import settings
 
 router = APIRouter()
 
+
 @router.get("/admin/google-drive/auth-system")
-async def auth_system_user(
-    x_admin_secret: str | None = Header(None, alias="X-Admin-Secret")
-):
+async def auth_system_user(x_admin_secret: str | None = Header(None, alias="X-Admin-Secret")):
     """
     Authenticate Google Drive system user.
 
     Headers:
-        X-Admin-Secret: Must match ADMIN_SECRET_KEY env var (default: zantara-admin-2026)
+        X-Admin-Secret: Must match ADMIN_SECRET_KEY env var
 
     Returns:
         Google OAuth URL to visit
     """
-    expected_secret = os.environ.get("ADMIN_SECRET_KEY", "zantara-admin-2026")
+    admin_secret = os.environ.get("ADMIN_SECRET_KEY")
+    if not admin_secret:
+        raise HTTPException(status_code=500, detail="ADMIN_SECRET_KEY not configured")
 
-    if not x_admin_secret or x_admin_secret != expected_secret:
+    if not x_admin_secret or x_admin_secret != admin_secret:
         raise HTTPException(status_code=401, detail="Invalid admin secret")
 
     client_id = settings.google_drive_client_id
@@ -50,11 +52,11 @@ async def auth_system_user(
         "auth_url": auth_url,
         "instructions": [
             "1. Visit the auth_url in your browser",
-            "2. Login with Google account (zero@balizero.com or balizero@gmail.com)",
+            "2. Login with Google account",
             "3. Accept permissions",
             "4. You will be redirected - copy the 'code' from URL",
-            "5. Call: GET /admin/google-drive/callback-system?code=XXX&secret=zantara-admin-2026"
-        ]
+            "5. Call: GET /admin/google-drive/callback-system?code=XXX&secret=<your-admin-secret>",
+        ],
     }
 
 
@@ -70,9 +72,11 @@ async def auth_callback_system(
         code: The authorization code from Google
         secret: Admin secret (same as X-Admin-Secret)
     """
-    expected_secret = os.environ.get("ADMIN_SECRET_KEY", "zantara-admin-2026")
+    admin_secret = os.environ.get("ADMIN_SECRET_KEY")
+    if not admin_secret:
+        raise HTTPException(status_code=500, detail="ADMIN_SECRET_KEY not configured")
 
-    if secret != expected_secret:
+    if secret != admin_secret:
         raise HTTPException(status_code=401, detail="Invalid admin secret")
 
     from datetime import datetime, timedelta
@@ -85,29 +89,32 @@ async def auth_callback_system(
     client_secret = settings.google_drive_client_secret
     redirect_uri = settings.google_drive_redirect_uri
 
-    async with httpx.AsyncClient() as client:
-        resp = await client.post(
-            "https://oauth2.googleapis.com/token",
-            data={
-                "client_id": client_id,
-                "client_secret": client_secret,
-                "code": code,
-                "grant_type": "authorization_code",
-                "redirect_uri": redirect_uri,
-            }
-        )
+    conn = None
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                "https://oauth2.googleapis.com/token",
+                data={
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "code": code,
+                    "grant_type": "authorization_code",
+                    "redirect_uri": redirect_uri,
+                },
+            )
 
-        if resp.status_code != 200:
-            raise HTTPException(status_code=400, detail=f"Token exchange failed: {resp.text}")
+            if resp.status_code != 200:
+                raise HTTPException(status_code=400, detail=f"Token exchange failed: {resp.text}")
 
-        data = resp.json()
-        access_token = data["access_token"]
-        refresh_token = data.get("refresh_token")
-        expires_in = data.get("expires_in", 3600)
+            data = resp.json()
+            access_token = data["access_token"]
+            refresh_token = data.get("refresh_token")
+            expires_in = data.get("expires_in", 3600)
 
         # Save to database
         conn = await asyncpg.connect(os.environ["DATABASE_URL"])
-        await conn.execute("""
+        await conn.execute(
+            """
             INSERT INTO google_drive_tokens (user_id, access_token, refresh_token, expires_at, updated_at)
             VALUES ('SYSTEM', $1, $2, $3, NOW())
             ON CONFLICT (user_id) DO UPDATE SET
@@ -115,11 +122,17 @@ async def auth_callback_system(
                 refresh_token = COALESCE(EXCLUDED.refresh_token, google_drive_tokens.refresh_token),
                 expires_at = EXCLUDED.expires_at,
                 updated_at = NOW()
-        """, access_token, refresh_token, datetime.now() + timedelta(seconds=expires_in))
-        await conn.close()
+        """,
+            access_token,
+            refresh_token,
+            datetime.now() + timedelta(seconds=expires_in),
+        )
 
         return {
             "success": True,
             "message": "System user authenticated successfully!",
-            "expires_in": expires_in
+            "expires_in": expires_in,
         }
+    finally:
+        if conn:
+            await conn.close()

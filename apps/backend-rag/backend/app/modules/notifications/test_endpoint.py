@@ -17,19 +17,15 @@ Usage:
 
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from backend.app.dependencies import get_current_user
-from backend.app.dependencies import get_database_pool
+from backend.app.dependencies import get_current_user, get_database_pool
 
 from .checker import ExpiryChecker
+from .models import AlertType, ClientInfo
 from .service import NotificationService
-from .models import AlertType, ClientInfo, ClientAlert
-from .templates import get_template, format_template, INDONESIAN_BLESSINGS
-import random
 
 logger = logging.getLogger(__name__)
 
@@ -39,18 +35,14 @@ router = APIRouter(prefix="/api/notifications/test", tags=["notifications-test"]
 class TestNotificationRequest(BaseModel):
     """Request body for testing notifications."""
 
-    client_id: Optional[int] = Field(
+    client_id: int | None = Field(
         None, description="Test with specific client, or random if omitted"
     )
-    alert_type: Optional[AlertType] = Field(
+    alert_type: AlertType | None = Field(
         None, description="Force specific alert type, or auto-detect"
     )
-    force_send: bool = Field(
-        False, description="If true, actually sends email (use with caution!)"
-    )
-    test_email: Optional[str] = Field(
-        None, description="Override recipient email for testing"
-    )
+    force_send: bool = Field(False, description="If true, actually sends email (use with caution!)")
+    test_email: str | None = Field(None, description="Override recipient email for testing")
 
 
 class TestNotificationResponse(BaseModel):
@@ -60,8 +52,8 @@ class TestNotificationResponse(BaseModel):
     message: str
     alert_generated: bool
     alert_sent: bool
-    alert_details: Optional[dict] = None
-    client_info: Optional[dict] = None
+    alert_details: dict | None = None
+    client_info: dict | None = None
 
 
 @router.post("/", response_model=TestNotificationResponse)
@@ -208,9 +200,13 @@ async def test_notification(
                     "id": client.id,
                     "name": client.full_name,
                     "email": client.email,
-                    "passport_expiry": client.passport_expiry.isoformat() if client.passport_expiry else None,
+                    "passport_expiry": client.passport_expiry.isoformat()
+                    if client.passport_expiry
+                    else None,
                     "visa_expiry": client.visa_expiry.isoformat() if client.visa_expiry else None,
-                    "date_of_birth": client.date_of_birth.isoformat() if client.date_of_birth else None,
+                    "date_of_birth": client.date_of_birth.isoformat()
+                    if client.date_of_birth
+                    else None,
                 },
             )
 
@@ -243,7 +239,9 @@ async def test_notification(
             alert_details={
                 "type": alert.alert_type.value,
                 "subject": alert.email_subject,
-                "body_preview": alert.email_body[:200] + "..." if len(alert.email_body) > 200 else alert.email_body,
+                "body_preview": alert.email_body[:200] + "..."
+                if len(alert.email_body) > 200
+                else alert.email_body,
             },
             client_info={
                 "id": client.id,

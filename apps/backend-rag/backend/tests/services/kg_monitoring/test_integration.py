@@ -4,14 +4,14 @@ Integration Tests for KG Monitoring Service - Phase 8
 Tests the full pipeline from scraping to ingestion.
 """
 
-import pytest
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from backend.services.kg_monitoring import (
-    LegalScraper,
-    ChangeDetector,
     AutoIngestionService,
+    ChangeDetector,
+    LegalScraper,
     QualityCheckService,
 )
 from backend.services.kg_monitoring.change_detector import ChangeType
@@ -62,6 +62,7 @@ class TestMonitoringPipeline:
 
         # Pre-populate with existing document
         from backend.services.kg_monitoring.change_detector import DocumentState
+
         detector._state_cache["update_test"] = DocumentState(
             document_id="update_test",
             source_id="test",
@@ -120,8 +121,8 @@ class TestMonitoringPipeline:
 
     def test_quality_service_integration(self):
         """Test quality service with various document types"""
+        from backend.services.kg_monitoring.auto_ingestion import DocumentType, ExtractedDocument
         from backend.services.kg_monitoring.quality_check import QualityLevel
-        from backend.services.kg_monitoring.auto_ingestion import ExtractedDocument, DocumentType
 
         # Test with strict quality service
         quality = QualityCheckService(min_accept_score=0.60, strict_mode=True)
@@ -136,7 +137,8 @@ class TestMonitoringPipeline:
                     document_type=DocumentType.UNDANG_UNDANG,
                     document_number="UU No. 13 Tahun 2003",
                     issuing_authority="DPR RI",
-                    full_text="Pasal 1: Ketentuan umum tentang ketenagakerjaan di Indonesia. " * 100,
+                    full_text="Pasal 1: Ketentuan umum tentang ketenagakerjaan di Indonesia. "
+                    * 100,
                     key_points=["Point 1", "Point 2", "Point 3"],
                     confidence_score=0.9,
                 ),
@@ -157,11 +159,13 @@ class TestMonitoringPipeline:
         for case in test_cases:
             # Run async validation in sync context
             import asyncio
+
             report = asyncio.run(quality.validate(case["doc"]))
 
             # Check quality level matches expectation
-            assert report.quality_level in case["expected_quality"], \
+            assert report.quality_level in case["expected_quality"], (
                 f"Expected {case['doc'].document_id} to have quality in {case['expected_quality']}, got {report.quality_level}"
+            )
 
 
 class TestEndToEndScenarios:
@@ -174,6 +178,7 @@ class TestEndToEndScenarios:
 
         # Add existing document to cache
         from backend.services.kg_monitoring.change_detector import DocumentState
+
         detector._state_cache["unchanged"] = DocumentState(
             document_id="unchanged",
             source_id="test",
@@ -209,6 +214,7 @@ class TestEndToEndScenarios:
 
         # Pre-populate with some existing documents
         from backend.services.kg_monitoring.change_detector import DocumentState
+
         detector._state_cache["existing_unchanged"] = DocumentState(
             document_id="existing_unchanged",
             source_id="test",
@@ -279,6 +285,7 @@ class TestEndToEndScenarios:
 
         # Pre-populate with document that won't be in scrape
         from backend.services.kg_monitoring.change_detector import DocumentState
+
         detector._state_cache["deleted_doc"] = DocumentState(
             document_id="deleted_doc",
             source_id="test",

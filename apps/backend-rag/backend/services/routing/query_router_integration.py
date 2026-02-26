@@ -158,9 +158,7 @@ class QueryRouterIntegration:
                     target_collection = domain_to_collection.get(domain)
                     if target_collection and target_collection not in collections:
                         collections.append(target_collection)
-                        logger.info(
-                            f"📎 [Routing] Added {target_collection} for domain '{domain}'"
-                        )
+                        logger.info(f"📎 [Routing] Added {target_collection} for domain '{domain}'")
 
             logger.info(
                 f"🎯 [Routing] Primary: {primary_collection} "

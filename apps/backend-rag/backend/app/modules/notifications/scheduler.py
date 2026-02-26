@@ -5,39 +5,34 @@ Scheduled task runner for automated notifications.
 
 Runs daily at 9:00 AM Bali time (UTC+8).
 Can be triggered manually via API.
-
-Deployment options:
-1. APScheduler (in-process, for simple deployments)
-2. Celery Beat (distributed, for production)
-3. External cron (systemd timer, Kubernetes CronJob)
 """
 
-import logging
 import asyncio
-from datetime import datetime
-from typing import Optional
+import logging
 
+import asyncpg
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-from backend.app.dependencies import get_database_pool
-
-from .checker import ExpiryChecker, AlertDeduplicator
-from .service import NotificationService
+from .checker import AlertDeduplicator, ExpiryChecker
 from .router import get_clients_from_db
+from .service import NotificationService
 
 logger = logging.getLogger(__name__)
 
-# Bali timezone offset (UTC+8)
-BALI_TZ = "Asia/Singapore"  # Same timezone as Bali
+# Bali timezone (WITA = UTC+8)
+BALI_TZ = "Asia/Makassar"
 
 
 class NotificationScheduler:
     """Scheduler for automated notification tasks."""
 
-    def __init__(self):
-        self.scheduler: Optional[AsyncIOScheduler] = None
+    def __init__(self, db_pool: asyncpg.Pool | None = None):
+        self.scheduler: AsyncIOScheduler | None = None
         self.is_running = False
+        self.db_pool = db_pool
+        self._daily_check_lock = asyncio.Lock()
+        self._send_lock = asyncio.Lock()
 
     async def start(self):
         """Start the scheduler."""
@@ -81,116 +76,137 @@ class NotificationScheduler:
             logger.info("Notification scheduler stopped")
 
     async def _daily_check(self):
-        """Run daily expiry check."""
-        logger.info("Starting daily expiry check")
+        """Run daily expiry check. Uses lock to prevent concurrent execution."""
+        if self._daily_check_lock.locked():
+            logger.warning("Daily check already running, skipping")
+            return
 
-        try:
-            pool = await get_database_pool()
+        async with self._daily_check_lock:
+            logger.info("Starting daily expiry check")
 
-            # Get all active clients
-            clients = await get_clients_from_db(pool)
+            try:
+                pool = self.db_pool
+                if not pool:
+                    logger.error("Database pool not available for scheduler")
+                    return
 
-            if not clients:
-                logger.info("No clients to check")
-                return
+                # Get all active clients
+                clients = await get_clients_from_db(pool)
 
-            # Run expiry check
-            checker = ExpiryChecker()
-            alerts = checker.check_all_clients(clients)
+                if not clients:
+                    logger.info("No clients to check")
+                    return
 
-            # Filter duplicates
-            deduplicator = AlertDeduplicator(pool)
-            new_alerts = []
+                # Run expiry check
+                checker = ExpiryChecker()
+                alerts = checker.check_all_clients(clients)
 
-            for alert in alerts:
-                should_send = await deduplicator.should_send_alert(
-                    alert.client_id,
-                    alert.alert_type,
-                    min_days_between=1,  # Max 1 alert per day per type
-                )
-                if should_send:
-                    new_alerts.append(alert)
+                # Filter duplicates
+                deduplicator = AlertDeduplicator(pool)
+                new_alerts = []
 
-            # Store alerts in database
-            async with pool.acquire() as conn:
-                for alert in new_alerts:
-                    await conn.execute(
-                        """
-                        INSERT INTO notification_alerts 
-                        (client_id, alert_type, status, message, email_subject, email_body, created_at)
-                        VALUES ($1, $2, $3, $4, $5, $6, $7)
-                        ON CONFLICT (client_id, alert_type, DATE(created_at)) 
-                        DO NOTHING
-                        """,
+                for alert in alerts:
+                    should_send = await deduplicator.should_send_alert(
                         alert.client_id,
-                        alert.alert_type.value,
-                        alert.status.value,
-                        alert.message,
-                        alert.email_subject,
-                        alert.email_body,
-                        alert.created_at,
+                        alert.alert_type,
+                        min_days_between=1,  # Max 1 alert per day per type
                     )
+                    if should_send:
+                        new_alerts.append(alert)
 
-            logger.info(
-                "Daily check completed",
-                extra={
-                    "clients_checked": len(clients),
-                    "alerts_generated": len(alerts),
-                    "new_alerts": len(new_alerts),
-                },
-            )
+                # Store alerts in database
+                async with pool.acquire() as conn:
+                    for alert in new_alerts:
+                        await conn.execute(
+                            """
+                            INSERT INTO notification_alerts
+                            (client_id, alert_type, status, message, email_subject, email_body, created_at)
+                            VALUES ($1, $2, $3, $4, $5, $6, $7)
+                            ON CONFLICT (client_id, alert_type, DATE(created_at))
+                            DO NOTHING
+                            """,
+                            alert.client_id,
+                            alert.alert_type.value,
+                            alert.status.value,
+                            alert.message,
+                            alert.email_subject,
+                            alert.email_body,
+                            alert.created_at,
+                        )
 
-            # Immediately send alerts
-            await self._send_pending_alerts()
+                logger.info(
+                    "Daily check completed",
+                    extra={
+                        "clients_checked": len(clients),
+                        "alerts_generated": len(alerts),
+                        "new_alerts": len(new_alerts),
+                    },
+                )
 
-        except Exception as e:
-            logger.error("Daily check failed", exc_info=e)
+                # Immediately send alerts
+                await self._send_pending_alerts()
+
+            except Exception as e:
+                logger.error("Daily check failed", exc_info=e)
 
     async def _send_pending_alerts(self):
-        """Send all pending alerts."""
-        try:
-            pool = await get_database_pool()
-            service = NotificationService(pool)
+        """Send all pending alerts. Uses lock to prevent concurrent execution."""
+        if self._send_lock.locked():
+            logger.debug("Send pending already running, skipping")
+            return
 
-            pending = await service.get_pending_alerts()
+        async with self._send_lock:
+            try:
+                pool = self.db_pool
+                if not pool:
+                    logger.error("Database pool not available for scheduler")
+                    return
+                service = NotificationService(pool)
 
-            if not pending:
-                return
+                pending = await service.get_pending_alerts()
 
-            async def get_client_email(client_id: int) -> str | None:
-                async with pool.acquire() as conn:
-                    return await conn.fetchval(
-                        "SELECT email FROM clients WHERE id = $1",
-                        client_id,
-                    )
+                if not pending:
+                    return
 
-            results = await service.process_alerts_batch(pending, get_client_email)
+                async def get_client_email(client_id: int) -> str | None:
+                    async with pool.acquire() as conn:
+                        return await conn.fetchval(
+                            "SELECT email FROM clients WHERE id = $1",
+                            client_id,
+                        )
 
-            successful = sum(1 for r in results if r.success)
+                results = await service.process_alerts_batch(pending, get_client_email)
 
-            logger.info(
-                "Pending alerts sent",
-                extra={
-                    "total": len(results),
-                    "successful": successful,
-                    "failed": len(results) - successful,
-                },
-            )
+                successful = sum(1 for r in results if r.success)
 
-        except Exception as e:
-            logger.error("Failed to send pending alerts", exc_info=e)
+                logger.info(
+                    "Pending alerts sent",
+                    extra={
+                        "total": len(results),
+                        "successful": successful,
+                        "failed": len(results) - successful,
+                    },
+                )
+
+            except Exception as e:
+                logger.error("Failed to send pending alerts", exc_info=e)
 
 
 # Global scheduler instance
-_scheduler: Optional[NotificationScheduler] = None
+_scheduler: NotificationScheduler | None = None
+_init_lock = asyncio.Lock()
 
 
-async def init_scheduler() -> NotificationScheduler:
-    """Initialize and start the global scheduler."""
+async def init_scheduler(db_pool: asyncpg.Pool | None = None) -> NotificationScheduler:
+    """Initialize and start the global scheduler. Thread-safe via lock."""
     global _scheduler
-    _scheduler = NotificationScheduler()
-    await _scheduler.start()
-    return _scheduler
+    async with _init_lock:
+        if _scheduler and _scheduler.is_running:
+            logger.warning("Scheduler already initialized, returning existing instance")
+            return _scheduler
+        _scheduler = NotificationScheduler(db_pool=db_pool)
+        await _scheduler.start()
+        return _scheduler
 
 
 async def stop_scheduler():
@@ -201,6 +217,6 @@ async def stop_scheduler():
         _scheduler = None
 
 
-def get_scheduler() -> Optional[NotificationScheduler]:
+def get_scheduler() -> NotificationScheduler | None:
     """Get the global scheduler instance."""
     return _scheduler

@@ -2,16 +2,17 @@
 Tests for AutoIngestionService - Phase 8
 """
 
-import pytest
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from backend.services.kg_monitoring.auto_ingestion import (
     AutoIngestionService,
+    DocumentType,
+    ExtractedDocument,
     IngestionResult,
     IngestionStatus,
-    ExtractedDocument,
-    DocumentType,
 )
 from backend.services.kg_monitoring.scraper import ScrapedDocument
 
@@ -146,13 +147,15 @@ class TestAutoIngestionService:
         service = AutoIngestionService()
 
         # Mock the extraction method
-        service._extract_document = AsyncMock(return_value=ExtractedDocument(
-            document_id="doc123",
-            source_id="test",
-            title="Test",
-            document_type=DocumentType.UNDANG_UNDANG,
-            confidence_score=0.9,
-        ))
+        service._extract_document = AsyncMock(
+            return_value=ExtractedDocument(
+                document_id="doc123",
+                source_id="test",
+                title="Test",
+                document_type=DocumentType.UNDANG_UNDANG,
+                confidence_score=0.9,
+            )
+        )
 
         scraped_doc = ScrapedDocument(
             document_id="doc123",
@@ -176,9 +179,9 @@ class TestAutoIngestionService:
         service = AutoIngestionService()
 
         # Test with markdown code block
-        text = '''```json
+        text = """```json
 {"document_type": "undang_undang", "title": "Test"}
-```'''
+```"""
         result = service._extract_json(text)
         assert "undang_undang" in result
 
@@ -233,12 +236,14 @@ class TestAutoIngestionService:
         service = AutoIngestionService()
 
         # Mock ingest_document
-        service.ingest_document = AsyncMock(return_value=IngestionResult(
-            document_id="doc1",
-            status=IngestionStatus.COMPLETED,
-            started_at=datetime.now(),
-            completed_at=datetime.now(),
-        ))
+        service.ingest_document = AsyncMock(
+            return_value=IngestionResult(
+                document_id="doc1",
+                status=IngestionStatus.COMPLETED,
+                started_at=datetime.now(),
+                completed_at=datetime.now(),
+            )
+        )
 
         docs = [
             ScrapedDocument(

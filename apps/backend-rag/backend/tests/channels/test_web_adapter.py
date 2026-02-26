@@ -6,8 +6,8 @@ Date: 2026-02-10
 """
 
 import json
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock
 
 from backend.channels.base import ChannelMessage, ChannelResponse
 from backend.channels.web.adapter import WebChannelAdapter
@@ -85,9 +85,7 @@ async def test_receive_message_with_images(web_adapter):
         "query": "What's in this image?",
         "user_id": "user@example.com",
         "session_id": "web_session_123",
-        "images": [
-            {"base64": "data:image/png;base64,iVBORw0KG...", "name": "photo.png"}
-        ],
+        "images": [{"base64": "data:image/png;base64,iVBORw0KG...", "name": "photo.png"}],
         "enable_vision": True,
     }
 
@@ -153,9 +151,7 @@ async def test_channel_response_to_sse_token(web_adapter):
 @pytest.mark.asyncio
 async def test_channel_response_to_sse_thinking(web_adapter):
     """Test converting thinking event to SSE."""
-    response = ChannelResponse(
-        text="Let me analyze this...", metadata={"event_type": "thinking"}
-    )
+    response = ChannelResponse(text="Let me analyze this...", metadata={"event_type": "thinking"})
 
     sse_event = web_adapter._channel_response_to_sse(response)
 

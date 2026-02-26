@@ -12,10 +12,11 @@ Date: 2026-01-19
 """
 
 import logging
-import re
 from typing import Any
 
 import asyncpg
+
+from backend.services.crm.validators import normalize_phone_e164
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,8 @@ def normalize_phone(phone: str | None) -> str | None:
     """
     Normalize phone number to E.164 format.
 
+    Delegates to the canonical implementation in validators.py.
+
     Examples:
         "+62 812 3456 7890" → "+6281234567890"
         "0812-3456-7890" → "+6281234567890"
@@ -31,19 +34,7 @@ def normalize_phone(phone: str | None) -> str | None:
     """
     if not phone:
         return None
-
-    # Remove all non-digit characters
-    digits = re.sub(r"\D", "", phone)
-
-    # If starts with '0', replace with country code (assume Indonesia +62)
-    if digits.startswith("0"):
-        digits = "62" + digits[1:]
-
-    # Ensure '+' prefix
-    if not digits.startswith("+"):
-        digits = "+" + digits
-
-    return digits
+    return normalize_phone_e164(phone)
 
 
 class ClientIdentityResolver:

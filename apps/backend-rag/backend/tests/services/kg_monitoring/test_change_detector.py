@@ -2,9 +2,10 @@
 Tests for ChangeDetector - Phase 8
 """
 
+from datetime import datetime
+from unittest.mock import MagicMock
+
 import pytest
-from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from backend.services.kg_monitoring.change_detector import (
     ChangeDetector,

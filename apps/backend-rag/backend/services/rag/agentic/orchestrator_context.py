@@ -17,9 +17,12 @@ from typing import Any
 
 from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
 from backend.services.misc.context_window_manager import ContextWindowManager
+from backend.services.rag.agentic.context_manager import (
+    fetch_memory_facts,
+    fetch_profile_and_history,
+    get_user_context,
+)
 from backend.services.rag.agentic.memory_handler import MemoryHandler
-
-from backend.services.rag.agentic.context_manager import fetch_memory_facts, fetch_profile_and_history, get_user_context
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)  # Enable debug logging for context operations

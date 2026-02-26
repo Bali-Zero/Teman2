@@ -14,9 +14,9 @@ Following @ai_onboarding philosophy:
 - Rate limiting and retry logic
 """
 
-from .service import NotificationService
 from .checker import ExpiryChecker
-from .models import AlertType, AlertStatus, ClientAlert
+from .models import AlertStatus, AlertType, ClientAlert
+from .service import NotificationService
 
 __all__ = [
     "NotificationService",

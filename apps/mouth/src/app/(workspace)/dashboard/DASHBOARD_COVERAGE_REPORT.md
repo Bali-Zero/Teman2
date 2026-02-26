@@ -250,7 +250,7 @@ const summary = dashboardMetrics.getPerformanceSummary();
 5. **AiPulseWidget** - AI system status (zero)
 6. **FinancialRealityWidget** - Revenue metrics (zero)
 7. **NusantaraHealthWidget** - System health (zero)
-8. **AutoCRMWidget** - CRM automation
+8. **CRM Analytics** - Comprehensive client and practice metrics
 9. **GrafanaWidget** - Observability (zero)
 
 ### **Stati Gestiti**

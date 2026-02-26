@@ -3,12 +3,11 @@ Error Monitoring Middleware
 Captures 4xx/5xx HTTP errors and sends alerts
 """
 
-from typing import Any
-
 import logging
 import time
 import uuid
 from collections.abc import Callable
+from typing import Any
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -178,7 +177,7 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
                     logger.error(f"Failed to send error alert: {exc}")
 
 
-def create_error_monitoring_middleware(alert_service: Any=None) -> Any:
+def create_error_monitoring_middleware(alert_service: Any = None) -> Any:
     """
     Factory function to create ErrorMonitoringMiddleware
 

@@ -62,8 +62,9 @@ TEMPORAL_PATTERNS = {
         hour=12, minute=0, second=0, microsecond=0
     ),
     # Relative days
-    r"\b(\d+)\s*(giorni? fa|days? ago)\b": lambda m: datetime.now(timezone.utc)
-    - timedelta(days=int(m.group(1))),
+    r"\b(\d+)\s*(giorni? fa|days? ago)\b": lambda m: (
+        datetime.now(timezone.utc) - timedelta(days=int(m.group(1)))
+    ),
     r"\b(la settimana scorsa|last week)\b": lambda: datetime.now(timezone.utc) - timedelta(weeks=1),
     r"\b(il mese scorso|last month)\b": lambda: datetime.now(timezone.utc) - timedelta(days=30),
     # Specific dates (DD/MM or DD/MM/YYYY)

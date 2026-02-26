@@ -197,7 +197,9 @@ class TestKnowledgeService:
         assert result["results"][2]["id"] == "id3"
 
     @pytest.mark.asyncio
-    async def test_search_bali_zero_pricing_hybrid_score_bias(self, knowledge_service, mock_qdrant_client):
+    async def test_search_bali_zero_pricing_hybrid_score_bias(
+        self, knowledge_service, mock_qdrant_client
+    ):
         """Test search with bali_zero_pricing_hybrid collection adds score bias"""
         mock_qdrant_client.search = AsyncMock(
             return_value={

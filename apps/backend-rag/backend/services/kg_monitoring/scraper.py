@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin
 
 import httpx
 from bs4 import BeautifulSoup
@@ -45,9 +45,11 @@ class SourceConfig:
     search_paths: list[str] = field(default_factory=list)
     detail_path_pattern: str = ""
     selectors: dict[str, str] = field(default_factory=dict)
-    headers: dict[str, str] = field(default_factory=lambda: {
-        "User-Agent": "Mozilla/5.0 (compatible; ZantaraBot/1.0; +https://balizero.com/bot)"
-    })
+    headers: dict[str, str] = field(
+        default_factory=lambda: {
+            "User-Agent": "Mozilla/5.0 (compatible; ZantaraBot/1.0; +https://balizero.com/bot)"
+        }
+    )
     rate_limit_delay: float = 1.0  # seconds between requests
     timeout: int = 30
     max_retries: int = 3
@@ -70,9 +72,7 @@ class ScrapedDocument:
 
     def __post_init__(self):
         if not self.document_hash:
-            self.document_hash = hashlib.md5(
-                f"{self.title}:{self.content}".encode()
-            ).hexdigest()
+            self.document_hash = hashlib.md5(f"{self.title}:{self.content}".encode()).hexdigest()
 
 
 class LegalScraper:
@@ -272,13 +272,13 @@ class LegalScraper:
                     logger.info(f"   Rate limited, waiting {wait_time}s...")
                     await asyncio.sleep(wait_time)
                 elif attempt < source.max_retries - 1:
-                    await asyncio.sleep(2 ** attempt)  # Exponential backoff
+                    await asyncio.sleep(2**attempt)  # Exponential backoff
 
             except Exception as e:
                 self.scrape_stats["failed_requests"] += 1
                 logger.warning(f"   Request error: {e}")
                 if attempt < source.max_retries - 1:
-                    await asyncio.sleep(2 ** attempt)
+                    await asyncio.sleep(2**attempt)
 
         logger.error(f"   Failed to fetch {url} after {source.max_retries} attempts")
         return None

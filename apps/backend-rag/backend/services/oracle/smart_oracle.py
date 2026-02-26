@@ -10,12 +10,11 @@ UPDATED 2025-12-23:
 - Migrated to new google-genai SDK via GenAIClient wrapper
 """
 
-from typing import Any
-
 import io
 import json
 import logging
 import os
+from typing import Any
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build

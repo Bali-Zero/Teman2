@@ -14,7 +14,6 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
 from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
-
 from backend.services.oracle.oracle_config import oracle_config
 
 logger = logging.getLogger(__name__)

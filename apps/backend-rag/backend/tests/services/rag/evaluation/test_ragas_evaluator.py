@@ -10,41 +10,46 @@ Comprehensive test suite for RAGASEvaluator covering:
 """
 
 import json
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
+from backend.llm.base import LLMResponse
 from backend.services.rag.evaluation.ragas_evaluator import (
+    ANSWER_RELEVANCE_PROMPT,
+    CONTEXT_ENTITY_RECALL_PROMPT,
+    CONTEXT_PRECISION_PROMPT,
+    CONTEXT_RECALL_PROMPT,
+    FAITHFULNESS_PROMPT,
     EvaluationResult,
     RAGASEvaluator,
     get_ragas_evaluator,
-    FAITHFULNESS_PROMPT,
-    ANSWER_RELEVANCE_PROMPT,
-    CONTEXT_PRECISION_PROMPT,
-    CONTEXT_RECALL_PROMPT,
-    CONTEXT_ENTITY_RECALL_PROMPT,
 )
-from backend.llm.base import LLMMessage, LLMResponse
-
 
 # =============================================================================
 # Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def mock_llm_response():
     """Create mock LLM response with evaluation result."""
+
     def _create_response(score: float = 0.85, reasoning: str = "Test reasoning"):
-        content = json.dumps({
-            "score": score,
-            "reasoning": reasoning,
-            "supported_statements": ["statement 1"],
-            "unsupported_statements": [],
-        })
+        content = json.dumps(
+            {
+                "score": score,
+                "reasoning": reasoning,
+                "supported_statements": ["statement 1"],
+                "unsupported_statements": [],
+            }
+        )
         return LLMResponse(
             content=content,
             model="gemini-2.0-flash",
             provider="gemini",
         )
+
     return _create_response
 
 
@@ -99,17 +104,20 @@ def sample_ground_truth():
 # Initialization Tests
 # =============================================================================
 
+
 class TestEvaluatorInitialization:
     """Tests for RAGASEvaluator initialization."""
 
     def test_init_with_defaults(self):
         """Test initialization with default parameters."""
-        with patch("backend.services.rag.evaluation.ragas_evaluator.create_default_client") as mock_create:
+        with patch(
+            "backend.services.rag.evaluation.ragas_evaluator.create_default_client"
+        ) as mock_create:
             mock_client = MagicMock()
             mock_create.return_value = mock_client
-            
+
             evaluator = RAGASEvaluator()
-            
+
             assert evaluator.enable_cache is True
             assert evaluator.cache_ttl == 86400
             assert evaluator._eval_count == 0
@@ -121,7 +129,7 @@ class TestEvaluatorInitialization:
             enable_cache=False,
             cache_ttl=3600,
         )
-        
+
         assert evaluator.llm_client is mock_llm_client
         assert evaluator.enable_cache is False
         assert evaluator.cache_ttl == 3600
@@ -129,7 +137,7 @@ class TestEvaluatorInitialization:
     def test_init_creates_empty_cache(self, mock_llm_client):
         """Test that cache is initialized empty."""
         evaluator = RAGASEvaluator(llm_client=mock_llm_client)
-        
+
         assert evaluator._cache == {}
         assert evaluator._cache_hit_count == 0
 
@@ -138,6 +146,7 @@ class TestEvaluatorInitialization:
 # Cache Tests
 # =============================================================================
 
+
 class TestEvaluatorCaching:
     """Tests for evaluation result caching."""
 
@@ -145,7 +154,7 @@ class TestEvaluatorCaching:
         """Test cache key generation is deterministic."""
         key1 = evaluator._get_cache_key("query", ["ctx1", "ctx2"], "answer", "metric")
         key2 = evaluator._get_cache_key("query", ["ctx1", "ctx2"], "answer", "metric")
-        
+
         assert key1 == key2
         assert len(key1) == 32  # SHA256 hex digest length
 
@@ -153,16 +162,16 @@ class TestEvaluatorCaching:
         """Test cache keys are unique for different content."""
         key1 = evaluator._get_cache_key("query1", ["ctx"], "answer", "metric")
         key2 = evaluator._get_cache_key("query2", ["ctx"], "answer", "metric")
-        
+
         assert key1 != key2
 
     def test_get_cached_result_when_disabled(self, evaluator):
         """Test cache retrieval when caching is disabled."""
         evaluator.enable_cache = False
         evaluator._cache["key"] = {"result": {"score": 0.9}, "timestamp": 9999999999}
-        
+
         result = evaluator._get_cached_result("key")
-        
+
         assert result is None
 
     def test_get_cached_result_valid(self, evaluator):
@@ -170,9 +179,9 @@ class TestEvaluatorCaching:
         evaluator.enable_cache = True
         cached_data = {"score": 0.9, "reasoning": "test"}
         evaluator._cache["key"] = {"result": cached_data, "timestamp": 9999999999}
-        
+
         result = evaluator._get_cached_result("key")
-        
+
         assert result == cached_data
         assert evaluator._cache_hit_count == 1
 
@@ -181,9 +190,9 @@ class TestEvaluatorCaching:
         evaluator.enable_cache = True
         evaluator.cache_ttl = 100  # 100 seconds
         evaluator._cache["key"] = {"result": {"score": 0.9}, "timestamp": 0}
-        
+
         result = evaluator._get_cached_result("key")
-        
+
         assert result is None
         assert "key" not in evaluator._cache
 
@@ -191,9 +200,9 @@ class TestEvaluatorCaching:
         """Test storing result in cache."""
         evaluator.enable_cache = True
         result_data = {"score": 0.9, "reasoning": "test"}
-        
+
         evaluator._cache_result("key", result_data)
-        
+
         assert "key" in evaluator._cache
         assert evaluator._cache["key"]["result"] == result_data
         assert "timestamp" in evaluator._cache["key"]
@@ -204,9 +213,9 @@ class TestEvaluatorCaching:
         evaluator._cache["key1"] = {"result": {}, "timestamp": 0}
         evaluator._cache["key2"] = {"result": {}, "timestamp": 0}
         evaluator._cache_hit_count = 5
-        
+
         evaluator.clear_cache()
-        
+
         assert evaluator._cache == {}
         assert evaluator._cache_hit_count == 0
 
@@ -214,6 +223,7 @@ class TestEvaluatorCaching:
 # =============================================================================
 # LLM Call Tests
 # =============================================================================
+
 
 class TestLLMCalls:
     """Tests for LLM evaluation calls."""
@@ -231,9 +241,9 @@ class TestLLMCalls:
             model="gemini",
             provider="gemini",
         )
-        
+
         result = await evaluator._call_llm_evaluator("test prompt")
-        
+
         assert result["score"] == 0.85
         assert result["reasoning"] == "Good answer"
         # Verify correct message format
@@ -248,9 +258,9 @@ class TestLLMCalls:
             model="gemini",
             provider="gemini",
         )
-        
+
         result = await evaluator._call_llm_evaluator("test prompt")
-        
+
         assert result["score"] == 0.9
 
     @pytest.mark.asyncio
@@ -261,9 +271,9 @@ class TestLLMCalls:
             model="gemini",
             provider="gemini",
         )
-        
+
         result = await evaluator._call_llm_evaluator("test prompt")
-        
+
         assert result["score"] == 0.5
         assert "error" in result
 
@@ -275,18 +285,18 @@ class TestLLMCalls:
             model="gemini",
             provider="gemini",
         )
-        
+
         result = await evaluator._call_llm_evaluator("test prompt")
-        
+
         assert result["score"] == 0.5  # Default value
 
     @pytest.mark.asyncio
     async def test_call_llm_evaluator_exception(self, evaluator, mock_llm_client):
         """Test handling of LLM exception."""
         mock_llm_client.generate.side_effect = Exception("LLM Error")
-        
+
         result = await evaluator._call_llm_evaluator("test prompt")
-        
+
         assert result["score"] == 0.5
         assert "error" in result
 
@@ -298,15 +308,16 @@ class TestLLMCalls:
             model="gemini",
             provider="gemini",
         )
-        
+
         result = await evaluator._call_llm_evaluator("test prompt")
-        
+
         assert result["score"] == 1.0  # Clamped to max
 
 
 # =============================================================================
 # Metric Evaluation Tests
 # =============================================================================
+
 
 class TestFaithfulness:
     """Tests for faithfulness metric."""
@@ -321,25 +332,23 @@ class TestFaithfulness:
             model="gemini",
             provider="gemini",
         )
-        
+
         result = await evaluator.evaluate_faithfulness(sample_answer, sample_context)
-        
+
         assert result["score"] == 0.9
         assert "reasoning" in result
         evaluator._eval_count == 1
 
     @pytest.mark.asyncio
-    async def test_evaluate_faithfulness_with_cache(
-        self, evaluator, sample_answer, sample_context
-    ):
+    async def test_evaluate_faithfulness_with_cache(self, evaluator, sample_answer, sample_context):
         """Test faithfulness evaluation with caching."""
         evaluator.enable_cache = True
         cached_result = {"score": 0.95, "reasoning": "cached"}
         cache_key = evaluator._get_cache_key("", sample_context, sample_answer, "faithfulness")
         evaluator._cache[cache_key] = {"result": cached_result, "timestamp": 9999999999}
-        
+
         result = await evaluator.evaluate_faithfulness(sample_answer, sample_context)
-        
+
         assert result == cached_result
         assert evaluator._cache_hit_count == 1
 
@@ -349,10 +358,10 @@ class TestFaithfulness:
     ):
         """Test that faithfulness prompt is correctly formatted."""
         await evaluator.evaluate_faithfulness(sample_answer, sample_context)
-        
+
         call_args = mock_llm_client.generate.call_args
         messages = call_args[1]["messages"]
-        
+
         # Check that context is formatted in prompt
         prompt_content = messages[1].content
         assert "Konteks 1" in prompt_content
@@ -373,9 +382,9 @@ class TestAnswerRelevance:
             model="gemini",
             provider="gemini",
         )
-        
+
         result = await evaluator.evaluate_answer_relevance(sample_query, sample_answer)
-        
+
         assert result["score"] == 0.88
         assert "reasoning" in result
 
@@ -385,11 +394,11 @@ class TestAnswerRelevance:
     ):
         """Test that prompt contains the query."""
         await evaluator.evaluate_answer_relevance(sample_query, sample_answer)
-        
+
         call_args = mock_llm_client.generate.call_args
         messages = call_args[1]["messages"]
         prompt_content = messages[1].content
-        
+
         assert sample_query in prompt_content
         assert sample_answer in prompt_content
 
@@ -407,11 +416,11 @@ class TestContextPrecision:
             model="gemini",
             provider="gemini",
         )
-        
+
         result = await evaluator.evaluate_context_precision(
             sample_query, sample_context, sample_ground_truth
         )
-        
+
         assert result["score"] == 0.75
 
     @pytest.mark.asyncio
@@ -421,15 +430,13 @@ class TestContextPrecision:
         """Test context precision evaluation with caching."""
         evaluator.enable_cache = True
         cached_result = {"score": 0.8, "reasoning": "cached"}
-        cache_key = evaluator._get_cache_key(
-            sample_query, sample_context, "", "context_precision"
-        )
+        cache_key = evaluator._get_cache_key(sample_query, sample_context, "", "context_precision")
         evaluator._cache[cache_key] = {"result": cached_result, "timestamp": 9999999999}
-        
+
         result = await evaluator.evaluate_context_precision(
             sample_query, sample_context, sample_ground_truth
         )
-        
+
         assert result == cached_result
 
 
@@ -446,11 +453,11 @@ class TestContextRecall:
             model="gemini",
             provider="gemini",
         )
-        
+
         result = await evaluator.evaluate_context_recall(
             sample_query, sample_context, sample_ground_truth
         )
-        
+
         assert result["score"] == 0.82
 
 
@@ -463,18 +470,20 @@ class TestContextEntityRecall:
     ):
         """Test successful context entity recall evaluation."""
         mock_llm_client.generate.return_value = LLMResponse(
-            content=json.dumps({
-                "score": 0.85,
-                "reasoning": "Entities found",
-                "entities_in_answer": ["KITAS", "WNA"],
-                "entities_in_context": ["KITAS", "WNA"],
-            }),
+            content=json.dumps(
+                {
+                    "score": 0.85,
+                    "reasoning": "Entities found",
+                    "entities_in_answer": ["KITAS", "WNA"],
+                    "entities_in_context": ["KITAS", "WNA"],
+                }
+            ),
             model="gemini",
             provider="gemini",
         )
-        
+
         result = await evaluator.evaluate_context_entity_recall(sample_answer, sample_context)
-        
+
         assert result["score"] == 0.85
         assert "entities_in_answer" in result
 
@@ -483,12 +492,19 @@ class TestContextEntityRecall:
 # Full Evaluation Tests
 # =============================================================================
 
+
 class TestFullEvaluation:
     """Tests for complete evaluation pipeline."""
 
     @pytest.mark.asyncio
     async def test_evaluate_all_metrics(
-        self, evaluator, sample_query, sample_context, sample_answer, sample_ground_truth, mock_llm_client
+        self,
+        evaluator,
+        sample_query,
+        sample_context,
+        sample_answer,
+        sample_ground_truth,
+        mock_llm_client,
     ):
         """Test full evaluation with all metrics."""
         mock_llm_client.generate.return_value = LLMResponse(
@@ -496,20 +512,20 @@ class TestFullEvaluation:
             model="gemini",
             provider="gemini",
         )
-        
+
         result = await evaluator.evaluate(
             query=sample_query,
             context=sample_context,
             answer=sample_answer,
             ground_truth=sample_ground_truth,
         )
-        
+
         assert isinstance(result, EvaluationResult)
         assert result.query == sample_query
         assert result.context == sample_context
         assert result.answer == sample_answer
         assert result.ground_truth == sample_ground_truth
-        
+
         # Check all metrics are present
         assert "faithfulness" in result.metrics
         assert "answer_relevance" in result.metrics
@@ -527,14 +543,14 @@ class TestFullEvaluation:
             model="gemini",
             provider="gemini",
         )
-        
+
         result = await evaluator.evaluate(
             query=sample_query,
             context=sample_context,
             answer=sample_answer,
             ground_truth=None,
         )
-        
+
         # Context precision and recall should not be computed
         assert "faithfulness" in result.metrics
         assert "answer_relevance" in result.metrics
@@ -551,14 +567,14 @@ class TestFullEvaluation:
             model="gemini",
             provider="gemini",
         )
-        
+
         result = await evaluator.evaluate(
             query=sample_query,
             context=sample_context,
             answer=sample_answer,
             metrics=["faithfulness", "answer_relevance"],
         )
-        
+
         assert "faithfulness" in result.metrics
         assert "answer_relevance" in result.metrics
         assert "context_entity_recall" not in result.metrics
@@ -573,13 +589,13 @@ class TestFullEvaluation:
             model="gemini",
             provider="gemini",
         )
-        
+
         result = await evaluator.evaluate(
             query=sample_query,
             context=sample_context,
             answer=sample_answer,
         )
-        
+
         # Overall score should be average of metrics
         expected_avg = sum(result.metrics.values()) / len(result.metrics)
         assert result.overall_score == expected_avg
@@ -594,15 +610,15 @@ class TestFullEvaluation:
             model="gemini",
             provider="gemini",
         )
-        
+
         result = await evaluator.evaluate(
             query=sample_query,
             context=sample_context,
             answer=sample_answer,
         )
-        
+
         data = result.to_dict()
-        
+
         assert data["query"] == sample_query
         assert data["context"] == sample_context
         assert data["answer"] == sample_answer
@@ -619,13 +635,13 @@ class TestFullEvaluation:
             model="gemini",
             provider="gemini",
         )
-        
+
         result = await evaluator.evaluate(
             query=sample_query,
             context=sample_context,
             answer=sample_answer,
         )
-        
+
         assert "detailed_results" in result.metadata
         assert "cache_enabled" in result.metadata
         assert "eval_count" in result.metadata
@@ -635,6 +651,7 @@ class TestFullEvaluation:
 # Statistics Tests
 # =============================================================================
 
+
 class TestEvaluatorStats:
     """Tests for evaluator statistics."""
 
@@ -643,9 +660,9 @@ class TestEvaluatorStats:
         evaluator._eval_count = 10
         evaluator._cache_hit_count = 5
         evaluator._cache = {"key1": {}, "key2": {}}
-        
+
         stats = evaluator.get_stats()
-        
+
         assert stats["total_evaluations"] == 10
         assert stats["cache_hits"] == 5
         assert stats["cache_size"] == 2
@@ -654,7 +671,7 @@ class TestEvaluatorStats:
     def test_get_stats_empty(self, evaluator):
         """Test stats with no evaluations."""
         stats = evaluator.get_stats()
-        
+
         assert stats["total_evaluations"] == 0
         assert stats["cache_hits"] == 0
         assert stats["cache_size"] == 0
@@ -664,6 +681,7 @@ class TestEvaluatorStats:
 # Singleton Tests
 # =============================================================================
 
+
 class TestSingleton:
     """Tests for global singleton instance."""
 
@@ -672,14 +690,15 @@ class TestSingleton:
         with patch("backend.services.rag.evaluation.ragas_evaluator.RAGASEvaluator") as mock_cls:
             mock_instance = MagicMock()
             mock_cls.return_value = mock_instance
-            
+
             # Reset global instance
             import backend.services.rag.evaluation.ragas_evaluator as eval_module
+
             eval_module._ragas_evaluator = None
-            
+
             evaluator1 = get_ragas_evaluator()
             evaluator2 = get_ragas_evaluator()
-            
+
             assert evaluator1 is evaluator2
             mock_cls.assert_called_once()
 
@@ -688,14 +707,15 @@ class TestSingleton:
         with patch("backend.services.rag.evaluation.ragas_evaluator.RAGASEvaluator") as mock_cls:
             mock_instance = MagicMock()
             mock_cls.return_value = mock_instance
-            
+
             # Reset global instance
             import backend.services.rag.evaluation.ragas_evaluator as eval_module
+
             eval_module._ragas_evaluator = None
-            
+
             mock_client = MagicMock()
             evaluator = get_ragas_evaluator(llm_client=mock_client, enable_cache=False)
-            
+
             mock_cls.assert_called_once_with(
                 llm_client=mock_client,
                 enable_cache=False,
@@ -705,6 +725,7 @@ class TestSingleton:
 # =============================================================================
 # Integration Tests
 # =============================================================================
+
 
 @pytest.mark.integration
 class TestIntegration:
@@ -718,13 +739,13 @@ class TestIntegration:
             evaluator = get_ragas_evaluator()
         except Exception:
             pytest.skip("Real LLM client not available")
-        
+
         query = "Apa itu KITAS?"
         context = ["KITAS adalah izin tinggal untuk WNA."]
         answer = "KITAS adalah izin tinggal."
-        
+
         result = await evaluator.evaluate(query, context, answer)
-        
+
         assert result.metrics
         assert all(0 <= v <= 1 for v in result.metrics.values())
 
@@ -732,6 +753,7 @@ class TestIntegration:
 # =============================================================================
 # Prompt Template Tests
 # =============================================================================
+
 
 class TestPromptTemplates:
     """Tests for evaluation prompt templates."""
@@ -743,7 +765,7 @@ class TestPromptTemplates:
             context="[Konteks 1]\ntest context",
             answer="test answer",
         )
-        
+
         assert "evaluator" in formatted.lower() or "Anda adalah" in formatted
         assert "test question" in formatted
         assert "test context" in formatted
@@ -756,7 +778,7 @@ class TestPromptTemplates:
             question="test question",
             answer="test answer",
         )
-        
+
         assert "relevan" in formatted.lower()
         assert "test question" in formatted
         assert "test answer" in formatted
@@ -768,7 +790,7 @@ class TestPromptTemplates:
             context="[Konteks 1]\ntest context",
             ground_truth="test ground truth",
         )
-        
+
         assert "konteks" in formatted.lower()
         assert "ground truth" in formatted.lower()
 
@@ -779,7 +801,7 @@ class TestPromptTemplates:
             context="[Konteks 1]\ntest context",
             ground_truth="test ground truth",
         )
-        
+
         assert "kelengkapan" in formatted.lower() or "semua" in formatted.lower()
 
     def test_context_entity_recall_prompt_format(self):
@@ -789,13 +811,14 @@ class TestPromptTemplates:
             context="[Konteks 1]\ntest context",
             answer="test answer",
         )
-        
+
         assert "entitas" in formatted.lower()
 
 
 # =============================================================================
 # Edge Case Tests
 # =============================================================================
+
 
 class TestEdgeCases:
     """Tests for edge cases."""
@@ -810,13 +833,13 @@ class TestEdgeCases:
             model="gemini",
             provider="gemini",
         )
-        
+
         result = await evaluator.evaluate(
             query=sample_query,
             context=[],
             answer=sample_answer,
         )
-        
+
         assert result is not None
         assert result.context == []
 
@@ -830,33 +853,31 @@ class TestEdgeCases:
             model="gemini",
             provider="gemini",
         )
-        
+
         result = await evaluator.evaluate(
             query=sample_query,
             context=sample_context,
             answer="",
         )
-        
+
         assert result is not None
         assert result.answer == ""
 
     @pytest.mark.asyncio
-    async def test_evaluate_multilingual(
-        self, evaluator, mock_llm_client
-    ):
+    async def test_evaluate_multilingual(self, evaluator, mock_llm_client):
         """Test evaluation with mixed Indonesian/English content."""
         mock_llm_client.generate.return_value = LLMResponse(
             content=json.dumps({"score": 0.85, "reasoning": "Good"}),
             model="gemini",
             provider="gemini",
         )
-        
+
         query = "What is KITAS dan cara mengurusnya?"
         context = ["KITAS is a limited stay permit untuk WNA."]
         answer = "KITAS adalah limited stay permit."
-        
+
         result = await evaluator.evaluate(query, context, answer)
-        
+
         assert result is not None
         assert "faithfulness" in result.metrics
 
@@ -868,5 +889,5 @@ class TestEdgeCases:
             answer="test",
             metrics={},
         )
-        
+
         assert result.overall_score == 0.0

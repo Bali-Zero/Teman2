@@ -12,7 +12,11 @@ import re
 
 from google import genai
 
-from backend.services.knowledge_graph.extractor import ExtractedEntity, ExtractedRelation, ExtractionResult
+from backend.services.knowledge_graph.extractor import (
+    ExtractedEntity,
+    ExtractedRelation,
+    ExtractionResult,
+)
 from backend.services.knowledge_graph.ontology import (
     ENTITY_SCHEMAS,
     RELATION_SCHEMAS,

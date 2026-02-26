@@ -88,7 +88,9 @@ class IntelligenceGeneralV2:
         # Brave Search API key
         self.brave_api_key = settings.brave_api_key
         if not self.brave_api_key:
-            logger.warning("⚠️ Intelligence General v2: Brave API key not configured (web search disabled)")
+            logger.warning(
+                "⚠️ Intelligence General v2: Brave API key not configured (web search disabled)"
+            )
 
     async def initialize(self) -> None:
         """Initialize database connection pool."""
@@ -101,7 +103,9 @@ class IntelligenceGeneralV2:
             )
             logger.info("✅ Intelligence General v2: Database pool initialized")
         except Exception as e:
-            logger.error(f"❌ Intelligence General v2: Failed to initialize pool: {e}", exc_info=True)
+            logger.error(
+                f"❌ Intelligence General v2: Failed to initialize pool: {e}", exc_info=True
+            )
             raise
 
     async def close(self) -> None:
@@ -250,7 +254,7 @@ class IntelligenceGeneralV2:
                 "success": False,
                 "results": [],
                 "query": query,
-                "error": "Brave API key not configured"
+                "error": "Brave API key not configured",
             }
 
         try:
@@ -278,29 +282,23 @@ class IntelligenceGeneralV2:
                 # Extract web results
                 results = []
                 for item in data.get("web", {}).get("results", []):
-                    results.append({
-                        "title": item.get("title", ""),
-                        "url": item.get("url", ""),
-                        "snippet": item.get("description", ""),
-                        "age": item.get("age", ""),
-                    })
+                    results.append(
+                        {
+                            "title": item.get("title", ""),
+                            "url": item.get("url", ""),
+                            "snippet": item.get("description", ""),
+                            "age": item.get("age", ""),
+                        }
+                    )
 
-                return {
-                    "success": True,
-                    "results": results,
-                    "query": query,
-                    "error": None
-                }
+                return {"success": True, "results": results, "query": query, "error": None}
 
         except Exception as e:
             error_msg = str(e)
-            logger.error(f"❌ Intelligence General v2: Web search failed: {error_msg}", exc_info=True)
-            return {
-                "success": False,
-                "results": [],
-                "query": query,
-                "error": error_msg
-            }
+            logger.error(
+                f"❌ Intelligence General v2: Web search failed: {error_msg}", exc_info=True
+            )
+            return {"success": False, "results": [], "query": query, "error": error_msg}
 
     async def poll_task(self) -> dict[str, Any] | None:
         """
@@ -459,9 +457,7 @@ class IntelligenceGeneralV2:
             if use_web_search and self.brave_api_key:
                 logger.info(f"🔍 Intelligence General v2: Executing web search for '{query}'")
                 search_result = await self._web_search(
-                    query,
-                    num_results=num_web_results,
-                    freshness=web_search_freshness
+                    query, num_results=num_web_results, freshness=web_search_freshness
                 )
 
                 if search_result["success"]:
@@ -472,10 +468,14 @@ class IntelligenceGeneralV2:
                             web_context_lines.append(
                                 f"{i}. **{item['title']}**\n   URL: {item['url']}\n   {item['snippet']}\n   Age: {item.get('age', 'unknown')}"
                             )
-                        web_search_context = "\n\n### Live Web Search Results:\n" + "\n\n".join(web_context_lines)
+                        web_search_context = "\n\n### Live Web Search Results:\n" + "\n\n".join(
+                            web_context_lines
+                        )
                 else:
                     logger.warning(f"⚠️ Web search failed: {search_result['error']}")
-                    web_search_context = f"\n\n### Web Search Status:\nFailed: {search_result['error']}"
+                    web_search_context = (
+                        f"\n\n### Web Search Status:\nFailed: {search_result['error']}"
+                    )
 
             # Step 3: Build system instruction (v2 hybrid prompt)
             system_instruction = get_intelligence_system_instruction_v2()
@@ -532,7 +532,11 @@ class IntelligenceGeneralV2:
                     continue
                 if in_findings_section and line.strip().startswith("-"):
                     insights.append(line.strip())
-                if in_findings_section and line.strip().startswith("##") and "key finding" not in lower_line:
+                if (
+                    in_findings_section
+                    and line.strip().startswith("##")
+                    and "key finding" not in lower_line
+                ):
                     in_findings_section = False
 
             # Extract sources from web search + analysis
@@ -542,7 +546,9 @@ class IntelligenceGeneralV2:
 
             # Also extract sources mentioned in analysis
             for line in lines:
-                if any(keyword in line.lower() for keyword in ["source:", "reference:", "http", "www."]):
+                if any(
+                    keyword in line.lower() for keyword in ["source:", "reference:", "http", "www."]
+                ):
                     sources.append(line.strip())
 
             result["status"] = "completed"
@@ -661,7 +667,9 @@ class IntelligenceGeneralV2:
                 logger.info("🛑 Intelligence General v2: Polling loop cancelled")
                 break
             except Exception as e:
-                logger.error(f"❌ Intelligence General v2: Error in polling loop: {e}", exc_info=True)
+                logger.error(
+                    f"❌ Intelligence General v2: Error in polling loop: {e}", exc_info=True
+                )
                 await asyncio.sleep(self.poll_interval)
 
         logger.info("✅ Intelligence General v2: Polling loop stopped")

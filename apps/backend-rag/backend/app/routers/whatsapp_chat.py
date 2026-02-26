@@ -334,15 +334,19 @@ async def process_whatsapp_message(
             enhanced_history = []
             if ctx["is_first_message"]:
                 # Add persona instructions as first "context" message
-                enhanced_history.append({
-                    "role": "user",
-                    "content": f"[CONTESTO WHATSAPP]\n{whatsapp_persona_instructions}\n\nRispondi sempre come Zan di Bali Zero, naturalmente su WhatsApp (no markdown, tono umano)."
-                })
-                enhanced_history.append({
-                    "role": "assistant",
-                    "content": "Capito, rispondo come Zan su WhatsApp - tono naturale, niente markdown, focus su visa e business a Bali."
-                })
-            
+                enhanced_history.append(
+                    {
+                        "role": "user",
+                        "content": f"[CONTESTO WHATSAPP]\n{whatsapp_persona_instructions}\n\nRispondi sempre come Zan di Bali Zero, naturalmente su WhatsApp (no markdown, tono umano).",
+                    }
+                )
+                enhanced_history.append(
+                    {
+                        "role": "assistant",
+                        "content": "Capito, rispondo come Zan su WhatsApp - tono naturale, niente markdown, focus su visa e business a Bali.",
+                    }
+                )
+
             enhanced_history.extend(ctx["conversation_history"])
 
             # Direct RAG query (Gemini will respond with Zantara + WhatsApp persona blend)

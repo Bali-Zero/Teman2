@@ -144,29 +144,33 @@ def print_result(result: dict[str, Any], index: int):
     """Print a search result."""
     payload = result.get("payload", {})
     score = result.get("score", 0)
-    
-    print(f"\n{'='*60}")
+
+    print(f"\n{'=' * 60}")
     print(f"Result #{index + 1} (Score: {score:.4f})")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"KBLI Code: {payload.get('kbli_code', 'N/A')}")
     print(f"Title: {payload.get('kbli_title', 'N/A')}")
-    print(f"Category: {payload.get('category_name', 'N/A')} (ID: {payload.get('category_id', 'N/A')})")
+    print(
+        f"Category: {payload.get('category_name', 'N/A')} (ID: {payload.get('category_id', 'N/A')})"
+    )
     print(f"Total Positions: {payload.get('total_positions', 0)}")
     print(f"Selected Positions: {payload.get('selected_positions', 0)}")
     print(f"ISCO Groups: {', '.join(payload.get('isco_groups', []))}")
-    
+
     positions = payload.get("positions", [])
     if positions:
         print(f"\nTop Positions ({min(5, len(positions))} of {len(positions)}):")
         for i, pos in enumerate(positions[:5]):
-            print(f"  {i+1}. {pos.get('title_en', 'N/A')} ({pos.get('title_id', 'N/A')}) - ISCO {pos.get('isco', 'N/A')}")
+            print(
+                f"  {i + 1}. {pos.get('title_en', 'N/A')} ({pos.get('title_id', 'N/A')}) - ISCO {pos.get('isco', 'N/A')}"
+            )
 
 
 async def main():
     """Main verification function."""
     # Parse arguments
     query = " ".join(sys.argv[1:]) if len(sys.argv) > 1 else None
-    
+
     # Initialize clients
     try:
         embedder = OpenAIEmbedder()
@@ -174,57 +178,59 @@ async def main():
     except ValueError as e:
         print(f"❌ Configuration error: {e}")
         sys.exit(1)
-    
+
     print(f"🔗 Qdrant URL: {qdrant.url}")
     print(f"📦 Collection: {COLLECTION_NAME}")
     print()
-    
+
     # Step 1: Check collection stats
     print("=" * 60)
     print("COLLECTION STATISTICS")
     print("=" * 60)
-    
+
     stats = await qdrant.get_stats(COLLECTION_NAME)
     if not stats.get("exists"):
         print(f"❌ Collection '{COLLECTION_NAME}' does not exist or is not accessible")
         print(f"Error: {stats.get('error', 'Unknown error')}")
         sys.exit(1)
-    
-    print(f"✅ Collection exists")
+
+    print("✅ Collection exists")
     print(f"📊 Points count: {stats['points_count']}")
     print(f"📊 Vector size: {stats['vector_size']}")
     print(f"📊 Distance metric: {stats['distance']}")
     print(f"📊 Status: {stats['status']}")
-    
+
     # Step 2: Sample some points
     print("\n" + "=" * 60)
     print("SAMPLE POINTS")
     print("=" * 60)
-    
+
     points, _ = await qdrant.scroll(COLLECTION_NAME, limit=3)
     if points:
         print(f"✅ Found {len(points)} sample points:")
         for i, point in enumerate(points):
             payload = point.get("payload", {})
-            print(f"\n  Point {i+1}:")
+            print(f"\n  Point {i + 1}:")
             print(f"    ID: {point.get('id', 'N/A')}")
-            print(f"    KBLI: {payload.get('kbli_code', 'N/A')} - {payload.get('kbli_title', 'N/A')}")
+            print(
+                f"    KBLI: {payload.get('kbli_code', 'N/A')} - {payload.get('kbli_title', 'N/A')}"
+            )
             print(f"    Positions count: {len(payload.get('positions', []))}")
     else:
         print("⚠️ No points found in collection")
-    
+
     # Step 3: Semantic search (if query provided)
     if query:
         print("\n" + "=" * 60)
         print(f"SEMANTIC SEARCH: '{query}'")
         print("=" * 60)
-        
+
         print("Generating query embedding...")
         query_vector = await embedder.generate_embedding(query)
-        
-        print(f"Searching collection...")
+
+        print("Searching collection...")
         results = await qdrant.search(COLLECTION_NAME, query_vector, limit=5)
-        
+
         if results:
             print(f"✅ Found {len(results)} results:")
             for i, result in enumerate(results):
@@ -242,7 +248,7 @@ async def main():
         print("  - 'IT manager software'")
         print("  - 'engineer mechanical'")
         print("  - 'quality control manager'")
-    
+
     print("\n" + "=" * 60)
     print("VERIFICATION COMPLETE")
     print("=" * 60)

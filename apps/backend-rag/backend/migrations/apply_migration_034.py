@@ -12,10 +12,10 @@ import psycopg2
 
 def apply_migration():
     """Apply Company-Centric CRM schema migration"""
-    
+
     # Get DATABASE_URL
     from backend.app.core.config import settings
-    
+
     database_url = settings.database_url
     if not database_url:
         print("❌ DATABASE_URL environment variable not set")
@@ -25,17 +25,16 @@ def apply_migration():
         print("2. Run: export DATABASE_URL='postgresql://...'")
         print("3. Run: python apply_migration_034.py")
         return False
-    
+
     # Read migration SQL
     migration_file = (
-        Path(__file__).parent.parent 
-        / "backend/db/migrations_v2/034_company_centric_crm.sql"
+        Path(__file__).parent.parent / "backend/db/migrations_v2/034_company_centric_crm.sql"
     )
-    
+
     if not migration_file.exists():
         print(f"❌ Migration file not found: {migration_file}")
         return False
-    
+
     print("=" * 70)
     print("ZANTARA - Company-Centric CRM Migration")
     print("=" * 70)
@@ -45,22 +44,22 @@ def apply_migration():
         f"🗄️  Target database: {database_url.split('@')[1] if '@' in database_url else 'PostgreSQL'}"
     )
     print()
-    
+
     # Read SQL
     with open(migration_file, encoding="utf-8") as f:
         sql = f.read()
-    
+
     # Connect and execute
     try:
         print("🔌 Connecting to PostgreSQL...")
         conn = psycopg2.connect(database_url)
         cursor = conn.cursor()
-        
+
         print("⚙️  Executing migration...")
         cursor.execute(sql)
-        
+
         conn.commit()
-        
+
         # Verify tables created
         cursor.execute(
             """
@@ -74,9 +73,9 @@ def apply_migration():
             ORDER BY table_name
         """
         )
-        
+
         tables = cursor.fetchall()
-        
+
         # Verify indexes
         cursor.execute(
             """
@@ -90,19 +89,19 @@ def apply_migration():
         """
         )
         indexes = cursor.fetchall()
-        
+
         print()
         print("✅ Migration completed successfully!")
         print()
         print(f"📊 Created {len(tables)} tables:")
         for table in tables:
             print(f"   ✓ {table[0]}")
-        
+
         print()
         print(f"📈 Created {len(indexes)} indexes:")
         for idx in indexes:
             print(f"   ✓ {idx[0]}")
-        
+
         # Show views
         cursor.execute(
             """
@@ -114,16 +113,16 @@ def apply_migration():
         """
         )
         views = cursor.fetchall()
-        
+
         if views:
             print()
             print(f"👁️  Created {len(views)} views:")
             for view in views:
                 print(f"   ✓ {view[0]}")
-        
+
         cursor.close()
         conn.close()
-        
+
         print()
         print("=" * 70)
         print("🎉 Company-Centric CRM is ready!")
@@ -133,15 +132,16 @@ def apply_migration():
         print("  2. Add Company and Tax tabs to the frontend")
         print("  3. Start linking clients to companies")
         print("=" * 70)
-        
+
         return True
-        
+
     except psycopg2.Error as e:
         print(f"\n❌ Database error: {e}")
         return False
     except Exception as e:
         print(f"\n❌ Error: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 

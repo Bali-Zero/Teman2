@@ -59,6 +59,7 @@ class ZohoInvoiceService:
 
         # Get organization ID from environment or config
         import os
+
         organization_id = os.environ.get("ZOHO_INVOICE_ORG_ID", "")
 
         if not organization_id:
@@ -89,7 +90,9 @@ class ZohoInvoiceService:
             # Check for token expiration
             if response.status_code == 401:
                 logger.error("Zoho token expired - manual reconnect required")
-                raise ValueError("Zoho OAuth token expired - please reconnect at /api/integrations/zoho/auth")
+                raise ValueError(
+                    "Zoho OAuth token expired - please reconnect at /api/integrations/zoho/auth"
+                )
 
             response.raise_for_status()
 
@@ -139,8 +142,12 @@ class ZohoInvoiceService:
             "contact_type": "customer",
             "contact_persons": [
                 {
-                    "first_name": client_data["full_name"].split()[0] if client_data["full_name"] else "Client",
-                    "last_name": " ".join(client_data["full_name"].split()[1:]) if len(client_data["full_name"].split()) > 1 else "",
+                    "first_name": client_data["full_name"].split()[0]
+                    if client_data["full_name"]
+                    else "Client",
+                    "last_name": " ".join(client_data["full_name"].split()[1:])
+                    if len(client_data["full_name"].split()) > 1
+                    else "",
                     "email": email,
                     "phone": client_data.get("phone", ""),
                 }
@@ -192,13 +199,17 @@ class ZohoInvoiceService:
         service_name = practice_data.get("practice_type_name", "Immigration Service")
         quoted_price = float(practice_data.get("quoted_price", 0))
 
-        line_items.append({
-            "name": service_name,
-            "description": practice_data.get("notes", f"Service for {client_data['full_name']}"),
-            "rate": quoted_price,
-            "quantity": 1,
-            "item_total": quoted_price,
-        })
+        line_items.append(
+            {
+                "name": service_name,
+                "description": practice_data.get(
+                    "notes", f"Service for {client_data['full_name']}"
+                ),
+                "rate": quoted_price,
+                "quantity": 1,
+                "item_total": quoted_price,
+            }
+        )
 
         # Calculate due date (7 days from now)
         due_date = (datetime.now()).strftime("%Y-%m-%d")

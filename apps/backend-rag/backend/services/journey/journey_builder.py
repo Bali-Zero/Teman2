@@ -3,10 +3,9 @@ Journey Builder Service
 Responsibility: Build journeys from templates
 """
 
-from typing import Any
-
 import logging
 from datetime import datetime, timedelta
+from typing import Any
 
 from backend.services.journey.journey_templates import JourneyTemplatesService
 

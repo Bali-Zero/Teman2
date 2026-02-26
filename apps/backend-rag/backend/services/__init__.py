@@ -6,27 +6,6 @@ All services can still be imported from backend.services.X for compatibility.
 """
 
 # KG Monitoring services (Phase 8)
-from .kg_monitoring import (
-    AutoIngestionService,
-    ChangeDetector,
-    ChangeEvent,
-    ChangeType,
-    DimensionScore,
-    DocumentState,
-    DocumentType,
-    ExtractedDocument,
-    IngestionResult,
-    IngestionStatus,
-    LegalScraper,
-    QualityCheckService,
-    QualityDimension,
-    QualityLevel,
-    QualityReport,
-    ScrapedDocument,
-    SourceConfig,
-    SourceType,
-)
-
 # Search services
 # Analytics services
 from .analytics import (
@@ -70,6 +49,26 @@ from .ingestion import (
     SourceType,
     StalenessSeverity,
     UpdateType,
+)
+from .kg_monitoring import (
+    AutoIngestionService,
+    ChangeDetector,
+    ChangeEvent,
+    ChangeType,
+    DimensionScore,
+    DocumentState,
+    DocumentType,
+    ExtractedDocument,
+    IngestionResult,
+    IngestionStatus,
+    LegalScraper,
+    QualityCheckService,
+    QualityDimension,
+    QualityLevel,
+    QualityReport,
+    ScrapedDocument,
+    SourceConfig,
+    SourceType,
 )
 
 # LLM client services

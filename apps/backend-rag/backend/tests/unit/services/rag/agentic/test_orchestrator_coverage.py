@@ -16,6 +16,7 @@ if str(backend_path) not in sys.path:
 
 from backend.services.llm_clients.pricing import TokenUsage
 from backend.services.rag.agentic.orchestrator import AgenticRAGOrchestrator
+from backend.services.rag.agentic.query_gates import QueryGates
 from backend.services.tools.definitions import AgentState, BaseTool, ToolCall
 
 
@@ -119,8 +120,8 @@ def orchestrator_setup(mock_tools, mock_db_pool, mock_retriever, mock_semantic_c
             yield {"type": "token", "data": "test"}
             yield {"type": "done", "data": None}
 
-        mock_reasoning_instance.execute_react_loop_stream = (
-            lambda *args, **kwargs: mock_stream_gen()
+        mock_reasoning_instance.execute_react_loop_stream = lambda *args, **kwargs: (
+            mock_stream_gen()
         )
         mock_reasoning.return_value = mock_reasoning_instance
 
@@ -159,6 +160,56 @@ def orchestrator_setup(mock_tools, mock_db_pool, mock_retriever, mock_semantic_c
         orchestrator.reasoning_engine = mock_reasoning_instance
         orchestrator.entity_extractor = mock_entity_instance
         orchestrator.context_window_manager = mock_context_window_instance
+
+        # Mock core context_manager for process_query / stream_query delegation
+        default_context = {
+            "profile": None,
+            "facts": [],
+            "collective_facts": [],
+            "history": [],
+        }
+        if hasattr(orchestrator, "core") and orchestrator.core is not None:
+            orchestrator.core.context_manager = MagicMock()
+            orchestrator.core.context_manager.get_full_context = AsyncMock(
+                return_value=(default_context, [])
+            )
+            orchestrator.core.context_manager.get_basic_context = AsyncMock(
+                return_value=(default_context, [])
+            )
+            orchestrator.core.context_manager.load_user_context = AsyncMock(
+                return_value=default_context
+            )
+            orchestrator.core.context_manager.prepare_conversation_history = MagicMock(
+                return_value=[]
+            )
+            # Use real QueryGates with mocked prompt_builder so gate tests work
+            orchestrator.core.query_gates = QueryGates(
+                prompt_builder=mock_pb_instance,
+            )
+            # Mock entity extractor on core
+            orchestrator.core.entity_extractor = MagicMock()
+            orchestrator.core.entity_extractor.extract_entities = AsyncMock(
+                return_value={}
+            )
+            # Mock other core dependencies
+            orchestrator.core.check_faq_cache = AsyncMock(return_value=None)
+            mock_metrics_mgr = MagicMock()
+            mock_metrics_mgr.extract_timings_from_state = MagicMock(
+                return_value={"total": 0.1, "embedding": 0.0, "search": 0.0, "rerank": 0.0, "llm": 0.1, "reasoning": 0.1, "tools": 0.0}
+            )
+            mock_metrics_mgr.extract_collections_from_state = MagicMock(return_value=set())
+            mock_metrics_mgr.extract_sources_from_state = MagicMock(return_value=[])
+            mock_metrics_mgr.calculate_context_used = MagicMock(return_value=0)
+            mock_metrics_mgr.record_rag_metrics = MagicMock()
+            mock_metrics_mgr.record_token_usage = MagicMock()
+            mock_metrics_mgr.log_query_completion = MagicMock()
+            orchestrator.core.metrics_manager = mock_metrics_mgr
+            # Mock response builder on core
+            orchestrator.core.response_builder = MagicMock()
+            orchestrator.core.response_builder.build_core_result = MagicMock()
+            # Mock query_analytics_repo
+            orchestrator.core.query_analytics_repo = MagicMock()
+            orchestrator.core.query_analytics_repo.log_query = AsyncMock()
 
         return {
             "orchestrator": orchestrator,
@@ -221,7 +272,7 @@ class TestProcessQueryGates:
 
             result = await orch.process_query("Ciao!", "user@test.com")
 
-            assert result.model_used == "greeting-pattern"
+            assert result.model_used == "greeting-gate"
             assert result.verification_status == "passed"
             assert "Ciao" in result.answer
 
@@ -244,7 +295,7 @@ class TestProcessQueryGates:
 
             result = await orch.process_query("Come stai?", "user@test.com")
 
-            assert result.model_used == "casual-pattern"
+            assert result.model_used == "casual-gate"
             assert "Sto bene" in result.answer
 
     async def test_identity_gate(self, orchestrator_setup):
@@ -268,7 +319,7 @@ class TestProcessQueryGates:
 
             result = await orch.process_query("Chi sei?", "user@test.com")
 
-            assert result.model_used == "identity-pattern"
+            assert result.model_used == "identity-gate"
             assert "ZANTARA" in result.answer
 
     async def test_clarification_gate(self, orchestrator_setup):
@@ -288,6 +339,9 @@ class TestProcessQueryGates:
         mock_clarification.generate_clarification_request.return_value = "Cosa intendi esattamente?"
 
         orch.clarification_service = mock_clarification
+        # Also set on core.query_gates so the gate can access it
+        if hasattr(orch, "core") and hasattr(orch.core, "query_gates"):
+            orch.core.query_gates.clarification_service = mock_clarification
 
         with patch(
             "backend.services.rag.agentic.orchestrator.get_user_context"
@@ -299,7 +353,10 @@ class TestProcessQueryGates:
                 "history": [],
             }
 
-            result = await orch.process_query("Quanto costa?", "user@test.com")
+            result = await orch.process_query(
+                "Quanto costa?", "user@test.com",
+                conversation_history=[{"role": "user", "content": "Ciao"}],
+            )
 
             assert result.model_used == "clarification-gate"
             assert result.is_ambiguous is True
@@ -321,6 +378,8 @@ class TestProcessQueryGates:
         }
 
         orch.clarification_service = mock_clarification
+        if hasattr(orch, "core") and hasattr(orch.core, "query_gates"):
+            orch.core.query_gates.clarification_service = mock_clarification
 
         with patch(
             "backend.services.rag.agentic.orchestrator.get_user_context"
@@ -360,7 +419,7 @@ class TestProcessQueryGates:
 
             result = await orch.process_query("Come curare il mal di testa?", "user@test.com")
 
-            assert result.model_used == "out-of-domain-medical"
+            assert result.model_used == "out_of_domain-gate"
             assert result.verification_status == "blocked"
 
     async def test_cache_hit(self, orchestrator_setup):
