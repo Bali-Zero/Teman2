@@ -12,6 +12,10 @@ import psycopg2
 # Add backend to Python path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 from backend.app.core.config import settings
 
 
@@ -23,35 +27,35 @@ def apply_migration_013():
     )
 
     if not migration_file.exists():
-        print(f"❌ Migration file not found: {migration_file}")
+        logger.error(f"Migration file not found: {migration_file}")
         return False
 
-    print("🔄 Connecting to database...")
+    logger.info("Connecting to database...")
 
     try:
         # Connect to PostgreSQL
         db_url = settings.database_url or os.getenv("DATABASE_URL")
         if not db_url:
-            print("❌ DATABASE_URL not found in settings or environment")
+            logger.error("DATABASE_URL not found in settings or environment")
             return False
 
         conn = psycopg2.connect(db_url)
         cursor = conn.cursor()
 
-        print("✅ Connected to database")
+        logger.info("Connected to database")
 
         # Read migration file
         with open(migration_file, encoding="utf-8") as f:
             migration_sql = f.read()
 
-        print(f"📄 Loaded migration from: {migration_file.name}")
-        print("🚀 Applying migration...")
+        logger.info(f"Loaded migration from: {migration_file.name}")
+        logger.info("Applying migration...")
 
         # Execute migration
         cursor.execute(migration_sql)
         conn.commit()
 
-        print("✅ Migration 013 applied successfully!")
+        logger.info("Migration 013 applied successfully!")
 
         # Verify the tables
         tables_to_check = ["parent_documents", "golden_routes", "query_route_clusters"]
@@ -66,9 +70,9 @@ def apply_migration_013():
             )
             exists = cursor.fetchone()[0]
             if exists:
-                print(f"✅ Verified: table '{table}' exists")
+                logger.info(f"✅ Verified: table '{table}' exists")
             else:
-                print(f"❌ Error: table '{table}' was not created")
+                logger.error(f"❌ Error: table '{table}' was not created")
 
         cursor.close()
         conn.close()
@@ -76,23 +80,23 @@ def apply_migration_013():
         return True
 
     except psycopg2.Error as e:
-        print(f"❌ Database error: {e}")
+        logger.error(f"Database error: {e}")
         return False
     except Exception as e:
-        print(f"❌ Unexpected error: {e}")
+        logger.error(f"Unexpected error: {e}")
         return False
 
 
 if __name__ == "__main__":
-    print("=" * 60)
-    print("Migration 013: Agentic RAG Tables")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info("Migration 013: Agentic RAG Tables")
+    logger.info("=" * 60)
 
     success = apply_migration_013()
 
     if success:
-        print("\n🎉 Migration completed successfully!")
+        logger.info("\n🎉 Migration completed successfully!")
         sys.exit(0)
     else:
-        print("\n❌ Migration failed!")
+        logger.error("\n❌ Migration failed!")
         sys.exit(1)

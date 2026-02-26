@@ -12,6 +12,74 @@ import psutil
 logger = logging.getLogger(__name__)
 
 
+# Stats models (moved from analytics router - no longer exported there)
+class OverviewStats:
+    """Overview statistics for dashboard."""
+
+    def __init__(self):
+        self.conversations_today = 0
+        self.conversations_week = 0
+        self.users_active = 0
+        self.revenue_pipeline = 0.0
+        self.uptime_seconds = 0.0
+        self.services_total = 0
+        self.services_healthy = 0
+
+
+class RAGStats:
+    """RAG pipeline statistics."""
+
+    def __init__(self):
+        self.queries_today = 0
+        self.avg_latency_ms = 0.0
+        self.embedding_latency_ms = 0.0
+        self.search_latency_ms = 0.0
+        self.rerank_latency_ms = 0.0
+        self.llm_latency_ms = 0.0
+        self.top_queries: list[dict] = []
+        self.cache_hit_rate = 0.0
+
+
+class CRMStats:
+    """CRM statistics."""
+
+    def __init__(self):
+        self.clients_by_status: dict[str, int] = {}
+        self.clients_total = 0
+        self.clients_active = 0
+        self.practices_by_status: dict[str, int] = {}
+        self.practices_total = 0
+        self.revenue_quoted = 0.0
+        self.revenue_paid = 0.0
+        self.renewals_30_days = 0
+        self.renewals_60_days = 0
+        self.renewals_90_days = 0
+        self.documents_pending = 0
+
+
+class TeamStats:
+    """Team productivity statistics."""
+
+    def __init__(self):
+        self.hours_today = 0.0
+        self.hours_week = 0.0
+        self.conversations_by_agent: dict[str, int] = {}
+        self.active_sessions = 0
+        self.action_items_open = 0
+
+
+class SystemStats:
+    """System health statistics."""
+
+    def __init__(self):
+        self.cpu_percent = 0.0
+        self.memory_mb = 0.0
+        self.memory_percent = 0.0
+        self.db_connections_active = 0
+        self.db_connections_idle = 0
+        self.services: list[dict] = []
+
+
 class AnalyticsAggregator:
     """
     Aggregates analytics data from multiple sources:
@@ -46,8 +114,6 @@ class AnalyticsAggregator:
 
     async def get_overview_stats(self) -> dict:
         """Get overview statistics"""
-        from backend.app.routers.analytics import OverviewStats
-
         stats = OverviewStats()
 
         try:
@@ -110,8 +176,6 @@ class AnalyticsAggregator:
 
     async def get_rag_stats(self) -> dict:
         """Get RAG pipeline statistics"""
-        from backend.app.routers.analytics import RAGStats
-
         stats = RAGStats()
 
         try:
@@ -176,8 +240,6 @@ class AnalyticsAggregator:
 
     async def get_crm_stats(self) -> dict:
         """Get CRM statistics"""
-        from backend.app.routers.analytics import CRMStats
-
         stats = CRMStats()
 
         try:
@@ -266,8 +328,6 @@ class AnalyticsAggregator:
 
     async def get_team_stats(self) -> dict:
         """Get team productivity statistics"""
-        from backend.app.routers.analytics import TeamStats
-
         stats = TeamStats()
 
         try:
@@ -336,8 +396,6 @@ class AnalyticsAggregator:
 
     async def get_system_stats(self) -> dict:
         """Get system health statistics"""
-        from backend.app.routers.analytics import SystemStats
-
         stats = SystemStats()
 
         try:

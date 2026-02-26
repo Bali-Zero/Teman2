@@ -135,11 +135,11 @@ async def run_migration():
         if success:
             verified = await migration.verify(conn)
             if verified:
-                print("Migration 019 completed and verified")
+                logger.info("Migration 019 completed and verified")
             else:
-                print("Migration 019 applied but verification failed")
+                logger.error("Migration 019 applied but verification failed")
         else:
-            print("Migration 019 failed")
+            logger.error("Migration 019 failed")
     finally:
         await conn.close()
 

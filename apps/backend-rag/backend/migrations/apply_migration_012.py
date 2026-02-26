@@ -3,6 +3,7 @@ Apply Migration 012: Fix Production Schema Issues
 Adds missing conversation_id column to interactions table
 """
 
+import logging
 import os
 import sys
 from pathlib import Path
@@ -11,6 +12,8 @@ import psycopg2
 
 # Add backend to Python path
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+logger = logging.getLogger(__name__)
 
 from backend.app.core.config import settings
 
@@ -23,35 +26,35 @@ def apply_migration_012():
     )
 
     if not migration_file.exists():
-        print(f"❌ Migration file not found: {migration_file}")
+        logger.error(f"Migration file not found: {migration_file}")
         return False
 
-    print("🔄 Connecting to production database...")
+    logger.info("Connecting to production database...")
 
     try:
         # Connect to PostgreSQL
         db_url = settings.database_url or os.getenv("DATABASE_URL")
         if not db_url:
-            print("❌ DATABASE_URL not found in settings or environment")
+            logger.error("DATABASE_URL not found in settings or environment")
             return False
 
         conn = psycopg2.connect(db_url)
         cursor = conn.cursor()
 
-        print("✅ Connected to database")
+        logger.info("Connected to database")
 
         # Read migration file
         with open(migration_file, encoding="utf-8") as f:
             migration_sql = f.read()
 
-        print(f"📄 Loaded migration from: {migration_file.name}")
-        print("🚀 Applying migration...")
+        logger.info(f"Loaded migration from: {migration_file.name}")
+        logger.info("Applying migration...")
 
         # Execute migration
         cursor.execute(migration_sql)
         conn.commit()
 
-        print("✅ Migration 012 applied successfully!")
+        logger.info("Migration 012 applied successfully!")
 
         # Verify the fix
         cursor.execute(
@@ -65,11 +68,11 @@ def apply_migration_012():
 
         result = cursor.fetchone()
         if result:
-            print("✅ Verified: conversation_id column exists")
-            print(f"   - Type: {result[1]}")
-            print(f"   - Nullable: {result[2]}")
+            logger.info("Verified: conversation_id column exists")
+            logger.info(f"   - Type: {result[1]}")
+            logger.info(f"   - Nullable: {result[2]}")
         else:
-            print("⚠️  Warning: Could not verify conversation_id column")
+            logger.warning("Could not verify conversation_id column")
 
         cursor.close()
         conn.close()
@@ -77,23 +80,23 @@ def apply_migration_012():
         return True
 
     except psycopg2.Error as e:
-        print(f"❌ Database error: {e}")
+        logger.error(f"Database error: {e}")
         return False
     except Exception as e:
-        print(f"❌ Unexpected error: {e}")
+        logger.error(f"Unexpected error: {e}")
         return False
 
 
 if __name__ == "__main__":
-    print("=" * 60)
-    print("Migration 012: Fix Production Schema Issues")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info("Migration 012: Fix Production Schema Issues")
+    logger.info("=" * 60)
 
     success = apply_migration_012()
 
     if success:
-        print("\n🎉 Migration completed successfully!")
+        logger.info("\nMigration completed successfully!")
         sys.exit(0)
     else:
-        print("\n❌ Migration failed!")
+        logger.error("\nMigration failed!")
         sys.exit(1)

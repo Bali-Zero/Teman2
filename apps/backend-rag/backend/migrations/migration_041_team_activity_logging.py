@@ -11,8 +11,11 @@ Tables:
 """
 
 import asyncio
+import logging
 
 import asyncpg
+
+logger = logging.getLogger(__name__)
 
 
 async def run_migration():
@@ -21,18 +24,18 @@ async def run_migration():
     from backend.app.core.config import settings
 
     if not settings.database_url:
-        print("❌ ERROR: DATABASE_URL not found")
+        logger.info("$1")
         return False
 
     try:
-        print("🔌 Connecting to PostgreSQL...")
+        logger.info("$1")
         conn = await asyncpg.connect(settings.database_url)
-        print("✅ Connected")
+        logger.info("$1")
 
         # =============================================================================
         # Table 1: activity_logs - General activity tracking
         # =============================================================================
-        print("\n📊 Creating activity_logs table...")
+        logger.info("$1")
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS activity_logs (
                 id SERIAL PRIMARY KEY,
@@ -65,12 +68,12 @@ async def run_migration():
             CREATE INDEX IF NOT EXISTS idx_activity_logs_details_gin
                 ON activity_logs USING GIN (details);
         """)
-        print("✅ activity_logs table created")
+        logger.info("$1")
 
         # =============================================================================
         # Table 2: team_interactions - Communication tracking
         # =============================================================================
-        print("\n📊 Creating team_interactions table...")
+        logger.info("$1")
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS team_interactions (
                 id SERIAL PRIMARY KEY,
@@ -111,12 +114,12 @@ async def run_migration():
             CREATE INDEX IF NOT EXISTS idx_team_interactions_content_fts
                 ON team_interactions USING GIN (to_tsvector('english', message_content));
         """)
-        print("✅ team_interactions table created")
+        logger.info("$1")
 
         # =============================================================================
         # Table 3: api_audit_trail - Complete API audit
         # =============================================================================
-        print("\n📊 Creating api_audit_trail table...")
+        logger.info("$1")
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS api_audit_trail (
                 id SERIAL PRIMARY KEY,
@@ -156,12 +159,12 @@ async def run_migration():
             CREATE INDEX IF NOT EXISTS idx_api_audit_query_params_gin
                 ON api_audit_trail USING GIN (query_params);
         """)
-        print("✅ api_audit_trail table created")
+        logger.info("$1")
 
         # =============================================================================
         # Table 4: session_tracking - User session tracking
         # =============================================================================
-        print("\n📊 Creating session_tracking table...")
+        logger.info("$1")
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS session_tracking (
                 id SERIAL PRIMARY KEY,
@@ -186,12 +189,12 @@ async def run_migration():
                 INDEX idx_session_tracking_login_at (login_at DESC)
             );
         """)
-        print("✅ session_tracking table created")
+        logger.info("$1")
 
         # =============================================================================
         # Create views for common queries
         # =============================================================================
-        print("\n📊 Creating helper views...")
+        logger.info("$1")
 
         # View 1: Today's team activity summary
         await conn.execute("""
@@ -207,7 +210,7 @@ async def run_migration():
             GROUP BY user_email
             ORDER BY total_actions DESC;
         """)
-        print("✅ View: v_today_team_activity")
+        logger.info("$1")
 
         # View 2: Team interactions summary
         await conn.execute("""
@@ -223,7 +226,7 @@ async def run_migration():
             GROUP BY user_email, interaction_type, direction, DATE(created_at)
             ORDER BY date DESC, count DESC;
         """)
-        print("✅ View: v_team_interactions_summary")
+        logger.info("$1")
 
         # View 3: API usage by endpoint
         await conn.execute("""
@@ -240,18 +243,18 @@ async def run_migration():
             GROUP BY endpoint, method, DATE(created_at)
             ORDER BY date DESC, request_count DESC;
         """)
-        print("✅ View: v_api_usage_by_endpoint")
+        logger.info("$1")
 
-        print("\n🎉 Migration 041 completed successfully!")
-        print("\n📋 Created tables:")
-        print("   • activity_logs (general activity tracking)")
-        print("   • team_interactions (communications)")
-        print("   • api_audit_trail (API calls)")
-        print("   • session_tracking (user sessions)")
-        print("\n📊 Created views:")
-        print("   • v_today_team_activity")
-        print("   • v_team_interactions_summary")
-        print("   • v_api_usage_by_endpoint")
+        logger.info("$1")
+        logger.info("$1")
+        logger.info("$1")
+        logger.info("$1")
+        logger.info("$1")
+        logger.info("$1")
+        logger.info("$1")
+        logger.info("$1")
+        logger.info("$1")
+        logger.info("$1")
 
         await conn.close()
         return True

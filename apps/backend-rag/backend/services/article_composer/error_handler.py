@@ -124,6 +124,20 @@ def handle_anthropic_error(
         )
         return HTTPException(status_code=429, detail=api_error.model_dump())
 
+    elif isinstance(error, anthropic.APITimeoutError):
+        # Check before APIConnectionError (APITimeoutError subclasses it)
+        api_error = APIError.create(
+            code=ErrorCode.API_TIMEOUT,
+            message="Claude API request timed out",
+            details={
+                **error_context,
+                "suggestion": "Request took too long, please retry",
+            },
+            request_id=request_id,
+        )
+        logger.error("API timeout", extra=error_context)
+        return HTTPException(status_code=504, detail=api_error.model_dump())
+
     elif isinstance(error, anthropic.APIConnectionError):
         api_error = APIError.create(
             code=ErrorCode.API_CONNECTION_ERROR,
@@ -136,19 +150,6 @@ def handle_anthropic_error(
         )
         logger.error("API connection error", extra=error_context, exc_info=True)
         return HTTPException(status_code=503, detail=api_error.model_dump())
-
-    elif isinstance(error, anthropic.APITimeoutError):
-        api_error = APIError.create(
-            code=ErrorCode.API_TIMEOUT,
-            message="Claude API request timed out",
-            details={
-                **error_context,
-                "suggestion": "Request took too long, please retry",
-            },
-            request_id=request_id,
-        )
-        logger.error("API timeout", extra=error_context)
-        return HTTPException(status_code=504, detail=api_error.model_dump())
 
     elif isinstance(error, anthropic.AuthenticationError):
         api_error = APIError.create(
