@@ -13,7 +13,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent.parent / "backe
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from backend.llm.base import LLMMessage
+from backend.llm.base import LLMMessage, LLMResponse
 from backend.llm.providers.ollama import OllamaProvider
 
 
@@ -106,7 +106,7 @@ class TestOllamaProvider:
             messages = [LLMMessage(role="user", content="Test message")]
             response = await ollama_provider.generate(messages)
 
-            assert isinstance(response, LLMMessage)
+            assert isinstance(response, LLMResponse)
             assert "Test response" in response.content
 
     @pytest.mark.asyncio
@@ -129,20 +129,31 @@ class TestOllamaProvider:
     @pytest.mark.asyncio
     async def test_generate_stream(self, ollama_provider):
         """Test streaming generation"""
+        from contextlib import asynccontextmanager
+
         mock_chunks = [
             '{"response": "chunk1"}',
             '{"response": "chunk2"}',
             '{"response": "chunk3"}',
         ]
 
+        async def mock_aiter_lines():
+            for c in mock_chunks:
+                yield c
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.aiter_lines = mock_aiter_lines
+
+        @asynccontextmanager
+        async def mock_stream(*args, **kwargs):
+            yield mock_response
+
         with patch("httpx.AsyncClient") as mock_client_class:
-            mock_client = AsyncMock()
-            mock_stream = AsyncMock()
-            mock_stream.status_code = 200
-            mock_stream.aiter_lines = AsyncMock(return_value=iter(mock_chunks))
-            mock_client.stream = AsyncMock(return_value=mock_stream)
-            mock_client_class.return_value.__aenter__.return_value = mock_client
-            mock_client_class.return_value.__aexit__.return_value = None
+            mock_client = MagicMock()
+            mock_client.stream = mock_stream
+            mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client_class.return_value.__aexit__ = AsyncMock(return_value=None)
 
             messages = [LLMMessage(role="user", content="Test")]
             chunks = []

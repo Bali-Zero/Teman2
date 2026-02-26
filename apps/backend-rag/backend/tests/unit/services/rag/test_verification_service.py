@@ -26,13 +26,15 @@ def verification_service():
     with (
         patch("backend.services.rag.verification_service.GENAI_AVAILABLE", True),
         patch("backend.services.rag.verification_service.GenAIClient") as mock_client_class,
-        patch("backend.app.core.config.settings") as mock_settings,
+        patch("backend.services.rag.verification_service.settings") as mock_settings,
     ):
         mock_settings.google_api_key = "test_key"
         mock_client = MagicMock()
         mock_client.is_available = True
         mock_client_class.return_value = mock_client
-        return VerificationService()
+        service = VerificationService()
+        service._genai_client = mock_client
+        return service
 
 
 @pytest.fixture
@@ -40,10 +42,13 @@ def verification_service_no_genai():
     """Create VerificationService instance without GenAI"""
     with (
         patch("backend.services.rag.verification_service.GENAI_AVAILABLE", False),
-        patch("backend.app.core.config.settings") as mock_settings,
+        patch("backend.services.rag.verification_service.settings") as mock_settings,
     ):
         mock_settings.google_api_key = None
-        return VerificationService()
+        service = VerificationService()
+        service._genai_client = None
+        service._get_genai_client = lambda: None
+        return service
 
 
 class TestVerificationService:

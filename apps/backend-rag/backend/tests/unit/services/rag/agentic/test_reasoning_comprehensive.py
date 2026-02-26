@@ -207,22 +207,22 @@ class TestEvidenceScore:
     """Tests for evidence score calculation"""
 
     def test_calculate_evidence_score_high_quality_sources(self):
-        """Test with high quality sources"""
+        """Test with high quality sources and relevant context (relevance required for high score)"""
         sources = [{"score": 0.8}, {"score": 0.6}]
-        context = []
-        query = "test"
+        context = ["Immigration visa KITAS requirements for Indonesia"]
+        query = "KITAS visa immigration requirements"
 
         score = calculate_evidence_score(sources, context, query)
-        assert score >= 0.5
+        assert score >= 0.5  # High relevance + good sources
 
     def test_calculate_evidence_score_multiple_sources(self):
-        """Test with multiple sources"""
+        """Test with multiple sources and some context relevance"""
         sources = [{"score": 0.2}] * 5
-        context = []
-        query = "test"
+        context = ["Tax PPh regulations for companies"]
+        query = "tax PPh company regulations"
 
         score = calculate_evidence_score(sources, context, query)
-        assert score >= 0.2
+        assert score >= 0.15  # Some relevance + weak sources
 
     def test_calculate_evidence_score_with_context(self):
         """Test with context"""
