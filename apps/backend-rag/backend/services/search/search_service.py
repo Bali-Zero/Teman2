@@ -1067,6 +1067,7 @@ class SearchService:
             ValueError,
             KeyError,
             RuntimeError,
+            Exception,  # Catch route_query/embedding/etc failures for fallback
         ) as e:
             logger.error(f"Search with conflict resolution error: {e}", exc_info=True)
             # Fallback to simple search

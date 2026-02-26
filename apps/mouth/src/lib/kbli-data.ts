@@ -439,24 +439,34 @@ let _prefixMap: Map<string, KBLICode[]> | null = null;
 function loadData(): void {
   if (_allCodes !== null) return;
 
-  // Try the local data file first, fall back to source_documents
+  // Try local data file first, then repo root source_documents, then backend data
   const localPath = path.join(process.cwd(), "data", "kbli-2025.json");
-  const fallbackPath = path.resolve(
+  const repoRootPath = path.resolve(
     process.cwd(),
     "..",
-    "nuzantara",
+    "..",
     "source_documents",
+    "KBLI_2025_FINAL_CLEAN.json",
+  );
+  const backendDataPath = path.resolve(
+    process.cwd(),
+    "..",
+    "backend-rag",
+    "backend",
+    "data",
     "KBLI_2025_FINAL_CLEAN.json",
   );
 
   let jsonPath: string;
   if (fs.existsSync(localPath)) {
     jsonPath = localPath;
-  } else if (fs.existsSync(fallbackPath)) {
-    jsonPath = fallbackPath;
+  } else if (fs.existsSync(repoRootPath)) {
+    jsonPath = repoRootPath;
+  } else if (fs.existsSync(backendDataPath)) {
+    jsonPath = backendDataPath;
   } else {
     throw new Error(
-      `KBLI data file not found. Tried:\n  ${localPath}\n  ${fallbackPath}`,
+      `KBLI data file not found. Tried:\n  ${localPath}\n  ${repoRootPath}\n  ${backendDataPath}`,
     );
   }
 
