@@ -76,7 +76,7 @@
     },
     "auth": {
       "mode": "token",
-      "token": null,
+      "token": "",
       "rateLimit": {
         "maxAttempts": 10,
         "windowMs": 60000,
