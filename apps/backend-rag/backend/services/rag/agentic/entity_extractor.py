@@ -14,7 +14,7 @@ from typing import Any
 class EntityExtractionService:
     """
     Service for extracting entities from user queries.
-    
+
     Extracts and classifies:
     - Visa types (KITAS, KITAP, VITAS, etc.)
     - Tax concepts (NPWP, PPh, PPN, etc.)
@@ -22,10 +22,10 @@ class EntityExtractionService:
     - KBLI codes (business classification)
     - Company types (PT PMA, etc.)
     - Nationalities and budget
-    
+
     Also determines the primary domain of the query to enable proper routing.
     """
-    
+
     # Domain constants for routing
     DOMAIN_VISA = "visa"
     DOMAIN_TAX = "tax"
@@ -33,17 +33,17 @@ class EntityExtractionService:
     DOMAIN_KBLI = "kbli"
     DOMAIN_COMPANY = "company"
     DOMAIN_GENERAL = "general"
-    
+
     def __init__(self, llm_gateway: Any | None = None):
         self._llm_gateway = llm_gateway
 
     async def extract_entities(self, query: str) -> dict[str, Any]:
         """
         Extract entities and determine domain from query.
-        
+
         Args:
             query: User query string
-            
+
         Returns:
             Dict with extracted entities and domain classification
             {
@@ -126,7 +126,7 @@ class EntityExtractionService:
         """Extract visa-related entities."""
         visa_codes = re.findall(r"\b(e\d{2}[a-z]?)\b", query_lower)
         visa_type = None
-        
+
         if visa_codes:
             visa_type = visa_codes[0].upper()
         elif "kitas" in query_lower:
@@ -179,7 +179,9 @@ class EntityExtractionService:
             return {"tax_concept": tax_concept, "tax_code": tax_code}
         return None
 
-    def _extract_property_entities(self, query_lower: str, query_upper: str) -> dict[str, Any] | None:
+    def _extract_property_entities(
+        self, query_lower: str, query_upper: str
+    ) -> dict[str, Any] | None:
         """Extract property-related entities."""
         property_type = None
 
@@ -214,7 +216,9 @@ class EntityExtractionService:
                 return {"kbli_code": code, "kbli_name": None}
         return None
 
-    def _extract_company_entities(self, query_lower: str, query_upper: str) -> dict[str, Any] | None:
+    def _extract_company_entities(
+        self, query_lower: str, query_upper: str
+    ) -> dict[str, Any] | None:
         """Extract company-related entities."""
         company_type = None
 
@@ -271,7 +275,7 @@ class EntityExtractionService:
             "india": "India",
             "indian": "India",
         }
-        
+
         for marker, normalized in nationality_map.items():
             if marker in query_lower:
                 return normalized
@@ -290,7 +294,7 @@ class EntityExtractionService:
     def _determine_domain(self, query_lower: str, entities: dict[str, Any]) -> str:
         """
         Determine the primary domain of the query.
-        
+
         Priority:
         1. Explicit domain keywords in query
         2. Entity types detected
@@ -300,27 +304,66 @@ class EntityExtractionService:
 
         # Check for visa domain
         visa_keywords = [
-            "kitas", "kitap", "vitas", "visa", "work permit", "rptka", "imta",
-            "immigration", "imigrasi", "stay permit", "izin tinggal", "foreign worker",
-            "tenaga kerja asing", "tka", "e-visa", "evisa", "molina"
+            "kitas",
+            "kitap",
+            "vitas",
+            "visa",
+            "work permit",
+            "rptka",
+            "imta",
+            "immigration",
+            "imigrasi",
+            "stay permit",
+            "izin tinggal",
+            "foreign worker",
+            "tenaga kerja asing",
+            "tka",
+            "e-visa",
+            "evisa",
+            "molina",
         ]
         if any(kw in query_lower for kw in visa_keywords):
             return self.DOMAIN_VISA
 
         # Check for tax domain
         tax_keywords = [
-            "npwp", "pph", "ppn", "pbb", "tax", "pajak", "tasse", "fiscal",
-            "vat", "income tax", "corporate tax", "withholding tax", "spt",
-            "faktur pajak", "tax reporting", "laporan pajak"
+            "npwp",
+            "pph",
+            "ppn",
+            "pbb",
+            "tax",
+            "pajak",
+            "tasse",
+            "fiscal",
+            "vat",
+            "income tax",
+            "corporate tax",
+            "withholding tax",
+            "spt",
+            "faktur pajak",
+            "tax reporting",
+            "laporan pajak",
         ]
         if any(kw in query_lower for kw in tax_keywords):
             return self.DOMAIN_TAX
 
         # Check for property domain
         property_keywords = [
-            "hak pakai", "hgb", "hak milik", "hak guna bangunan", "property",
-            "villa", "real estate", "land", "tanah", "sewa", "lease",
-            "sertifikat", "certificate", "hak sewa", "bangunan"
+            "hak pakai",
+            "hgb",
+            "hak milik",
+            "hak guna bangunan",
+            "property",
+            "villa",
+            "real estate",
+            "land",
+            "tanah",
+            "sewa",
+            "lease",
+            "sertifikat",
+            "certificate",
+            "hak sewa",
+            "bangunan",
         ]
         if any(kw in query_lower for kw in property_keywords):
             return self.DOMAIN_PROPERTY
@@ -352,7 +395,7 @@ class EntityExtractionService:
     def is_non_kbli_domain(self, query: str, entities: dict[str, Any]) -> bool:
         """
         Check if query is clearly NOT a KBLI query.
-        
+
         Returns True for visa, tax, or property queries that should
         NOT be matched against KBLI codes.
         """

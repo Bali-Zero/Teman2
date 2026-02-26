@@ -33,11 +33,11 @@ def mock_state():
 @pytest.fixture
 def mock_token_usage():
     """Create mock TokenUsage"""
-    usage = TokenUsage()
-    usage.prompt_tokens = 100
-    usage.completion_tokens = 50
-    usage.total_tokens = 150
-    usage.cost_usd = 0.001
+    usage = TokenUsage(
+        prompt_tokens=100,
+        completion_tokens=50,
+        cost_usd=0.001,
+    )
     return usage
 
 

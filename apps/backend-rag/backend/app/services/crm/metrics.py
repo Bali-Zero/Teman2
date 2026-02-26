@@ -214,8 +214,8 @@ class CRMMetricsCollector:
                         COALESCE(custom_fields->>'stage', 'unknown') as stage,
                         COALESCE(priority, 'normal') as priority,
                         COUNT(*) as count
-                    FROM cases
-                    WHERE status = 'active'
+                    FROM practices
+                    WHERE status NOT IN ('completed', 'cancelled')
                     GROUP BY stage, priority
                 """)
 
@@ -232,15 +232,15 @@ class CRMMetricsCollector:
                 # Application processing times (completed in last 30 days)
                 processing_times = await conn.fetch("""
                     SELECT
-                        c.case_type,
-                        c.custom_fields->>'visa_type' as visa_type,
-                        c.custom_fields->>'destination_country' as destination_country,
-                        c.custom_fields->>'outcome' as outcome,
-                        EXTRACT(EPOCH FROM (c.updated_at - c.created_at)) as duration_seconds
-                    FROM cases c
-                    WHERE c.status = 'completed'
-                    AND c.updated_at >= NOW() - INTERVAL '30 days'
-                    AND c.custom_fields->>'outcome' IS NOT NULL
+                        pt.name as practice_type,
+                        p.custom_fields->>'visa_type' as visa_type,
+                        p.custom_fields->>'destination_country' as destination_country,
+                        p.custom_fields->>'outcome' as outcome,
+                        EXTRACT(EPOCH FROM (p.updated_at - p.created_at)) as duration_seconds
+                    FROM practices p
+                    LEFT JOIN practice_types pt ON pt.id = p.practice_type_id
+                    WHERE p.status = 'completed'
+                    AND p.updated_at >= NOW() - INTERVAL '30 days'
                 """)
 
                 for row in processing_times:
@@ -370,11 +370,11 @@ class CRMMetricsCollector:
                 # Get application stats
                 app_stats = await conn.fetchrow("""
                     SELECT
-                        COUNT(*) FILTER (WHERE status = 'active') as applications_in_progress,
+                        COUNT(*) FILTER (WHERE status NOT IN ('completed', 'cancelled')) as applications_in_progress,
                         COUNT(*) FILTER (WHERE status = 'completed') as completed_applications,
                         COUNT(*) as total_applications,
                         AVG(EXTRACT(EPOCH FROM (updated_at - created_at))) FILTER (WHERE status = 'completed') as avg_processing_days
-                    FROM cases
+                    FROM practices
                     WHERE created_at >= NOW() - INTERVAL '30 days'
                 """)
 
@@ -434,7 +434,9 @@ def track_client_creation(client_type: str = "individual", lead_source: str = "u
     return decorator
 
 
-def track_application_processing(visa_type: str = "unknown", destination_country: str = "unknown") -> Any:
+def track_application_processing(
+    visa_type: str = "unknown", destination_country: str = "unknown"
+) -> Any:
     """Decorator to track application processing time"""
 
     def decorator(func: Any) -> Any:

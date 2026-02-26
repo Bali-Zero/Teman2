@@ -113,3 +113,22 @@ def register(mcp, _call, _call_safe):
             Full visa details: requirements, documents, process, timeline, costs, restrictions.
         """
         return await _call(f"/api/knowledge/visa-types/{visa_code}")
+
+    @mcp.tool()
+    async def visualize_langgraph(subgraph: Optional[str] = None) -> dict:
+        """
+        Get Mermaid diagram for Knowledge Graph orchestration.
+
+        Use this to debug the reasoning flow or understand how subgraphs
+        (visa, company, tax, property) are structured.
+
+        Args:
+            subgraph: Optional subgraph name (visa, company, tax, property)
+
+        Returns:
+            Mermaid string in a dict.
+        """
+        params = {}
+        if subgraph:
+            params["subgraph"] = subgraph
+        return await _call("/api/kg/visualize", params=params)

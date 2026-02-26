@@ -30,7 +30,9 @@ def safe_register_counter(name: Any, documentation: Any, labelnames: Any) -> Any
         return REGISTRY._names_to_collectors[name]
 
 
-def safe_register_histogram(name: Any, documentation: Any, labelnames: Any, buckets: Any=None) -> Any:
+def safe_register_histogram(
+    name: Any, documentation: Any, labelnames: Any, buckets: Any = None
+) -> Any:
     try:
         if buckets:
             return Histogram(name, documentation, labelnames, buckets=buckets)

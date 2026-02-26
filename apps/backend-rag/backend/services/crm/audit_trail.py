@@ -4,6 +4,7 @@ CRM Audit Trail
 Sistema completo di audit logging per tracciabilità operazioni CRM.
 """
 
+import asyncio
 import json
 import logging
 from datetime import datetime
@@ -37,10 +38,27 @@ class AuditAction(str, Enum):
 class CRMAuditor:
     """Sistema audit per CRM."""
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: asyncpg.Pool, buffer_size: int = 100):
         self.db_pool = db_pool
         self._buffer: list[dict] = []
-        self._buffer_size = 100
+        self._buffer_size = buffer_size
+        self._flush_task: asyncio.Task | None = None
+
+    def start_periodic_flush(self, interval_seconds: int = 60) -> None:
+        """Start background task to periodically flush the audit buffer."""
+
+        async def _periodic_flush() -> None:
+            while True:
+                await asyncio.sleep(interval_seconds)
+                if self._buffer:
+                    await self._flush_buffer()
+
+        self._flush_task = asyncio.create_task(_periodic_flush())
+
+    def stop_periodic_flush(self) -> None:
+        """Stop the periodic flush background task."""
+        if self._flush_task and not self._flush_task.done():
+            self._flush_task.cancel()
 
     async def log(
         self,
@@ -304,6 +322,7 @@ class CRMAuditor:
 
     async def close(self) -> None:
         """Flush rimanente e chiudi."""
+        self.stop_periodic_flush()
         if self._buffer:
             await self._flush_buffer()
 

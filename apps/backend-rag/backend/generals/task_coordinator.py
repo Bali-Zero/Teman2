@@ -520,8 +520,10 @@ class TaskCoordinator:
 
             async with self.pool.acquire() as conn:
                 # Try to insert lock (fails if key exists and not expired)
-                expires_at = datetime.now(timezone.utc).astimezone() + timedelta(seconds=ttl_seconds)
-                
+                expires_at = datetime.now(timezone.utc).astimezone() + timedelta(
+                    seconds=ttl_seconds
+                )
+
                 result = await conn.execute(
                     """
                     INSERT INTO generals_locks (resource_key, owner_general, expires_at)
@@ -539,7 +541,7 @@ class TaskCoordinator:
                     logger.info(
                         f"🔒 Lock acquired: {resource_key} by {owner_general} (TTL: {ttl_seconds}s)"
                     )
-                    
+
                     # Log activity
                     await conn.execute(
                         """
@@ -608,7 +610,7 @@ class TaskCoordinator:
 
                 if released:
                     logger.info(f"🔓 Lock released: {resource_key}")
-                    
+
                     # Log activity
                     if owner_general:
                         await conn.execute(

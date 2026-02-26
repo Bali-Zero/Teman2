@@ -385,15 +385,40 @@ class QualityCheckService:
 
         # Legal keywords
         legal_keywords = [
-            "undang-undang", "peraturan", "keputusan", "pasal", "ayat",
-            "UU", "PP", "Perpres", "Permen", "Kep", "SE",
-            "hukum", "legal", "regulation", "law", "article", "section",
-            "ketentuan", "syarat", "wajib", "larangan", "sanksi",
-            "pajak", "visa", "kitas", "izin", "nib", "kbli",
+            "undang-undang",
+            "peraturan",
+            "keputusan",
+            "pasal",
+            "ayat",
+            "UU",
+            "PP",
+            "Perpres",
+            "Permen",
+            "Kep",
+            "SE",
+            "hukum",
+            "legal",
+            "regulation",
+            "law",
+            "article",
+            "section",
+            "ketentuan",
+            "syarat",
+            "wajib",
+            "larangan",
+            "sanksi",
+            "pajak",
+            "visa",
+            "kitas",
+            "izin",
+            "nib",
+            "kbli",
         ]
 
         # Check for legal keywords
-        keyword_matches = sum(1 for kw in legal_keywords if kw.lower() in content or kw.lower() in title)
+        keyword_matches = sum(
+            1 for kw in legal_keywords if kw.lower() in content or kw.lower() in title
+        )
         if keyword_matches < 2:
             issues.append("Content lacks legal domain keywords")
             score -= 0.4
@@ -480,7 +505,9 @@ class QualityCheckService:
 
         for dim in dimension_scores:
             if dim.score < 0.5:
-                recommendations.append(f"Improve {dim.dimension.value}: {', '.join(dim.issues[:2])}")
+                recommendations.append(
+                    f"Improve {dim.dimension.value}: {', '.join(dim.issues[:2])}"
+                )
             elif dim.score < 0.7:
                 recommendations.append(f"Consider enhancing {dim.dimension.value}")
 

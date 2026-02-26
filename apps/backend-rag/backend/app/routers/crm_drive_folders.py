@@ -9,9 +9,8 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 
-from backend.app.dependencies import get_current_user
 from backend.app.core.config import settings
-from backend.app.dependencies import get_database_pool
+from backend.app.dependencies import get_current_user, get_database_pool
 from backend.services.integrations.google_drive_service import GoogleDriveService
 
 router = APIRouter()

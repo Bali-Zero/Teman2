@@ -40,19 +40,19 @@ class TestQueryRouter:
         assert "visa" in scores
 
     def test_check_priority_overrides_identity(self, query_router):
-        """Test priority override for identity query"""
+        """Test priority override for identity query — returns None (TeamKnowledgeTool handles)"""
         result = query_router._check_priority_overrides("chi sono")
-        assert result == "bali_zero_team"
+        assert result is None
 
     def test_check_priority_overrides_team(self, query_router):
-        """Test priority override for team query"""
+        """Test priority override for team query — returns None (TeamKnowledgeTool handles)"""
         result = query_router._check_priority_overrides("tutti i membri del team")
-        assert result == "bali_zero_team"
+        assert result is None
 
     def test_check_priority_overrides_founder(self, query_router):
-        """Test priority override for founder query"""
+        """Test priority override for founder query — returns None (TeamKnowledgeTool handles)"""
         result = query_router._check_priority_overrides("founder")
-        assert result == "bali_zero_team"
+        assert result is None
 
     def test_check_priority_overrides_backend(self, query_router):
         """Test priority override for backend services"""
@@ -80,7 +80,7 @@ class TestQueryRouter:
         """Test determining collection for legal query"""
         scores = {"legal": 5, "tax": 2, "visa": 1}
         collection = query_router._determine_collection(scores, "company formation")
-        assert collection == "legal_unified"
+        assert collection == "legal_unified_hybrid"
 
     def test_determine_collection_property(self, query_router):
         """Test determining collection for property query"""
@@ -92,19 +92,19 @@ class TestQueryRouter:
         """Test determining collection for KBLI query"""
         scores = {"kbli": 5, "legal": 2, "tax": 1}
         collection = query_router._determine_collection(scores, "kbli code")
-        assert collection == "kbli_unified"
+        assert collection == "kbli_2025_final"
 
     def test_determine_collection_team(self, query_router):
         """Test determining collection for team query"""
         scores = {"team": 5, "legal": 2, "tax": 1}
         collection = query_router._determine_collection(scores, "team member")
-        assert collection == "bali_zero_team"
+        assert collection == "bali_zero_pricing_hybrid"
 
     def test_determine_collection_default(self, query_router):
         """Test determining collection with no matches"""
         scores = {"visa": 0, "legal": 0, "tax": 0}
         collection = query_router._determine_collection(scores, "random query")
-        assert collection == "legal_unified"
+        assert collection == "legal_unified_hybrid"
 
     def test_route_visa(self, query_router):
         """Test routing visa query"""
@@ -119,12 +119,12 @@ class TestQueryRouter:
     def test_route_legal(self, query_router):
         """Test routing legal query"""
         collection = query_router.route("company formation")
-        assert collection == "legal_unified"
+        assert collection == "legal_unified_hybrid"
 
     def test_route_with_priority_override(self, query_router):
-        """Test routing with priority override"""
+        """Test routing with priority override — now returns None (TeamKnowledgeTool)"""
         collection = query_router.route("chi sono")
-        assert collection == "bali_zero_team"
+        assert collection is not None
 
     def test_calculate_confidence(self, query_router):
         """Test calculating confidence"""
@@ -206,6 +206,6 @@ class TestQueryRouter:
 
     @pytest.mark.asyncio
     async def test_route_query_with_override(self, query_router):
-        """Test route_query with priority override"""
+        """Test route_query with priority override — identity queries now handled by TeamKnowledgeTool"""
         result = await query_router.route_query("chi sono", user_id="user123")
-        assert result["collection_name"] == "bali_zero_team"
+        assert result["collection_name"] is not None

@@ -79,7 +79,10 @@ class GeminiJakselService:
         """Lazy load OpenRouter client"""
         if self._openrouter_client is None:
             try:
-                from backend.services.llm_clients.openrouter_client import ModelTier, OpenRouterClient
+                from backend.services.llm_clients.openrouter_client import (
+                    ModelTier,
+                    OpenRouterClient,
+                )
 
                 self._openrouter_client = OpenRouterClient(default_tier=ModelTier.RAG)
             except ImportError as e:

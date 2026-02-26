@@ -49,7 +49,7 @@ describe("parseSSEStream", () => {
 
   it("skips keepalive comments", async () => {
     const stream = makeStream(
-      ': keepalive\n\n' +
+      ": keepalive\n\n" +
         'event: done\ndata: {"run_id":"r1","event_type":"done","node":"pipeline","data":{},"sequence":0}\n\n',
     );
 

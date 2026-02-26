@@ -26,7 +26,6 @@ from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 
-from backend.channels.router import ChannelRouter
 from backend.core.cache import CacheService, get_cache_service
 from backend.llm.zantara_ai_client import ZantaraAIClient
 from backend.services.memory import MemoryServicePostgres
@@ -320,7 +319,7 @@ def get_current_user_email(user: Annotated[dict, Depends(get_current_user)]) -> 
 def require_team_member(user: dict = Depends(get_current_user)) -> dict:
     """
     Dependency that ensures the current user is a team member (not a client).
-    
+
     Args:
         user: User information from get_current_user
 

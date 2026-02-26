@@ -18,7 +18,6 @@ Author: Nuzantara Team
 Date: 2026-02-09
 """
 
-import asyncio
 import logging
 import time
 from typing import Annotated, Any, TypedDict
@@ -155,25 +154,47 @@ class LegalAgent:
             if self.kg_retrieval:
                 mentions = self.kg_retrieval.extract_entities_from_query(query)
                 if mentions:
-                    kg_entities = await self.kg_retrieval.find_kg_entities(mentions, limit_per_mention=5)
+                    kg_entities = await self.kg_retrieval.find_kg_entities(
+                        mentions, limit_per_mention=5
+                    )
                     legal_entities = [
-                        e for e in kg_entities
-                        if e.get("entity_type") in (
-                            "dokumen", "undang_undang", "pasal", "pt_pma", "pt_pmdn",
-                            "pt_perorangan", "badan_usaha", "npwp", "oss", "nib",
-                            "izin_usaha", "kitas", "kitap", "vitas", "rptka", "imta",
+                        e
+                        for e in kg_entities
+                        if e.get("entity_type")
+                        in (
+                            "dokumen",
+                            "undang_undang",
+                            "pasal",
+                            "pt_pma",
+                            "pt_pmdn",
+                            "pt_perorangan",
+                            "badan_usaha",
+                            "npwp",
+                            "oss",
+                            "nib",
+                            "izin_usaha",
+                            "kitas",
+                            "kitap",
+                            "vitas",
+                            "rptka",
+                            "imta",
                         )
                     ]
 
             # Build LLM prompt with KG evidence
             entity_summary = ""
             if legal_entities:
-                entity_names = [e.get("name", e.get("entity_id", "unknown")) for e in legal_entities[:10]]
-                entity_summary = f"\n\nRelevant legal entities from Knowledge Graph:\n- " + "\n- ".join(entity_names)
+                entity_names = [
+                    e.get("name", e.get("entity_id", "unknown")) for e in legal_entities[:10]
+                ]
+                entity_summary = (
+                    "\n\nRelevant legal entities from Knowledge Graph:\n- "
+                    + "\n- ".join(entity_names)
+                )
 
             prompt = (
                 f"You are a legal requirements analyst for Indonesian business and immigration.\n\n"
-                f"Query: \"{query}\"\n"
+                f'Query: "{query}"\n'
                 f"{entity_summary}\n\n"
                 f"List the required documents and compliance steps in order.\n"
                 f"Focus on: required documents (NPWP, Akta, passport, etc.), "
@@ -193,23 +214,27 @@ class LegalAgent:
 
             return {
                 "legal_analysis": analysis,
-                "agent_outputs": [{
-                    "agent": "legal",
-                    "output": analysis,
-                    "entities_used": len(legal_entities),
-                    "duration_s": round(duration, 2),
-                }],
+                "agent_outputs": [
+                    {
+                        "agent": "legal",
+                        "output": analysis,
+                        "entities_used": len(legal_entities),
+                        "duration_s": round(duration, 2),
+                    }
+                ],
             }
 
         except Exception as e:
             logger.error(f"❌ [LegalAgent] Failed: {e}", exc_info=True)
             return {
                 "legal_analysis": "Legal analysis unavailable due to processing error.",
-                "agent_outputs": [{
-                    "agent": "legal",
-                    "output": "",
-                    "error": str(e),
-                }],
+                "agent_outputs": [
+                    {
+                        "agent": "legal",
+                        "output": "",
+                        "error": str(e),
+                    }
+                ],
                 "errors": [f"LegalAgent: {e}"],
             }
 
@@ -242,7 +267,7 @@ class FinancialAgent:
 
             prompt = (
                 f"You are a financial analyst for Indonesian business services.\n\n"
-                f"Query: \"{query}\"\n\n"
+                f'Query: "{query}"\n\n'
                 f"Official Bali Zero pricing data:\n{pricing_context}\n\n"
                 f"Based on the query and official pricing above:\n"
                 f"1. Identify the relevant Bali Zero service fee\n"
@@ -265,24 +290,28 @@ class FinancialAgent:
 
             return {
                 "financial_breakdown": breakdown,
-                "agent_outputs": [{
-                    "agent": "financial",
-                    "output": breakdown,
-                    "service_type": service_type,
-                    "pricing_loaded": self.pricing_service.loaded,
-                    "duration_s": round(duration, 2),
-                }],
+                "agent_outputs": [
+                    {
+                        "agent": "financial",
+                        "output": breakdown,
+                        "service_type": service_type,
+                        "pricing_loaded": self.pricing_service.loaded,
+                        "duration_s": round(duration, 2),
+                    }
+                ],
             }
 
         except Exception as e:
             logger.error(f"❌ [FinancialAgent] Failed: {e}", exc_info=True)
             return {
                 "financial_breakdown": "Financial breakdown unavailable due to processing error.",
-                "agent_outputs": [{
-                    "agent": "financial",
-                    "output": "",
-                    "error": str(e),
-                }],
+                "agent_outputs": [
+                    {
+                        "agent": "financial",
+                        "output": "",
+                        "error": str(e),
+                    }
+                ],
                 "errors": [f"FinancialAgent: {e}"],
             }
 
@@ -333,7 +362,8 @@ class TimelineAgent:
                 mentions = self.kg_retrieval.extract_entities_from_query(query)
                 # Also look for time-related mentions
                 time_mentions = [
-                    m for m in mentions
+                    m
+                    for m in mentions
                     if m[1] in ("jangka_waktu", "pendaftaran", "permohonan", "perpanjangan")
                 ]
                 if time_mentions:
@@ -349,11 +379,13 @@ class TimelineAgent:
             duration_context = ""
             if duration_entities:
                 dur_names = [e.get("name", "unknown") for e in duration_entities[:5]]
-                duration_context = f"\n\nKnown duration entities from KG:\n- " + "\n- ".join(dur_names)
+                duration_context = "\n\nKnown duration entities from KG:\n- " + "\n- ".join(
+                    dur_names
+                )
 
             prompt = (
                 f"You are a timeline estimation specialist for Indonesian business processes.\n\n"
-                f"Query: \"{query}\"\n"
+                f'Query: "{query}"\n'
                 f"{legal_context}"
                 f"{duration_context}\n\n"
                 f"Create a phase-by-phase timeline:\n"
@@ -376,24 +408,28 @@ class TimelineAgent:
 
             return {
                 "timeline_estimate": estimate,
-                "agent_outputs": [{
-                    "agent": "timeline",
-                    "output": estimate,
-                    "duration_entities_used": len(duration_entities),
-                    "had_legal_context": bool(legal_context),
-                    "duration_s": round(duration, 2),
-                }],
+                "agent_outputs": [
+                    {
+                        "agent": "timeline",
+                        "output": estimate,
+                        "duration_entities_used": len(duration_entities),
+                        "had_legal_context": bool(legal_context),
+                        "duration_s": round(duration, 2),
+                    }
+                ],
             }
 
         except Exception as e:
             logger.error(f"❌ [TimelineAgent] Failed: {e}", exc_info=True)
             return {
                 "timeline_estimate": "Timeline estimate unavailable due to processing error.",
-                "agent_outputs": [{
-                    "agent": "timeline",
-                    "output": "",
-                    "error": str(e),
-                }],
+                "agent_outputs": [
+                    {
+                        "agent": "timeline",
+                        "output": "",
+                        "error": str(e),
+                    }
+                ],
                 "errors": [f"TimelineAgent: {e}"],
             }
 
@@ -501,7 +537,7 @@ class MultiAgentCoordinator:
             prompt = (
                 f"You are a senior business consultant for Bali Zero, "
                 f"helping clients with Indonesian business and immigration.\n\n"
-                f"User query: \"{state['query']}\"\n\n"
+                f'User query: "{state["query"]}"\n\n'
                 f"**Legal Analysis:**\n{state.get('legal_analysis', 'Not available')}\n\n"
                 f"**Financial Breakdown:**\n{state.get('financial_breakdown', 'Not available')}\n\n"
                 f"**Timeline Estimate:**\n{state.get('timeline_estimate', 'Not available')}\n\n"
@@ -523,10 +559,12 @@ class MultiAgentCoordinator:
 
             return {
                 "final_answer": answer,
-                "agent_outputs": [{
-                    "agent": "synthesizer",
-                    "duration_s": round(duration, 2),
-                }],
+                "agent_outputs": [
+                    {
+                        "agent": "synthesizer",
+                        "duration_s": round(duration, 2),
+                    }
+                ],
             }
 
         except Exception as e:
@@ -560,7 +598,7 @@ class MultiAgentCoordinator:
             execution_time_s
         """
         start_time = time.time()
-        logger.info(f"🚀 [MultiAgentCoordinator] Processing: \"{query[:80]}...\"")
+        logger.info(f'🚀 [MultiAgentCoordinator] Processing: "{query[:80]}..."')
 
         initial_state: MultiAgentState = {
             "query": query,
@@ -579,14 +617,8 @@ class MultiAgentCoordinator:
             execution_time = time.time() - start_time
 
             # Count successful agents
-            successful_agents = [
-                o for o in result.get("agent_outputs", [])
-                if "error" not in o
-            ]
-            error_agents = [
-                o for o in result.get("agent_outputs", [])
-                if "error" in o
-            ]
+            successful_agents = [o for o in result.get("agent_outputs", []) if "error" not in o]
+            error_agents = [o for o in result.get("agent_outputs", []) if "error" in o]
 
             logger.info(
                 f"✅ [MultiAgentCoordinator] Complete in {execution_time:.2f}s "
@@ -634,14 +666,33 @@ def requires_multi_agent(query: str, entities: list[dict[str, Any]] | None = Non
     q = query.lower()
 
     # Cost + Timeline patterns (bilingual: EN + ID + IT)
-    cost_keywords = {"cost", "price", "biaya", "harga", "berapa", "quanto", "costa", "prezzo", "fee"}
-    time_keywords = {"when", "kapan", "timeline", "duration", "lama", "quanto tempo", "how long", "waktu"}
+    cost_keywords = {
+        "cost",
+        "price",
+        "biaya",
+        "harga",
+        "berapa",
+        "quanto",
+        "costa",
+        "prezzo",
+        "fee",
+    }
+    time_keywords = {
+        "when",
+        "kapan",
+        "timeline",
+        "duration",
+        "lama",
+        "quanto tempo",
+        "how long",
+        "waktu",
+    }
 
     has_cost = any(kw in q for kw in cost_keywords)
     has_time = any(kw in q for kw in time_keywords)
 
     if has_cost and has_time:
-        logger.debug(f"🔀 [MultiAgent] Triggered: cost+time pattern in query")
+        logger.debug("🔀 [MultiAgent] Triggered: cost+time pattern in query")
         return True
 
     # Multiple domain detection

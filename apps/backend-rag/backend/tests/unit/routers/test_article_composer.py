@@ -47,7 +47,7 @@ def sample_compose_request():
     """Sample compose request"""
     return ComposeRequest(
         title="New Visa Regulation 2026",
-        content="The Indonesian government announced new visa regulations affecting expats...",
+        content="The Indonesian government announced new visa regulations affecting expats in Bali and across the archipelago. The new rules require additional documentation for work permit renewals and introduce stricter compliance checks for foreign workers.",
         category="immigration",
         source_url="https://example.com/news",
         author="Test Author",
@@ -210,8 +210,8 @@ def test_compose_article_priority_word_count(mock_anthropic_class, test_client):
 
         # Call endpoint
         request = ComposeRequest(
-            title="Test",
-            content="Test content",
+            title="Test Article Title",
+            content="Test content for article enrichment that must be at least one hundred characters long to pass the validation check in the compose request validator model.",
             category="business",
         )
         response = test_client.post("/api/articles/compose", json=request.model_dump())
@@ -615,7 +615,9 @@ async def test_full_compose_and_publish_flow(
 
     # Step 1: Compose article
     compose_request = ComposeRequest(
-        title="Test Article", content="Test content for integration test", category="business"
+        title="Test Article",
+        content="Test content for integration test that must be at least one hundred characters long to pass the validation check in the compose request validator model.",
+        category="business",
     )
     compose_response = test_client.post("/api/articles/compose", json=compose_request.model_dump())
 

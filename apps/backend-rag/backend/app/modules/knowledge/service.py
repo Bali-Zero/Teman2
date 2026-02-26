@@ -72,7 +72,9 @@ class KnowledgeService:
                 qdrant_url=qdrant_url, collection_name="bali_zero_pricing_hybrid"
             ),
             "visa_oracle": QdrantClient(qdrant_url=qdrant_url, collection_name="visa_oracle"),
-            "kbli_2025_final": QdrantClient(qdrant_url=qdrant_url, collection_name="kbli_2025_final"),
+            "kbli_2025_final": QdrantClient(
+                qdrant_url=qdrant_url, collection_name="kbli_2025_final"
+            ),
             "tax_genius": QdrantClient(qdrant_url=qdrant_url, collection_name="tax_genius"),
             "legal_architect": QdrantClient(qdrant_url=qdrant_url, collection_name="legal_unified"),
             "legal_unified": QdrantClient(qdrant_url=qdrant_url, collection_name="legal_unified"),
@@ -80,7 +82,9 @@ class KnowledgeService:
             "kbli_comprehensive": QdrantClient(
                 qdrant_url=qdrant_url, collection_name="kbli_2025_final"
             ),
-            "kbli_2025_final": QdrantClient(qdrant_url=qdrant_url, collection_name="kbli_2025_final"),
+            "kbli_2025_final": QdrantClient(
+                qdrant_url=qdrant_url, collection_name="kbli_2025_final"
+            ),
             "zantara_books": QdrantClient(qdrant_url=qdrant_url, collection_name="knowledge_base"),
             "cultural_insights": QdrantClient(
                 qdrant_url=qdrant_url, collection_name="knowledge_base"

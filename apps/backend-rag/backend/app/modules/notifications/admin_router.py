@@ -12,15 +12,11 @@ Endpoints:
 
 import logging
 from datetime import datetime, timedelta
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from backend.app.dependencies import get_current_user
-from backend.app.dependencies import get_database_pool
-
-from .models import AlertType, AlertStatus
+from backend.app.dependencies import get_current_user, get_database_pool
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +34,8 @@ class AlertListItem(BaseModel):
     status: str
     email_subject: str
     created_at: datetime
-    sent_at: Optional[datetime]
-    error_message: Optional[str]
+    sent_at: datetime | None
+    error_message: str | None
 
 
 class NotificationStats(BaseModel):
@@ -53,22 +49,22 @@ class NotificationStats(BaseModel):
     failed_count_24h: int
     alerts_by_type: dict
     alerts_by_status: dict
-    top_clients: List[dict]
+    top_clients: list[dict]
 
 
 class DashboardData(BaseModel):
     """Dashboard data response."""
 
     stats: NotificationStats
-    recent_alerts: List[AlertListItem]
+    recent_alerts: list[AlertListItem]
     system_status: str
-    last_check: Optional[datetime]
+    last_check: datetime | None
 
 
 class RetryRequest(BaseModel):
     """Request to retry failed alerts."""
 
-    alert_ids: Optional[List[int]] = None  # If None, retry all failed
+    alert_ids: list[int] | None = None  # If None, retry all failed
 
 
 class RetryResponse(BaseModel):
@@ -171,9 +167,7 @@ async def get_dashboard(
         )
 
         # Get last check time
-        last_check = await conn.fetchval(
-            "SELECT MAX(created_at) FROM notification_alerts"
-        )
+        last_check = await conn.fetchval("SELECT MAX(created_at) FROM notification_alerts")
 
     stats = NotificationStats(
         total_alerts_24h=stats_row["total_24h"],
@@ -229,9 +223,9 @@ async def get_dashboard(
 
 @router.get("/alerts")
 async def list_alerts(
-    status: Optional[str] = Query(None, description="Filter by status"),
-    alert_type: Optional[str] = Query(None, description="Filter by type"),
-    client_id: Optional[int] = Query(None, description="Filter by client"),
+    status: str | None = Query(None, description="Filter by status"),
+    alert_type: str | None = Query(None, description="Filter by type"),
+    client_id: int | None = Query(None, description="Filter by client"),
     days: int = Query(30, ge=1, le=365, description="Days to look back"),
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
@@ -245,10 +239,11 @@ async def list_alerts(
 
     pool = await get_database_pool()
 
-    # Build query
-    where_clauses = [f"na.created_at > NOW() - INTERVAL '{days} days'"]
-    params = []
-    param_idx = 1
+    # Build query — use parameterized interval for safety
+    interval = timedelta(days=days)
+    where_clauses = [f"na.created_at > NOW() - ${1}::interval"]
+    params = [interval]
+    param_idx = 2
 
     if status:
         where_clauses.append(f"na.status = ${param_idx}")
@@ -324,53 +319,54 @@ async def get_stats(
 
     async with pool.acquire() as conn:
         # Daily breakdown
+        interval = timedelta(days=days)
         daily = await conn.fetch(
             """
-            SELECT 
+            SELECT
                 DATE(created_at) as date,
                 COUNT(*) as total,
                 COUNT(*) FILTER (WHERE status = 'sent') as sent,
                 COUNT(*) FILTER (WHERE status = 'failed') as failed,
                 COUNT(*) FILTER (WHERE status = 'pending') as pending
             FROM notification_alerts
-            WHERE created_at > NOW() - INTERVAL '%s days'
+            WHERE created_at > NOW() - $1::interval
             GROUP BY DATE(created_at)
             ORDER BY date DESC
             """,
-            days,
+            interval,
         )
 
         # By type and status
         by_type_status = await conn.fetch(
             """
-            SELECT 
+            SELECT
                 alert_type,
                 status,
                 COUNT(*) as count
             FROM notification_alerts
-            WHERE created_at > NOW() - INTERVAL '%s days'
+            WHERE created_at > NOW() - $1::interval
             GROUP BY alert_type, status
             ORDER BY alert_type, status
             """,
-            days,
+            interval,
         )
 
         # Success rate
         success_rate = await conn.fetchrow(
             """
-            SELECT 
+            SELECT
                 COUNT(*) FILTER (WHERE status = 'sent') as sent,
                 COUNT(*) FILTER (WHERE status = 'failed') as failed,
                 COUNT(*) as total,
-                CASE 
-                    WHEN COUNT(*) > 0 
+                CASE
+                    WHEN COUNT(*) > 0
                     THEN ROUND(100.0 * COUNT(*) FILTER (WHERE status = 'sent') / COUNT(*), 2)
                     ELSE 0
                 END as success_rate
             FROM notification_alerts
-            WHERE created_at > NOW() - INTERVAL '%s days'
+            WHERE created_at > NOW() - $1::interval
             """,
-            days,
+            interval,
         )
 
     return {
@@ -433,30 +429,32 @@ async def retry_failed_alerts(
 
         alerts = [ClientAlert(**dict(row)) for row in rows]
 
-        async def get_email(client_id: int) -> str | None:
-            return await conn.fetchval(
+    # Use a separate connection for email lookup to avoid deadlock
+    async def get_email(client_id: int) -> str | None:
+        async with pool.acquire() as email_conn:
+            return await email_conn.fetchval(
                 "SELECT email FROM clients WHERE id = $1",
                 client_id,
             )
 
-        results = await service.process_alerts_batch(alerts, get_email)
+    results = await service.process_alerts_batch(alerts, get_email)
 
-        successful = sum(1 for r in results if r.success)
+    successful = sum(1 for r in results if r.success)
 
-        logger.info(
-            "Retry operation completed",
-            extra={
-                "user": current_user.get("email"),
-                "retried": len(alerts),
-                "successful": successful,
-            },
-        )
+    logger.info(
+        "Retry operation completed",
+        extra={
+            "user": current_user.get("email"),
+            "retried": len(alerts),
+            "successful": successful,
+        },
+    )
 
-        return RetryResponse(
-            success=True,
-            retried=len(alerts),
-            message=f"Retried {len(alerts)} alerts, {successful} successful",
-        )
+    return RetryResponse(
+        success=True,
+        retried=len(alerts),
+        message=f"Retried {len(alerts)} alerts, {successful} successful",
+    )
 
 
 @router.post("/pause-client")
@@ -475,16 +473,17 @@ async def pause_client_notifications(
 
     async with pool.acquire() as conn:
         # Suppress pending alerts for this client
+        interval = timedelta(hours=hours)
         await conn.execute(
             """
             UPDATE notification_alerts
             SET status = 'suppressed'
             WHERE client_id = $1
             AND status = 'pending'
-            AND created_at > NOW() - INTERVAL '%s hours'
+            AND created_at > NOW() - $2::interval
             """,
             client_id,
-            hours,
+            interval,
         )
 
     logger.info(

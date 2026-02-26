@@ -15,8 +15,6 @@ from typing import Any, TypedDict
 import asyncpg
 from langgraph.graph import END, StateGraph
 
-from backend.services.rag.kg_graph_state import KGAgentState
-
 logger = logging.getLogger(__name__)
 
 
@@ -365,7 +363,7 @@ async def synthesize_company_workflow_node(state: CompanyState) -> CompanyState:
         steps.append(
             {
                 "step": len(steps) + 1,
-                "action": f"Obtain sector licenses for KBLI codes",
+                "action": "Obtain sector licenses for KBLI codes",
                 "entity_id": "sector_licensing",
                 "details": {
                     "kbli_codes": state["kbli_codes"],

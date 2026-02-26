@@ -16,11 +16,9 @@ import json
 import logging
 import re
 import time
-from collections.abc import AsyncIterator
 from typing import Any
 
-from backend.app.core.config import settings
-from backend.core.cache import CacheService, cached, get_cache_service
+from backend.core.cache import CacheService, get_cache_service
 from backend.llm.genai_client import GENAI_AVAILABLE, get_genai_client
 
 logger = logging.getLogger(__name__)
@@ -35,7 +33,6 @@ INDONESIAN_BUSINESS_TERMS: dict[str, list[str]] = {
     "cv": ["commanditaire vennootschap", "partnership"],
     "commanditaire vennootschap": ["cv", "partnership"],
     "firma": ["partnership", "firm"],
-    
     # Permits and licenses
     "kitas": ["residence permit", "kartu izin tinggal terbatas", "stay permit"],
     "kartu izin tinggal terbatas": ["residence permit", "kitas"],
@@ -55,7 +52,6 @@ INDONESIAN_BUSINESS_TERMS: dict[str, list[str]] = {
     "izin mendirikan bangunan": ["building permit", "imb"],
     "slf": ["certificate of building worthiness", "sertifikat laik fungsi"],
     "sertifikat laik fungsi": ["certificate of building worthiness", "slf"],
-    
     # Visas
     "visa kunjungan": ["visit visa", "tourist visa"],
     "visit visa": ["visa kunjungan", "tourist visa"],
@@ -63,7 +59,6 @@ INDONESIAN_BUSINESS_TERMS: dict[str, list[str]] = {
     "limited stay visa": ["visa tinggal terbatas", "kitas visa"],
     "visa on arrival": ["voa", "visa on arrival indonesia"],
     "voa": ["visa on arrival", "visa on arrival indonesia"],
-    
     # Land and property
     "hak milik": ["freehold", "ownership right"],
     "freehold": ["hak milik", "ownership right"],
@@ -72,7 +67,6 @@ INDONESIAN_BUSINESS_TERMS: dict[str, list[str]] = {
     "hak pakai": ["right of use", "usage right"],
     "hak sewa": ["leasehold", "lease right"],
     "leasehold": ["hak sewa", "lease right"],
-    
     # Investment
     "modal": ["capital", "investment", "fund"],
     "capital": ["modal", "investment", "fund"],
@@ -84,7 +78,6 @@ INDONESIAN_BUSINESS_TERMS: dict[str, list[str]] = {
     "board of directors": ["direksi", "directors"],
     "komisaris": ["commissioners", "board of commissioners"],
     "board of commissioners": ["komisaris", "commissioners"],
-    
     # Common business terms
     "pajak": ["tax", "taxation"],
     "tax": ["pajak", "taxation"],
@@ -105,33 +98,43 @@ INDONESIAN_BUSINESS_TERMS: dict[str, list[str]] = {
 
 # Filter keywords that might limit results
 FILTER_KEYWORDS: list[str] = [
-    "only", "just", "specifically", "exclusively", "must be", "has to be",
-    "hanya", "hanya", "khusus", "eksklusif", "harus", "wajib",
+    "only",
+    "just",
+    "specifically",
+    "exclusively",
+    "must be",
+    "has to be",
+    "hanya",
+    "hanya",
+    "khusus",
+    "eksklusif",
+    "harus",
+    "wajib",
 ]
 
 
 class QueryExpander:
     """
     Query Expansion Service for RAG retrieval improvement.
-    
+
     Generates multiple query variants to improve recall by:
     1. Synonym expansion using Indonesian business terms dictionary
     2. LLM-based query rephrasing (fast, lightweight)
     3. Filter removal/relaxation
-    
+
     Attributes:
         cache_service: CacheService instance for caching expansions
         max_variants: Maximum number of variants to generate
         llm_timeout_ms: Timeout for LLM calls in milliseconds
-        
+
     Example:
         >>> expander = QueryExpander()
         >>> variants = await expander.expand("How to apply for KITAS?", num_variants=3)
         >>> print(variants)
-        ['How to apply for KITAS?', 'How to apply for residence permit?', 
+        ['How to apply for KITAS?', 'How to apply for residence permit?',
          'Cara mengajukan KITAS?']
     """
-    
+
     # Prompt for LLM-based query rephrasing
     REPHRASE_PROMPT = """Generate {num_variants} alternative phrasings of this query for semantic search.
 Keep the same meaning but use different words or sentence structure.
@@ -154,7 +157,7 @@ Example output: ["variant 1", "variant 2"]"""
     ):
         """
         Initialize QueryExpander.
-        
+
         Args:
             cache_service: Optional CacheService for caching expansions
             max_variants: Maximum number of variants to generate per query
@@ -164,14 +167,14 @@ Example output: ["variant 1", "variant 2"]"""
         self.max_variants = max_variants
         self.llm_timeout_ms = llm_timeout_ms
         self._genai_client = None
-        
+
         # Compile synonym patterns for faster matching
         self._synonym_patterns: dict[re.Pattern, list[str]] = {}
         for term, synonyms in INDONESIAN_BUSINESS_TERMS.items():
             # Create word boundary pattern for whole word matching
-            pattern = re.compile(r'\b' + re.escape(term.lower()) + r'\b', re.IGNORECASE)
+            pattern = re.compile(r"\b" + re.escape(term.lower()) + r"\b", re.IGNORECASE)
             self._synonym_patterns[pattern] = synonyms
-        
+
         logger.info(f"✅ QueryExpander initialized (max_variants={max_variants})")
 
     def _get_genai_client(self) -> Any | None:
@@ -194,17 +197,17 @@ Example output: ["variant 1", "variant 2"]"""
     async def expand(self, query: str, num_variants: int = 3) -> list[str]:
         """
         Expand query into multiple variants using all strategies.
-        
+
         Combines synonym expansion, LLM rephrasing, and filter relaxation
         to generate diverse query variants for improved recall.
-        
+
         Args:
             query: Original user query
             num_variants: Number of variants to generate (default: 3)
-            
+
         Returns:
             List of query variants including the original query
-            
+
         Example:
             >>> variants = await expander.expand("How to get KITAS?")
             >>> print(variants)
@@ -213,33 +216,33 @@ Example output: ["variant 1", "variant 2"]"""
         if not query or not query.strip():
             logger.warning("Empty query provided to expand()")
             return [query]
-            
+
         start_time = time.time()
-        
+
         try:
             query_clean = query.strip()
-            
+
             # Strategy 1: Synonym expansion
             variants: set[str] = set(self.generate_synonyms(query_clean))
-            
+
             # Strategy 2: Translation variants
             translation_variants = await self.translate_variants(query_clean)
             variants.update(translation_variants)
-            
+
             # Strategy 3: LLM-based rephrasing (if we need more variants)
             if len(variants) < num_variants:
                 llm_variants = await self._llm_rephrase(query_clean, num_variants=num_variants)
                 variants.update(llm_variants)
-            
+
             # Strategy 4: Filter relaxation
             relaxed = self._relax_filters(query_clean)
             if relaxed != query_clean:
                 variants.add(relaxed)
-            
+
             # Convert to list, ensuring original query is FIRST, then limit to max_variants
             result = [query_clean] + [v for v in variants if v != query_clean]
             result = result[: self.max_variants]
-            
+
             elapsed_ms = (time.time() - start_time) * 1000
             logger.info(
                 f"Query expanded: '{query[:40]}...' → {len(result)} variants in {elapsed_ms:.1f}ms",
@@ -249,9 +252,9 @@ Example output: ["variant 1", "variant 2"]"""
                     "elapsed_ms": elapsed_ms,
                 },
             )
-            
+
             return result
-            
+
         except Exception as e:
             logger.warning(
                 f"Query expansion failed, returning original: {e}",
@@ -262,26 +265,26 @@ Example output: ["variant 1", "variant 2"]"""
     def generate_synonyms(self, query: str) -> list[str]:
         """
         Generate query variants by replacing terms with synonyms.
-        
+
         Uses the Indonesian business terms dictionary to find
         equivalent terms in English and Indonesian.
-        
+
         Args:
             query: Original user query
-            
+
         Returns:
             List of query variants with synonyms replaced
-            
+
         Example:
             >>> expander.generate_synonyms("How to apply for KITAS?")
             ['How to apply for residence permit?', 'How to apply for kartu izin tinggal terbatas?']
         """
         if not query or not query.strip():
             return []
-            
+
         variants: set[str] = set()
         query_lower = query.lower()
-        
+
         # Find matching terms and generate variants
         for pattern, synonyms in self._synonym_patterns.items():
             if pattern.search(query_lower):
@@ -290,25 +293,23 @@ Example output: ["variant 1", "variant 2"]"""
                     variant = pattern.sub(synonym, query, count=0)
                     if variant != query:
                         variants.add(variant)
-        
+
         return list(variants)
 
-    async def translate_variants(
-        self, query: str, languages: list[str] | None = None
-    ) -> list[str]:
+    async def translate_variants(self, query: str, languages: list[str] | None = None) -> list[str]:
         """
         Generate translation variants of the query.
-        
+
         Uses lightweight dictionary-based translation for common terms.
         For full translation, uses LLM (cached).
-        
+
         Args:
             query: Original user query
             languages: Target languages (default: ["id", "en"])
-            
+
         Returns:
             List of translated query variants
-            
+
         Example:
             >>> variants = await expander.translate_variants("How to get KITAS?", ["id"])
             >>> print(variants)
@@ -316,34 +317,34 @@ Example output: ["variant 1", "variant 2"]"""
         """
         if not query or not query.strip():
             return []
-            
+
         languages = languages or ["id", "en"]
         variants: set[str] = set()
-        
+
         # Check cache first
         cache_key = self._generate_cache_key(query, "translate")
         cached_result = await self.cache_service.get(cache_key)
         if cached_result:
             logger.debug(f"Cache HIT for translation: {query[:30]}...")
             return cached_result
-        
+
         try:
             # Try dictionary-based translation first (fast)
             dict_variants = self._dictionary_translate(query, languages)
             variants.update(dict_variants)
-            
+
             # If no dictionary matches, try LLM translation
             if not variants and len(query.split()) <= 10:  # Only for short queries
                 llm_variants = await self._llm_translate(query, languages)
                 variants.update(llm_variants)
-            
+
             result = list(variants)
-            
+
             # Cache the result
             await self.cache_service.set(cache_key, result, ttl=3600)
-            
+
             return result
-            
+
         except Exception as e:
             logger.warning(f"Translation failed: {e}")
             return []
@@ -352,7 +353,7 @@ Example output: ["variant 1", "variant 2"]"""
         """Translate using dictionary lookups (fast, no LLM)."""
         variants: set[str] = set()
         query_lower = query.lower()
-        
+
         # Simple phrase mappings for common queries
         phrase_mappings: dict[str, dict[str, str]] = {
             "how to": {"id": "cara", "en": "how to"},
@@ -368,7 +369,7 @@ Example output: ["variant 1", "variant 2"]"""
             "process": {"id": "proses", "en": "process"},
             "proses": {"id": "proses", "en": "process"},
         }
-        
+
         for phrase, translations in phrase_mappings.items():
             if phrase in query_lower:
                 for lang in languages:
@@ -379,19 +380,21 @@ Example output: ["variant 1", "variant 2"]"""
                             # Capitalize first letter
                             variant = variant[0].upper() + variant[1:]
                             variants.add(variant)
-        
+
         return variants
 
     async def _llm_translate(self, query: str, languages: list[str]) -> set[str]:
         """Translate using LLM (slower but more accurate)."""
         variants: set[str] = set()
-        
+
         client = self._get_genai_client()
         if not client:
             return variants
-        
-        target_langs = ", ".join([{"id": "Indonesian", "en": "English"}.get(l, l) for l in languages])
-        
+
+        target_langs = ", ".join(
+            [{"id": "Indonesian", "en": "English"}.get(l, l) for l in languages]
+        )
+
         prompt = f"""Translate this query to {target_langs}.
 Keep it concise and natural for search queries.
 
@@ -399,10 +402,10 @@ Query: "{query}"
 
 Return ONLY a JSON object with language codes as keys:
 {{"id": "indonesian translation", "en": "english translation"}}"""
-        
+
         try:
             import asyncio
-            
+
             result = await asyncio.wait_for(
                 client.generate_content(
                     contents=prompt,
@@ -411,7 +414,7 @@ Return ONLY a JSON object with language codes as keys:
                 ),
                 timeout=self.llm_timeout_ms / 1000,
             )
-            
+
             if result and result.get("text"):
                 text = result["text"]
                 # Extract JSON
@@ -425,27 +428,27 @@ Return ONLY a JSON object with language codes as keys:
                                 variants.add(translations[lang])
                     except json.JSONDecodeError:
                         pass
-                        
+
         except asyncio.TimeoutError:
             logger.debug("LLM translation timeout, using dictionary only")
         except Exception as e:
             logger.debug(f"LLM translation failed: {e}")
-        
+
         return variants
 
     async def hybrid_expansion(self, query: str) -> list[str]:
         """
         Perform hybrid expansion combining all strategies.
-        
+
         This is an alias for expand() with default num_variants,
         designed for easy integration with RAG pipelines.
-        
+
         Args:
             query: Original user query
-            
+
         Returns:
             List of expanded query variants
-            
+
         Example:
             >>> variants = await expander.hybrid_expansion("KITAS requirements")
             >>> print(variants)
@@ -456,39 +459,39 @@ Return ONLY a JSON object with language codes as keys:
     async def _llm_rephrase(self, query: str, num_variants: int = 2) -> list[str]:
         """
         Generate rephrased variants using LLM.
-        
+
         Lightweight rephrasing for semantic search optimization.
         Uses Gemini Flash for speed (< 100ms).
-        
+
         Args:
             query: Original query
             num_variants: Number of variants to generate
-            
+
         Returns:
             List of rephrased variants
         """
         variants: list[str] = []
-        
+
         # Check cache
         cache_key = self._generate_cache_key(query, "rephrase")
         cached_result = await self.cache_service.get(cache_key)
         if cached_result:
             return cached_result[:num_variants]
-        
+
         client = self._get_genai_client()
         if not client:
             return variants
-        
+
         prompt = self.REPHRASE_PROMPT.format(
             query=query,
             num_variants=num_variants,
         )
-        
+
         try:
             import asyncio
-            
+
             start_time = time.time()
-            
+
             result = await asyncio.wait_for(
                 client.generate_content(
                     contents=prompt,
@@ -497,9 +500,9 @@ Return ONLY a JSON object with language codes as keys:
                 ),
                 timeout=self.llm_timeout_ms / 1000,
             )
-            
+
             elapsed_ms = (time.time() - start_time) * 1000
-            
+
             if result and result.get("text"):
                 text = result["text"]
                 # Extract JSON array
@@ -513,79 +516,79 @@ Return ONLY a JSON object with language codes as keys:
                             logger.debug(
                                 f"LLM rephrasing completed in {elapsed_ms:.1f}ms: {len(variants)} variants"
                             )
-                            
+
                             # Cache the result
                             await self.cache_service.set(cache_key, variants, ttl=3600)
                     except json.JSONDecodeError:
                         pass
-                        
+
         except asyncio.TimeoutError:
             logger.debug("LLM rephrasing timeout")
         except Exception as e:
             logger.debug(f"LLM rephrasing failed: {e}")
-        
+
         return variants[:num_variants]
 
     def _relax_filters(self, query: str) -> str:
         """
         Remove or relax restrictive filters from query.
-        
+
         Removes words like "only", "specifically", "must be" that
         might limit retrieval results unnecessarily.
-        
+
         Args:
             query: Original query
-            
+
         Returns:
             Query with relaxed filters
-            
+
         Example:
             >>> expander._relax_filters("I only want PT PMA companies")
             'I want PT PMA companies'
         """
         if not query:
             return query
-            
+
         relaxed = query
         query_lower = query.lower()
-        
+
         # Remove filter keywords
         for keyword in FILTER_KEYWORDS:
             # Match whole words only
-            pattern = r'\b' + re.escape(keyword) + r'\b'
+            pattern = r"\b" + re.escape(keyword) + r"\b"
             relaxed = re.sub(pattern, "", relaxed, flags=re.IGNORECASE)
-        
+
         # Clean up extra whitespace
         relaxed = " ".join(relaxed.split())
-        
+
         return relaxed.strip()
 
     async def get_expansion_details(self, query: str) -> dict[str, Any]:
         """
         Get detailed expansion breakdown for debugging.
-        
+
         Returns a dictionary with all expansion strategies and their results.
-        
+
         Args:
             query: Original user query
-            
+
         Returns:
             Dictionary with expansion details
-            
+
         Example:
             >>> details = await expander.get_expansion_details("How to get KITAS?")
             >>> print(details["synonym_variants"])
             ['How to get residence permit?', 'How to get kartu izin tinggal terbatas?']
         """
         start_time = time.time()
-        
+
         synonym_variants = self.generate_synonyms(query)
         translation_variants = await self.translate_variants(query)
         llm_variants = await self._llm_rephrase(query, num_variants=2)
         relaxed_query = self._relax_filters(query)
-        
+
         elapsed_ms = (time.time() - start_time) * 1000
-        
+
         # Combine all unique variants
         all_variants = set([query])
         all_variants.update(synonym_variants)
@@ -593,7 +596,7 @@ Return ONLY a JSON object with language codes as keys:
         all_variants.update(llm_variants)
         if relaxed_query != query:
             all_variants.add(relaxed_query)
-        
+
         return {
             "original": query,
             "final_variants": list(all_variants),
@@ -608,10 +611,10 @@ Return ONLY a JSON object with language codes as keys:
     async def clear_cache(self, query: str | None = None) -> int:
         """
         Clear expansion cache.
-        
+
         Args:
             query: Optional specific query to clear, or None to clear all
-            
+
         Returns:
             Number of cache entries cleared
         """
@@ -638,10 +641,10 @@ _query_expander_instance: QueryExpander | None = None
 def get_query_expander() -> QueryExpander:
     """
     Get singleton QueryExpander instance.
-    
+
     Returns:
         QueryExpander instance
-        
+
     Example:
         >>> expander = get_query_expander()
         >>> variants = await expander.expand("KITAS application")

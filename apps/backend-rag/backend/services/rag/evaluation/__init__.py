@@ -17,11 +17,11 @@ Usage:
         RetrievalQualityMonitor,
         retrieval_quality_monitor,
     )
-    
+
     # A/B Testing
     ab_manager = ABTestManager()
     variant = ab_manager.assign_variant(user_id="user123", experiment="hybrid_vs_dense")
-    
+
     # Record metrics
     await metrics_tracker.record_metric(
         experiment="hybrid_vs_dense",
@@ -31,7 +31,7 @@ Usage:
         user_id="user123",
         query_id="query456"
     )
-    
+
     # Monitoring
     retrieval_quality_monitor.record_query_metrics(
         query="test query",
@@ -45,6 +45,11 @@ from backend.services.rag.evaluation.ab_testing import (
     ExperimentConfig,
     Variant,
 )
+from backend.services.rag.evaluation.benchmark import (
+    BenchmarkResult,
+    RAGBenchmark,
+    run_weekly_benchmark,
+)
 from backend.services.rag.evaluation.metrics_tracker import (
     MetricsTracker,
     QueryMetric,
@@ -53,18 +58,13 @@ from backend.services.rag.evaluation.monitoring import (
     AlertThresholds,
     QueryMetricsRecord,
     RetrievalQualityMonitor,
-    retrieval_quality_monitor,
     get_retrieval_quality_monitor,
+    retrieval_quality_monitor,
 )
 from backend.services.rag.evaluation.ragas_evaluator import (
-    RAGASEvaluator,
     EvaluationResult,
+    RAGASEvaluator,
     get_ragas_evaluator,
-)
-from backend.services.rag.evaluation.benchmark import (
-    RAGBenchmark,
-    BenchmarkResult,
-    run_weekly_benchmark,
 )
 
 __all__ = [

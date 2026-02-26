@@ -1455,7 +1455,7 @@ _team_drive_service: TeamDriveService | None = None
 _team_drive_service_with_oauth: TeamDriveService | None = None
 
 
-def get_team_drive_service(db_pool: Any=None) -> TeamDriveService:
+def get_team_drive_service(db_pool: Any = None) -> TeamDriveService:
     """
     Get the TeamDriveService instance.
 

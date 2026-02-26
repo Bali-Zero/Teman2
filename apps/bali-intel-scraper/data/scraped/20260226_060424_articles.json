@@ -1,0 +1,54 @@
+{
+  "timestamp": "2026-02-26T06:04:24.155783",
+  "stats": {
+    "sources_processed": 67,
+    "articles_found": 9,
+    "articles_scored": 9,
+    "articles_passed": 3,
+    "errors": 0
+  },
+  "articles": [
+    {
+      "title": "Ask Marcus! Questions & Answers about living in Indonesia as an expat",
+      "url": "https://livinginindonesiaforum.org/",
+      "summary": "",
+      "text": "Home » Practical Information\n\nAsk Marcus!\n\nA member for more than 16 years of our previous sister site, the Living in Indonesia Expat Forum, Marcus has offered to continue answering questions sent from community members - through this page.\n\nMarcus is an engineer who has lived in Indonesia for more than 25 years. On the Expat Forum he has written more than 9,250 posts - mostly related to Indonesian Laws & Regulations - which he continues to read in order to have a safe and legal life during his continued stay in Indonesia.\n\nIn order to ask Marcus a question, please fill out the following form and he'll respond.\n\nPrivacy statement: Information collected through this form will not be sold or given to any other organization or entity for any purpose. Email addresses are only requested for sending responses to requests and are not used in any other way.\n\n\n\n\n\n",
+      "published": "",
+      "source_name": "Living in Indonesia",
+      "source_url": "https://livinginindonesiaforum.org/",
+      "category": "immigration",
+      "tier": "T3",
+      "scraped_at": "2026-02-26T06:01:39.548446",
+      "id": "e0c226ab66dae664",
+      "quality_score": 85
+    },
+    {
+      "title": "The heart of the internet",
+      "url": "https://www.reddit.com/r/bali/",
+      "summary": "",
+      "text": "Hello fellow travelers in Bali! Wife and I will be landing on 28th Feb to celebrate our honeymoon. Watching the news we have been thinking about canceling our plans due to the rains and flooding. How is the real ground reality and where should we book our hotels to be the safest yet able to enjoy the beaches",
+      "published": "",
+      "source_name": "Bali Reddit",
+      "source_url": "https://www.reddit.com/r/bali/",
+      "category": "immigration",
+      "tier": "T3",
+      "scraped_at": "2026-02-26T06:02:24.026505",
+      "id": "dfae5a1103336a9e",
+      "quality_score": 75
+    },
+    {
+      "title": "Cost of Living in Canggu, Bali. Prices Updated Feb 2026.",
+      "url": "https://nomadlist.com/bali",
+      "summary": "",
+      "text": "Post review\n\nTo increase honesty, reviews are anonymous. You can only add one review per city or it replaces/edits your old one. Reviews with URLs or emails are removed. If you're writing about data being wrong, please don't do it here as it'll be removed here.\n\nfood good great traffic nomads life restaurants western locals cheap beach day rent quality expensive island roads tourist\n\nCanggu is a bustling hotspot for digital nomads and remote workers, offering an affordable lifestyle with a rich variety of international food, decent co-working spaces, and easy social integration thanks to the friendly locals. Surfing is a major draw and adds to the active, community-driven vibe that many enjoy, especially in the short-term. It’s particularly suited for those looking to live well on a moderate budget, with Western-style amenities and services widely available.\n\n\n\nHowever, Canggu suffers from extreme over-tourism. The traffic is heavy, the roads are narrow, and noise pollution is constant. Cleanliness is a major concern—air, water, and food hygiene standards are low, and 'Bali Belly' is common. The area is barely walkable, relying heavily on scooters which contribute to safety risks and accidents. Properties are expensive yet poorly maintained, and crime like villa break-ins is frequent. Long-term, many find the influencer-heavy and occasionally toxic expat culture tiresome. While convenient and energetic, Canggu’s overdevelopment has diminished its previous charm. For some, it's a fun place to visit; for others, it’s no longer sustainable or worth the hype. AI-generated summary of reviews\n\n2 months ago\n\nI simply do not see the appeal of this place. Whatever it had going for it has clearly been lost in the hype machine of mass tourism. I feel bad for the locals that have lost their land to over development. I feel bad for the unsuspecting nomads who come here after seeing the youtube day-in-the-life vlogs and instagram posts. Some of that hype may have been true years ",
+      "published": "",
+      "source_name": "Nomad List Bali",
+      "source_url": "https://nomadlist.com/bali",
+      "category": "immigration",
+      "tier": "T3",
+      "scraped_at": "2026-02-26T06:02:52.572943",
+      "id": "0fa9ca2629249424",
+      "quality_score": 64
+    }
+  ]
+}

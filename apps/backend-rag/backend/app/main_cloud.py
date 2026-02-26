@@ -47,8 +47,8 @@ __all__ = [
 
 # Backward compatibility: Import and re-export initialization functions
 # These are used by tests and other modules that import from main or main_cloud
-from backend.app.setup.service_initializer import initialize_services
 from backend.app.setup.plugin_initializer import initialize_plugins
+from backend.app.setup.service_initializer import initialize_services
 
 
 # Backward compatibility: Export startup/shutdown handlers
@@ -64,9 +64,9 @@ async def on_startup() -> None:
     in app_factory.py. This function exists only for backward compatibility
     with tests that call on_startup() directly.
     """
-    from backend.services.monitoring.alert_service import AlertService
-    from backend.app.setup.service_initializer import initialize_services
     from backend.app.setup.plugin_initializer import initialize_plugins
+    from backend.app.setup.service_initializer import initialize_services
+    from backend.services.monitoring.alert_service import AlertService
 
     # Initialize AlertService at startup (avoid import-time instantiation)
     try:
@@ -111,9 +111,7 @@ async def on_shutdown() -> None:
         logger.info("✅ Health Monitor stopped")
 
     # Shutdown Compliance Monitor
-    compliance_monitor = getattr(
-        app.state, "compliance_monitor", None
-    )
+    compliance_monitor = getattr(app.state, "compliance_monitor", None)
     if compliance_monitor:
         await compliance_monitor.stop()
         logger.info("✅ Compliance Monitor stopped")

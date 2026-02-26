@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-02-24T06:06:00.032385",
+  "stats": {
+    "sources_processed": 67,
+    "articles_found": 9,
+    "articles_scored": 9,
+    "articles_passed": 0,
+    "errors": 0
+  },
+  "articles": []
+}

@@ -17,10 +17,9 @@ DESIGN PRINCIPLE: No hardcoded keywords, patterns, or domain knowledge.
 The LLM decides which collection to search based on the tool description.
 """
 
-from typing import Any
-
 import json
 import logging
+from typing import Any
 
 from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
 from backend.services.pricing.pricing_service import get_pricing_service
@@ -310,6 +309,7 @@ class VisionTool(BaseTool):
         try:
             # Security: validate file path to prevent path traversal
             from pathlib import Path
+
             from backend.app.core.config import settings
 
             resolved = Path(file_path).resolve()

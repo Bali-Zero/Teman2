@@ -3,11 +3,10 @@ Authentication Decorators
 Provides decorators for endpoint security classification and access control
 """
 
-from typing import Any
-
 import logging
 from collections.abc import Callable
 from functools import wraps
+from typing import Any
 
 from fastapi import HTTPException, Request, status
 from fastapi.responses import JSONResponse

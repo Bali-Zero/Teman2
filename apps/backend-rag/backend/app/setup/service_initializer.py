@@ -45,6 +45,7 @@ async def _init_critical_services(
     """
     from backend.llm.zantara_ai_client import ZantaraAIClient
     from backend.services.search.search_service import SearchService
+
     # Store service registry in app state for health endpoints
     app.state.service_registry = service_registry
 
@@ -291,15 +292,15 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
             # Prepare DSN and SSL options for asyncpg
             dsn = settings.database_url
             ssl_context = None
-            
+
             # Handle sslmode=disable manually for asyncpg
             if "sslmode=disable" in dsn:
                 dsn = dsn.replace("?sslmode=disable", "").replace("&sslmode=disable", "")
                 ssl_context = False
                 logger.info("DEBUG: Detected sslmode=disable, setting ssl=False explicitly")
             elif "sslmode=require" in dsn:
-                 # let asyncpg handle default SSL or configure context if needed
-                 pass
+                # let asyncpg handle default SSL or configure context if needed
+                pass
 
             # Create asyncpg pool for team timesheet service
             async def init_db_connection(conn):
@@ -326,7 +327,7 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
                 "command_timeout": getattr(settings, "db_command_timeout", None) or 60,
                 "init": init_db_connection,
             }
-            
+
             # Add ssl parameter if explicitly determined
             if ssl_context is False:
                 pool_kwargs["ssl"] = False
@@ -580,13 +581,14 @@ async def initialize_crm_and_memory_services(
         db_pool: Database pool instance (may be None)
     """
     try:
-        from backend.services.memory import MemoryServicePostgres
-        from backend.services.memory.collective_memory_workflow import create_collective_memory_workflow
-        from backend.services.misc.conversation_service import ConversationService
-
         # Initialize Memory Service (Postgres)
         # MemoryServicePostgres expects database_url string, not Pool object
         from backend.app.core.config import settings
+        from backend.services.memory import MemoryServicePostgres
+        from backend.services.memory.collective_memory_workflow import (
+            create_collective_memory_workflow,
+        )
+        from backend.services.misc.conversation_service import ConversationService
 
         app.state.memory_service = MemoryServicePostgres(settings.database_url)
         await app.state.memory_service.connect()
@@ -1070,7 +1072,7 @@ async def initialize_services(app: FastAPI) -> None:
     # 12. LangGraph Agent Layer - Inject services into workflow nodes
     print("DEBUG: Injecting services into LangGraph agent nodes...", flush=True)
     try:
-        from backend.app.agents.graph import set_search_service, set_llm_gateway
+        from backend.app.agents.graph import set_llm_gateway, set_search_service
         from backend.services.rag.agentic.llm_gateway import LLMGateway
 
         # Inject SearchService (already initialized)

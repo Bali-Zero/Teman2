@@ -18,6 +18,14 @@ export interface KBLIDetail {
   risk_profile: string;
   licenses: KBLILicense[];
   related_codes: string[];
+  intel?: {
+    whatItMeans: string;
+    whatYouNeed: string;
+    whatChanged: string;
+    baliContext: string;
+    zantaraOpener: string;
+    youllAlsoNeed?: string;
+  };
 }
 
 export interface KBLISearchResult {

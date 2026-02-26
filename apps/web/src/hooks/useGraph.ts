@@ -83,7 +83,10 @@ export function useGraph(options: UseGraphOptions = {}): UseGraphReturn {
       };
 
       try {
-        for await (const event of graphClient.queryStream(req, controller.signal)) {
+        for await (const event of graphClient.queryStream(
+          req,
+          controller.signal,
+        )) {
           if (!isMountedRef.current) break;
 
           setEvents((prev) => [...prev, event]);

@@ -97,3 +97,4 @@ scikit-learn>=1.3.0  # Required for GoldenAnswerService cosine similarity
 # Force rebuild 2026-02-13_00:12:41
 python-json-logger>=2.0.0
 aiosmtplib>=3.0.0
+apscheduler==3.10.4

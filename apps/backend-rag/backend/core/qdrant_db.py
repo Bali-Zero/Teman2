@@ -48,13 +48,13 @@ except ImportError:
     from contextlib import contextmanager
 
     @contextmanager
-    def trace_span(name: Any, attrs: Any=None) -> Any:
+    def trace_span(name: Any, attrs: Any = None) -> Any:
         yield
 
     def set_span_attribute(key: Any, value: Any) -> Any:
         pass
 
-    def set_span_status(status: Any, msg: Any=None) -> Any:
+    def set_span_status(status: Any, msg: Any = None) -> Any:
         pass
 
 

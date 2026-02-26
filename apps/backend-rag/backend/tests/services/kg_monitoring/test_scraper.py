@@ -2,9 +2,10 @@
 Tests for LegalScraper - Phase 8
 """
 
-import pytest
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from backend.services.kg_monitoring.scraper import (
     LegalScraper,

@@ -19,7 +19,6 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 from backend.app.utils.tracing import add_span_event
-
 from backend.services.rag.agentic.orchestrator_core import OrchestratorCore
 from backend.services.rag.agentic.orchestrator_streaming import OrchestratorStreamingManager
 from backend.services.rag.agentic.query_helpers import wrap_query_with_language_instruction
@@ -224,6 +223,10 @@ class OrchestratorStreamingCore:
                 tool_execution_counter=tool_execution_counter,
                 images=images,
             ):
+                # Skip non-dict events (defensive guard)
+                if not isinstance(raw_event, dict):
+                    continue
+
                 # Check if this is a tool call event
                 if raw_event and raw_event.get("type") == "tool_call":
                     tool_name = raw_event.get("data", {}).get("tool_name", "unknown tool")
@@ -249,7 +252,9 @@ class OrchestratorStreamingCore:
                     "type": "metadata",
                     "data": {
                         "workflow": langgraph_workflow,
-                        "detected_entities": extracted_entities if any(extracted_entities.values()) else None,
+                        "detected_entities": extracted_entities
+                        if any(extracted_entities.values())
+                        else None,
                     },
                     "timestamp": time.time(),
                 }
@@ -273,7 +278,9 @@ class OrchestratorStreamingCore:
             collections_used = self.core.metrics_manager.extract_collections_from_state(state)
             sources = self.core.metrics_manager.extract_sources_from_state(state)
             try:
-                from backend.db.repositories.query_analytics_repository import QueryAnalyticsRepository
+                from backend.db.repositories.query_analytics_repository import (
+                    QueryAnalyticsRepository,
+                )
 
                 if self.core.db_pool:
                     repo = QueryAnalyticsRepository(self.core.db_pool)
@@ -288,7 +295,9 @@ class OrchestratorStreamingCore:
                         execution_time_ms=int(execution_time * 1000),
                     )
             except Exception as analytics_err:
-                logger.warning(f"Failed to log streaming query analytics (non-critical): {analytics_err}")
+                logger.warning(
+                    f"Failed to log streaming query analytics (non-critical): {analytics_err}"
+                )
 
         except Exception as e:
             logger.error(f"❌ [Stream] ReAct loop failed: {e}", exc_info=True)

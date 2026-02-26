@@ -8,13 +8,12 @@ import logging
 
 from fastapi import FastAPI
 
+from backend.app.setup.cors_config import register_cors_middleware
 from backend.middleware.activity_logging import ActivityLoggingMiddleware
 from backend.middleware.error_monitoring import ErrorMonitoringMiddleware
 from backend.middleware.hybrid_auth import HybridAuthMiddleware
 from backend.middleware.rate_limiter import RateLimitMiddleware
 from backend.middleware.request_tracing import RequestTracingMiddleware
-
-from backend.app.setup.cors_config import register_cors_middleware
 
 logger = logging.getLogger("zantara.backend")
 

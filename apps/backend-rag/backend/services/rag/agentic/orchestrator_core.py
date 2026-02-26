@@ -20,27 +20,25 @@ import uuid
 from typing import Any
 
 from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
-from backend.services.llm_clients.pricing import TokenUsage
-from backend.services.rag.agentic.entity_extractor import EntityExtractionService
-from backend.services.rag.agentic.memory_handler import MemoryHandler
-from backend.services.rag.agentic.prompt_builder import SystemPromptBuilder
-from backend.services.rag.agentic.query_gates import QueryGates
-from backend.services.rag.agentic.reasoning import ReasoningEngine
-from backend.services.rag.kg_enhanced_retrieval import KGEnhancedRetrieval
-from backend.services.search.semantic_cache import SemanticCache
-from backend.services.tools.definitions import AgentState
-
 from backend.db.repositories.query_analytics_repository import QueryAnalyticsRepository
 from backend.db.repositories.workflow_analytics_repository import WorkflowAnalyticsRepository
-from backend.services.rag.multi_agent_coordinator import MultiAgentCoordinator, requires_multi_agent
-
+from backend.services.llm_clients.pricing import TokenUsage
+from backend.services.rag.agentic.entity_extractor import EntityExtractionService
 from backend.services.rag.agentic.llm_gateway import LLMGateway
+from backend.services.rag.agentic.memory_handler import MemoryHandler
 from backend.services.rag.agentic.orchestrator_context import OrchestratorContextManager
 from backend.services.rag.agentic.orchestrator_metrics import OrchestratorMetricsManager
 from backend.services.rag.agentic.orchestrator_response import OrchestratorResponseBuilder
 from backend.services.rag.agentic.orchestrator_routing import OrchestratorRoutingManager
+from backend.services.rag.agentic.prompt_builder import SystemPromptBuilder
+from backend.services.rag.agentic.query_gates import QueryGates
 from backend.services.rag.agentic.query_helpers import wrap_query_with_language_instruction
+from backend.services.rag.agentic.reasoning import ReasoningEngine
 from backend.services.rag.agentic.schema import CoreResult
+from backend.services.rag.kg_enhanced_retrieval import KGEnhancedRetrieval
+from backend.services.rag.multi_agent_coordinator import MultiAgentCoordinator, requires_multi_agent
+from backend.services.search.semantic_cache import SemanticCache
+from backend.services.tools.definitions import AgentState
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)  # Info level for core orchestration
@@ -877,7 +875,6 @@ class OrchestratorCore:
         Returns:
             Tuple of (user_context, optimized_history, extracted_entities, kg_context_str, workflow)
         """
-        import asyncio
 
         # Definisci i task da eseguire in parallelo
         async def _load_context():
@@ -984,7 +981,7 @@ class OrchestratorCore:
         # Use pre-fetched KG context if available, otherwise fetch it (fallback)
         system_context_for_prompt = kg_context_str
         if not system_context_for_prompt:
-            _, system_context_for_prompt = await self.extract_entities_and_kg_context(query)
+            _, system_context_for_prompt, _ = await self.extract_entities_and_kg_context(query)
 
         # Build system prompt - handle None user_context
         safe_user_context = user_context or {}
@@ -1000,7 +997,7 @@ class OrchestratorCore:
         )
 
         # 🔍 DEBUG: Log full context breakdown
-        logger.debug(f"🔍 [ORCHESTRATOR DEBUG] ===== CONTEXT BREAKDOWN =====")
+        logger.debug("🔍 [ORCHESTRATOR DEBUG] ===== CONTEXT BREAKDOWN =====")
         logger.debug(f"🔍 Query: {query}")
         logger.debug(f"🔍 System prompt length: {len(system_prompt)} chars")
         logger.debug(f"🔍 KG context length: {len(system_context_for_prompt)} chars")
@@ -1008,7 +1005,7 @@ class OrchestratorCore:
         logger.debug(f"🔍 Conversation history: {len(history)} messages")
         logger.debug(f"🔍 Deep think mode: {deep_think_mode}")
         logger.debug(f"🔍 First 1000 chars of KG context:\n{system_context_for_prompt[:1000]}...")
-        logger.debug(f"🔍 ===== END CONTEXT BREAKDOWN =====")
+        logger.debug("🔍 ===== END CONTEXT BREAKDOWN =====")
 
         return model_tier, deep_think_mode, state, system_prompt
 

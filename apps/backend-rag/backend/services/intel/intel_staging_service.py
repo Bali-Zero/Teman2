@@ -107,13 +107,12 @@ class IntelStagingService:
         temp_file = staging_file.with_suffix(".json.tmp")
 
         try:
-
             temp_file.write_text(json_content)
 
             # Atomic rename (works on most filesystems)
             temp_file.replace(staging_file)
 
-        except Exception as e:
+        except Exception:
             # Clean up temp file on error
             if temp_file.exists():
                 try:
@@ -175,7 +174,6 @@ class IntelStagingService:
 
         for file_path in file_paths:
             try:
-
                 with open(file_path) as f:
                     data = json.load(f)
 
@@ -186,7 +184,7 @@ class IntelStagingService:
                             detected_dt = datetime.fromisoformat(detected_at.replace("Z", "+00:00"))
                             if detected_dt >= cutoff_date:
                                 return data
-                        except (ValueError, TypeError) as e:
+                        except (ValueError, TypeError):
                             # If date parsing fails, consider it a duplicate anyway
                             return data
                     else:
@@ -308,7 +306,7 @@ class IntelStagingService:
         try:
             shutil.move(str(file_path), str(archive_path))
 
-        except Exception as e:
+        except Exception:
             raise
 
         return archive_path

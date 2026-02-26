@@ -15,8 +15,6 @@ from typing import Any, TypedDict
 import asyncpg
 from langgraph.graph import END, StateGraph
 
-from backend.services.rag.kg_graph_state import KGAgentState
-
 logger = logging.getLogger(__name__)
 
 
@@ -31,6 +29,7 @@ class TaxState(TypedDict, total=False):
 
     Extends KGAgentState with tax-specific fields.
     """
+
     # Inherited from parent (KGAgentState)
     query: str
     user_context: dict
@@ -54,10 +53,7 @@ class TaxState(TypedDict, total=False):
 # ============================================================================
 
 
-async def identify_tax_type_node(
-    state: TaxState,
-    llm
-) -> TaxState:
+async def identify_tax_type_node(state: TaxState, llm) -> TaxState:
     """
     Identify applicable tax types based on business entity and activity.
 
@@ -115,10 +111,7 @@ async def identify_tax_type_node(
 # ============================================================================
 
 
-async def get_tax_obligations_node(
-    state: TaxState,
-    db_pool: asyncpg.Pool
-) -> TaxState:
+async def get_tax_obligations_node(state: TaxState, db_pool: asyncpg.Pool) -> TaxState:
     """
     Get tax obligations based on entity type.
 
@@ -218,11 +211,13 @@ async def get_tax_obligations_node(
     if not state.get("vat_applicable", False):
         obligations.pop("ppn", None)
 
-    state.setdefault("tax_obligations", []).append({
-        "obligation_type": "tax_overview",
-        "entity_type": entity_type,
-        "details": obligations,
-    })
+    state.setdefault("tax_obligations", []).append(
+        {
+            "obligation_type": "tax_overview",
+            "entity_type": entity_type,
+            "details": obligations,
+        }
+    )
 
     logger.info(f"✅ [Tax Subgraph] Added {len(obligations)} tax obligations for {entity_type}")
 
@@ -234,9 +229,7 @@ async def get_tax_obligations_node(
 # ============================================================================
 
 
-async def calculate_tax_requirements_node(
-    state: TaxState
-) -> TaxState:
+async def calculate_tax_requirements_node(state: TaxState) -> TaxState:
     """
     Calculate estimated tax amounts and compliance requirements.
 
@@ -297,12 +290,14 @@ async def calculate_tax_requirements_node(
     else:
         tax_summary = {}
 
-    state.setdefault("tax_obligations", []).append({
-        "obligation_type": "estimated_tax",
-        "revenue": revenue,
-        "currency": "IDR",
-        "calculations": tax_summary,
-    })
+    state.setdefault("tax_obligations", []).append(
+        {
+            "obligation_type": "estimated_tax",
+            "revenue": revenue,
+            "currency": "IDR",
+            "calculations": tax_summary,
+        }
+    )
 
     logger.info(f"✅ [Tax Subgraph] Tax calculations: {len(tax_summary)} items")
 
@@ -314,9 +309,7 @@ async def calculate_tax_requirements_node(
 # ============================================================================
 
 
-async def synthesize_tax_workflow_node(
-    state: TaxState
-) -> TaxState:
+async def synthesize_tax_workflow_node(state: TaxState) -> TaxState:
     """
     Synthesize tax compliance workflow from collected information.
 
@@ -341,40 +334,46 @@ async def synthesize_tax_workflow_node(
     steps = []
 
     # Step 1: NPWP registration
-    steps.append({
-        "step": 1,
-        "action": "Obtain NPWP (Tax ID)",
-        "entity_id": "npwp",
-        "details": {
-            "requirement": "Mandatory for all businesses",
-            "registration": "Online via DJP (Direktorat Jenderal Pajak)",
-            "processing_time": "1-3 days",
+    steps.append(
+        {
+            "step": 1,
+            "action": "Obtain NPWP (Tax ID)",
+            "entity_id": "npwp",
+            "details": {
+                "requirement": "Mandatory for all businesses",
+                "registration": "Online via DJP (Direktorat Jenderal Pajak)",
+                "processing_time": "1-3 days",
+            },
         }
-    })
+    )
 
     # Step 2: VAT registration (if applicable)
     if vat_applicable:
-        steps.append({
-            "step": 2,
-            "action": "Register as VAT Taxable Entrepreneur (PKP)",
-            "entity_id": "pkp_registration",
-            "details": {
-                "requirement": "Revenue > 4.8B IDR annually",
-                "registration": "Online via DJP",
-                "processing_time": "7-14 days",
+        steps.append(
+            {
+                "step": 2,
+                "action": "Register as VAT Taxable Entrepreneur (PKP)",
+                "entity_id": "pkp_registration",
+                "details": {
+                    "requirement": "Revenue > 4.8B IDR annually",
+                    "registration": "Online via DJP",
+                    "processing_time": "7-14 days",
+                },
             }
-        })
+        )
 
     # Step 3: Bookkeeping
-    steps.append({
-        "step": len(steps) + 1,
-        "action": "Set up bookkeeping and accounting system",
-        "entity_id": "bookkeeping",
-        "details": {
-            "requirement": "Required for all business entities",
-            "software": "E.g., Jurnal, Accurate, or custom",
+    steps.append(
+        {
+            "step": len(steps) + 1,
+            "action": "Set up bookkeeping and accounting system",
+            "entity_id": "bookkeeping",
+            "details": {
+                "requirement": "Required for all business entities",
+                "software": "E.g., Jurnal, Accurate, or custom",
+            },
         }
-    })
+    )
 
     # Step 4: Monthly filings
     monthly_filings = []
@@ -384,26 +383,30 @@ async def synthesize_tax_workflow_node(
         monthly_filings.append("PPN (VAT return)")
 
     if monthly_filings:
-        steps.append({
-            "step": len(steps) + 1,
-            "action": "Monthly tax filing",
-            "entity_id": "monthly_filing",
-            "details": {
-                "filings": monthly_filings,
-                "deadline": "20th of following month (withholding), end of month (VAT)",
+        steps.append(
+            {
+                "step": len(steps) + 1,
+                "action": "Monthly tax filing",
+                "entity_id": "monthly_filing",
+                "details": {
+                    "filings": monthly_filings,
+                    "deadline": "20th of following month (withholding), end of month (VAT)",
+                },
             }
-        })
+        )
 
     # Step 5: Annual return
-    steps.append({
-        "step": len(steps) + 1,
-        "action": "Annual tax return (SPT Tahunan)",
-        "entity_id": "annual_return",
-        "details": {
-            "deadline": "4 months after fiscal year end (corporate), March 31 (personal)",
-            "requirement": "Audited financial statements for revenue > 50B IDR",
+    steps.append(
+        {
+            "step": len(steps) + 1,
+            "action": "Annual tax return (SPT Tahunan)",
+            "entity_id": "annual_return",
+            "details": {
+                "deadline": "4 months after fiscal year end (corporate), March 31 (personal)",
+                "requirement": "Audited financial statements for revenue > 50B IDR",
+            },
         }
-    })
+    )
 
     from dataclasses import asdict
 

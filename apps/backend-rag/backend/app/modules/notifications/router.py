@@ -11,18 +11,16 @@ Endpoints:
 """
 
 import logging
-from typing import List
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 
-from backend.app.dependencies import get_current_user
-from backend.app.dependencies import get_database_pool
+from backend.app.dependencies import get_current_user, get_database_pool
 
-from .checker import ExpiryChecker, AlertDeduplicator
+from .checker import ExpiryChecker
+from .models import ClientInfo
 from .service import NotificationService
-from .models import ClientAlert, AlertType, ClientInfo
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +51,7 @@ class StatusResponse(BaseModel):
     email_provider: str
 
 
-async def get_clients_from_db(pool, client_id: int | None = None) -> List[ClientInfo]:
+async def get_clients_from_db(pool, client_id: int | None = None) -> list[ClientInfo]:
     """Fetch clients from database."""
     async with pool.acquire() as conn:
         if client_id:
@@ -203,9 +201,7 @@ async def get_notification_status(
             pending_count = await conn.fetchval(
                 "SELECT COUNT(*) FROM notification_alerts WHERE status = 'pending'"
             )
-            last_check = await conn.fetchval(
-                "SELECT MAX(created_at) FROM notification_alerts"
-            )
+            last_check = await conn.fetchval("SELECT MAX(created_at) FROM notification_alerts")
 
         return StatusResponse(
             status="operational",
@@ -265,10 +261,13 @@ async def send_pending_alerts(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# Include test endpoints (staging only)
-from .test_endpoint import router as test_router
+# Include test endpoints only in non-production environments
+import os
 
-router.include_router(test_router)
+if os.getenv("ENVIRONMENT", "development").lower() != "production":
+    from .test_endpoint import router as test_router
+
+    router.include_router(test_router)
 
 # Include admin router
 from .admin_router import router as admin_router

@@ -9,12 +9,11 @@ Provides configurable logging with:
 - Error aggregation
 """
 
-from typing import Any
-
 import logging
 import sys
 import time
 from datetime import datetime
+from typing import Any
 
 import structlog
 from pythonjsonlogger import jsonlogger

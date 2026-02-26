@@ -136,9 +136,8 @@ Answer briefly (2-3 sentences):"""
 @router.post("/query", response_model=VoiceQueryResponse)
 async def voice_query(
     request: VoiceQueryRequest,
-    http_request: Request,
-    api_user: dict = Depends(verify_api_key),
     search_service=Depends(get_search_service),
+    _auth: dict = Depends(verify_api_key),
 ):
     """
     Fast voice query endpoint.
@@ -201,93 +200,68 @@ async def voice_query(
         raise HTTPException(status_code=500, detail="Voice query failed")
 
 
-# DISABLED: class ElevenLabsRequest(BaseModel):
-# DISABLED:     """ElevenLabs webhook request - flexible field names."""
-# DISABLED: 
-# DISABLED:     query: str | None = None
-# DISABLED:     question: str | None = None  # Alternative field name
-# DISABLED:     text: str | None = None  # Another alternative
-# DISABLED:     message: str | None = None  # Yet another
-# DISABLED: 
-# DISABLED:     def get_query(self) -> str:
-# DISABLED:         """Get query from any field."""
-# DISABLED:         return self.query or self.question or self.text or self.message or ""
-# DISABLED: 
-# DISABLED: 
-# DISABLED: from fastapi.responses import JSONResponse
-# DISABLED: 
-# DISABLED: 
-# DISABLED: @router.options("/elevenlabs")
-# DISABLED: async def elevenlabs_options():
-# DISABLED:     """CORS preflight for ElevenLabs webhook."""
-# DISABLED:     return JSONResponse(
-# DISABLED:         content={},
-# DISABLED:         headers={
-# DISABLED:             "Access-Control-Allow-Origin": "*",
-# DISABLED:             "Access-Control-Allow-Methods": "POST, OPTIONS",
-# DISABLED:             "Access-Control-Allow-Headers": "Content-Type",
-# DISABLED:         },
-# DISABLED:     )
-# DISABLED: 
-# DISABLED: 
-# DISABLED: @router.post("/elevenlabs")
-# DISABLED: async def elevenlabs_webhook(
-# DISABLED:     request: ElevenLabsRequest,
-# DISABLED:     http_request: Request,
-# DISABLED:     search_service=Depends(get_search_service),
-# DISABLED: ):
-# DISABLED:     """
-# DISABLED:     ElevenLabs Conversational AI webhook.
-# DISABLED: 
-# DISABLED:     PUBLIC endpoint - no auth required for ElevenLabs to call.
-# DISABLED:     Returns: {"result": "text response"}
-# DISABLED:     """
-# DISABLED:     start_time = time.time()
-# DISABLED: 
-# DISABLED:     # Log raw request for debugging
-# DISABLED:     logger.info(f"🎤 ElevenLabs RAW request: {request.model_dump()}")
-# DISABLED: 
-# DISABLED:     query = request.get_query()
-# DISABLED:     if not query or not query.strip():
-# DISABLED:         return {"result": "Non ho capito la domanda. Puoi ripetere?"}
-# DISABLED: 
-# DISABLED:     logger.info(f"🎤 ElevenLabs query: '{query[:50]}...'")
-# DISABLED: 
-# DISABLED:     try:
-# DISABLED:         # Fast vector search
-# DISABLED:         search_results = await search_service.search(
-# DISABLED:             query=query,
-# DISABLED:             user_level=2,
-# DISABLED:             limit=3,
-# DISABLED:             apply_filters=False,
-# DISABLED:         )
-# DISABLED: 
-# DISABLED:         # Build context
-# DISABLED:         context_parts = []
-# DISABLED:         for result in search_results.get("results", [])[:3]:
-# DISABLED:             text = result.get("text", "")
-# DISABLED:             if text:
-# DISABLED:                 context_parts.append(text[:500])
-# DISABLED: 
-# DISABLED:         context = "\n\n".join(context_parts) if context_parts else "No relevant information found."
-# DISABLED: 
-# DISABLED:         # Generate response
-# DISABLED:         answer = await generate_fast_response(
-# DISABLED:             query=query,
-# DISABLED:             context=context,
-# DISABLED:         )
-# DISABLED: 
-# DISABLED:         execution_time = time.time() - start_time
-# DISABLED:         logger.info(f"🎤 ElevenLabs response in {execution_time:.2f}s: {answer[:100]}...")
-# DISABLED: 
-# DISABLED:         # Return format that ElevenLabs can use as context
-# DISABLED:         return JSONResponse(
-# DISABLED:             content={"result": answer}, headers={"Access-Control-Allow-Origin": "*"}
-# DISABLED:         )
-# DISABLED: 
-# DISABLED:     except Exception as e:
-# DISABLED:         logger.error(f"ElevenLabs query failed: {e}", exc_info=True)
-# DISABLED:         return JSONResponse(
-# DISABLED:             content={"result": "Mi dispiace, c'è stato un errore. Riprova tra poco."},
-# DISABLED:             headers={"Access-Control-Allow-Origin": "*"},
-# DISABLED:         )
+from backend.services.kbli_eye import KBLIEye
+import re
+
+kbli_eye = KBLIEye("source_documents/KBLI_2025_FINAL_CLEAN.json")
+
+class ElevenLabsRequest(BaseModel):
+    """ElevenLabs Conversational AI request."""
+    query: str | None = None
+    conversation: list[dict] | None = None
+
+import hmac
+import hashlib
+from fastapi import Header
+
+@router.post("/elevenlabs/kbli-audit")
+async def elevenlabs_kbli_audit(
+    request: ElevenLabsRequest,
+    x_elevenlabs_signature: str | None = Header(None),
+    http_raw_request: Request = None
+):
+    """
+    ElevenLabs Tool Endpoint for KBLI Audit with Signature Verification.
+    """
+    # 1. Verifica della firma (opzionale se presente il secret)
+    webhook_secret = os.getenv("ELEVENLABS_WEBHOOK_SECRET")
+    if webhook_secret and x_elevenlabs_signature:
+        body = await http_raw_request.body()
+        expected_signature = hmac.new(
+            webhook_secret.encode(),
+            body,
+            hashlib.sha256
+        ).hexdigest()
+        
+        if not hmac.compare_digest(expected_signature, x_elevenlabs_signature):
+            logger.warning("❌ Tentativo di accesso non autorizzato al Webhook ElevenLabs")
+            raise HTTPException(status_code=401, detail="Invalid signature")
+
+    # 2. Logica di Audit (come prima)
+    query = request.query or ""
+    # Cerca un codice a 5 cifre nella query
+    match = re.search(r'\b(\d{5})\b', query)
+    
+    if not match:
+        return {"result": "Non ho trovato un codice KBLI a 5 cifre nella tua domanda. Puoi ripetere il codice?"}
+    
+    code = match.group(1)
+    decision = kbli_eye.get_decision(code, is_pma=True, location="Bali")
+    
+    if decision["state"] == "ERROR":
+        return {"result": f"Mi dispiace, non ho trovato informazioni sul codice {code} nel database 2025."}
+    
+    state = decision["audit"]["state"]
+    reason = decision["audit"]["reason_code"]
+    title = decision["title"]
+    
+    if state == "APPROVED":
+        response = f"Il codice {code} per {title} è approvato per la PMA a Bali. Non ci sono restrizioni particolari."
+    elif state == "WARNING":
+        response = f"Attenzione. Il codice {code} per {title} è in stato di allerta. Il Governatore di Bali ha richiesto restrizioni per questo settore a causa del rischio medio-basso. Ti consiglio di consultare il direttore Zero."
+    elif state == "REJECTED":
+        response = f"Il codice {code} per {title} è vietato per la PMA. È riservato esclusivamente alle imprese locali indonesiane secondo il decreto 10 del 2021."
+    else:
+        response = f"Ho analizzato il codice {code} ({title}). Lo stato attuale è {state}."
+
+    return {"result": response}

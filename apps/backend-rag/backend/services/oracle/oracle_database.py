@@ -12,7 +12,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.pool import QueuePool
 
 from backend.db.utils import db_retry
-
 from backend.services.oracle.oracle_config import oracle_config
 
 logger = logging.getLogger(__name__)

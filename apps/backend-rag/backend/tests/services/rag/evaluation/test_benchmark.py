@@ -9,9 +9,9 @@ Comprehensive test suite for RAGBenchmark covering:
 - Database operations
 """
 
-import json
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from backend.services.rag.evaluation.benchmark import (
     BenchmarkConfig,
@@ -19,32 +19,35 @@ from backend.services.rag.evaluation.benchmark import (
     MethodResult,
     RAGBenchmark,
     create_evaluation_tables,
-    run_weekly_benchmark,
 )
 from backend.services.rag.evaluation.dataset_builder import EvaluationSample
 from backend.services.rag.evaluation.ragas_evaluator import EvaluationResult
-
 
 # =============================================================================
 # Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def mock_hybrid_service():
     """Create mock hybrid search service."""
     service = MagicMock()
-    service.search_dense_only = AsyncMock(return_value={
-        "results": [{"text": "Context 1"}, {"text": "Context 2"}],
-        "search_type": "dense",
-        "total_results": 2,
-    })
-    service.search_hybrid = AsyncMock(return_value={
-        "results": [{"text": "Context 1"}, {"text": "Context 2"}],
-        "search_type": "hybrid_rrf",
-        "bm25_enabled": True,
-        "alpha": 0.5,
-        "total_results": 2,
-    })
+    service.search_dense_only = AsyncMock(
+        return_value={
+            "results": [{"text": "Context 1"}, {"text": "Context 2"}],
+            "search_type": "dense",
+            "total_results": 2,
+        }
+    )
+    service.search_hybrid = AsyncMock(
+        return_value={
+            "results": [{"text": "Context 1"}, {"text": "Context 2"}],
+            "search_type": "hybrid_rrf",
+            "bm25_enabled": True,
+            "alpha": 0.5,
+            "total_results": 2,
+        }
+    )
     return service
 
 
@@ -52,10 +55,12 @@ def mock_hybrid_service():
 def mock_reranker():
     """Create mock reranker."""
     reranker = MagicMock()
-    reranker.rerank = AsyncMock(return_value=[
-        {"text": "Context 1", "score": 0.95},
-        {"text": "Context 2", "score": 0.85},
-    ])
+    reranker.rerank = AsyncMock(
+        return_value=[
+            {"text": "Context 1", "score": 0.95},
+            {"text": "Context 2", "score": 0.85},
+        ]
+    )
     return reranker
 
 
@@ -63,18 +68,20 @@ def mock_reranker():
 def mock_evaluator():
     """Create mock RAGAS evaluator."""
     evaluator = MagicMock()
-    evaluator.evaluate = AsyncMock(return_value=EvaluationResult(
-        query="test query",
-        context=["Context 1"],
-        answer="Test answer",
-        ground_truth="Ground truth",
-        metrics={
-            "faithfulness": 0.9,
-            "answer_relevance": 0.85,
-            "context_entity_recall": 0.8,
-        },
-        metadata={},
-    ))
+    evaluator.evaluate = AsyncMock(
+        return_value=EvaluationResult(
+            query="test query",
+            context=["Context 1"],
+            answer="Test answer",
+            ground_truth="Ground truth",
+            metrics={
+                "faithfulness": 0.9,
+                "answer_relevance": 0.85,
+                "context_entity_recall": 0.8,
+            },
+            metadata={},
+        )
+    )
     return evaluator
 
 
@@ -130,6 +137,7 @@ def benchmark_config():
 # Initialization Tests
 # =============================================================================
 
+
 class TestInitialization:
     """Tests for RAGBenchmark initialization."""
 
@@ -139,40 +147,45 @@ class TestInitialization:
             evaluator=mock_evaluator,
             hybrid_service=mock_hybrid_service,
         )
-        
+
         assert benchmark.evaluator is mock_evaluator
         assert benchmark.hybrid_service is mock_hybrid_service
 
     def test_init_lazy_reranker(self, mock_evaluator, mock_hybrid_service):
         """Test lazy initialization of reranker."""
-        with patch("backend.services.rag.evaluation.benchmark.RerankerIntegration") as mock_reranker_cls:
+        with patch(
+            "backend.services.rag.evaluation.benchmark.RerankerIntegration"
+        ) as mock_reranker_cls:
             mock_reranker = MagicMock()
             mock_reranker_cls.return_value = mock_reranker
-            
+
             benchmark = RAGBenchmark(
                 evaluator=mock_evaluator,
                 hybrid_service=mock_hybrid_service,
             )
-            
+
             mock_reranker_cls.assert_called_once()
             assert benchmark.reranker is mock_reranker
 
     def test_init_reranker_failure(self, mock_evaluator, mock_hybrid_service):
         """Test handling of reranker initialization failure."""
-        with patch("backend.services.rag.evaluation.benchmark.RerankerIntegration") as mock_reranker_cls:
+        with patch(
+            "backend.services.rag.evaluation.benchmark.RerankerIntegration"
+        ) as mock_reranker_cls:
             mock_reranker_cls.side_effect = Exception("Reranker not available")
-            
+
             benchmark = RAGBenchmark(
                 evaluator=mock_evaluator,
                 hybrid_service=mock_hybrid_service,
             )
-            
+
             assert benchmark.reranker is None
 
 
 # =============================================================================
 # Search Method Tests
 # =============================================================================
+
 
 class TestSearchMethods:
     """Tests for different search methods."""
@@ -185,7 +198,7 @@ class TestSearchMethods:
             collection="test_collection",
             limit=5,
         )
-        
+
         assert len(context) == 2
         assert context[0] == "Context 1"
         assert metadata["search_type"] == "dense"
@@ -201,7 +214,7 @@ class TestSearchMethods:
             limit=5,
             alpha=0.5,
         )
-        
+
         assert len(context) == 2
         assert metadata["search_type"] == "hybrid"
         assert metadata["bm25_enabled"] is True
@@ -218,7 +231,7 @@ class TestSearchMethods:
             alpha=0.5,
             rerank_top_k=10,
         )
-        
+
         assert len(context) == 2
         assert metadata["search_type"] == "hybrid_rerank"
         assert metadata["rerank_top_k"] == 10
@@ -228,26 +241,26 @@ class TestSearchMethods:
     async def test_search_hybrid_rerank_fallback(self, benchmark):
         """Test fallback when reranker is not available."""
         benchmark.reranker = None
-        
+
         context, metadata = await benchmark._search_hybrid_rerank(
             query="test",
             collection="test_collection",
             limit=2,
         )
-        
+
         assert metadata["search_type"] == "hybrid"
 
     @pytest.mark.asyncio
     async def test_search_hybrid_rerank_failure(self, benchmark, mock_reranker):
         """Test fallback when reranking fails."""
         mock_reranker.rerank.side_effect = Exception("Reranking failed")
-        
+
         context, metadata = await benchmark._search_hybrid_rerank(
             query="test",
             collection="test_collection",
             limit=2,
         )
-        
+
         # Should still return results from hybrid search
         assert len(context) == 2
 
@@ -256,6 +269,7 @@ class TestSearchMethods:
 # Sample Evaluation Tests
 # =============================================================================
 
+
 class TestSampleEvaluation:
     """Tests for individual sample evaluation."""
 
@@ -263,13 +277,13 @@ class TestSampleEvaluation:
     async def test_evaluate_sample_dense(self, benchmark, sample_dataset, benchmark_config):
         """Test evaluating sample with dense search."""
         sample = sample_dataset[0]
-        
+
         result, metadata = await benchmark.evaluate_sample(
             sample=sample,
             method="dense",
             config=benchmark_config,
         )
-        
+
         assert isinstance(result, EvaluationResult)
         assert result.query == sample.query
         assert "search" in result.metadata
@@ -280,18 +294,20 @@ class TestSampleEvaluation:
         """Test evaluating sample with hybrid search."""
         sample = sample_dataset[0]
         benchmark_config.search_methods = ["hybrid"]
-        
+
         result, metadata = await benchmark.evaluate_sample(
             sample=sample,
             method="hybrid",
             config=benchmark_config,
         )
-        
+
         assert isinstance(result, EvaluationResult)
         assert metadata["search_type"] == "hybrid"
 
     @pytest.mark.asyncio
-    async def test_evaluate_sample_unknown_method(self, benchmark, sample_dataset, benchmark_config):
+    async def test_evaluate_sample_unknown_method(
+        self, benchmark, sample_dataset, benchmark_config
+    ):
         """Test that unknown method raises error."""
         with pytest.raises(ValueError, match="Unknown search method"):
             await benchmark.evaluate_sample(
@@ -305,6 +321,7 @@ class TestSampleEvaluation:
 # Method Evaluation Tests
 # =============================================================================
 
+
 class TestMethodEvaluation:
     """Tests for evaluating entire dataset with one method."""
 
@@ -316,7 +333,7 @@ class TestMethodEvaluation:
             method="dense",
             config=benchmark_config,
         )
-        
+
         assert isinstance(result, MethodResult)
         assert result.method == "dense"
         assert len(result.evaluation_results) == len(sample_dataset)
@@ -327,24 +344,26 @@ class TestMethodEvaluation:
     async def test_evaluate_method_with_failures(self, benchmark, sample_dataset, benchmark_config):
         """Test handling of evaluation failures."""
         # Make first evaluation fail
-        benchmark.evaluator.evaluate = AsyncMock(side_effect=[
-            Exception("Eval failed"),
-            EvaluationResult(
-                query="test",
-                context=[],
-                answer="",
-                ground_truth="",
-                metrics={"faithfulness": 0.8},
-                metadata={},
-            ),
-        ])
-        
+        benchmark.evaluator.evaluate = AsyncMock(
+            side_effect=[
+                Exception("Eval failed"),
+                EvaluationResult(
+                    query="test",
+                    context=[],
+                    answer="",
+                    ground_truth="",
+                    metrics={"faithfulness": 0.8},
+                    metadata={},
+                ),
+            ]
+        )
+
         result = await benchmark.evaluate_method(
             dataset=sample_dataset[:2],
             method="dense",
             config=benchmark_config,
         )
-        
+
         assert len(result.evaluation_results) == 2
         # First result should have error metadata
         assert "error" in result.evaluation_results[0].metadata
@@ -354,6 +373,7 @@ class TestMethodEvaluation:
 # Full Benchmark Tests
 # =============================================================================
 
+
 class TestFullBenchmark:
     """Tests for complete benchmark run."""
 
@@ -361,7 +381,7 @@ class TestFullBenchmark:
     async def test_run_benchmark(self, benchmark, sample_dataset, benchmark_config):
         """Test running full benchmark."""
         result = await benchmark.run_benchmark(sample_dataset, benchmark_config)
-        
+
         assert isinstance(result, BenchmarkResult)
         assert result.id.startswith("test_benchmark_")
         assert result.config == benchmark_config
@@ -379,9 +399,9 @@ class TestFullBenchmark:
             search_methods=["dense", "hybrid", "hybrid_rerank"],
             limit=5,
         )
-        
+
         result = await benchmark.run_benchmark(sample_dataset, config)
-        
+
         assert len(result.method_results) == 3
         assert result.comparison["best_method"] in ["dense", "hybrid", "hybrid_rerank"]
 
@@ -389,6 +409,7 @@ class TestFullBenchmark:
 # =============================================================================
 # Comparison Tests
 # =============================================================================
+
 
 class TestComparison:
     """Tests for result comparison."""
@@ -411,9 +432,9 @@ class TestComparison:
                 overall_score=0.85,
             ),
         ]
-        
+
         comparison = benchmark._generate_comparison(method_results)
-        
+
         assert comparison["best_method"] == "hybrid"
         assert comparison["best_overall_score"] == 0.85
         assert "method_scores" in comparison
@@ -422,7 +443,7 @@ class TestComparison:
     def test_generate_comparison_empty(self, benchmark):
         """Test comparison with no method results."""
         comparison = benchmark._generate_comparison([])
-        
+
         assert comparison == {}
 
     def test_generate_comparison_single_method(self, benchmark):
@@ -436,9 +457,9 @@ class TestComparison:
                 overall_score=0.7,
             ),
         ]
-        
+
         comparison = benchmark._generate_comparison(method_results)
-        
+
         assert comparison["best_method"] == "dense"
         assert "improvement_vs_baseline" not in comparison["method_scores"]["dense"]
 
@@ -446,6 +467,7 @@ class TestComparison:
 # =============================================================================
 # Report Generation Tests
 # =============================================================================
+
 
 class TestReportGeneration:
     """Tests for report generation."""
@@ -477,9 +499,9 @@ class TestReportGeneration:
                 "method_scores": {"dense": {"overall": 0.825}},
             },
         )
-        
+
         report = benchmark.generate_report(result)
-        
+
         assert "RAG EVALUATION BENCHMARK REPORT" in report
         assert "test" in report
         assert "test_collection" in report
@@ -501,16 +523,17 @@ class TestReportGeneration:
             method_results=[],
             comparison={},
         )
-        
+
         filepath = str(tmp_path / "test_report.txt")
         benchmark.save_report(result, filepath)
-        
+
         assert open(filepath).read()
 
 
 # =============================================================================
 # Database Operations Tests
 # =============================================================================
+
 
 class TestDatabaseOperations:
     """Tests for database operations."""
@@ -523,7 +546,7 @@ class TestDatabaseOperations:
         mock_pool.acquire = MagicMock()
         mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
         mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
-        
+
         result = BenchmarkResult(
             id="test-id",
             config=BenchmarkConfig(
@@ -537,30 +560,32 @@ class TestDatabaseOperations:
             method_results=[],
             comparison={},
         )
-        
+
         await benchmark.save_results(result, db_pool=mock_pool)
-        
+
         mock_conn.execute.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_get_historical_results_with_name(self, benchmark):
         """Test getting historical results filtered by name."""
         mock_conn = MagicMock()
-        mock_conn.fetch = AsyncMock(return_value=[
-            {"id": "run-1", "name": "weekly"},
-            {"id": "run-2", "name": "weekly"},
-        ])
+        mock_conn.fetch = AsyncMock(
+            return_value=[
+                {"id": "run-1", "name": "weekly"},
+                {"id": "run-2", "name": "weekly"},
+            ]
+        )
         mock_pool = MagicMock()
         mock_pool.acquire = MagicMock()
         mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
         mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
-        
+
         results = await benchmark.get_historical_results(
             name="weekly",
             limit=5,
             db_pool=mock_pool,
         )
-        
+
         assert len(results) == 2
         mock_conn.fetch.assert_called_once()
 
@@ -573,9 +598,9 @@ class TestDatabaseOperations:
         mock_pool.acquire = MagicMock()
         mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
         mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
-        
+
         results = await benchmark.get_historical_results(db_pool=mock_pool)
-        
+
         assert len(results) == 1
 
     @pytest.mark.asyncio
@@ -585,15 +610,16 @@ class TestDatabaseOperations:
         mock_pool.acquire = MagicMock()
         mock_pool.acquire.return_value.__aenter__ = AsyncMock(side_effect=Exception("DB Error"))
         mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
-        
+
         results = await benchmark.get_historical_results(db_pool=mock_pool)
-        
+
         assert results == []
 
 
 # =============================================================================
 # Integration Tests
 # =============================================================================
+
 
 @pytest.mark.integration
 class TestIntegration:
@@ -607,7 +633,7 @@ class TestIntegration:
             benchmark = RAGBenchmark()
         except Exception:
             pytest.skip("Dependencies not available")
-        
+
         dataset = [
             EvaluationSample(
                 id="test-1",
@@ -619,7 +645,7 @@ class TestIntegration:
                 metadata={},
             ),
         ]
-        
+
         config = BenchmarkConfig(
             name="integration_test",
             description="Integration test",
@@ -627,9 +653,9 @@ class TestIntegration:
             search_methods=["dense"],
             limit=2,
         )
-        
+
         result = await benchmark.run_benchmark(dataset, config)
-        
+
         assert result is not None
         assert result.dataset_size == 1
 
@@ -638,13 +664,14 @@ class TestIntegration:
 # Data Classes Tests
 # =============================================================================
 
+
 class TestDataClasses:
     """Tests for data class serialization."""
 
     def test_benchmark_config_dict(self):
         """Test BenchmarkConfig serialization."""
         from dataclasses import asdict
-        
+
         config = BenchmarkConfig(
             name="test",
             description="Test config",
@@ -653,9 +680,9 @@ class TestDataClasses:
             limit=5,
             alpha=0.5,
         )
-        
+
         data = asdict(config)
-        
+
         assert data["name"] == "test"
         assert data["search_methods"] == ["dense", "hybrid"]
         assert data["limit"] == 5
@@ -669,9 +696,9 @@ class TestDataClasses:
             avg_metrics={"faithfulness": 0.8},
             overall_score=0.8,
         )
-        
+
         data = result.to_dict()
-        
+
         assert data["method"] == "dense"
         assert data["overall_score"] == 0.8
         assert data["avg_metrics"]["faithfulness"] == 0.8
@@ -691,9 +718,9 @@ class TestDataClasses:
             method_results=[],
             comparison={},
         )
-        
+
         data = result.to_dict()
-        
+
         assert data["id"] == "test-id"
         assert data["timestamp"] == "2024-01-01T00:00:00"
 
@@ -701,6 +728,7 @@ class TestDataClasses:
 # =============================================================================
 # Utility Functions Tests
 # =============================================================================
+
 
 class TestUtilityFunctions:
     """Tests for utility functions."""
@@ -714,10 +742,10 @@ class TestUtilityFunctions:
         mock_pool.acquire = MagicMock()
         mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
         mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
-        
+
         with patch("backend.services.rag.evaluation.benchmark.get_db_pool", return_value=mock_pool):
             await create_evaluation_tables()
-        
+
         mock_conn.execute.assert_called_once()
         # Check that CREATE TABLE is in the call
         call_args = mock_conn.execute.call_args
@@ -728,22 +756,23 @@ class TestUtilityFunctions:
 # Edge Case Tests
 # =============================================================================
 
+
 class TestEdgeCases:
     """Tests for edge cases."""
 
     def test_placeholder_answer_generation(self, benchmark):
         """Test placeholder answer generation."""
         context = ["Context 1", "Context 2", "Context 3"]
-        
+
         answer = benchmark._generate_placeholder_answer("test query", context)
-        
+
         assert isinstance(answer, str)
         assert len(answer) > 0
 
     def test_placeholder_answer_empty_context(self, benchmark):
         """Test placeholder answer with empty context."""
         answer = benchmark._generate_placeholder_answer("test query", [])
-        
+
         assert "tidak dapat menemukan" in answer.lower() or "maaf" in answer.lower()
 
     @pytest.mark.asyncio
@@ -754,7 +783,7 @@ class TestEdgeCases:
             method="dense",
             config=benchmark_config,
         )
-        
+
         assert result.method == "dense"
         assert len(result.evaluation_results) == 0
         assert result.overall_score == 0.0
@@ -768,8 +797,8 @@ class TestEdgeCases:
             collection="test",
             search_methods=[],
         )
-        
+
         result = await benchmark.run_benchmark(sample_dataset, config)
-        
+
         assert len(result.method_results) == 0
         assert result.comparison == {}

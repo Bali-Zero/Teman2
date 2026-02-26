@@ -125,8 +125,9 @@ class PerformanceMonitor:
         return [
             {
                 "name": "High Parsing Time",
-                "condition": lambda metrics: self._get_avg_metric(metrics, "parsing_duration")
-                > 5.0,
+                "condition": lambda metrics: (
+                    self._get_avg_metric(metrics, "parsing_duration") > 5.0
+                ),
                 "recommendation": OptimizationRecommendation(
                     category="Parsing Performance",
                     priority="HIGH",
@@ -138,8 +139,9 @@ class PerformanceMonitor:
             },
             {
                 "name": "High Failure Rate",
-                "condition": lambda metrics: self._get_avg_metric(metrics, "ingestion_failure_rate")
-                > 0.05,
+                "condition": lambda metrics: (
+                    self._get_avg_metric(metrics, "ingestion_failure_rate") > 0.05
+                ),
                 "recommendation": OptimizationRecommendation(
                     category="Reliability",
                     priority="CRITICAL",
@@ -151,10 +153,9 @@ class PerformanceMonitor:
             },
             {
                 "name": "Slow Embedding Generation",
-                "condition": lambda metrics: self._get_avg_metric(
-                    metrics, "embedding_generation_duration"
-                )
-                > 20.0,
+                "condition": lambda metrics: (
+                    self._get_avg_metric(metrics, "embedding_generation_duration") > 20.0
+                ),
                 "recommendation": OptimizationRecommendation(
                     category="ML Performance",
                     priority="MEDIUM",

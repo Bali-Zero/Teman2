@@ -1,6 +1,9 @@
 """
 Alert Notification Service
-Sends alerts for critical errors via Slack, Discord, and logging
+Sends alerts for critical errors via Telegram, Slack, Discord, and logging.
+
+Telegram is the PRIMARY alert channel (already configured for the project).
+Slack/Discord are secondary channels, enabled via webhook URLs.
 """
 
 import logging
@@ -12,6 +15,8 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
+TELEGRAM_API_BASE = "https://api.telegram.org/bot"
+
 
 class AlertLevel(str, Enum):
     """Alert severity levels"""
@@ -22,19 +27,41 @@ class AlertLevel(str, Enum):
     CRITICAL = "critical"
 
 
-class AlertService:
-    """Service for sending alerts to various channels"""
+# Emoji mapping for Telegram alert formatting
+_LEVEL_EMOJI = {
+    AlertLevel.INFO: "ℹ️",
+    AlertLevel.WARNING: "⚠️",
+    AlertLevel.ERROR: "🔴",
+    AlertLevel.CRITICAL: "🚨",
+}
 
-    def __init__(self):
+
+class AlertService:
+    """Service for sending alerts to Telegram, Slack, Discord, and logs"""
+
+    def __init__(self) -> None:
         from backend.app.core.config import settings
 
+        # Telegram (primary channel)
+        self.telegram_bot_token = settings.telegram_bot_token
+        self.telegram_admin_chat_id = settings.admin_telegram_chat_id
+        self.enable_telegram = bool(self.telegram_bot_token and self.telegram_admin_chat_id)
+
+        # Slack (secondary)
         self.slack_webhook = settings.slack_webhook_url
-        self.discord_webhook = settings.discord_webhook_url
         self.enable_slack = bool(self.slack_webhook)
+
+        # Discord (secondary)
+        self.discord_webhook = settings.discord_webhook_url
         self.enable_discord = bool(self.discord_webhook)
-        self.enable_logging = True  # Always enabled
+
+        # Logging (always on)
+        self.enable_logging = True
 
         logger.info("✅ AlertService initialized")
+        logger.info(
+            f"   Telegram: {'✅ enabled' if self.enable_telegram else '❌ disabled (need TELEGRAM_BOT_TOKEN + ADMIN_TELEGRAM_CHAT_ID)'}"
+        )
         logger.info(
             f"   Slack: {'✅ enabled' if self.enable_slack else '❌ disabled (no SLACK_WEBHOOK_URL)'}"
         )
@@ -51,7 +78,7 @@ class AlertService:
         metadata: dict[str, Any] | None = None,
     ) -> dict[str, bool]:
         """
-        Send alert to all configured channels
+        Send alert to all configured channels.
 
         Args:
             title: Alert title
@@ -62,7 +89,7 @@ class AlertService:
         Returns:
             Dict with status for each channel
         """
-        results = {"slack": False, "discord": False, "logging": False}
+        results = {"telegram": False, "slack": False, "discord": False, "logging": False}
 
         # Always log
         try:
@@ -70,6 +97,14 @@ class AlertService:
             results["logging"] = True
         except Exception as e:
             logger.error(f"Failed to log alert: {e}")
+
+        # Send to Telegram (primary channel)
+        if self.enable_telegram:
+            try:
+                await self._send_telegram_alert(title, message, level, metadata)
+                results["telegram"] = True
+            except Exception as e:
+                logger.error(f"Failed to send Telegram alert: {e}")
 
         # Send to Slack if enabled
         if self.enable_slack:
@@ -91,7 +126,7 @@ class AlertService:
 
     def _log_alert(
         self, title: str, message: str, level: AlertLevel, metadata: dict[str, Any] | None = None
-    ):
+    ) -> None:
         """Log alert to application logs"""
         log_message = f"[{level.value.upper()}] {title}: {message}"
         if metadata:
@@ -106,9 +141,48 @@ class AlertService:
         else:
             logger.info(log_message)
 
+    async def _send_telegram_alert(
+        self, title: str, message: str, level: AlertLevel, metadata: dict[str, Any] | None = None
+    ) -> None:
+        """Send alert to admin Telegram chat"""
+        if not self.telegram_bot_token or not self.telegram_admin_chat_id:
+            return
+
+        emoji = _LEVEL_EMOJI.get(level, "ℹ️")
+
+        # Build compact Telegram message (Markdown)
+        lines = [
+            f"{emoji} *{title}*",
+            "",
+            message,
+        ]
+
+        if metadata:
+            lines.append("")
+            for key, value in metadata.items():
+                # Truncate long values
+                val_str = str(value)[:200]
+                lines.append(f"• `{key}`: {val_str}")
+
+        lines.append(f"\n_Zantara RAG — {datetime.utcnow().strftime('%H:%M:%S UTC')}_")
+
+        text = "\n".join(lines)
+
+        url = f"{TELEGRAM_API_BASE}{self.telegram_bot_token}/sendMessage"
+        payload = {
+            "chat_id": self.telegram_admin_chat_id,
+            "text": text,
+            "parse_mode": "Markdown",
+            "disable_web_page_preview": True,
+        }
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, json=payload, timeout=5.0)
+            response.raise_for_status()
+
     async def _send_slack_alert(
         self, title: str, message: str, level: AlertLevel, metadata: dict[str, Any] | None = None
-    ):
+    ) -> None:
         """Send alert to Slack"""
         if not self.slack_webhook:
             return
@@ -161,7 +235,7 @@ class AlertService:
 
     async def _send_discord_alert(
         self, title: str, message: str, level: AlertLevel, metadata: dict[str, Any] | None = None
-    ):
+    ) -> None:
         """Send alert to Discord"""
         if not self.discord_webhook:
             return
@@ -216,18 +290,8 @@ class AlertService:
         error_detail: str | None = None,
         request_id: str | None = None,
         user_agent: str | None = None,
-    ):
-        """
-        Send alert for HTTP errors (4xx/5xx)
-
-        Args:
-            status_code: HTTP status code
-            method: HTTP method (GET, POST, etc.)
-            path: Request path
-            error_detail: Error detail message
-            request_id: Request ID for tracking
-            user_agent: User agent string
-        """
+    ) -> None:
+        """Send alert for HTTP errors (4xx/5xx)"""
         # Determine alert level
         if status_code >= 500:
             level = AlertLevel.CRITICAL if status_code >= 503 else AlertLevel.ERROR
@@ -236,14 +300,12 @@ class AlertService:
         else:
             level = AlertLevel.INFO
 
-        # Build title and message
         title = f"HTTP {status_code} Error"
         message = f"{method} {path} returned {status_code}"
 
         if error_detail:
             message += f"\nError: {error_detail}"
 
-        # Build metadata
         metadata = {
             "status_code": status_code,
             "method": method,
@@ -253,9 +315,8 @@ class AlertService:
         }
 
         if error_detail:
-            metadata["error_detail"] = error_detail[:500]  # Limit error detail length
+            metadata["error_detail"] = error_detail[:500]
 
-        # Send alert
         await self.send_alert(title=title, message=message, level=level, metadata=metadata)
 
     async def send_latency_alert(
@@ -266,18 +327,8 @@ class AlertService:
         threshold_ms: float,
         request_id: str | None = None,
         user_agent: str | None = None,
-    ):
-        """
-        Send alert for high latency
-
-        Args:
-            duration_ms: Request duration in milliseconds
-            method: HTTP method
-            path: Request path
-            threshold_ms: Threshold that was exceeded
-            request_id: Request ID
-            user_agent: User Agent
-        """
+    ) -> None:
+        """Send alert for high latency"""
         title = f"High Latency: {duration_ms:.0f}ms"
         message = f"{method} {path} took {duration_ms:.0f}ms (threshold: {threshold_ms:.0f}ms)"
 
@@ -290,8 +341,38 @@ class AlertService:
             "user_agent": user_agent[:100] if user_agent else "N/A",
         }
 
-        # Latency alerts are usually warnings unless extremely high
         level = AlertLevel.WARNING
+
+        await self.send_alert(title=title, message=message, level=level, metadata=metadata)
+
+    async def send_resource_alert(
+        self,
+        resource: str,
+        current_value: float,
+        threshold: float,
+        unit: str = "%",
+    ) -> None:
+        """Send alert for resource exhaustion (memory, CPU, disk).
+
+        Args:
+            resource: Resource name (memory, cpu, disk)
+            current_value: Current usage value
+            threshold: Threshold that was exceeded
+            unit: Unit of measurement
+        """
+        title = f"High {resource.title()} Usage: {current_value:.1f}{unit}"
+        message = (
+            f"{resource.title()} usage at {current_value:.1f}{unit} "
+            f"(threshold: {threshold:.1f}{unit})"
+        )
+
+        level = AlertLevel.CRITICAL if current_value > threshold * 1.1 else AlertLevel.WARNING
+
+        metadata = {
+            "resource": resource,
+            "current_value": f"{current_value:.1f}{unit}",
+            "threshold": f"{threshold:.1f}{unit}",
+        }
 
         await self.send_alert(title=title, message=message, level=level, metadata=metadata)
 

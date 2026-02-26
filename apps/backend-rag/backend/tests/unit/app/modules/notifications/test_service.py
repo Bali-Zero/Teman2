@@ -2,19 +2,19 @@
 Test NotificationService.
 """
 
-import pytest
 from datetime import datetime
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
+import pytest
+
+from backend.app.modules.notifications.models import (
+    AlertStatus,
+    AlertType,
+    ClientAlert,
+)
 from backend.app.modules.notifications.service import (
     NotificationService,
     SendGridProvider,
-)
-from backend.app.modules.notifications.models import (
-    AlertType,
-    AlertStatus,
-    ClientAlert,
-    NotificationResult,
 )
 
 
@@ -32,26 +32,26 @@ class TestSendGridProvider:
             mock_response = AsyncMock()
             mock_response.status = 202
             mock_post.return_value.__aenter__.return_value = mock_response
-            
+
             result = await provider.send_email(
                 to_email="test@example.com",
                 subject="Test Subject",
                 html_body="<p>Test</p>",
             )
-            
+
             assert result is True
 
     @pytest.mark.asyncio
     async def test_send_email_no_api_key(self):
         """Fail gracefully when API key not set."""
         provider = SendGridProvider(api_key=None)
-        
+
         result = await provider.send_email(
             to_email="test@example.com",
             subject="Test",
             html_body="<p>Test</p>",
         )
-        
+
         assert result is False
 
     @pytest.mark.asyncio
@@ -61,14 +61,14 @@ class TestSendGridProvider:
             mock_response = AsyncMock()
             mock_response.status = 202
             mock_post.return_value.__aenter__.return_value = mock_response
-            
+
             result = await provider.send_email(
                 to_email="test@example.com",
                 subject="Test",
                 html_body="<p>Test</p>",
                 bcc=["leader@example.com"],
             )
-            
+
             assert result is True
             # Verify BCC was included in payload
             call_args = mock_post.call_args
@@ -80,10 +80,13 @@ class TestNotificationService:
 
     @pytest.fixture
     def mock_db_pool(self):
-        """Mock database pool."""
+        """Mock database pool with async context manager."""
         pool = Mock()
         conn = AsyncMock()
-        pool.acquire.return_value.__aenter__.return_value = conn
+        ctx_manager = AsyncMock()
+        ctx_manager.__aenter__.return_value = conn
+        ctx_manager.__aexit__.return_value = False
+        pool.acquire.return_value = ctx_manager
         return pool
 
     @pytest.fixture
@@ -105,9 +108,9 @@ class TestNotificationService:
             email_body="<p>Test</p>",
             created_at=datetime.now(),
         )
-        
+
         result = await service.process_alert(alert, "test@example.com")
-        
+
         assert result.success is True
         assert result.alert_id == 1
 
@@ -117,7 +120,7 @@ class TestNotificationService:
         # Mock team leader lookup
         conn = mock_db_pool.acquire.return_value.__aenter__.return_value
         conn.fetchrow.return_value = {"email": "leader@example.com"}
-        
+
         alert = ClientAlert(
             id=1,
             client_id=123,
@@ -128,9 +131,9 @@ class TestNotificationService:
             email_body="<p>Test</p>",
             created_at=datetime.now(),
         )
-        
+
         await service.process_alert(alert, "test@example.com")
-        
+
         # Verify email was sent with BCC
         service.email_provider.send_email.assert_called_once()
         call_kwargs = service.email_provider.send_email.call_args.kwargs
@@ -150,9 +153,9 @@ class TestNotificationService:
             email_body="<p>Test</p>",
             created_at=datetime.now(),
         )
-        
+
         await service.process_alert(alert, "test@example.com")
-        
+
         # Verify email was sent without BCC
         call_kwargs = service.email_provider.send_email.call_args.kwargs
         assert call_kwargs.get("bcc") is None
@@ -161,7 +164,7 @@ class TestNotificationService:
     async def test_process_alert_failure(self, service, mock_db_pool):
         """Handle email send failure."""
         service.email_provider.send_email = AsyncMock(return_value=False)
-        
+
         alert = ClientAlert(
             id=1,
             client_id=123,
@@ -172,9 +175,9 @@ class TestNotificationService:
             email_body="<p>Test</p>",
             created_at=datetime.now(),
         )
-        
+
         result = await service.process_alert(alert, "test@example.com")
-        
+
         assert result.success is False
         assert result.error_message is not None
 
@@ -203,12 +206,12 @@ class TestNotificationService:
                 created_at=datetime.now(),
             ),
         ]
-        
+
         async def get_email(client_id):
             return f"client{client_id}@example.com"
-        
+
         results = await service.process_alerts_batch(alerts, get_email)
-        
+
         assert len(results) == 2
         assert all(r.success for r in results)
 
@@ -230,8 +233,8 @@ class TestNotificationService:
                 "error_message": None,
             }
         ]
-        
+
         alerts = await service.get_pending_alerts()
-        
+
         assert len(alerts) == 1
         assert alerts[0].alert_type == AlertType.PASSPORT_WARNING

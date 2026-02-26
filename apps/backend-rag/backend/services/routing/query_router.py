@@ -460,8 +460,15 @@ class QueryRouter:
     # Define fallback priority for each primary collection
     # Format: primary_collection -> [fallback1, fallback2, fallback3]
     FALLBACK_CHAINS = {
-        "visa_oracle": ["immigration_circulars", "legal_architect", "tax_genius"],  # Circulars first for TKA/policy queries
-        "immigration_circulars": ["visa_oracle", "legal_architect"],  # Circulars fallback to main visa
+        "visa_oracle": [
+            "immigration_circulars",
+            "legal_architect",
+            "tax_genius",
+        ],  # Circulars first for TKA/policy queries
+        "immigration_circulars": [
+            "visa_oracle",
+            "legal_architect",
+        ],  # Circulars fallback to main visa
         "kbli_2025_final": ["legal_architect", "tax_genius", "visa_oracle"],
         "kbli_comprehensive": ["kbli_2025_final", "legal_architect", "tax_genius"],
         "tax_genius": [

@@ -168,6 +168,46 @@ const KBLIInspector = ({
           </p>
         </section>
 
+        {/* NEW: 2026 Business Intelligence Section */}
+        {data.intel && (
+          <section className="space-y-6">
+            <h3 className="text-[11px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
+              <Activity size={12} className="text-blue-400" /> 2026 Business Intelligence
+            </h3>
+
+            <div className="grid grid-cols-1 gap-4">
+              <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-5">
+                <h4 className="text-blue-400 font-bold text-[10px] uppercase tracking-wider mb-2">
+                  What it Means
+                </h4>
+                <p className="text-[#CCC] text-xs leading-relaxed">
+                  {data.intel.whatItMeans}
+                </p>
+              </div>
+              <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-5">
+                <h4 className="text-amber-400 font-bold text-[10px] uppercase tracking-wider mb-2">
+                  What you Need
+                </h4>
+                <p className="text-[#CCC] text-xs leading-relaxed whitespace-pre-line">
+                  {data.intel.whatYouNeed}
+                </p>
+              </div>
+              <div className="bg-green-500/5 border border-green-500/20 rounded-xl p-5">
+                <h4 className="text-green-400 font-bold text-[10px] uppercase tracking-wider mb-2">
+                  The Bali Context
+                </h4>
+                <p className="text-[#CCC] text-xs leading-relaxed whitespace-pre-line">
+                  {data.intel.baliContext}
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-[10px] text-[#888] italic">
+              <strong>2025 Transition:</strong> {data.intel.whatChanged}
+            </div>
+          </section>
+        )}
+
         {data.licenses.length > 0 && (
           <section>
             <h3 className="text-[11px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">

@@ -23,8 +23,24 @@
       "command": "uvx",
       "args": ["mcp-server-fetch"]
     },
-    "nuzantara-mcp-browser": {
-      "command": "python3",
+    "nuzantara-mcp": {
+      "command": "/Users/nuzantara/Desktop/nuzantara/apps/nuzantara-mcp/.venv/bin/python",
+      "args": ["apps/nuzantara-mcp/nuzantara_mcp/server.py"],
+      "cwd": "/Users/nuzantara/Desktop/nuzantara",
+      "env": {
+        "PYTHONPATH": "apps/nuzantara-mcp"
+      }
+    },
+    "nuzantara-mcp-advanced": {
+      "command": "/Users/nuzantara/Desktop/nuzantara/apps/nuzantara-mcp-advanced/.venv/bin/python",
+      "args": ["apps/nuzantara-mcp-advanced/nuzantara_mcp_advanced/server.py"],
+      "cwd": "/Users/nuzantara/Desktop/nuzantara",
+      "env": {
+        "PYTHONPATH": "apps/nuzantara-mcp-advanced"
+      }
+    },
+    "playwright": {
+      "command": "/Users/nuzantara/Desktop/nuzantara/apps/nuzantara-mcp-browser/.venv/bin/python",
       "args": ["apps/nuzantara-mcp-browser/nuzantara_mcp_browser/server.py"],
       "cwd": "/Users/nuzantara/Desktop/nuzantara",
       "env": {

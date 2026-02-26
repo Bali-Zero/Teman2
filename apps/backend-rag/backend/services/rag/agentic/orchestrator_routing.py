@@ -15,9 +15,8 @@ import logging
 from typing import Any
 
 from backend.services.classification.intent_classifier import IntentClassifier
-from backend.services.tools.definitions import AgentState
-
 from backend.services.rag.agentic.query_helpers import TIER_FLASH, TIER_PRO
+from backend.services.tools.definitions import AgentState
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)  # Enable debug logging for routing decisions

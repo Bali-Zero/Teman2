@@ -12,8 +12,6 @@ Author: Nuzantara Team
 Date: 2026-02-09
 """
 
-import asyncio
-import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -21,14 +19,10 @@ import pytest
 from backend.services.rag.agentic.orchestrator_core import OrchestratorCore
 from backend.services.rag.agentic.orchestrator_response import OrchestratorResponseBuilder
 from backend.services.rag.agentic.schema import CoreResult
-from backend.services.rag.kg_graph_nodes import (
-    synthesize_workflow_node,
-)
 from backend.services.rag.kg_langgraph_orchestrator import (
     KGLangGraphOrchestrator,
     compile_kg_workflow,
 )
-
 
 # ============================================================================
 # Fixtures
@@ -168,15 +162,17 @@ async def test_extract_returns_workflow_when_langgraph_succeeds():
     core.kg_retrieval = None
     core.kg_langgraph_orchestrator = AsyncMock()
     core.kg_langgraph_orchestrator.app = MagicMock()
-    core.kg_langgraph_orchestrator.query = AsyncMock(return_value={
-        "workflow": {
-            "type": "company_setup",
-            "name": "Test Workflow",
-            "steps": [{"step": 1, "action": "Do thing"}],
-            "source": "test",
-            "confidence": 0.9,
+    core.kg_langgraph_orchestrator.query = AsyncMock(
+        return_value={
+            "workflow": {
+                "type": "company_setup",
+                "name": "Test Workflow",
+                "steps": [{"step": 1, "action": "Do thing"}],
+                "source": "test",
+                "confidence": 0.9,
+            }
         }
-    })
+    )
 
     entities, context_str, workflow = await core.extract_entities_and_kg_context(
         "test query", user_context={}
@@ -197,9 +193,7 @@ async def test_extract_returns_none_workflow_when_langgraph_disabled():
     core.kg_retrieval = None
     core.kg_langgraph_orchestrator = None
 
-    entities, context_str, workflow = await core.extract_entities_and_kg_context(
-        "test query"
-    )
+    entities, context_str, workflow = await core.extract_entities_and_kg_context("test query")
 
     assert workflow is None
     assert "SUGGESTED WORKFLOW" not in context_str
@@ -235,9 +229,7 @@ async def test_compile_kg_workflow_without_checkpointer():
     """Verify compile_kg_workflow succeeds even when PostgresSaver fails."""
     mock_pool = MagicMock()
 
-    with patch(
-        "backend.services.rag.kg_langgraph_orchestrator.PostgresSaver"
-    ) as mock_saver_cls:
+    with patch("backend.services.rag.kg_langgraph_orchestrator.PostgresSaver") as mock_saver_cls:
         mock_saver = MagicMock()
         mock_saver.setup = AsyncMock(side_effect=Exception("No checkpoint tables"))
         mock_saver_cls.return_value = mock_saver
@@ -281,10 +273,12 @@ def test_source_collections_with_dict_sources():
         {"collection": "kbli_2025", "content": "..."},
         {"source": "regulations", "content": "..."},
     ]
-    source_collections = list({
-        s.get('collection', s.get('source', 'unknown')) if isinstance(s, dict) else str(s)
-        for s in sources
-    })
+    source_collections = list(
+        {
+            s.get("collection", s.get("source", "unknown")) if isinstance(s, dict) else str(s)
+            for s in sources
+        }
+    )
     assert "kbli_2025" in source_collections
     assert "regulations" in source_collections
 
@@ -292,10 +286,12 @@ def test_source_collections_with_dict_sources():
 def test_source_collections_with_string_sources():
     """Verify source_collections works with string sources (was causing 500)."""
     sources = ["kbli_2025", "regulations", {"collection": "visa_docs"}]
-    source_collections = list({
-        s.get('collection', s.get('source', 'unknown')) if isinstance(s, dict) else str(s)
-        for s in sources
-    })
+    source_collections = list(
+        {
+            s.get("collection", s.get("source", "unknown")) if isinstance(s, dict) else str(s)
+            for s in sources
+        }
+    )
     assert "kbli_2025" in source_collections
     assert "regulations" in source_collections
     assert "visa_docs" in source_collections
@@ -304,10 +300,16 @@ def test_source_collections_with_string_sources():
 def test_source_collections_empty():
     """Verify source_collections handles empty list."""
     sources = []
-    source_collections = list({
-        s.get('collection', s.get('source', 'unknown')) if isinstance(s, dict) else str(s)
-        for s in sources
-    }) if sources else []
+    source_collections = (
+        list(
+            {
+                s.get("collection", s.get("source", "unknown")) if isinstance(s, dict) else str(s)
+                for s in sources
+            }
+        )
+        if sources
+        else []
+    )
     assert source_collections == []
 
 

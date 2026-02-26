@@ -5,66 +5,20 @@ import folium
 from folium import GeoJson, GeoJsonTooltip, LayerControl
 from folium.plugins import Fullscreen
 from streamlit_folium import st_folium
-import pyotp
 import time
 import json
 import glob
 import os
 import math
 
-API_URL = "http://127.0.0.1:8000"
-TIMEOUT_SECS = 30 * 60  # 30 Minuti
+API_URL = "http://192.168.0.19:8001"
 
 st.set_page_config(page_title="Nuzantara Prime", layout="wide", page_icon="💎")
 
-MASTER_KEY = "CFBNKDIYV22K7RFPA7USEBP3ON7FP24Q"
-
-def check_session():
-    if "authenticated" not in st.session_state:
-        st.session_state.authenticated = False
-    if "last_activity" not in st.session_state:
-        st.session_state.last_activity = 0
-
-    if st.session_state.authenticated:
-        now = time.time()
-        elapsed = now - st.session_state.last_activity
-        if elapsed > TIMEOUT_SECS:
-            st.session_state.authenticated = False
-            st.warning("⏱️ Sessione scaduta. Rilogga.")
-            time.sleep(2)
-            st.rerun()
-        st.session_state.last_activity = now
-
-    if not st.session_state.authenticated:
-        st.markdown("<br><br><br>", unsafe_allow_html=True)
-        st.markdown("<h1 style='text-align: center;'>💎 Nuzantara Prime</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: #666;'>Secure Intelligence Access</p>", unsafe_allow_html=True)
-        col1, col2, col3 = st.columns([1, 1, 1])
-        with col2:
-            code_input = st.text_input("Codice Sicurezza", max_chars=6, type="password")
-            if st.button("ACCEDI AL SISTEMA", use_container_width=True):
-                try:
-                    totp = pyotp.TOTP(MASTER_KEY)
-                    if totp.verify(code_input, valid_window=1):
-                        st.session_state.authenticated = True
-                        st.session_state.last_activity = time.time()
-                        st.rerun()
-                    else:
-                        st.error("⛔ Accesso Negato.")
-                except Exception:
-                    st.error("⚠️ Configurazione Chiave Errata")
-        return False
-    return True
-
-if not check_session():
-    st.stop()
 
 st.sidebar.title("💎 PRIME")
 st.sidebar.caption("Status: ONLINE 🟢")
 
-if st.sidebar.button("🔒 Disconnetti"):
-    st.session_state.authenticated = False
-    st.rerun()
 
 mode = st.sidebar.radio("Modulo:", ["📍 Land Intel", "🧭 Zone Finder", "🧮 ROI Calculator", "🛰️ Geo-Compare", "📌 Saved Parcels"])
 
@@ -121,6 +75,124 @@ def load_rdtr_geojson(kecamatan_filter: str = "all"):
         except Exception:
             continue
     return {"type": "FeatureCollection", "features": features}
+
+
+OSM_ZONE_COLORS = {
+    "residential": "#f4a460",
+    "farmland": "#aad66b",
+    "orchard": "#6dbf67",
+    "beach": "#ffe066",
+    "grass": "#c8e6c9",
+    "wetland": "#80cbc4",
+    "brownfield": "#bcaaa4",
+    "construction": "#ff8a65",
+    "industrial": "#b0bec5",
+    "forest": "#388e3c",
+    "meadow": "#dcedc8",
+    "cemetery": "#9e9e9e",
+    "park": "#81c784",
+    "garden": "#a5d6a7",
+    "resort": "#ce93d8",
+    "hotel": "#ce93d8",
+    "attraction": "#ffb74d",
+    "zoo": "#ffb74d",
+    "retail": "#ef9a9a",
+    "commercial": "#ef9a9a",
+    "swimming_pool": "#64b5f6",
+    "pitch": "#4db6ac",
+    "unknown": "#cccccc",
+}
+
+
+def point_in_polygon_osm(lat: float, lon: float, coords: list) -> bool:
+    """Ray casting per verificare se un punto è dentro un poligono GeoJSON."""
+    x, y = lon, lat
+    n = len(coords)
+    inside = False
+    j = n - 1
+    for i in range(n):
+        xi, yi = coords[i]
+        xj, yj = coords[j]
+        if ((yi > y) != (yj > y)) and (x < (xj - xi) * (y - yi) / (yj - yi) + xi):
+            inside = not inside
+        j = i
+    return inside
+
+
+def lookup_tabanan_zone(lat: float, lon: float) -> dict | None:
+    """Cerca la zona OSM Tabanan per un punto lat/lon. Ritorna le properties o None."""
+    data = load_tabanan_geojson()
+    best = None
+    best_dist = 9999.0
+    for feat in data.get("features", []):
+        geom = feat.get("geometry", {})
+        if geom.get("type") != "Polygon":
+            continue
+        coords = geom["coordinates"][0]
+        if point_in_polygon_osm(lat, lon, coords):
+            return feat["properties"]
+        # fallback: distanza al centroide
+        cx = sum(c[0] for c in coords) / len(coords)
+        cy = sum(c[1] for c in coords) / len(coords)
+        dist = ((cx - lon) ** 2 + (cy - lat) ** 2) ** 0.5
+        if dist < best_dist:
+            best_dist = dist
+            best = feat["properties"]
+    if best_dist < 0.005:  # ~500m
+        return best
+    return None
+
+
+@st.cache_data(ttl=3600)
+@st.cache_data(ttl=3600)
+def load_osm_geojson(directory: str, code_pattern: str, label: str, max_per_file: int = 3000):
+    """Carica zone OSM da una directory di kecamatan.
+
+    Generico: usato per Tabanan, Denpasar, ecc.
+    max_per_file: cap features per file (evita crash su file da 80MB+).
+    File ordinati per dimensione crescente — zone abitate caricate per intero.
+    """
+    files = sorted(
+        glob.glob(os.path.join(directory, f"*_{code_pattern}.json")),
+        key=os.path.getsize
+    )
+    features = []
+    for fpath in files:
+        try:
+            with open(fpath) as f:
+                d = json.load(f)
+            file_features = d.get("features", [])
+            if len(file_features) > max_per_file:
+                file_features = file_features[:max_per_file]
+            kec_name = os.path.basename(fpath).split("_")[0]
+            for feat in file_features:
+                props = feat.get("properties", {})
+                zone_type = props.get("zone_type", props.get("landuse", props.get("leisure",
+                            props.get("tourism", props.get("amenity", "unknown")))))
+                props["_zone_code"] = zone_type[:4].upper() if zone_type else "UNKN"
+                props["_zone_name"] = props.get("name", zone_type)
+                props["_zone_color"] = OSM_ZONE_COLORS.get(zone_type, "#cccccc")
+                props["_source"] = f"OSM / {label} ({kec_name})"
+                features.append(feat)
+        except Exception:
+            continue
+    return {"type": "FeatureCollection", "features": features}
+
+
+def load_tabanan_geojson():
+    return load_osm_geojson(
+        "/Users/nuzantara/Desktop/harvested_zones/tabanan",
+        "5106[0-9][0-9][0-9]",
+        "Tabanan"
+    )
+
+
+def load_denpasar_geojson():
+    return load_osm_geojson(
+        "/Users/nuzantara/Desktop/harvested_zones/denpasar",
+        "5171[0-9][0-9][0-9]",
+        "Denpasar"
+    )
 
 
 def batara_color_to_hex(color_str: str, alpha: float = 0.5) -> tuple[str, float]:
@@ -389,7 +461,7 @@ if mode == "📍 Land Intel":
 
         GeoJson(
             rdtr_li,
-            name="Zone RDTR",
+            name="Zone RDTR (Badung)",
             style_function=rdtr_style_li,
             tooltip=GeoJsonTooltip(
                 fields=["_zone_code", "_zone_name"],
@@ -399,11 +471,58 @@ if mode == "📍 Land Intel":
             ),
         ).add_to(m_li)
 
+        tabanan_data = load_tabanan_geojson()
+        if tabanan_data["features"]:
+            def tabanan_style_li(feature):
+                color = feature["properties"].get("_zone_color", "#cccccc")
+                return {"fillColor": color, "color": color, "weight": 1.0, "fillOpacity": 0.40, "dashArray": "4"}
+
+            GeoJson(
+                tabanan_data,
+                name="Zone OSM (Tabanan — 10 kec.)",
+                style_function=tabanan_style_li,
+                tooltip=GeoJsonTooltip(
+                    fields=["_zone_code", "_zone_name", "_source"],
+                    aliases=["Zona:", "Nome:", "Fonte:"],
+                    sticky=True,
+                    style="font-size:12px; font-weight:bold;",
+                ),
+            ).add_to(m_li)
+
+        denpasar_data = load_denpasar_geojson()
+        if denpasar_data["features"]:
+            def denpasar_style_li(feature):
+                color = feature["properties"].get("_zone_color", "#cccccc")
+                return {"fillColor": color, "color": color, "weight": 1.0, "fillOpacity": 0.40, "dashArray": "2"}
+
+            GeoJson(
+                denpasar_data,
+                name="Zone OSM (Denpasar — 4 kec.)",
+                style_function=denpasar_style_li,
+                tooltip=GeoJsonTooltip(
+                    fields=["_zone_code", "_zone_name", "_source"],
+                    aliases=["Zona:", "Nome:", "Fonte:"],
+                    sticky=True,
+                    style="font-size:12px; font-weight:bold;",
+                ),
+            ).add_to(m_li)
+
         folium.Marker(
             [lat_in, lon_in],
             popup=folium.Popup(f"<b>Terreno</b><br>{li_size} m²", max_width=200),
             tooltip="Terreno analizzato",
             icon=folium.Icon(color="green", icon="crosshairs", prefix="fa"),
+        ).add_to(m_li)
+
+        # Marker fisso Casa Tera - Kedungu
+        folium.Marker(
+            [-8.5970391, 115.0941105],
+            popup=folium.Popup(
+                "<b>Casa Tera</b><br>C33V+7MQ, Jl. Pantai Kedungu<br>Belalang, Kediri, Tabanan<br><i>Zona: OSM non classificata</i>",
+                max_width=220,
+            ),
+            tooltip="Casa Tera (Kedungu)",
+            icon=folium.Icon(color="orange", icon="star", prefix="fa"),
         ).add_to(m_li)
 
         Fullscreen(position="topleft", title="Fullscreen", title_cancel="Esci").add_to(m_li)
@@ -952,7 +1071,88 @@ Dai un giudizio su: (1) potenziale di sviluppo, (2) rischi principali, (3) racco
             except requests.exceptions.Timeout:
                 st.error("BATARA non risponde. Riprova tra qualche secondo.")
             except Exception as e:
-                st.error(f"Errore: {e}")
+                st.warning(f"⚠️ BATARA non disponibile ({type(e).__name__}). Provo lookup locale OSM…")
+                osm_zone = lookup_tabanan_zone(lat_in, lon_in)
+                if osm_zone:
+                    z_code = osm_zone.get("_zone_code", "OSM")
+                    z_name = osm_zone.get("_zone_name", osm_zone.get("zona", "N/A"))
+                    z_color = osm_zone.get("_zone_color", "#cccccc")
+                    z_village = osm_zone.get("village", "N/A")
+                    z_source = osm_zone.get("_source", "OSM")
+                    st.divider()
+                    st.markdown(f"""
+                    <div style="background:{z_color}44; padding:14px; border-radius:8px;
+                                border-left:6px solid {z_color}; margin-bottom:16px;">
+                        <h2 style="margin:0">{z_code} — {z_name}</h2>
+                        <p style="margin:4px 0 0 0; color:#555; font-size:0.9em">
+                            {z_village}, Kec. Kediri, Tabanan &nbsp;|&nbsp;
+                            <em>Fonte: {z_source}</em>
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    st.info(
+                        "ℹ️ Tabanan non ha RDTR pubblico online. "
+                        "Dati urbanistici ufficiali (KDB/KLB) non disponibili — "
+                        "consulta DPUPR Tabanan per il certificato RDTR ufficiale."
+                    )
+                    # Walk context e BPN continuano a funzionare (non dipendono da BATARA)
+                    st.subheader("📍 Contesto area")
+                    st.caption(f"Zona OSM: **{z_name}** · Desa: **{z_village}** · Kabupaten: Tabanan")
+
+                    # ── BPN CATASTO (funziona su tutta Bali) ──────────────
+                    st.subheader("🏛️ Catasto BPN (GISTARU)")
+                    try:
+                        bpn_params_tab = {
+                            "SERVICE": "WMS", "VERSION": "1.3.0",
+                            "REQUEST": "GetFeatureInfo",
+                            "FORMAT": "image/png", "TRANSPARENT": "true",
+                            "QUERY_LAYERS": "bhumi_persil", "LAYERS": "bhumi_persil",
+                            "INFO_FORMAT": "application/json",
+                            "I": "50", "J": "50", "CRS": "EPSG:4326",
+                            "WIDTH": "101", "HEIGHT": "101",
+                            "BBOX": f"{lat_in-0.001},{lon_in-0.001},{lat_in+0.001},{lon_in+0.001}",
+                        }
+                        bpn_r_tab = requests.get(
+                            "https://bhumi.atrbpn.go.id/mprx/service",
+                            params=bpn_params_tab,
+                            headers={"Referer": "https://bhumi.atrbpn.go.id/peta", "User-Agent": "Mozilla/5.0"},
+                            timeout=12,
+                        )
+                        bpn_feats_tab = bpn_r_tab.json().get("features", [])
+                        if bpn_feats_tab:
+                            for bf in bpn_feats_tab:
+                                bp = bf.get("properties", {})
+                                tipehak = bp.get("tipehak", "N/A")
+                                hak_color = {"Hak Milik": "#198754", "Hak Guna Bangunan": "#0d6efd",
+                                             "Hak Pakai": "#fd7e14", "Hak Guna Usaha": "#dc3545"}.get(tipehak, "#6c757d")
+                                st.markdown(f"""
+                                <div style="background:{hak_color}22; padding:12px; border-radius:8px;
+                                            border-left:5px solid {hak_color}; margin:8px 0;">
+                                    <b>{tipehak}</b> &nbsp;·&nbsp;
+                                    Luas: <b>{bp.get('luas','N/A')} m²</b> &nbsp;·&nbsp;
+                                    NIB: <b>{bp.get('nib') or '—'}</b> &nbsp;·&nbsp;
+                                    No.: <b>{bp.get('nomor','N/A')}</b> &nbsp;·&nbsp;
+                                    Tahun: <b>{bp.get('tahun','N/A')}</b>
+                                </div>
+                                """, unsafe_allow_html=True)
+                        else:
+                            st.info("Nessuna parcella BPN trovata in questo punto.")
+                    except Exception as bpn_tab_err:
+                        st.warning(f"BPN non raggiungibile: {bpn_tab_err}")
+
+                    # Extra OSM tags
+                    extra = {k: v for k, v in osm_zone.items()
+                             if k not in ("_zone_code","_zone_name","_zone_color","_source","osm_id","kode_zona","namobj","zona","village","kabupaten","kecamatan")
+                             and not k.startswith("_") and v}
+                    if extra:
+                        with st.expander("Tags OSM aggiuntivi"):
+                            for k, v in extra.items():
+                                st.markdown(f"- **{k}**: {v}")
+                else:
+                    st.error(
+                        "Nessuna zona trovata. Coordinate fuori dalla coverage "
+                        "(Badung RDTR + Tabanan OSM). Verifica lat/lon."
+                    )
 
 elif mode == "🧭 Zone Finder":
     st.title("🧭 Opportunity Finder")
@@ -1196,7 +1396,7 @@ elif mode == "🛰️ Geo-Compare":
 
         GeoJson(
             rdtr_data,
-            name="Zone RDTR",
+            name="Zone RDTR (Badung)",
             style_function=rdtr_style,
             tooltip=GeoJsonTooltip(
                 fields=["_zone_code", "_zone_name"],
@@ -1206,6 +1406,42 @@ elif mode == "🛰️ Geo-Compare":
                 style="font-size:12px; font-weight:bold;",
             ),
         ).add_to(m)
+
+        tabanan_data_cmp = load_tabanan_geojson()
+        if tabanan_data_cmp["features"]:
+            def tabanan_style_cmp(feature):
+                color = feature["properties"].get("_zone_color", "#cccccc")
+                return {"fillColor": color, "color": color, "weight": 1.0, "fillOpacity": 0.40, "dashArray": "4"}
+
+            GeoJson(
+                tabanan_data_cmp,
+                name="Zone OSM (Tabanan — 10 kec.)",
+                style_function=tabanan_style_cmp,
+                tooltip=GeoJsonTooltip(
+                    fields=["_zone_code", "_zone_name", "_source"],
+                    aliases=["Zona:", "Nome:", "Fonte:"],
+                    sticky=True,
+                    style="font-size:12px; font-weight:bold;",
+                ),
+            ).add_to(m)
+
+        denpasar_data_cmp = load_denpasar_geojson()
+        if denpasar_data_cmp["features"]:
+            def denpasar_style_cmp(feature):
+                color = feature["properties"].get("_zone_color", "#cccccc")
+                return {"fillColor": color, "color": color, "weight": 1.0, "fillOpacity": 0.40, "dashArray": "2"}
+
+            GeoJson(
+                denpasar_data_cmp,
+                name="Zone OSM (Denpasar — 4 kec.)",
+                style_function=denpasar_style_cmp,
+                tooltip=GeoJsonTooltip(
+                    fields=["_zone_code", "_zone_name", "_source"],
+                    aliases=["Zona:", "Nome:", "Fonte:"],
+                    sticky=True,
+                    style="font-size:12px; font-weight:bold;",
+                ),
+            ).add_to(m)
 
         folium.Marker(
             [latA, lonA],

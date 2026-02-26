@@ -50,9 +50,7 @@ async def get_query_insights_dashboard(
     try:
         return await repo.get_dashboard_summary(days=days)
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to load query insights: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to load query insights: {str(e)}")
 
 
 @router.get("/failed")
@@ -79,9 +77,7 @@ async def get_collection_hit_rates(
     try:
         return await repo.get_collection_hit_rates(days=days)
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get collection hit rates: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to get collection hit rates: {str(e)}")
 
 
 @router.get("/volume")
@@ -108,9 +104,7 @@ async def get_satisfaction_score(
     try:
         return await repo.get_satisfaction_score(days=days)
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get satisfaction score: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to get satisfaction score: {str(e)}")
 
 
 # ========== WRITE ENDPOINT (Any authenticated user) ==========

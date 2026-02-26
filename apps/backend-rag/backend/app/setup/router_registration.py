@@ -44,6 +44,7 @@ def include_routers(api: FastAPI) -> None:
         crm_portal_integration,
         crm_practices,
         crm_shared_memory,
+        dashboard,  # [NEW] Interactive dashboard for Streamlit zoning map
         dashboard_featured_articles,
         dashboard_summary,
         debug,
@@ -197,20 +198,13 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(documents_proxy.router)  # Proxy Drive files without Google branding
     api.include_router(team_drive.router)  # Service Account based - for Zoho team members
 
-    # Admin Drive Auth (Temporary - for system user OAuth)
+    # Admin Drive Auth (for system user OAuth)
     from backend.app.routers import (
         admin_drive_auth,
         admin_drive_health,
         admin_drive_refresh,
         admin_drive_setup,
         admin_zoho_auth,
-        test_drive,
-        test_drive_create,
-        test_invoice,
-        test_invoice_debug,
-        test_list_practices,
-        test_update_client,
-        test_zoho_status,
     )
 
     api.include_router(admin_drive_auth.router)
@@ -218,13 +212,6 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(admin_drive_refresh.router)
     api.include_router(admin_drive_setup.router)
     api.include_router(admin_zoho_auth.router)
-    api.include_router(test_drive.router)
-    api.include_router(test_drive_create.router)
-    api.include_router(test_invoice.router)
-    api.include_router(test_list_practices.router)
-    api.include_router(test_update_client.router)
-    api.include_router(test_zoho_status.router)
-    api.include_router(test_invoice_debug.router)
 
     # Blog routers
     api.include_router(newsletter.router)
@@ -279,6 +266,7 @@ def include_routers(api: FastAPI) -> None:
     # Admin Team Activity router (Complete team activity dashboard)
     api.include_router(admin_team_activity.router)
 
-    # Dashboard aggregation router
+    # Dashboard aggregation routers
+    api.include_router(dashboard.router)  # [NEW] Interactive map dashboard for Streamlit
     api.include_router(dashboard_featured_articles.router)
     api.include_router(dashboard_summary.router)

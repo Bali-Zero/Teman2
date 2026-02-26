@@ -109,7 +109,13 @@ export function useChatMessages(): UseChatMessagesReturn {
       safeSet((prev) =>
         prev.map((m) =>
           m.id === id
-            ? { ...m, content, sources, isStreaming: false, currentNode: undefined }
+            ? {
+                ...m,
+                content,
+                sources,
+                isStreaming: false,
+                currentNode: undefined,
+              }
             : m,
         ),
       );

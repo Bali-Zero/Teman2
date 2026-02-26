@@ -17,15 +17,12 @@ Test Coverage:
 Total: 15 tests
 """
 
-from datetime import datetime, timedelta, timezone
 from dataclasses import asdict
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
 from backend.services.rag.confidence import (
-    CONFIDENCE_HIGH,
-    CONFIDENCE_LOW,
-    CONFIDENCE_MEDIUM,
     ConfidenceBreakdown,
     calculate_chain_base_score,
     calculate_dynamic_confidence,
@@ -35,7 +32,6 @@ from backend.services.rag.confidence import (
     calculate_subgraph_confidence,
     get_confidence_warning,
 )
-
 
 # ============================================================================
 # Fixtures
@@ -205,7 +201,10 @@ class TestRecencyScore:
 class TestMultiSourceBonus:
     def test_single_source(self):
         elements = [
-            {"edge_source_collection": "legal_unified_hybrid", "target_source_collection": "legal_unified_hybrid"},
+            {
+                "edge_source_collection": "legal_unified_hybrid",
+                "target_source_collection": "legal_unified_hybrid",
+            },
         ]
         bonus, count, sources = calculate_multi_source_bonus(elements)
         assert bonus == 0.0
@@ -213,7 +212,10 @@ class TestMultiSourceBonus:
 
     def test_three_sources(self):
         elements = [
-            {"edge_source_collection": "legal_unified_hybrid", "target_source_collection": "visa_oracle"},
+            {
+                "edge_source_collection": "legal_unified_hybrid",
+                "target_source_collection": "visa_oracle",
+            },
             {"edge_source_collection": "tax_genius_hybrid"},
         ]
         bonus, count, sources = calculate_multi_source_bonus(elements)
@@ -347,7 +349,9 @@ class TestSubgraphConfidence:
 class TestSerialization:
     def test_asdict(self):
         """ConfidenceBreakdown should be serializable via asdict."""
-        breakdown = ConfidenceBreakdown(overall=0.75, warning_level="medium", warning_message="test")
+        breakdown = ConfidenceBreakdown(
+            overall=0.75, warning_level="medium", warning_message="test"
+        )
         d = asdict(breakdown)
         assert isinstance(d, dict)
         assert d["overall"] == 0.75

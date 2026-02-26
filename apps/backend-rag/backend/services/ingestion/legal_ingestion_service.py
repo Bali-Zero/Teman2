@@ -21,9 +21,8 @@ from backend.core.legal import (
 )
 from backend.core.parsers import DocumentParseError, auto_detect_and_parse
 from backend.core.qdrant_db import QdrantClient
-from backend.utils.tier_classifier import TierClassifier
-
 from backend.services.ingestion.ingestion_logger import IngestionStage, ingestion_logger
+from backend.utils.tier_classifier import TierClassifier
 
 logger = logging.getLogger(__name__)
 

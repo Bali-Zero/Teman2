@@ -118,7 +118,26 @@ class TelegramMessageFormatter:
         """
         # Only escape characters that break Markdown parsing
         # Common pattern: escape _ and * unless part of formatting
-        escape_chars = ["_", "*", "[", "]", "(", ")", "~", "`", ">", "#", "+", "-", "=", "|", "{", "}", ".", "!"]
+        escape_chars = [
+            "_",
+            "*",
+            "[",
+            "]",
+            "(",
+            ")",
+            "~",
+            "`",
+            ">",
+            "#",
+            "+",
+            "-",
+            "=",
+            "|",
+            "{",
+            "}",
+            ".",
+            "!",
+        ]
 
         escaped = text
         for char in escape_chars:

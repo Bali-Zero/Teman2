@@ -20,10 +20,9 @@ from dataclasses import dataclass
 from typing import Any
 
 from backend.services.misc.clarification_service import ClarificationService
-from backend.services.response.cleaner import OUT_OF_DOMAIN_RESPONSES, is_out_of_domain
-
 from backend.services.rag.agentic.prompt_builder import SystemPromptBuilder
 from backend.services.rag.agentic.schema import CoreResult
+from backend.services.response.cleaner import OUT_OF_DOMAIN_RESPONSES, is_out_of_domain
 
 logger = logging.getLogger(__name__)
 
@@ -40,9 +39,17 @@ class GateResult:
 
 def detect_team_query(query: str) -> bool:
     """Returns True if query is about team/people."""
-    patterns = [r'\bwho is\b', r'\bworking on\b', r'\bassigned to\b',
-                r'\bteam\b', r'\bmembers?\b', r'\bstaff\b',
-                r'\bchi è\b', r'\bchi si occupa\b', r'\bdipendenti\b']
+    patterns = [
+        r"\bwho is\b",
+        r"\bworking on\b",
+        r"\bassigned to\b",
+        r"\bteam\b",
+        r"\bmembers?\b",
+        r"\bstaff\b",
+        r"\bchi è\b",
+        r"\bchi si occupa\b",
+        r"\bdipendenti\b",
+    ]
     return any(re.search(p, query.lower()) for p in patterns)
 
 

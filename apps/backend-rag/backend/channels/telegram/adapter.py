@@ -7,7 +7,6 @@ Author: Claude Sonnet 4.5
 Date: 2026-02-10
 """
 
-import asyncio
 import logging
 from collections.abc import AsyncIterator
 from typing import Any
@@ -256,7 +255,9 @@ class TelegramChannelAdapter(BaseChannel):
             if initial_result and initial_result.get("ok"):
                 message = initial_result.get("result", {})
                 message_id = message.get("message_id")
-                logger.info(f"📝 Created initial Telegram message {message_id} in chat {channel_id}")
+                logger.info(
+                    f"📝 Created initial Telegram message {message_id} in chat {channel_id}"
+                )
 
             # Process stream events
             async for response in response_stream:

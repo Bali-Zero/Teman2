@@ -9,13 +9,10 @@ Date: 2026-02-12
 """
 
 import ast
-import os
 import re
 from pathlib import Path
-from typing import Any
 
 import pytest
-
 
 # ========== PATHS ==========
 
@@ -31,6 +28,7 @@ DIRS_TO_CHECK = [APP_DIR, SERVICES_DIR, CORE_DIR, MIDDLEWARE_DIR]
 
 # ========== HELPERS ==========
 
+
 def get_python_files(directory: Path) -> list[Path]:
     """Get all Python files in a directory, excluding __pycache__."""
     files = []
@@ -43,7 +41,7 @@ def get_python_files(directory: Path) -> list[Path]:
 def parse_python_file(file_path: Path) -> ast.Module | None:
     """Parse Python file into AST."""
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             return ast.parse(f.read(), filename=str(file_path))
     except SyntaxError:
         pytest.fail(f"Syntax error in {file_path}")
@@ -51,6 +49,7 @@ def parse_python_file(file_path: Path) -> ast.Module | None:
 
 
 # ========== GOLDEN RULE #5: TYPE HINTS REQUIRED ==========
+
 
 class TypeHintChecker(ast.NodeVisitor):
     """AST visitor to check for missing type hints."""
@@ -74,8 +73,7 @@ class TypeHintChecker(ast.NodeVisitor):
         # Check if function has return type annotation
         if node.returns is None:
             self.violations.append(
-                f"{self.file_path}:{node.lineno} - "
-                f"Function '{node.name}' missing return type hint"
+                f"{self.file_path}:{node.lineno} - Function '{node.name}' missing return type hint"
             )
 
         # Check if arguments have type annotations (except self, cls)
@@ -127,6 +125,7 @@ def test_golden_rule_5_type_hints():
 
 # ========== GOLDEN RULE #6: NO HARDCODING ==========
 
+
 def test_golden_rule_6_no_hardcoded_secrets():
     """
     Golden Rule #6: NO HARDCODING
@@ -150,7 +149,7 @@ def test_golden_rule_6_no_hardcoded_secrets():
         python_files = get_python_files(directory)
 
         for file_path in python_files:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
                 lines = content.split("\n")
 
@@ -181,6 +180,7 @@ def test_golden_rule_6_no_hardcoded_secrets():
 
 # ========== GOLDEN RULE #8: CLEAN LOGGING ==========
 
+
 class PrintStatementChecker(ast.NodeVisitor):
     """AST visitor to find print() calls."""
 
@@ -192,8 +192,7 @@ class PrintStatementChecker(ast.NodeVisitor):
         """Check for print() calls."""
         if isinstance(node.func, ast.Name) and node.func.id == "print":
             self.violations.append(
-                f"{self.file_path}:{node.lineno} - "
-                f"Found print() statement - use logger instead"
+                f"{self.file_path}:{node.lineno} - Found print() statement - use logger instead"
             )
         self.generic_visit(node)
 
@@ -232,6 +231,7 @@ def test_golden_rule_8_no_print_statements():
 
 
 # ========== GOLDEN RULE #3: PATH DISCIPLINE ==========
+
 
 class ImportChecker(ast.NodeVisitor):
     """AST visitor to find relative imports."""
@@ -284,6 +284,7 @@ def test_golden_rule_3_no_relative_imports():
 
 
 # ========== SUMMARY TEST ==========
+
 
 def test_golden_rules_summary():
     """

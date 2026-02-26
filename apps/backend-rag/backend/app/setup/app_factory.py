@@ -85,7 +85,8 @@ async def lifespan(app: FastAPI):
         # Initialize Notification Scheduler (automated email alerts)
         try:
             from backend.app.modules.notifications.scheduler import init_scheduler
-            app.state.notification_scheduler = await init_scheduler()
+
+            app.state.notification_scheduler = await init_scheduler(app.state.db_pool)
             logger.info("✅ Notification Scheduler initialized")
         except Exception as e:
             logger.error(f"⚠️ Failed to initialize Notification Scheduler: {e}")
@@ -132,9 +133,7 @@ async def lifespan(app: FastAPI):
         logger.info("✅ Health Monitor stopped")
 
     # Shutdown Compliance Monitor
-    compliance_monitor = getattr(
-        app.state, "compliance_monitor", None
-    )
+    compliance_monitor = getattr(app.state, "compliance_monitor", None)
     if compliance_monitor:
         await compliance_monitor.stop()
         logger.info("✅ Compliance Monitor stopped")

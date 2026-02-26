@@ -228,7 +228,7 @@ You MUST follow these rules in ALL your analysis and code output:
 def get_intelligence_system_instruction_v2() -> str:
     """
     Build system instruction for Intelligence General v2 (Hybrid Strategist).
-    
+
     Loads the v2 hybrid prompt that includes:
     - Real-time web search capability
     - Multi-step research workflow
@@ -241,12 +241,12 @@ def get_intelligence_system_instruction_v2() -> str:
     try:
         v2_prompt = v2_prompt_path.read_text(encoding="utf-8")
     except FileNotFoundError:
-        logger.warning(f"⚠️ intelligence_general_v2_hybrid.md not found, using fallback")
+        logger.warning("⚠️ intelligence_general_v2_hybrid.md not found, using fallback")
         v2_prompt = """You are Intelligence General v2 - a hybrid strategist combining internal data with live web search."""
-    
+
     # Append Golden Rules reminder
     onboarding_doc = load_onboarding_document()
-    
+
     golden_rules_summary = """
 
 ## CRITICAL: Golden Rules (AI_ONBOARDING.md)
@@ -268,7 +268,7 @@ Critical Knowledge:
 - Pricing from PricingTool only, never from KG
 - Production: nuzantara-rag on Fly.io (Singapore)
 """
-    
+
     return v2_prompt + golden_rules_summary
 
 

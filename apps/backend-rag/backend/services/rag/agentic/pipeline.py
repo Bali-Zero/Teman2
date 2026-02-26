@@ -24,9 +24,8 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any
 
-from backend.services.rag.verification_service import verification_service
-
 from backend.services.rag.agentic.response_processor import post_process_response
+from backend.services.rag.verification_service import verification_service
 
 logger = logging.getLogger(__name__)
 

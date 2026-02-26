@@ -29,7 +29,11 @@ from backend.services.rag.reranker_integration import (
 def sample_documents():
     """Fixture providing sample documents."""
     return [
-        {"text": "Artificial Intelligence is the simulation of human intelligence.", "score": 0.9, "id": 1},
+        {
+            "text": "Artificial Intelligence is the simulation of human intelligence.",
+            "score": 0.9,
+            "id": 1,
+        },
         {"text": "The weather today is sunny.", "score": 0.8, "id": 2},
         {"text": "Machine learning is a subset of AI.", "score": 0.7, "id": 3},
         {"text": "Python is a programming language.", "score": 0.6, "id": 4},
@@ -41,36 +45,40 @@ class TestCrossEncoderRerankerMixin:
 
     @pytest.mark.asyncio
     @patch("backend.services.rag.reranker.settings")
-    async def test_search_with_cross_encoder_reranking_success(self, mock_settings, sample_documents):
+    async def test_search_with_cross_encoder_reranking_success(
+        self, mock_settings, sample_documents
+    ):
         """Test successful search with cross-encoder reranking."""
         mock_settings.enable_reranker = True
         mock_settings.reranker_model = "cross-encoder/ms-marco-MiniLM-L-6-v2"
-        
+
         mock_reranker = MagicMock()
         mock_reranker.enabled = True
         mock_reranker.model_name = "cross-encoder/ms-marco-MiniLM-L-6-v2"
         mock_reranker.rerank = AsyncMock(return_value=sample_documents[:2])
-        
+
         # Create a proper mock class that inherits from the mixin
         class MockSearchService(CrossEncoderRerankerMixin):
             def __init__(self, reranker):
                 self._cross_encoder_reranker = reranker
-                
+
             async def search(self, **kwargs):
                 return {
                     "results": sample_documents,
                     "allowed_tiers": ["S", "A"],
                     "collection_used": "legal_unified",
                 }
-        
-        with patch("backend.services.rag.reranker.CrossEncoderReranker", return_value=mock_reranker):
+
+        with patch(
+            "backend.services.rag.reranker.CrossEncoderReranker", return_value=mock_reranker
+        ):
             service = MockSearchService(mock_reranker)
             results = await service.search_with_cross_encoder_reranking(
                 "What is AI?",
                 user_level=2,
                 limit=2,
             )
-            
+
             assert results["reranked"] is True
             assert results["reranker_enabled"] is True
             assert results["reranker_model"] == "cross-encoder/ms-marco-MiniLM-L-6-v2"
@@ -82,29 +90,31 @@ class TestCrossEncoderRerankerMixin:
     async def test_search_with_cross_encoder_reranking_disabled(self, mock_settings):
         """Test search when reranking is disabled."""
         mock_settings.enable_reranker = False
-        
+
         mock_reranker = MagicMock()
         mock_reranker.enabled = False
-        
+
         class MockSearchService(CrossEncoderRerankerMixin):
             def __init__(self, reranker):
                 self._cross_encoder_reranker = reranker
-                
+
             async def search(self, **kwargs):
                 return {
                     "results": [{"text": "doc", "score": 0.8}],
                     "allowed_tiers": ["S"],
                     "collection_used": "legal_unified",
                 }
-        
-        with patch("backend.services.rag.reranker.CrossEncoderReranker", return_value=mock_reranker):
+
+        with patch(
+            "backend.services.rag.reranker.CrossEncoderReranker", return_value=mock_reranker
+        ):
             service = MockSearchService(mock_reranker)
             results = await service.search_with_cross_encoder_reranking(
                 "query",
                 user_level=2,
                 limit=2,
             )
-            
+
             assert results["reranked"] is False
             assert results["reranker_enabled"] is False
 
@@ -113,22 +123,24 @@ class TestCrossEncoderRerankerMixin:
     async def test_search_with_cross_encoder_reranking_disabled_via_param(self, mock_settings):
         """Test search when reranking is disabled via parameter."""
         mock_settings.enable_reranker = True
-        
+
         mock_reranker = MagicMock()
         mock_reranker.enabled = True
-        
+
         class MockSearchService(CrossEncoderRerankerMixin):
             def __init__(self, reranker):
                 self._cross_encoder_reranker = reranker
-                
+
             async def search(self, **kwargs):
                 return {
                     "results": [{"text": "doc", "score": 0.8}],
                     "allowed_tiers": ["S"],
                     "collection_used": "legal_unified",
                 }
-        
-        with patch("backend.services.rag.reranker.CrossEncoderReranker", return_value=mock_reranker):
+
+        with patch(
+            "backend.services.rag.reranker.CrossEncoderReranker", return_value=mock_reranker
+        ):
             service = MockSearchService(mock_reranker)
             results = await service.search_with_cross_encoder_reranking(
                 "query",
@@ -136,7 +148,7 @@ class TestCrossEncoderRerankerMixin:
                 limit=2,
                 use_reranking=False,
             )
-            
+
             assert results["reranked"] is False
             mock_reranker.rerank.assert_not_called()
 
@@ -145,31 +157,33 @@ class TestCrossEncoderRerankerMixin:
     async def test_search_with_cross_encoder_reranking_error(self, mock_settings):
         """Test search when reranking fails."""
         mock_settings.enable_reranker = True
-        
+
         mock_reranker = MagicMock()
         mock_reranker.enabled = True
         mock_reranker.rerank = AsyncMock(side_effect=RuntimeError("Reranking failed"))
         mock_reranker.model_name = "test-model"
-        
+
         class MockSearchService(CrossEncoderRerankerMixin):
             def __init__(self, reranker):
                 self._cross_encoder_reranker = reranker
-                
+
             async def search(self, **kwargs):
                 return {
                     "results": [{"text": "doc", "score": 0.8}],
                     "allowed_tiers": ["S"],
                     "collection_used": "legal_unified",
                 }
-        
-        with patch("backend.services.rag.reranker.CrossEncoderReranker", return_value=mock_reranker):
+
+        with patch(
+            "backend.services.rag.reranker.CrossEncoderReranker", return_value=mock_reranker
+        ):
             service = MockSearchService(mock_reranker)
             results = await service.search_with_cross_encoder_reranking(
                 "query",
                 user_level=2,
                 limit=2,
             )
-            
+
             assert results["reranked"] is False
             assert "rerank_error" in results
 
@@ -178,16 +192,16 @@ class TestCrossEncoderRerankerMixin:
     async def test_hybrid_search_with_cross_encoder_reranking(self, mock_settings):
         """Test hybrid search with cross-encoder reranking."""
         mock_settings.enable_reranker = True
-        
+
         mock_reranker = MagicMock()
         mock_reranker.enabled = True
         mock_reranker.model_name = "cross-encoder/ms-marco-MiniLM-L-6-v2"
         mock_reranker.rerank = AsyncMock(return_value=[{"text": "result", "score": 0.99}])
-        
+
         class MockSearchService(CrossEncoderRerankerMixin):
             def __init__(self, reranker):
                 self._cross_encoder_reranker = reranker
-                
+
             async def hybrid_search(self, **kwargs):
                 return {
                     "results": [{"text": "doc", "score": 0.95}],
@@ -195,15 +209,17 @@ class TestCrossEncoderRerankerMixin:
                     "search_type": "hybrid_rrf",
                     "bm25_enabled": True,
                 }
-        
-        with patch("backend.services.rag.reranker.CrossEncoderReranker", return_value=mock_reranker):
+
+        with patch(
+            "backend.services.rag.reranker.CrossEncoderReranker", return_value=mock_reranker
+        ):
             service = MockSearchService(mock_reranker)
             results = await service.hybrid_search_with_cross_encoder_reranking(
                 "query",
                 user_level=2,
                 limit=2,
             )
-            
+
             assert results["reranked"] is True
             assert results["search_type"] == "hybrid_rrf"
             assert results["bm25_enabled"] is True
@@ -213,33 +229,35 @@ class TestCrossEncoderRerankerMixin:
     async def test_hybrid_search_fallback(self, mock_settings):
         """Test hybrid search fallback to regular search on error."""
         mock_settings.enable_reranker = True
-        
+
         mock_reranker = MagicMock()
         mock_reranker.enabled = True
         mock_reranker.rerank = AsyncMock(return_value=[{"text": "result", "score": 0.99}])
-        
+
         class MockSearchService(CrossEncoderRerankerMixin):
             def __init__(self, reranker):
                 self._cross_encoder_reranker = reranker
-                
+
             async def hybrid_search(self, **kwargs):
                 raise Exception("Hybrid failed")
-                
+
             async def search(self, **kwargs):
                 return {
                     "results": [{"text": "doc", "score": 0.8}],
                     "allowed_tiers": ["S"],
                     "collection_used": "legal_unified",
                 }
-        
-        with patch("backend.services.rag.reranker.CrossEncoderReranker", return_value=mock_reranker):
+
+        with patch(
+            "backend.services.rag.reranker.CrossEncoderReranker", return_value=mock_reranker
+        ):
             service = MockSearchService(mock_reranker)
             results = await service.hybrid_search_with_cross_encoder_reranking(
                 "query",
                 user_level=2,
                 limit=2,
             )
-            
+
             assert results["search_type"] == "dense_fallback"
 
 
@@ -250,14 +268,14 @@ class TestAddCrossEncoderReranking:
         """Test adding cross-encoder reranking to a service."""
         mock_service = MagicMock()
         mock_service._cross_encoder_reranker = None
-        
+
         with patch("backend.services.rag.reranker.CrossEncoderReranker") as mock_reranker_class:
             mock_reranker = MagicMock()
             mock_reranker.enabled = True
             mock_reranker_class.return_value = mock_reranker
-            
+
             add_cross_encoder_reranking(mock_service)
-            
+
             assert hasattr(mock_service, "search_with_cross_encoder_reranking")
             assert hasattr(mock_service, "hybrid_search_with_cross_encoder_reranking")
 
@@ -270,7 +288,7 @@ class TestSearchServiceWithCrossEncoder:
         # The actual instantiation requires many dependencies
         # Just verify the class exists and is properly defined
         assert SearchServiceWithCrossEncoder is not None
-        
+
         # Verify it creates a combined class when instantiated
         # (actual instantiation requires Qdrant connection)
         with patch("backend.services.search.search_service.CollectionManager"):
@@ -297,9 +315,9 @@ class TestGetRerankerConfig:
         mock_settings.reranker_return_count = 5
         mock_settings.reranker_cache_enabled = True
         mock_settings.reranker_latency_target_ms = 50.0
-        
+
         config = get_reranker_config()
-        
+
         assert config["enabled"] is True
         assert config["model"] == "cross-encoder/ms-marco-MiniLM-L-6-v2"
         assert config["top_k"] == 5
@@ -313,9 +331,9 @@ class TestGetRerankerConfig:
         """Test getting reranker configuration with defaults."""
         # Simulate missing settings
         mock_settings.enable_reranker = None
-        
+
         config = get_reranker_config()
-        
+
         assert "enabled" in config
         assert "model" in config
 
@@ -327,7 +345,7 @@ class TestShouldUseCrossEncoder:
     def test_should_use_cross_encoder_disabled(self, mock_settings):
         """Test when cross-encoder is disabled."""
         mock_settings.enable_reranker = False
-        
+
         result = should_use_cross_encoder()
         assert result is False
 

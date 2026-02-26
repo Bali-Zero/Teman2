@@ -7,17 +7,21 @@ Estensione delle capacità di Kimi per operare direttamente sul sistema Bali Zer
 ## Tools
 
 ### Database Query
+
 Query dirette al PostgreSQL di Nuzantara.
 
 ### Google Drive Operations
+
 Gestione file su Google Drive tramite token SYSTEM.
 
 ### CRM Operations
+
 Operazioni su clienti, pratiche, documenti.
 
 ## Usage
 
 Vedi script in `apps/backend-rag/`:
+
 - `check_drive_token.py` - Verifica token Drive
 - `refresh_drive_token.py` - Refresh token Drive
 

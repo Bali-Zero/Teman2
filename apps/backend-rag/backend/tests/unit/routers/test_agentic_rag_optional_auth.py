@@ -67,8 +67,13 @@ class TestAgenticRAGStreamAnonymous:
     def test_stream_anonymous_user_creates_id(self, test_app, mock_orchestrator, mock_db_pool):
         """Test stream endpoint with anonymous user creates anonymous_XXX user_id"""
         with patch("backend.app.routers.agentic_rag.get_current_user_optional", return_value=None):
-            with patch("backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator):
-                with patch("backend.app.routers.agentic_rag.get_optional_database_pool", return_value=mock_db_pool):
+            with patch(
+                "backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator
+            ):
+                with patch(
+                    "backend.app.routers.agentic_rag.get_optional_database_pool",
+                    return_value=mock_db_pool,
+                ):
                     client = TestClient(test_app)
                     response = client.post(
                         "/api/agentic-rag/stream",
@@ -91,19 +96,24 @@ class TestAgenticRAGStreamAuthenticated:
         """Test stream endpoint with authenticated user uses email"""
         mock_user = {"email": "stream@example.com", "user_id": "456", "role": "admin"}
 
-        with patch("backend.app.routers.agentic_rag.get_current_user_optional", return_value=mock_user):
-            with patch("backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator):
-                with patch("backend.app.routers.agentic_rag.get_optional_database_pool", return_value=mock_db_pool):
-                    client = TestClient(test_app)
-                    response = client.post(
-                        "/api/agentic-rag/stream",
-                        json={
-                            "query": "Test query",
-                            "session_id": "stream_session",
-                            "user_id": "should_be_ignored",
-                        },
-                    )
+        with patch(
+            "backend.app.routers.agentic_rag.get_current_user_optional", return_value=mock_user
+        ), patch(
+            "backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator
+        ), patch(
+            "backend.app.routers.agentic_rag.get_optional_database_pool",
+            return_value=mock_db_pool,
+        ):
+            client = TestClient(test_app)
+            response = client.post(
+                "/api/agentic-rag/stream",
+                json={
+                    "query": "Test query",
+                    "session_id": "stream_session",
+                    "user_id": "should_be_ignored",
+                },
+            )
 
-                    # Streaming returns 200
-                    assert response.status_code == 200
-                    assert "text/event-stream" in response.headers.get("content-type", "")
+            # Streaming returns 200
+            assert response.status_code == 200
+            assert "text/event-stream" in response.headers.get("content-type", "")

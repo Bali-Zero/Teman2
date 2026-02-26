@@ -15,9 +15,8 @@ import logging
 from typing import Any
 
 from backend.services.rag.agentic.entity_extractor import EntityExtractionService
-from backend.services.tools.definitions import AgentState
-
 from backend.services.rag.agentic.schema import CoreResult
+from backend.services.tools.definitions import AgentState
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)  # Enable debug logging for response building
@@ -73,7 +72,7 @@ class OrchestratorResponseBuilder:
             CoreResult completo
         """
         from backend.app.core.constants import EvidenceScoreConstants
-        
+
         timings.get("total", 0.0)
         verification_score = getattr(state, "verification_score", 0.0)
         evidence_score = getattr(state, "evidence_score", 0.0)

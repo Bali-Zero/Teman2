@@ -52,12 +52,12 @@ from backend.services.ingestion.collection_manager import CollectionManager
 from backend.services.ingestion.collection_warmup_service import CollectionWarmupService
 from backend.services.misc.cultural_insights_service import CulturalInsightsService
 from backend.services.misc.result_formatter import format_search_results
-from backend.services.routing.conflict_resolver import ConflictResolver
-from backend.services.search.query_expander import QueryExpander
-from backend.services.search.search_filters import build_search_filter
 
 # Hybrid search integration
 from backend.services.rag.hybrid_search import HybridSearchService, get_hybrid_search_service
+from backend.services.routing.conflict_resolver import ConflictResolver
+from backend.services.search.query_expander import QueryExpander
+from backend.services.search.search_filters import build_search_filter
 
 # from backend.services.routing.query_router_integration import QueryRouterIntegration
 

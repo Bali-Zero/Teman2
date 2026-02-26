@@ -3,10 +3,9 @@ Enhanced Prometheus Metrics for ZANTARA-PERFECT-100
 Provides detailed system monitoring and performance tracking
 """
 
-from typing import Any
-
 import logging
 import time
+from typing import Any
 
 import psutil
 from prometheus_client import REGISTRY, Counter, Gauge, Histogram, generate_latest
@@ -14,21 +13,23 @@ from prometheus_client import REGISTRY, Counter, Gauge, Histogram, generate_late
 logger = logging.getLogger(__name__)
 
 
-def safe_register_gauge(name: Any, documentation: Any, labelnames: Any=()) -> Any:
+def safe_register_gauge(name: Any, documentation: Any, labelnames: Any = ()) -> Any:
     try:
         return Gauge(name, documentation, labelnames)
     except ValueError:
         return REGISTRY._names_to_collectors[name]
 
 
-def safe_register_counter(name: Any, documentation: Any, labelnames: Any=()) -> Any:
+def safe_register_counter(name: Any, documentation: Any, labelnames: Any = ()) -> Any:
     try:
         return Counter(name, documentation, labelnames)
     except ValueError:
         return REGISTRY._names_to_collectors[name]
 
 
-def safe_register_histogram(name: Any, documentation: Any, labelnames: Any=(), buckets: Any=Histogram.DEFAULT_BUCKETS) -> Any:
+def safe_register_histogram(
+    name: Any, documentation: Any, labelnames: Any = (), buckets: Any = Histogram.DEFAULT_BUCKETS
+) -> Any:
     try:
         return Histogram(name, documentation, labelnames, buckets=buckets)
     except ValueError:
@@ -76,19 +77,16 @@ cache_set_operations = safe_register_counter(
 faq_cache_hits_total = safe_register_counter(
     "zantara_faq_cache_hits_total",
     "Total FAQ cache hits (exact question match)",
-    ["domain"]  # tax, visa, kbli, property
+    ["domain"],  # tax, visa, kbli, property
 )
 faq_cache_misses_total = safe_register_counter(
-    "zantara_faq_cache_misses_total",
-    "Total FAQ cache misses (question not in cache)"
+    "zantara_faq_cache_misses_total", "Total FAQ cache misses (question not in cache)"
 )
 faq_cache_errors_total = safe_register_counter(
-    "zantara_faq_cache_errors_total",
-    "Total FAQ cache errors (Redis connection failures)"
+    "zantara_faq_cache_errors_total", "Total FAQ cache errors (Redis connection failures)"
 )
 faq_cache_api_cost_saved_usd = safe_register_counter(
-    "zantara_faq_cache_api_cost_saved_usd_total",
-    "Estimated API cost savings from FAQ cache (USD)"
+    "zantara_faq_cache_api_cost_saved_usd_total", "Estimated API cost savings from FAQ cache (USD)"
 )
 
 # AI Metrics
@@ -740,6 +738,8 @@ class MetricsCollector:
     search_dense_only_total = search_dense_only_total
     search_failed_total = search_failed_total
     stream_fatal_error_total = stream_fatal_error_total
+    stream_event_none_total = stream_event_none_total
+    stream_event_invalid_type_total = stream_event_invalid_type_total
 
     def __init__(self):
         self.session_count = 0
@@ -1247,7 +1247,9 @@ class MetricsCollector:
             duration_seconds
         )
 
-    def update_ingestion_failure_rate(self, source: str, file_type: str, failure_rate: float) -> Any:
+    def update_ingestion_failure_rate(
+        self, source: str, file_type: str, failure_rate: float
+    ) -> Any:
         """Update the ingestion failure rate gauge.
 
         Args:

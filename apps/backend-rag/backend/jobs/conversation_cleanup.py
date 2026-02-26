@@ -4,10 +4,8 @@ Daily cron job to cleanup old conversations and anonymize user data
 """
 
 import asyncio
-import logging
 from datetime import datetime
 
-from backend.app.core.config import settings
 from backend.app.dependencies import get_database_pool_direct
 from backend.app.utils.logging_utils import get_logger, log_error, log_success
 from backend.db.repositories.conversation_repository import ConversationRepository

@@ -53,13 +53,15 @@ class OpenAIEmbedder:
         from openai import AsyncOpenAI
 
         client = AsyncOpenAI(api_key=self.api_key)
-        
+
         MAX_BATCH_SIZE = 2048  # OpenAI API limit
         all_embeddings = []
 
         for i in range(0, len(texts), MAX_BATCH_SIZE):
             batch = texts[i : i + MAX_BATCH_SIZE]
-            logger.info(f"Generating embeddings batch {i // MAX_BATCH_SIZE + 1}: {len(batch)} texts")
+            logger.info(
+                f"Generating embeddings batch {i // MAX_BATCH_SIZE + 1}: {len(batch)} texts"
+            )
 
             response = await client.embeddings.create(model=self.model, input=batch)
             batch_embeddings = [item.embedding for item in response.data]
@@ -143,7 +145,7 @@ class QdrantClient:
         async with httpx.AsyncClient() as client:
             for i in range(0, total, batch_size):
                 batch = points[i : i + batch_size]
-                
+
                 payload = {"points": batch}
                 url = f"{self.url}/collections/{collection_name}/points"
 
@@ -230,7 +232,7 @@ Foreign Worker Eligible Positions (TKA):
 Total positions in category: {total_positions}
 Selected positions: {selected_positions}
 Methodology: ISCO-based selection from Kepmen 228/2019
-ISCO Groups: {', '.join(isco_groups)}
+ISCO Groups: {", ".join(isco_groups)}
 """
     return text.strip()
 
@@ -241,7 +243,7 @@ import uuid
 def create_qdrant_point(kbli: dict[str, Any], embedding: list[float]) -> dict[str, Any]:
     """Create a Qdrant point from KBLI data."""
     code = kbli["code"]
-    
+
     # Create positions array for payload
     positions = [
         {
@@ -254,7 +256,7 @@ def create_qdrant_point(kbli: dict[str, Any], embedding: list[float]) -> dict[st
 
     # Create descriptive text
     text = create_tka_text(kbli)
-    
+
     # Generate a deterministic UUID from the KBLI code
     # This ensures the same KBLI always gets the same ID
     id_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, f"kbli-tka-{code}")
@@ -280,9 +282,9 @@ def create_qdrant_point(kbli: dict[str, Any], embedding: list[float]) -> dict[st
 async def load_tka_data(filepath: str) -> list[dict[str, Any]]:
     """Load TKA data from JSON file."""
     logger.info(f"Loading TKA data from {filepath}")
-    with open(filepath, "r", encoding="utf-8") as f:
+    with open(filepath, encoding="utf-8") as f:
         data = json.load(f)
-    
+
     tka_assignments = data.get("tka_assignments", [])
     logger.info(f"✅ Loaded {len(tka_assignments)} KBLI entries with TKA positions")
     return tka_assignments
@@ -295,7 +297,7 @@ async def generate_embeddings_for_kbli(
     """Generate embeddings for all KBLI entries."""
     texts = [create_tka_text(kbli) for kbli in kbli_list]
     logger.info(f"Generating embeddings for {len(texts)} KBLI entries")
-    
+
     embeddings = await embedder.generate_embeddings(texts)
     return embeddings
 
@@ -303,15 +305,15 @@ async def generate_embeddings_for_kbli(
 async def main():
     """Main function to generate and upload TKA embeddings."""
     start_time = time.time()
-    
+
     # File path
     data_file = "/Users/nuzantara/Desktop/TKA_ISCO_FINAL.json"
-    
+
     # Check if file exists
     if not os.path.exists(data_file):
         logger.error(f"❌ Data file not found: {data_file}")
         sys.exit(1)
-    
+
     # Initialize clients
     try:
         embedder = OpenAIEmbedder()
@@ -319,18 +321,18 @@ async def main():
     except ValueError as e:
         logger.error(f"❌ Configuration error: {e}")
         sys.exit(1)
-    
+
     logger.info(f"🔗 Qdrant URL: {qdrant.url}")
     logger.info(f"📦 Collection: {COLLECTION_NAME}")
     logger.info(f"🤖 Embedding model: {embedder.model} ({embedder.dimensions} dims)")
-    
+
     # Step 1: Load TKA data
     kbli_list = await load_tka_data(data_file)
-    
+
     if not kbli_list:
         logger.error("❌ No KBLI data found")
         sys.exit(1)
-    
+
     # Step 2: Check/create collection
     collection_exists = await qdrant.collection_exists(COLLECTION_NAME)
     if not collection_exists:
@@ -341,54 +343,54 @@ async def main():
             sys.exit(1)
     else:
         logger.info(f"✅ Collection '{COLLECTION_NAME}' already exists")
-    
+
     # Step 3: Generate embeddings
     logger.info("\n" + "=" * 50)
     logger.info("STEP 1: Generating embeddings")
     logger.info("=" * 50)
-    
+
     embeddings = await generate_embeddings_for_kbli(kbli_list, embedder)
-    
+
     # Step 4: Create Qdrant points
     logger.info("\n" + "=" * 50)
     logger.info("STEP 2: Creating Qdrant points")
     logger.info("=" * 50)
-    
+
     points = []
     for i, (kbli, embedding) in enumerate(zip(kbli_list, embeddings)):
         point = create_qdrant_point(kbli, embedding)
         points.append(point)
-    
+
     logger.info(f"✅ Created {len(points)} Qdrant points")
-    
+
     # Step 5: Upsert to Qdrant
     logger.info("\n" + "=" * 50)
     logger.info("STEP 3: Upserting to Qdrant")
     logger.info("=" * 50)
-    
+
     result = await qdrant.upsert_points(COLLECTION_NAME, points)
-    
+
     if result["success"]:
         logger.info(f"✅ Successfully upserted {result['total_upserted']} points")
     else:
-        logger.error(f"❌ Upsert completed with errors")
+        logger.error("❌ Upsert completed with errors")
         logger.error(f"Total upserted: {result['total_upserted']}")
         logger.error(f"Errors: {result['errors']}")
-    
+
     # Step 6: Verify collection stats
     logger.info("\n" + "=" * 50)
     logger.info("STEP 4: Verification")
     logger.info("=" * 50)
-    
+
     stats = await qdrant.get_collection_stats(COLLECTION_NAME)
     if stats.get("exists"):
-        logger.info(f"📊 Collection statistics:")
+        logger.info("📊 Collection statistics:")
         logger.info(f"   - Points count: {stats['points_count']}")
         logger.info(f"   - Vector size: {stats['vector_size']}")
         logger.info(f"   - Distance: {stats['distance']}")
     else:
         logger.warning(f"⚠️ Could not get collection stats: {stats.get('error')}")
-    
+
     # Summary
     elapsed = time.time() - start_time
     logger.info("\n" + "=" * 50)
@@ -399,7 +401,7 @@ async def main():
     logger.info(f"✅ Total points upserted: {result['total_upserted']}")
     logger.info(f"⏱️  Total time: {elapsed:.2f}s")
     logger.info(f"🔗 Collection: {COLLECTION_NAME}")
-    
+
     return result["success"]
 
 

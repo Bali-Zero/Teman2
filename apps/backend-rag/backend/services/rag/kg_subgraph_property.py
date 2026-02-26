@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 class PropertyState(TypedDict, total=False):
     """State for Property Subgraph."""
+
     query: str
     user_context: dict
     current_entities: list[str]
@@ -58,7 +59,9 @@ async def identify_property_type_node(state: PropertyState, llm) -> PropertyStat
     return state
 
 
-async def get_property_requirements_node(state: PropertyState, db_pool: asyncpg.Pool) -> PropertyState:
+async def get_property_requirements_node(
+    state: PropertyState, db_pool: asyncpg.Pool
+) -> PropertyState:
     """Get ownership requirements."""
     logger.info("📋 [Property Subgraph] Getting property requirements...")
 
@@ -74,7 +77,7 @@ async def get_property_requirements_node(state: PropertyState, db_pool: asyncpg.
                 "Land certificate check (BPN)",
                 "Pay BPHTB (5% tax)",
             ],
-            "notes": "Most common for foreign property ownership"
+            "notes": "Most common for foreign property ownership",
         },
         "hgb": {
             "allowed_for_foreigners": False,
@@ -82,7 +85,7 @@ async def get_property_requirements_node(state: PropertyState, db_pool: asyncpg.
             "requirements": [
                 "Indonesian citizen or Indonesian legal entity only",
             ],
-            "notes": "Foreigners can acquire via PT PMA"
+            "notes": "Foreigners can acquire via PT PMA",
         },
         "hak_milik": {
             "allowed_for_foreigners": False,
@@ -90,7 +93,7 @@ async def get_property_requirements_node(state: PropertyState, db_pool: asyncpg.
             "requirements": [
                 "Indonesian citizen only",
             ],
-            "notes": "Full ownership, not available to foreigners"
+            "notes": "Full ownership, not available to foreigners",
         },
         "rental": {
             "allowed_for_foreigners": True,
@@ -100,15 +103,17 @@ async def get_property_requirements_node(state: PropertyState, db_pool: asyncpg.
                 "Passport copy",
                 "Deposit (usually 2-3 months rent)",
             ],
-            "notes": "Simplest option for short-term stay"
+            "notes": "Simplest option for short-term stay",
         },
     }
 
     reqs = requirements_db.get(prop_type, {})
-    state.setdefault("property_requirements", []).append({
-        "requirement_type": "ownership",
-        "details": reqs,
-    })
+    state.setdefault("property_requirements", []).append(
+        {
+            "requirement_type": "ownership",
+            "details": reqs,
+        }
+    )
 
     logger.info(f"✅ [Property Subgraph] Requirements added for {prop_type}")
     return state
@@ -121,8 +126,16 @@ async def synthesize_property_workflow_node(state: PropertyState) -> PropertySta
     prop_type = state.get("property_type", "unknown")
 
     steps = [
-        {"step": 1, "action": f"Identify property with {prop_type.upper()} title", "entity_id": prop_type},
-        {"step": 2, "action": "Conduct due diligence (BPN certificate check)", "entity_id": "bpn_check"},
+        {
+            "step": 1,
+            "action": f"Identify property with {prop_type.upper()} title",
+            "entity_id": prop_type,
+        },
+        {
+            "step": 2,
+            "action": "Conduct due diligence (BPN certificate check)",
+            "entity_id": "bpn_check",
+        },
         {"step": 3, "action": "Negotiate price and terms", "entity_id": "negotiation"},
         {"step": 4, "action": "Sign Jual Beli (Sale & Purchase Agreement)", "entity_id": "ppjb"},
         {"step": 5, "action": "Notary deed execution", "entity_id": "notary"},

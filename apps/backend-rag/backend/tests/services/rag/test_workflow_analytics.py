@@ -7,12 +7,10 @@ Tests cover:
 - Orchestrator tracking hook: fire-and-forget workflow logging
 """
 
-import asyncio
 import sys
-import uuid
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -393,7 +391,10 @@ class TestWorkflowAnalyticsRouter:
     @pytest.mark.asyncio
     async def test_submit_feedback_success(self):
         """Test submitting workflow feedback."""
-        from backend.app.routers.workflow_analytics import submit_workflow_feedback, WorkflowFeedbackRequest
+        from backend.app.routers.workflow_analytics import (
+            WorkflowFeedbackRequest,
+            submit_workflow_feedback,
+        )
 
         mock_repo = AsyncMock()
         mock_repo.record_feedback = AsyncMock(return_value=True)
@@ -420,8 +421,12 @@ class TestWorkflowAnalyticsRouter:
     @pytest.mark.asyncio
     async def test_submit_feedback_not_found(self):
         """Test feedback for non-existent workflow returns 404."""
-        from backend.app.routers.workflow_analytics import submit_workflow_feedback, WorkflowFeedbackRequest
         from fastapi import HTTPException
+
+        from backend.app.routers.workflow_analytics import (
+            WorkflowFeedbackRequest,
+            submit_workflow_feedback,
+        )
 
         mock_repo = AsyncMock()
         mock_repo.record_feedback = AsyncMock(return_value=False)
@@ -444,8 +449,9 @@ class TestWorkflowAnalyticsRouter:
     @pytest.mark.asyncio
     async def test_get_dashboard_founder_only(self):
         """Test that dashboard requires founder access."""
-        from backend.app.routers.workflow_analytics import _verify_founder_access
         from fastapi import HTTPException
+
+        from backend.app.routers.workflow_analytics import _verify_founder_access
 
         regular_user = {"email": "user@example.com", "role": "user"}
 
@@ -609,6 +615,7 @@ class TestWorkflowFeedbackValidation:
     def test_feedback_score_out_of_range(self):
         """Test that scores outside 0-5 are rejected."""
         from pydantic import ValidationError
+
         from backend.app.routers.workflow_analytics import WorkflowFeedbackRequest
 
         with pytest.raises(ValidationError):
@@ -621,6 +628,7 @@ class TestWorkflowFeedbackValidation:
     def test_feedback_score_negative(self):
         """Test that negative scores are rejected."""
         from pydantic import ValidationError
+
         from backend.app.routers.workflow_analytics import WorkflowFeedbackRequest
 
         with pytest.raises(ValidationError):

@@ -15,8 +15,6 @@ from typing import Any, TypedDict
 import asyncpg
 from langgraph.graph import END, StateGraph
 
-from backend.services.rag.kg_graph_state import KGAgentState
-
 logger = logging.getLogger(__name__)
 
 
@@ -31,6 +29,7 @@ class VisaState(TypedDict, total=False):
 
     Extends KGAgentState with visa-specific fields.
     """
+
     # Inherited from parent (KGAgentState)
     query: str
     user_context: dict
@@ -54,10 +53,7 @@ class VisaState(TypedDict, total=False):
 # ============================================================================
 
 
-async def identify_visa_type_node(
-    state: VisaState,
-    llm
-) -> VisaState:
+async def identify_visa_type_node(state: VisaState, llm) -> VisaState:
     """
     Identify visa type from query and user context.
 
@@ -131,10 +127,7 @@ async def identify_visa_type_node(
 # ============================================================================
 
 
-async def check_rptka_requirements_node(
-    state: VisaState,
-    db_pool: asyncpg.Pool
-) -> VisaState:
+async def check_rptka_requirements_node(state: VisaState, db_pool: asyncpg.Pool) -> VisaState:
     """
     Check RPTKA (Rencana Penggunaan Tenaga Kerja Asing) requirements.
 
@@ -182,10 +175,7 @@ async def check_rptka_requirements_node(
 # ============================================================================
 
 
-async def get_visa_requirements_node(
-    state: VisaState,
-    db_pool: asyncpg.Pool
-) -> VisaState:
+async def get_visa_requirements_node(state: VisaState, db_pool: asyncpg.Pool) -> VisaState:
     """
     Get specific visa requirements based on visa type.
 
@@ -266,11 +256,13 @@ async def get_visa_requirements_node(
 
     requirements = requirements_db.get(visa_type, {})
 
-    state.setdefault("visa_requirements", []).append({
-        "requirement_type": "visa_documents_and_fees",
-        "visa_type": visa_type,
-        "details": requirements,
-    })
+    state.setdefault("visa_requirements", []).append(
+        {
+            "requirement_type": "visa_documents_and_fees",
+            "visa_type": visa_type,
+            "details": requirements,
+        }
+    )
 
     state["duration_months"] = {
         "kitas": 12,
@@ -289,9 +281,7 @@ async def get_visa_requirements_node(
 # ============================================================================
 
 
-async def synthesize_visa_workflow_node(
-    state: VisaState
-) -> VisaState:
+async def synthesize_visa_workflow_node(state: VisaState) -> VisaState:
     """
     Synthesize visa application workflow from collected information.
 
@@ -318,61 +308,71 @@ async def synthesize_visa_workflow_node(
 
     # Step 1: IMTA/TKA Allocation (if work visa)
     if requires_rptka:
-        steps.append({
-            "step": 1,
-            "action": "Apply for TKA allocation quota and IMTA via SPKP system (Kementerian Ketenagakerjaan)",
-            "entity_id": "imta_tka",
-            "details": {
-                "requirement": "Work permit for foreign employee (IMTA)",
-                "processing_time": "2-4 weeks",
+        steps.append(
+            {
+                "step": 1,
+                "action": "Apply for TKA allocation quota and IMTA via SPKP system (Kementerian Ketenagakerjaan)",
+                "entity_id": "imta_tka",
+                "details": {
+                    "requirement": "Work permit for foreign employee (IMTA)",
+                    "processing_time": "2-4 weeks",
+                },
             }
-        })
+        )
 
     # Step 2: VITAS application (for KITAS/KITAP)
     if visa_type in ["kitas", "kitap"]:
-        steps.append({
-            "step": len(steps) + 1,
-            "action": f"Apply for E-Visa online via imigrasi.go.id",
-            "entity_id": f"evisa_{visa_type}",
-            "details": {
-                "system": "Online application via immigration portal",
-                "processing_time": "7-14 days",
+        steps.append(
+            {
+                "step": len(steps) + 1,
+                "action": "Apply for E-Visa online via imigrasi.go.id",
+                "entity_id": f"evisa_{visa_type}",
+                "details": {
+                    "system": "Online application via immigration portal",
+                    "processing_time": "7-14 days",
+                },
             }
-        })
+        )
 
     # Step 3: Entry to Indonesia
-    steps.append({
-        "step": len(steps) + 1,
-        "action": f"Enter Indonesia with {visa_type.upper()}",
-        "entity_id": f"{visa_type}_entry",
-        "details": {
-            "validity": f"{state.get('duration_months', 1)} months",
+    steps.append(
+        {
+            "step": len(steps) + 1,
+            "action": f"Enter Indonesia with {visa_type.upper()}",
+            "entity_id": f"{visa_type}_entry",
+            "details": {
+                "validity": f"{state.get('duration_months', 1)} months",
+            },
         }
-    })
+    )
 
     # Step 4: KITAS conversion (if VITAS)
     if visa_type == "kitas":
-        steps.append({
-            "step": len(steps) + 1,
-            "action": "Convert VITAS to KITAS within 60 days",
-            "entity_id": "kitas_conversion",
-            "details": {
-                "location": "Immigration office in Indonesia",
-                "documents": "Passport, VITAS, sponsorship docs",
+        steps.append(
+            {
+                "step": len(steps) + 1,
+                "action": "Convert VITAS to KITAS within 60 days",
+                "entity_id": "kitas_conversion",
+                "details": {
+                    "location": "Immigration office in Indonesia",
+                    "documents": "Passport, VITAS, sponsorship docs",
+                },
             }
-        })
+        )
 
     # Step 5: MERP (for KITAS/KITAP)
     if visa_type in ["kitas", "kitap"]:
-        steps.append({
-            "step": len(steps) + 1,
-            "action": "Apply for MERP (Multiple Exit/Re-entry Permit)",
-            "entity_id": "merp",
-            "details": {
-                "purpose": "Allow multiple exits from Indonesia",
-                "validity": "Matches KITAS/KITAP validity",
+        steps.append(
+            {
+                "step": len(steps) + 1,
+                "action": "Apply for MERP (Multiple Exit/Re-entry Permit)",
+                "entity_id": "merp",
+                "details": {
+                    "purpose": "Allow multiple exits from Indonesia",
+                    "validity": "Matches KITAS/KITAP validity",
+                },
             }
-        })
+        )
 
     from dataclasses import asdict
 

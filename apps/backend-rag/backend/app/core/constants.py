@@ -86,18 +86,18 @@ class EvidenceScoreConstants:
     # Thresholds
     HIERARCHICAL_BONUS: float = 0.2
     CONTEXT_KEYWORD_BONUS: float = 0.35  # For keyword matching in context
-    
+
     # FIXED: ABSTAIN_THRESHOLD raised to 0.15 to properly trigger ABSTAIN for:
     # - Nonsense queries (score ~0.0)
     # - Mismatched results (e.g., KITAS query returning KBLI, score < 0.15)
     # - No relevant context found
     ABSTAIN_THRESHOLD: float = 0.15
-    
+
     # Confidence level thresholds
     CONFIDENCE_LOW: float = 0.15  # Below this = ABSTAIN
     CONFIDENCE_CAUTIOUS: float = 0.6  # 0.15-0.6 = CAUTIOUS (Tier 1 fallback)
     CONFIDENCE_HIGH: float = 0.6  # Above this = CONFIDENT
-    
+
     HIGH_QUALITY_SOURCE_THRESHOLD = 0.15  # Minimum source score to be considered "good"
     MIN_SOURCES_FOR_BONUS = 3  # Minimum number of sources to get bonus score
     KEYWORD_MATCH_THRESHOLD = 0.3  # Minimum keyword match ratio (30%) to add score

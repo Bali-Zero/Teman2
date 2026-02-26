@@ -9,9 +9,8 @@ from typing import Any
 
 from backend.llm.adapters.gemini import GeminiAdapter
 from backend.prompts.zantara_prompt_builder import PromptContext, ZantaraPromptBuilder
-
-from backend.services.response.validator import ZantaraResponseValidator
 from backend.services.oracle.oracle_google_services import google_services
+from backend.services.response.validator import ZantaraResponseValidator
 
 logger = logging.getLogger(__name__)
 

@@ -85,7 +85,9 @@ class ExtractedDocument:
             "summary": self.summary,
             "key_points": self.key_points,
             "related_documents": self.related_documents,
-            "full_text": self.full_text[:1000] + "..." if len(self.full_text) > 1000 else self.full_text,
+            "full_text": self.full_text[:1000] + "..."
+            if len(self.full_text) > 1000
+            else self.full_text,
             "metadata": self.metadata,
             "confidence_score": self.confidence_score,
         }
@@ -276,9 +278,7 @@ Return ONLY the JSON object, no other text."""
             # Complete
             result.status = IngestionStatus.COMPLETED
             result.completed_at = datetime.now()
-            result.processing_time_ms = (
-                result.completed_at - start_time
-            ).total_seconds() * 1000
+            result.processing_time_ms = (result.completed_at - start_time).total_seconds() * 1000
 
             self.ingestion_stats["successful"] += 1
             self.ingestion_stats["total_chunks_ingested"] += len(extracted.key_points) + 1
@@ -289,9 +289,7 @@ Return ONLY the JSON object, no other text."""
             result.status = IngestionStatus.FAILED
             result.error_message = str(e)
             result.completed_at = datetime.now()
-            result.processing_time_ms = (
-                result.completed_at - start_time
-            ).total_seconds() * 1000
+            result.processing_time_ms = (result.completed_at - start_time).total_seconds() * 1000
 
             self.ingestion_stats["failed"] += 1
             logger.error(f"❌ Ingestion failed for {scraped_doc.document_id}: {e}")
@@ -326,13 +324,15 @@ Return ONLY the JSON object, no other text."""
                 results.append(result)
             except Exception as e:
                 logger.error(f"Batch ingestion error for {doc.document_id}: {e}")
-                results.append(IngestionResult(
-                    document_id=doc.document_id,
-                    status=IngestionStatus.FAILED,
-                    started_at=datetime.now(),
-                    completed_at=datetime.now(),
-                    error_message=str(e),
-                ))
+                results.append(
+                    IngestionResult(
+                        document_id=doc.document_id,
+                        status=IngestionStatus.FAILED,
+                        started_at=datetime.now(),
+                        completed_at=datetime.now(),
+                        error_message=str(e),
+                    )
+                )
 
         # Send batch summary alert
         successful = sum(1 for r in results if r.status == IngestionStatus.COMPLETED)
@@ -434,12 +434,12 @@ Return ONLY the JSON object, no other text."""
         import re
 
         # Look for ```json ... ``` blocks
-        match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL)
+        match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
         if match:
             return match.group(1)
 
         # Look for raw JSON object
-        match = re.search(r'(\{.*\})', text, re.DOTALL)
+        match = re.search(r"(\{.*\})", text, re.DOTALL)
         if match:
             return match.group(1)
 
@@ -498,34 +498,38 @@ Summary:
 Full Text:
 {extracted.full_text[:4000]}
 """
-        chunks.append({
-            "text": main_text,
-            "metadata": {
-                "document_id": extracted.document_id,
-                "source_id": extracted.source_id,
-                "title": extracted.title,
-                "document_type": extracted.document_type.value,
-                "document_number": extracted.document_number,
-                "publication_date": extracted.publication_date,
-                "issuing_authority": extracted.issuing_authority,
-                "subject": extracted.subject,
-                "chunk_type": "main",
-            },
-        })
-
-        # Key points chunks
-        for i, point in enumerate(extracted.key_points):
-            chunks.append({
-                "text": f"{extracted.title} - Key Point {i+1}: {point}",
+        chunks.append(
+            {
+                "text": main_text,
                 "metadata": {
                     "document_id": extracted.document_id,
                     "source_id": extracted.source_id,
                     "title": extracted.title,
                     "document_type": extracted.document_type.value,
-                    "chunk_type": "key_point",
-                    "point_index": i,
+                    "document_number": extracted.document_number,
+                    "publication_date": extracted.publication_date,
+                    "issuing_authority": extracted.issuing_authority,
+                    "subject": extracted.subject,
+                    "chunk_type": "main",
                 },
-            })
+            }
+        )
+
+        # Key points chunks
+        for i, point in enumerate(extracted.key_points):
+            chunks.append(
+                {
+                    "text": f"{extracted.title} - Key Point {i + 1}: {point}",
+                    "metadata": {
+                        "document_id": extracted.document_id,
+                        "source_id": extracted.source_id,
+                        "title": extracted.title,
+                        "document_type": extracted.document_type.value,
+                        "chunk_type": "key_point",
+                        "point_index": i,
+                    },
+                }
+            )
 
         return chunks
 
@@ -557,7 +561,9 @@ Full Text:
                     result.status.value,
                     result.started_at,
                     result.completed_at,
-                    json.dumps(result.extracted_document.to_dict()) if result.extracted_document else None,
+                    json.dumps(result.extracted_document.to_dict())
+                    if result.extracted_document
+                    else None,
                     result.qdrant_id,
                     result.error_message,
                     result.processing_time_ms,
@@ -587,10 +593,13 @@ Full Text:
 
         try:
             async with self.db_pool.acquire() as conn:
-                query = """
+                query = (
+                    """
                     SELECT * FROM kg_ingestion_results
                     WHERE started_at > NOW() - INTERVAL '%s hours'
-                """ % hours
+                """
+                    % hours
+                )
 
                 if status:
                     query += f" AND status = '{status.value}'"
@@ -605,7 +614,9 @@ Full Text:
                         status=IngestionStatus(row["status"]),
                         started_at=row["started_at"],
                         completed_at=row["completed_at"],
-                        extracted_document=ExtractedDocument(**row["extracted_data"]) if row["extracted_data"] else None,
+                        extracted_document=ExtractedDocument(**row["extracted_data"])
+                        if row["extracted_data"]
+                        else None,
                         qdrant_id=row["qdrant_id"],
                         error_message=row["error_message"],
                         processing_time_ms=row["processing_time_ms"],

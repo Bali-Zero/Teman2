@@ -3,10 +3,9 @@ Step Manager Service
 Responsibility: Manage step lifecycle
 """
 
-from typing import Any
-
 import logging
 from datetime import datetime
+from typing import Any
 
 logger = logging.getLogger(__name__)
 

@@ -1,57 +1,100 @@
 """
 Instagram Conversations API - Ultra-Safe Version
 """
+
 import json
 import logging
+
 from asyncpg import Pool
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import PlainTextResponse
+from pydantic import BaseModel
+
+from backend.app.core.config import settings
 from backend.app.dependencies import get_database
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/instagram", tags=["instagram"])
 
+
+# Instagram Webhook Models (Meta Standard)
+class InstagramMessage(BaseModel):
+    mid: str
+    text: str
+
+
+class InstagramMessaging(BaseModel):
+    sender: dict[str, str]
+    recipient: dict[str, str]
+    timestamp: int
+    message: InstagramMessage
+
+
+class InstagramEntry(BaseModel):
+    id: str
+    time: int
+    messaging: list[InstagramMessaging]
+
+
+class InstagramWebhook(BaseModel):
+    object: str
+    entry: list[InstagramEntry]
+
+
 @router.get("/conversations")
-async def get_instagram_conversations(limit: int = 50, offset: int = 0, db: Pool = Depends(get_database)):
+async def get_instagram_conversations(
+    limit: int = 50, offset: int = 0, db: Pool = Depends(get_database)
+):
     try:
         async with db.acquire() as conn:
             rows = await conn.fetch(
                 "SELECT id, session_id, user_id, messages, metadata, created_at FROM conversations "
                 "WHERE session_id LIKE 'ig_session_%' OR user_id LIKE 'instagram_%' "
                 "ORDER BY created_at DESC LIMIT $1 OFFSET $2",
-                limit, offset
+                limit,
+                offset,
             )
             conversations = []
             for row in rows:
                 session_id = row["session_id"] or ""
                 user_id = session_id.replace("ig_session_", "")
-                
+
                 messages_raw = row["messages"]
                 last_msg_text = "Click to view Instagram messages"
                 try:
-                    msgs = json.loads(messages_raw) if isinstance(messages_raw, str) else messages_raw
+                    msgs = (
+                        json.loads(messages_raw) if isinstance(messages_raw, str) else messages_raw
+                    )
                     if msgs and isinstance(msgs, list):
                         last_msg_text = msgs[-1].get("content", "")[:100]
-                except: pass
+                except:
+                    pass
 
                 metadata_raw = row["metadata"]
                 client_name = f"IG: {user_id}"
                 try:
-                    meta = json.loads(metadata_raw) if isinstance(metadata_raw, str) else metadata_raw
+                    meta = (
+                        json.loads(metadata_raw) if isinstance(metadata_raw, str) else metadata_raw
+                    )
                     client_name = meta.get("sender_name") or meta.get("client_name") or client_name
-                except: pass
+                except:
+                    pass
 
-                conversations.append({
-                    "id": row["id"],
-                    "user_id": user_id,
-                    "client_name": client_name,
-                    "last_message": last_msg_text,
-                    "last_message_date": row["created_at"].isoformat(),
-                    "session_id": session_id
-                })
+                conversations.append(
+                    {
+                        "id": row["id"],
+                        "user_id": user_id,
+                        "client_name": client_name,
+                        "last_message": last_msg_text,
+                        "last_message_date": row["created_at"].isoformat(),
+                        "session_id": session_id,
+                    }
+                )
             return conversations
     except Exception as e:
         logger.error(f"IG FAIL: {e}")
         return []
+
 
 @router.get("/messages/{user_id}")
 async def get_instagram_messages(user_id: str, limit: int = 100, db: Pool = Depends(get_database)):
@@ -59,18 +102,69 @@ async def get_instagram_messages(user_id: str, limit: int = 100, db: Pool = Depe
         async with db.acquire() as conn:
             row = await conn.fetchrow(
                 "SELECT id, messages, created_at FROM conversations WHERE session_id = $1 ORDER BY created_at DESC LIMIT 1",
-                f"ig_session_{user_id}"
+                f"ig_session_{user_id}",
             )
-            if not row: return []
-            msgs = json.loads(row["messages"]) if isinstance(row["messages"], str) else row["messages"]
+            if not row:
+                return []
+            msgs = (
+                json.loads(row["messages"]) if isinstance(row["messages"], str) else row["messages"]
+            )
             result = []
             for i, m in enumerate(msgs[-limit:]):
-                if not isinstance(m, dict): continue
-                result.append({
-                    "id": f"{row['id']}_{i}",
-                    "message_text": m.get("content", ""),
-                    "direction": "inbound" if m.get("role") == "user" else "outbound",
-                    "timestamp": row["created_at"].isoformat()
-                })
+                if not isinstance(m, dict):
+                    continue
+                result.append(
+                    {
+                        "id": f"{row['id']}_{i}",
+                        "message_text": m.get("content", ""),
+                        "direction": "inbound" if m.get("role") == "user" else "outbound",
+                        "timestamp": row["created_at"].isoformat(),
+                    }
+                )
             return result
-    except: return []
+    except:
+        return []
+
+
+# ============================================================
+# INSTAGRAM WEBHOOK ROUTER
+# ============================================================
+webhook_router = APIRouter(prefix="/webhook/instagram", tags=["instagram"])
+
+
+@webhook_router.get("")
+async def verify_instagram_webhook(request: Request):
+    """Verify Instagram webhook for Meta setup."""
+    params = request.query_params
+    mode = params.get("hub.mode")
+    token = params.get("hub.verify_token")
+    challenge = params.get("hub.challenge")
+
+    logger.info(f"IG Webhook verify: mode={mode}, token={'***' if token else None}")
+
+    if mode == "subscribe" and token == settings.instagram_verify_token:
+        logger.info("✅ IG Webhook verified")
+        return PlainTextResponse(content=challenge, status_code=200)
+
+    logger.warning("❌ IG Webhook verify failed")
+    raise HTTPException(status_code=403, detail="Invalid verify token")
+
+
+@webhook_router.post("")
+async def instagram_webhook(webhook: InstagramWebhook, request: Request):
+    """Handle incoming Instagram DMs via ChannelRouter."""
+    logger.info(f"IG Webhook received: {webhook.object}, {len(webhook.entry)} entries")
+
+    try:
+        from backend.app.dependencies import get_channel_router
+
+        channel_router = get_channel_router(request)
+
+        # Pass the raw payload to the channel adapter
+        raw_payload = await request.json()
+        await channel_router.route_message("instagram", raw_payload)
+
+        return {"status": "ok"}
+    except Exception as e:
+        logger.error(f"Failed to route IG message: {e}")
+        return {"status": "error", "detail": str(e)}

@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.utils.crm_utils import is_crm_admin
@@ -31,8 +31,10 @@ router = APIRouter(prefix="/api/crm/analytics", tags=["crm-analytics"])
 # PYDANDIC MODELS
 # ================================================
 
+
 class ClientOverviewMetrics:
     """Client overview statistics."""
+
     total_clients: int
     new_this_month: int
     new_this_week: int
@@ -42,6 +44,7 @@ class ClientOverviewMetrics:
 
 class TeamPerformanceMetrics:
     """Team member performance analytics."""
+
     member_email: str
     total_clients: int
     active_clients: int
@@ -53,6 +56,7 @@ class TeamPerformanceMetrics:
 
 class RevenueMetrics:
     """Revenue statistics."""
+
     total_quoted: float
     total_actual: float
     total_paid: float
@@ -63,6 +67,7 @@ class RevenueMetrics:
 
 class ProcessTypeMetrics:
     """Process/case type analytics."""
+
     practice_type_code: str
     practice_type_name: str
     total_cases: int
@@ -74,6 +79,7 @@ class ProcessTypeMetrics:
 
 class ClientTrendPoint:
     """Single point in client acquisition trend."""
+
     period: str
     new_clients: int
     active_clients: int
@@ -85,6 +91,7 @@ class ClientTrendPoint:
 # ENDPOINTS
 # ================================================
 
+
 @router.get("/clients/overview", response_model=dict[str, Any])
 async def get_client_overview(
     current_user: dict = Depends(get_current_user),
@@ -92,7 +99,7 @@ async def get_client_overview(
 ):
     """
     Get client overview metrics.
-    
+
     Returns:
         Total clients, new this month/week, breakdown by status and nationality.
     """
@@ -101,18 +108,18 @@ async def get_client_overview(
             # Check permissions
             user_is_admin = is_crm_admin(current_user)
             user_email = current_user.get("email", "").lower()
-            
+
             # Base query conditions
             where_clause = ""
             params = []
             if not user_is_admin:
                 where_clause = "WHERE assigned_to = $1"
                 params = [user_email]
-            
+
             # Total clients
             total_query = f"SELECT COUNT(*) FROM clients {where_clause}"
             total_clients = await conn.fetchval(total_query, *params) or 0
-            
+
             # New this month
             month_start = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             new_month_query = f"""
@@ -122,7 +129,7 @@ async def get_client_overview(
             """
             month_params = params + [month_start] if params else [month_start]
             new_this_month = await conn.fetchval(new_month_query, *month_params) or 0
-            
+
             # New this week
             week_start = datetime.now() - timedelta(days=datetime.now().weekday())
             week_start = week_start.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -133,7 +140,7 @@ async def get_client_overview(
             """
             week_params = params + [week_start] if params else [week_start]
             new_this_week = await conn.fetchval(new_week_query, *week_params) or 0
-            
+
             # By status
             status_query = f"""
                 SELECT status, COUNT(*) as count 
@@ -143,7 +150,7 @@ async def get_client_overview(
             """
             status_rows = await conn.fetch(status_query, *params)
             by_status = {row["status"]: row["count"] for row in status_rows}
-            
+
             # By nationality (top 10)
             nat_query = f"""
                 SELECT nationality, COUNT(*) as count 
@@ -155,9 +162,9 @@ async def get_client_overview(
             """
             nat_rows = await conn.fetch(nat_query, *params)
             by_nationality = {row["nationality"] or "Unknown": row["count"] for row in nat_rows}
-            
+
             log_success(logger, "Fetched client overview", user=user_email)
-            
+
             return {
                 "total_clients": total_clients,
                 "new_this_month": new_this_month,
@@ -165,7 +172,7 @@ async def get_client_overview(
                 "by_status": by_status,
                 "by_nationality": by_nationality,
             }
-            
+
     except Exception as e:
         logger.error(f"Failed to fetch client overview: {e}", exc_info=True)
         raise handle_database_error(e)
@@ -179,10 +186,10 @@ async def get_team_performance(
 ):
     """
     Get team member performance metrics.
-    
+
     Args:
         period_days: Analysis period in days (default 30)
-        
+
     Returns:
         List of team members with performance metrics.
     """
@@ -190,7 +197,7 @@ async def get_team_performance(
         async with db_pool.acquire() as conn:
             user_is_admin = is_crm_admin(current_user)
             user_email = current_user.get("email", "").lower()
-            
+
             if not user_is_admin:
                 # Non-admin can only see their own stats
                 members = [user_email]
@@ -200,60 +207,73 @@ async def get_team_performance(
                     "SELECT DISTINCT assigned_to FROM clients WHERE assigned_to IS NOT NULL"
                 )
                 members = [row["assigned_to"] for row in member_rows if row["assigned_to"]]
-            
+
             period_start = datetime.now() - timedelta(days=period_days)
             results = []
-            
+
             for member in members:
                 # Total clients
-                total = await conn.fetchval(
-                    "SELECT COUNT(*) FROM clients WHERE assigned_to = $1",
-                    member
-                ) or 0
-                
+                total = (
+                    await conn.fetchval(
+                        "SELECT COUNT(*) FROM clients WHERE assigned_to = $1", member
+                    )
+                    or 0
+                )
+
                 # Active clients
-                active = await conn.fetchval(
-                    "SELECT COUNT(*) FROM clients WHERE assigned_to = $1 AND status = 'active'",
-                    member
-                ) or 0
-                
+                active = (
+                    await conn.fetchval(
+                        "SELECT COUNT(*) FROM clients WHERE assigned_to = $1 AND status = 'active'",
+                        member,
+                    )
+                    or 0
+                )
+
                 # Completed (cases completed)
-                completed = await conn.fetchval(
-                    """
+                completed = (
+                    await conn.fetchval(
+                        """
                     SELECT COUNT(*) FROM practices p
                     JOIN clients c ON p.client_id = c.id
                     WHERE c.assigned_to = $1 AND p.status = 'completed'
                     """,
-                    member
-                ) or 0
-                
+                        member,
+                    )
+                    or 0
+                )
+
                 # Conversion rate (active / total)
                 conversion_rate = (active / total * 100) if total > 0 else 0
-                
+
                 # Revenue generated
-                revenue = await conn.fetchval(
-                    """
+                revenue = (
+                    await conn.fetchval(
+                        """
                     SELECT COALESCE(SUM(actual_price), 0) FROM practices p
                     JOIN clients c ON p.client_id = c.id
                     WHERE c.assigned_to = $1 AND p.payment_status = 'paid'
                     """,
-                    member
-                ) or 0
-                
-                results.append({
-                    "member_email": member,
-                    "total_clients": total,
-                    "active_clients": active,
-                    "completed_cases": completed,
-                    "conversion_rate": round(conversion_rate, 1),
-                    "revenue_generated": float(revenue),
-                })
-            
+                        member,
+                    )
+                    or 0
+                )
+
+                results.append(
+                    {
+                        "member_email": member,
+                        "total_clients": total,
+                        "active_clients": active,
+                        "completed_cases": completed,
+                        "conversion_rate": round(conversion_rate, 1),
+                        "revenue_generated": float(revenue),
+                    }
+                )
+
             # Sort by revenue
             results.sort(key=lambda x: x["revenue_generated"], reverse=True)
-            
+
             return results
-            
+
     except Exception as e:
         logger.error(f"Failed to fetch team performance: {e}", exc_info=True)
         raise handle_database_error(e)
@@ -266,7 +286,7 @@ async def get_revenue_summary(
 ):
     """
     Get revenue summary metrics.
-    
+
     Returns:
         Total quoted, actual, paid, outstanding, and monthly breakdown.
     """
@@ -274,13 +294,13 @@ async def get_revenue_summary(
         async with db_pool.acquire() as conn:
             user_is_admin = is_crm_admin(current_user)
             user_email = current_user.get("email", "").lower()
-            
+
             where_clause = ""
             params = []
             if not user_is_admin:
                 where_clause = "WHERE c.assigned_to = $1"
                 params = [user_email]
-            
+
             # Total metrics
             totals_query = f"""
                 SELECT 
@@ -292,19 +312,21 @@ async def get_revenue_summary(
                 {where_clause}
             """
             row = await conn.fetchrow(totals_query, *params)
-            
+
             total_quoted = float(row["total_quoted"] or 0)
             total_actual = float(row["total_actual"] or 0)
             total_paid = float(row["total_paid"] or 0)
             total_outstanding = total_actual - total_paid
-            
+
             # Monthly breakdown (last 6 months)
             months = []
             for i in range(5, -1, -1):
-                month_start = (datetime.now().replace(day=1) - timedelta(days=i*30)).replace(day=1)
+                month_start = (datetime.now().replace(day=1) - timedelta(days=i * 30)).replace(
+                    day=1
+                )
                 month_end = (month_start + timedelta(days=32)).replace(day=1)
                 month_label = month_start.strftime("%Y-%m")
-                
+
                 month_query = f"""
                     SELECT 
                         COALESCE(SUM(p.actual_price), 0) as revenue,
@@ -314,23 +336,26 @@ async def get_revenue_summary(
                     {where_clause}
                     {"AND" if where_clause else "WHERE"} p.created_at >= $2 AND p.created_at < $3
                 """
-                month_params = params + [month_start, month_end] if params else [month_start, month_end]
+                month_params = (
+                    params + [month_start, month_end] if params else [month_start, month_end]
+                )
                 month_row = await conn.fetchrow(month_query, *month_params)
-                
-                months.append({
-                    "period": month_label,
-                    "revenue": float(month_row["revenue"] or 0),
-                    "paid": float(month_row["paid"] or 0),
-                })
-            
+
+                months.append(
+                    {
+                        "period": month_label,
+                        "revenue": float(month_row["revenue"] or 0),
+                        "paid": float(month_row["paid"] or 0),
+                    }
+                )
+
             # Average per client
-            client_count = await conn.fetchval(
-                f"SELECT COUNT(*) FROM clients {where_clause}",
-                *params
-            ) or 1  # Avoid division by zero
-            
+            client_count = (
+                await conn.fetchval(f"SELECT COUNT(*) FROM clients {where_clause}", *params) or 1
+            )  # Avoid division by zero
+
             avg_per_client = total_actual / client_count
-            
+
             return {
                 "total_quoted": total_quoted,
                 "total_actual": total_actual,
@@ -339,7 +364,7 @@ async def get_revenue_summary(
                 "avg_per_client": round(avg_per_client, 2),
                 "by_month": months,
             }
-            
+
     except Exception as e:
         logger.error(f"Failed to fetch revenue summary: {e}", exc_info=True)
         raise handle_database_error(e)
@@ -352,7 +377,7 @@ async def get_processes_by_type(
 ):
     """
     Get process/case analytics grouped by type.
-    
+
     Returns:
         List of practice types with metrics.
     """
@@ -360,13 +385,13 @@ async def get_processes_by_type(
         async with db_pool.acquire() as conn:
             user_is_admin = is_crm_admin(current_user)
             user_email = current_user.get("email", "").lower()
-            
+
             where_clause = ""
             params = []
             if not user_is_admin:
                 where_clause = "WHERE c.assigned_to = $1"
                 params = [user_email]
-            
+
             query = f"""
                 SELECT 
                     pt.code as practice_type_code,
@@ -382,22 +407,24 @@ async def get_processes_by_type(
                 GROUP BY pt.code, pt.name
                 ORDER BY total_cases DESC
             """
-            
+
             rows = await conn.fetch(query, *params)
-            
+
             results = []
             for row in rows:
-                results.append({
-                    "practice_type_code": row["practice_type_code"],
-                    "practice_type_name": row["practice_type_name"],
-                    "total_cases": row["total_cases"],
-                    "active_cases": row["active_cases"],
-                    "completed_cases": row["completed_cases"],
-                    "total_revenue": float(row["total_revenue"] or 0),
-                })
-            
+                results.append(
+                    {
+                        "practice_type_code": row["practice_type_code"],
+                        "practice_type_name": row["practice_type_name"],
+                        "total_cases": row["total_cases"],
+                        "active_cases": row["active_cases"],
+                        "completed_cases": row["completed_cases"],
+                        "total_revenue": float(row["total_revenue"] or 0),
+                    }
+                )
+
             return results
-            
+
     except Exception as e:
         logger.error(f"Failed to fetch processes by type: {e}", exc_info=True)
         raise handle_database_error(e)
@@ -411,10 +438,10 @@ async def get_client_trend(
 ):
     """
     Get client acquisition trend over time.
-    
+
     Args:
         months: Number of months to analyze (default 6)
-        
+
     Returns:
         List of monthly data points.
     """
@@ -422,50 +449,62 @@ async def get_client_trend(
         async with db_pool.acquire() as conn:
             user_is_admin = is_crm_admin(current_user)
             user_email = current_user.get("email", "").lower()
-            
+
             where_clause = ""
             client_params = []
             practice_params = []
-            
+
             if not user_is_admin:
                 where_clause = "WHERE assigned_to = $1"
                 client_params = [user_email]
                 practice_params = [user_email]
-            
+
             results = []
             for i in range(months - 1, -1, -1):
-                month_start = (datetime.now().replace(day=1) - timedelta(days=i*30)).replace(day=1)
+                month_start = (datetime.now().replace(day=1) - timedelta(days=i * 30)).replace(
+                    day=1
+                )
                 month_end = (month_start + timedelta(days=32)).replace(day=1)
                 month_label = month_start.strftime("%b %Y")
-                
+
                 # New clients
                 new_clients_query = f"""
                     SELECT COUNT(*) FROM clients
                     {where_clause}
                     {"AND" if where_clause else "WHERE"} created_at >= $2 AND created_at < $3
                 """
-                new_params = client_params + [month_start, month_end] if client_params else [month_start, month_end]
+                new_params = (
+                    client_params + [month_start, month_end]
+                    if client_params
+                    else [month_start, month_end]
+                )
                 new_clients = await conn.fetchval(new_clients_query, *new_params) or 0
-                
+
                 # Revenue
                 revenue_query = f"""
                     SELECT COALESCE(SUM(p.actual_price), 0)
                     FROM practices p
                     JOIN clients c ON p.client_id = c.id
-                    {where_clause.replace('WHERE', 'WHERE c.') if where_clause else ''}
+                    {where_clause.replace("WHERE", "WHERE c.") if where_clause else ""}
                     {"AND" if where_clause else "WHERE"} p.created_at >= $2 AND p.created_at < $3
                 """
-                rev_params = practice_params + [month_start, month_end] if practice_params else [month_start, month_end]
+                rev_params = (
+                    practice_params + [month_start, month_end]
+                    if practice_params
+                    else [month_start, month_end]
+                )
                 revenue = await conn.fetchval(revenue_query, *rev_params) or 0
-                
-                results.append({
-                    "period": month_label,
-                    "new_clients": new_clients,
-                    "revenue": float(revenue),
-                })
-            
+
+                results.append(
+                    {
+                        "period": month_label,
+                        "new_clients": new_clients,
+                        "revenue": float(revenue),
+                    }
+                )
+
             return results
-            
+
     except Exception as e:
         logger.error(f"Failed to fetch client trend: {e}", exc_info=True)
         raise handle_database_error(e)

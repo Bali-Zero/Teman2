@@ -552,7 +552,7 @@ class GoogleDriveService:
     ) -> dict[str, Any]:
         """
         Create standardized folder structure for a new client.
-        
+
         Creates: {ID}_{ClientName}/ with subfolders
         - 00_Profile
         - 01_Immigration
@@ -560,39 +560,39 @@ class GoogleDriveService:
         - 03_Tax
         - 04_Family
         - 99_Misc
-        
+
         Args:
             client_id: Client database ID
             client_name: Client full name
             client_type: 'individual' or 'company'
-            
+
         Returns:
             dict with folder_ids and urls
         """
         from backend.app.core.config import settings
-        
+
         STANDARD_SUBFOLDERS = [
             "00_Profile",
-            "01_Immigration", 
+            "01_Immigration",
             "02_Company",
             "03_Tax",
             "04_Family",
             "99_Misc",
         ]
-        
+
         try:
             # Determine parent folder based on client type
             if client_type == "individual":
-                parent_folder_id = getattr(settings, 'gdrive_individuals_folder_id', None)
+                parent_folder_id = getattr(settings, "gdrive_individuals_folder_id", None)
             elif client_type == "company":
-                parent_folder_id = getattr(settings, 'gdrive_companies_folder_id', None)
+                parent_folder_id = getattr(settings, "gdrive_companies_folder_id", None)
             else:
-                parent_folder_id = getattr(settings, 'google_drive_root_folder_id', None)
-            
+                parent_folder_id = getattr(settings, "google_drive_root_folder_id", None)
+
             # Fallback to root if no specific folder configured
             if not parent_folder_id:
-                parent_folder_id = getattr(settings, 'google_drive_root_folder_id', None)
-            
+                parent_folder_id = getattr(settings, "google_drive_root_folder_id", None)
+
             # Create root folder: "[ID]_[Name]"
             root_folder_name = f"{client_id}_{client_name}"
             root_folder = await self.create_folder(
@@ -600,9 +600,9 @@ class GoogleDriveService:
                 name=root_folder_name,
                 parent_id=parent_folder_id,
             )
-            
+
             root_folder_id = root_folder["id"]
-            
+
             # Create subfolders
             subfolders = {}
             for subfolder_name in STANDARD_SUBFOLDERS:
@@ -619,18 +619,18 @@ class GoogleDriveService:
                 except Exception as e:
                     logger.error(f"[GDRIVE] Failed to create subfolder {subfolder_name}: {e}")
                     continue
-            
+
             logger.info(
                 f"[GDRIVE] Created client folder structure for {client_name}: {root_folder_id}"
             )
-            
+
             return {
                 "success": True,
                 "root_folder_id": root_folder_id,
                 "root_folder_url": root_folder.get("webViewLink", ""),
                 "subfolders": subfolders,
             }
-            
+
         except Exception as e:
             logger.error(f"[GDRIVE] Failed to create client folder for {client_name}: {e}")
             return {

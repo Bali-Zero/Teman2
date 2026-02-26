@@ -288,7 +288,7 @@ def route_by_importance(state: CollectiveMemoryState) -> str:
         return "low"
 
 
-def create_collective_memory_workflow(memory_service: Any=None, _mcp_client: Any=None) -> Any:
+def create_collective_memory_workflow(memory_service: Any = None, _mcp_client: Any = None) -> Any:
     """Crea workflow LangGraph per memoria collettiva intelligente"""
 
     workflow = StateGraph(CollectiveMemoryState)

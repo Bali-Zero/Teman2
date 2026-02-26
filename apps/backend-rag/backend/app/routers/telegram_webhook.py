@@ -10,7 +10,7 @@ Date: 2026-02-10
 import logging
 import os
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 
 from backend.app.dependencies import get_channel_router
 from backend.channels.router import ChannelRouter
@@ -61,9 +61,7 @@ async def telegram_webhook(
         chat_id = chat.get("id")
         text = message.get("text", "")
 
-        logger.info(
-            f"📨 Telegram update {update_id}: chat_id={chat_id}, text={text[:50]}..."
-        )
+        logger.info(f"📨 Telegram update {update_id}: chat_id={chat_id}, text={text[:50]}...")
 
         # Route message through ChannelRouter
         await channel_router.route_message("telegram", update)

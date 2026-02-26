@@ -50,15 +50,15 @@ export function useChatPage(): UseChatPageReturn {
     },
     onDone: () => {
       if (assistantIdRef.current && lastAnswerRef.current) {
-        chatMessages.finalizeAssistant(assistantIdRef.current, lastAnswerRef.current);
+        chatMessages.finalizeAssistant(
+          assistantIdRef.current,
+          lastAnswerRef.current,
+        );
       }
     },
     onError: (err) => {
       if (assistantIdRef.current) {
-        chatMessages.finalizeAssistant(
-          assistantIdRef.current,
-          `Error: ${err}`,
-        );
+        chatMessages.finalizeAssistant(assistantIdRef.current, `Error: ${err}`);
       }
     },
   });
@@ -86,7 +86,9 @@ export function useChatPage(): UseChatPageReturn {
               typeof e.data.answer === "string",
           );
         const finalAnswer =
-          (answerEvent?.data?.answer as string) || lastAnswerRef.current || "No answer received.";
+          (answerEvent?.data?.answer as string) ||
+          lastAnswerRef.current ||
+          "No answer received.";
         chatMessages.finalizeAssistant(assistantIdRef.current, finalAnswer);
       }
     },

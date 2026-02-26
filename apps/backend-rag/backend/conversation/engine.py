@@ -10,7 +10,8 @@ Date: 2026-02-10
 
 import logging
 import time
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
 from backend.channels.base import ChannelMessage, ChannelResponse
 from backend.services.rag.agentic.orchestrator import AgenticRAGOrchestrator
@@ -99,9 +100,7 @@ class ConversationEngine:
             )
 
         except Exception as e:
-            logger.error(
-                f"❌ Error processing message from {message.channel}: {e}", exc_info=True
-            )
+            logger.error(f"❌ Error processing message from {message.channel}: {e}", exc_info=True)
             # Yield error response
             yield ChannelResponse(
                 text="Mi dispiace, si è verificato un errore. Riprova tra poco.",
@@ -125,9 +124,7 @@ class ConversationEngine:
 
         # Token event: streaming text
         if event_type == "token":
-            return ChannelResponse(
-                text=event.get("data", ""), metadata={"event_type": "token"}
-            )
+            return ChannelResponse(text=event.get("data", ""), metadata={"event_type": "token"})
 
         # Thinking event: LLM reasoning step
         elif event_type == "thinking":

@@ -3,13 +3,12 @@ ZANTARA RAG - Ingestion Router
 Book ingestion endpoints
 """
 
-from typing import Any
-
 import asyncio
 import logging
 import os
 import time
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile
 

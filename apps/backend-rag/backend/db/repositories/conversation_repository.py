@@ -3,9 +3,7 @@ Conversation Repository
 Handles all database operations for conversation persistence
 """
 
-import logging
 from datetime import datetime, timedelta
-from typing import Any
 
 import asyncpg
 

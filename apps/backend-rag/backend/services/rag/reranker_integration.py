@@ -9,10 +9,10 @@ Usage:
     # Option 1: Direct usage in SearchService
     search_service = SearchServiceWithCrossEncoder()
     results = await search_service.search_with_reranking("What is AI?", user_level=2)
-    
+
     # Option 2: Add to existing SearchService
     from backend.services.rag.reranker_integration import add_cross_encoder_reranking
-    
+
     search_service = SearchService()
     add_cross_encoder_reranking(search_service)
     results = await search_service.search_with_cross_encoder_reranking(
@@ -32,23 +32,23 @@ logger = logging.getLogger(__name__)
 class CrossEncoderRerankerMixin:
     """
     Mixin to add CrossEncoder reranking capabilities to SearchService.
-    
+
     This mixin adds a `search_with_cross_encoder_reranking` method to any
     SearchService instance, providing a drop-in replacement for the existing
     `search_with_reranking` method that uses local cross-encoder models
     instead of external API calls.
-    
+
     The mixin preserves all existing behavior including:
     - Tier-based access control
     - Collection routing
     - Conflict resolution
     - Metrics collection
     - Early exit for high-confidence results
-    
+
     Example:
         class SearchServiceWithReranking(SearchService, CrossEncoderRerankerMixin):
             pass
-        
+
         service = SearchServiceWithReranking()
         results = await service.search_with_cross_encoder_reranking("query", user_level=2)
     """
@@ -81,15 +81,15 @@ class CrossEncoderRerankerMixin:
     ) -> dict[str, Any]:
         """
         Enhanced search with Cross-Encoder reranking.
-        
+
         This method performs semantic search and then re-ranks the results
         using a local cross-encoder model for improved relevance.
-        
+
         The pipeline:
         1. Retrieve overfetch_factor * limit candidates using vector search
         2. Re-rank candidates using cross-encoder model
         3. Return top 'limit' results
-        
+
         Args:
             query: Search query
             user_level: User access level (0-3)
@@ -98,7 +98,7 @@ class CrossEncoderRerankerMixin:
             collection_override: Force specific collection
             use_reranking: Whether to apply cross-encoder reranking
             overfetch_factor: How many candidates to retrieve before reranking
-            
+
         Returns:
             Search results with reranking metadata:
             {
@@ -111,7 +111,7 @@ class CrossEncoderRerankerMixin:
                 "reranker_enabled": bool,
                 "reranker_model": str,
             }
-            
+
         Example:
             >>> results = await service.search_with_cross_encoder_reranking(
             ...     "What is AI?",
@@ -161,30 +161,30 @@ class CrossEncoderRerankerMixin:
         # 2. Apply reranking if enabled
         if use_reranking and self.cross_encoder_reranker.enabled:
             reranker = self.cross_encoder_reranker
-            
+
             if len(candidates["results"]) > 0:
                 rerank_start = time.time() if metrics_available else None
-                
+
                 try:
                     reranked_docs = await reranker.rerank(
                         query=query,
                         documents=candidates["results"],
                         top_k=limit,
                     )
-                    
+
                     if metrics_available and rerank_start:
                         rag_reranking_duration.observe(time.time() - rerank_start)
-                    
+
                     results["results"] = reranked_docs
                     results["reranked"] = True
                     results["reranker_enabled"] = True
                     results["reranker_model"] = reranker.model_name
-                    
+
                     logger.info(
                         f"✅ Cross-encoder reranking applied: {len(candidates['results'])} candidates "
                         f"→ {len(reranked_docs)} results using {reranker.model_name}"
                     )
-                    
+
                 except Exception as e:
                     logger.error(f"❌ Cross-encoder reranking failed: {e}")
                     # Fallback to vector search results (already set)
@@ -215,16 +215,16 @@ class CrossEncoderRerankerMixin:
     ) -> dict[str, Any]:
         """
         Full hybrid search pipeline with Cross-Encoder reranking.
-        
+
         Combines BM25 + Dense + Cross-Encoder reranking for optimal results:
         1. Hybrid search (BM25 + Dense vectors with RRF)
         2. Re-rank with cross-encoder
-        
+
         This is the most comprehensive search method, providing:
         - Keyword matching via BM25
         - Semantic matching via dense vectors
         - Precise relevance scoring via cross-encoder
-        
+
         Args:
             query: Search query
             user_level: User access level (0-3)
@@ -233,7 +233,7 @@ class CrossEncoderRerankerMixin:
             collection_override: Force specific collection
             use_reranking: Whether to apply reranking
             overfetch_factor: Candidate multiplier before reranking
-            
+
         Returns:
             Search results with full pipeline metadata
         """
@@ -251,7 +251,7 @@ class CrossEncoderRerankerMixin:
 
         # 1. Hybrid search with overfetch
         initial_limit = limit * overfetch_factor
-        
+
         try:
             candidates = await self.hybrid_search(
                 query=query,
@@ -290,27 +290,27 @@ class CrossEncoderRerankerMixin:
         if use_reranking and self.cross_encoder_reranker.enabled:
             if len(candidates["results"]) > 0:
                 rerank_start = time.time() if metrics_available else None
-                
+
                 try:
                     reranked_docs = await self.cross_encoder_reranker.rerank(
                         query=query,
                         documents=candidates["results"],
                         top_k=limit,
                     )
-                    
+
                     if metrics_available and rerank_start:
                         rag_reranking_duration.observe(time.time() - rerank_start)
-                    
+
                     results["results"] = reranked_docs
                     results["reranked"] = True
                     results["reranker_enabled"] = True
                     results["reranker_model"] = self.cross_encoder_reranker.model_name
-                    
+
                     logger.info(
                         f"✅ Hybrid + Cross-encoder pipeline complete: "
                         f"{len(candidates['results'])} candidates → {len(reranked_docs)} results"
                     )
-                    
+
                 except Exception as e:
                     logger.error(f"❌ Cross-encoder reranking failed: {e}")
                     results["rerank_error"] = str(e)
@@ -324,13 +324,13 @@ class CrossEncoderRerankerMixin:
 def add_cross_encoder_reranking(search_service: Any) -> None:
     """
     Dynamically add cross-encoder reranking methods to a SearchService instance.
-    
+
     This function monkey-patches the SearchService instance to add cross-encoder
     reranking capabilities without modifying the original class.
-    
+
     Args:
         search_service: An instance of SearchService to augment
-        
+
     Example:
         >>> from backend.services.search.search_service import SearchService
         >>> from backend.services.rag.reranker_integration import add_cross_encoder_reranking
@@ -340,7 +340,7 @@ def add_cross_encoder_reranking(search_service: Any) -> None:
         >>> results = await service.search_with_cross_encoder_reranking("query", user_level=2)
     """
     mixin = CrossEncoderRerankerMixin()
-    
+
     # Bind mixin methods to the search_service instance
     search_service._cross_encoder_reranker = None
     search_service._init_cross_encoder_reranker = mixin._init_cross_encoder_reranker.__get__(
@@ -350,40 +350,38 @@ def add_cross_encoder_reranking(search_service: Any) -> None:
         lambda self: self._init_cross_encoder_reranker()
     )
     search_service.search_with_cross_encoder_reranking = (
-        mixin.search_with_cross_encoder_reranking.__get__(
-            search_service, type(search_service)
-        )
+        mixin.search_with_cross_encoder_reranking.__get__(search_service, type(search_service))
     )
     search_service.hybrid_search_with_cross_encoder_reranking = (
         mixin.hybrid_search_with_cross_encoder_reranking.__get__(
             search_service, type(search_service)
         )
     )
-    
-    logger.info(f"✅ Cross-encoder reranking added to SearchService instance")
+
+    logger.info("✅ Cross-encoder reranking added to SearchService instance")
 
 
 class SearchServiceWithCrossEncoder:
     """
     SearchService with integrated Cross-Encoder reranking.
-    
+
     This is a convenience class that combines SearchService with
     CrossEncoderRerankerMixin for immediate use.
-    
+
     Example:
         >>> service = SearchServiceWithCrossEncoder()
         >>> results = await service.search_with_cross_encoder_reranking("What is AI?", user_level=2)
         >>> print(f"Top result: {results['results'][0]['text'][:100]}")
     """
-    
+
     def __new__(cls, *args, **kwargs):
         """Create a combined SearchService with reranking mixin."""
         from backend.services.search.search_service import SearchService
-        
+
         # Create a combined class dynamically
         class CombinedService(SearchService, CrossEncoderRerankerMixin):
             pass
-        
+
         return CombinedService(*args, **kwargs)
 
 
@@ -391,10 +389,10 @@ class SearchServiceWithCrossEncoder:
 def get_reranker_config() -> dict[str, Any]:
     """
     Get current reranker configuration from settings.
-    
+
     Returns:
         Dictionary with reranker configuration
-        
+
     Example:
         >>> config = get_reranker_config()
         >>> print(f"Model: {config['model']}, Enabled: {config['enabled']}")
@@ -413,24 +411,24 @@ def get_reranker_config() -> dict[str, Any]:
 def should_use_cross_encoder() -> bool:
     """
     Determine if cross-encoder reranking should be used.
-    
+
     Checks configuration and environment to decide whether to use
     cross-encoder reranking or fall back to other methods.
-    
+
     Returns:
         True if cross-encoder should be used, False otherwise
     """
     # Check if explicitly disabled
     if not getattr(settings, "enable_reranker", True):
         return False
-    
+
     # Check if sentence-transformers is available
     try:
         import sentence_transformers
+
         return True
     except ImportError:
         logger.warning(
-            "sentence-transformers not installed. "
-            "Cross-encoder reranking will be disabled."
+            "sentence-transformers not installed. Cross-encoder reranking will be disabled."
         )
         return False

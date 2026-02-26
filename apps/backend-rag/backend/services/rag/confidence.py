@@ -13,7 +13,7 @@ Reference: memory/langgraph-kg-evolution-plan.md (Phase 2)
 """
 
 import math
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 # ============================================================================

@@ -75,7 +75,9 @@ class DocumentState:
             content_hash=data["content_hash"],
             first_seen=datetime.fromisoformat(data["first_seen"]),
             last_checked=datetime.fromisoformat(data["last_checked"]),
-            last_changed=datetime.fromisoformat(data["last_changed"]) if data.get("last_changed") else None,
+            last_changed=datetime.fromisoformat(data["last_changed"])
+            if data.get("last_changed")
+            else None,
             change_count=data.get("change_count", 0),
             metadata=data.get("metadata", {}),
             is_active=data.get("is_active", True),
@@ -255,8 +257,12 @@ class ChangeDetector:
 
         # Update stats
         self.detection_stats["total_checked"] += len(documents)
-        self.detection_stats["new_documents"] += sum(1 for c in changes if c.change_type == ChangeType.NEW)
-        self.detection_stats["updated_documents"] += sum(1 for c in changes if c.change_type == ChangeType.UPDATED)
+        self.detection_stats["new_documents"] += sum(
+            1 for c in changes if c.change_type == ChangeType.NEW
+        )
+        self.detection_stats["updated_documents"] += sum(
+            1 for c in changes if c.change_type == ChangeType.UPDATED
+        )
         self.detection_stats["unchanged_documents"] += sum(
             1 for c in changes if c.change_type == ChangeType.UNCHANGED
         )
@@ -373,16 +379,18 @@ class ChangeDetector:
                 state.last_checked = now
                 await self._save_state(state)
 
-                deletions.append(ChangeEvent(
-                    document_id=doc_id,
-                    source_id=source_id,
-                    change_type=ChangeType.DELETED,
-                    detected_at=now,
-                    old_hash=state.content_hash,
-                    title=state.title,
-                    url=state.url,
-                    details={"previously_active": True},
-                ))
+                deletions.append(
+                    ChangeEvent(
+                        document_id=doc_id,
+                        source_id=source_id,
+                        change_type=ChangeType.DELETED,
+                        detected_at=now,
+                        old_hash=state.content_hash,
+                        title=state.title,
+                        url=state.url,
+                        details={"previously_active": True},
+                    )
+                )
 
         return deletions
 
@@ -394,8 +402,7 @@ class ChangeDetector:
         try:
             async with self.db_pool.acquire() as conn:
                 rows = await conn.fetch(
-                    "SELECT * FROM kg_monitored_documents WHERE source_id = $1",
-                    source_id
+                    "SELECT * FROM kg_monitored_documents WHERE source_id = $1", source_id
                 )
 
                 for row in rows:
@@ -491,7 +498,9 @@ class ChangeDetector:
             return
 
         # Only alert on new and updated documents (not unchanged or deleted)
-        alert_changes = [c for c in changes if c.change_type in (ChangeType.NEW, ChangeType.UPDATED)]
+        alert_changes = [
+            c for c in changes if c.change_type in (ChangeType.NEW, ChangeType.UPDATED)
+        ]
 
         if not alert_changes:
             return
@@ -551,10 +560,13 @@ class ChangeDetector:
 
         try:
             async with self.db_pool.acquire() as conn:
-                query = """
+                query = (
+                    """
                     SELECT * FROM kg_change_events
                     WHERE detected_at > NOW() - INTERVAL '%s hours'
-                """ % hours
+                """
+                    % hours
+                )
 
                 params = []
                 if source_id:

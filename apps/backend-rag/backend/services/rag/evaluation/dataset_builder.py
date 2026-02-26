@@ -78,40 +78,102 @@ LEGAL_QUESTION_TEMPLATES = [
 
 # Domain values for template filling
 VISA_TYPES = [
-    "KITAS", "KITAP", "Visa Kunjungan", "Visa B211A", "Visa B211B",
-    "Visa D", "Visa on Arrival", "E-Visa", "Multiple Entry Visa",
-    "Single Entry Visa", "Work Permit (IMTA)", "MERP", "Re-entry Permit",
-    "Telex Visa", "Calling Visa",
+    "KITAS",
+    "KITAP",
+    "Visa Kunjungan",
+    "Visa B211A",
+    "Visa B211B",
+    "Visa D",
+    "Visa on Arrival",
+    "E-Visa",
+    "Multiple Entry Visa",
+    "Single Entry Visa",
+    "Work Permit (IMTA)",
+    "MERP",
+    "Re-entry Permit",
+    "Telex Visa",
+    "Calling Visa",
 ]
 
 COMPANY_TYPES = [
-    "PT", "PT PMA", "CV", "Firma", "Perseorangan", "Koperasi",
-    "PT Perorangan", "PMA", "PMDN", "Representative Office",
-    "Branch Office", "Yayasan",
+    "PT",
+    "PT PMA",
+    "CV",
+    "Firma",
+    "Perseorangan",
+    "Koperasi",
+    "PT Perorangan",
+    "PMA",
+    "PMDN",
+    "Representative Office",
+    "Branch Office",
+    "Yayasan",
 ]
 
 BUSINESS_TYPES = [
-    "restoran", "kafe", "hotel", "villa", "rental mobil",
-    "toko retail", "e-commerce", "jasa konsultan", "kontraktor",
-    "importir", "eksportir", "manufaktur", "farmasi",
+    "restoran",
+    "kafe",
+    "hotel",
+    "villa",
+    "rental mobil",
+    "toko retail",
+    "e-commerce",
+    "jasa konsultan",
+    "kontraktor",
+    "importir",
+    "eksportir",
+    "manufaktur",
+    "farmasi",
 ]
 
 TAX_TYPES = [
-    "PPh 21", "PPh 23", "PPh 25", "PPh 26", "PPh 29",
-    "PPN", "PPNBM", "PBB", "BPHTB", "PPh Final",
-    "Tax Amnesty", "SPT Tahunan", "SPT Masa",
+    "PPh 21",
+    "PPh 23",
+    "PPh 25",
+    "PPh 26",
+    "PPh 29",
+    "PPN",
+    "PPNBM",
+    "PBB",
+    "BPHTB",
+    "PPh Final",
+    "Tax Amnesty",
+    "SPT Tahunan",
+    "SPT Masa",
 ]
 
 NATIONALITIES = [
-    "WNA", "WNI", "Amerika", "Australia", "Inggris",
-    "Jepang", "Korea", "Cina", "India", "Jerman",
-    "Prancis", "Belanda", "Malaysia", "Singapura",
+    "WNA",
+    "WNI",
+    "Amerika",
+    "Australia",
+    "Inggris",
+    "Jepang",
+    "Korea",
+    "Cina",
+    "India",
+    "Jerman",
+    "Prancis",
+    "Belanda",
+    "Malaysia",
+    "Singapura",
 ]
 
 LEGAL_TERMS = [
-    "hak milik", "hak guna bangunan", "hak pakai", "hak sewa",
-    "akta notaris", "perjanjian", "sertifikat", "IMB", "SLF",
-    "izin lingkungan", "AMDAL", "UKL-UPL", "NIB", "TDP",
+    "hak milik",
+    "hak guna bangunan",
+    "hak pakai",
+    "hak sewa",
+    "akta notaris",
+    "perjanjian",
+    "sertifikat",
+    "IMB",
+    "SLF",
+    "izin lingkungan",
+    "AMDAL",
+    "UKL-UPL",
+    "NIB",
+    "TDP",
 ]
 
 
@@ -189,28 +251,48 @@ class DatasetBuilder:
             "legal_term2": LEGAL_TERMS,
             "entity_type": ["perorangan", "badan usaha", "WNA", "WNI"],
             "legal_procedure": [
-                "pendirian PT", "perpanjangan KITAS", "pengurusan NPWP",
-                "pengajuan izin", "sertifikasi", "perjanjian",
+                "pendirian PT",
+                "perpanjangan KITAS",
+                "pengurusan NPWP",
+                "pengajuan izin",
+                "sertifikasi",
+                "perjanjian",
             ],
             "legal_action": [
-                "overstay", "tidak lapor SPT", "melanggar izin",
-                "bentrok kepentingan", "pelanggaran kontrak",
+                "overstay",
+                "tidak lapor SPT",
+                "melanggar izin",
+                "bentrok kepentingan",
+                "pelanggaran kontrak",
             ],
             "legal_service": [
-                "pendirian PT", "pengurusan visa", "konsultasi hukum",
-                "perjanjian", "sertifikasi",
+                "pendirian PT",
+                "pengurusan visa",
+                "konsultasi hukum",
+                "perjanjian",
+                "sertifikasi",
             ],
             "legal_application": [
-                "izin tinggal", "izin kerja", "NPWP", "NIB",
-                "perpanjangan dokumen", "banding pajak",
+                "izin tinggal",
+                "izin kerja",
+                "NPWP",
+                "NIB",
+                "perpanjangan dokumen",
+                "banding pajak",
             ],
             "legal_party": [
-                "pemegang saham", "direksi", "komisaris",
-                "karyawan", "pemilik properti", "WNA bekerja",
+                "pemegang saham",
+                "direksi",
+                "komisaris",
+                "karyawan",
+                "pemilik properti",
+                "WNA bekerja",
             ],
             "legal_dispute": [
-                "sengketa tanah", "perselisihan kontrak",
-                "banding pajak", "sengketa ketenagakerjaan",
+                "sengketa tanah",
+                "perselisihan kontrak",
+                "banding pajak",
+                "sengketa ketenagakerjaan",
             ],
         }
 
@@ -675,8 +757,12 @@ Jawaban (maksimal 3 paragraf, dalam Bahasa Indonesia):"""
                 },
                 "source_distribution": {
                     "expert": len([s for s in dataset if s.metadata.get("source") == "expert"]),
-                    "user": len([s for s in dataset if s.metadata.get("source") == "anonymized_user"]),
-                    "synthetic": len([s for s in dataset if s.metadata.get("source") == "synthetic"]),
+                    "user": len(
+                        [s for s in dataset if s.metadata.get("source") == "anonymized_user"]
+                    ),
+                    "synthetic": len(
+                        [s for s in dataset if s.metadata.get("source") == "synthetic"]
+                    ),
                 },
             },
             "samples": [s.to_dict() for s in dataset],
@@ -697,7 +783,7 @@ Jawaban (maksimal 3 paragraf, dalam Bahasa Indonesia):"""
         Returns:
             List of evaluation samples
         """
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(filepath, encoding="utf-8") as f:
             data = json.load(f)
 
         samples = [EvaluationSample(**s) for s in data["samples"]]

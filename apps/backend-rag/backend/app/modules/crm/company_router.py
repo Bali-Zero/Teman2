@@ -2,7 +2,8 @@
 Company Router - API endpoints for Company-Centric CRM
 Uses asyncpg like other CRM routers
 """
-from typing import Any, List, Optional
+
+from typing import Any
 
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -13,6 +14,7 @@ router = APIRouter(prefix="/crm/companies", tags=["CRM Companies"])
 
 
 # ========== HELPER FUNCTIONS ==========
+
 
 def company_record_to_dict(record: asyncpg.Record) -> dict:
     """Convert asyncpg record to dict for Company"""
@@ -51,12 +53,13 @@ def company_record_to_dict(record: asyncpg.Record) -> dict:
 
 # ========== COMPANY ENDPOINTS ==========
 
-@router.get("", response_model=List[dict[str, Any]])
+
+@router.get("", response_model=list[dict[str, Any]])
 async def list_companies(
     request: Request,
-    search: Optional[str] = Query(None, description="Search by name, NIB, or NPWP"),
-    status: Optional[str] = Query(None, description="Filter by status"),
-    kbli: Optional[str] = Query(None, description="Filter by KBLI code"),
+    search: str | None = Query(None, description="Search by name, NIB, or NPWP"),
+    status: str | None = Query(None, description="Filter by status"),
+    kbli: str | None = Query(None, description="Filter by KBLI code"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: asyncpg.Pool = Depends(get_database_pool),
@@ -65,36 +68,35 @@ async def list_companies(
     """List all companies with optional filters"""
     query = "SELECT * FROM companies WHERE 1=1"
     params = []
-    
+
     if search:
         query += " AND (company_name ILIKE $1 OR nib ILIKE $1 OR npwp_company ILIKE $1)"
         params.append(f"%{search}%")
-    
+
     if status:
         query += f" AND status = ${len(params) + 1}"
         params.append(status)
-    
+
     if kbli:
         query += f" AND kbli_code = ${len(params) + 1}"
         params.append(kbli)
-    
+
     query += f" ORDER BY company_name LIMIT ${len(params) + 1} OFFSET ${len(params) + 2}"
     params.extend([limit, skip])
-    
+
     async with db.acquire() as conn:
         rows = await conn.fetch(query, *params)
-        
+
         companies = []
         for row in rows:
             comp = company_record_to_dict(row)
             # Get associates count
             count = await conn.fetchval(
-                "SELECT COUNT(*) FROM client_company_links WHERE company_id = $1",
-                comp["id"]
+                "SELECT COUNT(*) FROM client_company_links WHERE company_id = $1", comp["id"]
             )
             comp["associates_count"] = count
             companies.append(comp)
-        
+
         return companies
 
 
@@ -107,7 +109,7 @@ async def create_company(
 ):
     """Create a new company"""
     user_email = current_user.get("email", "system")
-    
+
     query = """
         INSERT INTO companies (
             company_name, company_type, kbli_code, nib, npwp_company,
@@ -116,7 +118,7 @@ async def create_company(
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11)
         RETURNING id, uuid, company_name, company_type, status
     """
-    
+
     async with db.acquire() as conn:
         row = await conn.fetchrow(
             query,
@@ -132,7 +134,7 @@ async def create_company(
             data.get("company_phone"),
             user_email,
         )
-        
+
         return {
             "id": row["id"],
             "uuid": row["uuid"],
@@ -155,9 +157,9 @@ async def get_company(
         row = await conn.fetchrow("SELECT * FROM companies WHERE id = $1", company_id)
         if not row:
             raise HTTPException(status_code=404, detail="Company not found")
-        
+
         company = company_record_to_dict(row)
-        
+
         # Get associates
         associates = await conn.fetch(
             """
@@ -166,9 +168,9 @@ async def get_company(
             JOIN clients c ON ccl.client_id = c.id
             WHERE ccl.company_id = $1
             """,
-            company_id
+            company_id,
         )
-        
+
         # Get documents
         documents = await conn.fetch(
             """
@@ -179,15 +181,14 @@ async def get_company(
             WHERE company_id = $1
             ORDER BY created_at DESC
             """,
-            company_id
+            company_id,
         )
-        
+
         # Get tax record
         tax_row = await conn.fetchrow(
-            "SELECT * FROM tax_records WHERE entity_type = 'company' AND entity_id = $1",
-            company_id
+            "SELECT * FROM tax_records WHERE entity_type = 'company' AND entity_id = $1", company_id
         )
-        
+
         company["associates"] = [
             {
                 "link_id": a["id"],
@@ -202,7 +203,7 @@ async def get_company(
             }
             for a in associates
         ]
-        
+
         company["documents"] = [
             {
                 "id": d["id"],
@@ -219,7 +220,7 @@ async def get_company(
             }
             for d in documents
         ]
-        
+
         if tax_row:
             company["tax_record"] = {
                 "id": tax_row["id"],
@@ -227,9 +228,11 @@ async def get_company(
                 "npwp_status": tax_row["npwp_status"],
                 "tax_center": tax_row["tax_center"],
                 "compliance_status": tax_row["compliance_status"],
-                "next_filing_date": tax_row["next_filing_date"].isoformat() if tax_row["next_filing_date"] else None,
+                "next_filing_date": tax_row["next_filing_date"].isoformat()
+                if tax_row["next_filing_date"]
+                else None,
             }
-        
+
         return company
 
 
@@ -243,38 +246,52 @@ async def update_company(
 ):
     """Update company details"""
     user_email = current_user.get("email", "system")
-    
+
     # Build dynamic update query
     allowed_fields = [
-        "company_name", "company_type", "kbli_code", "nib", "npwp_company",
-        "akta_pendirian_no", "akta_pendirian_date", "akta_perubahan_no",
-        "akta_perubahan_date", "sk_menhumkam_no", "sk_menhumkam_date",
-        "registered_address", "office_address", "city", "province",
-        "postal_code", "company_phone", "company_email", "status"
+        "company_name",
+        "company_type",
+        "kbli_code",
+        "nib",
+        "npwp_company",
+        "akta_pendirian_no",
+        "akta_pendirian_date",
+        "akta_perubahan_no",
+        "akta_perubahan_date",
+        "sk_menhumkam_no",
+        "sk_menhumkam_date",
+        "registered_address",
+        "office_address",
+        "city",
+        "province",
+        "postal_code",
+        "company_phone",
+        "company_email",
+        "status",
     ]
-    
+
     updates = []
     params = []
     for field, value in data.items():
         if field in allowed_fields and value is not None:
             updates.append(f"{field} = ${len(params) + 1}")
             params.append(value)
-    
+
     if not updates:
         raise HTTPException(status_code=400, detail="No valid fields to update")
-    
+
     updates.append(f"updated_by = ${len(params) + 1}")
     updates.append("updated_at = NOW()")
     params.append(user_email)
     params.append(company_id)
-    
+
     query = f"UPDATE companies SET {', '.join(updates)} WHERE id = ${len(params)} RETURNING id, company_name"
-    
+
     async with db.acquire() as conn:
         row = await conn.fetchrow(query, *params)
         if not row:
             raise HTTPException(status_code=404, detail="Company not found")
-        
+
         return {
             "id": row["id"],
             "company_name": row["company_name"],
@@ -294,13 +311,14 @@ async def delete_company(
         result = await conn.execute("DELETE FROM companies WHERE id = $1", company_id)
         if result == "DELETE 0":
             raise HTTPException(status_code=404, detail="Company not found")
-        
+
         return {"message": "Company deleted successfully"}
 
 
 # ========== CLIENT-COMPANY LINK ENDPOINTS ==========
 
-@router.get("/{company_id}/clients", response_model=List[dict[str, Any]])
+
+@router.get("/{company_id}/clients", response_model=list[dict[str, Any]])
 async def get_company_clients(
     request: Request,
     company_id: int,
@@ -313,7 +331,7 @@ async def get_company_clients(
         exists = await conn.fetchval("SELECT 1 FROM companies WHERE id = $1", company_id)
         if not exists:
             raise HTTPException(status_code=404, detail="Company not found")
-        
+
         rows = await conn.fetch(
             """
             SELECT ccl.*, c.full_name as client_name
@@ -321,9 +339,9 @@ async def get_company_clients(
             JOIN clients c ON ccl.client_id = c.id
             WHERE ccl.company_id = $1
             """,
-            company_id
+            company_id,
         )
-        
+
         return [
             {
                 "link_id": r["id"],
@@ -355,15 +373,16 @@ async def link_client_to_company(
         exists = await conn.fetchval("SELECT 1 FROM companies WHERE id = $1", company_id)
         if not exists:
             raise HTTPException(status_code=404, detail="Company not found")
-        
+
         # Check if link already exists
         existing = await conn.fetchrow(
             "SELECT 1 FROM client_company_links WHERE client_id = $1 AND company_id = $2",
-            client_id, company_id
+            client_id,
+            company_id,
         )
         if existing:
             raise HTTPException(status_code=400, detail="Client is already linked to this company")
-        
+
         row = await conn.fetchrow(
             """
             INSERT INTO client_company_links (
@@ -380,7 +399,7 @@ async def link_client_to_company(
             data.get("shares_count"),
             data.get("start_date"),
         )
-        
+
         return {
             "link_id": row["id"],
             "message": "Client linked to company successfully",
@@ -399,21 +418,23 @@ async def unlink_client_from_company(
     async with db.acquire() as conn:
         result = await conn.execute(
             "DELETE FROM client_company_links WHERE client_id = $1 AND company_id = $2",
-            client_id, company_id
+            client_id,
+            company_id,
         )
         if result == "DELETE 0":
             raise HTTPException(status_code=404, detail="Link not found")
-        
+
         return {"message": "Client unlinked from company successfully"}
 
 
 # ========== COMPANY DOCUMENT ENDPOINTS ==========
 
-@router.get("/{company_id}/documents", response_model=List[dict[str, Any]])
+
+@router.get("/{company_id}/documents", response_model=list[dict[str, Any]])
 async def get_company_documents(
     request: Request,
     company_id: int,
-    doc_type: Optional[str] = Query(None, description="Filter by document type"),
+    doc_type: str | None = Query(None, description="Filter by document type"),
     db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
@@ -429,15 +450,15 @@ async def get_company_documents(
             WHERE company_id = $1
         """
         params = [company_id]
-        
+
         if doc_type:
             query += " AND document_type = $2"
             params.append(doc_type)
-        
+
         query += " ORDER BY created_at DESC"
-        
+
         rows = await conn.fetch(query, *params)
-        
+
         return [
             {
                 "id": r["id"],
@@ -474,13 +495,13 @@ async def create_company_document(
 ):
     """Add a document to a company"""
     user_email = current_user.get("email", "system")
-    
+
     async with db.acquire() as conn:
         # Verify company exists
         exists = await conn.fetchval("SELECT 1 FROM companies WHERE id = $1", company_id)
         if not exists:
             raise HTTPException(status_code=404, detail="Company not found")
-        
+
         row = await conn.fetchrow(
             """
             INSERT INTO company_documents (
@@ -506,7 +527,7 @@ async def create_company_document(
             data.get("mime_type"),
             user_email,
         )
-        
+
         return {
             "id": row["id"],
             "uuid": row["uuid"],
@@ -525,16 +546,16 @@ async def delete_company_document(
     """Delete a company document"""
     async with db.acquire() as conn:
         result = await conn.execute(
-            "DELETE FROM company_documents WHERE id = $1 AND company_id = $2",
-            doc_id, company_id
+            "DELETE FROM company_documents WHERE id = $1 AND company_id = $2", doc_id, company_id
         )
         if result == "DELETE 0":
             raise HTTPException(status_code=404, detail="Document not found")
-        
+
         return {"message": "Document deleted successfully"}
 
 
 # ========== TAX RECORD ENDPOINTS ==========
+
 
 @router.get("/{company_id}/tax", response_model=dict[str, Any])
 async def get_company_tax_record(
@@ -546,13 +567,12 @@ async def get_company_tax_record(
     """Get tax record for a company"""
     async with db.acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT * FROM tax_records WHERE entity_type = 'company' AND entity_id = $1",
-            company_id
+            "SELECT * FROM tax_records WHERE entity_type = 'company' AND entity_id = $1", company_id
         )
-        
+
         if not row:
             return {"message": "No tax record found for this company"}
-        
+
         # Get tax documents
         docs = await conn.fetch(
             """
@@ -563,9 +583,9 @@ async def get_company_tax_record(
             WHERE entity_type = 'company' AND entity_id = $1
             ORDER BY created_at DESC
             """,
-            company_id
+            company_id,
         )
-        
+
         return {
             "id": row["id"],
             "uuid": row["uuid"],
@@ -579,8 +599,12 @@ async def get_company_tax_record(
             "is_pph29_registered": row["is_pph29_registered"],
             "tax_year": row["tax_year"],
             "reporting_period": row["reporting_period"],
-            "last_filing_date": row["last_filing_date"].isoformat() if row["last_filing_date"] else None,
-            "next_filing_date": row["next_filing_date"].isoformat() if row["next_filing_date"] else None,
+            "last_filing_date": row["last_filing_date"].isoformat()
+            if row["last_filing_date"]
+            else None,
+            "next_filing_date": row["next_filing_date"].isoformat()
+            if row["next_filing_date"]
+            else None,
             "compliance_status": row["compliance_status"],
             "custom_fields": row["custom_fields"],
             "tax_documents": [
@@ -602,7 +626,8 @@ async def get_company_tax_record(
 
 # ========== CLIENT-SPECIFIC COMPANY ENDPOINTS ==========
 
-@router.get("/by-client/{client_id}", response_model=List[dict[str, Any]])
+
+@router.get("/by-client/{client_id}", response_model=list[dict[str, Any]])
 async def get_client_companies(
     request: Request,
     client_id: int,
@@ -622,9 +647,9 @@ async def get_client_companies(
             JOIN companies c ON ccl.company_id = c.id
             WHERE ccl.client_id = $1
             """,
-            client_id
+            client_id,
         )
-        
+
         return [
             {
                 "company_id": r["company_id"],

@@ -8,11 +8,11 @@ Endpoints:
 - GET /api/agent/health - Check agent system health
 """
 
-from typing import Dict, Any, Optional
-from datetime import datetime
 import logging
+from datetime import datetime
+from typing import Any
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from backend.app.agents.graph import invoke_rag_workflow
@@ -27,17 +27,19 @@ router = APIRouter(prefix="/api/agent", tags=["agent"])
 # Request/Response Models
 # ============================================================================
 
+
 class AgentInvokeRequest(BaseModel):
     """
     Request model for invoking the agent workflow.
     """
+
     question: str = Field(
         ...,
         description="User's question to be processed by the RAG workflow",
         min_length=1,
         max_length=2000,
     )
-    metadata: Optional[Dict[str, Any]] = Field(
+    metadata: dict[str, Any] | None = Field(
         default=None,
         description="Optional metadata (user_id, session_id, etc.)",
     )
@@ -50,7 +52,7 @@ class AgentInvokeRequest(BaseModel):
                     "user_id": "user_123",
                     "session_id": "session_456",
                     "language": "en",
-                }
+                },
             }
         }
 
@@ -59,6 +61,7 @@ class AgentInvokeResponse(BaseModel):
     """
     Response model for agent workflow invocation.
     """
+
     success: bool = Field(..., description="Whether the workflow completed successfully")
     question: str = Field(..., description="The original question")
     generation: str = Field(..., description="The generated answer")
@@ -68,11 +71,11 @@ class AgentInvokeResponse(BaseModel):
     )
     step_count: int = Field(..., description="Number of steps executed")
     timestamp: datetime = Field(..., description="When the workflow completed")
-    metadata: Optional[Dict[str, Any]] = Field(
+    metadata: dict[str, Any] | None = Field(
         default=None,
         description="Request metadata passed through",
     )
-    errors: Optional[list[str]] = Field(
+    errors: list[str] | None = Field(
         default=None,
         description="List of errors encountered (if any)",
     )
@@ -96,15 +99,17 @@ class AgentHealthResponse(BaseModel):
     """
     Response model for agent health check.
     """
+
     status: str = Field(..., description="Health status: healthy | degraded | unhealthy")
     graph_loaded: bool = Field(..., description="Whether the LangGraph is loaded")
     timestamp: datetime = Field(..., description="Health check timestamp")
-    message: Optional[str] = Field(default=None, description="Additional information")
+    message: str | None = Field(default=None, description="Additional information")
 
 
 # ============================================================================
 # Endpoints
 # ============================================================================
+
 
 @router.post("/invoke", response_model=AgentInvokeResponse)
 async def invoke_agent(
@@ -134,17 +139,21 @@ async def invoke_agent(
       }'
     ```
     """
-    logger.info(f"[AGENT_API] Received invoke request from user: {current_user.get('email', 'unknown')}")
+    logger.info(
+        f"[AGENT_API] Received invoke request from user: {current_user.get('email', 'unknown')}"
+    )
     logger.info(f"[AGENT_API] Question: {request.question[:100]}")
 
     try:
         # Enrich metadata with user context
         metadata = request.metadata or {}
-        metadata.update({
-            "user_email": current_user.get("email"),
-            "user_id": current_user.get("id"),
-            "request_timestamp": datetime.now().isoformat(),
-        })
+        metadata.update(
+            {
+                "user_email": current_user.get("email"),
+                "user_id": current_user.get("id"),
+                "request_timestamp": datetime.now().isoformat(),
+            }
+        )
 
         # Invoke the workflow
         final_state = invoke_rag_workflow(
@@ -171,7 +180,9 @@ async def invoke_agent(
             errors=errors,
         )
 
-        logger.info(f"[AGENT_API] Workflow completed. Success: {success}, Steps: {response.step_count}")
+        logger.info(
+            f"[AGENT_API] Workflow completed. Success: {success}, Steps: {response.step_count}"
+        )
         return response
 
     except Exception as e:

@@ -4,9 +4,9 @@ Notification Models
 Data models for the notification system.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -38,18 +38,18 @@ class ClientInfo(BaseModel):
     email: str
     full_name: str
     preferred_language: str = "en"  # ISO 639-1 code
-    team_leader_email: Optional[str] = None
-    date_of_birth: Optional[datetime] = None
-    passport_expiry: Optional[datetime] = None
-    passport_number: Optional[str] = None
-    visa_expiry: Optional[datetime] = None
-    visa_type: Optional[str] = None
+    team_leader_email: str | None = None
+    date_of_birth: datetime | None = None
+    passport_expiry: datetime | None = None
+    passport_number: str | None = None
+    visa_expiry: datetime | None = None
+    visa_type: str | None = None
 
 
 class ClientAlert(BaseModel):
     """An alert generated for a client."""
 
-    id: Optional[int] = None
+    id: int | None = None
     client_id: int
     alert_type: AlertType
     status: AlertStatus = AlertStatus.PENDING
@@ -57,26 +57,15 @@ class ClientAlert(BaseModel):
     email_subject: str
     email_body: str
     created_at: datetime
-    sent_at: Optional[datetime] = None
-    error_message: Optional[str] = None
-
-
-class EmailTemplate(BaseModel):
-    """Email template for a specific language and alert type."""
-
-    language: str
-    alert_type: AlertType
-    subject: str
-    body_html: str
-    body_text: str
-    from_name: str = "Bali Zero Team"
-    from_email: str = "notifications@balizero.com"
+    sent_at: datetime | None = None
+    error_message: str | None = None
+    retry_count: int = 0
 
 
 class NotificationResult(BaseModel):
     """Result of a notification send attempt."""
 
     success: bool
-    alert_id: Optional[int] = None
-    error_message: Optional[str] = None
-    retry_after: Optional[int] = None  # Seconds to wait before retry
+    alert_id: int | None = None
+    error_message: str | None = None
+    retry_after: int | None = None  # Seconds to wait before retry

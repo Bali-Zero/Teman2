@@ -40,8 +40,6 @@ from backend.app.utils.tracing import (
     trace_span,
 )
 from backend.services.llm_clients.pricing import TokenUsage
-from backend.services.tools.definitions import AgentState, AgentStep
-
 from backend.services.rag.agentic.query_helpers import detect_query_language
 from backend.services.rag.agentic.reasoning_utils import (
     calculate_evidence_score,
@@ -52,6 +50,7 @@ from backend.services.rag.agentic.reasoning_utils import (
 )
 from backend.services.rag.agentic.response_processor import post_process_response
 from backend.services.rag.agentic.tool_executor import execute_tool, parse_tool_call
+from backend.services.tools.definitions import AgentState, AgentStep
 
 logger = logging.getLogger(__name__)
 

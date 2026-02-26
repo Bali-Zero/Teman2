@@ -5,7 +5,7 @@ Author: Claude Sonnet 4.5
 Date: 2026-02-10
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass

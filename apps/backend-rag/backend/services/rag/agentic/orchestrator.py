@@ -40,11 +40,6 @@ from backend.services.misc.emotional_attunement import EmotionalAttunementServic
 from backend.services.misc.followup_service import FollowupService
 from backend.services.misc.golden_answer_service import GoldenAnswerService
 from backend.services.rag.agentic.entity_extractor import EntityExtractionService
-from backend.services.rag.kg_enhanced_retrieval import KGEnhancedRetrieval
-from backend.services.response.cleaner import OUT_OF_DOMAIN_RESPONSES, is_out_of_domain
-from backend.services.search.semantic_cache import SemanticCache
-from backend.services.tools.definitions import BaseTool
-
 from backend.services.rag.agentic.llm_gateway import LLMGateway
 from backend.services.rag.agentic.memory_handler import MemoryHandler
 from backend.services.rag.agentic.pipeline import create_default_pipeline
@@ -58,6 +53,10 @@ from backend.services.rag.agentic.query_helpers import (
 from backend.services.rag.agentic.reasoning import ReasoningEngine, detect_team_query
 from backend.services.rag.agentic.schema import CoreResult
 from backend.services.rag.agentic.tool_executor import execute_tool
+from backend.services.rag.kg_enhanced_retrieval import KGEnhancedRetrieval
+from backend.services.response.cleaner import OUT_OF_DOMAIN_RESPONSES, is_out_of_domain
+from backend.services.search.semantic_cache import SemanticCache
+from backend.services.tools.definitions import BaseTool
 
 logger = logging.getLogger(__name__)
 
@@ -76,8 +75,10 @@ class StreamEvent(BaseModel):
 
 # Alias for backward compatibility (used internally)
 _wrap_query_with_language_instruction = wrap_query_with_language_instruction
-_is_conversation_recall_query = is_conversation_recall_query
 
+# Re-export for backward compatibility (tests mock this path)
+from backend.services.rag.agentic.context_manager import get_user_context  # noqa: F401, E402
+_is_conversation_recall_query = is_conversation_recall_query
 
 class AgenticRAGOrchestrator:
     """
@@ -194,23 +195,33 @@ class AgenticRAGOrchestrator:
         # Initialize KG LangGraph Orchestrator (Phase 3)
         # Feature flag: Set to None to disable LangGraph workflow synthesis
         self.kg_langgraph_orchestrator = None
-        kg_langgraph_enabled = os.getenv("ENABLE_KG_LANGGRAPH", "false").lower() in ("true", "1", "yes")
-        
+        kg_langgraph_enabled = os.getenv("ENABLE_KG_LANGGRAPH", "false").lower() in (
+            "true",
+            "1",
+            "yes",
+        )
+
         if db_pool and kg_langgraph_enabled:
             try:
                 from backend.services.rag.kg_langgraph_orchestrator import KGLangGraphOrchestrator
 
                 self.kg_langgraph_orchestrator = KGLangGraphOrchestrator(db_pool)
-                logger.info("✅ KG LangGraph Orchestrator initialized (Phase 3 - ENABLE_KG_LANGGRAPH=true)")
+                logger.info(
+                    "✅ KG LangGraph Orchestrator initialized (Phase 3 - ENABLE_KG_LANGGRAPH=true)"
+                )
             except ImportError as e:
                 logger.warning(f"⚠️ KG LangGraph Orchestrator not available: {e}")
             except Exception as e:
-                logger.error(f"❌ Failed to initialize KG LangGraph Orchestrator: {e}", exc_info=True)
+                logger.error(
+                    f"❌ Failed to initialize KG LangGraph Orchestrator: {e}", exc_info=True
+                )
         else:
             if not db_pool:
                 logger.warning("⚠️ KG LangGraph Orchestrator DISABLED: db_pool not available")
             elif not kg_langgraph_enabled:
-                logger.warning("⚠️ KG LangGraph Orchestrator DISABLED: ENABLE_KG_LANGGRAPH not set to 'true'")
+                logger.warning(
+                    "⚠️ KG LangGraph Orchestrator DISABLED: ENABLE_KG_LANGGRAPH not set to 'true'"
+                )
 
         # Initialize Follow-up & Golden Answer services
         self.followup_service = FollowupService()
@@ -242,7 +253,9 @@ class AgenticRAGOrchestrator:
         # Initialize OrchestratorCore (delegates main logic)
         from backend.services.rag.agentic.orchestrator_core import OrchestratorCore
         from backend.services.rag.agentic.orchestrator_streaming import OrchestratorStreamingManager
-        from backend.services.rag.agentic.orchestrator_streaming_core import OrchestratorStreamingCore
+        from backend.services.rag.agentic.orchestrator_streaming_core import (
+            OrchestratorStreamingCore,
+        )
 
         self.core = OrchestratorCore(
             llm_gateway=self.llm_gateway,
@@ -352,6 +365,43 @@ class AgenticRAGOrchestrator:
             },
             "timestamp": time.time(),
         }
+
+    # ------------------------------------------------------------------
+    # Backward-compatibility shims (delegate to memory_handler)
+    # ------------------------------------------------------------------
+
+    @property
+    def _memory_locks(self) -> dict:
+        """Backward-compat: delegate to memory_handler._memory_locks."""
+        return self.memory_handler._memory_locks
+
+    @property
+    def _lock_timeout(self) -> float:
+        """Backward-compat: delegate to memory_handler._lock_timeout."""
+        return self.memory_handler._lock_timeout
+
+    @_lock_timeout.setter
+    def _lock_timeout(self, value: float) -> None:
+        """Backward-compat: delegate to memory_handler._lock_timeout."""
+        self.memory_handler._lock_timeout = value
+
+    async def _get_memory_orchestrator(self) -> "MemoryOrchestrator | None":
+        """Backward-compat shim: delegate to memory_handler.get_memory_orchestrator()."""
+        return await self.memory_handler.get_memory_orchestrator()
+
+    async def _save_conversation_memory(
+        self,
+        user_id: str,
+        query: str,
+        answer: str,
+    ) -> None:
+        """Backward-compat shim: delegate to memory_handler.save_conversation_memory()."""
+        await self.memory_handler.save_conversation_memory(
+            user_id=user_id,
+            query=query,
+            answer=answer,
+            metrics_collector=metrics_collector,
+        )
 
     async def stream_query(
         self,

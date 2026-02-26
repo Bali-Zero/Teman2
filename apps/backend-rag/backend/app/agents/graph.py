@@ -13,12 +13,13 @@ PHASE 2: INTEGRATED WITH REAL SERVICES
 - Generate node → LLMGateway.send_message() (answer generation)
 """
 
-from typing import Dict, Any
-from datetime import datetime
-import logging
 import json
+import logging
+from datetime import datetime
+from typing import Any
 
-from langgraph.graph import StateGraph, END
+from langgraph.graph import END, StateGraph
+
 from backend.app.agents.state import WorkflowState
 
 logger = logging.getLogger(__name__)
@@ -50,6 +51,7 @@ def set_llm_gateway(gateway):
 # ============================================================================
 # Node Implementations (Real Service Integration)
 # ============================================================================
+
 
 async def retrieve_node(state: WorkflowState) -> WorkflowState:
     """
@@ -173,7 +175,9 @@ async def grade_node(state: WorkflowState) -> WorkflowState:
                     filtered_docs.append(doc)
                     relevance_scores.append(score)
 
-            logger.info(f"[GRADE_NODE] Score-filtered {len(documents)} -> {len(filtered_docs)} documents")
+            logger.info(
+                f"[GRADE_NODE] Score-filtered {len(documents)} -> {len(filtered_docs)} documents"
+            )
 
             execution_path = state.get("execution_path", [])
             execution_path.append("grade_score_based")
@@ -188,10 +192,12 @@ async def grade_node(state: WorkflowState) -> WorkflowState:
 
         # Real LLM-based grading
         # Construct grading prompt
-        doc_list = "\n\n".join([
-            f"Document {i+1} (score: {score:.3f}):\n{doc[:500]}..."
-            for i, (doc, score) in enumerate(zip(documents, retrieved_scores))
-        ])
+        doc_list = "\n\n".join(
+            [
+                f"Document {i + 1} (score: {score:.3f}):\n{doc[:500]}..."
+                for i, (doc, score) in enumerate(zip(documents, retrieved_scores))
+            ]
+        )
 
         grading_prompt = f"""You are a document relevance grader. Your task is to assess if documents are relevant to answer a question.
 
@@ -227,7 +233,8 @@ Your response (JSON array only):"""
         try:
             # Try to extract JSON array from response
             import re
-            json_match = re.search(r'\[([\d\.,\s]+)\]', response_text)
+
+            json_match = re.search(r"\[([\d\.,\s]+)\]", response_text)
             if json_match:
                 relevance_scores = json.loads(json_match.group(0))
             else:
@@ -236,12 +243,14 @@ Your response (JSON array only):"""
 
             # Ensure we have the right number of scores
             if len(relevance_scores) != len(documents):
-                logger.warning(f"[GRADE_NODE] Score count mismatch: {len(relevance_scores)} vs {len(documents)}")
+                logger.warning(
+                    f"[GRADE_NODE] Score count mismatch: {len(relevance_scores)} vs {len(documents)}"
+                )
                 # Pad or truncate
                 if len(relevance_scores) < len(documents):
                     relevance_scores.extend([0.5] * (len(documents) - len(relevance_scores)))
                 else:
-                    relevance_scores = relevance_scores[:len(documents)]
+                    relevance_scores = relevance_scores[: len(documents)]
 
         except (json.JSONDecodeError, ValueError, AttributeError) as e:
             logger.warning(f"[GRADE_NODE] Failed to parse LLM scores: {e}")
@@ -258,7 +267,9 @@ Your response (JSON array only):"""
                 filtered_docs.append(doc)
                 filtered_scores.append(score)
 
-        logger.info(f"[GRADE_NODE] LLM-filtered {len(documents)} -> {len(filtered_docs)} documents (threshold: {threshold})")
+        logger.info(
+            f"[GRADE_NODE] LLM-filtered {len(documents)} -> {len(filtered_docs)} documents (threshold: {threshold})"
+        )
 
         # Update execution tracking
         execution_path = state.get("execution_path", [])
@@ -327,10 +338,12 @@ This is a mock answer. Real generation requires LLMGateway to be initialized.
 
         # Real LLM generation
         # Construct generation prompt with RAG context
-        context = "\n\n---\n\n".join([
-            f"Context {i+1}:\n{doc[:1000]}"  # Limit context length
-            for i, doc in enumerate(filtered_docs[:5])  # Max 5 docs
-        ])
+        context = "\n\n---\n\n".join(
+            [
+                f"Context {i + 1}:\n{doc[:1000]}"  # Limit context length
+                for i, doc in enumerate(filtered_docs[:5])  # Max 5 docs
+            ]
+        )
 
         system_prompt = """You are Zantara, an expert AI assistant for Indonesian business and immigration matters.
 Your role is to provide accurate, helpful answers based on the provided context documents.
@@ -403,6 +416,7 @@ Your answer:"""
 # Conditional Edges (Routing Logic)
 # ============================================================================
 
+
 def should_continue_to_generation(state: WorkflowState) -> str:
     """
     Decision function: Should we proceed to generation or end?
@@ -423,6 +437,7 @@ def should_continue_to_generation(state: WorkflowState) -> str:
 # ============================================================================
 # Graph Construction
 # ============================================================================
+
 
 def create_rag_graph() -> StateGraph:
     """
@@ -459,7 +474,7 @@ def create_rag_graph() -> StateGraph:
         {
             "generate": "generate",
             END: END,
-        }
+        },
     )
 
     # Final edge: generate -> END
@@ -480,7 +495,7 @@ def create_rag_graph() -> StateGraph:
 rag_graph = create_rag_graph()
 
 
-async def invoke_rag_workflow(question: str, metadata: Dict[str, Any] = None) -> WorkflowState:
+async def invoke_rag_workflow(question: str, metadata: dict[str, Any] = None) -> WorkflowState:
     """
     Invoke the RAG workflow with a question.
 

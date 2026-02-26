@@ -18,10 +18,9 @@ import logging
 import time
 from typing import Any
 
-from backend.app.core.config import settings
+from backend.app.core.logging_config import get_performance_logger
 from backend.llm.base import LLMMessage
 from backend.llm.client import UnifiedLLMClient, create_default_client
-from backend.app.core.logging_config import get_performance_logger
 
 logger = logging.getLogger(__name__)
 
@@ -225,9 +224,7 @@ class RAGASEvaluator:
             f"RAGASEvaluator initialized (cache={'enabled' if enable_cache else 'disabled'})"
         )
 
-    def _get_cache_key(
-        self, query: str, context: list[str], answer: str, metric: str
-    ) -> str:
+    def _get_cache_key(self, query: str, context: list[str], answer: str, metric: str) -> str:
         """Generate cache key for evaluation result."""
         content = f"{query}:{':'.join(context)}:{answer}:{metric}"
         return hashlib.sha256(content.encode()).hexdigest()[:32]
@@ -256,9 +253,7 @@ class RAGASEvaluator:
                 "timestamp": time.time(),
             }
 
-    async def _call_llm_evaluator(
-        self, prompt: str, temperature: float = 0.1
-    ) -> dict[str, Any]:
+    async def _call_llm_evaluator(self, prompt: str, temperature: float = 0.1) -> dict[str, Any]:
         """
         Call LLM for evaluation with structured output.
 
@@ -322,9 +317,7 @@ class RAGASEvaluator:
                 "error": str(e),
             }
 
-    async def evaluate_faithfulness(
-        self, answer: str, context: list[str]
-    ) -> dict[str, Any]:
+    async def evaluate_faithfulness(self, answer: str, context: list[str]) -> dict[str, Any]:
         """
         Evaluate faithfulness - answer is grounded in retrieved context.
 
@@ -341,7 +334,7 @@ class RAGASEvaluator:
             return cached
 
         context_text = "\n\n".join(
-            [f"[Konteks {i+1}]\n{chunk}" for i, chunk in enumerate(context)]
+            [f"[Konteks {i + 1}]\n{chunk}" for i, chunk in enumerate(context)]
         )
 
         prompt = FAITHFULNESS_PROMPT.format(
@@ -356,9 +349,7 @@ class RAGASEvaluator:
 
         return result
 
-    async def evaluate_answer_relevance(
-        self, query: str, answer: str
-    ) -> dict[str, Any]:
+    async def evaluate_answer_relevance(self, query: str, answer: str) -> dict[str, Any]:
         """
         Evaluate answer relevance - answer addresses the question.
 
@@ -405,7 +396,7 @@ class RAGASEvaluator:
             return cached
 
         context_text = "\n\n".join(
-            [f"[Konteks {i+1}]\n{chunk}" for i, chunk in enumerate(context)]
+            [f"[Konteks {i + 1}]\n{chunk}" for i, chunk in enumerate(context)]
         )
 
         prompt = CONTEXT_PRECISION_PROMPT.format(
@@ -440,7 +431,7 @@ class RAGASEvaluator:
             return cached
 
         context_text = "\n\n".join(
-            [f"[Konteks {i+1}]\n{chunk}" for i, chunk in enumerate(context)]
+            [f"[Konteks {i + 1}]\n{chunk}" for i, chunk in enumerate(context)]
         )
 
         prompt = CONTEXT_RECALL_PROMPT.format(
@@ -474,7 +465,7 @@ class RAGASEvaluator:
             return cached
 
         context_text = "\n\n".join(
-            [f"[Konteks {i+1}]\n{chunk}" for i, chunk in enumerate(context)]
+            [f"[Konteks {i + 1}]\n{chunk}" for i, chunk in enumerate(context)]
         )
 
         prompt = CONTEXT_ENTITY_RECALL_PROMPT.format(
@@ -545,9 +536,7 @@ class RAGASEvaluator:
 
             # Context precision requires ground truth
             if "context_precision" in metrics_to_compute and ground_truth:
-                precision = await self.evaluate_context_precision(
-                    query, context, ground_truth
-                )
+                precision = await self.evaluate_context_precision(query, context, ground_truth)
                 results["context_precision"] = precision["score"]
                 detailed_results["context_precision"] = precision
 

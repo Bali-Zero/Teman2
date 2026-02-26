@@ -1,32 +1,51 @@
 """
 Health Monitor Service
-Monitors system health and sends alerts on downtime or degradation
+Monitors system health and sends alerts on downtime or degradation.
+
+Enhanced with:
+- Resource monitoring (memory, CPU) for Fly.io 4GB VM
+- Cold start tracking
+- DB pool saturation alerts
+- Restart counter
 """
 
 import asyncio
 import contextlib
 import logging
+import os
+import time
 from datetime import datetime, timedelta
 from typing import Any
+
+import psutil
 
 from backend.services.monitoring.alert_service import AlertLevel, AlertService
 
 logger = logging.getLogger(__name__)
 
+# Track boot time for cold start and restart metrics
+_BOOT_TIME = time.monotonic()
+_BOOT_TIMESTAMP = datetime.utcnow()
+
+# Fly.io VM memory limit (bytes). Default 4GB, override via FLY_VM_MEMORY_MB.
+_VM_MEMORY_MB = int(os.getenv("FLY_VM_MEMORY_MB", "4096"))
+_VM_MEMORY_BYTES = _VM_MEMORY_MB * 1024 * 1024
+
 
 class HealthMonitor:
     """
-    Monitors system health and sends alerts when services go down
+    Monitors system health and sends alerts when services go down.
 
     Features:
     - Periodic health checks every 60 seconds
-    - Alert on service downtime
-    - Alert on database connection failures
-    - Alert on AI service failures
-    - Exponential backoff for repeated alerts
+    - Alert on service downtime / recovery
+    - Resource monitoring: memory RSS, CPU usage
+    - DB pool saturation detection
+    - Cold start duration tracking
+    - Restart counter (increments per boot)
     """
 
-    def __init__(self, alert_service: AlertService, check_interval: int = 60):
+    def __init__(self, alert_service: AlertService, check_interval: int = 60) -> None:
         self.alert_service = alert_service
         self.check_interval = check_interval
         self.last_status: dict[str, bool] = {}
@@ -36,14 +55,27 @@ class HealthMonitor:
         self.task: asyncio.Task | None = None
 
         # Service injections
-        self.memory_service = None
-        self.intelligent_router = None
-        self.tool_executor = None
-        self.app_state = None  # Reference to app.state for dynamic lookups
+        self.memory_service: Any = None
+        self.intelligent_router: Any = None
+        self.tool_executor: Any = None
+        self.app_state: Any = None
+
+        # Resource monitoring state
+        self._resource_alert_cooldown: dict[str, datetime] = {}
+        self._cold_start_duration: float | None = None
+        self._first_request_seen = False
+        self._restart_count = self._read_restart_count()
 
         logger.info(f"✅ HealthMonitor initialized (check_interval={check_interval}s)")
 
-    async def start(self):
+    def record_first_request(self) -> None:
+        """Call this when the first real request (non-health) is served."""
+        if not self._first_request_seen:
+            self._first_request_seen = True
+            self._cold_start_duration = time.monotonic() - _BOOT_TIME
+            logger.info(f"⏱️ Cold start duration: {self._cold_start_duration:.2f}s")
+
+    async def start(self) -> None:
         """Start the health monitoring loop"""
         if self.running and self.task and not self.task.done():
             logger.warning("⚠️ HealthMonitor already running")
@@ -53,7 +85,7 @@ class HealthMonitor:
         self.task = asyncio.create_task(self._monitoring_loop())
         logger.info("🔍 HealthMonitor started")
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop the health monitoring loop"""
         self.running = False
         if self.task:
@@ -62,14 +94,13 @@ class HealthMonitor:
                 await self.task
         logger.info("🛑 HealthMonitor stopped")
 
-    async def _monitoring_loop(self):
+    async def _monitoring_loop(self) -> None:
         """Main monitoring loop with robust error handling"""
         logger.info("🔄 HealthMonitor loop entered")
 
         # Initial delay to allow services to fully initialize after startup
-        # This prevents false "unhealthy" alerts during cold start
         try:
-            await asyncio.sleep(15)  # Wait 15 seconds before first check
+            await asyncio.sleep(15)
             logger.info("🔍 HealthMonitor starting checks after initial delay")
         except asyncio.CancelledError:
             logger.info("👋 HealthMonitor cancelled during initial delay")
@@ -78,11 +109,11 @@ class HealthMonitor:
         while self.running:
             try:
                 await self._check_health()
+                await self._check_resources()
             except Exception as e:
                 logger.error(f"❌ Critical error in health check loop: {e}", exc_info=True)
 
             try:
-                # Wait before next check
                 await asyncio.sleep(self.check_interval)
             except asyncio.CancelledError:
                 logger.info("👋 HealthMonitor loop cancelled")
@@ -97,25 +128,27 @@ class HealthMonitor:
         intelligent_router: Any = None,
         tool_executor: Any = None,
         app_state: Any = None,
-    ) -> Any:
+    ) -> None:
         """Inject services after initialization"""
         self.memory_service = memory_service
         self.intelligent_router = intelligent_router
         self.tool_executor = tool_executor
-        self.app_state = app_state  # Store for dynamic lookups
+        self.app_state = app_state
         logger.info("✅ HealthMonitor services injected")
 
-    async def _check_health(self):
+    # =========================================================================
+    # Service health checks
+    # =========================================================================
+
+    async def _check_health(self) -> None:
         """Perform health check and send alerts if needed"""
         from backend.app.dependencies import get_search_service
 
-        # Get services from dependencies
         try:
             search_service = get_search_service()
         except Exception:
             search_service = None
 
-        # Use injected services or fallback to None
         memory_service = self.memory_service
         intelligent_router = self.intelligent_router
         tool_executor = self.tool_executor
@@ -127,36 +160,127 @@ class HealthMonitor:
             "tools": tool_executor is not None,
         }
 
-        # Check each service
         for service_name, is_healthy in current_status.items():
             was_healthy = self.last_status.get(service_name, True)
 
-            # Service went down
             if was_healthy and not is_healthy:
                 await self._send_downtime_alert(service_name)
-
-            # Service recovered
             elif not was_healthy and is_healthy:
                 await self._send_recovery_alert(service_name)
 
-        # Update status
         self.last_status = current_status
 
-        # Check overall health
         all_healthy = all(current_status.values())
         if not all_healthy:
             unhealthy_services = [k for k, v in current_status.items() if not v]
             logger.warning(f"⚠️ Unhealthy services: {', '.join(unhealthy_services)}")
 
-    async def _send_downtime_alert(self, service_name: str):
+    # =========================================================================
+    # Resource monitoring (Fly.io specific)
+    # =========================================================================
+
+    async def _check_resources(self) -> None:
+        """Check system resources and alert on thresholds."""
+        from backend.app.core.config import settings
+
+        try:
+            process = psutil.Process()
+            mem_info = process.memory_info()
+
+            # Memory: RSS as percentage of VM limit
+            rss_mb = mem_info.rss / (1024 * 1024)
+            mem_percent = (mem_info.rss / _VM_MEMORY_BYTES) * 100
+
+            if mem_percent > settings.memory_alert_threshold_percent:
+                await self._send_resource_alert_throttled(
+                    "memory",
+                    mem_percent,
+                    settings.memory_alert_threshold_percent,
+                    unit=f"% ({rss_mb:.0f}MB / {_VM_MEMORY_MB}MB)",
+                )
+
+            # CPU: average over a non-blocking interval
+            cpu_percent = process.cpu_percent(interval=None)  # Non-blocking
+            if cpu_percent > settings.cpu_alert_threshold_percent:
+                await self._send_resource_alert_throttled(
+                    "cpu",
+                    cpu_percent,
+                    settings.cpu_alert_threshold_percent,
+                )
+
+            # DB pool saturation
+            await self._check_db_pool_saturation()
+
+            # Update Prometheus gauges
+            self._update_resource_metrics(rss_mb, mem_percent, cpu_percent)
+
+        except Exception as e:
+            logger.debug(f"Resource check failed (non-critical): {e}")
+
+    async def _check_db_pool_saturation(self) -> None:
+        """Alert if DB connection pool is near exhaustion."""
+        if not self.app_state:
+            return
+
+        db_pool = getattr(self.app_state, "db_pool", None)
+        if not db_pool:
+            return
+
+        try:
+            pool_size = db_pool.get_size()
+            pool_max = db_pool.get_max_size()
+            if pool_max > 0:
+                saturation = (pool_size / pool_max) * 100
+                if saturation > 85:
+                    await self._send_resource_alert_throttled(
+                        "db_pool",
+                        saturation,
+                        85.0,
+                        unit=f"% ({pool_size}/{pool_max} connections)",
+                    )
+        except Exception as e:
+            logger.debug(f"DB pool check failed: {e}")
+
+    async def _send_resource_alert_throttled(
+        self, resource: str, current: float, threshold: float, unit: str = "%"
+    ) -> None:
+        """Send resource alert with cooldown to avoid spam."""
+        last = self._resource_alert_cooldown.get(resource)
+        if last and datetime.now() - last < self.alert_cooldown:
+            return
+
+        await self.alert_service.send_resource_alert(
+            resource=resource,
+            current_value=current,
+            threshold=threshold,
+            unit=unit,
+        )
+        self._resource_alert_cooldown[resource] = datetime.now()
+
+    def _update_resource_metrics(
+        self, rss_mb: float, mem_percent: float, cpu_percent: float
+    ) -> None:
+        """Update Prometheus gauges for resources."""
+        try:
+            from backend.app.metrics import cpu_usage, memory_usage
+
+            memory_usage.set(rss_mb)
+            cpu_usage.set(cpu_percent)
+        except Exception:
+            pass  # Metrics module may not be imported yet
+
+    # =========================================================================
+    # Alert helpers
+    # =========================================================================
+
+    async def _send_downtime_alert(self, service_name: str) -> None:
         """Send alert when service goes down"""
-        # Check cooldown to avoid spam
         last_alert = self.last_alert_time.get(f"down_{service_name}")
         if last_alert and datetime.now() - last_alert < self.alert_cooldown:
-            return  # Skip alert, too soon
+            return
 
         await self.alert_service.send_alert(
-            title=f"🚨 Service Down: {service_name}",
+            title=f"Service Down: {service_name}",
             message=f"The {service_name} service has gone offline and needs attention.",
             level=AlertLevel.CRITICAL,
             metadata={
@@ -169,10 +293,10 @@ class HealthMonitor:
         self.last_alert_time[f"down_{service_name}"] = datetime.now()
         logger.error(f"🚨 ALERT SENT: {service_name} is DOWN")
 
-    async def _send_recovery_alert(self, service_name: str):
+    async def _send_recovery_alert(self, service_name: str) -> None:
         """Send alert when service recovers"""
         await self.alert_service.send_alert(
-            title=f"✅ Service Recovered: {service_name}",
+            title=f"Service Recovered: {service_name}",
             message=f"The {service_name} service has recovered and is now online.",
             level=AlertLevel.INFO,
             metadata={
@@ -184,7 +308,11 @@ class HealthMonitor:
 
         logger.info(f"✅ ALERT SENT: {service_name} RECOVERED")
 
-    async def _check_qdrant(self, search_service) -> bool:
+    # =========================================================================
+    # Individual service checks
+    # =========================================================================
+
+    async def _check_qdrant(self, search_service: Any) -> bool:
         """Check if Qdrant is actually working via HTTP"""
         import httpx
 
@@ -206,7 +334,7 @@ class HealthMonitor:
             logger.debug(f"Qdrant health check failed: {e}")
             return False
 
-    async def _check_postgresql(self, memory_service) -> bool:
+    async def _check_postgresql(self, memory_service: Any) -> bool:
         """Check if PostgreSQL is actually working by executing a real query"""
         import asyncpg
 
@@ -216,7 +344,6 @@ class HealthMonitor:
         service = memory_service
         if service is None and self.app_state:
             service = getattr(self.app_state, "memory_service", None)
-            logger.debug(f"Strategy 1: Got memory_service from app_state={service is not None}")
 
         # Strategy 2: Try memory_service pool with actual query
         if service is not None:
@@ -228,7 +355,7 @@ class HealthMonitor:
                         if result == 1:
                             return True
                 except Exception as e:
-                    logger.warning(f"PostgreSQL Strategy 2 (memory_service.pool) failed: {e}")
+                    logger.warning(f"PostgreSQL (memory_service.pool) failed: {e}")
 
         # Strategy 3: Try db_pool from app_state
         if self.app_state:
@@ -240,7 +367,7 @@ class HealthMonitor:
                         if result == 1:
                             return True
                 except Exception as e:
-                    logger.warning(f"PostgreSQL Strategy 3 (app_state.db_pool) failed: {e}")
+                    logger.warning(f"PostgreSQL (app_state.db_pool) failed: {e}")
 
         # Strategy 4: Direct connection test (fallback)
         try:
@@ -251,11 +378,10 @@ class HealthMonitor:
                 if result == 1:
                     return True
             else:
-                logger.warning("PostgreSQL Strategy 4: DATABASE_URL not set")
+                logger.warning("PostgreSQL: DATABASE_URL not set")
         except Exception as e:
-            logger.warning(f"PostgreSQL Strategy 4 (direct connect) failed: {e}")
+            logger.warning(f"PostgreSQL (direct connect) failed: {e}")
 
-        # If we reach here, all strategies failed - log for debugging
         logger.warning(
             f"PostgreSQL health check failed: "
             f"memory_service={memory_service is not None}, "
@@ -263,52 +389,39 @@ class HealthMonitor:
         )
         return False
 
-    async def _check_ai_router(self, intelligent_router) -> bool:
+    async def _check_ai_router(self, intelligent_router: Any) -> bool:
         """Check if AI Router is actually working"""
-        # Strategy 1: Use passed intelligent_router
         router = intelligent_router
 
-        # Strategy 2: Try to get from app_state dynamically (if passed router is None)
         if router is None and self.app_state:
             router = getattr(self.app_state, "intelligent_router", None)
-            logger.debug(f"AI Router Strategy 2: Got from app_state={router is not None}")
 
         if router is None:
-            # Log at warning level (only once) to diagnose production issues
             if not hasattr(self, "_ai_router_none_logged"):
                 self._ai_router_none_logged = True
                 logger.warning(
                     "AI Router health check: router is None. "
                     f"injected_router={intelligent_router is not None}, "
-                    f"app_state={self.app_state is not None}, "
-                    f"app_state.intelligent_router={getattr(self.app_state, 'intelligent_router', 'NOT_SET') if self.app_state else 'NO_APP_STATE'}"
+                    f"app_state={self.app_state is not None}"
                 )
             return False
 
         try:
-            # Check if router has the Agentic RAG orchestrator
-            has_orchestrator_attr = hasattr(router, "orchestrator")
-            orchestrator_value = getattr(router, "orchestrator", None)
-            has_orchestrator = has_orchestrator_attr and orchestrator_value is not None
-
+            has_orchestrator = (
+                hasattr(router, "orchestrator")
+                and getattr(router, "orchestrator", None) is not None
+            )
             if has_orchestrator:
                 return True
 
-            # Legacy fallback: check old attributes
             has_llama = hasattr(router, "llama_client") and router.llama_client is not None
-
             if has_llama:
                 return True
 
-            # Debug: Log why check failed (only on first failure to avoid spam)
             if not hasattr(self, "_ai_router_debug_logged"):
                 self._ai_router_debug_logged = True
                 logger.warning(
-                    f"AI Router health check failed: "
-                    f"router_type={type(router).__name__}, "
-                    f"has_orchestrator_attr={has_orchestrator_attr}, "
-                    f"orchestrator_is_none={orchestrator_value is None}, "
-                    f"has_llama={has_llama}"
+                    f"AI Router health check failed: router_type={type(router).__name__}"
                 )
 
             return False
@@ -316,14 +429,74 @@ class HealthMonitor:
             logger.warning(f"AI Router health check exception: {e}")
             return False
 
+    # =========================================================================
+    # Restart tracking (persisted via Prometheus counter)
+    # =========================================================================
+
+    @staticmethod
+    def _read_restart_count() -> int:
+        """Increment restart counter. Uses Prometheus counter which resets per process."""
+        try:
+            from backend.app.metrics import safe_register_counter
+
+            counter = safe_register_counter(
+                "zantara_restarts_total", "Total process restarts"
+            )
+            counter.inc()
+            return 1  # Prometheus handles accumulation
+        except Exception:
+            return 0
+
+    # =========================================================================
+    # Status reporting
+    # =========================================================================
+
     def get_status(self) -> dict[str, Any]:
-        """Get current monitoring status with task liveness check"""
+        """Get current monitoring status with task liveness and resource info"""
         is_task_alive = self.task is not None and not self.task.done()
+
+        # Resource snapshot
+        resource_info: dict[str, Any] = {}
+        try:
+            process = psutil.Process()
+            mem_info = process.memory_info()
+            rss_mb = mem_info.rss / (1024 * 1024)
+            resource_info = {
+                "memory_rss_mb": round(rss_mb, 1),
+                "memory_vm_limit_mb": _VM_MEMORY_MB,
+                "memory_percent": round((mem_info.rss / _VM_MEMORY_BYTES) * 100, 1),
+                "cpu_percent": process.cpu_percent(interval=None),
+                "uptime_seconds": round(time.monotonic() - _BOOT_TIME, 0),
+                "cold_start_seconds": round(self._cold_start_duration, 2)
+                if self._cold_start_duration
+                else None,
+                "boot_time": _BOOT_TIMESTAMP.isoformat(),
+            }
+        except Exception:
+            pass
+
+        # DB pool info
+        pool_info: dict[str, Any] = {}
+        if self.app_state:
+            db_pool = getattr(self.app_state, "db_pool", None)
+            if db_pool:
+                try:
+                    pool_info = {
+                        "size": db_pool.get_size(),
+                        "min_size": db_pool.get_min_size(),
+                        "max_size": db_pool.get_max_size(),
+                        "idle": db_pool.get_idle_size(),
+                    }
+                except Exception:
+                    pass
+
         return {
             "running": self.running and is_task_alive,
             "task_status": "alive" if is_task_alive else "dead/not_started",
             "check_interval": self.check_interval,
             "last_status": self.last_status,
+            "resources": resource_info,
+            "db_pool": pool_info,
             "next_check_in": f"{self.check_interval}s",
         }
 

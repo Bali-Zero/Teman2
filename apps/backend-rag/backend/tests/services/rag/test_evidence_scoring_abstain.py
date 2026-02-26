@@ -12,8 +12,9 @@ Created: 2026-02-16
 """
 
 import pytest
-from backend.services.rag.agentic.reasoning_utils import calculate_evidence_score
+
 from backend.app.core.constants import EvidenceScoreConstants
+from backend.services.rag.agentic.reasoning_utils import calculate_evidence_score
 
 
 class TestEvidenceScoringFixed:
@@ -22,12 +23,12 @@ class TestEvidenceScoringFixed:
     def test_kitas_query_with_kbli_results_low_score(self):
         """
         Problem 1: KITAS query returning KBLI results should score < 0.15
-        
+
         This tests that topic-mismatched results get low scores.
         """
         # KITAS query
         query = "Come posso richiedere il KITAS in Indonesia?"
-        
+
         # But results are about KBLI (business classification) - completely wrong topic
         sources = [
             {"id": 1, "title": "KBLI 2025", "score": 0.85},
@@ -37,9 +38,9 @@ class TestEvidenceScoringFixed:
             "KBLI (Klasifikasi Baku Lapangan Usaha Indonesia) è il sistema di classificazione...",
             "I codici KBLI sono necessari per registrare un'azienda in Indonesia...",
         ]
-        
+
         score = calculate_evidence_score(sources, context, query)
-        
+
         # Should be very low (< 0.15) due to topic mismatch
         assert score < 0.15, f"Expected score < 0.15 for mismatched topic, got {score}"
         print(f"✅ KITAS query with KBLI results: score = {score} (correctly < 0.15)")
@@ -47,7 +48,7 @@ class TestEvidenceScoringFixed:
     def test_nonsense_query_zero_score(self):
         """
         Problem 2: Nonsense query "xyzabc123" should score ~0.0
-        
+
         This tests that completely unmatchable queries get very low score.
         The query contains made-up words that won't appear in any real document.
         """
@@ -58,9 +59,9 @@ class TestEvidenceScoringFixed:
         context = [
             "This is some generic document content about various topics and subjects...",
         ]
-        
+
         score = calculate_evidence_score(sources, context, query)
-        
+
         # Should be very low (< 0.15 triggers ABSTAIN)
         assert score < 0.15, f"Expected score < 0.15 for nonsense query, got {score}"
         print(f"✅ Nonsense query: score = {score} (correctly < 0.15)")
@@ -80,9 +81,9 @@ class TestEvidenceScoringFixed:
             "Per lavorare in Indonesia è necessario ottenere un KITAS sponsorizzato dall'azienda...",
             "I requisiti per il KITAS lavorativo includono contratto di lavoro e documentazione...",
         ]
-        
+
         score = calculate_evidence_score(sources, context, query)
-        
+
         # Should be high confidence
         assert score >= 0.6, f"Expected score >= 0.6 for relevant query, got {score}"
         print(f"✅ Relevant visa query: score = {score} (correctly >= 0.6)")
@@ -99,9 +100,9 @@ class TestEvidenceScoringFixed:
         context = [
             "Bali is a beautiful island in Indonesia with many tourist attractions...",
         ]
-        
+
         score = calculate_evidence_score(sources, context, query)
-        
+
         # With weak relevance and medium source quality, should be in cautious range
         # Note: if context matched better, score would be higher - this tests the boundary
         print(f"Partially relevant query: score = {score}")
@@ -118,25 +119,21 @@ class TestEvidenceScoringFixed:
         Test that keyword match ratio affects scoring
         """
         query = "KITAS visa requirements Indonesia"
-        
+
         # High keyword match
         context_high = [
             "KITAS requirements for Indonesia visa application process...",
             "The KITAS visa allows you to stay in Indonesia...",
         ]
-        score_high = calculate_evidence_score(
-            [{"id": 1, "score": 0.8}], context_high, query
-        )
-        
+        score_high = calculate_evidence_score([{"id": 1, "score": 0.8}], context_high, query)
+
         # Low keyword match
         context_low = [
             "General information about Southeast Asia travel...",
             "Various countries have different visa policies...",
         ]
-        score_low = calculate_evidence_score(
-            [{"id": 1, "score": 0.8}], context_low, query
-        )
-        
+        score_low = calculate_evidence_score([{"id": 1, "score": 0.8}], context_low, query)
+
         assert score_high > score_low, "High keyword match should score higher"
         print(f"✅ Keyword match ratio: high={score_high}, low={score_low}")
 
@@ -146,16 +143,16 @@ class TestEvidenceScoringFixed:
         """
         # Query about visa
         query = "Come richiedere il KITAS?"
-        
+
         # Context about KBLI (wrong entity type)
         sources = [{"id": 1, "score": 0.9}]
         context = [
             "Il codice KBLI 46610 si riferisce al commercio all'ingrosso...",
             "Per registrare un'azienda serve il KBLI corretto...",
         ]
-        
+
         score = calculate_evidence_score(sources, context, query)
-        
+
         # Should be capped due to entity mismatch
         assert score < 0.2, f"Entity mismatch should cap score low, got {score}"
 
@@ -176,11 +173,11 @@ class TestAbstainThresholds:
             ("low", 0.10),
             ("borderline", 0.14),
         ]
-        
+
         for name, score in test_cases:
             should_abstain = score < EvidenceScoreConstants.ABSTAIN_THRESHOLD
             assert should_abstain is True, f"{name} score {score} should trigger ABSTAIN"
-        
+
         print("✅ All scores < 0.15 correctly trigger ABSTAIN")
 
     def test_score_above_threshold_should_not_abstain(self):
@@ -191,11 +188,13 @@ class TestAbstainThresholds:
             (0.50, False),
             (0.80, False),
         ]
-        
+
         for score, expected in test_cases:
             should_abstain = score < EvidenceScoreConstants.ABSTAIN_THRESHOLD
-            assert should_abstain == expected, f"Score {score}: abstain={should_abstain}, expected={expected}"
-        
+            assert should_abstain == expected, (
+                f"Score {score}: abstain={should_abstain}, expected={expected}"
+            )
+
         print("✅ Scores >= 0.15 correctly do not trigger ABSTAIN")
 
 
@@ -221,7 +220,7 @@ class TestConfidenceLevels:
             (0.80, "CONFIDENT"),
             (0.95, "CONFIDENT"),
         ]
-        
+
         for score, expected_category in test_cases:
             if score < 0.15:
                 category = "ABSTAIN"
@@ -229,9 +228,11 @@ class TestConfidenceLevels:
                 category = "CAUTIOUS"
             else:
                 category = "CONFIDENT"
-            
-            assert category == expected_category, f"Score {score}: got {category}, expected {expected_category}"
-        
+
+            assert category == expected_category, (
+                f"Score {score}: got {category}, expected {expected_category}"
+            )
+
         print("✅ Confidence category mapping correct")
 
 
@@ -243,9 +244,9 @@ class TestSourceQualityScoring:
         query = "test query about KITAS"
         sources = [{"id": 1, "score": 0.85}]
         context = ["This is about KITAS visa information"]
-        
+
         score = calculate_evidence_score(sources, context, query)
-        
+
         # Should have good score from source quality + relevance
         assert score > 0.3, f"High quality source should boost score, got {score}"
 
@@ -254,9 +255,9 @@ class TestSourceQualityScoring:
         query = "test query"
         sources = [{"id": 1, "score": 0.05}]
         context = ["Some generic content"]
-        
+
         score = calculate_evidence_score(sources, context, query)
-        
+
         # Should be low due to poor source quality
         assert score < 0.3, f"Low quality source should result in low score, got {score}"
 
@@ -264,11 +265,11 @@ class TestSourceQualityScoring:
         """Multiple good sources should get small bonus"""
         query = "KITAS requirements"
         context = ["KITAS visa information for Indonesia"]
-        
+
         # Single source
         sources_1 = [{"id": 1, "score": 0.8}]
         score_1 = calculate_evidence_score(sources_1, context, query)
-        
+
         # Multiple sources
         sources_many = [
             {"id": 1, "score": 0.8},
@@ -276,7 +277,7 @@ class TestSourceQualityScoring:
             {"id": 3, "score": 0.70},
         ]
         score_many = calculate_evidence_score(sources_many, context, query)
-        
+
         # Multiple sources should score at least as high
         assert score_many >= score_1, "Multiple sources should score >= single source"
 
