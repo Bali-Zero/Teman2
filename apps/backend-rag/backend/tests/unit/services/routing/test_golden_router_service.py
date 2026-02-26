@@ -4,6 +4,7 @@ Target: >99% coverage
 """
 
 import sys
+from contextlib import asynccontextmanager
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -14,6 +15,18 @@ if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 from backend.services.routing.golden_router_service import GoldenRouterService
+
+
+def _make_pool_with_conn(mock_conn):
+    """Create mock pool with proper async context manager for acquire()."""
+    mock_pool = MagicMock()
+
+    @asynccontextmanager
+    async def acquire():
+        yield mock_conn
+
+    mock_pool.acquire = acquire
+    return mock_pool
 
 
 class TestGoldenRouterService:
@@ -51,8 +64,12 @@ class TestGoldenRouterService:
     async def test_get_db_pool(self, mock_settings, mock_create_pool):
         """Test getting database pool"""
         mock_settings.database_url = "postgresql://test"
-        mock_pool = AsyncMock()
-        mock_create_pool.return_value = mock_pool
+        mock_pool = MagicMock()
+
+        async def _fake_create_pool(*args, **kwargs):
+            return mock_pool
+
+        mock_create_pool.side_effect = _fake_create_pool
 
         service = GoldenRouterService()
         pool = await service._get_db_pool()
@@ -66,8 +83,12 @@ class TestGoldenRouterService:
     async def test_get_db_pool_cached(self, mock_settings, mock_create_pool):
         """Test getting database pool uses cache"""
         mock_settings.database_url = "postgresql://test"
-        mock_pool = AsyncMock()
-        mock_create_pool.return_value = mock_pool
+        mock_pool = MagicMock()
+
+        async def _fake_create_pool(*args, **kwargs):
+            return mock_pool
+
+        mock_create_pool.side_effect = _fake_create_pool
 
         service = GoldenRouterService()
         pool1 = await service._get_db_pool()
@@ -93,10 +114,9 @@ class TestGoldenRouterService:
     @patch.object(GoldenRouterService, "_get_db_pool")
     async def test_initialize_empty_routes(self, mock_get_pool):
         """Test initialization with no routes in database"""
-        mock_pool = AsyncMock()
         mock_conn = AsyncMock()
-        mock_pool.acquire.return_value.__aenter__.return_value = mock_conn
-        mock_conn.fetch.return_value = []
+        mock_conn.fetch = AsyncMock(return_value=[])
+        mock_pool = _make_pool_with_conn(mock_conn)
         mock_get_pool.return_value = mock_pool
 
         service = GoldenRouterService()
@@ -111,9 +131,7 @@ class TestGoldenRouterService:
     @patch("backend.services.routing.golden_router_service.asyncio.create_task")
     async def test_initialize_with_routes(self, mock_create_task, mock_get_pool):
         """Test initialization with routes in database"""
-        mock_pool = AsyncMock()
         mock_conn = AsyncMock()
-        mock_pool.acquire.return_value.__aenter__.return_value = mock_conn
 
         mock_row = MagicMock()
         mock_row.__getitem__.side_effect = lambda key: {
@@ -124,8 +142,8 @@ class TestGoldenRouterService:
             "collections": ["collection1"],
             "routing_hints": '{"hint": "value"}',
         }[key]
-        mock_conn.fetch.return_value = [mock_row]
-
+        mock_conn.fetch = AsyncMock(return_value=[mock_row])
+        mock_pool = _make_pool_with_conn(mock_conn)
         mock_get_pool.return_value = mock_pool
 
         service = GoldenRouterService()
@@ -193,9 +211,9 @@ class TestGoldenRouterService:
     @patch.object(GoldenRouterService, "_get_db_pool")
     async def test_update_usage_stats(self, mock_get_pool):
         """Test updating route usage statistics"""
-        mock_pool = AsyncMock()
         mock_conn = AsyncMock()
-        mock_pool.acquire.return_value.__aenter__.return_value = mock_conn
+        mock_conn.execute = AsyncMock()
+        mock_pool = _make_pool_with_conn(mock_conn)
         mock_get_pool.return_value = mock_pool
 
         service = GoldenRouterService()
@@ -210,10 +228,9 @@ class TestGoldenRouterService:
     @patch.object(GoldenRouterService, "_get_db_pool")
     async def test_update_usage_stats_error(self, mock_get_pool):
         """Test updating route usage stats handles errors"""
-        mock_pool = AsyncMock()
         mock_conn = AsyncMock()
-        mock_pool.acquire.return_value.__aenter__.return_value = mock_conn
-        mock_conn.execute.side_effect = Exception("DB error")
+        mock_conn.execute = AsyncMock(side_effect=Exception("DB error"))
+        mock_pool = _make_pool_with_conn(mock_conn)
         mock_get_pool.return_value = mock_pool
 
         service = GoldenRouterService()
@@ -225,9 +242,9 @@ class TestGoldenRouterService:
     @patch.object(GoldenRouterService, "_get_db_pool")
     async def test_add_route(self, mock_get_pool, mock_initialize):
         """Test adding a new route"""
-        mock_pool = AsyncMock()
         mock_conn = AsyncMock()
-        mock_pool.acquire.return_value.__aenter__.return_value = mock_conn
+        mock_conn.execute = AsyncMock()
+        mock_pool = _make_pool_with_conn(mock_conn)
         mock_get_pool.return_value = mock_pool
 
         service = GoldenRouterService()
@@ -248,9 +265,9 @@ class TestGoldenRouterService:
     @patch.object(GoldenRouterService, "_get_db_pool")
     async def test_add_route_with_defaults(self, mock_get_pool, mock_initialize):
         """Test adding route with default collections"""
-        mock_pool = AsyncMock()
         mock_conn = AsyncMock()
-        mock_pool.acquire.return_value.__aenter__.return_value = mock_conn
+        mock_conn.execute = AsyncMock()
+        mock_pool = _make_pool_with_conn(mock_conn)
         mock_get_pool.return_value = mock_pool
 
         service = GoldenRouterService()
@@ -261,8 +278,8 @@ class TestGoldenRouterService:
 
         assert route_id.startswith("route_")
         call_args = mock_conn.execute.call_args
-        # Should use default collection "legal_unified"
-        assert call_args[0][4] == ["legal_unified"]
+        # Should use default collection "legal_unified" (args: sql, route_id, query, doc_ids, chapter_ids, collections)
+        assert call_args[0][5] == ["legal_unified"]
 
     @pytest.mark.asyncio
     async def test_close(self):

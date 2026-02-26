@@ -1,28 +1,5 @@
 {
   "mcpServers": {
-    "nuzantara-postgres": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-postgres",
-        "postgresql://localhost:5432/nuzantara"
-      ],
-      "env": {
-        "DATABASE_URL": "${DATABASE_URL}"
-      }
-    },
-    "nuzantara-filesystem": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "/Users/nuzantara/Desktop/nuzantara"
-      ]
-    },
-    "nuzantara-fetch": {
-      "command": "uvx",
-      "args": ["mcp-server-fetch"]
-    },
     "nuzantara-mcp": {
       "command": "/Users/nuzantara/Desktop/nuzantara/apps/nuzantara-mcp/.venv/bin/python",
       "args": ["apps/nuzantara-mcp/nuzantara_mcp/server.py"],
@@ -39,13 +16,9 @@
         "PYTHONPATH": "apps/nuzantara-mcp-advanced"
       }
     },
-    "playwright": {
-      "command": "/Users/nuzantara/Desktop/nuzantara/apps/nuzantara-mcp-browser/.venv/bin/python",
-      "args": ["apps/nuzantara-mcp-browser/nuzantara_mcp_browser/server.py"],
-      "cwd": "/Users/nuzantara/Desktop/nuzantara",
-      "env": {
-        "PYTHONPATH": "apps/nuzantara-mcp-browser"
-      }
+    "nuzantara-fetch": {
+      "command": "uvx",
+      "args": ["mcp-server-fetch"]
     }
   }
 }

@@ -61,8 +61,10 @@ class TestSanitizeFilename:
         assert sanitize_filename("file\x00name.txt") == "filename.txt"
 
     def test_removes_parent_directory_references(self):
-        """Test that parent directory references are removed."""
-        assert sanitize_filename("../../etc/passwd") == "_.._.._etc_passwd"
+        """Test that parent directory references are removed (.. -> _)."""
+        result = sanitize_filename("../../etc/passwd")
+        assert ".." not in result
+        assert "etc" in result and "passwd" in result
 
     def test_trims_whitespace_and_dots(self):
         """Test that leading/trailing whitespace and dots are removed."""

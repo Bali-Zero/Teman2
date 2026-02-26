@@ -22,13 +22,15 @@ def vision_rag_service():
     with (
         patch("backend.services.rag.vision_rag.GENAI_AVAILABLE", True),
         patch("backend.services.rag.vision_rag.GenAIClient") as mock_client_class,
-        patch("backend.app.core.config.settings") as mock_settings,
+        patch("backend.services.rag.vision_rag.settings") as mock_settings,
     ):
         mock_settings.google_api_key = "test_key"
         mock_client = MagicMock()
         mock_client.is_available = True
         mock_client_class.return_value = mock_client
-        return VisionRAGService()
+        service = VisionRAGService()
+        service._genai_client = mock_client
+        return service
 
 
 @pytest.fixture
@@ -36,10 +38,13 @@ def vision_rag_service_no_genai():
     """Create VisionRAGService instance without GenAI"""
     with (
         patch("backend.services.rag.vision_rag.GENAI_AVAILABLE", False),
-        patch("backend.app.core.config.settings") as mock_settings,
+        patch("backend.services.rag.vision_rag.settings") as mock_settings,
     ):
         mock_settings.google_api_key = None
-        return VisionRAGService()
+        service = VisionRAGService()
+        service._genai_client = None
+        service._get_genai_client = lambda: None
+        return service
 
 
 class TestVisionRAGService:
@@ -95,14 +100,21 @@ class TestVisionRAGService:
 
     @pytest.mark.asyncio
     async def test_analyze_visual_element(self, vision_rag_service):
-        """Test analyzing visual element"""
-        vision_rag_service._genai_client.analyze_image = AsyncMock(
-            return_value={"description": "Test image", "text": "Test"}
+        """Test analyzing visual element - uses generate_content for vision"""
+        mock_json = '{"type": "TABLE", "extracted_text": "Test", "description": "Test image", "table_markdown": ""}'
+        vision_rag_service._genai_client.generate_content = AsyncMock(
+            return_value={"text": mock_json}
         )
 
-        result = await vision_rag_service._analyze_visual_element(
-            image_bytes=b"test", page_num=1, element_id="test_id"
-        )
+        with patch("PIL.Image.open") as mock_open:
+            mock_img = MagicMock()
+            mock_img.width = 100
+            mock_img.height = 100
+            mock_open.return_value = mock_img
+
+            result = await vision_rag_service._analyze_visual_element(
+                image_bytes=b"test", page_num=1, element_id="test_id"
+            )
         assert result is None or isinstance(result, VisualElement)
 
     @pytest.mark.asyncio
@@ -153,11 +165,11 @@ class TestVisionRAGService:
         assert result == ""
 
     @pytest.mark.asyncio
-    async def test_query_with_vision_not_available(self, vision_rag_service):
+    async def test_query_with_vision_not_available(self, vision_rag_service_no_genai):
         """Test querying with vision service not available"""
-        vision_rag_service._available = False
-
-        result = await vision_rag_service.query_with_vision("test query", [], include_images=True)
+        result = await vision_rag_service_no_genai.query_with_vision(
+            "test query", [], include_images=True
+        )
         assert "not available" in result["answer"].lower()
         assert result["visuals_used"] == []
         assert result["text_context_length"] == 0
