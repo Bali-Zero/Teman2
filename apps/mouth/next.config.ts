@@ -174,6 +174,22 @@ const nextConfig: NextConfig = {
     ];
   },
 
+  // Redirect legacy /kbli-navigator to new Next.js /kbli app
+  async redirects() {
+    return [
+      {
+        source: "/kbli-navigator",
+        destination: "/kbli",
+        permanent: true,
+      },
+      {
+        source: "/kbli-navigator/:path*",
+        destination: "/kbli/:path*",
+        permanent: true,
+      },
+    ];
+  },
+
   // NOTE: API proxying is handled by src/app/api/[...path]/route.ts
   // Do NOT add rewrites for /api/* here as they conflict with the API route handler
   // and can cause Mixed Content issues in production.
