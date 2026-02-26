@@ -138,7 +138,7 @@ register_chains(mcp, _call, _call_safe, LONG_TIMEOUT)
 # --- Entry Point ---
 def main():
     """Run MCP server with stdio transport."""
-    logger.info(f"Nuzantara MCP v2.0 → {BACKEND_URL}")
+    logger.info(f"Nuzantara MCP v2.1 → {BACKEND_URL}")
     logger.info(f"Auth: {'enabled' if API_KEY else 'disabled (public endpoints only)'}")
     mcp.run(transport="stdio")
 

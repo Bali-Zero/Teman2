@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { serialize } from "next-mdx-remote/serialize";
+import remarkGfm from "remark-gfm";
 import { getArticleBySlug } from "@/lib/blog/articles";
 import { generateArticleMetadata } from "@/lib/blog/metadata";
 import { ArticleClient } from "./ArticleClient";
@@ -106,8 +108,18 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 /**
+ * Strip import statements from MDX content
+ */
+function stripImports(content: string): string {
+  return content
+    .replace(/^import\s+[\s\S]*?from\s+['"][^'"]+['"];?\s*$/gm, "")
+    .replace(/^import\s*{[\s\S]*?}\s*from\s*['"][^'"]+['"];?\s*$/gm, "")
+    .trim();
+}
+
+/**
  * Article page - Server component that renders the client component
- * Injects JSON-LD structured data for AI crawlers (server-side rendered)
+ * Serializes MDX server-side and passes it as a prop for SSR (Google sees full content)
  */
 export default async function ArticlePage({ params }: PageProps) {
   const { category, slug } = await params;
@@ -117,7 +129,7 @@ export default async function ArticlePage({ params }: PageProps) {
     notFound();
   }
 
-  // Fetch article for JSON-LD injection (server-side)
+  // Fetch article for JSON-LD injection AND SSR content (server-side)
   const article = await getArticleBySlug(category, slug);
 
   const breadcrumbItems = [
@@ -143,6 +155,37 @@ export default async function ArticlePage({ params }: PageProps) {
       }
     : null;
 
+  // Serialize MDX server-side so content is in the initial HTML (SSR)
+  let initialArticle = null;
+  if (article) {
+    const cleanContent = stripImports(article.content);
+    try {
+      const mdxSource = await serialize(cleanContent, {
+        mdxOptions: {
+          remarkPlugins: [remarkGfm],
+          development: false,
+        },
+      });
+      // Serialize dates to strings for client component
+      initialArticle = {
+        ...article,
+        mdxSource,
+        createdAt: article.createdAt.toISOString(),
+        updatedAt: article.updatedAt.toISOString(),
+        publishedAt: article.publishedAt
+          ? article.publishedAt.toISOString()
+          : null,
+      };
+    } catch (err) {
+      logger.error(
+        "MDX serialization failed in SSR, falling back to client fetch",
+        {},
+        err instanceof Error ? err : new Error(String(err)),
+      );
+      // initialArticle stays null — ArticleClient will fetch via API
+    }
+  }
+
   return (
     <>
       <BreadcrumbJsonLd items={breadcrumbItems} />
@@ -151,7 +194,11 @@ export default async function ArticlePage({ params }: PageProps) {
       ) : articleProps ? (
         <EnhancedArticleJsonLd {...articleProps} />
       ) : null}
-      <ArticleClient category={category} slug={slug} />
+      <ArticleClient
+        category={category}
+        slug={slug}
+        initialArticle={initialArticle}
+      />
     </>
   );
 }

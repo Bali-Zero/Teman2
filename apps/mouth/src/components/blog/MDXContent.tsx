@@ -20,6 +20,22 @@ import {
   KeyTakeaway,
 } from "@/components/blog/interactive";
 
+// Generate a URL-friendly ID from heading text (must match TableOfContents.tsx logic)
+function headingId(children: React.ReactNode): string {
+  const text =
+    typeof children === "string"
+      ? children
+      : Array.isArray(children)
+        ? children
+            .map((c) => (typeof c === "string" ? c : ""))
+            .join("")
+        : "";
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-");
+}
+
 // Custom components for MDX
 const mdxComponents = {
   // Interactive blog components
@@ -37,23 +53,30 @@ const mdxComponents = {
   KeyTakeaway,
 
   // Override default HTML elements with styled versions (30% larger text)
+  // Headings get auto-generated IDs matching TOC extraction logic
   h1: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
     <h1
       className="font-serif text-4xl md:text-5xl font-bold text-white mt-12 mb-6 first:mt-0"
       {...props}
     />
   ),
-  h2: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
+  h2: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
     <h2
+      id={headingId(children)}
       className="font-serif text-3xl md:text-4xl font-bold text-white mt-10 mb-4 scroll-mt-24"
       {...props}
-    />
+    >
+      {children}
+    </h2>
   ),
-  h3: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
+  h3: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
     <h3
+      id={headingId(children)}
       className="font-serif text-2xl md:text-3xl font-semibold text-white mt-8 mb-3 scroll-mt-24"
       {...props}
-    />
+    >
+      {children}
+    </h3>
   ),
   h4: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
     <h4 className="font-semibold text-xl text-white mt-6 mb-2" {...props} />

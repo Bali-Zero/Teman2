@@ -107,20 +107,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   routes.push(...servicePages);
 
-  // 3. News categories (6 categories)
-  const newsCategories = [
+  // 3. Category pages (match actual routes: /{category})
+  const categories = [
     "immigration",
     "business",
-    "tax",
-    "legal",
+    "tax-legal",
     "property",
     "lifestyle",
     "tech",
     "digital-nomad",
   ];
 
-  const newsCategoryPages = newsCategories.map((category) => ({
-    url: `${baseUrl}/news/${category}`,
+  const newsCategoryPages = categories.map((category) => ({
+    url: `${baseUrl}/${category}`,
     lastModified: new Date(),
     changeFrequency: "daily" as const,
     priority: 0.7,

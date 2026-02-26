@@ -11,7 +11,6 @@ Tools:
 - System diagnostics
 """
 
-import asyncio
 import json
 import logging
 import os
@@ -52,7 +51,8 @@ async def check_fly_status() -> dict:
             ["fly", "status", "--app", FLY_APP, "--json"],
             capture_output=True,
             text=True,
-            cwd=f"{PROJECT_ROOT}/apps/backend-rag"
+            cwd=f"{PROJECT_ROOT}/apps/backend-rag",
+            timeout=30,
         )
         if result.returncode == 0:
             return {"success": True, "status": json.loads(result.stdout)}
@@ -79,11 +79,12 @@ async def get_fly_logs(lines: int = 50, filter_str: Optional[str] = None) -> dic
             cmd,
             capture_output=True,
             text=True,
-            cwd=f"{PROJECT_ROOT}/apps/backend-rag"
+            cwd=f"{PROJECT_ROOT}/apps/backend-rag",
+            timeout=30,
         )
         logs = result.stdout
         if filter_str:
-            logs = "\n".join([l for l in logs.split("\n") if filter_str in l])
+            logs = "\n".join([line for line in logs.split("\n") if filter_str in line])
         return {"success": True, "logs": logs}
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -118,7 +119,8 @@ async def check_deployment_readiness() -> dict:
             capture_output=True,
             text=True,
             cwd=f"{PROJECT_ROOT}/apps/backend-rag",
-            env={**os.environ, "PYTHONPATH": "."}
+            env={**os.environ, "PYTHONPATH": "."},
+            timeout=30,
         )
         results["checks"]["import_chain"] = {
             "pass": result.returncode == 0 and "OK" in result.stdout,
@@ -140,7 +142,8 @@ async def check_deployment_readiness() -> dict:
             capture_output=True,
             text=True,
             cwd=f"{PROJECT_ROOT}/apps/backend-rag",
-            env={**os.environ, "PYTHONPATH": "."}
+            env={**os.environ, "PYTHONPATH": "."},
+            timeout=120,
         )
         results["checks"]["core_tests"] = {
             "pass": result.returncode == 0,
@@ -155,7 +158,8 @@ async def check_deployment_readiness() -> dict:
             ["git", "diff", "--name-only", "HEAD", "--", "apps/backend-rag/backend/"],
             capture_output=True,
             text=True,
-            cwd=PROJECT_ROOT
+            cwd=PROJECT_ROOT,
+            timeout=15,
         )
         changed_files = result.stdout.strip().split("\n") if result.stdout.strip() else []
         results["checks"]["rogue_changes"] = {
@@ -193,13 +197,14 @@ async def run_backend_tests(test_path: str = "", verbose: bool = False) -> dict:
         if verbose:
             cmd.append("-v")
         cmd.append("--tb=short")
-        
+
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
             cwd=f"{PROJECT_ROOT}/apps/backend-rag",
-            env={**os.environ, "PYTHONPATH": "."}
+            env={**os.environ, "PYTHONPATH": "."},
+            timeout=300,
         )
         
         return {
@@ -208,6 +213,99 @@ async def run_backend_tests(test_path: str = "", verbose: bool = False) -> dict:
             "stdout": result.stdout[-2000:] if len(result.stdout) > 2000 else result.stdout,
             "stderr": result.stderr[-1000:] if len(result.stderr) > 1000 else result.stderr
         }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+# ============================================================================
+# AUTOPILOT & RECOVERY TOOLS
+# ============================================================================
+
+@mcp.tool()
+async def analyze_fly_health(lines: int = 100) -> dict:
+    """
+    Analyze Fly.io logs for known issues and anomalies.
+
+    Checks for:
+    - Out of Memory (OOM)
+    - Database connection failures
+    - 5xx status code persistence
+    - Health check timeouts
+
+    Returns:
+        Analysis report with risk score and recommendations.
+    """
+    logs_resp = await get_fly_logs(lines=lines)
+    if not logs_resp["success"]:
+        return logs_resp
+
+    logs = logs_resp["logs"]
+    issues = []
+    risk_score = 0.0
+
+    # Check for OOM — use precise patterns to avoid false positives
+    logs_lower = logs.lower()
+    if "out of memory" in logs_lower or "oom" in logs_lower or "oom-kill" in logs_lower or "killed process" in logs_lower:
+        issues.append("CRITICAL: Out of Memory (OOM) detected. Consider checking --workers count.")
+        risk_score += 0.8
+
+    # Check for DB issues
+    if "connection" in logs.lower() and ("database" in logs.lower() or "postgres" in logs.lower()):
+        issues.append("HIGH: Database connection issues detected.")
+        risk_score += 0.5
+
+    # Check for health check timeouts
+    if "health check" in logs.lower() and ("timeout" in logs.lower() or "failed" in logs.lower()):
+        issues.append("MEDIUM: Health check failures detected.")
+        risk_score += 0.3
+
+    return {
+        "risk_score": min(risk_score, 1.0),
+        "issues_found": issues,
+        "recommendation": "Restart machine or check logs if risk_score > 0.5" if risk_score > 0 else "System looks stable.",
+        "log_preview": logs[:500] + "..." if len(logs) > 500 else logs
+    }
+
+
+@mcp.tool()
+async def execute_recovery_action(action: str, machine_id: Optional[str] = None) -> dict:
+    """
+    Execute a recovery action for the Fly.io application.
+
+    Args:
+        action: "restart" or "redeploy"
+        machine_id: Optional specific machine ID to target
+
+    Returns:
+        Execution result status.
+    """
+    try:
+        cmd = ["fly"]
+        if action == "restart":
+            if machine_id:
+                cmd.extend(["machine", "restart", machine_id, "--app", FLY_APP])
+            else:
+                cmd.extend(["apps", "restart", FLY_APP])
+        elif action == "redeploy":
+            cmd.extend(["deploy", "--app", FLY_APP, "--strategy", "rolling"])
+        else:
+            return {"success": False, "error": f"Unsupported action: {action}"}
+
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            cwd=f"{PROJECT_ROOT}/apps/backend-rag",
+            timeout=300,
+        )
+
+        return {
+            "success": result.returncode == 0,
+            "stdout": result.stdout,
+            "stderr": result.stderr
+        }
+    except subprocess.TimeoutExpired:
+        return {"success": False, "error": f"Action '{action}' timed out after 300s"}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -225,7 +323,8 @@ async def run_type_checking() -> dict:
             ["mypy", "backend/", "--ignore-missing-imports"],
             capture_output=True,
             text=True,
-            cwd=f"{PROJECT_ROOT}/apps/backend-rag"
+            cwd=f"{PROJECT_ROOT}/apps/backend-rag",
+            timeout=120,
         )
         return {
             "success": result.returncode == 0,
@@ -250,15 +349,17 @@ async def run_linting() -> dict:
             ["ruff", "format", "--check", "backend/"],
             capture_output=True,
             text=True,
-            cwd=f"{PROJECT_ROOT}/apps/backend-rag"
+            cwd=f"{PROJECT_ROOT}/apps/backend-rag",
+            timeout=60,
         )
-        
+
         # Check linting
         lint_result = subprocess.run(
             ["ruff", "check", "backend/"],
             capture_output=True,
             text=True,
-            cwd=f"{PROJECT_ROOT}/apps/backend-rag"
+            cwd=f"{PROJECT_ROOT}/apps/backend-rag",
+            timeout=60,
         )
         
         return {
@@ -362,10 +463,11 @@ async def search_codebase(query: str, file_pattern: str = "*.py") -> dict:
     """
     try:
         result = subprocess.run(
-            ["grep", "-r", "-n", "--include", file_pattern, query, 
+            ["grep", "-r", "-n", "--include", file_pattern, query,
              f"{PROJECT_ROOT}/apps/backend-rag/backend"],
             capture_output=True,
-            text=True
+            text=True,
+            timeout=30,
         )
         lines = result.stdout.strip().split("\n") if result.stdout.strip() else []
         return {
@@ -396,7 +498,8 @@ async def find_documentation(topic: str) -> dict:
         result = subprocess.run(
             ["find", f"{PROJECT_ROOT}/docs", "-type", "f", "-name", "*.md"],
             capture_output=True,
-            text=True
+            text=True,
+            timeout=15,
         )
         files = result.stdout.strip().split("\n") if result.stdout.strip() else []
         
@@ -432,7 +535,8 @@ async def get_file_structure(path: str = "apps/backend-rag/backend") -> dict:
         result = subprocess.run(
             ["find", f"{PROJECT_ROOT}/{path}", "-type", "f", "-name", "*.py"],
             capture_output=True,
-            text=True
+            text=True,
+            timeout=15,
         )
         files = result.stdout.strip().split("\n") if result.stdout.strip() else []
         
@@ -527,7 +631,7 @@ def investigate_test_failure() -> str:
 
 def main():
     """Run MCP server with stdio transport."""
-    logger.info(f"Starting Nuzantara Advanced MCP Server")
+    logger.info("Starting Nuzantara Advanced MCP Server")
     logger.info(f"Project root: {PROJECT_ROOT}")
     logger.info(f"Fly app: {FLY_APP}")
     mcp.run(transport="stdio")

@@ -17,9 +17,9 @@ def register(
             "backend_url": backend_url,
             "authenticated": bool(api_key),
             "timeout": timeout,
-            "version": "2.0.0",
-            "tools_count": 72,
-            "chains_count": 6,
+            "version": "2.1.0",
+            "tools_count": 105,
+            "chains_count": 8,
         }
 
     @mcp.resource("data://crm/stats")

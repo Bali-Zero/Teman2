@@ -18,9 +18,8 @@ Test Coverage:
 Total: 35 tests (exceeds 20-test Production-Ready Standard)
 """
 
-import asyncio
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -34,12 +33,10 @@ from backend.services.rag.kg_graph_nodes import (
     traverse_graph_node,
     understand_query_node,
 )
-from backend.services.rag.kg_graph_state import KGAgentState
 from backend.services.rag.kg_langgraph_orchestrator import (
     route_after_query_understanding,
     route_after_traversal,
 )
-
 
 # ============================================================================
 # Fixtures
@@ -270,9 +267,10 @@ async def test_traverse_graph_node_single_hop(sample_state, mock_db_pool):
     pool, conn = mock_db_pool
     sample_state["current_entities"] = ["kbli:56101"]
 
-    # Mock DB response (1 hop)
+    # Mock DB response (1 hop) — batch query returns source_entity_id in each row
     conn.fetch.return_value = [
         {
+            "source_entity_id": "kbli:56101",
             "relationship_type": "REQUIRES",
             "target_entity_id": "pt_pma",
             "source_name": "Restauran",
@@ -289,7 +287,6 @@ async def test_traverse_graph_node_single_hop(sample_state, mock_db_pool):
     # Assertions
     assert len(result["relationship_chains"]) == 1
     assert result["relationship_chains"][0][0]["relationship_type"] == "REQUIRES"
-    # With max_depth=1, only source entity is visited (target is discovered but not processed)
     assert "kbli:56101" in result["visited_entities"]
     assert result["relationship_chains"][0][0]["target_entity_id"] == "pt_pma"
 
@@ -304,6 +301,7 @@ async def test_traverse_graph_node_cycle_detection(sample_state, mock_db_pool):
     # Mock DB response (would create cycle)
     conn.fetch.return_value = [
         {
+            "source_entity_id": "kbli:56101",
             "relationship_type": "REQUIRES",
             "target_entity_id": "pt_pma",  # Already visited
             "source_name": "Restauran",
@@ -484,7 +482,18 @@ def test_format_chains_for_llm_single_chain():
 
 def test_format_chains_for_llm_multiple_chains():
     """Test formatting multiple chains."""
-    chains = [[{"source_name": "A", "source_type": "t1", "relationship_type": "REL", "target_name": "B", "target_type": "t2"}] for _ in range(3)]
+    chains = [
+        [
+            {
+                "source_name": "A",
+                "source_type": "t1",
+                "relationship_type": "REL",
+                "target_name": "B",
+                "target_type": "t2",
+            }
+        ]
+        for _ in range(3)
+    ]
 
     formatted = format_chains_for_llm(chains)
 

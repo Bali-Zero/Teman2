@@ -30,7 +30,7 @@ def register(mcp, _call: Callable, _call_safe: Callable) -> None:
 
         alerts_task = _call_safe("/api/crm/enhanced/expiry-alerts", params={"days_ahead": 30})
         activity_task = _call_safe("/api/generals/activity", params={"hours": 24})
-        health_task = _call_safe("/api/health/detailed")
+        health_task = _call_safe("/health/detailed")
         memory_task = _call_safe("/api/memory/lam/episodes", params={"limit": 5})
 
         alerts, activity, health, memory = await asyncio.gather(

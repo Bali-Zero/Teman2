@@ -54,37 +54,42 @@ from backend.services.rag.kg_subgraph_property import build_property_subgraph
 from backend.services.rag.kg_subgraph_tax import build_tax_subgraph
 from backend.services.rag.kg_subgraph_visa import build_visa_subgraph
 
-
 # ============================================================================
 # LLM Configuration
 # ============================================================================
 
 
+_cached_reasoning_llm: Any | None = None
+
+
 def get_llm_for_reasoning() -> Any:
     """
-    Get LLM instance for reasoning tasks.
+    Get LLM instance for reasoning tasks (cached singleton).
 
-    Uses OpenAI GPT-4 for reasoning (Anthropic API key invalid).
-    Gemini 3 Flash is used by main LLMGateway, but LangChain doesn't
-    support it directly yet.
+    Returns the same LLM instance across calls to reuse HTTP connection pools.
+    Uses OpenAI GPT-4o-mini for reasoning (fast + cheap).
 
     Returns:
         LangChain LLM instance
     """
+    global _cached_reasoning_llm
+    if _cached_reasoning_llm is not None:
+        return _cached_reasoning_llm
+
     anthropic_key = os.getenv("ANTHROPIC_API_KEY")
     openai_key = os.getenv("OPENAI_API_KEY")
 
     # Prefer OpenAI (Anthropic key is invalid in this project)
     if openai_key and ChatOpenAI is not None:
-        logger.info("🤖 [LLM] Using OpenAI GPT-4o for reasoning")
-        return ChatOpenAI(
-            model="gpt-4o-mini",  # Fast + cheap
+        logger.info("🤖 [LLM] Using OpenAI GPT-4o-mini for reasoning (singleton)")
+        _cached_reasoning_llm = ChatOpenAI(
+            model="gpt-4o-mini",
             temperature=0.2,
             api_key=openai_key,
         )
     elif anthropic_key and ChatAnthropic is not None:
-        logger.info("🤖 [LLM] Using Claude Sonnet 4.5 for reasoning (OpenAI unavailable)")
-        return ChatAnthropic(
+        logger.info("🤖 [LLM] Using Claude Sonnet 4.5 for reasoning (singleton)")
+        _cached_reasoning_llm = ChatAnthropic(
             model="claude-sonnet-4-5-20250929",
             temperature=0.2,
             api_key=anthropic_key,
@@ -95,6 +100,8 @@ def get_llm_for_reasoning() -> Any:
             f"OPENAI_API_KEY={'set' if openai_key else 'missing'} (lib={'ok' if ChatOpenAI else 'missing'}), "
             f"ANTHROPIC_API_KEY={'set' if anthropic_key else 'missing'} (lib={'ok' if ChatAnthropic else 'missing'})"
         )
+
+    return _cached_reasoning_llm
 
 
 # ============================================================================
@@ -176,15 +183,15 @@ def route_after_query_understanding(state: KGAgentState) -> str:
     # PHASE 1: Domain-based routing (highest priority)
     # This ensures visa/tax/property queries NEVER go to KBLI resolution
     if domain == "visa":
-        logger.info(f"🛂 [Router] Domain='visa', routing to VisaSubgraph")
+        logger.info("🛂 [Router] Domain='visa', routing to VisaSubgraph")
         return "visa_subgraph"
 
     if domain == "tax":
-        logger.info(f"🧾 [Router] Domain='tax', routing to TaxSubgraph")
+        logger.info("🧾 [Router] Domain='tax', routing to TaxSubgraph")
         return "tax_subgraph"
 
     if domain == "property":
-        logger.info(f"🏠 [Router] Domain='property', routing to PropertySubgraph")
+        logger.info("🏠 [Router] Domain='property', routing to PropertySubgraph")
         return "property_subgraph"
 
     if domain == "company" or domain == "kbli":
@@ -197,7 +204,7 @@ def route_after_query_understanding(state: KGAgentState) -> str:
     if intent in ["company_setup", "pt_pma_setup", "business_formation"] or any(
         kw in query_lower for kw in company_keywords
     ):
-        logger.info(f"🏢 [Router] Company-related query, routing to CompanySubgraph")
+        logger.info("🏢 [Router] Company-related query, routing to CompanySubgraph")
         return "company_subgraph"
 
     # Visa/immigration queries
@@ -205,7 +212,7 @@ def route_after_query_understanding(state: KGAgentState) -> str:
     if intent in ["visa_application", "kitas_work", "immigration", "visa"] or any(
         kw in query_lower for kw in visa_keywords
     ):
-        logger.info(f"🛂 [Router] Visa-related query, routing to VisaSubgraph")
+        logger.info("🛂 [Router] Visa-related query, routing to VisaSubgraph")
         return "visa_subgraph"
 
     # Property queries
@@ -221,7 +228,7 @@ def route_after_query_understanding(state: KGAgentState) -> str:
     if intent in ["property_acquisition", "property_purchase", "property"] or any(
         kw in query_lower for kw in property_keywords
     ):
-        logger.info(f"🏠 [Router] Property-related query, routing to PropertySubgraph")
+        logger.info("🏠 [Router] Property-related query, routing to PropertySubgraph")
         return "property_subgraph"
 
     # Tax queries
@@ -229,7 +236,7 @@ def route_after_query_understanding(state: KGAgentState) -> str:
     if intent in ["tax_compliance", "npwp_registration", "tax"] or any(
         kw in query_lower for kw in tax_keywords
     ):
-        logger.info(f"🧾 [Router] Tax-related query, routing to TaxSubgraph")
+        logger.info("🧾 [Router] Tax-related query, routing to TaxSubgraph")
         return "tax_subgraph"
 
     # PHASE 3: Golden route matching
@@ -241,12 +248,12 @@ def route_after_query_understanding(state: KGAgentState) -> str:
     # PHASE 4: Complex query routing
     # Complex query with multiple entities → graph traversal
     if entities_count >= 2 or "AND" in state["query"].upper():
-        logger.info(f"✅ [Router] Complex query detected, routing to graph traversal")
+        logger.info("✅ [Router] Complex query detected, routing to graph traversal")
         return "resolve_entities"
 
     # PHASE 5: Simple query fallback
     # Simple query → skip graph, use vector search (terminate workflow)
-    logger.info(f"✅ [Router] Simple query, terminating (fallback to vector search)")
+    logger.info("✅ [Router] Simple query, terminating (fallback to vector search)")
     return END
 
 
@@ -270,7 +277,7 @@ def route_after_traversal(state: KGAgentState) -> str:
     logger.info(f"🔀 [Router] After traverse_graph: chains_found={chains_count}")
 
     if chains_count >= 5:
-        logger.info(f"✅ [Router] Sufficient evidence found, routing to reasoning")
+        logger.info("✅ [Router] Sufficient evidence found, routing to reasoning")
         return "reason"
     elif chains_count > 0:
         # Could implement expand_search logic here (try synonyms, related entities)
@@ -278,7 +285,7 @@ def route_after_traversal(state: KGAgentState) -> str:
         logger.info(f"⚠️ [Router] Limited evidence ({chains_count} chains), proceeding to reasoning")
         return "reason"
     else:
-        logger.info(f"❌ [Router] No graph evidence found, terminating")
+        logger.info("❌ [Router] No graph evidence found, terminating")
         return END
 
 
@@ -287,121 +294,31 @@ def route_after_traversal(state: KGAgentState) -> str:
 # ============================================================================
 
 
-async def invoke_company_subgraph(
+async def invoke_subgraph(
     state: KGAgentState,
-    db_pool: asyncpg.Pool,
+    compiled_subgraph: Any,
+    domain_name: str,
+    domain_emoji: str,
 ) -> KGAgentState:
     """
-    Invoke Company Setup Subgraph.
-
-    Handles PT PMA, Perorangan, CV company formation workflows.
+    Invoke a pre-compiled domain subgraph.
 
     Args:
         state: Current KGAgentState
-        db_pool: PostgreSQL connection pool
+        compiled_subgraph: Pre-compiled LangGraph subgraph (or None to build on-the-fly)
+        domain_name: Domain name for logging (e.g. "Company", "Visa")
+        domain_emoji: Emoji for logging
 
     Returns:
-        Updated state with workflow from CompanySubgraph
+        Updated state with workflow from subgraph
     """
-    logger.info("🏢 [CompanySubgraph] Invoking Company Setup Subgraph...")
-
-    llm = get_llm_for_reasoning()
-    subgraph = build_company_subgraph(db_pool, llm)
-    compiled_subgraph = subgraph.compile()
-
-    # Pass current state to subgraph
-    subgraph_result = await compiled_subgraph.ainvoke(state)
-
-    # Merge workflow back to parent state
-    state["workflow"] = subgraph_result.get("workflow")
-    logger.info(f"✅ [CompanySubgraph] Workflow synthesized: {state['workflow']['name']}")
-
-    return state
-
-
-async def invoke_visa_subgraph(
-    state: KGAgentState,
-    db_pool: asyncpg.Pool,
-) -> KGAgentState:
-    """
-    Invoke Visa/Immigration Subgraph.
-
-    Handles KITAS, KITAP, VITAS visa processing workflows.
-
-    Args:
-        state: Current KGAgentState
-        db_pool: PostgreSQL connection pool
-
-    Returns:
-        Updated state with workflow from VisaSubgraph
-    """
-    logger.info("🛂 [VisaSubgraph] Invoking Visa/Immigration Subgraph...")
-
-    llm = get_llm_for_reasoning()
-    subgraph = build_visa_subgraph(db_pool, llm)
-    compiled_subgraph = subgraph.compile()
+    logger.info(f"{domain_emoji} [{domain_name}Subgraph] Invoking {domain_name} Subgraph...")
 
     subgraph_result = await compiled_subgraph.ainvoke(state)
     state["workflow"] = subgraph_result.get("workflow")
-    logger.info(f"✅ [VisaSubgraph] Workflow synthesized: {state['workflow']['name']}")
 
-    return state
-
-
-async def invoke_property_subgraph(
-    state: KGAgentState,
-    db_pool: asyncpg.Pool,
-) -> KGAgentState:
-    """
-    Invoke Property Acquisition Subgraph.
-
-    Handles Hak Pakai, HGB, rental property workflows.
-
-    Args:
-        state: Current KGAgentState
-        db_pool: PostgreSQL connection pool
-
-    Returns:
-        Updated state with workflow from PropertySubgraph
-    """
-    logger.info("🏠 [PropertySubgraph] Invoking Property Acquisition Subgraph...")
-
-    llm = get_llm_for_reasoning()
-    subgraph = build_property_subgraph(db_pool, llm)
-    compiled_subgraph = subgraph.compile()
-
-    subgraph_result = await compiled_subgraph.ainvoke(state)
-    state["workflow"] = subgraph_result.get("workflow")
-    logger.info(f"✅ [PropertySubgraph] Workflow synthesized: {state['workflow']['name']}")
-
-    return state
-
-
-async def invoke_tax_subgraph(
-    state: KGAgentState,
-    db_pool: asyncpg.Pool,
-) -> KGAgentState:
-    """
-    Invoke Tax Compliance Subgraph.
-
-    Handles PPh, PPN, NPWP tax workflows.
-
-    Args:
-        state: Current KGAgentState
-        db_pool: PostgreSQL connection pool
-
-    Returns:
-        Updated state with workflow from TaxSubgraph
-    """
-    logger.info("🧾 [TaxSubgraph] Invoking Tax Compliance Subgraph...")
-
-    llm = get_llm_for_reasoning()
-    subgraph = build_tax_subgraph(db_pool, llm)
-    compiled_subgraph = subgraph.compile()
-
-    subgraph_result = await compiled_subgraph.ainvoke(state)
-    state["workflow"] = subgraph_result.get("workflow")
-    logger.info(f"✅ [TaxSubgraph] Workflow synthesized: {state['workflow']['name']}")
+    workflow_name = state["workflow"]["name"] if state.get("workflow") else "None"
+    logger.info(f"✅ [{domain_name}Subgraph] Workflow synthesized: {workflow_name}")
 
     return state
 
@@ -459,18 +376,22 @@ async def use_golden_route_node(
 # ============================================================================
 
 
-def build_kg_langgraph_workflow(db_pool: asyncpg.Pool) -> StateGraph:
+def build_kg_langgraph_workflow(
+    db_pool: asyncpg.Pool,
+    compiled_subgraphs: dict[str, Any] | None = None,
+) -> StateGraph:
     """
     Build the complete LangGraph workflow for KG exploration.
 
     Constructs StateGraph with:
     - 5 core nodes (understand, resolve, traverse, reason, synthesize)
     - 1 golden route node
+    - 4 domain subgraph nodes (using pre-compiled subgraphs if provided)
     - Conditional routing edges
-    - PostgreSQL checkpointing
 
     Args:
         db_pool: PostgreSQL connection pool (for nodes and checkpointer)
+        compiled_subgraphs: Optional pre-compiled subgraphs dict. If None, builds on-the-fly.
 
     Returns:
         Compiled LangGraph workflow (Pregel app)
@@ -480,8 +401,17 @@ def build_kg_langgraph_workflow(db_pool: asyncpg.Pool) -> StateGraph:
     # Initialize StateGraph
     workflow = StateGraph(KGAgentState)
 
-    # Create async closures that capture db_pool
-    # (lambdas can't be async, so we need proper async functions)
+    # Build subgraphs on-the-fly only if not pre-compiled
+    if compiled_subgraphs is None:
+        llm = get_llm_for_reasoning()
+        compiled_subgraphs = {
+            "company": build_company_subgraph(db_pool, llm).compile(),
+            "visa": build_visa_subgraph(db_pool, llm).compile(),
+            "property": build_property_subgraph(db_pool, llm).compile(),
+            "tax": build_tax_subgraph(db_pool, llm).compile(),
+        }
+
+    # Create async closures that capture db_pool and compiled subgraphs
     async def _resolve(state: KGAgentState) -> KGAgentState:
         return await resolve_entities_wrapper(state, db_pool)
 
@@ -495,16 +425,16 @@ def build_kg_langgraph_workflow(db_pool: asyncpg.Pool) -> StateGraph:
         return await use_golden_route_node(state, db_pool)
 
     async def _company_subgraph(state: KGAgentState) -> KGAgentState:
-        return await invoke_company_subgraph(state, db_pool)
+        return await invoke_subgraph(state, compiled_subgraphs["company"], "Company", "🏢")
 
     async def _visa_subgraph(state: KGAgentState) -> KGAgentState:
-        return await invoke_visa_subgraph(state, db_pool)
+        return await invoke_subgraph(state, compiled_subgraphs["visa"], "Visa", "🛂")
 
     async def _property_subgraph(state: KGAgentState) -> KGAgentState:
-        return await invoke_property_subgraph(state, db_pool)
+        return await invoke_subgraph(state, compiled_subgraphs["property"], "Property", "🏠")
 
     async def _tax_subgraph(state: KGAgentState) -> KGAgentState:
-        return await invoke_tax_subgraph(state, db_pool)
+        return await invoke_subgraph(state, compiled_subgraphs["tax"], "Tax", "🧾")
 
     # Add core nodes
     workflow.add_node("understand_query", understand_query_wrapper)
@@ -573,7 +503,10 @@ def build_kg_langgraph_workflow(db_pool: asyncpg.Pool) -> StateGraph:
     return workflow
 
 
-async def compile_kg_workflow(db_pool: asyncpg.Pool) -> Any:
+async def compile_kg_workflow(
+    db_pool: asyncpg.Pool,
+    compiled_subgraphs: dict[str, Any] | None = None,
+) -> Any:
     """
     Compile the KG workflow with optional PostgreSQL checkpointing.
 
@@ -583,13 +516,14 @@ async def compile_kg_workflow(db_pool: asyncpg.Pool) -> Any:
 
     Args:
         db_pool: PostgreSQL connection pool
+        compiled_subgraphs: Optional pre-compiled subgraphs dict
 
     Returns:
         Compiled Pregel app (runnable workflow)
     """
     logger.info("⚙️ [Compile] Compiling KG workflow...")
 
-    workflow = build_kg_langgraph_workflow(db_pool)
+    workflow = build_kg_langgraph_workflow(db_pool, compiled_subgraphs)
 
     # Try PostgreSQL checkpointing, fall back to no checkpointer
     checkpointer = None
@@ -646,12 +580,28 @@ class KGLangGraphOrchestrator:
         """
         self.db_pool = db_pool
         self.app = None
+        # Pre-compiled subgraphs (built once in initialize)
+        self._compiled_subgraphs: dict[str, Any] = {}
 
-    async def initialize(self):
-        """Compile the LangGraph workflow (call once at startup)."""
+    async def initialize(self) -> None:
+        """Compile the LangGraph workflow and subgraphs (call once at startup)."""
         if self.app is None:
-            self.app = await compile_kg_workflow(self.db_pool)
-            logger.info("✅ [Orchestrator] KG LangGraph workflow initialized")
+            # Pre-compile all 4 domain subgraphs once
+            llm = get_llm_for_reasoning()
+            self._compiled_subgraphs = {
+                "company": build_company_subgraph(self.db_pool, llm).compile(),
+                "visa": build_visa_subgraph(self.db_pool, llm).compile(),
+                "property": build_property_subgraph(self.db_pool, llm).compile(),
+                "tax": build_tax_subgraph(self.db_pool, llm).compile(),
+            }
+
+            # Pass pre-compiled subgraphs to avoid rebuilding them
+            self.app = await compile_kg_workflow(self.db_pool, self._compiled_subgraphs)
+
+            logger.info(
+                "✅ [Orchestrator] KG LangGraph workflow initialized "
+                "(4 subgraphs pre-compiled)"
+            )
 
     async def query(
         self,
@@ -712,3 +662,23 @@ class KGLangGraphOrchestrator:
             kg_langgraph_queries_total.labels(status="error", intent=intent).inc()
             logger.error(f"❌ [Query] KG exploration failed: {e}", exc_info=True)
             return {"workflow": None, "error": str(e)}
+
+    async def get_visual_graph(self, subgraph: str | None = None) -> str:
+        """
+        Get Mermaid diagram of the graph.
+
+        Args:
+            subgraph: Optional subgraph name (visa, company, tax, property)
+
+        Returns:
+            Mermaid string
+        """
+        if self.app is None:
+            await self.initialize()
+
+        target_app = self.app
+
+        if subgraph and subgraph in self._compiled_subgraphs:
+            target_app = self._compiled_subgraphs[subgraph]
+
+        return target_app.get_graph().draw_mermaid()
