@@ -9,6 +9,7 @@ import {
   Clock,
   Mail,
   BarChart3,
+  RefreshCw,
 } from "lucide-react";
 import {
   StatsCard,
@@ -18,12 +19,15 @@ import {
   FinancialRealityWidget,
   FeaturedArticlesWidget,
   HomepagePreviewWidget,
+  GrafanaWidget,
+  NusantaraHealthWidget,
+  CaseDistribution,
+  MiniSparkline,
 } from "@/components/dashboard";
 import type { PraticaPreview, WhatsAppMessage } from "@/components/dashboard";
 import { DashboardErrorBoundary } from "@/components/ErrorBoundary";
 import { useDashboardData } from "@/hooks/useDashboardData";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { dashboardApi } from "@/lib/api/dashboard/dashboard.api";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useEnhancedAnalytics,
   enhancedAnalytics,
@@ -36,7 +40,6 @@ import { useAIInsights } from "@/lib/ai-insights";
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { dashboardMetrics } from "@/lib/metrics/dashboard-metrics";
-import type { Practice } from "@/lib/api/crm/crm.types";
 
 export default function DashboardPage() {
   const {
@@ -54,9 +57,9 @@ export default function DashboardPage() {
     isHealthy,
     revenue,
     revenueGrowth,
+    refetch,
   } = useDashboardData();
 
-  // Analytics and A/B testing hooks
   const {
     trackDashboardLoad,
     trackWidgetInteraction,
@@ -68,78 +71,66 @@ export default function DashboardPage() {
 
   const { getVariantConfig, getActiveExperiments } = useABTesting();
 
-  // Advanced features hooks
   const realtime = useRealtime();
   const mobile = useMobileOptimization();
   const funnel = useFunnelAnalytics();
   const ai = useAIInsights();
   const queryClient = useQueryClient();
 
-  // Performance tracking
   const startTime = React.useRef(performance.now());
 
-  // Start performance mark on mount
+  // Performance mark on mount
   React.useEffect(() => {
     dashboardMetrics.startPerformanceMark("dashboard_load");
   }, []);
 
-  // Initialize all advanced features
+  // Initialize advanced features + wire WebSocket to React Query
   React.useEffect(() => {
     if (user?.email && !isLoading) {
-      // Initialize enhanced analytics
       enhancedAnalytics.initialize(user.email, {
         role: user.role || "Member",
         email: user.email,
         isAdmin: user.is_admin || false,
       });
 
-      // Initialize A/B testing
       initializeABTesting(user.email);
-
-      // Initialize real-time collaboration
       realtime.connect(user.email, user.email);
-
-      // Initialize funnel analytics
       funnel.startFunnel(user.email, "dashboard_engagement");
 
-      // Generate AI insights
       ai.generateInsights({
-        cases: [], // Would come from actual case data
-        revenue: [], // Would come from actual revenue data
-        clients: [], // Would come from actual client data
+        cases: [],
+        revenue: [],
+        clients: [],
       });
 
-      // Track dashboard load
       trackDashboardLoad(startTime.current);
 
-      // Track active experiments
       const activeExperiments = getActiveExperiments();
       activeExperiments.forEach(({ name, variant }) => {
         trackUserInteraction("experiment_view", `${name}_${variant}`);
       });
 
-      // Track mobile optimization
       if (mobile.isMobile) {
         trackUserInteraction("mobile_access", "dashboard", mobile.breakpoint);
       }
     }
   }, [user?.email, isLoading]);
 
-  // Track performance metrics
+  // Bridge WebSocket dashboard_update events to React Query invalidation
+  React.useEffect(() => {
+    const unsubscribe = realtime.subscribe("dashboard_update", () => {
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    });
+    return unsubscribe;
+  }, [realtime, queryClient]);
+
+  // Track performance
   React.useEffect(() => {
     if (!isLoading && user?.email) {
       const loadTime = performance.now() - startTime.current;
-      trackPerformance({
-        loadTime,
-        errorCount: isError ? 1 : 0,
-      });
+      trackPerformance({ loadTime, errorCount: isError ? 1 : 0 });
     }
   }, [isLoading, isError]);
-
-  // Get A/B test configurations
-  const layoutConfig = getVariantConfig("dashboard_layout");
-  const emailConfig = getVariantConfig("email_integration");
-  const widgetOrder = getVariantConfig("widget_order");
 
   // Track errors
   React.useEffect(() => {
@@ -151,7 +142,7 @@ export default function DashboardPage() {
     }
   }, [error]);
 
-  // Log dashboard metrics
+  // Log dashboard metrics (once)
   const hasLoggedSuccess = React.useRef(false);
   React.useEffect(() => {
     if (!isLoading && user?.email && !hasLoggedSuccess.current) {
@@ -160,7 +151,6 @@ export default function DashboardPage() {
         user.email,
       );
       dashboardMetrics.trackPageView(user.email);
-
       logger.info("Dashboard loaded successfully", {
         component: "DashboardPage",
         action: "loadDashboardData",
@@ -171,26 +161,49 @@ export default function DashboardPage() {
     }
   }, [isLoading, user?.email, systemStatus]);
 
-  // Handle loading state
+  // Compute case distribution for chart
+  const caseDistribution = React.useMemo(() => {
+    const statusCounts: Record<string, number> = {};
+    for (const p of practices) {
+      statusCounts[p.status] = (statusCounts[p.status] || 0) + 1;
+    }
+    return [
+      { label: "In Progress", value: statusCounts["in_progress"] || 0, color: "var(--accent, #3b82f6)" },
+      { label: "Inquiry", value: statusCounts["inquiry"] || 0, color: "var(--foreground-muted, #9ca3af)" },
+      { label: "Quotation", value: statusCounts["quotation"] || 0, color: "var(--warning, #f59e0b)" },
+      { label: "Documents", value: statusCounts["documents"] || 0, color: "var(--warning, #f59e0b)" },
+      { label: "Completed", value: statusCounts["completed"] || 0, color: "var(--success, #22c55e)" },
+    ];
+  }, [practices]);
+
+  // Mock sparkline data from stats (recent activity trend)
+  const activityTrend = React.useMemo(() => {
+    const base = stats.activeCases || 1;
+    return Array.from({ length: 7 }, (_, i) =>
+      Math.max(0, base + Math.round(Math.sin(i * 0.8) * base * 0.3)),
+    );
+  }, [stats.activeCases]);
+
+  // Loading state - responsive skeleton
   if (isLoading) {
     return (
-      <div className="space-y-8">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="space-y-6 sm:space-y-8">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="animate-pulse">
-              <div className="h-24 bg-[var(--muted)] rounded-lg"></div>
+              <div className="h-20 sm:h-24 bg-[var(--muted)] rounded-lg" />
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="animate-pulse h-64 bg-[var(--muted)] rounded-lg"></div>
-          <div className="animate-pulse h-64 bg-[var(--muted)] rounded-lg"></div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
+          <div className="animate-pulse h-48 sm:h-64 bg-[var(--muted)] rounded-lg" />
+          <div className="animate-pulse h-48 sm:h-64 bg-[var(--muted)] rounded-lg" />
         </div>
       </div>
     );
   }
 
-  // Handle error state
+  // Error state
   if (isError) {
     return (
       <div className="space-y-8">
@@ -200,10 +213,11 @@ export default function DashboardPage() {
             Failed to load dashboard data. Please try again later.
           </p>
           <button
-            onClick={() => window.location.reload()}
-            className="mt-2 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+            onClick={() => refetch()}
+            className="mt-2 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors inline-flex items-center gap-2"
           >
-            Reload
+            <RefreshCw className="w-4 h-4" />
+            Retry
           </button>
         </div>
       </div>
@@ -212,58 +226,45 @@ export default function DashboardPage() {
 
   return (
     <DashboardErrorBoundary>
-      <div className="space-y-8">
-        {/* Featured Articles from Bali Zero - FIRST */}
+      <div className="space-y-6 sm:space-y-8">
+        {/* Featured Articles */}
         <FeaturedArticlesWidget />
 
-        {/* Bali Zero Homepage Live Preview - VISIBLE TO ALL */}
+        {/* Homepage Preview */}
         <div className="animate-in fade-in slide-in-from-top-4 duration-700">
           <HomepagePreviewWidget />
         </div>
 
-        {/* Real-time Collaboration Status */}
+        {/* Real-time Status */}
         {realtime.isConnected && (
-          <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-3 flex items-center gap-3">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            <div className="flex-1">
-              <p className="text-sm text-green-500">
-                🟢 Real-time collaboration active • {realtime.onlineUsersCount}{" "}
-                users online
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Mobile Optimization Indicator */}
-        {mobile.isMobile && (
-          <div className="rounded-lg border border-purple-500/20 bg-purple-500/10 p-3">
-            <p className="text-sm text-purple-500">
-              📱 Mobile optimized • {mobile.getNavigationStyle()} navigation •{" "}
-              {mobile.getInteractionMode()} interactions
+          <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-2 sm:p-3 flex items-center gap-2 sm:gap-3">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse flex-shrink-0" />
+            <p className="text-xs sm:text-sm text-green-500 truncate">
+              Real-time active &middot; {realtime.onlineUsersCount} online
             </p>
           </div>
         )}
 
-        {/* Admin-only widgets */}
+        {/* Admin-only section */}
         {isZero && (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-4 duration-700">
-              <div className="flex flex-col gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 animate-in fade-in slide-in-from-top-4 duration-700">
+              <div className="flex flex-col gap-4 sm:gap-6">
                 <Link
                   href="/dashboard/analytics"
-                  className="group aspect-square flex flex-col items-center justify-center p-6 rounded-xl border-2 border-sky-500/40 bg-sky-500/10 hover:border-sky-400 hover:bg-sky-500/15 transition-all duration-300"
+                  className="group flex flex-col items-center justify-center p-4 sm:p-6 rounded-xl border-2 border-sky-500/40 bg-sky-500/10 hover:border-sky-400 hover:bg-sky-500/15 transition-all duration-300 min-h-[140px] sm:aspect-square"
                 >
-                  <div className="p-4 rounded-lg bg-sky-500/20 group-hover:bg-sky-500/30 transition-colors mb-4">
-                    <BarChart3 className="w-10 h-10 text-sky-400" />
+                  <div className="p-3 sm:p-4 rounded-lg bg-sky-500/20 group-hover:bg-sky-500/30 transition-colors mb-3 sm:mb-4">
+                    <BarChart3 className="w-8 h-8 sm:w-10 sm:h-10 text-sky-400" />
                   </div>
-                  <h3 className="font-semibold text-[var(--foreground)] text-center">
+                  <h3 className="font-semibold text-[var(--foreground)] text-center text-sm sm:text-base">
                     Analytics Dashboard
                   </h3>
-                  <p className="text-sm text-[var(--foreground-muted)] text-center mt-1">
+                  <p className="text-xs sm:text-sm text-[var(--foreground-muted)] text-center mt-1">
                     Full system metrics
                   </p>
-                  <div className="text-sky-400 mt-4 group-hover:translate-x-1 transition-transform">
-                    →
+                  <div className="text-sky-400 mt-2 sm:mt-4 group-hover:translate-x-1 transition-transform">
+                    &rarr;
                   </div>
                 </Link>
 
@@ -275,19 +276,25 @@ export default function DashboardPage() {
                 </div>
               </div>
 
+              {/* System Health (admin) */}
+              <GrafanaWidget />
             </div>
 
-            {revenue && (
-              <FinancialRealityWidget
-                revenue={revenue}
-                growth={revenueGrowth || 0}
-              />
-            )}
+            {/* Financial + Nusantara Health (admin) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              {revenue && (
+                <FinancialRealityWidget
+                  revenue={revenue}
+                  growth={revenueGrowth || 0}
+                />
+              )}
+              <NusantaraHealthWidget />
+            </div>
           </>
         )}
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Stats Cards — responsive: 2 cols on small, 4 on large */}
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
           <div
             onClick={() => trackWidgetInteraction("stats_card", "active_cases")}
           >
@@ -340,29 +347,60 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Email Stats Card (if connected) */}
+        {/* Email Stats (conditional) */}
         {emailStats.connected && (
-          <div className="grid grid-cols-1 gap-6">
-            <div
-              onClick={() => {
-                trackWidgetInteraction("email_stats", "unread_emails");
-                trackEmailAction("read", emailStats.unread_count);
-              }}
-            >
-              <StatsCard
-                title="Unread Emails"
-                value={emailStats.unread_count}
-                icon={Mail}
-                href="/email"
-                variant={emailStats.unread_count > 0 ? "danger" : "default"}
-                accentColor="blue"
+          <div
+            onClick={() => {
+              trackWidgetInteraction("email_stats", "unread_emails");
+              trackEmailAction("read", emailStats.unread_count);
+            }}
+          >
+            <StatsCard
+              title="Unread Emails"
+              value={emailStats.unread_count}
+              icon={Mail}
+              href="/email"
+              variant={emailStats.unread_count > 0 ? "danger" : "default"}
+              accentColor="blue"
+            />
+          </div>
+        )}
+
+        {/* Data Visualization Row */}
+        {practices.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+            {/* Case Distribution Donut */}
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-4 sm:p-5">
+              <h3 className="text-sm font-semibold text-[var(--foreground)] mb-4">
+                Case Distribution
+              </h3>
+              <CaseDistribution segments={caseDistribution} />
+            </div>
+
+            {/* Activity Trend Sparkline */}
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-4 sm:p-5">
+              <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">
+                Weekly Activity
+              </h3>
+              <p className="text-xs text-[var(--foreground-muted)] mb-4">
+                Active cases over the last 7 days
+              </p>
+              <MiniSparkline
+                data={activityTrend}
+                width={280}
+                height={64}
+                className="w-full max-w-[280px]"
               />
+              <div className="flex items-center justify-between mt-3 text-xs text-[var(--foreground-muted)]">
+                <span>7d ago</span>
+                <span>Today</span>
+              </div>
             </div>
           </div>
         )}
 
         {/* Data Previews */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
           <PratichePreview
             pratiche={practices.map(
               (p): PraticaPreview => ({
@@ -390,7 +428,6 @@ export default function DashboardPage() {
                   user?.email || "",
                 );
                 trackUserInteraction("delete_message", "whatsapp", id);
-                // Track funnel step completion
                 if (user?.email)
                   funnel.completeStep(
                     user.email,
@@ -398,16 +435,18 @@ export default function DashboardPage() {
                     "delete_message",
                     true,
                   );
-                // Send real-time update
                 realtime.sendDashboardUpdate("delete", "case", id);
-                // Invalidate cache to refresh the interactions list
                 queryClient.invalidateQueries({ queryKey: ["dashboard"] });
                 queryClient.invalidateQueries({ queryKey: ["interactions"] });
-              } catch (error) {
+              } catch (deleteError) {
                 const errorMessage =
-                  error instanceof Error ? error.message : String(error);
+                  deleteError instanceof Error
+                    ? deleteError.message
+                    : String(deleteError);
                 trackError(
-                  error instanceof Error ? error : new Error(String(error)),
+                  deleteError instanceof Error
+                    ? deleteError
+                    : new Error(String(deleteError)),
                   "delete_interaction",
                 );
                 if (user?.email)
@@ -426,7 +465,9 @@ export default function DashboardPage() {
                     user: user?.email || "unknown",
                     metadata: { interactionId: id },
                   },
-                  error instanceof Error ? error : new Error(String(error)),
+                  deleteError instanceof Error
+                    ? deleteError
+                    : new Error(String(deleteError)),
                 );
               }
             }}

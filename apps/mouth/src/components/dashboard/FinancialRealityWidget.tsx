@@ -88,8 +88,8 @@ export function FinancialRealityWidget({
           </div>
           <div className="w-full bg-white/10 rounded-full h-1.5 overflow-hidden relative">
             <div
-              className="absolute top-0 left-0 h-full bg-green-500 rounded-full transition-all pointer-events-none progress-bar-fill"
-              data-width={`${progressWidthPercent}%`}
+              className="absolute top-0 left-0 h-full bg-green-500 rounded-full transition-all duration-700 ease-out pointer-events-none"
+              style={{ width: `${progressWidthPercent}%` }}
             />
           </div>
           <p className="text-xs text-white/60 mt-1">

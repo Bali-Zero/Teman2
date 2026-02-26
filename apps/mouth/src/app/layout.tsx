@@ -36,11 +36,7 @@ export const viewport: Viewport = {
 };
 
 // Production URL - uses environment variable or falls back to production domain
-const appUrl =
-  process.env.NEXT_PUBLIC_PUBLIC_URL ||
-  (typeof window !== "undefined"
-    ? window.location.origin
-    : "https://balizero.com");
+const appUrl = process.env.NEXT_PUBLIC_PUBLIC_URL || "https://balizero.com";
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
@@ -230,13 +226,7 @@ export default function RootLayout({
             __html: `
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', () => {
-                  navigator.serviceWorker.register('/sw.js')
-                    .then((registration) => {
-                      console.log('[SW] Registered:', registration.scope);
-                    })
-                    .catch((error) => {
-                      console.warn('[SW] Registration failed:', error);
-                    });
+                  navigator.serviceWorker.register('/sw.js').catch(() => {});
                 });
               }
             `,
