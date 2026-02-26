@@ -36,20 +36,25 @@ def mock_request():
 
 @pytest.fixture
 def mock_orchestrator():
-    """Mock orchestrator"""
+    """Mock orchestrator - return object with concrete attributes (no MagicMock)"""
+    result = MagicMock()
+    result.answer = "test answer"
+    result.sources = []
+    result.document_count = 5
+    result.timings = {"total": 1.0}
+    result.route_used = "flash"
+    result.tools_called = ["tool1"]
+    result.model_used = "gemini-3-flash"
+    result.cache_hit = False
+    result.entities = {}
+    result.reasoning = ""
+    result.confidence_score = 0.9
+    result.abstain_reason = None
+    result.evidence_score = 0.9
+    result.workflow = None
+
     orchestrator = AsyncMock()
-    orchestrator.process_query = AsyncMock(
-        return_value=MagicMock(
-            answer="test answer",
-            sources=[],
-            document_count=5,
-            timings={"total": 1.0},
-            route_used="flash",
-            tools_called=["tool1"],
-            model_used="gemini-3-flash",
-            cache_hit=False,
-        )
-    )
+    orchestrator.process_query = AsyncMock(return_value=result)
     return orchestrator
 
 
@@ -65,18 +70,29 @@ class TestAgenticRagRouter:
     @pytest.mark.asyncio
     async def test_get_orchestrator_creates_new(self, mock_request):
         """Test orchestrator creation"""
-        with patch("backend.app.routers.agentic_rag.create_agentic_rag") as mock_create:
+        with patch("backend.services.rag.agentic.create_agentic_rag") as mock_create:
             mock_create.return_value = MagicMock()
-            orchestrator = await get_orchestrator(mock_request)
-            assert orchestrator is not None
+            import backend.app.dependencies as deps
+            original = deps._agentic_rag_orchestrator
+            deps._agentic_rag_orchestrator = None
+            try:
+                orchestrator = get_orchestrator(mock_request)
+                assert orchestrator is not None
+            finally:
+                deps._agentic_rag_orchestrator = original
 
     @pytest.mark.asyncio
     async def test_get_orchestrator_reuses_existing(self, mock_request):
         """Test orchestrator reuse"""
         existing = MagicMock()
-        with patch("backend.app.routers.agentic_rag._orchestrator", existing):
-            orchestrator = await get_orchestrator(mock_request)
+        import backend.app.dependencies as deps
+        original = deps._agentic_rag_orchestrator
+        deps._agentic_rag_orchestrator = existing
+        try:
+            orchestrator = get_orchestrator(mock_request)
             assert orchestrator == existing
+        finally:
+            deps._agentic_rag_orchestrator = original
 
     def test_clean_image_generation_response_no_pollinations(self):
         """Test cleaning response without pollinations"""
@@ -104,6 +120,13 @@ class TestAgenticRagRouter:
         """Test successful query endpoint"""
         request_data = AgenticQueryRequest(query="What is KITAS?")
 
+        mock_metrics = AsyncMock()
+        mock_ab_manager = MagicMock()
+        mock_ab_manager.metrics_tracker = MagicMock()
+        mock_ab_manager.metrics_tracker.record_query_metrics = mock_metrics
+        mock_ab_manager.assign_variant = MagicMock(return_value="control")
+        mock_ab_manager.get_variant_config = MagicMock(return_value={})
+
         with (
             patch(
                 "backend.app.routers.agentic_rag.get_current_user", return_value=mock_current_user
@@ -112,6 +135,7 @@ class TestAgenticRagRouter:
                 "backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator
             ),
             patch("backend.app.routers.agentic_rag.get_optional_database_pool", return_value=None),
+            patch("backend.app.routers.agentic_rag.get_ab_test_manager", return_value=mock_ab_manager),
         ):
             from backend.app.routers.agentic_rag import query_agentic_rag
 
@@ -138,6 +162,13 @@ class TestAgenticRagRouter:
             ],
         )
 
+        mock_metrics = AsyncMock()
+        mock_ab_manager = MagicMock()
+        mock_ab_manager.metrics_tracker = MagicMock()
+        mock_ab_manager.metrics_tracker.record_query_metrics = mock_metrics
+        mock_ab_manager.assign_variant = MagicMock(return_value="control")
+        mock_ab_manager.get_variant_config = MagicMock(return_value={})
+
         with (
             patch(
                 "backend.app.routers.agentic_rag.get_current_user", return_value=mock_current_user
@@ -145,6 +176,8 @@ class TestAgenticRagRouter:
             patch(
                 "backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator
             ),
+            patch("backend.app.routers.agentic_rag.get_optional_database_pool", return_value=None),
+            patch("backend.app.routers.agentic_rag.get_ab_test_manager", return_value=mock_ab_manager),
         ):
             from backend.app.routers.agentic_rag import query_agentic_rag
 
@@ -409,6 +442,13 @@ class TestAgenticQueryResponse:
 
         request_data = AgenticQueryRequest(query="Tell me more", conversation_id=123)
 
+        mock_metrics = AsyncMock()
+        mock_ab_manager = MagicMock()
+        mock_ab_manager.metrics_tracker = MagicMock()
+        mock_ab_manager.metrics_tracker.record_query_metrics = mock_metrics
+        mock_ab_manager.assign_variant = MagicMock(return_value="control")
+        mock_ab_manager.get_variant_config = MagicMock(return_value={})
+
         with (
             patch(
                 "backend.app.routers.agentic_rag.get_current_user", return_value=mock_current_user
@@ -419,6 +459,7 @@ class TestAgenticQueryResponse:
             patch(
                 "backend.app.routers.agentic_rag.get_optional_database_pool", return_value=mock_db
             ),
+            patch("backend.app.routers.agentic_rag.get_ab_test_manager", return_value=mock_ab_manager),
         ):
             from backend.app.routers.agentic_rag import query_agentic_rag
 
@@ -641,10 +682,10 @@ class TestAgenticQueryResponse:
         mock_request = MagicMock()
 
         with patch(
-            "backend.app.routers.agentic_rag.get_database_pool",
+            "backend.app.dependencies.get_database_pool",
             side_effect=HTTPException(status_code=503),
         ):
-            from backend.app.routers.agentic_rag import get_optional_database_pool
+            from backend.app.dependencies import get_optional_database_pool
 
             result = get_optional_database_pool(mock_request)
             assert result is None
@@ -656,10 +697,10 @@ class TestAgenticQueryResponse:
         mock_request = MagicMock()
 
         with patch(
-            "backend.app.routers.agentic_rag.get_database_pool",
+            "backend.app.dependencies.get_database_pool",
             side_effect=HTTPException(status_code=500),
         ):
-            from backend.app.routers.agentic_rag import get_optional_database_pool
+            from backend.app.dependencies import get_optional_database_pool
 
             with pytest.raises(HTTPException):
                 get_optional_database_pool(mock_request)
