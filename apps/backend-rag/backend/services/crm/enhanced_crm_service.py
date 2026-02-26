@@ -20,7 +20,6 @@ from backend.app.core.exceptions import (
     ValidationError,
 )
 from backend.app.utils.error_sanitizer import sanitize_error_message
-
 from backend.services.crm.audit_trail import AuditAction, CRMAuditor, init_audit_table
 from backend.services.crm.cache_manager import crm_cache, invalidate_client_cache, query_cache
 from backend.services.crm.query_optimizer import CRMQueryOptimizer, health_check_crm_tables
@@ -40,6 +39,13 @@ class EnhancedCRMService:
     - Batch operations
     - Error handling robusto
     """
+
+    # Allowed columns for dynamic UPDATE to prevent SQL injection
+    ALLOWED_CLIENT_COLUMNS = frozenset({
+        "full_name", "email", "phone", "whatsapp", "nationality",
+        "passport_number", "status", "client_type", "assigned_to",
+        "custom_fields", "tags", "notes",
+    })
 
     def __init__(self, db_pool: asyncpg.Pool):
         self.db_pool = db_pool
@@ -168,10 +174,15 @@ class EnhancedCRMService:
             if "full_name" in updates:
                 ClientValidator(**{**old_dict, **updates})
 
-            # Costruisci update
+            # Costruisci update — solo colonne nella whitelist
             fields = []
             values = []
             for key, value in updates.items():
+                if key not in self.ALLOWED_CLIENT_COLUMNS:
+                    raise ValidationError(
+                        f"Column '{key}' not allowed for client update",
+                        {"allowed": sorted(self.ALLOWED_CLIENT_COLUMNS)},
+                    )
                 if key in old_dict and old_dict[key] != value:
                     fields.append(f"{key} = ${len(values) + 1}")
                     values.append(value)
