@@ -382,11 +382,12 @@ async def resolve_entities_node(
     """
     Map extracted entities to KG entity_ids via fuzzy matching.
 
-    Uses PostgreSQL similarity search to find KG entities that match
-    the extracted entity strings from the query.
+    Uses PostgreSQL similarity search (backed by GIN trigram index) to find
+    KG entities that match the extracted entity strings from the query.
+    Results are cached in Redis to avoid repeated DB lookups.
 
-    IMPORTANT: This version properly handles entity type detection to avoid
-    matching visa/tax/property queries against KBLI codes.
+    Batched: all resolvable entities are processed in a single DB connection
+    acquisition, with cache checked first for each entity.
 
     Args:
         state: Current KGAgentState
@@ -402,91 +403,112 @@ async def resolve_entities_node(
         state["current_entities"] = []
         return state
 
-    async with db_pool.acquire() as conn:
-        # Build query for fuzzy entity matching
-        entity_ids = []
-        confidence_scores = {}
+    from backend.services.rag.kg_cache import get_kg_cache
+    cache = get_kg_cache()
 
-        for entity_str in state["extracted_entities"]:
-            # Check if this is a non-KBLI entity (visa, tax, property)
-            if _is_non_kbli_entity(entity_str):
-                logger.info(
-                    f"🛂 [Resolve] Non-KBLI entity detected, skipping KG lookup: {entity_str}"
-                )
-                # For non-KBLI entities, we mark them as "unresolved" for KG purposes
-                # They will be handled by domain-specific subgraphs instead
-                continue
+    entity_ids: list[str] = []
+    confidence_scores: dict[str, float] = {}
+    entities_to_resolve: list[str] = []
 
-            # Get entity type filter for better matching
-            entity_types = _get_entity_type_filter(entity_str)
-
-            # Try exact match first
-            exact_match = await conn.fetchrow(
-                """
-                SELECT entity_id, name, confidence, entity_type
-                FROM kg_nodes
-                WHERE entity_id = $1 OR LOWER(name) = LOWER($2)
-                LIMIT 1
-                """,
-                entity_str,
-                entity_str,
+    # Phase 1: Filter non-KBLI entities, check cache for the rest
+    for entity_str in state["extracted_entities"]:
+        if _is_non_kbli_entity(entity_str):
+            logger.info(
+                f"🛂 [Resolve] Non-KBLI entity detected, skipping KG lookup: {entity_str}"
             )
+            continue
 
-            if exact_match:
-                entity_id = exact_match["entity_id"]
-                entity_ids.append(entity_id)
-                confidence_scores[entity_id] = exact_match["confidence"]
-                logger.info(f"✅ [Resolve] Exact match: {entity_str} → {entity_id}")
-                continue
+        # Check cache first
+        cached = await cache.get_resolved_entity(entity_str)
+        if cached is not None:
+            entity_ids.append(cached["entity_id"])
+            confidence_scores[cached["entity_id"]] = cached["confidence"]
+            logger.info(f"⚡ [Resolve] Cache hit: {entity_str} → {cached['entity_id']}")
+            continue
 
-            # Fallback: fuzzy match (similarity > 0.7)
-            # Use entity type filter if available
-            if entity_types:
-                fuzzy_matches = await conn.fetch(
+        entities_to_resolve.append(entity_str)
+
+    # Phase 2: Batch resolve remaining entities in a single connection
+    if entities_to_resolve:
+        async with db_pool.acquire() as conn:
+            for entity_str in entities_to_resolve:
+                entity_types = _get_entity_type_filter(entity_str)
+
+                # Try exact match first (uses idx_kg_nodes_name_lower index)
+                exact_match = await conn.fetchrow(
                     """
-                    SELECT entity_id, name, confidence, entity_type,
-                           similarity(name, $1) as sim_score
+                    SELECT entity_id, name, confidence, entity_type
                     FROM kg_nodes
-                    WHERE similarity(name, $1) > 0.7
-                      AND entity_type = ANY($2)
-                    ORDER BY sim_score DESC
-                    LIMIT 3
+                    WHERE entity_id = $1 OR LOWER(name) = LOWER($2)
+                    LIMIT 1
                     """,
                     entity_str,
-                    entity_types,
-                )
-            else:
-                fuzzy_matches = await conn.fetch(
-                    """
-                    SELECT entity_id, name, confidence, entity_type,
-                           similarity(name, $1) as sim_score
-                    FROM kg_nodes
-                    WHERE similarity(name, $1) > 0.7
-                    ORDER BY sim_score DESC
-                    LIMIT 3
-                    """,
                     entity_str,
                 )
 
-            if fuzzy_matches:
-                # Take best match
-                best_match = fuzzy_matches[0]
-                entity_id = best_match["entity_id"]
-                entity_ids.append(entity_id)
-                confidence_scores[entity_id] = best_match["confidence"] * best_match["sim_score"]
-                logger.info(
-                    f"🔍 [Resolve] Fuzzy match: {entity_str} → {entity_id} "
-                    f"(sim: {best_match['sim_score']:.2f}, type: {best_match['entity_type']})"
-                )
-            else:
-                logger.warning(f"⚠️ [Resolve] No match found for: {entity_str}")
+                if exact_match:
+                    eid = exact_match["entity_id"]
+                    conf = exact_match["confidence"]
+                    entity_ids.append(eid)
+                    confidence_scores[eid] = conf
+                    await cache.set_resolved_entity(
+                        entity_str, {"entity_id": eid, "confidence": conf}
+                    )
+                    logger.info(f"✅ [Resolve] Exact match: {entity_str} → {eid}")
+                    continue
 
-        state["current_entities"] = entity_ids
-        state["confidence_scores"] = confidence_scores
+                # Fallback: fuzzy match (uses idx_kg_nodes_name_trgm GIN index)
+                if entity_types:
+                    fuzzy_matches = await conn.fetch(
+                        """
+                        SELECT entity_id, name, confidence, entity_type,
+                               similarity(name, $1) as sim_score
+                        FROM kg_nodes
+                        WHERE similarity(name, $1) > 0.7
+                          AND entity_type = ANY($2)
+                        ORDER BY sim_score DESC
+                        LIMIT 3
+                        """,
+                        entity_str,
+                        entity_types,
+                    )
+                else:
+                    fuzzy_matches = await conn.fetch(
+                        """
+                        SELECT entity_id, name, confidence, entity_type,
+                               similarity(name, $1) as sim_score
+                        FROM kg_nodes
+                        WHERE similarity(name, $1) > 0.7
+                        ORDER BY sim_score DESC
+                        LIMIT 3
+                        """,
+                        entity_str,
+                    )
 
-        logger.info(
-            f"✅ [Resolve Entities] Resolved {len(entity_ids)}/{len(state['extracted_entities'])} entities"
-        )
+                if fuzzy_matches:
+                    best = fuzzy_matches[0]
+                    eid = best["entity_id"]
+                    conf = best["confidence"] * best["sim_score"]
+                    entity_ids.append(eid)
+                    confidence_scores[eid] = conf
+                    await cache.set_resolved_entity(
+                        entity_str, {"entity_id": eid, "confidence": conf}
+                    )
+                    logger.info(
+                        f"🔍 [Resolve] Fuzzy match: {entity_str} → {eid} "
+                        f"(sim: {best['sim_score']:.2f}, type: {best['entity_type']})"
+                    )
+                else:
+                    # Cache the miss too (avoids repeated DB lookups for unknown entities)
+                    await cache.set_resolved_entity(entity_str, {"entity_id": "", "confidence": 0})
+                    logger.warning(f"⚠️ [Resolve] No match found for: {entity_str}")
+
+    state["current_entities"] = entity_ids
+    state["confidence_scores"] = confidence_scores
+
+    logger.info(
+        f"✅ [Resolve Entities] Resolved {len(entity_ids)}/{len(state['extracted_entities'])} entities"
+    )
 
     return state
 
@@ -506,6 +528,7 @@ async def traverse_graph_node(
 
     Explores the Knowledge Graph starting from current_entities,
     following REQUIRES, ENABLES, PART_OF relationships up to max_depth hops.
+    Results are cached in Redis keyed by (sorted entity_ids, max_depth).
 
     Args:
         state: Current KGAgentState
@@ -525,12 +548,34 @@ async def traverse_graph_node(
         state["relationship_chains"] = []
         return state
 
+    # Check traversal cache
+    from backend.services.rag.kg_cache import get_kg_cache
+    cache = get_kg_cache()
+
+    cached_chains = await cache.get_traversal(state["current_entities"], max_depth)
+    if cached_chains is not None:
+        state["relationship_chains"] = cached_chains
+        # Rebuild visited set from cached chains
+        visited = set(state.get("visited_entities", set()))
+        for chain in cached_chains:
+            for el in chain:
+                visited.add(el["source_entity_id"])
+                visited.add(el["target_entity_id"])
+        state["visited_entities"] = visited
+        kg_relationship_chains_found.observe(len(cached_chains))
+        logger.info(
+            f"⚡ [Traverse Graph] Cache hit: {len(cached_chains)} chains"
+        )
+        return state
+
     frontier = state["current_entities"]
     visited = state.get("visited_entities", set())
-    chains = []
+    chains: list[list[dict]] = []
+    actual_depth = 0
 
     async with db_pool.acquire() as conn:
         for depth in range(max_depth):
+            actual_depth = depth
             logger.info(
                 f"🔍 [Traverse] Depth {depth + 1}/{max_depth}, frontier size: {len(frontier)}"
             )
@@ -546,6 +591,7 @@ async def traverse_graph_node(
             visited.update(unvisited)
 
             # Batch query: fetch all edges for the entire frontier in one round-trip
+            # Uses idx_kg_edges_source_reltype composite index
             edges = await conn.fetch(
                 """
                 SELECT e.source_entity_id,
@@ -598,8 +644,11 @@ async def traverse_graph_node(
         state["relationship_chains"] = chains
         state["visited_entities"] = visited
 
+        # Cache the traversal result
+        await cache.set_traversal(state["current_entities"], max_depth, chains)
+
         # Track metrics
-        kg_graph_traversal_depth.observe(depth + 1)
+        kg_graph_traversal_depth.observe(actual_depth + 1)
         kg_relationship_chains_found.observe(len(chains))
 
         logger.info(

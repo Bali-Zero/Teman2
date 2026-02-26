@@ -36,10 +36,11 @@ from backend.services.rag.agentic.kg_orchestrator import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/kg", tags=["Knowledge Graph RAG"])
+router = APIRouter(prefix="/api/kg", tags=["Knowledge Graph RAG"])
 
-# Singleton orchestrator instance
+# Singleton orchestrator instances
 _kg_orchestrator: KGAgenticOrchestrator | None = None
+_kg_langgraph_orchestrator: Any = None  # KGLangGraphOrchestrator, lazy import
 
 
 # =============================================================================
@@ -264,20 +265,32 @@ async def kg_stats(
     orchestrator: KGAgenticOrchestrator = Depends(get_kg_orchestrator),
 ) -> KGStatsResponse:
     """
-    Get Knowledge Graph statistics.
+    Get Knowledge Graph statistics. Cached for 2 minutes.
     """
     try:
+        # Check cache first (stats change rarely)
+        from backend.services.rag.kg_cache import get_kg_cache
+        cache = get_kg_cache()
+        cached = await cache.get_stats()
+        if cached is not None:
+            return KGStatsResponse(**cached)
+
         async with orchestrator.db_pool.acquire() as conn:
-            # Count nodes and edges
-            total_nodes = await conn.fetchval("SELECT COUNT(*) FROM kg_nodes")
-            total_edges = await conn.fetchval("SELECT COUNT(*) FROM kg_edges")
+            # Single query: node + edge counts in one round-trip
+            counts = await conn.fetchrow(
+                """
+                SELECT
+                    (SELECT COUNT(*) FROM kg_nodes) as total_nodes,
+                    (SELECT COUNT(*) FROM kg_edges) as total_edges
+                """
+            )
 
             # Get node types
             node_types_rows = await conn.fetch(
                 """
-                SELECT entity_type, COUNT(*) as count 
-                FROM kg_nodes 
-                GROUP BY entity_type 
+                SELECT entity_type, COUNT(*) as count
+                FROM kg_nodes
+                GROUP BY entity_type
                 ORDER BY count DESC
                 """
             )
@@ -286,9 +299,9 @@ async def kg_stats(
             # Get edge types
             edge_types_rows = await conn.fetch(
                 """
-                SELECT relationship_type, COUNT(*) as count 
-                FROM kg_edges 
-                GROUP BY relationship_type 
+                SELECT relationship_type, COUNT(*) as count
+                FROM kg_edges
+                GROUP BY relationship_type
                 ORDER BY count DESC
                 """
             )
@@ -297,13 +310,16 @@ async def kg_stats(
             # Count golden routes
             routes = orchestrator.kg_retrieval._load_golden_routes()
 
-        return KGStatsResponse(
-            total_nodes=total_nodes or 0,
-            total_edges=total_edges or 0,
-            node_types=node_types,
-            edge_types=edge_types,
-            golden_routes_available=len(routes),
-        )
+        stats_data = {
+            "total_nodes": counts["total_nodes"] or 0,
+            "total_edges": counts["total_edges"] or 0,
+            "node_types": node_types,
+            "edge_types": edge_types,
+            "golden_routes_available": len(routes),
+        }
+        await cache.set_stats(stats_data)
+
+        return KGStatsResponse(**stats_data)
 
     except Exception as e:
         logger.error(f"❌ Failed to get KG stats: {e}", exc_info=True)
@@ -404,3 +420,48 @@ async def find_kg_path(
             status_code=500,
             detail=f"Failed to find path: {str(e)}",
         )
+
+
+@router.get(
+    "/visualize",
+    summary="Get KG visual graph",
+    description="Get Mermaid diagram of the KG exploration graph.",
+)
+async def kg_visualize(
+    subgraph: str | None = Query(None, description="Optional subgraph name"),
+    db_pool=Depends(get_optional_database_pool),
+) -> dict[str, str]:
+    """
+    Get Mermaid diagram of the graph. Reuses singleton LangGraph orchestrator.
+    """
+    try:
+        global _kg_langgraph_orchestrator
+        if _kg_langgraph_orchestrator is None:
+            from backend.services.rag.kg_langgraph_orchestrator import KGLangGraphOrchestrator
+            _kg_langgraph_orchestrator = KGLangGraphOrchestrator(db_pool)
+
+        mermaid = await _kg_langgraph_orchestrator.get_visual_graph(subgraph)
+
+        return {"mermaid": mermaid}
+
+    except Exception as e:
+        logger.error(f"❌ Failed to visualize KG: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to visualize KG: {str(e)}",
+        )
+
+
+@router.post(
+    "/cache/invalidate",
+    summary="Invalidate KG cache",
+    description="Clear all cached KG query results. Use after graph ingestion or updates.",
+)
+async def invalidate_kg_cache(
+    current_user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Invalidate all KG cache entries (requires auth)."""
+    from backend.services.rag.kg_cache import get_kg_cache
+    cache = get_kg_cache()
+    count = await cache.invalidate_all()
+    return {"invalidated": count, "status": "ok"}
