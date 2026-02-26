@@ -31,7 +31,20 @@
 - **Vector Collections:** 7 collections, ~58,880 vectors
 - **Embedding Model:** `text-embedding-3-small` (1536 dims) — **NEVER CHANGE**
 
-## 2. Golden Rules (ENFORCE STRICTLY)
+## 2. Claude Code Behavior Rules (IMPORTANT)
+
+**DO NOT ask the user to write code.** You are authorized to edit, write, and execute code directly.
+- Use `Edit`, `Write`, `Bash` without asking permission
+- `defaultMode: acceptEdits` means act first, ask if blocked
+- Only ask if you genuinely need user input (e.g., choosing between multiple valid approaches)
+- **NEVER** ask "should I write this?" or "do you want me to...?" — just do it
+
+**Exception:** Only ask for decisions on:
+- Architecture choices with trade-offs (use `AskUserQuestion`)
+- Production deployments (use risk/reversibility judgment)
+- Destructive operations (rm, git reset --hard, etc.)
+
+## 4. Golden Rules (ENFORCE STRICTLY)
 
 1. **Virtualenv Mandatory** - Never use system Python. Always activate venv first.
 2. **No Root Execution** - Use `PYTHONPATH=. python -m backend.module`, never run modules directly.
@@ -44,7 +57,7 @@
 9. **Quality Standards** - Tests, error handling, graceful degradation required.
 10. **Verify Sources** - Never presume, always verify against actual data sources.
 
-## 3. Development Commands
+## 5. Development Commands
 
 ### Backend (FastAPI)
 
@@ -358,7 +371,7 @@ fly deploy --strategy rolling
 
 ---
 
-## 14. Anthropic API — Best Practices (Feb 2026)
+## 15. Anthropic API — Best Practices (Feb 2026)
 
 ### Adaptive Thinking (OBBLIGATORIO su Opus 4.6 / Sonnet 4.6)
 
