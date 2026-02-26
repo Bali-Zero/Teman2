@@ -61,8 +61,8 @@ export function KBLICard({ code, showTransition = false }: KBLICardProps) {
         {code.licensing[0] && (
           <RiskBadge riskCategory={code.licensing[0].riskCategory} size="sm" />
         )}
-        {showTransition && code.transition.status && (
-          <TransitionBadge status={code.transition.status} />
+        {showTransition && code.transition.mappingStatus && (
+          <TransitionBadge status={code.transition.mappingStatus} />
         )}
       </div>
     </Link>
