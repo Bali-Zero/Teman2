@@ -62,9 +62,21 @@ class CRMQueryOptimizer:
                 for c in clients
             ]
 
-            # Esegui batch insert
-            records = await conn.fetchmany(query, params)
-            return [r["id"] for r in records]
+            # Esegui batch insert con singole query (asyncpg non ha fetchmany per batch)
+            ids = []
+            for p in params:
+                row = await conn.fetchrow(query, *p)
+                if row:
+                    ids.append(row["id"])
+            return ids
+
+    # Allowed columns for dynamic UPDATE to prevent SQL injection
+    ALLOWED_PRACTICE_COLUMNS = frozenset({
+        "status", "priority", "assigned_to", "notes",
+        "quoted_price", "actual_price", "paid_amount", "currency",
+        "start_date", "completion_date", "expiry_date", "next_renewal_date",
+        "practice_type_id", "client_id",
+    })
 
     async def batch_update_practices(self, updates: list[dict[str, Any]]) -> int:
         """
@@ -87,10 +99,12 @@ class CRMQueryOptimizer:
                 if not update:
                     continue
 
-                # Costruisci query dinamica
+                # Costruisci query dinamica — solo colonne nella whitelist
                 fields = []
                 values = []
                 for i, (key, value) in enumerate(update.items(), start=1):
+                    if key not in self.ALLOWED_PRACTICE_COLUMNS:
+                        raise ValueError(f"Column '{key}' not allowed for practice update")
                     fields.append(f"{key} = ${i}")
                     values.append(value)
 
