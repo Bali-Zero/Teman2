@@ -61,8 +61,11 @@ async def get_current_user(request: Request) -> dict:
 # Rate Limiting (in-memory, per-user)
 # ---------------------------------------------------------------------------
 
+_MAX_TRACKED_KEYS = 10_000  # evict oldest keys to prevent unbounded growth
+
+
 class _RateLimitStore:
-    """Simple in-memory sliding window rate limiter."""
+    """In-memory sliding window rate limiter with bounded key set."""
 
     def __init__(self) -> None:
         self._requests: dict[str, list[float]] = defaultdict(list)
@@ -72,10 +75,14 @@ class _RateLimitStore:
         now = time.monotonic()
         window = 60.0  # 1 minute
 
-        # Clean old entries
+        # Clean old entries for this key
         self._requests[key] = [
             t for t in self._requests[key] if now - t < window
         ]
+
+        # Evict stale keys periodically to prevent memory leak
+        if len(self._requests) > _MAX_TRACKED_KEYS:
+            self._evict_stale(now, window)
 
         if len(self._requests[key]) >= max_rpm:
             return False
@@ -89,6 +96,12 @@ class _RateLimitStore:
         active = [t for t in self._requests[key] if now - t < window]
         return max(0, max_rpm - len(active))
 
+    def _evict_stale(self, now: float, window: float) -> None:
+        """Remove keys with no recent requests."""
+        stale = [k for k, ts in self._requests.items() if not ts or now - ts[-1] >= window]
+        for k in stale:
+            del self._requests[k]
+
 
 _rate_limiter = _RateLimitStore()
 
@@ -101,7 +114,6 @@ async def rate_limit(request: Request) -> None:
         user = request.client.host if request.client else "unknown"
 
     if not _rate_limiter.check(user, settings.rate_limit_rpm):
-        remaining = _rate_limiter.remaining(user, settings.rate_limit_rpm)
         raise HTTPException(
             status_code=429,
             detail="Rate limit exceeded. Try again in 60 seconds.",

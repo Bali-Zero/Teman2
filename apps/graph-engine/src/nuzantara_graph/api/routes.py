@@ -1,16 +1,16 @@
 """API routes — query, stream, and health endpoints.
 
-POST /api/query      — synchronous graph invocation, returns full result
-GET  /api/query/{run_id}/stream — SSE stream of node events for a running query
-POST /api/query/stream — start query + stream events via SSE
-GET  /health         — basic liveness probe
-GET  /health/ready   — deep readiness probe (checks all services)
+POST /api/query                — synchronous graph invocation, returns full result
+POST /api/query/stream         — start query + stream events via SSE
+GET  /api/query/{run_id}/events — subscribe to events for a running query (Redis Pub/Sub)
+DELETE /api/session/{id}       — clear conversation history
+GET  /health                   — basic liveness probe
+GET  /health/ready             — deep readiness probe (checks all services)
 """
 
 from __future__ import annotations
 
 import asyncio
-import json
 import uuid
 from typing import Any, AsyncGenerator
 
@@ -168,8 +168,13 @@ async def query(
         return response
 
     except Exception as e:
-        logger.error("query_failed", run_id=run_id, error=str(e))
-        raise HTTPException(status_code=500, detail=f"Query failed: {e}")
+        logger.error("query_failed", run_id=run_id, error=str(e), exc_info=True)
+        detail = str(e) if settings.debug else "Internal server error"
+        raise HTTPException(status_code=500, detail=detail)
+
+
+_STREAM_HEARTBEAT_SECONDS = 2.0
+_STREAM_TOTAL_TIMEOUT_SECONDS = 600.0  # 10 min hard cap
 
 
 @router.post("/api/query/stream")
@@ -182,6 +187,8 @@ async def query_stream(
     """Start a query and stream node-level events via SSE.
 
     Each node emits START/END events. The final event is DONE with the answer.
+    Sends heartbeat comments every 2s to keep the connection alive.
+    Hard timeout of 600s prevents zombie connections.
     """
     run_id = str(uuid.uuid4())
     services: Services = request.app.state.services
@@ -194,8 +201,11 @@ async def query_stream(
     )
 
     async def event_generator() -> AsyncGenerator[str, None]:
+        import time as _time
+
         sequence = 0
-        last_answer: str = ""  # accumulates the final answer across node events
+        last_answer: str = ""
+        stream_start_monotonic = _time.monotonic()
 
         # Emit initial event
         start_event = StreamNodeEvent(
@@ -209,7 +219,39 @@ async def query_stream(
         sequence += 1
 
         try:
-            # Load conversation history for streaming endpoint too
+            # --- Semantic cache check (same as sync endpoint) ---
+            cached = await services.cache.get_semantic(
+                req.query,
+                embeddings_service=services.embeddings,
+                qdrant_client=services.vector_store.client,
+            )
+            if cached:
+                logger.info("stream_cache_hit", run_id=run_id, query=req.query[:60])
+                cache_event = StreamNodeEvent(
+                    run_id=run_id,
+                    event_type=StreamEventType.NODE_END,
+                    node="cache",
+                    data={
+                        "answer": cached.get("answer", ""),
+                        "intent": cached.get("intent", ""),
+                        "cached": True,
+                    },
+                    sequence=sequence,
+                )
+                yield _format_sse(cache_event)
+                sequence += 1
+                last_answer = cached.get("answer", "")
+
+                done_event = StreamNodeEvent(
+                    run_id=run_id,
+                    event_type=StreamEventType.DONE,
+                    node="pipeline",
+                    sequence=sequence,
+                )
+                yield _format_sse(done_event)
+                return
+
+            # --- Load conversation history ---
             conversation_history = []
             if req.session_id:
                 conversation_history = await services.conversation_memory.load(req.session_id)
@@ -223,13 +265,35 @@ async def query_stream(
                 conversation_history=conversation_history,
             )
 
-            # Stream through graph nodes
-            async for event in graph.astream(
-                initial_state,
-                stream_mode="updates",
-            ):
+            # --- Stream graph nodes (single invocation) ---
+            stream_iter = graph.astream(initial_state, stream_mode="updates").__aiter__()
+
+            while True:
+                # Global timeout guard
+                elapsed = _time.monotonic() - stream_start_monotonic
+                if elapsed > _STREAM_TOTAL_TIMEOUT_SECONDS:
+                    logger.warning("stream_timeout", run_id=run_id, elapsed_s=round(elapsed))
+                    timeout_event = StreamNodeEvent(
+                        run_id=run_id,
+                        event_type=StreamEventType.ERROR,
+                        data={"error": "Stream timeout exceeded"},
+                        sequence=sequence,
+                    )
+                    yield _format_sse(timeout_event)
+                    return
+
+                try:
+                    event = await asyncio.wait_for(
+                        stream_iter.__anext__(),
+                        timeout=_STREAM_HEARTBEAT_SECONDS,
+                    )
+                except asyncio.TimeoutError:
+                    yield ": heartbeat\n\n"
+                    continue
+                except StopAsyncIteration:
+                    break
+
                 for node_name, node_output in event.items():
-                    # Node start event
                     node_start = StreamNodeEvent(
                         run_id=run_id,
                         event_type=StreamEventType.NODE_START,
@@ -239,17 +303,15 @@ async def query_stream(
                     yield _format_sse(node_start)
                     sequence += 1
 
-                    # Node end event with output data
                     event_data: dict[str, Any] = {}
                     if isinstance(node_output, dict):
-                        # Include safe fields in event data
                         if "current_node" in node_output:
                             event_data["current_node"] = node_output["current_node"]
                         if "intent" in node_output:
                             event_data["intent"] = str(node_output["intent"])
                         if "answer" in node_output:
                             event_data["answer"] = node_output["answer"]
-                            last_answer = node_output["answer"]  # track for session memory
+                            last_answer = node_output["answer"]
                         if "grades" in node_output:
                             grades = node_output["grades"]
                             if grades:
@@ -271,7 +333,6 @@ async def query_stream(
                     yield _format_sse(node_end)
                     sequence += 1
 
-                    # Publish to Redis for WebSocket subscribers
                     try:
                         await services.cache.publish_node_event(
                             run_id, node_end.model_dump()
@@ -288,7 +349,16 @@ async def query_stream(
             )
             yield _format_sse(done_event)
 
-            # Persist conversation turns after stream completes
+            # Cache the result for future queries
+            if last_answer:
+                await services.cache.set_semantic(
+                    req.query,
+                    {"answer": last_answer, "run_id": run_id},
+                    embeddings_service=services.embeddings,
+                    qdrant_client=services.vector_store.client,
+                )
+
+            # Persist conversation turns
             if req.session_id and last_answer:
                 await services.conversation_memory.append(
                     req.session_id, role="user", content=req.query
@@ -298,11 +368,12 @@ async def query_stream(
                 )
 
         except Exception as e:
-            logger.error("stream_failed", run_id=run_id, error=str(e))
+            logger.error("stream_failed", run_id=run_id, error=str(e), exc_info=True)
+            error_msg = str(e) if settings.debug else "Stream processing failed"
             error_event = StreamNodeEvent(
                 run_id=run_id,
                 event_type=StreamEventType.ERROR,
-                data={"error": str(e)},
+                data={"error": error_msg},
                 sequence=sequence,
             )
             yield _format_sse(error_event)
@@ -335,6 +406,8 @@ async def clear_session(
 async def query_events(
     run_id: str,
     request: Request,
+    user: dict = Depends(get_current_user),
+    _rl: None = Depends(rate_limit),
 ) -> StreamingResponse:
     """Subscribe to events for an already-running query via Redis Pub/Sub.
 
@@ -343,8 +416,6 @@ async def query_events(
     services: Services = request.app.state.services
 
     async def pubsub_generator() -> AsyncGenerator[str, None]:
-        import redis.asyncio as aioredis
-
         client = await services.cache._get_client()
         pubsub = client.pubsub()
         channel = f"v6:stream:{run_id}"

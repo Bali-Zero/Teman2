@@ -175,8 +175,6 @@ const nextConfig: NextConfig = {
     ];
   },
 
-
-
   // NOTE: API proxying is handled by src/app/api/[...path]/route.ts
   // Do NOT add rewrites for /api/* here as they conflict with the API route handler
   // and can cause Mixed Content issues in production.
