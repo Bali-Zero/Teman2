@@ -301,7 +301,10 @@ async def invoke_subgraph(
     domain_emoji: str,
 ) -> KGAgentState:
     """
-    Invoke a pre-compiled domain subgraph.
+    Invoke a pre-compiled domain subgraph with result caching.
+
+    Domain subgraphs return mostly hardcoded data, so identical queries
+    to the same domain produce identical results. Cached for 5 minutes.
 
     Args:
         state: Current KGAgentState
@@ -312,6 +315,20 @@ async def invoke_subgraph(
     Returns:
         Updated state with workflow from subgraph
     """
+    from backend.services.rag.kg_cache import get_kg_cache
+
+    cache = get_kg_cache()
+    domain_lower = domain_name.lower()
+    query = state.get("query", "")
+
+    # Check cache
+    cached_workflow = await cache.get_subgraph_result(domain_lower, query)
+    if cached_workflow is not None:
+        state["workflow"] = cached_workflow
+        workflow_name = cached_workflow.get("name", "cached")
+        logger.info(f"⚡ [{domain_name}Subgraph] Cache hit: {workflow_name}")
+        return state
+
     logger.info(f"{domain_emoji} [{domain_name}Subgraph] Invoking {domain_name} Subgraph...")
 
     subgraph_result = await compiled_subgraph.ainvoke(state)
@@ -319,6 +336,10 @@ async def invoke_subgraph(
 
     workflow_name = state["workflow"]["name"] if state.get("workflow") else "None"
     logger.info(f"✅ [{domain_name}Subgraph] Workflow synthesized: {workflow_name}")
+
+    # Cache the result
+    if state.get("workflow"):
+        await cache.set_subgraph_result(domain_lower, query, state["workflow"])
 
     return state
 
