@@ -45,6 +45,26 @@ if fx_usd:
 else:
     st.sidebar.caption("FX non disponibile")
 
+# ── Dashboard Stats (sidebar) ────────────────────────────────────────
+st.sidebar.divider()
+st.sidebar.caption("📊 Dashboard Stats")
+
+@st.cache_data(ttl=120)
+def get_dashboard_stats():
+    try:
+        r = requests.get(f"{API_URL}/api/dashboard/map/stats", timeout=5)
+        return r.json() if r.status_code == 200 else {}
+    except Exception:
+        return {}
+
+_stats = get_dashboard_stats()
+if _stats and not _stats.get("error"):
+    st.sidebar.metric("Clienti Attivi", _stats.get("total_clients", 0))
+    st.sidebar.metric("Pratiche Aperte", _stats.get("total_practices", 0))
+    st.sidebar.metric("Lookup 24h", _stats.get("map_lookups_24h", 0))
+else:
+    st.sidebar.caption("Stats non disponibili")
+
 
 @st.cache_data(ttl=600)
 def get_zones():
@@ -52,6 +72,35 @@ def get_zones():
         return requests.get(f"{API_URL}/zones", timeout=5).json()
     except Exception:
         return {}
+
+
+@st.cache_data(ttl=300)
+def get_clients_geo():
+    """Fetch active clients with addresses for CRM map layer."""
+    try:
+        r = requests.get(f"{API_URL}/api/dashboard/map/clients/geo", timeout=5)
+        if r.status_code == 200:
+            return r.json().get("clients", [])
+        return []
+    except Exception:
+        return []
+
+
+def _log_analytics_lookup(user_email: str, kbli_code: str = None, location: str = None, notes: str = None):
+    """Silent POST to log a map lookup event. Non-blocking."""
+    try:
+        requests.post(
+            f"{API_URL}/api/dashboard/map/analytics/log-lookup",
+            json={
+                "user_email": user_email or "dashboard_user",
+                "kbli_code": kbli_code,
+                "location": location,
+                "notes": notes,
+            },
+            timeout=3,
+        )
+    except Exception:
+        pass
 
 
 @st.cache_data(ttl=3600)
@@ -525,6 +574,26 @@ if mode == "📍 Land Intel":
             icon=folium.Icon(color="orange", icon="star", prefix="fa"),
         ).add_to(m_li)
 
+        # ── CRM Client Layer ──────────────────────────────────
+        crm_clients = get_clients_geo()
+        crm_layer = folium.FeatureGroup(name="👤 Clienti CRM")
+        for cl in crm_clients:
+            addr = cl.get("address")
+            if addr:
+                folium.Marker(
+                    [lat_in, lon_in],  # placeholder — no lat/lon in DB yet
+                    popup=folium.Popup(
+                        f"<b>{cl.get('full_name', 'N/A')}</b><br>"
+                        f"{cl.get('email', '')}<br>"
+                        f"{addr[:80]}",
+                        max_width=220,
+                    ),
+                    tooltip=cl.get("full_name", "Cliente"),
+                    icon=folium.Icon(color="green", icon="user", prefix="fa"),
+                ).add_to(crm_layer)
+        if crm_clients:
+            crm_layer.add_to(m_li)
+
         Fullscreen(position="topleft", title="Fullscreen", title_cancel="Esci").add_to(m_li)
         LayerControl(collapsed=False).add_to(m_li)
         st_folium(m_li, height=480, use_container_width=True)
@@ -671,6 +740,73 @@ if mode == "📍 Land Intel":
                             st.markdown(f"- **{label}**: {val}")
                 else:
                     st.success("Nessun vincolo overlay rilevato (KKOP, LP2B, KRB, ecc.)")
+
+                # ── KBLI COMPLIANCE CHECK ────────────────────────────────
+                st.subheader("📋 Verifica Compliance KBLI")
+                kbli_input = st.text_input(
+                    "Codice KBLI (opzionale — es. 55203)",
+                    key="kbli_compliance_input",
+                )
+                kbli_col1, kbli_col2 = st.columns([1, 3])
+                with kbli_col1:
+                    kbli_pma = st.checkbox("PMA (straniero)", value=True, key="kbli_pma_check")
+                with kbli_col2:
+                    kbli_btn = st.button("🔍 Verifica Compliance", key="kbli_validate_btn")
+
+                if kbli_btn and kbli_input:
+                    try:
+                        kbli_resp = requests.post(
+                            f"{API_URL}/api/dashboard/map/validate-property",
+                            json={
+                                "kbli_code": kbli_input.strip(),
+                                "is_pma": kbli_pma,
+                                "location": "Bali",
+                            },
+                            timeout=5,
+                        )
+                        if kbli_resp.status_code == 200:
+                            kd = kbli_resp.json()
+                            audit = kd.get("audit", kd)
+                            state = audit.get("state", kd.get("state", "UNKNOWN"))
+
+                            badge_colors = {
+                                "APPROVED": ("#198754", "✅"),
+                                "WARNING": ("#fd7e14", "⚠️"),
+                                "REJECTED": ("#dc3545", "❌"),
+                                "ERROR": ("#6c757d", "🔴"),
+                            }
+                            color, icon = badge_colors.get(state, ("#6c757d", "❓"))
+
+                            title = kd.get("title", kbli_input)
+                            reason = audit.get("reason_code", kd.get("reason_code", ""))
+                            oss_risk = audit.get("oss_risk", "")
+
+                            st.markdown(f"""
+                            <div style="background:{color}22; padding:14px; border-radius:8px;
+                                        border-left:6px solid {color}; margin:8px 0;">
+                                <span style="font-size:1.3em">{icon} <b>{state}</b></span>
+                                &nbsp;—&nbsp; <b>{kd.get('kbli_2025', kbli_input)}</b> {title}
+                                <br><span style="color:#555; font-size:0.85em">
+                                    Motivo: {reason.replace('_', ' ')}
+                                    {f' | Rischio OSS: {oss_risk}' if oss_risk else ''}
+                                </span>
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                            pma = kd.get("pma_logic", {})
+                            if pma:
+                                st.caption(
+                                    f"Max proprietà straniera: {pma.get('max_foreign_ownership', '?')}%"
+                                    f" | UMKM riservato: {'Sì' if pma.get('is_umkm_reserved') else 'No'}"
+                                )
+                        else:
+                            st.warning("Errore nella risposta backend.")
+                    except requests.exceptions.ConnectionError:
+                        st.caption("Backend non raggiungibile per verifica KBLI.")
+                    except Exception as kbli_err:
+                        st.caption(f"Verifica KBLI non disponibile: {kbli_err}")
+                elif kbli_btn and not kbli_input:
+                    st.info("Inserisci un codice KBLI per verificare la compliance.")
 
                 # ── WALK SCORE + NOISE MAP ───────────────────────────────
                 st.subheader("🏃 Contesto Urbano")
@@ -1031,6 +1167,15 @@ Dai un giudizio su: (1) potenziale di sviluppo, (2) rischi principali, (3) racco
                             st.warning("PostgreSQL non raggiungibile. Avvia: `fly proxy 15432:5432 -a nuzantara-rag`")
                 else:
                     st.caption("Database non disponibile — fly proxy non attivo.")
+
+                # ── ANALYTICS LOG (silent) ────────────────────────────
+                _log_analytics_lookup(
+                    user_email="dashboard_user",
+                    kbli_code=st.session_state.get("kbli_compliance_input"),
+                    location=f"{lat_in},{lon_in}",
+                    notes=f"zone={zone_code}, size={li_size}m2",
+                )
+
                 # ── PDF EXPORT ────────────────────────────────────────
                 pdf_data = {
                     "timestamp": pd.Timestamp.now().strftime("%d/%m/%Y %H:%M"),
