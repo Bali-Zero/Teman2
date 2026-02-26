@@ -150,7 +150,7 @@ function transformCode(raw: KBLIRawCode): KBLICode {
     pma: {
       status: mapPmaStatus(raw.pma_status),
       maxForeign: raw.pma_max_asing || 0,
-      conditions: raw.pma_kondisi,
+      condition: raw.pma_kondisi,
       isPriority: raw.pma_prioritas || false,
       note: raw.pma_nota,
       source: raw.pma_source,
@@ -160,34 +160,36 @@ function transformCode(raw: KBLIRawCode): KBLICode {
       riskCategory: s.kategori_risiko,
       licenseType: s.perizinan,
       requirements: s.persyaratan,
-      timeline: s.jangka_waktu,
+      timeframe: s.jangka_waktu,
       obligations: s.kewajiban,
       authority: s.kewenangan,
+      fictivePositive: s.fiktif_positif || false,
     })),
     transition: {
-      status: raw.status_mapping,
-      fromCodes: raw.pp28_sources || [],
-      note: raw.aggregation_note || raw.mapping_note || null,
+      mappingStatus: raw.status_mapping,
+      previousCodes: raw.pp28_sources || [],
+      mappingNote: raw.mapping_note || undefined,
+      aggregationNote: raw.aggregation_note || undefined,
     },
     intel: raw.intel_2026
       ? {
-          market_sentiment: raw.intel_2026.market_sentiment || "",
-          bali_nuance: raw.intel_2026.bali_nuance || "",
-          operational_risks: raw.intel_2026.operational_risks || "",
-          investment_outlook: raw.intel_2026.investment_outlook || "",
-          legacy_bridge: raw.intel_2026.legacy_bridge || "",
+          whatItMeans: raw.intel_2026.whatItMeans || "",
+          whatYouNeed: raw.intel_2026.whatYouNeed || "",
+          whatChanged: raw.intel_2026.whatChanged || "",
+          baliContext: raw.intel_2026.baliContext || "",
+          zantaraOpener: raw.intel_2026.zantaraOpener || "",
+          youllAlsoNeed: raw.intel_2026.youllAlsoNeed || "",
+          coverImage: raw.intel_2026.coverImage || null,
         }
       : undefined,
     tier: GOLD_CODES.has(code) ? "gold" : "bronze",
+    keywords: [],
   };
 }
 
-function mapPmaStatus(
-  status: string,
-): "open" | "restricted" | "closed" | "unknown" {
+function mapPmaStatus(status: string): "open" | "restricted" | "closed" {
   const s = (status || "").toUpperCase();
-  if (s === "TERBUKA") return "open";
   if (s === "TERBATAS") return "restricted";
   if (s === "TERTUTUP") return "closed";
-  return "unknown";
+  return "open";
 }

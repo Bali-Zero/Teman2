@@ -1,12 +1,13 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import Image from "next/image";
 import { getCode, getAllCodes } from "@/lib/kbli-data.server";
 import {
   KBLICodeJsonLd,
   KBLIBreadcrumbJsonLd,
 } from "@/components/kbli/KBLIStructuredData";
 import Link from "next/link";
-import { Activity } from "lucide-react";
+import { Activity, Building2 } from "lucide-react";
 
 // SSG: Generate all 1,563 pages at build time
 export async function generateStaticParams() {
@@ -53,6 +54,8 @@ export default async function KBLICodePage({
     notFound();
   }
 
+  const coverImage = codeData.intel?.coverImage;
+
   return (
     <>
       <KBLICodeJsonLd code={codeData} />
@@ -69,9 +72,29 @@ export default async function KBLICodePage({
           },
         ]}
       />
-      <div className="max-w-4xl mx-auto px-4 py-12">
+
+      {/* Gold Header Image */}
+      {coverImage && (
+        <div className="w-full h-[300px] md:h-[450px] relative">
+          <Image
+            src={coverImage}
+            alt={codeData.titleId}
+            fill
+            className="object-cover"
+            priority
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-50 to-transparent" />
+        </div>
+      )}
+
+      <div
+        className={`max-w-4xl mx-auto px-4 ${coverImage ? "py-6 -mt-20 relative z-10" : "py-12"}`}
+      >
         <nav className="mb-8">
-          <Link href="/kbli" className="text-amber-600 hover:underline">
+          <Link
+            href="/kbli"
+            className={`text-amber-600 hover:underline font-medium ${coverImage ? "bg-white/80 backdrop-blur px-3 py-1 rounded-full w-fit shadow-sm" : ""}`}
+          >
             ← Back to KBLI Navigator
           </Link>
         </nav>
@@ -110,60 +133,70 @@ export default async function KBLICodePage({
               </div>
             </section>
 
-            {/* NEW: 2026 Business Intelligence Section */}
+            {/* 2026 Business Intelligence Section */}
             {codeData.intel && (
               <section className="space-y-6">
                 <h2 className="text-2xl font-semibold text-slate-800 flex items-center gap-2">
                   <span className="p-1.5 bg-blue-100 rounded-lg text-blue-600">
                     <Activity className="w-5 h-5" />
                   </span>
-                  2026 Business Intelligence
+                  Bali Intelligence
                 </h2>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-5">
-                    <h3 className="text-blue-900 font-bold text-sm uppercase tracking-wider mb-2">
-                      Market Sentiment
-                    </h3>
-                    <p className="text-slate-700 text-sm leading-relaxed">
-                      {codeData.intel.market_sentiment}
-                    </p>
+                {codeData.intel.whatItMeans && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 leading-relaxed text-slate-700">
+                    {codeData.intel.whatItMeans}
                   </div>
-                  <div className="bg-amber-50/50 border border-amber-100 rounded-xl p-5">
-                    <h3 className="text-amber-900 font-bold text-sm uppercase tracking-wider mb-2">
-                      The Bali Nuance
-                    </h3>
-                    <p className="text-slate-700 text-sm leading-relaxed">
-                      {codeData.intel.bali_nuance}
-                    </p>
-                  </div>
-                  <div className="bg-green-50/50 border border-green-100 rounded-xl p-5">
-                    <h3 className="text-green-900 font-bold text-sm uppercase tracking-wider mb-2">
-                      Strategic ROI
-                    </h3>
-                    <p className="text-slate-700 text-sm leading-relaxed">
-                      {codeData.intel.investment_outlook}
-                    </p>
-                  </div>
-                  <div className="bg-red-50/50 border border-red-100 rounded-xl p-5">
-                    <h3 className="text-red-900 font-bold text-sm uppercase tracking-wider mb-2">
-                      Operational Hurdles
-                    </h3>
-                    <p className="text-slate-700 text-sm leading-relaxed">
-                      {codeData.intel.operational_risks}
-                    </p>
-                  </div>
-                </div>
+                )}
 
-                <div className="bg-slate-100 border border-slate-200 rounded-xl p-4 text-xs text-slate-500 italic">
-                  <strong>Legacy Bridge:</strong> {codeData.intel.legacy_bridge}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {codeData.intel.whatYouNeed && (
+                    <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-5">
+                      <h3 className="text-blue-900 font-bold text-sm uppercase tracking-wider mb-2">
+                        What You Need
+                      </h3>
+                      <p className="text-slate-700 text-sm leading-relaxed">
+                        {codeData.intel.whatYouNeed}
+                      </p>
+                    </div>
+                  )}
+                  {codeData.intel.baliContext && (
+                    <div className="bg-amber-50/50 border border-amber-100 rounded-xl p-5">
+                      <h3 className="text-amber-900 font-bold text-sm uppercase tracking-wider mb-2">
+                        The Bali Nuance
+                      </h3>
+                      <p className="text-slate-700 text-sm leading-relaxed">
+                        {codeData.intel.baliContext}
+                      </p>
+                    </div>
+                  )}
+                  {codeData.intel.youllAlsoNeed && (
+                    <div className="bg-green-50/50 border border-green-100 rounded-xl p-5">
+                      <h3 className="text-green-900 font-bold text-sm uppercase tracking-wider mb-2">
+                        You&apos;ll Also Need
+                      </h3>
+                      <p className="text-slate-700 text-sm leading-relaxed">
+                        {codeData.intel.youllAlsoNeed}
+                      </p>
+                    </div>
+                  )}
+                  {codeData.intel.whatChanged && (
+                    <div className="bg-purple-50/50 border border-purple-100 rounded-xl p-5">
+                      <h3 className="text-purple-900 font-bold text-sm uppercase tracking-wider mb-2">
+                        2020 → 2025
+                      </h3>
+                      <p className="text-slate-700 text-sm leading-relaxed">
+                        {codeData.intel.whatChanged}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </section>
             )}
 
             <section>
               <h2 className="text-2xl font-semibold text-slate-800 mb-4">
-                Licensing by Business Scale
+                PP28/2025 Licensing Data
               </h2>
               <div className="space-y-4">
                 {codeData.licensing.map((lic, idx) => (
@@ -173,7 +206,7 @@ export default async function KBLICodePage({
                   >
                     <div className="flex justify-between items-center mb-3">
                       <h3 className="font-bold text-slate-800">
-                        {lic.scales.join(", ")}
+                        {lic.scales.join(" / ")}
                       </h3>
                       <span className="text-xs font-bold uppercase tracking-wider bg-slate-200 px-2 py-1 rounded">
                         Risk: {lic.riskCategory}
@@ -190,10 +223,31 @@ export default async function KBLICodePage({
                       </div>
                       <div>
                         <p className="text-slate-500 mb-1 uppercase text-[10px] font-bold tracking-widest">
-                          Timeline
+                          Processing
                         </p>
                         <p className="font-medium text-slate-800">
-                          {lic.timeline}
+                          {lic.timeframe}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-slate-500 mb-1 uppercase text-[10px] font-bold tracking-widest">
+                          Foreign Ownership
+                        </p>
+                        <p className="font-medium text-slate-800">
+                          {codeData.pma.maxForeign}%{" "}
+                          {codeData.pma.status === "open"
+                            ? "Open"
+                            : codeData.pma.status === "restricted"
+                              ? "Restricted"
+                              : "Closed"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-slate-500 mb-1 uppercase text-[10px] font-bold tracking-widest">
+                          Authority
+                        </p>
+                        <p className="font-medium text-slate-800">
+                          {lic.authority || "BKPM / OSS"}
                         </p>
                       </div>
                     </div>
@@ -202,9 +256,21 @@ export default async function KBLICodePage({
                         <p className="text-slate-500 mb-2 uppercase text-[10px] font-bold tracking-widest">
                           Requirements
                         </p>
-                        <ul className="list-disc list-inside space-y-1 text-slate-600">
+                        <ul className="list-disc list-inside space-y-1 text-slate-600 text-sm">
                           {lic.requirements.map((req, ridx) => (
                             <li key={ridx}>{req}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {lic.obligations && lic.obligations.length > 0 && (
+                      <div className="mt-4">
+                        <p className="text-slate-500 mb-2 uppercase text-[10px] font-bold tracking-widest">
+                          Ongoing Obligations
+                        </p>
+                        <ul className="list-disc list-inside space-y-1 text-slate-600 text-sm">
+                          {lic.obligations.map((ob, oidx) => (
+                            <li key={oidx}>{ob}</li>
                           ))}
                         </ul>
                       </div>
@@ -213,6 +279,39 @@ export default async function KBLICodePage({
                 ))}
               </div>
             </section>
+
+            {/* PMA Section */}
+            {codeData.pma.condition && (
+              <section>
+                <div className="bg-slate-800 text-white rounded-xl p-5 flex items-start gap-3">
+                  <Building2 className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-amber-400 mb-1">
+                      PMA
+                    </p>
+                    <p className="text-sm leading-relaxed">
+                      {codeData.pma.condition}
+                    </p>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* Transition note */}
+            {codeData.transition.mappingStatus && (
+              <section>
+                <div className="bg-slate-100 border border-slate-200 rounded-xl p-4 text-xs text-slate-500">
+                  <span className="inline-block bg-amber-200 text-amber-900 font-bold px-2 py-0.5 rounded text-[10px] mr-2">
+                    2020 → 2025
+                  </span>
+                  {codeData.intel?.whatChanged ||
+                    (codeData.transition.previousCodes.length > 0
+                      ? `Previously under ${codeData.transition.previousCodes.join(", ")}. ${codeData.transition.aggregationNote || codeData.transition.mappingNote || ""}`
+                      : codeData.transition.aggregationNote ||
+                        codeData.transition.mappingNote)}
+                </div>
+              </section>
+            )}
           </div>
 
           <aside className="space-y-8">
@@ -225,15 +324,21 @@ export default async function KBLICodePage({
                   Get practical advice on how to use KBLI {codeData.code} for
                   your Bali project.
                 </p>
-                <div className="bg-white/10 rounded-lg p-3 text-xs border border-white/10 italic text-slate-300">
-                  "What permits do I need for a restaurant in Canggu under this
-                  code?"
-                </div>
-                <button className="w-full mt-4 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold py-2 rounded-lg transition-colors text-sm">
+                {codeData.intel?.zantaraOpener && (
+                  <div className="bg-white/10 rounded-lg p-3 text-xs border border-white/10 italic text-slate-300 mb-4">
+                    &ldquo;{codeData.intel.zantaraOpener}&rdquo;
+                  </div>
+                )}
+                {!codeData.intel?.zantaraOpener && (
+                  <div className="bg-white/10 rounded-lg p-3 text-xs border border-white/10 italic text-slate-300 mb-4">
+                    &ldquo;What permits do I need for this business in
+                    Bali?&rdquo;
+                  </div>
+                )}
+                <button className="w-full bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold py-2 rounded-lg transition-colors text-sm">
                   Open Expert Chat
                 </button>
               </div>
-              {/* Background glow */}
               <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-amber-500/20 blur-3xl rounded-full"></div>
             </div>
 

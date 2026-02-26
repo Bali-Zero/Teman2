@@ -5,7 +5,6 @@ from enum import StrEnum
 
 class NodeName(StrEnum):
     UNDERSTAND = "understand"
-    ROUTE = "route"
     RETRIEVE = "retrieve"
     REASON = "reason"
     SYNTHESIZE = "synthesize"

@@ -5,12 +5,14 @@
 Nuzantara V6 replaces the V5 procedural orchestration with a LangGraph-centric agentic platform.
 
 ### V5 Problems Solved
+
 - **No self-correction:** V5's 12-step linear flow can't recover from failures
 - **No state validation:** TypedDict state allows invalid data between nodes
 - **Probabilistic routing:** V5 routes based on LLM output, not deterministic enums
 - **No streaming granularity:** V5 streams answer text, not node-level progress
 
 ### V6 Core Principles
+
 1. **Pydantic GraphState** — validated on every mutation
 2. **Cyclic correction** — grader nodes trigger retry loops (max 2)
 3. **Deterministic routing** — `IntentType` enum → `RouteDecision` enum
@@ -33,27 +35,33 @@ Nuzantara V6 replaces the V5 procedural orchestration with a LangGraph-centric a
 ## Components
 
 ### shared-schemas (packages/shared-schemas/)
+
 Source of truth for all Pydantic models. Both graph-engine and frontend (via generated TypeScript) consume these types.
 
 Key models:
+
 - `GraphState` — central state flowing through every node (includes `session_id`, `conversation_history`)
 - `GradeResult` / `ConfidenceScores` — quality gate schemas
 - `StreamNodeEvent` / `SSEMessage` — real-time event schemas
 - Domain models: Company, Visa, Property, Tax, KBLI
 
 ### graph-engine (apps/graph-engine/)
+
 LangGraph StateGraph with:
+
 - **6 core nodes:** understand, retrieve, reason, synthesize, route, tools
 - **5 grader nodes:** retrieval, reasoning, answer, hallucination (LLM-verified), pricing
 - **4 subgraphs:** company, visa, property, tax
 - **Services:** LLM gateway, vector store, KG store, semantic cache (2-layer), embeddings, conversation memory
 
 ### Standalone Services (apps/services/)
+
 - **CRM:** CRUD business logic (not AI pipeline)
 - **Ingestion:** Document processing (batch, not query-time)
 - **Notifications:** Multi-channel push
 
 ### Frontend (apps/web/)
+
 - Next.js with Atomic Design (atoms → molecules → organisms → templates)
 - `useGraph()` hook for SSE streaming with `session_id` support
 - `useChatPage()` hook with ref-based answer tracking (closure bug fixed)
@@ -94,19 +102,21 @@ session_id (client-generated per tab)
 ## Observability
 
 Structured JSON logs (structlog) → Fly.io log drain:
+
 - Per-node timing via `NodeTimer` / `trace_node` decorator
 - `GraphMetrics` accumulates run-level summary
 - Fields: `node`, `duration_ms`, `run_id`, `intent`, `correction_count`, `last_grade_score`
 
 ## Deployment
 
-| App | Platform | Region |
-|-----|----------|--------|
-| graph-engine | Fly.io | Singapore |
-| CRM | Fly.io | Singapore |
-| Frontend | Vercel | Edge (global) |
+| App          | Platform | Region        |
+| ------------ | -------- | ------------- |
+| graph-engine | Fly.io   | Singapore     |
+| CRM          | Fly.io   | Singapore     |
+| Frontend     | Vercel   | Edge (global) |
 
 Databases shared with V5 but isolated:
+
 - PostgreSQL: separate `v6` schema
 - Qdrant: same collections (read-only) + `v6_cache_vectors` (new)
 - Redis: `v6:` key prefix
