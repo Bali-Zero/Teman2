@@ -1,7 +1,0 @@
-[
-  "https://bhumi.atrbpn.go.id/geonode/api/bhumi/groups_with_resources",
-  "https://bhumi.atrbpn.go.id/geonode/api/v2/resources?format=json&filter{is_published}=true&filter{resource_type}=dataset&api_preset=bhumi&page_size=1000",
-  "https://api.userway.org/api/a11y-data/v0/page/https%3A%2F%2Fbhumi.atrbpn.go.id%2Fpeta/DESKTOP/WIDGET_OFF/status",
-  "https://bhumi.atrbpn.go.id/api/rating",
-  "https://api.userway.org/api/v1/tunings/8iksbkAOsI"
-]
