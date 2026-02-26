@@ -1208,12 +1208,12 @@ out center;
                 for i, (label, count) in enumerate(density_results.items()):
                     low, high = thresholds.get(label, (20, 50))
                     if count >= high:
-                        signal = "🔴 " + T("saturated_zone")
+                        signal = T("saturated_zone")
                     elif count >= low:
-                        signal = "🟡 " + T("active_market")
+                        signal = T("active_market")
                     else:
-                        signal = "🟢 " + T("low_competition")
-                    cols[i].metric(T("structures_within", label=label), count, delta=signal, delta_color="off")
+                        signal = T("low_competition")
+                    cols[i].metric(T("structures_within", radius=label), count, delta=signal, delta_color="off")
 
                 if _all_tourism_els:
                     for el in _all_tourism_els:
