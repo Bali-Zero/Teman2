@@ -16,6 +16,7 @@ if str(backend_path) not in sys.path:
 from backend.llm.base import LLMMessage, LLMResponse
 from backend.llm.providers.openrouter import OpenRouterProvider
 
+# Patch target: OpenRouterClient is imported inside _init_client from openrouter_client
 _OPENROUTER_CLIENT_PATH = "backend.services.llm_clients.openrouter_client.OpenRouterClient"
 
 

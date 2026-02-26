@@ -4,6 +4,7 @@ Target: 100% coverage
 """
 
 import sys
+from contextlib import asynccontextmanager
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -129,6 +130,8 @@ class TestOllamaProvider:
     @pytest.mark.asyncio
     async def test_generate_stream(self, ollama_provider):
         """Test streaming generation"""
+        from contextlib import asynccontextmanager
+
         mock_chunks = [
             '{"response": "chunk1"}',
             '{"response": "chunk2"}',
@@ -139,19 +142,17 @@ class TestOllamaProvider:
             for c in mock_chunks:
                 yield c
 
-        class MockStreamCM:
-            async def __aenter__(self):
-                response = MagicMock()
-                response.status_code = 200
-                response.aiter_lines = lambda: mock_aiter_lines()
-                return response
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.aiter_lines = mock_aiter_lines
 
-            async def __aexit__(self, *args):
-                return None
+        @asynccontextmanager
+        async def mock_stream(*args, **kwargs):
+            yield mock_response
 
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_client = MagicMock()
-            mock_client.stream = MagicMock(return_value=MockStreamCM())
+            mock_client.stream = mock_stream
             mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
             mock_client_class.return_value.__aexit__ = AsyncMock(return_value=None)
 

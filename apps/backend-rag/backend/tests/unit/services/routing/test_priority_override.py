@@ -31,17 +31,17 @@ class TestPriorityOverrideService:
         assert len(priority_override.team_patterns) > 0
 
     def test_check_priority_overrides_identity(self, priority_override):
-        """Test identity query - TeamKnowledgeTool handles, returns None"""
+        """Test identity query - returns None (TeamKnowledgeTool handles via Agentic RAG)"""
         result = priority_override.check_priority_overrides("chi sono io")
         assert result is None
 
     def test_check_priority_overrides_team(self, priority_override):
-        """Test team query - TeamKnowledgeTool handles, returns None"""
+        """Test team query - returns None (TeamKnowledgeTool handles via Agentic RAG)"""
         result = priority_override.check_priority_overrides("chi lavora nel team")
         assert result is None
 
     def test_check_priority_overrides_founder(self, priority_override):
-        """Test founder query - TeamKnowledgeTool handles, returns None"""
+        """Test founder query - returns None (TeamKnowledgeTool handles via Agentic RAG)"""
         result = priority_override.check_priority_overrides("chi è il fondatore")
         assert result is None
 
