@@ -1,7 +1,7 @@
 # 🎉 KBLI Navigator - Phase 1+2 Complete Summary
 
-**Date:** 2026-02-16 18:30
-**Status:** Phase 2 ✅ Deployed | Phase 1 ⏳ Ready for Integration
+**Date:** 2026-02-16 18:30 | **Updated:** 2026-02-27
+**Status:** Phase 2 ✅ Deployed | **Next.js app at `/kbli`** | Legacy `/kbli-navigator` → redirect
 **Target:** 98% Pass Rate
 
 ---
@@ -10,19 +10,25 @@
 
 ### ✅ What's Done
 
-1. **Phase 2: Fully Deployed**
+1. **Next.js KBLI App (Primary)**
+   - **Route:** `/kbli` — KBLISearch, KBLISectorGrid, ZantaraChat
+   - **Route:** `/kbli/[code]` — 1,563 SSG pages
+   - **Redirect:** `/kbli-navigator` → `/kbli` (permanent 301, next.config.ts)
+   - **Commit:** `e9b8037a2` (2026-02-27)
+
+2. **Phase 2: Legacy Static (Deprecated)**
    - Fuzzy search with Levenshtein distance
    - Relevance scoring (6-factor algorithm)
    - "Did You Mean?" suggestions
    - **Commit:** `2ded80b96`
-   - **Live at:** https://zantara.balizero.com/kbli-navigator
+   - **Legacy URL:** https://zantara.balizero.com/kbli-navigator → redirects to `/kbli`
 
-2. **Phase 1: Data Ready**
+3. **Phase 1: Data Ready**
    - Bilingual keywords file generated (347KB)
    - 1,562 KBLI codes with English translations
    - **File:** `kbli_data_with_english.js`
 
-3. **Documentation Created**
+4. **Documentation Created**
    - `PHASE_2_IMPLEMENTATION_LOG.md` - Technical details
    - `PHASE_2_DEPLOYMENT_SUMMARY.md` - Deployment log
    - `PHASE_1+2_COMPLETE_GUIDE.md` - Comprehensive guide with 25 test cases
