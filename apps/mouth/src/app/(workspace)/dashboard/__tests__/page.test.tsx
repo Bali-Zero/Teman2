@@ -105,6 +105,12 @@ vi.mock("@/components/dashboard", () => ({
   HomepagePreviewWidget: () => (
     <div data-testid="homepage-preview-widget">Homepage Preview</div>
   ),
+  CaseDistribution: ({ segments }: { segments: unknown[] }) => (
+    <div data-testid="case-distribution">{segments?.length ?? 0} segments</div>
+  ),
+  MiniSparkline: ({ data }: { data: unknown[] }) => (
+    <div data-testid="mini-sparkline">{data?.length ?? 0} points</div>
+  ),
 }));
 
 // Create a wrapper with QueryClientProvider for tests
