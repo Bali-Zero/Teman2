@@ -16,6 +16,7 @@ if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 from backend.app.routers.audio import get_audio_service, router
+from backend.app.utils.internal_api_auth import verify_internal_api_key
 
 
 @pytest.fixture
@@ -27,12 +28,18 @@ def mock_audio_service():
     return service
 
 
+async def _mock_verify_internal_api_key():
+    """Bypass API key for tests"""
+    return {"role": "test"}
+
+
 @pytest.fixture
 def app(mock_audio_service):
     """Create FastAPI app with router and dependency override"""
     app = FastAPI()
     app.include_router(router)
     app.dependency_overrides[get_audio_service] = lambda: mock_audio_service
+    app.dependency_overrides[verify_internal_api_key] = _mock_verify_internal_api_key
     return app
 
 
