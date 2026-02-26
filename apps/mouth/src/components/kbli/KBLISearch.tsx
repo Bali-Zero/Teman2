@@ -71,7 +71,7 @@ export function KBLISearch({
   const handleSelect = (code: string) => {
     setIsOpen(false);
     if (navigateOnSubmit) {
-      router.push(`/kbli-navigator/${code}`);
+      router.push(`/kbli/${code}`);
     }
   };
 
@@ -86,7 +86,7 @@ export function KBLISearch({
       if (activeIndex >= 0 && results[activeIndex]) {
         handleSelect(results[activeIndex].code);
       } else if (navigateOnSubmit && query.trim()) {
-        router.push(`/kbli-navigator?q=${encodeURIComponent(query)}`);
+        router.push(`/kbli?q=${encodeURIComponent(query)}`);
       }
     } else if (e.key === "Escape") {
       setIsOpen(false);
