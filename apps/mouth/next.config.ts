@@ -20,6 +20,22 @@ const nextConfig: NextConfig = {
   productionBrowserSourceMaps: false,
   poweredByHeader: false, // Remove X-Powered-By header for security
 
+  // Exclude heavy directories from serverless function tracing
+  // Without this, Vercel traces public/ (537MB) into each function, exceeding the 300MB limit
+  outputFileTracingExcludes: {
+    "/*": [
+      "./public/blueprints/**",
+      "./public/static/**",
+      "./public/files/**",
+      "./public/audio/**",
+      "./public/videos/**",
+      "./public/kbli-navigator/**",
+      "./coverage/**",
+      "./test-results/**",
+      "./playwright-report/**",
+    ],
+  },
+
   // 🚀 Experimental optimizations
   experimental: {
     // Optimize package imports for faster dev and smaller bundles

@@ -439,34 +439,22 @@ let _prefixMap: Map<string, KBLICode[]> | null = null;
 function loadData(): void {
   if (_allCodes !== null) return;
 
-  // Try local data file first, then repo root source_documents, then backend data
-  const localPath = path.join(process.cwd(), "data", "kbli-2025.json");
-  const repoRootPath = path.resolve(
+  // Load from apps/mouth/data/ — the canonical location for Vercel deployment
+  const localPath = path.join(
     process.cwd(),
-    "..",
-    "..",
-    "source_documents",
-    "KBLI_2025_FINAL_CLEAN.json",
-  );
-  const backendDataPath = path.resolve(
-    process.cwd(),
-    "..",
-    "backend-rag",
-    "backend",
     "data",
     "KBLI_2025_FINAL_CLEAN.json",
   );
+  const fallbackPath = path.join(process.cwd(), "data", "kbli-2025.json");
 
   let jsonPath: string;
   if (fs.existsSync(localPath)) {
     jsonPath = localPath;
-  } else if (fs.existsSync(repoRootPath)) {
-    jsonPath = repoRootPath;
-  } else if (fs.existsSync(backendDataPath)) {
-    jsonPath = backendDataPath;
+  } else if (fs.existsSync(fallbackPath)) {
+    jsonPath = fallbackPath;
   } else {
     throw new Error(
-      `KBLI data file not found. Tried:\n  ${localPath}\n  ${repoRootPath}\n  ${backendDataPath}`,
+      `KBLI data file not found. Tried:\n  ${localPath}\n  ${fallbackPath}`,
     );
   }
 
