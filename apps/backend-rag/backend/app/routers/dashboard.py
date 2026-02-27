@@ -187,7 +187,8 @@ def calculate_investment_score(
         }
 
     # ── Layer 2: Composite Score (0-100) ──────────────────────────
-    score = 0
+    # Factors with None score are excluded from total and max.
+    # Final score = (sum of available scores / sum of available max) * 100
     breakdown: dict[str, dict[str, Any]] = {}
 
     # 2a. ROI Quality (30 points)
@@ -198,7 +199,7 @@ def calculate_investment_score(
 
     if roi_val is not None:
         if roi_val >= 12:
-            roi_score = 30
+            roi_score: int | None = 30
         elif roi_val >= 8:
             roi_score = 22
         elif roi_val >= 4:
@@ -206,13 +207,11 @@ def calculate_investment_score(
         else:
             roi_score = 0
     else:
-        roi_score = 10  # Unknown = neutral
-    score += roi_score
+        roi_score = None  # No data = exclude from scoring
     breakdown["roi"] = {"score": roi_score, "max": 30, "value": roi_val}
 
     # 2b. Zone-KBLI Compatibility (20 points)
-    zone_kbli_score = _calculate_zone_kbli_fit(zone_code, kbli_code)
-    score += zone_kbli_score
+    zone_kbli_score: int | None = _calculate_zone_kbli_fit(zone_code, kbli_code)
     breakdown["zone_kbli_fit"] = {"score": zone_kbli_score, "max": 20}
 
     # 2c. Break-Even Years (15 points)
@@ -222,7 +221,7 @@ def calculate_investment_score(
 
     if bey_val is not None:
         if bey_val <= 5:
-            bey_score = 15
+            bey_score: int | None = 15
         elif bey_val <= 8:
             bey_score = 12
         elif bey_val <= 12:
@@ -230,8 +229,7 @@ def calculate_investment_score(
         else:
             bey_score = 0
     else:
-        bey_score = 5  # Unknown
-    score += bey_score
+        bey_score = None  # No data = exclude from scoring
     breakdown["break_even"] = {"score": bey_score, "max": 15, "value": bey_val}
 
     # 2d. Flood Risk (10 points)
@@ -244,7 +242,6 @@ def calculate_investment_score(
         flood_score = 0
     else:
         flood_score = 7  # Unknown = slight caution
-    score += flood_score
     breakdown["flood_risk"] = {"score": flood_score, "max": 10, "value": flood}
 
     # 2e. Market Validation — tourism density 1km (10 points)
@@ -258,7 +255,6 @@ def calculate_investment_score(
             market_score = 3   # Saturated
     else:
         market_score = 5  # Unknown
-    score += market_score
     breakdown["market"] = {"score": market_score, "max": 10, "value": density_1km}
 
     # 2f. Regulatory Risk — KBLI state (10 points)
@@ -270,7 +266,6 @@ def calculate_investment_score(
         reg_score = 7  # No KBLI provided = neutral
     else:
         reg_score = 0
-    score += reg_score
     breakdown["regulatory"] = {"score": reg_score, "max": 10, "state": kbli_state}
 
     # 2g. Amenity Access — Walk Score (5 points)
@@ -284,11 +279,31 @@ def calculate_investment_score(
             ws_score = 1
     else:
         ws_score = 2  # Unknown
-    score += ws_score
     breakdown["amenity"] = {"score": ws_score, "max": 5, "value": ws}
+
+    # ── Normalize score: exclude None factors, scale to 0-100 ─────
+    _all_scores = [
+        roi_score, zone_kbli_score, bey_score, flood_score,
+        market_score, reg_score, ws_score,
+    ]
+    _all_maxes = [30, 20, 15, 10, 10, 10, 5]
+
+    earned = sum(s for s in _all_scores if s is not None)
+    available = sum(m for s, m in zip(_all_scores, _all_maxes) if s is not None)
+    score = round(earned / available * 100) if available > 0 else 0
+
+    # Track which factors were excluded
+    _excluded = []
+    if roi_score is None:
+        _excluded.append("ROI")
+    if bey_score is None:
+        _excluded.append("Break-Even")
 
     # ── Layer 3: Contextual Modifiers ─────────────────────────────
     modifiers: list[str] = []
+
+    if _excluded:
+        modifiers.append(f"Esclusi dal calcolo: {', '.join(_excluded)} (dati mancanti)")
 
     # Multiple overlays = bureaucratic friction
     overlay_count = len(overlays)
