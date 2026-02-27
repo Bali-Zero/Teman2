@@ -1,5 +1,8 @@
 """
 Unit tests for PromptManager - System prompt loading and building
+
+NOTE: PromptManager now loads from backend.prompts.zantara_core (Single Source of Truth)
+instead of reading .md files. Tests updated accordingly.
 """
 
 from unittest.mock import patch
@@ -7,9 +10,6 @@ from unittest.mock import patch
 import pytest
 
 from backend.llm.prompt_manager import (
-    FALLBACK_PROMPT_FILE,
-    PROMPTS_DIR,
-    SYSTEM_PROMPT_FILE,
     PromptManager,
 )
 
@@ -35,53 +35,23 @@ class TestPromptManager:
             manager = PromptManager()
             assert manager._base_system_prompt == "test prompt"
 
-    @patch("backend.llm.prompt_manager.SYSTEM_PROMPT_FILE")
-    def test_load_from_primary_file(self, mock_file, mock_prompt_content):
-        """Test loading prompt from primary file"""
-        mock_file.exists.return_value = True
-        mock_file.read_text.return_value = mock_prompt_content
-        mock_file.name = "zantara_system_prompt.md"
-
+    def test_loads_from_zantara_core(self):
+        """Test that PromptManager loads from zantara_core.py (Single Source of Truth)"""
         manager = PromptManager()
 
-        assert manager._base_system_prompt == mock_prompt_content
+        # Should contain key sections from zantara_core.ZANTARA_MASTER_TEMPLATE
+        assert "security_boundary" in manager._base_system_prompt
+        assert "tool_usage_policy" in manager._base_system_prompt
+        assert "escalation_protocol" in manager._base_system_prompt
 
-    @patch("backend.llm.prompt_manager.SYSTEM_PROMPT_FILE")
-    @patch("backend.llm.prompt_manager.FALLBACK_PROMPT_FILE")
-    def test_load_from_fallback_file(self, mock_fallback, mock_primary, mock_fallback_content):
-        """Test loading prompt from fallback file when primary not found"""
-        mock_primary.exists.return_value = False
-        mock_fallback.exists.return_value = True
-        mock_fallback.read_text.return_value = mock_fallback_content
-        mock_fallback.name = "zantara_system_prompt.md"
-
-        manager = PromptManager()
-
-        assert manager._base_system_prompt == mock_fallback_content
-
-    @patch("backend.llm.prompt_manager.SYSTEM_PROMPT_FILE")
-    @patch("backend.llm.prompt_manager.FALLBACK_PROMPT_FILE")
-    def test_load_embedded_fallback(self, mock_fallback, mock_primary):
-        """Test loading embedded fallback when no files exist"""
-        mock_primary.exists.return_value = False
-        mock_fallback.exists.return_value = False
-
+    @patch("backend.llm.prompt_manager.ZANTARA_MASTER_TEMPLATE", "")
+    def test_load_embedded_fallback_when_template_empty(self):
+        """Test loading embedded fallback when ZANTARA_MASTER_TEMPLATE is empty"""
         manager = PromptManager()
 
         # Should use embedded prompt
         assert "ZANTARA - Intelligent AI Assistant" in manager._base_system_prompt
         assert "Core Identity" in manager._base_system_prompt
-
-    @patch("backend.llm.prompt_manager.SYSTEM_PROMPT_FILE")
-    def test_load_file_read_error(self, mock_file):
-        """Test handling file read error"""
-        mock_file.exists.return_value = True
-        mock_file.read_text.side_effect = OSError("Read error")
-
-        manager = PromptManager()
-
-        # Should fallback to embedded prompt
-        assert "ZANTARA - Intelligent AI Assistant" in manager._base_system_prompt
 
     def test_get_embedded_fallback_prompt(self):
         """Test embedded fallback prompt generation"""
@@ -207,20 +177,11 @@ class TestPromptManager:
 
             assert result == "Base prompt"
 
-    def test_prompts_dir_constant(self):
-        """Test PROMPTS_DIR constant points to correct location"""
-        assert PROMPTS_DIR.name == "prompts"
-        assert PROMPTS_DIR.exists()
-
-    def test_system_prompt_file_constant(self):
-        """Test SYSTEM_PROMPT_FILE constant"""
-        assert SYSTEM_PROMPT_FILE.name == "zantara_system_prompt.md"
-        assert SYSTEM_PROMPT_FILE.parent.name == "prompts"
-
-    def test_fallback_prompt_file_constant(self):
-        """Test FALLBACK_PROMPT_FILE constant (same as primary - single source of truth)"""
-        assert FALLBACK_PROMPT_FILE.name == "zantara_system_prompt.md"
-        assert FALLBACK_PROMPT_FILE.parent.name == "prompts"
+    def test_zantara_core_module_exists(self):
+        """Test that zantara_core module is importable and contains ZANTARA_MASTER_TEMPLATE"""
+        from backend.prompts.zantara_core import ZANTARA_MASTER_TEMPLATE
+        assert isinstance(ZANTARA_MASTER_TEMPLATE, str)
+        assert len(ZANTARA_MASTER_TEMPLATE) > 100
 
     def test_embedded_prompt_structure(self):
         """Test embedded prompt has required sections"""
@@ -304,17 +265,12 @@ class TestPromptManager:
             assert "4. Do NOT make up information" in result
             assert "5. For pricing, legal requirements" in result
 
-    @patch("backend.llm.prompt_manager.SYSTEM_PROMPT_FILE")
-    def test_load_prompt_with_utf8_encoding(self, mock_file):
-        """Test that prompt files are loaded with UTF-8 encoding"""
-        mock_file.exists.return_value = True
-        mock_file.read_text.return_value = "Test prompt"
-        mock_file.name = "test.md"
-
+    def test_load_prompt_uses_zantara_core(self):
+        """Test that PromptManager loads from zantara_core (not from .md files)"""
         manager = PromptManager()
-
-        # Verify read_text was called with utf-8 encoding
-        mock_file.read_text.assert_called_once_with(encoding="utf-8")
+        # The prompt should come from ZANTARA_MASTER_TEMPLATE, not file reading
+        assert len(manager._base_system_prompt) > 100
+        assert isinstance(manager._base_system_prompt, str)
 
     def test_base_prompt_immutability(self):
         """Test that base prompt doesn't change between calls"""
