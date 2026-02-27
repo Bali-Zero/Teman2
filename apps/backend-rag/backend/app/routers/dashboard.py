@@ -56,6 +56,280 @@ class AnalyzeInvestmentRequest(BaseModel):
     is_pma: bool = True
     land_size_m2: float | None = None
     price_idr: float | None = None
+    # Optional geo data from Streamlit (pre-computed by frontend)
+    geo_data: dict[str, Any] | None = None
+
+
+# ── Investment Scoring Engine (3-Layer) ──────────────────────────────
+
+# Zones where commercial building is essentially impossible
+NON_BUILDABLE_ZONES: set[str] = {
+    "BA", "BJ", "SS", "SP", "LS", "P-1",
+    "RTH-2", "RTH-4", "RTH-7", "RTNH", "PL-4",
+}
+
+# Zone-KBLI compatibility — maps KBLI prefix/category to ideal zone families
+# Key = first 2 digits of KBLI code, Value = set of zone prefixes that are ideal
+_ZONE_KBLI_IDEAL: dict[str, set[str]] = {
+    # Accommodation (55xxx) → Residential, Tourism, Mixed
+    "55": {"R-", "W-", "C-"},
+    # Food & Beverage (56xxx) → Commercial, Mixed, Tourism
+    "56": {"K-", "C-", "W-"},
+    # Real Estate (68xxx) → Residential, Commercial, Mixed
+    "68": {"R-", "K-", "C-"},
+    # Offices / Consulting (70xxx) → Office, Commercial, Mixed
+    "70": {"KT", "K-", "C-"},
+    # IT / Software (62xxx) → Office, Commercial, Mixed
+    "62": {"KT", "K-", "C-"},
+    # Spa / Wellness (96xxx) → Tourism, Commercial, Mixed
+    "96": {"W-", "K-", "C-"},
+    # Education (85xxx) → Public Facility, Mixed
+    "85": {"SPU", "C-"},
+    # Recreation (93xxx) → Tourism, Public Facility
+    "93": {"W-", "SPU", "C-"},
+}
+
+# Zones where KBLI 56 (F&B) is acceptable but not ideal (e.g. residential)
+_ZONE_KBLI_ACCEPTABLE: dict[str, set[str]] = {
+    "55": {"K-"},       # Accommodation in commercial = acceptable
+    "56": {"R-", "W-"}, # Restaurant in residential/tourism = acceptable with permit
+    "68": {"W-"},       # Real estate in tourism = acceptable
+}
+
+
+def _zone_matches_prefix(zone_code: str, prefixes: set[str]) -> bool:
+    """Check if zone_code starts with any of the given prefixes."""
+    return any(zone_code.startswith(p) for p in prefixes)
+
+
+def _calculate_zone_kbli_fit(
+    zone_code: str | None, kbli_code: str | None,
+) -> int:
+    """
+    Zone-KBLI compatibility score (0-20).
+    20 = perfect match, 12 = acceptable, 4 = poor, 0 = incompatible.
+    """
+    if not zone_code or not kbli_code:
+        return 12  # Unknown = acceptable default
+
+    prefix = kbli_code[:2]
+
+    # Check ideal match
+    ideal = _ZONE_KBLI_IDEAL.get(prefix)
+    if ideal and _zone_matches_prefix(zone_code, ideal):
+        return 20
+
+    # Check acceptable match
+    acceptable = _ZONE_KBLI_ACCEPTABLE.get(prefix)
+    if acceptable and _zone_matches_prefix(zone_code, acceptable):
+        return 12
+
+    # Non-buildable zone → incompatible with any business
+    if zone_code in NON_BUILDABLE_ZONES:
+        return 0
+
+    # Unknown KBLI prefix but buildable zone → poor fit (benefit of doubt)
+    return 4
+
+
+def calculate_investment_score(
+    zone_data: dict[str, Any] | None,
+    kbli_state: str | None,
+    kbli_code: str | None,
+    roi_data: dict[str, Any] | None,
+    geo_data: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """
+    3-Layer investment scoring engine.
+
+    Layer 1: Hard blocks (binary RED)
+    Layer 2: Composite score 0-100 (GREEN ≥65, YELLOW 35-64, RED <35)
+    Layer 3: Contextual modifiers
+    """
+    zone_code = zone_data.get("code") if zone_data else None
+    overlays = zone_data.get("overlays", {}) if zone_data else {}
+    zone_source = zone_data.get("source", "") if zone_data else ""
+
+    # ── Layer 1: Hard Blocks ──────────────────────────────────────
+    hard_blocks: list[str] = []
+
+    if kbli_state == "REJECTED":
+        hard_blocks.append("KBLI chiuso a PMA (Perpres 10/2021)")
+
+    if zone_code and zone_code in NON_BUILDABLE_ZONES:
+        hard_blocks.append(f"Zona {zone_code} non edificabile")
+
+    if overlays.get("LP2B_2") or overlays.get("lp2b_2"):
+        hard_blocks.append("Terreno agricolo protetto (LP2B)")
+
+    if zone_data and zone_source == "unavailable":
+        hard_blocks.append("Nessun dato zona disponibile")
+
+    # Parse KLB to check if buildable
+    klb_raw = zone_data.get("klb", "N/A") if zone_data else "N/A"
+    klb_val: float | None = None
+    if klb_raw and klb_raw != "N/A":
+        try:
+            klb_val = float(str(klb_raw).replace(",", "."))
+        except (ValueError, TypeError):
+            pass
+    if klb_val is not None and klb_val < 0.05:
+        hard_blocks.append(f"KLB {klb_raw} — costruibilità quasi nulla")
+
+    if hard_blocks:
+        return {
+            "verdict": "RED",
+            "can_invest": False,
+            "score": 0,
+            "breakdown": {},
+            "modifiers": [],
+            "hard_blocks": hard_blocks,
+        }
+
+    # ── Layer 2: Composite Score (0-100) ──────────────────────────
+    score = 0
+    breakdown: dict[str, dict[str, Any]] = {}
+
+    # 2a. ROI Quality (30 points)
+    roi_val: float | None = None
+    if roi_data and not roi_data.get("error"):
+        gs = roi_data.get("golden_strategy", {})
+        roi_val = gs.get("roi")
+
+    if roi_val is not None:
+        if roi_val >= 12:
+            roi_score = 30
+        elif roi_val >= 8:
+            roi_score = 22
+        elif roi_val >= 4:
+            roi_score = 12
+        else:
+            roi_score = 0
+    else:
+        roi_score = 10  # Unknown = neutral
+    score += roi_score
+    breakdown["roi"] = {"score": roi_score, "max": 30, "value": roi_val}
+
+    # 2b. Zone-KBLI Compatibility (20 points)
+    zone_kbli_score = _calculate_zone_kbli_fit(zone_code, kbli_code)
+    score += zone_kbli_score
+    breakdown["zone_kbli_fit"] = {"score": zone_kbli_score, "max": 20}
+
+    # 2c. Break-Even Years (15 points)
+    bey_val: float | None = None
+    if roi_data and not roi_data.get("error"):
+        bey_val = roi_data.get("golden_strategy", {}).get("bey")
+
+    if bey_val is not None:
+        if bey_val <= 5:
+            bey_score = 15
+        elif bey_val <= 8:
+            bey_score = 12
+        elif bey_val <= 12:
+            bey_score = 6
+        else:
+            bey_score = 0
+    else:
+        bey_score = 5  # Unknown
+    score += bey_score
+    breakdown["break_even"] = {"score": bey_score, "max": 15, "value": bey_val}
+
+    # 2d. Flood Risk (10 points)
+    flood = geo_data.get("flood_risk") if geo_data else None
+    if flood == "safe":
+        flood_score = 10
+    elif flood == "check":
+        flood_score = 5
+    elif flood == "high":
+        flood_score = 0
+    else:
+        flood_score = 7  # Unknown = slight caution
+    score += flood_score
+    breakdown["flood_risk"] = {"score": flood_score, "max": 10, "value": flood}
+
+    # 2e. Market Validation — tourism density 1km (10 points)
+    density_1km = geo_data.get("densita_1km") if geo_data else None
+    if density_1km is not None:
+        if 30 <= density_1km <= 70:
+            market_score = 10  # Active sweet spot
+        elif density_1km < 30:
+            market_score = 6   # Low competition
+        else:
+            market_score = 3   # Saturated
+    else:
+        market_score = 5  # Unknown
+    score += market_score
+    breakdown["market"] = {"score": market_score, "max": 10, "value": density_1km}
+
+    # 2f. Regulatory Risk — KBLI state (10 points)
+    if kbli_state == "APPROVED":
+        reg_score = 10
+    elif kbli_state == "WARNING":
+        reg_score = 5
+    elif kbli_state is None:
+        reg_score = 7  # No KBLI provided = neutral
+    else:
+        reg_score = 0
+    score += reg_score
+    breakdown["regulatory"] = {"score": reg_score, "max": 10, "state": kbli_state}
+
+    # 2g. Amenity Access — Walk Score (5 points)
+    ws = geo_data.get("walk_score") if geo_data else None
+    if ws is not None:
+        if ws >= 65:
+            ws_score = 5
+        elif ws >= 35:
+            ws_score = 3
+        else:
+            ws_score = 1
+    else:
+        ws_score = 2  # Unknown
+    score += ws_score
+    breakdown["amenity"] = {"score": ws_score, "max": 5, "value": ws}
+
+    # ── Layer 3: Contextual Modifiers ─────────────────────────────
+    modifiers: list[str] = []
+
+    # Multiple overlays = bureaucratic friction
+    overlay_count = len(overlays)
+    if overlay_count >= 2:
+        score -= 5
+        modifiers.append(f"-5: {overlay_count} overlay normativi")
+
+    # Sea view premium
+    sea_view = geo_data.get("sea_view", False) if geo_data else False
+    if sea_view and score >= 55:
+        score += 5
+        modifiers.append("+5: potenziale premium vista mare")
+
+    # GISTARU = incomplete data → cap at YELLOW
+    gistaru_cap = False
+    if zone_source == "gistaru_rdtr":
+        gistaru_cap = True
+        modifiers.append("CAP: dati zona da GISTARU (parametri KDB/KLB mancanti)")
+
+    score = max(0, min(100, score))
+
+    # ── Verdict ───────────────────────────────────────────────────
+    if gistaru_cap and score >= 65:
+        verdict = "YELLOW"  # Cap to YELLOW when missing zone parameters
+    elif score >= 65:
+        verdict = "GREEN"
+    elif score >= 35:
+        verdict = "YELLOW"
+    else:
+        verdict = "RED"
+
+    can_invest = verdict != "RED"
+
+    return {
+        "verdict": verdict,
+        "can_invest": can_invest,
+        "score": score,
+        "breakdown": breakdown,
+        "modifiers": modifiers,
+        "hard_blocks": [],
+    }
 
 
 # ── BATARA / ROI constants ────────────────────────────────────────────
@@ -635,31 +909,36 @@ async def analyze_investment(req: AnalyzeInvestmentRequest) -> dict[str, Any]:
             result["roi"] = {"error": str(e)}
             logger.warning("Investment analysis: ROI calculator failed: %s", e)
 
-    # ── Verdict ───────────────────────────────────────────────────────
-    can_invest = kbli_state != "REJECTED" if kbli_state else True
-    # Check overlay constraints from GISTARU (if available)
+    # ── Scoring Engine (3-Layer) ──────────────────────────────────────
+    scoring = calculate_investment_score(
+        zone_data=zone_data if zone_data else None,
+        kbli_state=kbli_state,
+        kbli_code=req.kbli_code,
+        roi_data=result.get("roi"),
+        geo_data=req.geo_data,
+    )
+
+    verdict_label = scoring["verdict"]
+    can_invest = scoring["can_invest"]
+    inv_score = scoring["score"]
+
+    # Map verdict to risk_level for backward compatibility
+    risk_map = {"GREEN": "LOW", "YELLOW": "MEDIUM", "RED": "HIGH"}
+    risk_level = risk_map.get(verdict_label, "UNKNOWN")
+
+    # Build human-readable summary
     overlays = zone_data.get("overlays", {}) if zone_data else {}
-    has_overlay_warning = bool(overlays)
-
-    if kbli_state == "REJECTED" or has_overlay_warning:
-        risk_level = "HIGH"
-    elif kbli_state == "WARNING" or (
-        result.get("roi", {}).get("golden_strategy", {}).get("roi", 100) < 8
-    ):
-        risk_level = "MEDIUM"
-    else:
-        risk_level = "LOW"
-
-    # Build summary from collected data
     parts: list[str] = []
     if zone_code and zone_data:
         loc = zone_data.get("desa", "")
         if zone_data.get("kecamatan"):
             loc = f"{loc}, {zone_data['kecamatan']}"
-        source_tag = f" [{zone_data.get('source', '')}]"
-        parts.append(f"Zona {zone_data.get('code', '?')} {loc}{source_tag}")
+        parts.append(f"Zona {zone_data.get('code', '?')} {loc}")
+    if scoring["hard_blocks"]:
+        for hb in scoring["hard_blocks"]:
+            parts.append(f"🚫 {hb}")
     if overlays:
-        parts.append(f"⚠️ {len(overlays)} overlay attivi: {', '.join(overlays.keys())}")
+        parts.append(f"⚠️ {len(overlays)} overlay: {', '.join(overlays.keys())}")
     if result.get("kbli"):
         k = result["kbli"]
         parts.append(
@@ -675,11 +954,15 @@ async def analyze_investment(req: AnalyzeInvestmentRequest) -> dict[str, Any]:
     result["verdict"] = {
         "can_invest": can_invest,
         "risk_level": risk_level,
+        "score": inv_score,
+        "breakdown": scoring["breakdown"],
+        "modifiers": scoring["modifiers"],
+        "hard_blocks": scoring["hard_blocks"],
         "summary": " — ".join(parts) if parts else "Dati insufficienti per un verdetto completo.",
     }
 
     logger.info(
-        "Investment analysis complete: verdict=%s risk=%s",
-        can_invest, risk_level,
+        "Investment analysis: verdict=%s score=%d risk=%s hard_blocks=%d",
+        verdict_label, inv_score, risk_level, len(scoring["hard_blocks"]),
     )
     return result
