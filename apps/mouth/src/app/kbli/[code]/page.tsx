@@ -9,10 +9,17 @@ import {
 import Link from "next/link";
 import { Activity, Building2 } from "lucide-react";
 
-// SSG: Generate all 1,563 pages at build time
+// ISR: Generate pages on-demand, cache for 1 week
+// Pre-generating all 1,563 pages exceeded Vercel's 300MB serverless function limit (507MB)
+// Pages are now built on first request and cached via revalidate
+export const dynamicParams = true;
+export const revalidate = 604800; // 1 week in seconds
+
 export async function generateStaticParams() {
+  // Only pre-generate top 50 most important codes to stay within Vercel limits
+  // Remaining pages are generated on-demand via ISR
   const codes = getAllCodes();
-  return codes.map((c) => ({ code: c.code }));
+  return codes.slice(0, 50).map((c) => ({ code: c.code }));
 }
 
 export async function generateMetadata({
