@@ -14,6 +14,7 @@ import math
 from i18n_dashboard import T, set_language, get_language
 
 API_URL = "http://localhost:8000"
+GMAPS_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "AIzaSyCWPZb1_aSV_NVvS9ZSR0Mlq9El8qO8uLQ")
 
 st.set_page_config(page_title="Nuzantara Prime", layout="wide", page_icon="💎")
 
@@ -117,10 +118,26 @@ def _log_analytics_lookup(user_email: str, kbli_code: str = None, location: str 
 
 
 @st.cache_data(ttl=3600)
-def load_rdtr_geojson(kecamatan_filter: str = "all"):
+def _simplify_coords(coords: list, tolerance: float = 0.0001) -> list:
+    """Reduce polygon vertex count via Douglas-Peucker-like point skipping."""
+    if len(coords) <= 6:
+        return coords
+    step = max(1, len(coords) // 40)
+    simplified = coords[::step]
+    if simplified[-1] != coords[-1]:
+        simplified.append(coords[-1])
+    return simplified
+
+
+@st.cache_data(ttl=3600)
+def load_rdtr_geojson(kecamatan_filter: str | tuple[str, ...] = "all"):
     geojson_dir = "/Users/nuzantara/Desktop/harvested_zones/badung_full"
     if kecamatan_filter == "all":
         files = glob.glob(os.path.join(geojson_dir, "*.json"))
+    elif isinstance(kecamatan_filter, (list, tuple)):
+        files = []
+        for kec in kecamatan_filter:
+            files.extend(glob.glob(os.path.join(geojson_dir, f"{kec}_*.json")))
     else:
         files = glob.glob(os.path.join(geojson_dir, f"{kecamatan_filter}_*.json"))
     features = []
@@ -130,9 +147,17 @@ def load_rdtr_geojson(kecamatan_filter: str = "all"):
                 d = json.load(f)
             for feat in d.get("features", []):
                 zone = feat["properties"].get("attribute", {}).get("zone", {})
-                feat["properties"]["_zone_code"] = zone.get("code", "N/A")
-                feat["properties"]["_zone_name"] = zone.get("name", "N/A")
-                feat["properties"]["_zone_color"] = zone.get("color", "200 200 200")
+                feat["properties"] = {
+                    "_zone_code": zone.get("code", "N/A"),
+                    "_zone_name": zone.get("name", "N/A"),
+                    "_zone_color": zone.get("color", "200 200 200"),
+                }
+                geom = feat.get("geometry", {})
+                gtype = geom.get("type", "")
+                if gtype == "Polygon":
+                    geom["coordinates"] = [_simplify_coords(ring) for ring in geom["coordinates"]]
+                elif gtype == "MultiPolygon":
+                    geom["coordinates"] = [[_simplify_coords(ring) for ring in poly] for poly in geom["coordinates"]]
                 features.append(feat)
         except Exception:
             continue
@@ -333,98 +358,385 @@ def init_db():
 
 
 def generate_pdf(data: dict) -> bytes:
+    """Generate dark-themed Land Intelligence Report PDF matching Bali Zero branding."""
+    from reportlab.platypus import KeepTogether
+    from reportlab.lib.colors import HexColor
+
+    # ── Brand colours ────────────────────────────────────
+    BG = HexColor("#1a1a2e")
+    CARD = HexColor("#252540")
+    CYAN = HexColor("#00d4ff")
+    GREEN = HexColor("#4caf50")
+    YELLOW = HexColor("#ffd600")
+    RED = HexColor("#ff5252")
+    WHITE = HexColor("#f0f0f0")
+    GREY = HexColor("#999999")
+    SECTION_BAR = HexColor("#ff3333")
+
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4,
-                            leftMargin=2*cm, rightMargin=2*cm,
-                            topMargin=2*cm, bottomMargin=2*cm)
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle("title", parent=styles["Heading1"],
-                                 fontSize=16, alignment=TA_CENTER, spaceAfter=6)
-    h2_style = ParagraphStyle("h2", parent=styles["Heading2"],
-                              fontSize=12, spaceBefore=12, spaceAfter=4)
-    body_style = styles["Normal"]
+                            leftMargin=1.5*cm, rightMargin=1.5*cm,
+                            topMargin=1.5*cm, bottomMargin=1.5*cm)
 
+    styles = getSampleStyleSheet()
     elems = []
 
-    elems.append(Paragraph("NUZANTARA PRIME", title_style))
-    elems.append(Paragraph("Land Intelligence Report", ParagraphStyle("sub", parent=styles["Normal"],
-                            fontSize=11, alignment=TA_CENTER, textColor=colors.grey)))
-    elems.append(Spacer(1, 0.3*cm))
-    elems.append(Paragraph(
-        f"Data: {data.get('timestamp', '')}  |  Coordinate: {data.get('lat', 0.0):.6f}, {data.get('lon', 0.0):.6f}",
-        ParagraphStyle("meta", parent=styles["Normal"], fontSize=9, alignment=TA_CENTER, textColor=colors.grey)
-    ))
-    elems.append(HRFlowable(width="100%", thickness=1, color=colors.black, spaceAfter=12))
+    # ── Helper: dark card table ──────────────────────────
+    def card_row(label: str, value, color=CYAN):
+        val = str(value) if value not in (None, "", "None") else "\u2014"
+        return [
+            Paragraph(f'<font color="#999999" size="8">{label}</font>', styles["Normal"]),
+            Paragraph(f'<font color="{color}" size="12"><b>{val}</b></font>', styles["Normal"]),
+        ]
 
-    def section(title, rows):
-        elems.append(Paragraph(title, h2_style))
-        tdata = [[str(k), str(v) if v not in (None, "") else "\u2014"] for k, v in rows]
-        t = Table(tdata, colWidths=[6*cm, 10*cm])
+    def section_header(title: str):
+        elems.append(Spacer(1, 0.4 * cm))
+        t = Table(
+            [[Paragraph(f'<font color="#ffffff" size="11"><b>{title}</b></font>', styles["Normal"])]],
+            colWidths=[17 * cm],
+        )
         t.setStyle(TableStyle([
-            ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, -1), 10),
-            ("ROWBACKGROUNDS", (0, 0), (-1, -1), [colors.whitesmoke, colors.white]),
-            ("GRID", (0, 0), (-1, -1), 0.3, colors.lightgrey),
-            ("PADDING", (0, 0), (-1, -1), 4),
+            ("BACKGROUND", (0, 0), (-1, -1), BG),
+            ("LEFTPADDING", (0, 0), (0, 0), 12),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ("LINEBEFORECOL", (0, 0), (0, -1), 3, SECTION_BAR),
         ]))
         elems.append(t)
-        elems.append(Spacer(1, 0.2*cm))
+        elems.append(Spacer(1, 0.15 * cm))
 
-    section(T("pdf_zone_rdtr"), [
-        (T("pdf_zone_code"), data.get("zona_code")),
-        (T("pdf_zone_name"), data.get("zona_name")),
-        ("Desa", data.get("desa")),
+    def card_table(rows, col_widths=None):
+        if not col_widths:
+            col_widths = [8.5 * cm, 8.5 * cm]
+        t = Table(rows, colWidths=col_widths)
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), CARD),
+            ("TEXTCOLOR", (0, 0), (-1, -1), WHITE),
+            ("FONTSIZE", (0, 0), (-1, -1), 10),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ("LEFTPADDING", (0, 0), (-1, -1), 10),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+            ("GRID", (0, 0), (-1, -1), 0.5, HexColor("#333355")),
+            ("ROUNDEDCORNERS", [4, 4, 4, 4]),
+        ]))
+        elems.append(t)
+
+    def card_grid(items, cols=3):
+        """items = [(label, value, color), ...]"""
+        rows_data = []
+        row = []
+        cw = 17 * cm / cols
+        for label, value, col in items:
+            val = str(value) if value not in (None, "", "None") else "\u2014"
+            cell = Paragraph(
+                f'<font color="#999999" size="7">{label}</font><br/>'
+                f'<font color="{col}" size="13"><b>{val}</b></font>',
+                styles["Normal"],
+            )
+            row.append(cell)
+            if len(row) == cols:
+                rows_data.append(row)
+                row = []
+        if row:
+            while len(row) < cols:
+                row.append("")
+            rows_data.append(row)
+        t = Table(rows_data, colWidths=[cw] * cols)
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), CARD),
+            ("TOPPADDING", (0, 0), (-1, -1), 8),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+            ("LEFTPADDING", (0, 0), (-1, -1), 10),
+            ("GRID", (0, 0), (-1, -1), 0.5, HexColor("#333355")),
+        ]))
+        elems.append(t)
+
+    # ── PAGE BACKGROUND ──────────────────────────────────
+    def on_page(canvas, doc):
+        canvas.saveState()
+        canvas.setFillColor(BG)
+        canvas.rect(0, 0, A4[0], A4[1], fill=1, stroke=0)
+        canvas.restoreState()
+
+    # ── HEADER ───────────────────────────────────────────
+    desa = data.get("desa", "")
+    header = Table(
+        [[
+            Paragraph(
+                f'<font color="#ff3333" size="9">ZANTARA PRIME</font><br/>'
+                f'<font color="#ffffff" size="18"><b>Land Intelligence Report</b></font><br/>'
+                f'<font color="#999999" size="9">{data.get("timestamp", "")} WITA</font>',
+                styles["Normal"],
+            ),
+            Paragraph(
+                f'<font color="#ff3333" size="16"><b>BALI</b></font><br/>'
+                f'<font color="#00d4ff" size="16"><b>ZERO</b></font>',
+                ParagraphStyle("logo", parent=styles["Normal"], alignment=2),
+            ),
+        ]],
+        colWidths=[13 * cm, 4 * cm],
+    )
+    header.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), BG),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+    ]))
+    elems.append(header)
+
+    # Coordinate badge
+    coord_text = f'\u25a0  {data.get("lat", 0):.6f}, {data.get("lon", 0):.6f}  \u2014  {desa}'
+    coord_tbl = Table(
+        [[Paragraph(f'<font color="#00d4ff" size="9">{coord_text}</font>', styles["Normal"])]],
+        colWidths=[17 * cm],
+    )
+    coord_tbl.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), HexColor("#2a2a4a")),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("LEFTPADDING", (0, 0), (-1, -1), 10),
+    ]))
+    elems.append(coord_tbl)
+    elems.append(Spacer(1, 0.2 * cm))
+
+    # ── ZONA RDTR ────────────────────────────────────────
+    section_header("ZONA RDTR (Tata Ruang)")
+    card_grid([
+        ("Kode Zona", data.get("zona_code"), CYAN),
+        ("Nama Zona", data.get("zona_name"), CYAN),
+        ("Desa", desa, WHITE),
     ])
 
-    section(T("pdf_urban_params"), [
-        ("KDB", data.get("kdb")),
-        ("KLB", data.get("klb")),
-        ("KDH", data.get("kdh")),
-        (T("pdf_max_height"), data.get("tb")),
-        ("GSB", data.get("gsb")),
+    # ── PARAMETER TATA RUANG ─────────────────────────────
+    section_header("PARAMETER TATA RUANG")
+    card_grid([
+        ("KDB", data.get("kdb"), CYAN),
+        ("KLB", data.get("klb"), CYAN),
+        ("KDH", data.get("kdh"), GREEN),
+    ])
+    card_grid([
+        ("Tinggi Maks", data.get("tb"), YELLOW),
+        ("GSB", data.get("gsb"), WHITE),
+    ], cols=2)
+
+    # ── ANALISI FINANSIAL ────────────────────────────────
+    section_header("ANALISI FINANSIAL")
+    prezzo_usd = f"USD ${data.get('prezzo_usd', 0):,.0f}" if data.get("prezzo_usd") else "\u2014"
+    card_grid([
+        ("Luas Tanah", f"{data.get('superficie_m2')} m\u00b2", CYAN),
+        ("Harga (IDR)", f"IDR {data.get('prezzo_idr', 0):,.0f}", GREEN),
+        ("Harga (USD)", prezzo_usd, GREEN),
+    ])
+    # Price per m2
+    m2 = data.get("superficie_m2", 1) or 1
+    idr_m2 = data.get("prezzo_idr", 0) / m2
+    usd_m2 = data.get("prezzo_usd", 0) / m2 if data.get("prezzo_usd") else 0
+    roi_str = f"ROI: {data.get('roi_pct', 0):.2f}% | Break-even: {data.get('break_even', 0):.1f} yr | {data.get('strategia', '')}" if data.get("roi_pct") else "\u2014"
+    meta_row = Table(
+        [[
+            Paragraph(f'<font color="#999999" size="8">Harga per m\u00b2:</font>', styles["Normal"]),
+            Paragraph(f'<font color="#ffd600" size="9"><b>IDR {idr_m2:,.0f} / m\u00b2  \u2248  USD ${usd_m2:,.0f} / m\u00b2</b></font>', styles["Normal"]),
+            Paragraph(f'<font color="#999999" size="8">ROI / Break-even / Strategi: {roi_str}</font>', styles["Normal"]),
+        ]],
+        colWidths=[3.5 * cm, 7 * cm, 6.5 * cm],
+    )
+    meta_row.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), CARD),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("GRID", (0, 0), (-1, -1), 0.3, HexColor("#333355")),
+    ]))
+    elems.append(meta_row)
+
+    # ── BIDANG TANAH BPN ─────────────────────────────────
+    section_header("BIDANG TANAH BPN")
+    card_grid([
+        ("Jenis Hak", data.get("bpn_tipehak"), YELLOW),
+        ("Luas Sertifikat", f"{data.get('bpn_luas')} m\u00b2" if data.get("bpn_luas") else "\u2014", CYAN),
+    ], cols=2)
+    card_grid([
+        ("Nomor Sertifikat", data.get("bpn_nomor"), WHITE),
+        ("Tahun Terbit", data.get("bpn_tahun"), WHITE),
+    ], cols=2)
+    # Nota if area mismatch
+    if data.get("bpn_luas") and data.get("superficie_m2") and data.get("bpn_luas") != data.get("superficie_m2"):
+        note = Table(
+            [[Paragraph(
+                f'<font color="#ffd600" size="8">\u25a0 Nota: Luas dijual ({data.get("superficie_m2")} m\u00b2) \u2260 '
+                f'luas sertifikat ({data.get("bpn_luas")} m\u00b2) \u2014 kemungkinan penjualan sebagian bidang (pemecahan).</font>',
+                styles["Normal"],
+            )]],
+            colWidths=[17 * cm],
+        )
+        note.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), HexColor("#3a3500")),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ]))
+        elems.append(note)
+
+    # ── KONTEKS PERKOTAAN ────────────────────────────────
+    section_header("KONTEKS PERKOTAAN")
+    ws = f"{data.get('walk_score')}/100" if data.get("walk_score") is not None else "\u2014"
+    elev = f"{data.get('elev_m'):.1f} m dpl" if data.get("elev_m") else "\u2014"
+    coast = f"{data.get('dist_coast_km'):.1f} km" if data.get("dist_coast_km") else "\u2014"
+    ws_color = RED if data.get("walk_score", 0) == 0 else (YELLOW if (data.get("walk_score") or 0) < 50 else GREEN)
+    card_grid([
+        ("Walk Score", ws, ws_color),
+        ("Kebisingan", data.get("noise_label"), CYAN),
+        ("Elevasi", elev, WHITE),
+        ("Jarak Pantai", coast, CYAN),
+    ], cols=4)
+    # Elevation safe badge
+    elev_val = data.get("elev_m") or 0
+    if elev_val >= 5:
+        badge_text = '\u2191 \u2705 Elevasi aman'
+        badge_bg = HexColor("#1b3a1b")
+    else:
+        badge_text = '\u2193 \u26a0\ufe0f Elevasi rendah — risiko banjir'
+        badge_bg = HexColor("#3a2a00")
+    badge = Table(
+        [[Paragraph(f'<font color="#ffffff" size="8">{badge_text}</font>', styles["Normal"])]],
+        colWidths=[17 * cm],
+    )
+    badge.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), badge_bg),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ("LEFTPADDING", (0, 0), (-1, -1), 10),
+    ]))
+    elems.append(badge)
+
+    # ── KENDALA OVERLAY ──────────────────────────────────
+    section_header("KENDALA OVERLAY")
+    vincoli = data.get("vincoli", [])
+    overlay_names = {
+        "KKOP": "Kawasan Keselamatan Operasi Penerbangan",
+        "LP2B": "Lahan Pertanian Pangan Berkelanjutan",
+        "KRB": "Kawasan Rawan Bencana",
+        "Sempadan Tebing": "Sempadan Tebing",
+        "Cagar Budaya": "Cagar Budaya",
+        "HANKAM": "Kawasan Pertahanan Keamanan",
+    }
+    overlay_rows = []
+    checked_overlays = {v for v in vincoli}
+    for code, desc in overlay_names.items():
+        is_active = code in checked_overlays
+        status_text = f'<font color="#ff5252">\u26a0 Terdeteksi</font>' if is_active else f'<font color="#4caf50">\u2713 Aman</font>'
+        overlay_rows.append([
+            Paragraph(f'<font color="#cccccc" size="9">{code} \u2014 {desc}</font>', styles["Normal"]),
+            Paragraph(status_text, ParagraphStyle("right", parent=styles["Normal"], alignment=2)),
+        ])
+    if overlay_rows:
+        t = Table(overlay_rows, colWidths=[12 * cm, 5 * cm])
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), CARD),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LEFTPADDING", (0, 0), (-1, -1), 10),
+            ("GRID", (0, 0), (-1, -1), 0.3, HexColor("#333355")),
+        ]))
+        elems.append(t)
+    note_aman = Table(
+        [[Paragraph('<font color="#999999" size="7">\u2713 Aman = tidak terdapat kendala pada overlay tersebut.</font>', styles["Normal"])]],
+        colWidths=[17 * cm],
+    )
+    note_aman.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), BG)]))
+    elems.append(note_aman)
+
+    # ── PASAR WISATA (OSM) ───────────────────────────────
+    section_header("PASAR WISATA (OSM)")
+    card_grid([
+        ("Fasilitas dalam 500m", data.get("densita_500m"), YELLOW),
+        ("Fasilitas dalam 1km", data.get("densita_1km"), YELLOW),
+        ("Fasilitas dalam 2km", data.get("densita_2km"), YELLOW),
     ])
 
-    section(T("pdf_financial"), [
-        (T("pdf_area"), f"{data.get('superficie_m2')} m\u00b2"),
-        (T("pdf_price_idr"), f"{data.get('prezzo_idr', 0):,.0f}"),
-        (T("pdf_price_usd"), f"${data.get('prezzo_usd', 0):,.0f}" if data.get("prezzo_usd") else "\u2014"),
-        (T("pdf_optimal_roi"), f"{data.get('roi_pct', 0):.2f}%" if data.get("roi_pct") else "\u2014"),
-        (T("pdf_break_even"), f"{data.get('break_even', 0):.1f} {T('years')}" if data.get("break_even") else "\u2014"),
-        (T("pdf_strategy"), data.get("strategia")),
-    ])
+    # ── KBLI COMPLIANCE (if present) ─────────────────────
+    if data.get("kbli_code"):
+        section_header("CEK KEPATUHAN KBLI")
+        kbli_state = data.get("kbli_state", "")
+        state_colors = {"APPROVED": GREEN, "WARNING": YELLOW, "REJECTED": RED}
+        state_col = state_colors.get(kbli_state, GREY)
+        card_grid([
+            ("Kode KBLI", data.get("kbli_code"), CYAN),
+            ("Judul", data.get("kbli_title"), WHITE),
+            ("Status", kbli_state, state_col),
+        ])
+        card_grid([
+            ("Alasan", data.get("kbli_reason", "").replace("_", " "), GREY),
+            ("Risiko OSS", data.get("kbli_oss_risk"), YELLOW),
+            ("Maks Kepemilikan Asing", f"{data.get('kbli_max_foreign', '')}%", GREEN),
+        ])
 
-    section(T("pdf_catasto"), [
-        (T("pdf_land_right"), data.get("bpn_tipehak")),
-        ("Luas", f"{data.get('bpn_luas')} m\u00b2" if data.get("bpn_luas") else "\u2014"),
-        (T("pdf_cert_number"), data.get("bpn_nomor")),
-        (T("pdf_year"), data.get("bpn_tahun")),
-    ])
+    # ── INVESTMENT SCORE (if present) ────────────────────
+    if data.get("invest_score") is not None:
+        section_header("ANALISIS INVESTASI LENGKAP")
+        score = data.get("invest_score", 0)
+        risk = data.get("invest_risk", "UNKNOWN")
+        risk_colors = {"LOW": GREEN, "MEDIUM": YELLOW, "HIGH": RED}
+        risk_col = risk_colors.get(risk, GREY)
+        verdict_icons = {"LOW": "\u2705 LAYAK INVESTASI", "MEDIUM": "\u26a0\ufe0f INVESTASI BERSYARAT", "HIGH": "\u274c TIDAK DIREKOMENDASIKAN"}
+        verdict_text = verdict_icons.get(risk, "?")
+        verdict_box = Table(
+            [[
+                Paragraph(f'<font color="#ffffff" size="14"><b>{verdict_text}</b></font>', styles["Normal"]),
+                Paragraph(f'<font color="{risk_col}" size="16"><b>{score}</b></font><font color="#999999" size="9"> /100</font>',
+                          ParagraphStyle("score_right", parent=styles["Normal"], alignment=2)),
+            ]],
+            colWidths=[12 * cm, 5 * cm],
+        )
+        verdict_box.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), HexColor("#1b3a1b") if risk == "LOW" else (HexColor("#3a3500") if risk == "MEDIUM" else HexColor("#3a1b1b"))),
+            ("TOPPADDING", (0, 0), (-1, -1), 10),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+            ("LEFTPADDING", (0, 0), (-1, -1), 12),
+        ]))
+        elems.append(verdict_box)
+        summary_text = data.get("invest_summary", "")
+        if summary_text:
+            s = Table(
+                [[Paragraph(f'<font color="#cccccc" size="8">{summary_text}</font>', styles["Normal"])]],
+                colWidths=[17 * cm],
+            )
+            s.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, -1), CARD),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ("LEFTPADDING", (0, 0), (-1, -1), 10),
+            ]))
+            elems.append(s)
 
-    section(T("pdf_urban_context"), [
-        (T("walk_score"), f"{data.get('walk_score')}/100" if data.get("walk_score") is not None else "\u2014"),
-        (T("pdf_noise"), data.get("noise_label")),
-        (T("pdf_elevation"), f"{data.get('elev_m'):.1f} m" if data.get("elev_m") else "\u2014"),
-        (T("pdf_coast_dist"), f"{data.get('dist_coast_km'):.1f} km" if data.get("dist_coast_km") else "\u2014"),
-    ])
+    # ── SUMBER DATA ──────────────────────────────────────
+    elems.append(Spacer(1, 0.5 * cm))
+    section_header("SUMBER DATA")
+    sources = [
+        "BATARA Live \u2014 Dinas PUPR Kabupaten Badung (RDTR & overlay data)",
+        "BPN BHUMI \u2014 Badan Pertanahan Nasional (data bidang tanah)",
+        "OSM Overpass \u2014 OpenStreetMap (fasilitas & amenities)",
+        "Open-Elevation \u2014 API elevasi global",
+    ]
+    src_rows = [[Paragraph(f'<font color="#cccccc" size="8">\u2022 {s}</font>', styles["Normal"])] for s in sources]
+    src_t = Table(src_rows, colWidths=[17 * cm])
+    src_t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), BG),
+        ("TOPPADDING", (0, 0), (-1, -1), 2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+        ("LEFTPADDING", (0, 0), (-1, -1), 12),
+    ]))
+    elems.append(src_t)
 
-    section(T("pdf_tourism"), [
-        (T("pdf_within_500m"), data.get("densita_500m")),
-        (T("pdf_within_1km"), data.get("densita_1km")),
-        (T("pdf_within_2km"), data.get("densita_2km")),
-    ])
-
-    if data.get("vincoli"):
-        section(T("pdf_overlay"), [(v, "\u2713") for v in data["vincoli"]])
-
-    elems.append(Spacer(1, 0.5*cm))
-    elems.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
+    # ── FOOTER ───────────────────────────────────────────
+    elems.append(Spacer(1, 0.5 * cm))
+    elems.append(HRFlowable(width="100%", thickness=0.5, color=GREY))
     elems.append(Paragraph(
-        "Fonti: BATARA live (Badung DPUPR) \u00b7 BPN BHUMI \u00b7 OSM Overpass \u00b7 Open-Elevation",
-        ParagraphStyle("footer", parent=styles["Normal"], fontSize=8,
-                       alignment=TA_CENTER, textColor=colors.grey)
+        f'<font color="#999999" size="7">Report generato da Zantara Prime \u2014 Bali Zero Consulting \u2014 {data.get("timestamp", "")}<br/>'
+        f'Questo report \u00e8 a scopo informativo. Si consiglia verifica indipendente prima di qualsiasi decisione d\'investimento.</font>',
+        ParagraphStyle("footer", parent=styles["Normal"], alignment=TA_LEFT),
     ))
 
-    doc.build(elems)
+    doc.build(elems, onFirstPage=on_page, onLaterPages=on_page)
     return buf.getvalue()
 
 db_ok = init_db()
@@ -444,28 +756,76 @@ if mode == "📍 Land Intel":
     with col_in:
         st.subheader(T("localization"))
 
-        search_query = st.text_input(T("search_address"), placeholder=T("search_placeholder"))
-        if st.button(T("search"), key="geocode_btn"):
-            if search_query.strip():
-                try:
-                    geo_r = requests.get(
-                        "https://nominatim.openstreetmap.org/search",
-                        params={"q": search_query + " Bali", "format": "json", "limit": 1},
-                        headers={"User-Agent": "NuzantaraPrime/1.0"},
-                        timeout=8,
-                    )
-                    geo_results = geo_r.json()
-                    if geo_results:
-                        st.session_state["li_lat"] = float(geo_results[0]["lat"])
-                        st.session_state["li_lon"] = float(geo_results[0]["lon"])
-                        st.session_state["geo_label"] = geo_results[0]["display_name"]
-                        st.rerun()
-                    else:
-                        st.warning(T("place_not_found"))
-                except Exception:
-                    st.warning(T("geocoding_unavailable"))
+        # ── Google Places Search ───────────────────────────
+        _search_q = st.text_input(
+            T("search_address"),
+            placeholder=T("search_placeholder"),
+            key="gmaps_search_input",
+        )
 
-        if "geo_label" in st.session_state:
+        # Live autocomplete suggestions via Google Places API
+        if _search_q and len(_search_q) >= 3:
+            @st.cache_data(ttl=300)
+            def _gmaps_autocomplete(query: str) -> list:
+                try:
+                    r = requests.get(
+                        "https://maps.googleapis.com/maps/api/place/autocomplete/json",
+                        params={
+                            "input": query,
+                            "components": "country:id",
+                            "location": "-8.65,115.2",
+                            "radius": 50000,
+                            "key": GMAPS_KEY,
+                        },
+                        timeout=5,
+                    )
+                    data = r.json()
+                    if data.get("status") == "OK":
+                        return [
+                            {"desc": p["description"], "place_id": p["place_id"]}
+                            for p in data["predictions"][:5]
+                        ]
+                except Exception:
+                    pass
+                return []
+
+            suggestions = _gmaps_autocomplete(_search_q)
+            if suggestions:
+                options = [s["desc"] for s in suggestions]
+                chosen = st.selectbox(
+                    "📍",
+                    options,
+                    key="gmaps_suggestion",
+                    label_visibility="collapsed",
+                )
+                chosen_place = next((s for s in suggestions if s["desc"] == chosen), None)
+
+                if st.button("✅ " + T("search"), key="gmaps_select_btn"):
+                    if chosen_place:
+                        # Get coordinates via Place Details
+                        try:
+                            det = requests.get(
+                                "https://maps.googleapis.com/maps/api/place/details/json",
+                                params={
+                                    "place_id": chosen_place["place_id"],
+                                    "fields": "geometry,formatted_address",
+                                    "key": GMAPS_KEY,
+                                },
+                                timeout=5,
+                            ).json()
+                            loc = det["result"]["geometry"]["location"]
+                            st.session_state["li_lat"] = loc["lat"]
+                            st.session_state["li_lon"] = loc["lng"]
+                            st.session_state["geo_label"] = det["result"].get(
+                                "formatted_address", chosen_place["desc"]
+                            )
+                            st.rerun()
+                        except Exception:
+                            st.warning(T("geocoding_unavailable"))
+            elif _search_q.strip():
+                st.caption("No results — try a different search")
+
+        if "geo_label" in st.session_state and st.session_state["geo_label"]:
             st.caption(f"📍 {st.session_state['geo_label']}")
 
         lat_in = st.number_input(T("latitude"), value=st.session_state.get("li_lat", -8.64780), format="%.6f", key="li_lat")
@@ -524,24 +884,26 @@ if mode == "📍 Land Intel":
             opacity=0.7,
         ).add_to(m_li)
 
-        rdtr_li = load_rdtr_geojson("Kuta Utara")
+        rdtr_li = load_rdtr_geojson(("Kuta", "Kuta Selatan", "Kuta Utara"))
 
         def rdtr_style_li(feature):
             color_str = feature["properties"].get("_zone_color", "200 200 200")
             hex_color, _ = batara_color_to_hex(color_str)
             return {"fillColor": hex_color, "color": hex_color, "weight": 0.8, "fillOpacity": 0.35}
 
-        GeoJson(
-            rdtr_li,
-            name="Zone RDTR (Badung)",
-            style_function=rdtr_style_li,
-            tooltip=GeoJsonTooltip(
-                fields=["_zone_code", "_zone_name"],
-                aliases=["Zona:", "Nome:"],
-                sticky=True,
-                style="font-size:12px; font-weight:bold;",
-            ),
-        ).add_to(m_li)
+        if rdtr_li["features"]:
+            GeoJson(
+                rdtr_li,
+                name="Zone RDTR (Badung — 3 kec.)",
+                style_function=rdtr_style_li,
+                show=False,
+                tooltip=GeoJsonTooltip(
+                    fields=["_zone_code", "_zone_name"],
+                    aliases=["Zona:", "Nome:"],
+                    sticky=True,
+                    style="font-size:12px; font-weight:bold;",
+                ),
+            ).add_to(m_li)
 
         tabanan_data = load_tabanan_geojson()
         if tabanan_data["features"]:
@@ -553,6 +915,7 @@ if mode == "📍 Land Intel":
                 tabanan_data,
                 name="Zone OSM (Tabanan — 10 kec.)",
                 style_function=tabanan_style_li,
+                show=False,
                 tooltip=GeoJsonTooltip(
                     fields=["_zone_code", "_zone_name", "_source"],
                     aliases=["Zona:", "Nome:", "Fonte:"],
@@ -571,6 +934,7 @@ if mode == "📍 Land Intel":
                 denpasar_data,
                 name="Zone OSM (Denpasar — 4 kec.)",
                 style_function=denpasar_style_li,
+                show=False,
                 tooltip=GeoJsonTooltip(
                     fields=["_zone_code", "_zone_name", "_source"],
                     aliases=["Zona:", "Nome:", "Fonte:"],
@@ -1533,6 +1897,41 @@ Dai un giudizio su: (1) potenziale di sviluppo, (2) rischi principali, (3) racco
             "densita_2km": density_results.get("2km") if "density_results" in locals() else None,
             "vincoli": list(vincoli.keys()) if "vincoli" in locals() and vincoli else [],
         }
+        # Enrich with KBLI data if available
+        _kbli_session = st.session_state.get("kbli_compliance_input", "").strip()
+        if _kbli_session:
+            pdf_data["kbli_code"] = _kbli_session
+            # Try to get cached KBLI result
+            try:
+                _kr = requests.post(
+                    f"{API_URL}/api/dashboard/map/validate-property",
+                    json={"kbli_code": _kbli_session, "is_pma": True, "location": "Bali"},
+                    timeout=3,
+                )
+                if _kr.status_code == 200:
+                    _kd = _kr.json()
+                    _au = _kd.get("audit", _kd)
+                    pdf_data["kbli_title"] = _kd.get("title", "")
+                    pdf_data["kbli_state"] = _au.get("state", "")
+                    pdf_data["kbli_reason"] = _au.get("reason_code", "")
+                    pdf_data["kbli_oss_risk"] = _au.get("oss_risk", "")
+                    pdf_data["kbli_max_foreign"] = _kd.get("pma_logic", {}).get("max_foreign_ownership", "")
+            except Exception:
+                pass
+        # Enrich with investment analysis if available
+        try:
+            _inv_payload = {"lat": lat_in, "lon": lon_in, "is_pma": True, "land_size_m2": li_size, "price_idr": li_price}
+            if _kbli_session:
+                _inv_payload["kbli_code"] = _kbli_session
+            _ir = requests.post(f"{API_URL}/api/dashboard/map/analyze-investment", json=_inv_payload, timeout=20)
+            if _ir.status_code == 200:
+                _inv = _ir.json()
+                _v = _inv.get("verdict", {})
+                pdf_data["invest_score"] = _v.get("score")
+                pdf_data["invest_risk"] = _v.get("risk_level")
+                pdf_data["invest_summary"] = _v.get("summary", "")
+        except Exception:
+            pass
         try:
             pdf_bytes = generate_pdf(pdf_data)
             pdf_fname = f"land_intel_{lat_in:.4f}_{lon_in:.4f}_{pd.Timestamp.now().strftime('%Y%m%d')}.pdf"
