@@ -945,6 +945,12 @@ if mode == "📍 Land Intel":
             if _kbli_val:
                 invest_payload["kbli_code"] = _kbli_val
 
+            # Pass geo data from previous analysis (if available in session_state)
+            _geo = {}
+            if st.session_state.get("li_geo_data"):
+                _geo = st.session_state["li_geo_data"]
+            invest_payload["geo_data"] = _geo if _geo else None
+
             try:
                 inv_resp = requests.post(
                     f"{API_URL}/api/dashboard/map/analyze-investment",
@@ -956,24 +962,50 @@ if mode == "📍 Land Intel":
                     verdict = inv.get("verdict", {})
                     risk = verdict.get("risk_level", "UNKNOWN")
                     can = verdict.get("can_invest", False)
+                    inv_score = verdict.get("score", 0)
+                    breakdown = verdict.get("breakdown", {})
+                    hard_blocks = verdict.get("hard_blocks", [])
+                    modifiers = verdict.get("modifiers", [])
 
-                    # Verdict box
+                    # Verdict box with score
                     v_colors = {"LOW": "#198754", "MEDIUM": "#fd7e14", "HIGH": "#dc3545"}
                     v_icons = {"LOW": "✅", "MEDIUM": "⚠️", "HIGH": "❌"}
                     v_col = v_colors.get(risk, "#6c757d")
                     v_ico = v_icons.get(risk, "❓")
 
+                    # Score bar color gradient
+                    if inv_score >= 65:
+                        bar_color = "#198754"
+                    elif inv_score >= 35:
+                        bar_color = "#fd7e14"
+                    else:
+                        bar_color = "#dc3545"
+
                     st.markdown(f"""
                     <div style="background:{v_col}22; padding:16px; border-radius:10px;
                                 border-left:6px solid {v_col}; margin:12px 0;">
-                        <span style="font-size:1.5em">{v_ico} <b>{T('investable') if can else T('not_investable')}</b></span>
-                        <span style="float:right; background:{v_col}; color:white; padding:4px 12px;
-                                     border-radius:4px; font-weight:bold;">{risk} RISK</span>
-                        <br><span style="color:#555; font-size:0.9em; margin-top:6px; display:block;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-size:1.5em">{v_ico} <b>{T('investable') if can else T('not_investable')}</b></span>
+                            <div style="text-align:right;">
+                                <span style="background:{v_col}; color:white; padding:4px 12px;
+                                             border-radius:4px; font-weight:bold;">{risk} RISK</span>
+                                <span style="font-size:1.8em; font-weight:bold; margin-left:10px; color:{bar_color};">{inv_score}</span>
+                                <span style="color:#888; font-size:0.8em">/100</span>
+                            </div>
+                        </div>
+                        <div style="background:#e0e0e0; border-radius:4px; height:8px; margin:10px 0 6px 0;">
+                            <div style="background:{bar_color}; width:{inv_score}%; height:100%; border-radius:4px;"></div>
+                        </div>
+                        <span style="color:#555; font-size:0.9em; display:block;">
                             {verdict.get('summary', '')}
                         </span>
                     </div>
                     """, unsafe_allow_html=True)
+
+                    # Hard blocks (if any)
+                    if hard_blocks:
+                        for hb in hard_blocks:
+                            st.error(f"🚫 {hb}")
 
                     # 3-column detail cards
                     inv_c1, inv_c2, inv_c3 = st.columns(3)
@@ -1013,6 +1045,48 @@ if mode == "📍 Land Intel":
                             st.caption(T("roi_not_calculable", err=r['error']))
                         else:
                             st.caption(T("insufficient_data_roi"))
+
+                    # Score breakdown (expandable)
+                    if breakdown:
+                        with st.expander(T("score_breakdown"), expanded=False):
+                            _factor_labels = {
+                                "roi": ("ROI", 30),
+                                "zone_kbli_fit": ("Zona-KBLI", 20),
+                                "break_even": ("Break-Even", 15),
+                                "flood_risk": ("Flood Risk", 10),
+                                "market": ("Market", 10),
+                                "regulatory": ("Regolatorio", 10),
+                                "amenity": ("Amenity", 5),
+                            }
+                            for key, (label, max_pts) in _factor_labels.items():
+                                bd = breakdown.get(key, {})
+                                pts = bd.get("score", 0)
+                                pct = int(pts / max_pts * 100) if max_pts > 0 else 0
+                                if pct >= 70:
+                                    _bc = "#198754"
+                                elif pct >= 40:
+                                    _bc = "#fd7e14"
+                                else:
+                                    _bc = "#dc3545"
+                                val_str = ""
+                                if bd.get("value") is not None:
+                                    val_str = f" ({bd['value']})"
+                                elif bd.get("state"):
+                                    val_str = f" ({bd['state']})"
+                                st.markdown(f"""
+                                <div style="margin:4px 0;">
+                                    <span style="display:inline-block;width:100px;font-size:0.85em;">{label}</span>
+                                    <span style="font-weight:bold;color:{_bc};">{pts}/{max_pts}</span>
+                                    <span style="color:#888;font-size:0.8em;">{val_str}</span>
+                                    <div style="background:#e0e0e0;border-radius:3px;height:6px;margin-top:2px;">
+                                        <div style="background:{_bc};width:{pct}%;height:100%;border-radius:3px;"></div>
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                            if modifiers:
+                                st.markdown("---")
+                                for mod in modifiers:
+                                    st.caption(mod)
 
                 else:
                     st.warning(T("backend_http_error", code=inv_resp.status_code))
@@ -1239,6 +1313,29 @@ out center;
 
         except Exception as osm_err:
             st.warning(T("osm_unreachable", err=osm_err))
+
+        # ── Store geo data in session_state for investment scoring ──
+        _geo_store = {}
+        if "walk_score" in locals():
+            _geo_store["walk_score"] = walk_score
+        if "elev_m" in locals():
+            _geo_store["elev_m"] = elev_m
+        if "dist_coast_km" in locals():
+            _geo_store["dist_coast_km"] = dist_coast_km
+        if "sea_view" in locals():
+            _geo_store["sea_view"] = sea_view
+        if "density_results" in locals():
+            _geo_store["densita_1km"] = density_results.get("1km")
+        # Map flood risk to scoring key
+        if "elev_risk" in locals():
+            flood_key = "safe"
+            if elev_risk == T("flood_risk_high"):
+                flood_key = "high"
+            elif elev_risk == T("low_zone_check"):
+                flood_key = "check"
+            _geo_store["flood_risk"] = flood_key
+        if _geo_store:
+            st.session_state["li_geo_data"] = _geo_store
 
         # ── AI ASSESSMENT (Qwen 32B locale) ───────────────────
         st.subheader(T("ai_assessment"))

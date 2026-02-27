@@ -414,6 +414,11 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "en": "Insufficient data for ROI calculation",
         "id": "Data tidak cukup untuk perhitungan ROI",
     },
+    "score_breakdown": {
+        "it": "📊 Dettaglio Score (7 fattori)",
+        "en": "📊 Score Breakdown (7 factors)",
+        "id": "📊 Detail Skor (7 faktor)",
+    },
     "backend_http_error": {
         "it": "Errore backend: HTTP {code}",
         "en": "Backend error: HTTP {code}",
