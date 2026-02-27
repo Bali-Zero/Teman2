@@ -5,6 +5,7 @@ Provides 6 endpoints for property validation, client geo data,
 risk zones, analytics logging, aggregate stats, and unified investment analysis.
 """
 
+import contextlib
 import logging
 from typing import Any
 from urllib.parse import urlencode
@@ -63,37 +64,67 @@ class AnalyzeInvestmentRequest(BaseModel):
 # ── Investment Scoring Engine (3-Layer) ──────────────────────────────
 
 # Zones where commercial building is essentially impossible
+# BA=Bandara, BJ=Jalan, SS=Sungai, SP=Sumber Air, LS=Laut
+# P-1=Perlindungan, PL-*=Perairan, RTH-*=Ruang Terbuka Hijau
 NON_BUILDABLE_ZONES: set[str] = {
-    "BA", "BJ", "SS", "SP", "LS", "P-1",
-    "RTH-2", "RTH-4", "RTH-7", "RTNH", "PL-4",
+    "BA", "BJ", "SS", "SP", "LS",
+    "P-1", "P-2",
+    "RTH-1", "RTH-2", "RTH-4", "RTH-7",
+    "RTNH",
+    "PL-1", "PL-3", "PL-4",
 }
 
 # Zone-KBLI compatibility — maps KBLI prefix/category to ideal zone families
 # Key = first 2 digits of KBLI code, Value = set of zone prefixes that are ideal
+#
+# 3 tiers: IDEAL (20pt) → TOLERATED (8pt) → ACCEPTABLE (12pt) → POOR (4pt)
+# TOLERATED = gray zone (normativamente discutibile ma pratica comune, es. R-3 Canggu)
 _ZONE_KBLI_IDEAL: dict[str, set[str]] = {
-    # Accommodation (55xxx) → Residential, Tourism, Mixed
-    "55": {"R-", "W-", "C-"},
-    # Food & Beverage (56xxx) → Commercial, Mixed, Tourism
-    "56": {"K-", "C-", "W-"},
+    # Accommodation (55xxx) → Tourism, Mixed (NOT residential — villa in R-3 is gray zone)
+    "55": {"W-", "C-"},
+    # Food & Beverage (56xxx) → Commercial, Mixed
+    "56": {"K-", "C-"},
+    # Retail (47xxx) → Commercial, Mixed
+    "47": {"K-", "C-"},
     # Real Estate (68xxx) → Residential, Commercial, Mixed
     "68": {"R-", "K-", "C-"},
     # Offices / Consulting (70xxx) → Office, Commercial, Mixed
     "70": {"KT", "K-", "C-"},
     # IT / Software (62xxx) → Office, Commercial, Mixed
     "62": {"KT", "K-", "C-"},
+    # Rental services (77xxx) → Commercial, Mixed
+    "77": {"K-", "C-"},
+    # Travel agencies (79xxx) → Tourism, Commercial, Mixed
+    "79": {"W-", "K-", "C-"},
     # Spa / Wellness (96xxx) → Tourism, Commercial, Mixed
     "96": {"W-", "K-", "C-"},
+    # Arts / Entertainment (90xxx) → Tourism, Mixed, Public Facility
+    "90": {"W-", "C-", "SPU"},
+    # Museums / Heritage (91xxx) → Tourism, Public Facility, Mixed
+    "91": {"W-", "SPU", "C-"},
     # Education (85xxx) → Public Facility, Mixed
     "85": {"SPU", "C-"},
     # Recreation (93xxx) → Tourism, Public Facility
     "93": {"W-", "SPU", "C-"},
 }
 
-# Zones where KBLI 56 (F&B) is acceptable but not ideal (e.g. residential)
+# TOLERATED = gray zone — normativamente discutibile ma pratica comune.
+# Score: 8/20 (tra acceptable e poor). Segnala al cliente che serve attenzione.
+# Esempio: villa (55) in R-3 a Canggu — migliaia di casi ma non è "ideale".
+_ZONE_KBLI_TOLERATED: dict[str, set[str]] = {
+    "55": {"R-"},       # Villa/hotel in zona residenziale (gray zone Canggu)
+    "56": {"W-"},       # Restaurant in tourism zone (common but needs permit)
+    "47": {"R-"},       # Retail in residential (warung/minimarket)
+}
+
+# ACCEPTABLE = non ideale ma legalmente fattibile con permessi extra.
+# Score: 12/20
 _ZONE_KBLI_ACCEPTABLE: dict[str, set[str]] = {
     "55": {"K-"},       # Accommodation in commercial = acceptable
-    "56": {"R-", "W-"}, # Restaurant in residential/tourism = acceptable with permit
+    "56": {"R-"},       # Restaurant in residential = acceptable with permit
     "68": {"W-"},       # Real estate in tourism = acceptable
+    "77": {"W-"},       # Rental in tourism = acceptable
+    "79": {"R-"},       # Travel agency in residential = acceptable
 }
 
 
@@ -102,34 +133,58 @@ def _zone_matches_prefix(zone_code: str, prefixes: set[str]) -> bool:
     return any(zone_code.startswith(p) for p in prefixes)
 
 
+# ── Nightlife override (5-digit codes that diverge from their 2-digit prefix) ──
+# Bar (56301) and nightclub (56302) need W-/K- zones. In R- zones they cause
+# noise/traffic issues and rarely get permits. Override the generic "56" logic.
+_NIGHTLIFE_CODES: set[str] = {"56301", "56302"}
+_NIGHTLIFE_IDEAL_ZONES: set[str] = {"K-", "W-", "C-"}
+_NIGHTLIFE_PENALTY_ZONES: set[str] = {"R-"}  # Residential = poor fit for nightlife
+
+
 def _calculate_zone_kbli_fit(
     zone_code: str | None, kbli_code: str | None,
-) -> int:
+) -> tuple[int, str]:
     """
-    Zone-KBLI compatibility score (0-20).
-    20 = perfect match, 12 = acceptable, 4 = poor, 0 = incompatible.
+    Zone-KBLI compatibility score (0-20) + tier label.
+    20 = ideal, 12 = acceptable, 8 = tolerated (gray zone), 4 = poor, 0 = incompatible.
+
+    Returns (score, tier) where tier is one of:
+    "ideal", "acceptable", "tolerated", "poor", "incompatible", "unknown"
     """
     if not zone_code or not kbli_code:
-        return 12  # Unknown = acceptable default
+        return 12, "unknown"  # Unknown = acceptable default
 
     prefix = kbli_code[:2]
 
-    # Check ideal match
-    ideal = _ZONE_KBLI_IDEAL.get(prefix)
-    if ideal and _zone_matches_prefix(zone_code, ideal):
-        return 20
-
-    # Check acceptable match
-    acceptable = _ZONE_KBLI_ACCEPTABLE.get(prefix)
-    if acceptable and _zone_matches_prefix(zone_code, acceptable):
-        return 12
-
     # Non-buildable zone → incompatible with any business
     if zone_code in NON_BUILDABLE_ZONES:
-        return 0
+        return 0, "incompatible"
+
+    # Nightlife override — bar/nightclub (56301, 56302) have stricter zone needs
+    if kbli_code in _NIGHTLIFE_CODES:
+        if _zone_matches_prefix(zone_code, _NIGHTLIFE_IDEAL_ZONES):
+            return 20, "ideal"
+        if _zone_matches_prefix(zone_code, _NIGHTLIFE_PENALTY_ZONES):
+            return 2, "poor"  # Nightlife in residential = very poor fit
+        return 8, "tolerated"
+
+    # Check ideal match (20pt)
+    ideal = _ZONE_KBLI_IDEAL.get(prefix)
+    if ideal and _zone_matches_prefix(zone_code, ideal):
+        return 20, "ideal"
+
+    # Check acceptable match (12pt)
+    acceptable = _ZONE_KBLI_ACCEPTABLE.get(prefix)
+    if acceptable and _zone_matches_prefix(zone_code, acceptable):
+        return 12, "acceptable"
+
+    # Check tolerated / gray zone (8pt)
+    tolerated = _ZONE_KBLI_TOLERATED.get(prefix)
+    if tolerated and _zone_matches_prefix(zone_code, tolerated):
+        return 8, "tolerated"
 
     # Unknown KBLI prefix but buildable zone → poor fit (benefit of doubt)
-    return 4
+    return 4, "poor"
 
 
 def calculate_investment_score(
@@ -138,6 +193,7 @@ def calculate_investment_score(
     kbli_code: str | None,
     roi_data: dict[str, Any] | None,
     geo_data: dict[str, Any] | None,
+    oss_risk: str | None = None,
 ) -> dict[str, Any]:
     """
     3-Layer investment scoring engine.
@@ -169,12 +225,21 @@ def calculate_investment_score(
     klb_raw = zone_data.get("klb", "N/A") if zone_data else "N/A"
     klb_val: float | None = None
     if klb_raw and klb_raw != "N/A":
-        try:
+        with contextlib.suppress(ValueError, TypeError):
             klb_val = float(str(klb_raw).replace(",", "."))
-        except (ValueError, TypeError):
-            pass
     if klb_val is not None and klb_val < 0.05:
         hard_blocks.append(f"KLB {klb_raw} — costruibilità quasi nulla")
+
+    # KKOP with very low building height = effectively unbuildable for multi-story
+    if overlays.get("KKOP_1"):
+        tb_raw = zone_data.get("tb", "N/A") if zone_data else "N/A"
+        tb_meters: float | None = None
+        with contextlib.suppress(ValueError, TypeError, IndexError):
+            tb_meters = float(str(tb_raw).split()[0].replace(",", "."))
+        if tb_meters is not None and tb_meters <= 4.0:
+            hard_blocks.append(
+                f"KKOP + TB {tb_raw} — altezza edificio troppo limitata"
+            )
 
     if hard_blocks:
         return {
@@ -210,11 +275,34 @@ def calculate_investment_score(
         roi_score = None  # No data = exclude from scoring
     breakdown["roi"] = {"score": roi_score, "max": 30, "value": roi_val}
 
-    # 2b. Zone-KBLI Compatibility (20 points)
-    zone_kbli_score: int | None = _calculate_zone_kbli_fit(zone_code, kbli_code)
-    breakdown["zone_kbli_fit"] = {"score": zone_kbli_score, "max": 20}
+    # 2b. Zone-KBLI Compatibility (15 points, scaled from 0-20 internal)
+    zone_kbli_raw, zone_kbli_tier = _calculate_zone_kbli_fit(zone_code, kbli_code)
+    # Scale from 0-20 internal to 0-15 display
+    zone_kbli_score: int | None = round(zone_kbli_raw * 15 / 20)
+    breakdown["zone_kbli_fit"] = {
+        "score": zone_kbli_score, "max": 15, "tier": zone_kbli_tier,
+    }
 
-    # 2c. Break-Even Years (15 points)
+    # 2c. Building Capacity — KLB factor (10 points)
+    # KLB (Koefisien Lantai Bangunan) determines buildable m² = land × KLB.
+    # Higher KLB = more floors/density = better ROI potential.
+    # Only available from BATARA (not GISTARU).
+    if klb_val is not None:
+        if klb_val >= 2.0:
+            klb_score: int | None = 10   # High density (K-1, K-3)
+        elif klb_val >= 1.2:
+            klb_score = 8                # Good density (R-3, W-2)
+        elif klb_val >= 0.6:
+            klb_score = 5                # Low density (R-4, some W-)
+        elif klb_val >= 0.2:
+            klb_score = 2                # Very limited
+        else:
+            klb_score = 0                # Near-zero (hard block catches < 0.05)
+    else:
+        klb_score = None  # No KLB data (GISTARU) = exclude from scoring
+    breakdown["building_capacity"] = {"score": klb_score, "max": 10, "klb": klb_val}
+
+    # 2d. Break-Even Years (15 points)
     bey_val: float | None = None
     if roi_data and not roi_data.get("error"):
         bey_val = roi_data.get("golden_strategy", {}).get("bey")
@@ -257,16 +345,33 @@ def calculate_investment_score(
         market_score = 5  # Unknown
     breakdown["market"] = {"score": market_score, "max": 10, "value": density_1km}
 
-    # 2f. Regulatory Risk — KBLI state (10 points)
+    # 2g. Regulatory Risk — KBLI state + OSS risk category (10 points)
+    # Base score from KBLI compliance state
     if kbli_state == "APPROVED":
-        reg_score = 10
+        reg_base = 10
     elif kbli_state == "WARNING":
-        reg_score = 5
+        reg_base = 5
     elif kbli_state is None:
-        reg_score = 7  # No KBLI provided = neutral
+        reg_base = 7  # No KBLI provided = neutral
     else:
-        reg_score = 0
-    breakdown["regulatory"] = {"score": reg_score, "max": 10, "state": kbli_state}
+        reg_base = 0
+
+    # OSS risk category modifier:
+    # Tinggi = AMDAL required (expensive, slow) → -3
+    # Menengah Tinggi = UKL/UPL required → -2
+    # Menengah Rendah = standard NIB → 0
+    # Rendah = auto-approval in OSS → 0
+    oss_penalty = 0
+    if oss_risk == "Tinggi":
+        oss_penalty = 3
+    elif oss_risk == "Menengah Tinggi":
+        oss_penalty = 2
+
+    reg_score = max(0, reg_base - oss_penalty)
+    breakdown["regulatory"] = {
+        "score": reg_score, "max": 10,
+        "state": kbli_state, "oss_risk": oss_risk,
+    }
 
     # 2g. Amenity Access — Walk Score (5 points)
     ws = geo_data.get("walk_score") if geo_data else None
@@ -282,20 +387,24 @@ def calculate_investment_score(
     breakdown["amenity"] = {"score": ws_score, "max": 5, "value": ws}
 
     # ── Normalize score: exclude None factors, scale to 0-100 ─────
+    # 8 factors: ROI(30) + Zone-KBLI(15) + KLB(10) + BEY(15) + Flood(10) +
+    #            Market(10) + Regulatory(10) + Amenity(5) = 105 max
     _all_scores = [
-        roi_score, zone_kbli_score, bey_score, flood_score,
+        roi_score, zone_kbli_score, klb_score, bey_score, flood_score,
         market_score, reg_score, ws_score,
     ]
-    _all_maxes = [30, 20, 15, 10, 10, 10, 5]
+    _all_maxes = [30, 15, 10, 15, 10, 10, 10, 5]
 
     earned = sum(s for s in _all_scores if s is not None)
-    available = sum(m for s, m in zip(_all_scores, _all_maxes) if s is not None)
+    available = sum(m for s, m in zip(_all_scores, _all_maxes, strict=True) if s is not None)
     score = round(earned / available * 100) if available > 0 else 0
 
     # Track which factors were excluded
     _excluded = []
     if roi_score is None:
         _excluded.append("ROI")
+    if klb_score is None:
+        _excluded.append("KLB")
     if bey_score is None:
         _excluded.append("Break-Even")
 
@@ -305,11 +414,48 @@ def calculate_investment_score(
     if _excluded:
         modifiers.append(f"Esclusi dal calcolo: {', '.join(_excluded)} (dati mancanti)")
 
-    # Multiple overlays = bureaucratic friction
-    overlay_count = len(overlays)
-    if overlay_count >= 2:
-        score -= 5
-        modifiers.append(f"-5: {overlay_count} overlay normativi")
+    # Weighted overlay penalties (each overlay has different impact)
+    _OVERLAY_PENALTIES: dict[str, tuple[int, str]] = {
+        # LP2B is already a hard block in Layer 1, but partial overlap still penalizes
+        "KKOP_1": (12, "Zona Keselamatan Operasi Penerbangan — altezza edifici limitata"),
+        "SEMPDN": (8, "Sempadan pantai/sungai — fascia protetta, costruzione limitata"),
+        "KRB_03": (7, "Kawasan Rawan Bencana — zona rischio disastri naturali"),
+        "RESAIR": (6, "Resapan Air — zona ricarica acquiferi, impermeabilizzazione limitata"),
+        "TEB_05": (5, "Zona Taman Hutan — restrizioni ambientali"),
+        "CAGBUD": (5, "Cagar Budaya — vincoli patrimonio culturale"),
+        "HANKAM": (10, "Zona Pertahanan/Keamanan — area militare/sicurezza"),
+    }
+    overlay_penalty_total = 0
+    for ov_key, ov_val in overlays.items():
+        if ov_val and ov_key in _OVERLAY_PENALTIES:
+            penalty, desc = _OVERLAY_PENALTIES[ov_key]
+            overlay_penalty_total += penalty
+            modifiers.append(f"-{penalty}: {desc}")
+
+    if overlay_penalty_total > 0:
+        # Cap total overlay penalty at -25 to prevent total score annihilation
+        overlay_penalty_total = min(overlay_penalty_total, 25)
+        score -= overlay_penalty_total
+
+    # Gray zone warning — when KBLI-zone compatibility is "tolerated"
+    # This means the activity is common in practice but normativamente discutibile.
+    # Example: villa (55) in R-3 Canggu — thousands of cases, not technically "ideal".
+    if zone_kbli_tier == "tolerated":
+        modifiers.append(
+            "⚠️ Gray zone: attività comune in questa zona ma non normativamente ideale. "
+            "Verificare IMB/PBG specifico per conferma."
+        )
+
+    # W-2 villa height cap warning
+    # In W-2 (tourism zone), villas are capped at 8m/2 floors while hotels
+    # can build 15m/4 floors. If KBLI suggests villa (55xxx), warn about limit.
+    if zone_code and zone_code.startswith("W-2") and kbli_code and kbli_code.startswith("55"):
+        tb_raw = zone_data.get("tb", "N/A") if zone_data else "N/A"
+        modifiers.append(
+            f"⚠️ W-2: villa limitata a 8m/2 piani (hotel fino a 15m/4 piani). "
+            f"TB zona: {tb_raw}"
+        )
+        score -= 3  # Minor penalty for height limitation
 
     # Sea view premium
     sea_view = geo_data.get("sea_view", False) if geo_data else False
@@ -758,15 +904,13 @@ async def get_stats(request: Request) -> dict[str, Any]:
 
             # Map lookups in last 24h (graceful if table doesn't exist yet)
             map_lookups_24h: int = 0
-            try:
+            with contextlib.suppress(Exception):
                 map_lookups_24h = await conn.fetchval(
                     """
                     SELECT COUNT(*) FROM analytics_map_lookups
                     WHERE created_at > NOW() - INTERVAL '24 hours'
                     """
                 ) or 0
-            except Exception:
-                pass  # Table may not exist yet
 
             return {
                 "total_clients": total_clients,
@@ -869,6 +1013,7 @@ async def analyze_investment(req: AnalyzeInvestmentRequest) -> dict[str, Any]:
 
     # ── B) KBLIEye → Compliance PMA ───────────────────────────────────
     kbli_state: str | None = None
+    kbli_oss_risk: str | None = None
     if req.kbli_code:
         try:
             eye = _get_kbli_eye()
@@ -877,6 +1022,7 @@ async def analyze_investment(req: AnalyzeInvestmentRequest) -> dict[str, Any]:
             )
             audit = kd.get("audit", kd)
             kbli_state = audit.get("state", kd.get("state", "UNKNOWN"))
+            kbli_oss_risk = audit.get("oss_risk") or None
             pma_logic = kd.get("pma_logic", {})
 
             result["kbli"] = {
@@ -931,6 +1077,7 @@ async def analyze_investment(req: AnalyzeInvestmentRequest) -> dict[str, Any]:
         kbli_code=req.kbli_code,
         roi_data=result.get("roi"),
         geo_data=req.geo_data,
+        oss_risk=kbli_oss_risk,
     )
 
     verdict_label = scoring["verdict"]
