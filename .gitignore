@@ -389,3 +389,5 @@ codebase_parts/
 openclaw
 
 .aider*
+.claude/
+.serena/
