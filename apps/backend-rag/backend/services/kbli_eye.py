@@ -8,11 +8,31 @@ class KBLIEye:
     KBLI EYE - Punto fisso deterministico per l'intelligence normativa.
     Centralizza la logica di validazione per evitare frammentazione nei router o agenti.
     """
-    
+
+    # 9 codici KBLI citati esplicitamente nella Surat Gubernur Bali
+    # B.27.000/642/PM/DPMPTSP del 28 Gennaio 2026 (Wayan Koster)
+    # Motivo: usati da PMA per ottenere izin tinggal senza vera attività
+    BALI_GOV_LETTER_CODES: set = {
+        "68111",  # Real Estate yang Dimiliki Sendiri atau Disewa
+        "70209",  # Aktivitas Konsultasi Manajemen Lainnya
+        "77311",  # Penyewaan Motor Tanpa Hak Opsi
+        "77100",  # Penyewaan Mobil, Bus, Truk dan Sejenisnya
+        "79121",  # Aktivitas Biro Perjalanan Wisata
+        "47711",  # Perdagangan Eceran Pakaian
+        "47511",  # Perdagangan Eceran Tekstil
+        "47249",  # Perdagangan Eceran Makanan Lainnya
+        "47991",  # Perdagangan Eceran Keliling Komoditi Makanan
+    }
+
+    # 4 codici KBLI sotto moratorium INGUB 6/2025 (toko modern berjejaring)
+    BALI_MORATORIUM_RETAIL: set = {
+        "47111", "47112", "47113", "47191",
+    }
+
     def __init__(self, db_path: str = "source_documents/KBLI_2025_FINAL_CLEAN.json"):
         # Risolviamo il path rispetto alla root del progetto
         self.db_path = Path(db_path)
-        self.data = []
+        self.data: List = []
         self._load_database()
 
     def _load_database(self):
@@ -57,12 +77,19 @@ class KBLIEye:
         is_low_risk = oss_risk in ["Rendah", "Menengah Rendah"]
         
         # 3. Matrice di Decisione (Determinismo puro)
+        resolved_code = kbli["kode_kbli_2025"]
+
         if is_pma and not is_open_pma:
             state = "REJECTED"
-            reason = "PERPRES_10_2021_RESERVATION" # La famosa "V" della foto
-        elif is_pma and location == "Bali" and is_low_risk:
+            reason = "PERPRES_10_2021_RESERVATION"  # DNI list
+        elif is_pma and location == "Bali" and resolved_code in self.BALI_GOV_LETTER_CODES:
+            # 9 codici citati nella Surat Gubernur 28 Gen 2026
             state = "WARNING"
-            reason = "BALI_GOV_RESTRICTION_2026"  # Lettera 28 Gen 2026
+            reason = "BALI_GOV_LETTER_9_CODES"
+        elif location == "Bali" and resolved_code in self.BALI_MORATORIUM_RETAIL:
+            # Moratorium toko modern berjejaring (INGUB 6/2025)
+            state = "WARNING"
+            reason = "BALI_INGUB_6_2025_MORATORIUM"
         else:
             state = "APPROVED"
             reason = "STANDARD_COMPLIANCE"
