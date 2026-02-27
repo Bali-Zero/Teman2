@@ -3,11 +3,17 @@ WhatsApp Persona — "Zan" by Bali Zero
 Natural WhatsApp conversations with Claude Sonnet.
 
 Key: no markdown, plain text only, human tone.
+
+NOTE: Base prompt now comes from zantara_core.py (Single Source of Truth).
+This module keeps the dynamic build_system_prompt() for per-message context
+(client name, language, first message flag, pricing table).
 """
 
 import json
 import logging
 from pathlib import Path
+
+from backend.prompts.zantara_core import ZANTARA_MASTER_TEMPLATE
 
 logger = logging.getLogger(__name__)
 
@@ -59,19 +65,8 @@ def _load_full_pricing() -> str:
 
 _PRICING_TABLE = _load_full_pricing()
 
-
-def _load_system_prompt() -> str:
-    """Load the base system prompt from markdown file."""
-    prompt_file = Path(__file__).parent / "zantara_system_prompt.md"
-    try:
-        if prompt_file.exists():
-            return prompt_file.read_text(encoding="utf-8")
-    except Exception as e:
-        logger.warning(f"Failed to load system prompt: {e}")
-    return ""
-
-
-_BASE_PROMPT = _load_system_prompt()
+# Base prompt from single source of truth
+_BASE_PROMPT = ZANTARA_MASTER_TEMPLATE
 
 
 def build_system_prompt(

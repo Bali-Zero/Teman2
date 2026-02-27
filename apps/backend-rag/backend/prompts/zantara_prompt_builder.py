@@ -35,20 +35,16 @@ class ZantaraPromptBuilder:
         self.modes = self._load_modes()
 
     def _load_identity(self) -> str:
-        """Load the consolidated system prompt from zantara_system_prompt.md"""
+        """Load the system prompt from the single source of truth module."""
         try:
-            # Single source of truth: consolidated system prompt
-            path = os.path.abspath(
-                os.path.join(os.path.dirname(__file__), "zantara_system_prompt.md")
-            )
-            if os.path.exists(path):
-                with open(path) as f:
-                    return f.read()
+            from backend.prompts.zantara_core import ZANTARA_MASTER_TEMPLATE
 
-            logger.warning("zantara_system_prompt.md not found, using embedded fallback")
+            if ZANTARA_MASTER_TEMPLATE:
+                return ZANTARA_MASTER_TEMPLATE
+            logger.warning("ZANTARA_MASTER_TEMPLATE is empty, using embedded fallback")
             return "You are Zantara, a helpful consultant."
         except Exception as e:
-            logger.warning("Could not load Zantara prompt: %s", e)
+            logger.warning("Could not load Zantara prompt from zantara_core: %s", e)
             return "You are Zantara, a helpful consultant."
 
     def _load_modes(self) -> dict:

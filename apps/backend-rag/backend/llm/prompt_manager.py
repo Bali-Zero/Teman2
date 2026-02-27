@@ -2,20 +2,19 @@
 Prompt Manager - Handles system prompt loading and building
 
 Separated from ZantaraAIClient to follow Single Responsibility Principle.
+
+NOTE: Base prompt now comes from backend.prompts.zantara_core (Single Source of Truth).
+No more reading .md files at runtime.
 """
 
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-logger = logging.getLogger(__name__)
+from backend.prompts.zantara_core import ZANTARA_MASTER_TEMPLATE
 
-# Path to the SINGLE consolidated system prompt file
-PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
-SYSTEM_PROMPT_FILE = PROMPTS_DIR / "zantara_system_prompt.md"  # Single source of truth
-FALLBACK_PROMPT_FILE = PROMPTS_DIR / "zantara_system_prompt.md"  # Same file (no fallback needed)
+logger = logging.getLogger(__name__)
 
 # ToneStyle is imported at runtime to avoid circular import
 # The TONE_PROMPTS dict uses string keys at module level, mapped to ToneStyle at runtime
@@ -79,24 +78,14 @@ class PromptManager:
 
     def _load_system_prompt_from_file(self) -> str:
         """
-        Load the rich system prompt from markdown file.
-
-        Falls back to embedded prompt if file not found.
+        Load the system prompt from the single source of truth module.
 
         Returns:
-            System prompt string loaded from file or embedded fallback.
+            System prompt string from backend.prompts.zantara_core.
         """
-        try:
-            if SYSTEM_PROMPT_FILE.exists():
-                prompt = SYSTEM_PROMPT_FILE.read_text(encoding="utf-8")
-                logger.info(f"✅ Loaded system prompt from {SYSTEM_PROMPT_FILE.name}")
-                return prompt
-            elif FALLBACK_PROMPT_FILE.exists():
-                prompt = FALLBACK_PROMPT_FILE.read_text(encoding="utf-8")
-                logger.info(f"⚠️ Using fallback prompt from {FALLBACK_PROMPT_FILE.name}")
-                return prompt
-        except Exception as e:
-            logger.warning(f"⚠️ Failed to load prompt file: {e}")
+        if ZANTARA_MASTER_TEMPLATE:
+            logger.info("✅ Loaded system prompt from zantara_core.py")
+            return ZANTARA_MASTER_TEMPLATE
 
         # Ultimate fallback - embedded prompt
         logger.warning("⚠️ Using embedded fallback system prompt")

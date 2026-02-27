@@ -117,6 +117,7 @@ vercel --prod
 apps/backend-rag/
 ├── backend/
 │   ├── core/          # Core configuration, dependencies
+│   ├── prompts/       # ⭐ Prompt Single Source of Truth (see below)
 │   ├── routers/       # API endpoints (68 routers)
 │   ├── services/      # Business logic (228 services)
 │   ├── models/        # Pydantic models
@@ -128,6 +129,27 @@ apps/backend-rag/
 ├── requirements.txt   # Python dependencies
 └── fly.toml          # Fly.io configuration
 ```
+
+### Prompt Architecture (Single Source of Truth)
+
+```
+backend/prompts/
+├── __init__.py              # Re-exports ZANTARA_MASTER_TEMPLATE, CREATOR_PERSONA, TEAM_PERSONA
+├── zantara_core.py          # ⭐ THE file — all prompt sections as composable constants
+├── channel_overlays.py      # Per-channel config (word limits, markdown, emoji)
+├── few_shot_examples.py     # Consolidated few-shot examples
+├── zantara_persona.py       # Backward compat wrapper → imports from zantara_core
+├── whatsapp_persona.py      # Dynamic builder for WhatsApp context → imports from zantara_core
+└── zantara_prompt_builder.py # Legacy builder → imports from zantara_core
+```
+
+**Rule:** To add/edit ANY Zantara prompt rule, edit ONLY `zantara_core.py`. All consumers import from it.
+
+**Sections in `zantara_core.py`:**
+`SECURITY_BOUNDARY` · `TOOL_USAGE_POLICY` · `SYSTEM_INSTRUCTIONS` · `KNOWLEDGE_GOVERNANCE` ·
+`LANGUAGE_PROTOCOL` · `GREETING_RULES` · `CITATION_RULES` · `INTERNAL_MONOLOGUE` ·
+`ESCALATION_PROTOCOL` · `CRASH_PROTOCOL` · `CLOSING_PHRASES` · `CREATOR_PERSONA` ·
+`TEAM_PERSONA` · `ZANTARA_MASTER_TEMPLATE`
 
 ### Frontend Structure
 
