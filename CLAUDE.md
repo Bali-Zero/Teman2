@@ -345,12 +345,12 @@ async function fetchKBLI(code: string): Promise<KBLIResponse | null> {
 
 ### KBLI Navigator (Frontend)
 
-| Route | Description |
-|-------|-------------|
-| `/kbli` | KBLI 2025 Navigator homepage (Next.js) |
-| `/kbli/[code]` | KBLI code detail page (1,563 SSG pages) |
-| `/kbli-navigator` | **Redirect** → `/kbli` (permanent 301) |
-| `/kbli-explorer` | AI chat explorer (complementary) |
+| Route             | Description                             |
+| ----------------- | --------------------------------------- |
+| `/kbli`           | KBLI 2025 Navigator homepage (Next.js)  |
+| `/kbli/[code]`    | KBLI code detail page (1,563 SSG pages) |
+| `/kbli-navigator` | **Redirect** → `/kbli` (permanent 301)  |
+| `/kbli-explorer`  | AI chat explorer (complementary)        |
 
 ---
 

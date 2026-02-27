@@ -35,7 +35,9 @@ test.describe("Zantara AI Expert - Intense Browser Validation", () => {
     await expect(page.locator("h1")).toContainText("KBLI 2025 Navigator");
     await expect(page.getByPlaceholder(/search kbli/i)).toBeVisible();
     // ZantaraChat section with opener text
-    await expect(page.getByText(/I'm Zantara, your KBLI expert/i)).toBeVisible();
+    await expect(
+      page.getByText(/I'm Zantara, your KBLI expert/i),
+    ).toBeVisible();
   });
 
   test.skip("Legacy: enriched AI response with Markdown - needs update for new /kbli UI", async () => {

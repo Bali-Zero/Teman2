@@ -9,6 +9,7 @@ Merge conflict resolution, KBLI Navigator routing fix, documentation updates.
 ## 1. Merge Conflicts (origin/main)
 
 **Resolved files:**
+
 - `.mcp.json` — kept remote version
 - `apps/backend-rag/backend/app/metrics.py`
 - `apps/backend-rag/backend/app/utils/error_sanitizer.py`
@@ -29,6 +30,7 @@ Merge conflict resolution, KBLI Navigator routing fix, documentation updates.
 **Problem:** `/kbli-navigator` returned 404 (static `index.html` removed in dfdd380de, rewrite never configured).
 
 **Solution:**
+
 - Added permanent redirects in `next.config.ts`: `/kbli-navigator` → `/kbli`, `/kbli-navigator/:path*` → `/kbli/:path*`
 - Updated KBLISearch, NewsPageClient, KBLINavigatorSection to use `/kbli`
 - Adapted e2e test for new Next.js `/kbli` page
@@ -36,6 +38,7 @@ Merge conflict resolution, KBLI Navigator routing fix, documentation updates.
 **Commit:** `e9b8037a2` — fix(frontend): redirect /kbli-navigator to /kbli, update links and e2e
 
 **Files changed:**
+
 - `apps/mouth/next.config.ts`
 - `apps/mouth/src/components/kbli/KBLISearch.tsx`
 - `apps/mouth/src/app/(blog)/NewsPageClient.tsx`
@@ -54,11 +57,11 @@ Merge conflict resolution, KBLI Navigator routing fix, documentation updates.
 
 ## 4. Deployment Status
 
-| Component | Status |
-|-----------|--------|
-| Backend (Fly.io) | Deployed |
+| Component         | Status                                                     |
+| ----------------- | ---------------------------------------------------------- |
+| Backend (Fly.io)  | Deployed                                                   |
 | Frontend (Vercel) | Push completed; redirect propagation may need verification |
-| Merge | Completed |
+| Merge             | Completed                                                  |
 
 ---
 
