@@ -60,9 +60,7 @@ const SECTION_ICONS: Record<string, string> = {
 
 const DATA_PATH = path.join(
   process.cwd(),
-  "..",
-  "..",
-  "source_documents",
+  "data",
   "KBLI_2025_FINAL_CLEAN.json",
 );
 
