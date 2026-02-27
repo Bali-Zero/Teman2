@@ -7,7 +7,9 @@ const withBundleAnalyzer = bundleAnalyzer({
 });
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  // Note: "standalone" output removed — Vercel handles bundling natively.
+  // Using standalone on Vercel caused serverless functions to exceed 300MB
+  // (507MB for KBLI routes) by including all node_modules in each function.
   reactStrictMode: true,
   typescript: {
     ignoreBuildErrors: false,
