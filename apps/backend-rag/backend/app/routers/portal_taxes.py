@@ -1,6 +1,7 @@
 """Portal Tax API endpoints."""
 
 import time
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from prometheus_client import Counter, Histogram

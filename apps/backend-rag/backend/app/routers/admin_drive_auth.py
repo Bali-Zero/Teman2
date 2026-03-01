@@ -4,6 +4,7 @@ Requires ADMIN_SECRET_KEY header.
 """
 
 import os
+from typing import Any
 
 from fastapi import APIRouter, Header, HTTPException
 

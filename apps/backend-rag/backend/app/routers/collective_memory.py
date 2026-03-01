@@ -4,6 +4,7 @@ Endpoints for managing shared knowledge across users
 """
 
 import logging
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel

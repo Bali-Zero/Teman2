@@ -8,6 +8,7 @@ Pipeline: Query → Vector Search → Fast LLM → Response (~5-8s instead of 40
 """
 
 import logging
+from typing import Any
 import time
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request

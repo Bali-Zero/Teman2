@@ -1,6 +1,7 @@
 """Admin Zoho Auth - Temporary endpoint to reconnect Zoho Invoice."""
 
 import os
+from typing import Any
 
 from fastapi import APIRouter, Header, HTTPException
 

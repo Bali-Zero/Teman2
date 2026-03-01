@@ -13,6 +13,7 @@ Files are filtered based on user's department:
 """
 
 import logging
+from typing import Any
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile

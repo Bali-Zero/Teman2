@@ -4,6 +4,7 @@ Exposes PerformanceMonitor and cache management via REST API endpoints
 """
 
 import logging
+from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
