@@ -15,6 +15,9 @@ from starlette.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
 
+# Cooldown period for latency alerts (seconds) — one alert per path per period
+LATENCY_ALERT_COOLDOWN_SECONDS = 300  # 5 minutes
+
 
 class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
     """
@@ -24,6 +27,7 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, alert_service=None):
         super().__init__(app)
         self.alert_service = alert_service
+        self._latency_alert_last_sent: dict[str, float] = {}
         # enabled is evaluated per-request to support startup/lazy init via app.state
         if alert_service is not None:
             logger.info("✅ ErrorMonitoringMiddleware initialized with AlertService")
@@ -81,18 +85,23 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
                     duration_ms > settings.latency_alert_threshold_ms
                     and not skip_latency
                 ):
-                    # Run in background to not block response
-                    try:
-                        await alert_service.send_latency_alert(
-                            duration_ms=duration_ms,
-                            method=request.method,
-                            path=request.url.path,
-                            threshold_ms=settings.latency_alert_threshold_ms,
-                            request_id=request_id,
-                            user_agent=request.headers.get("user-agent"),
-                        )
-                    except Exception as e:
-                        logger.error(f"Failed to send latency alert: {e}")
+                    # Cooldown: only send one alert per path per 5 minutes
+                    now = time.time()
+                    path_key = request.url.path
+                    last_sent = self._latency_alert_last_sent.get(path_key, 0)
+                    if now - last_sent >= LATENCY_ALERT_COOLDOWN_SECONDS:
+                        self._latency_alert_last_sent[path_key] = now
+                        try:
+                            await alert_service.send_latency_alert(
+                                duration_ms=duration_ms,
+                                method=request.method,
+                                path=request.url.path,
+                                threshold_ms=settings.latency_alert_threshold_ms,
+                                request_id=request_id,
+                                user_agent=request.headers.get("user-agent"),
+                            )
+                        except Exception as e:
+                            logger.error(f"Failed to send latency alert: {e}")
 
             # Add request ID to response headers
             response.headers["X-Request-ID"] = request_id
