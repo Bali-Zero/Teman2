@@ -157,7 +157,7 @@ def drive_operation(operation_name: str) -> Any:
     def decorator(func: Callable) -> Any:
         """Decorator."""
         @wraps(func)
-        async def wrapper(self, *args, **kwargs):
+        async def wrapper(self, *args, **kwargs) -> Any:
             start_time = time.time()
             user_email = self._connected_as or "unknown"
 
@@ -447,7 +447,7 @@ class TeamDriveService:
                 metrics_collector.record_drive_oauth_refresh("error")
             return None
 
-    async def _get_service_async(self):
+    async def _get_service_async(self) -> Any:
         """
         Get or create the Drive API service (async version with OAuth support).
 
@@ -505,7 +505,7 @@ class TeamDriveService:
         # Fallback to Service Account
         return self._get_service()
 
-    def _get_service(self):
+    def _get_service(self) -> Any:
         """Get or create the Drive API service (sync, Service Account only)."""
         if self._service is None:
             creds_path = self._get_credentials_path()

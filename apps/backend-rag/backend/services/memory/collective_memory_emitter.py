@@ -22,7 +22,8 @@ class CollectiveMemoryEmitter:
         content: str,
         members: list,
         importance: float,
-    ):
+    ) -> None:
+
         """Emette evento memoria memorizzata"""
         try:
             event_data = {
@@ -47,7 +48,8 @@ class CollectiveMemoryEmitter:
         preference: str,
         category: str,
         context: str | None = None,
-    ):
+    ) -> None:
+
         """Emette evento preferenza rilevata"""
         try:
             event_data = {
@@ -72,7 +74,8 @@ class CollectiveMemoryEmitter:
         date: str | None,
         message: str,
         recurring: bool = False,
-    ):
+    ) -> None:
+
         """Emette evento milestone rilevata"""
         try:
             event_data = {
@@ -98,7 +101,8 @@ class CollectiveMemoryEmitter:
         relationship_type: str,
         strength: float,
         context: str | None = None,
-    ):
+    ) -> None:
+
         """Emette evento relazione aggiornata"""
         try:
             event_data = {
@@ -118,7 +122,8 @@ class CollectiveMemoryEmitter:
 
     async def emit_memory_consolidated(
         self, event_source: Any, action: str, original_memories: list, new_memory: str, reason: str
-    ):
+    ) -> None:
+
         """Emette evento memoria consolidata"""
         try:
             event_data = {
@@ -135,7 +140,7 @@ class CollectiveMemoryEmitter:
         except Exception as e:
             logger.error(f"❌ Failed to emit memory_consolidated: {e}")
 
-    async def _send_sse_event(self, event_source: Any, data: dict[str, Any]):
+    async def _send_sse_event(self, event_source: Any, data: dict[str, Any]) -> None:
         """Invia evento SSE"""
         try:
             # Formato SSE standard

@@ -131,6 +131,8 @@ class InteractionResponse(BaseModel):
 async def create_interaction(
     interaction: InteractionCreate,
     current_user: dict = Depends(get_current_user),
+
+
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
@@ -230,6 +232,8 @@ async def create_interaction(
 @router.get("/", response_model=list[dict])
 async def list_interactions(
     client_id: int | None = Query(None, description="Filter by client"),
+
+
     practice_id: int | None = Query(None, description="Filter by practice"),
     team_member: str | None = Query(None, description="Filter by team member"),
     interaction_type: str | None = Query(None, description="Filter by type"),
@@ -322,6 +326,8 @@ async def list_interactions(
 @router.get("/{interaction_id}")
 async def get_interaction(
     interaction_id: int = Path(..., gt=0, description="Interaction ID"),
+
+
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
@@ -366,6 +372,8 @@ async def get_interaction(
 @router.get("/client/{client_id}/timeline")
 async def get_client_timeline(
     client_id: int = Path(..., gt=0, description="Client ID"),
+
+
     limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
@@ -413,6 +421,8 @@ async def get_client_timeline(
 @router.get("/practice/{practice_id}/history")
 async def get_practice_history(
     practice_id: int = Path(..., gt=0, description="Practice ID"),
+
+
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
@@ -455,6 +465,8 @@ async def get_practice_history(
 @cached(ttl=CACHE_TTL_STATS_SECONDS, prefix="crm_interactions_stats")
 async def get_interactions_stats(
     team_member: str | None = Query(None, description="Stats for specific team member"),
+
+
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     # Support for direct calls from dashboard_summary.py
@@ -590,6 +602,8 @@ async def get_interactions_stats(
 @router.post("/from-conversation")
 async def create_interaction_from_conversation(
     conversation_id: int = Query(..., gt=0),
+
+
     client_email: str = Query(...),
     team_member: str = Query(...),
     summary: str | None = Query(None, description="AI-generated summary"),
@@ -724,6 +738,8 @@ async def create_interaction_from_conversation(
 async def delete_interaction(
     interaction_id: int,
     current_user: dict = Depends(get_current_user),
+
+
     pool=Depends(get_database_pool),
 ):
     """

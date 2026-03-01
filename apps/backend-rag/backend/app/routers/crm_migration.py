@@ -244,6 +244,8 @@ async def get_clients_migration_summary(
 async def get_client_documents_summary(
     client_id: int,
     pool=Depends(get_database_pool),
+
+
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """

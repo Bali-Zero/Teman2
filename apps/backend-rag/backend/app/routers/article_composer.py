@@ -57,6 +57,8 @@ from prometheus_client import REGISTRY
 
 def get_or_create_metric(
     metric_class: Any, name: Any, documentation: Any, labelnames: Any = (), **kwargs
+
+
 ) -> Any:
     """Helper to avoid duplicate registration in tests"""
     # Check if metric already exists in the registry
@@ -299,6 +301,8 @@ async def compose_article(
     request: Request = None,  # type: ignore
     background_tasks: BackgroundTasks = None,  # type: ignore
     request_id: str = Depends(get_request_id),
+
+
 ):
     """
     Compose/enrich an article with Bali Zero style.

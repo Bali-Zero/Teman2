@@ -48,7 +48,8 @@ class SessionTTLRequest(BaseModel):
 
 
 @router.post("/create")
-async def create_session(service: SessionService = Depends(get_session_service)):
+async def create_session(service: SessionService = Depends(get_session_service)) -> dict[str, Any]:
+
     """Create a new conversation session"""
     try:
         session_id = await service.create_session()
@@ -59,7 +60,8 @@ async def create_session(service: SessionService = Depends(get_session_service))
 
 
 @router.get("/{session_id}")
-async def get_session(session_id: str, service: SessionService = Depends(get_session_service)):
+async def get_session(session_id: str, service: SessionService = Depends(get_session_service)) -> dict[str, Any]:
+
     """Get conversation history for a session"""
     try:
         history = await service.get_history(session_id)
@@ -78,6 +80,8 @@ async def update_session(
     session_id: str,
     request: SessionHistoryRequest,
     service: SessionService = Depends(get_session_service),
+
+
 ):
     """Update conversation history for a session"""
     try:
@@ -97,6 +101,8 @@ async def update_session_with_ttl(
     session_id: str,
     request: SessionUpdateRequest,
     service: SessionService = Depends(get_session_service),
+
+
 ):
     """Update session with custom TTL"""
     try:
@@ -114,7 +120,8 @@ async def update_session_with_ttl(
 
 
 @router.delete("/{session_id}")
-async def delete_session(session_id: str, service: SessionService = Depends(get_session_service)):
+async def delete_session(session_id: str, service: SessionService = Depends(get_session_service)) -> dict[str, Any]:
+
     """Delete a session"""
     try:
         success = await service.delete_session(session_id)
@@ -128,6 +135,8 @@ async def delete_session(session_id: str, service: SessionService = Depends(get_
 async def extend_session_ttl(
     session_id: str,
     service: SessionService = Depends(get_session_service),
+
+
 ):
     """Extend session TTL"""
     try:
@@ -143,6 +152,8 @@ async def extend_session_ttl_custom(
     session_id: str,
     request: SessionTTLRequest,
     service: SessionService = Depends(get_session_service),
+
+
 ):
     """Extend session TTL to custom duration"""
     try:
@@ -154,7 +165,8 @@ async def extend_session_ttl_custom(
 
 
 @router.get("/{session_id}/info")
-async def get_session_info(session_id: str, service: SessionService = Depends(get_session_service)):
+async def get_session_info(session_id: str, service: SessionService = Depends(get_session_service)) -> dict[str, Any]:
+
     """Get session metadata"""
     try:
         info = await service.get_session_info(session_id)
@@ -173,6 +185,8 @@ async def export_session(
     session_id: str,
     format: str = "json",
     service: SessionService = Depends(get_session_service),
+
+
 ):
     """Export session conversation"""
     try:
@@ -188,7 +202,8 @@ async def export_session(
 
 
 @router.get("/analytics/overview")
-async def get_analytics(service: SessionService = Depends(get_session_service)):
+async def get_analytics(service: SessionService = Depends(get_session_service)) -> dict[str, Any]:
+
     """Get analytics about all sessions"""
     try:
         analytics = await service.get_analytics()
@@ -199,7 +214,8 @@ async def get_analytics(service: SessionService = Depends(get_session_service)):
 
 
 @router.post("/cleanup")
-async def cleanup_sessions(service: SessionService = Depends(get_session_service)):
+async def cleanup_sessions(service: SessionService = Depends(get_session_service)) -> dict[str, Any]:
+
     """Cleanup expired sessions (no-op, Redis handles automatically)"""
     try:
         cleaned = await service.cleanup_expired_sessions()
@@ -210,7 +226,8 @@ async def cleanup_sessions(service: SessionService = Depends(get_session_service
 
 
 @router.get("/health")
-async def health_check(service: SessionService = Depends(get_session_service)):
+async def health_check(service: SessionService = Depends(get_session_service)) -> dict[str, Any]:
+
     """Health check for session service"""
     try:
         healthy = await service.health_check()

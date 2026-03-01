@@ -36,7 +36,7 @@ class WorkSessionService:
         self.log_file = self.data_dir / "work_sessions_log.jsonl"
         self._ensure_data_dir()
 
-    def _ensure_data_dir(self):
+    def _ensure_data_dir(self) -> None:
         """Ensure data directory exists"""
         try:
             self.data_dir.mkdir(parents=True, exist_ok=True)
@@ -44,7 +44,7 @@ class WorkSessionService:
         except Exception as e:
             logger.warning(f"⚠️ Could not create data directory: {e}")
 
-    def _write_to_log(self, event_type: str, data: dict):
+    def _write_to_log(self, event_type: str, data: dict) -> None:
         """
         Write event to JSONL backup file
         Each line is a JSON object with timestamp
@@ -58,7 +58,7 @@ class WorkSessionService:
         except Exception as e:
             logger.warning(f"⚠️ Failed to write to log file: {e}")
 
-    async def connect(self):
+    async def connect(self) -> None:
         """Initialize connection pool"""
         if self.db_url:
             self.pool = await asyncpg.create_pool(self.db_url)
@@ -149,7 +149,7 @@ Session ID: {session["id"]}
             logger.error(f"❌ Failed to start session: {e}")
             return {"error": str(e)}
 
-    async def update_activity(self, user_id: str):
+    async def update_activity(self, user_id: str) -> None:
         """Update last activity timestamp for active session"""
         if not self.pool:
             return
@@ -168,7 +168,7 @@ Session ID: {session["id"]}
         except Exception as e:
             logger.error(f"Failed to update activity: {e}")
 
-    async def increment_conversations(self, user_id: str):
+    async def increment_conversations(self, user_id: str) -> None:
         """Increment conversation counter for active session"""
         if not self.pool:
             return
@@ -458,7 +458,8 @@ Session ID: {session["id"]}
         activities: int,
         conversations: int,
         notes: str | None,
-    ):
+    ) -> None:
+
         """Send notification to ZERO about session end"""
 
         hours = duration_minutes // 60
@@ -490,7 +491,7 @@ View full dashboard: /admin/zero/dashboard
 
         await self._notify_zero(subject, message)
 
-    async def _notify_zero(self, subject: str, message: str):
+    async def _notify_zero(self, subject: str, message: str) -> None:
         """
         Send notification to ZERO
         For now just logs - you can add actual email sending here

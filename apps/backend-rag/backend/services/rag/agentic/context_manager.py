@@ -287,13 +287,13 @@ async def get_user_context(
     # 🚀 PARALLEL EXECUTION: Profile + Memory (Phase 1.1 Optimization)
     # These two operations are completely independent and can run concurrently
     # We measure individual timings by wrapping each task with timing logic
-    async def _timed_profile_fetch():
+    async def _timed_profile_fetch() -> Any:
         task_start = time.time()
         result = await fetch_profile_and_history(db_pool, user_id, session_id)
         task_time = time.time() - task_start
         return result, task_time
 
-    async def _timed_memory_fetch():
+    async def _timed_memory_fetch() -> Any:
         task_start = time.time()
         result = await fetch_memory_facts(memory_orchestrator, original_user_id, query)
         task_time = time.time() - task_start

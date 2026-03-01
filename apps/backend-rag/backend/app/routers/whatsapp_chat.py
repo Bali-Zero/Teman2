@@ -80,7 +80,8 @@ async def notify_zero_conversation_log(
     client_message: str,
     bot_response: str,
     language: str | None = None,
-):
+) -> Any:
+
     """
     Log EVERY bot conversation to Zero via Telegram.
 
@@ -133,7 +134,8 @@ async def notify_human_telegram(
     reason: str = "personal_contact",
     client_profile: dict | None = None,
     conversation_history: list[dict] | None = None,
-):
+) -> Any:
+
     """
     Send Telegram notification to admin with FULL context.
 
@@ -226,7 +228,8 @@ async def process_whatsapp_message(
     sender_name: str | None,
     message_id: str,
     request: Request,
-):
+) -> Any:
+
     """
     Background task to process WhatsApp message.
 
@@ -451,7 +454,7 @@ async def process_whatsapp_message(
             logger.error(f"Failed to send error message: {send_error}")
 
 
-def _get_db_pool(request: Request):
+def _get_db_pool(request: Request) -> Any:
     """Get database pool safely."""
     try:
         from backend.app.dependencies import get_database
@@ -472,7 +475,8 @@ async def _save_conversation(
     client_profile: dict,
     sender_name: str | None,
     phone: str,
-):
+) -> Any:
+
     """Save conversation messages and updated profile to PostgreSQL."""
     if not db_pool:
         return
@@ -521,7 +525,7 @@ async def _save_conversation(
 
 
 @router.get("")
-async def verify_webhook(request: Request):
+async def verify_webhook(request: Request) -> PlainTextResponse:
     """
     Verify webhook for Meta WhatsApp setup.
 
@@ -549,7 +553,8 @@ async def whatsapp_webhook(
     webhook: WhatsAppWebhook,
     background_tasks: BackgroundTasks,
     request: Request,
-):
+) -> dict[str, Any]:
+
     """
     Handle incoming WhatsApp messages.
 
@@ -609,7 +614,7 @@ async def whatsapp_webhook(
 
 
 @router.get("/status")
-async def whatsapp_status():
+async def whatsapp_status() -> dict[str, Any]:
     """Check WhatsApp integration status."""
     configured = bool(settings.whatsapp_api_token and settings.whatsapp_phone_number_id)
 
@@ -630,7 +635,7 @@ alias_router = APIRouter(prefix="/api/whatsapp", tags=["whatsapp"])
 
 
 @alias_router.get("/webhook")
-async def verify_webhook_alias(request: Request):
+async def verify_webhook_alias(request: Request) -> Any:
     """Alias for /webhook/whatsapp (GET) — Meta webhook verification."""
     return await verify_webhook(request)
 
@@ -640,6 +645,7 @@ async def whatsapp_webhook_alias(
     webhook: WhatsAppWebhook,
     background_tasks: BackgroundTasks,
     request: Request,
-):
+) -> Any:
+
     """Alias for /webhook/whatsapp (POST) — Meta webhook messages."""
     return await whatsapp_webhook(webhook, background_tasks, request)

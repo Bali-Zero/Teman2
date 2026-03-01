@@ -182,7 +182,7 @@ deepseek_client = DeepSeekClient()
 if __name__ == "__main__":
     import asyncio
 
-    async def test():
+    async def test() -> None:
         logger.info("🚀 Testing DeepSeek V3 Client...")
         logger.info(f"   API Key: {'✅ Set' if settings.deepseek_api_key else '❌ Not set'}")
 

@@ -329,6 +329,8 @@ def convert_staging_to_enriched_article(staging_data: dict) -> dict:
 async def submit_from_scraper(
     submission: ScraperSubmission,
     api_key_verified=Depends(verify_internal_api_key),
+
+
 ):
     """
     Receive article from bali-intel-scraper and save to staging.
@@ -446,7 +448,8 @@ async def list_pending_items(
     filter_type: str | None = None,
     sort_type: str | None = None,
     search: str | None = None,
-):
+) -> Any:
+
     """List items pending approval in staging area with filtering and sorting"""
     logger.info(
         "Listing pending items",
@@ -566,6 +569,8 @@ async def approve_staging_item(
     item_id: str,
     request: ApprovalRequest | None = None,
     api_key_verified=Depends(verify_internal_api_key),
+
+
 ):
     """
     Initiate approval process by sending Telegram notification to team.
@@ -1308,7 +1313,8 @@ async def store_intel(request: IntelStoreRequest) -> dict[str, Any]:
 @router.get("/api/intel/critical")
 async def get_critical_items(
     category: str | None = None, days: int = IntelConstants.DUPLICATE_CHECK_DAYS
-):
+) -> dict[str, Any]:
+
     """Get critical impact items"""
     try:
         if category:

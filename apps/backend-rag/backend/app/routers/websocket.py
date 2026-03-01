@@ -29,7 +29,7 @@ class ConnectionManager:
         self.active_connections: dict[str, list[WebSocket]] = {}
         self.lock = asyncio.Lock()
 
-    async def connect(self, websocket: WebSocket, user_id: str, subprotocol: str | None = None):
+    async def connect(self, websocket: WebSocket, user_id: str, subprotocol: str | None = None) -> None:
         await websocket.accept(subprotocol=subprotocol)
         async with self.lock:
             if user_id not in self.active_connections:
@@ -39,7 +39,7 @@ class ConnectionManager:
                 f"🔌 WebSocket connected: {user_id} (Total: {len(self.active_connections[user_id])})"
             )
 
-    async def disconnect(self, websocket: WebSocket, user_id: str):
+    async def disconnect(self, websocket: WebSocket, user_id: str) -> None:
         async with self.lock:
             if user_id in self.active_connections:
                 if websocket in self.active_connections[user_id]:
@@ -48,7 +48,7 @@ class ConnectionManager:
                     del self.active_connections[user_id]
         logger.info(f"🔌 WebSocket disconnected: {user_id}")
 
-    async def send_personal_message(self, message: dict, user_id: str):
+    async def send_personal_message(self, message: dict, user_id: str) -> None:
         """Send message to all connections of a specific user"""
         if user_id in self.active_connections:
             # Create a copy of the list to avoid modification during iteration issues
@@ -61,7 +61,7 @@ class ConnectionManager:
                     # Cleanup dead connection
                     await self.disconnect(connection, user_id)
 
-    async def broadcast(self, message: dict):
+    async def broadcast(self, message: dict) -> None:
         """Broadcast message to ALL connected users"""
         # Iterate over a copy of keys
         user_ids = list(self.active_connections.keys())
@@ -89,7 +89,7 @@ async def get_current_user_ws(token: str) -> str | None:
 
 
 @router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_endpoint(websocket: WebSocket) -> Any:
     """
     WebSocket endpoint for real-time updates.
 
@@ -183,7 +183,7 @@ async def websocket_endpoint(websocket: WebSocket):
             pass
 
 
-async def send_heartbeat(websocket: WebSocket, interval: int = 15):
+async def send_heartbeat(websocket: WebSocket, interval: int = 15) -> None:
     """Send periodic pings to keep connection alive through proxies"""
     try:
         while True:
@@ -201,7 +201,7 @@ async def send_heartbeat(websocket: WebSocket, interval: int = 15):
 # ============================================================================
 
 
-async def redis_listener():
+async def redis_listener() -> Any:
     """
     Background task to listen for Redis Pub/Sub events and forward to WebSockets
     """

@@ -439,16 +439,16 @@ def build_company_subgraph(db_pool: asyncpg.Pool, llm: Any) -> StateGraph:
     subgraph = StateGraph(CompanyState)
 
     # Async closures (lambdas can't be async, causing coroutine-instead-of-dict errors)
-    async def _identify(state):
+    async def _identify(state) -> Any:
         return await identify_company_type_node(state, llm, db_pool)
 
-    async def _check_pma(state):
+    async def _check_pma(state) -> Any:
         return await check_pma_eligibility_node(state, db_pool)
 
-    async def _get_capital(state):
+    async def _get_capital(state) -> Any:
         return await get_capital_requirements_node(state, db_pool)
 
-    async def _synthesize(state):
+    async def _synthesize(state) -> Any:
         return await synthesize_company_workflow_node(state)
 
     # Add nodes

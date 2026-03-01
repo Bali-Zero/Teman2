@@ -91,7 +91,8 @@ class IntelAnalyticsService:
                                     analytics["summary"]["total_approved"] += 1
                                     analytics["type_breakdown"][archive_type]["approved"] += 1
                                     analytics["type_breakdown"][archive_type]["processed"] += 1
-                    except Exception:
+                    except Exception as e:
+                        logger.warning(f"Failed to process approved file {file_path}: {e}")
                         continue
 
             # Count rejected
@@ -110,7 +111,8 @@ class IntelAnalyticsService:
                                     analytics["summary"]["total_rejected"] += 1
                                     analytics["type_breakdown"][archive_type]["rejected"] += 1
                                     analytics["type_breakdown"][archive_type]["processed"] += 1
-                    except Exception:
+                    except Exception as e:
+                        logger.warning(f"Failed to process rejected file {file_path}: {e}")
                         continue
 
             # Count published (news only)
@@ -129,7 +131,8 @@ class IntelAnalyticsService:
                                     if published_dt >= cutoff_date:
                                         analytics["summary"]["total_published"] += 1
                                         analytics["type_breakdown"]["news"]["published"] += 1
-                        except Exception:
+                        except Exception as e:
+                            logger.warning(f"Failed to process published file {file_path}: {e}")
                             continue
 
         analytics["summary"]["total_processed"] = (
@@ -207,7 +210,8 @@ class IntelAnalyticsService:
                                                 daily["approved"] += 1
                                             else:
                                                 daily["rejected"] += 1
-                            except Exception:
+                            except Exception as e:
+                                logger.warning(f"Failed to process daily trend file {file_path}: {e}")
                                 continue
 
                 # Published (news only)
@@ -225,7 +229,8 @@ class IntelAnalyticsService:
                                         )
                                         if published_dt.strftime("%Y-%m-%d") == date_str:
                                             daily["published"] += 1
-                            except Exception:
+                            except Exception as e:
+                                logger.warning(f"Failed to process daily published file {file_path}: {e}")
                                 continue
 
             daily_trends.append(daily)

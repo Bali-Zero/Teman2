@@ -68,6 +68,8 @@ class PortalResponse(BaseModel):
 async def get_current_client(
     request: Request,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
+
+
 ) -> dict:
     """
     Get current authenticated client from JWT token.
@@ -156,6 +158,8 @@ def get_portal_service(db_pool: asyncpg.Pool = Depends(get_database_pool)) -> Po
 @router.get("/dashboard")
 async def get_dashboard(
     client: dict = Depends(get_current_client),
+
+
     portal_service: PortalService = Depends(get_portal_service),
 ) -> dict[str, Any]:
     """
@@ -191,6 +195,8 @@ async def get_dashboard(
 @router.get("/visa")
 async def get_visa_status(
     client: dict = Depends(get_current_client),
+
+
     portal_service: PortalService = Depends(get_portal_service),
 ) -> dict[str, Any]:
     """
@@ -224,6 +230,8 @@ async def get_visa_status(
 @router.get("/companies")
 async def get_companies(
     client: dict = Depends(get_current_client),
+
+
     portal_service: PortalService = Depends(get_portal_service),
 ) -> dict[str, Any]:
     """
@@ -249,6 +257,8 @@ async def get_companies(
 async def get_company_detail(
     company_id: int,
     client: dict = Depends(get_current_client),
+
+
     portal_service: PortalService = Depends(get_portal_service),
 ) -> dict[str, Any]:
     """
@@ -285,6 +295,8 @@ async def get_company_detail(
 async def set_primary_company(
     company_id: int,
     client: dict = Depends(get_current_client),
+
+
     portal_service: PortalService = Depends(get_portal_service),
 ) -> dict[str, Any]:
     """
@@ -315,6 +327,8 @@ async def set_primary_company(
 @router.get("/taxes")
 async def get_tax_overview(
     client: dict = Depends(get_current_client),
+
+
     portal_service: PortalService = Depends(get_portal_service),
 ) -> dict[str, Any]:
     """
@@ -347,6 +361,8 @@ async def get_tax_overview(
 @router.get("/documents")
 async def get_documents(
     document_type: str | None = Query(None, description="Filter by document type"),
+
+
     client: dict = Depends(get_current_client),
     portal_service: PortalService = Depends(get_portal_service),
 ) -> dict[str, Any]:
@@ -376,6 +392,8 @@ async def get_documents(
 @router.post("/documents/upload")
 async def upload_document(
     file: UploadFile = File(...),
+
+
     document_type: str = Form(...),
     practice_id: int | None = Form(None),
     client: dict = Depends(get_current_client),
@@ -438,6 +456,8 @@ async def upload_document(
 @router.get("/messages")
 async def get_messages(
     limit: int = Query(50, ge=1, le=100),
+
+
     offset: int = Query(0, ge=0),
     client: dict = Depends(get_current_client),
     portal_service: PortalService = Depends(get_portal_service),
@@ -470,6 +490,8 @@ async def get_messages(
 async def send_message(
     request: SendMessageRequest,
     client: dict = Depends(get_current_client),
+
+
     portal_service: PortalService = Depends(get_portal_service),
 ) -> dict[str, Any]:
     """
@@ -499,6 +521,8 @@ async def send_message(
 async def mark_message_read(
     message_id: int,
     client: dict = Depends(get_current_client),
+
+
     portal_service: PortalService = Depends(get_portal_service),
 ) -> dict[str, Any]:
     """
@@ -526,6 +550,8 @@ async def mark_message_read(
 @router.get("/settings")
 async def get_preferences(
     client: dict = Depends(get_current_client),
+
+
     portal_service: PortalService = Depends(get_portal_service),
 ) -> dict[str, Any]:
     """
@@ -549,6 +575,8 @@ async def get_preferences(
 async def update_preferences(
     request: UpdatePreferencesRequest,
     client: dict = Depends(get_current_client),
+
+
     portal_service: PortalService = Depends(get_portal_service),
 ) -> dict[str, Any]:
     """
@@ -588,6 +616,8 @@ async def update_preferences(
 @router.get("/timeline")
 async def get_timeline(
     limit: int = Query(50, ge=1, le=100),
+
+
     client: dict = Depends(get_current_client),
     portal_service: PortalService = Depends(get_portal_service),
 ) -> dict[str, Any]:
@@ -622,6 +652,8 @@ async def get_timeline(
 @router.get("/profile")
 async def get_profile(
     client: dict = Depends(get_current_client),
+
+
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
     """

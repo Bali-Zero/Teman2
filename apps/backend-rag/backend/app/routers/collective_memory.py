@@ -34,6 +34,8 @@ class RefuteRequest(BaseModel):
 async def contribute_fact(
     request: ContributeRequest,
     current_user: dict = Depends(get_current_user),
+
+
     db_pool=Depends(get_db_pool),
 ):
     """
@@ -60,6 +62,8 @@ async def contribute_fact(
 async def refute_fact(
     request: RefuteRequest,
     current_user: dict = Depends(get_current_user),
+
+
     db_pool=Depends(get_db_pool),
 ):
     """
@@ -84,6 +88,8 @@ async def refute_fact(
 async def get_collective_facts(
     category: str | None = None,
     db_pool=Depends(get_db_pool),
+
+
 ):
     """
     Get all promoted collective facts.
@@ -103,7 +109,7 @@ async def get_collective_facts(
 @router.get("/stats")
 async def get_collective_stats(
     db_pool=Depends(get_db_pool),
-):
+) -> dict[str, Any]:
     """
     Get collective memory statistics.
     """

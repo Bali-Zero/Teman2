@@ -18,7 +18,8 @@ from backend.db.repositories.workflow_analytics_repository import WorkflowAnalyt
 router = APIRouter(prefix="/api/v1/analytics", tags=["workflow-analytics"])
 
 
-def _verify_founder_access(current_user=Depends(get_current_user)):
+def _verify_founder_access(current_user=Depends(get_current_user)) -> Any:
+
     """Verify that the user has founder or admin level access."""
     if current_user.get("role") not in ["Founder", "admin"]:
         raise HTTPException(
@@ -38,6 +39,8 @@ def _get_repo(db_pool=Depends(get_database_pool)) -> WorkflowAnalyticsRepository
 @router.get("/workflow-dashboard")
 async def get_workflow_dashboard(
     days: int = Query(7, ge=1, le=90, description="Lookback period in days"),
+
+
     repo: WorkflowAnalyticsRepository = Depends(_get_repo),
     current_user=Depends(_verify_founder_access),
 ):
@@ -54,6 +57,8 @@ async def get_workflow_dashboard(
 @router.get("/workflow-dashboard/top")
 async def get_top_workflows(
     limit: int = Query(10, ge=1, le=50),
+
+
     days: int = Query(7, ge=1, le=90),
     repo: WorkflowAnalyticsRepository = Depends(_get_repo),
     current_user=Depends(_verify_founder_access),
@@ -68,6 +73,8 @@ async def get_top_workflows(
 @router.get("/workflow-dashboard/volume")
 async def get_workflow_volume(
     granularity: str = Query("hour", pattern="^(hour|day)$"),
+
+
     days: int = Query(7, ge=1, le=90),
     repo: WorkflowAnalyticsRepository = Depends(_get_repo),
     current_user=Depends(_verify_founder_access),
@@ -93,6 +100,8 @@ class WorkflowFeedbackRequest(BaseModel):
 async def submit_workflow_feedback(
     body: WorkflowFeedbackRequest,
     repo: WorkflowAnalyticsRepository = Depends(_get_repo),
+
+
     current_user=Depends(get_current_user),
 ):
     """

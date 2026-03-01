@@ -87,7 +87,7 @@ KBLI_COLLECTION = "kbli_2025_final"
 
 
 @router.get("/llm-health")
-async def kbli_llm_health():
+async def kbli_llm_health() -> Any:
     """Check LLM health for KBLI Notebook chat functionality."""
     gateway = _get_llm_gateway()
 
@@ -192,7 +192,8 @@ def get_kbli_ttl(code: str) -> int:
 
 
 @router.get("/search", response_model=list[KBLISearchResult])
-async def search_kbli(query: str, limit: int = 10, search_service=Depends(get_search_service)):
+async def search_kbli(query: str, limit: int = 10, search_service=Depends(get_search_service)) -> Any:
+
     """Search for KBLI codes using semantic search (Qdrant)."""
     start_time = time.time()
     logger.info(f"🔍 KBLI Search Request: '{query}' (limit: {limit})")
@@ -232,7 +233,8 @@ async def search_kbli(query: str, limit: int = 10, search_service=Depends(get_se
 
 
 @router.get("/inspect/{code}", response_model=KBLIDetail)
-async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)):
+async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> Any:
+
     """Retrieve deep KG metadata with dynamic TTL based on sector volatility."""
     from backend.core.cache import get_cache_service as cache_manager  # Assume we have access to the manager
 
@@ -371,7 +373,7 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)):
 _llm_gateway_instance = None
 
 
-def _get_llm_gateway():
+def _get_llm_gateway() -> Any:
     global _llm_gateway_instance
     if _llm_gateway_instance is None:
         from backend.services.rag.agentic.llm_gateway import LLMGateway
@@ -950,6 +952,8 @@ async def chat_kbli(
     http_request: Request,  # Iniezione corretta dell'oggetto Request di FastAPI
     kbli_request: KBLINotebookChatRequest,  # Il body della richiesta
     search_service=Depends(get_search_service),
+
+
     pool=Depends(get_optional_database_pool),
 ):
     """Specialized chat for KBLI Notebook with BPS 2025 focus."""

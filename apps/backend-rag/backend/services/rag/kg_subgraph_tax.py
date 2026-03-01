@@ -463,16 +463,16 @@ def build_tax_subgraph(db_pool: asyncpg.Pool, llm: Any) -> StateGraph:
     subgraph = StateGraph(TaxState)
 
     # Async closures (lambdas can't be async, causing coroutine-instead-of-dict errors)
-    async def _identify(state):
+    async def _identify(state) -> Any:
         return await identify_tax_type_node(state, llm)
 
-    async def _get_obligations(state):
+    async def _get_obligations(state) -> Any:
         return await get_tax_obligations_node(state, db_pool)
 
-    async def _calculate(state):
+    async def _calculate(state) -> Any:
         return await calculate_tax_requirements_node(state)
 
-    async def _synthesize(state):
+    async def _synthesize(state) -> Any:
         return await synthesize_tax_workflow_node(state)
 
     # Add nodes

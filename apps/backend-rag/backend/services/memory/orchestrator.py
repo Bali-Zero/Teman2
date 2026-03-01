@@ -232,7 +232,7 @@ class MemoryOrchestrator:
             except ImportError:
                 pass
 
-    async def _alert_critical_failure(self, failures: list[tuple[str, str]]):
+    async def _alert_critical_failure(self, failures: list[tuple[str, str]]) -> None:
         """Alert on critical initialization failure."""
         logger.error(
             "🚨 CRITICAL: MemoryOrchestrator initialization failed completely",
@@ -240,7 +240,7 @@ class MemoryOrchestrator:
         )
         # TODO: Integrate with alerting system when available
 
-    async def _alert_degraded_mode(self, failures: list[tuple[str, str]]):
+    async def _alert_degraded_mode(self, failures: list[tuple[str, str]]) -> None:
         """Alert on degraded mode activation."""
         logger.warning(
             "⚠️ MemoryOrchestrator running in DEGRADED mode",

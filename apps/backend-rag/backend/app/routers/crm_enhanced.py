@@ -315,6 +315,8 @@ class ClientProfileUpdate(BaseModel):
 @router.get("/clients/{client_id}/profile")
 async def get_client_profile(
     client_id: int, pool=Depends(get_database_pool), current_user: dict = Depends(get_current_user)
+
+
 ):
     """
     Get enhanced client profile with family members, documents, and expiry alerts.
@@ -456,6 +458,8 @@ async def update_client_profile(
     client_id: int,
     data: ClientProfileUpdate,
     pool=Depends(get_database_pool),
+
+
     current_user: dict = Depends(get_current_user),
 ):
     """
@@ -517,6 +521,8 @@ async def update_client_profile(
 @router.get("/clients/{client_id}/family")
 async def get_family_members(
     client_id: int, pool=Depends(get_database_pool), current_user: dict = Depends(get_current_user)
+
+
 ):
     """
     Get all family members for a client.
@@ -562,6 +568,8 @@ async def create_family_member(
     client_id: int,
     data: FamilyMemberCreate,
     pool=Depends(get_database_pool),
+
+
     current_user: dict = Depends(get_current_user),
 ):
     """
@@ -628,6 +636,8 @@ async def update_family_member(
     member_id: int,
     data: FamilyMemberUpdate,
     pool=Depends(get_database_pool),
+
+
     current_user: dict = Depends(get_current_user),
 ):
     """
@@ -683,6 +693,8 @@ async def delete_family_member(
     client_id: int,
     member_id: int,
     pool=Depends(get_database_pool),
+
+
     current_user: dict = Depends(get_current_user),
 ):
     """
@@ -712,6 +724,8 @@ async def get_client_documents(
     category: str | None = Query(
         None, description="Filter by category: immigration, pma, tax, personal"
     ),
+
+
     include_archived: bool = Query(False, description="Include archived documents"),
     pool=Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
@@ -762,6 +776,8 @@ async def create_document(
     data: DocumentCreate,
     background_tasks: BackgroundTasks,
     pool=Depends(get_database_pool),
+
+
     current_user: dict = Depends(get_current_user),
 ):
     """
@@ -820,6 +836,8 @@ async def create_documents_bulk(
     documents: list[DocumentCreate],
     background_tasks: BackgroundTasks,
     pool=Depends(get_database_pool),
+
+
     current_user: dict = Depends(get_current_user),
 ):
     """
@@ -948,6 +966,8 @@ async def update_document(
     doc_id: int,
     data: DocumentUpdate,
     pool=Depends(get_database_pool),
+
+
     current_user: dict = Depends(get_current_user),
 ):
     """
@@ -1003,6 +1023,8 @@ async def archive_document(
     client_id: int,
     doc_id: int,
     permanent: bool = Query(False, description="Permanently delete instead of archive"),
+
+
     pool=Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
@@ -1036,7 +1058,8 @@ async def archive_document(
 
 
 @router.get("/document-categories")
-async def get_document_categories(pool=Depends(get_database_pool)):
+async def get_document_categories(pool=Depends(get_database_pool)) -> list[Any]:
+
     """Get all document categories for dropdowns."""
     async with pool.acquire() as conn:
         categories = await conn.fetch(
@@ -1058,6 +1081,8 @@ async def get_document_categories(pool=Depends(get_database_pool)):
 @router.get("/expiry-alerts")
 async def get_all_expiry_alerts(
     alert_color: str | None = Query(None, description="Filter by color: expired, red, yellow"),
+
+
     assigned_to: str | None = Query(None, description="Filter by team member email"),
     limit: int = Query(100, le=500),
     pool=Depends(get_database_pool),
@@ -1102,7 +1127,8 @@ async def get_all_expiry_alerts(
 
 
 @router.get("/expiry-alerts/summary")
-async def get_expiry_alerts_summary(pool=Depends(get_database_pool)):
+async def get_expiry_alerts_summary(pool=Depends(get_database_pool)) -> dict[str, Any]:
+
     """Get summary counts of expiry alerts for dashboard."""
     async with pool.acquire() as conn:
         summary = await conn.fetchrow(
@@ -1149,6 +1175,8 @@ class DocumentUploadBase64(BaseModel):
 async def upload_document_base64(
     client_id: int,
     data: DocumentUploadBase64 = Body(...),
+
+
     pool=Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
     background_tasks: BackgroundTasks = BackgroundTasks(),
@@ -1305,6 +1333,8 @@ async def delete_document(
     doc_id: int,
     permanent: bool = False,
     pool=Depends(get_database_pool),
+
+
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """

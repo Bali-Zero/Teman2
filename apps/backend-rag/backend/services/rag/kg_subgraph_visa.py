@@ -429,16 +429,16 @@ def build_visa_subgraph(db_pool: asyncpg.Pool, llm: Any) -> StateGraph:
     subgraph = StateGraph(VisaState)
 
     # Async closures (lambdas can't be async, causing coroutine-instead-of-dict errors)
-    async def _identify(state):
+    async def _identify(state) -> Any:
         return await identify_visa_type_node(state, llm)
 
-    async def _check_rptka(state):
+    async def _check_rptka(state) -> Any:
         return await check_rptka_requirements_node(state, db_pool)
 
-    async def _get_requirements(state):
+    async def _get_requirements(state) -> Any:
         return await get_visa_requirements_node(state, db_pool)
 
-    async def _synthesize(state):
+    async def _synthesize(state) -> Any:
         return await synthesize_visa_workflow_node(state)
 
     # Add nodes

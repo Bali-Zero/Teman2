@@ -167,7 +167,7 @@ class PerformanceMonitor:
             },
         ]
 
-    async def start_monitoring(self, interval_seconds: int = 60):
+    async def start_monitoring(self, interval_seconds: int = 60) -> None:
         """Start continuous performance monitoring"""
         logger.info(f"Starting performance monitoring with {interval_seconds}s interval")
 
@@ -183,7 +183,7 @@ class PerformanceMonitor:
                 logger.error(f"Error in monitoring loop: {e}")
                 await asyncio.sleep(interval_seconds)
 
-    async def _collect_metrics(self):
+    async def _collect_metrics(self) -> None:
         """Collect current performance metrics"""
         current_time = datetime.now()
 
@@ -228,7 +228,7 @@ class PerformanceMonitor:
         if len(self.metrics_history) > 1000:
             self.metrics_history = self.metrics_history[-1000:]
 
-    async def _analyze_performance(self):
+    async def _analyze_performance(self) -> None:
         """Analyze performance trends and patterns"""
         if len(self.metrics_history) < 10:
             return
@@ -259,7 +259,7 @@ class PerformanceMonitor:
             if anomalies:
                 await self._create_anomaly_alert(metric_name, avg_value, anomalies)
 
-    async def _check_alerts(self):
+    async def _check_alerts(self) -> None:
         """Check for threshold breaches and create alerts"""
         current_time = datetime.now()
         recent_metrics = [
@@ -286,7 +286,8 @@ class PerformanceMonitor:
 
     async def _create_alert(
         self, metric_name: str, current_value: float, threshold: float, severity: AlertSeverity
-    ):
+    ) -> Any:
+
         """Create a performance alert"""
         alert_id = f"{metric_name}_{int(time.time())}"
 
@@ -320,7 +321,8 @@ class PerformanceMonitor:
 
     async def _create_anomaly_alert(
         self, metric_name: str, avg_value: float, anomalies: list[float]
-    ):
+    ) -> None:
+
         """Create anomaly detection alert"""
         alert_id = f"anomaly_{metric_name}_{int(time.time())}"
 
@@ -337,7 +339,7 @@ class PerformanceMonitor:
         self.active_alerts[alert_id] = alert
         logger.warning(f"Anomaly Alert: {alert.message}")
 
-    async def _generate_recommendations(self):
+    async def _generate_recommendations(self) -> None:
         """Generate performance optimization recommendations"""
         recent_metrics = [
             m for m in self.metrics_history if datetime.now() - m.timestamp < timedelta(hours=1)
@@ -352,7 +354,7 @@ class PerformanceMonitor:
         if recommendations:
             await self._log_recommendations(recommendations)
 
-    async def _log_recommendations(self, recommendations: list[OptimizationRecommendation]):
+    async def _log_recommendations(self, recommendations: list[OptimizationRecommendation]) -> None:
         """Log optimization recommendations"""
         for rec in recommendations:
             logger.info(f"Optimization Recommendation: {rec.description}")

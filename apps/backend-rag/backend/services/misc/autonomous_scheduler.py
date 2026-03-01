@@ -51,7 +51,8 @@ async def _get_redis() -> "aioredis.Redis | None":
         client = await aioredis.from_url(redis_url, decode_responses=True)
         await client.ping()
         return client
-    except Exception:
+    except Exception as e:
+        logger.debug(f"Failed to get Redis client: {e}")
         return None
 
 
@@ -322,7 +323,7 @@ async def create_and_start_scheduler(
                 claude_service=ai_client,  # Parameter name is claude_service, not zantara_ai
             )
 
-            async def run_auto_ingestion():
+            async def run_auto_ingestion() -> None:
                 await orchestrator.run_scheduled_ingestion()
 
             scheduler.register_task(
@@ -348,7 +349,7 @@ async def create_and_start_scheduler(
                 auto_fix_enabled=True,
             )
 
-            async def run_self_healing():
+            async def run_self_healing() -> None:
                 # Run a single health check cycle (not the infinite loop)
                 await healing_agent.perform_health_check()
                 issues = await healing_agent.detect_issues()
@@ -377,7 +378,7 @@ async def create_and_start_scheduler(
                 zantara_client=ai_client,
             )
 
-            async def run_conversation_trainer():
+            async def run_conversation_trainer() -> None:
                 # 1. Analyze last 7 days of high-rated conversations
                 analysis = await trainer.analyze_winning_patterns(days_back=7)
                 if not analysis:
@@ -423,7 +424,7 @@ async def create_and_start_scheduler(
     if db_pool:
         try:
 
-            async def seed_golden_routes_once():
+            async def seed_golden_routes_once() -> None:
                 """Seed golden_routes with common query patterns (one-time)."""
                 async with db_pool.acquire() as conn:
                     # Check if already seeded
@@ -514,7 +515,7 @@ async def create_and_start_scheduler(
     if db_pool:
         try:
 
-            async def run_renewal_alerts_checker():
+            async def run_renewal_alerts_checker() -> None:
                 """Check for upcoming practice expirations and create alerts."""
                 from datetime import datetime, timedelta
 
@@ -603,7 +604,7 @@ async def create_and_start_scheduler(
                 run_birthplace_enrichment_task,
             )
 
-            async def run_birthplace_enrichment():
+            async def run_birthplace_enrichment() -> None:
                 try:
                     stats = await run_birthplace_enrichment_task(db_pool)
                     logger.info(f"🎭 Birthplace Enrichment: {stats.get('successful', 0)} enriched")
@@ -630,7 +631,7 @@ async def create_and_start_scheduler(
             run_birthday_notifier_task,
         )
 
-        async def run_birthday_notifier():
+        async def run_birthday_notifier() -> None:
             try:
                 stats = await run_birthday_notifier_task(db_pool)
                 logger.info(f"🎂 Birthday Notifier: {stats.get('sent', 0)} emails sent")
@@ -655,7 +656,7 @@ async def create_and_start_scheduler(
         try:
             from backend.jobs.conversation_cleanup import cleanup_conversations
 
-            async def run_conversation_cleanup():
+            async def run_conversation_cleanup() -> None:
                 try:
                     result = await cleanup_conversations(
                         retention_days=30,

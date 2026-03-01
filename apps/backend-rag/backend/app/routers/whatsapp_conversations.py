@@ -20,6 +20,8 @@ async def get_whatsapp_conversations(
     limit: int = 50,
     offset: int = 0,
     db: Pool | None = Depends(get_optional_database_pool),
+
+
 ):
     if not db:
         logger.warning("Database unavailable")
@@ -69,7 +71,8 @@ async def get_whatsapp_conversations(
                         if msgs:
                             m = msgs[-1]
                             last_msg_text = m.get("content", "")[:100]
-                    except:
+                    except Exception as e:
+                        logger.error(f"Failed to parse WhatsApp messages JSON: {e}")
                         pass
 
                 # Extract name from metadata if possible
@@ -83,7 +86,8 @@ async def get_whatsapp_conversations(
                             else metadata_raw
                         )
                         client_name = meta.get("sender_name") or meta.get("client_name") or phone
-                    except:
+                    except Exception as e:
+                        logger.error(f"Failed to parse WhatsApp metadata: {e}")
                         pass
 
                 conversations.append(
@@ -111,6 +115,8 @@ async def get_whatsapp_messages(
     phone: str,
     limit: int = 100,
     db: Pool | None = Depends(get_optional_database_pool),
+
+
     current_user: dict = Depends(get_current_user),
 ):
     if not db:
@@ -135,7 +141,8 @@ async def get_whatsapp_messages(
             if isinstance(messages_raw, str):
                 try:
                     messages = json.loads(messages_raw)
-                except:
+                except Exception as e:
+                    logger.error(f"Failed to parse WhatsApp messages string: {e}")
                     messages = []
             else:
                 messages = messages_raw or []
@@ -144,7 +151,8 @@ async def get_whatsapp_messages(
             if isinstance(messages, list) and len(messages) == 1 and isinstance(messages[0], str):
                 try:
                     messages = json.loads(messages[0])
-                except:
+                except Exception as e:
+                    logger.error(f"Failed to parse nested WhatsApp messages: {e}")
                     pass
 
             result = []
@@ -163,10 +171,11 @@ async def get_whatsapp_messages(
                     }
                 )
             return result
-    except:
+    except Exception as e:
+        logger.error(f"Failed to get WhatsApp messages: {e}")
         return []
 
 
 @router.post("/send")
-async def send_whatsapp_message(request: Request):
+async def send_whatsapp_message(request: Request) -> dict[str, Any]:
     return {"success": False, "detail": "Sending disabled temporarily during stabilization"}

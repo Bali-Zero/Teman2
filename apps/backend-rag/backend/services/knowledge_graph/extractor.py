@@ -516,6 +516,8 @@ Extract entities and relations now:"""
     async def extract_batch(
         self,
         texts: list[tuple[str, str]],  # List of (chunk_id, text)
+
+
         batch_size: int = 5,
     ) -> list[ExtractionResult]:
         """

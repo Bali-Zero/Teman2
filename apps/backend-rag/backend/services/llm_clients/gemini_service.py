@@ -10,6 +10,7 @@ UPDATED 2025-12-23:
 
 import logging
 from collections.abc import AsyncGenerator
+from typing import Any
 
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
@@ -40,7 +41,7 @@ class GeminiJakselService:
         # Initialize GenAI client lazily to avoid gRPC fork issues
         self._genai_client = None
 
-    def _get_genai_client(self):
+    def _get_genai_client(self) -> Any:
         """Lazy load GenAI client to ensure process safety (gRPC fork safety)."""
         if self._genai_client is None:
             if GENAI_AVAILABLE:
@@ -75,7 +76,7 @@ class GeminiJakselService:
         # OpenRouter client for fallback (lazy loaded)
         self._openrouter_client = None
 
-    def _get_openrouter_client(self):
+    def _get_openrouter_client(self) -> Any:
         """Lazy load OpenRouter client"""
         if self._openrouter_client is None:
             try:
@@ -326,7 +327,7 @@ class GeminiService:
 if __name__ == "__main__":
     import asyncio
 
-    async def test():
+    async def test() -> None:
         logger.info("🚀 Testing Gemini Jaksel Service with OpenRouter Fallback...")
         logger.info(f"   Gemini API Key: {'✅ Set' if settings.google_api_key else '❌ Not set'}")
         logger.info(

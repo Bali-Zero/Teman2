@@ -146,7 +146,7 @@ class CoreferenceResolver:
             f"CoreferenceResolver initialized, use_llm={use_llm} - DEPRECATED: Anthropic/Claude removed"
         )
 
-    def _compile_patterns(self):
+    def _compile_patterns(self) -> None:
         """Compile regex patterns for efficiency"""
         self.compiled_patterns = {}
         for ref_type, patterns in self.REFERENCE_PATTERNS.items():

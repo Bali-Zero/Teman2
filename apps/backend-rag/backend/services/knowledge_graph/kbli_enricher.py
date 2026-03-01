@@ -65,7 +65,7 @@ class KBLIEnricher:
         # Filter localmente per semplicità in questa fase di prototipazione
         return [p.payload for p in points if not p.payload.get("is_enriched")]
 
-    async def enrich_single_code(self, kbli_payload: dict, external_research: str | None = None):
+    async def enrich_single_code(self, kbli_payload: dict, external_research: str | None = None) -> bool:
         """Process a single KBLI code with retry logic."""
         code = kbli_payload.get("kode_kbli")
         attempt = 0
@@ -115,7 +115,7 @@ class KBLIEnricher:
         logger.error(f"[KBLI:{code}] - [STATUS:FAIL] - Max retries reached")
         return False
 
-    async def run_batch(self, section_prefix: str, research_data: dict | None = None):
+    async def run_batch(self, section_prefix: str, research_data: dict | None = None) -> None:
         """Orchestrate the batch processing."""
         targets = await self.get_codes_to_process(section_prefix)
         logger.info(f"🚀 Found {len(targets)} codes to enrich in Section {section_prefix}")

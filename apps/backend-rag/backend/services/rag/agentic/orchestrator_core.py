@@ -268,7 +268,7 @@ class OrchestratorCore:
 
         # 🚀 PARALLEL EXECUTION: Entity Extraction + KG Retrieval + LangGraph (Phase 3)
         # These three operations are independent and can run concurrently
-        async def _extract_entities_task():
+        async def _extract_entities_task() -> Any:
             """Entity extraction task"""
             with trace_span("entity.extraction", {"query_length": len(query)}):
                 entities = await self.entity_extractor.extract_entities(query)
@@ -278,7 +278,7 @@ class OrchestratorCore:
                 set_span_status("ok")
                 return entities
 
-        async def _fetch_kg_context_task():
+        async def _fetch_kg_context_task() -> None:
             """KG retrieval task (legacy)"""
             if not self.kg_retrieval:
                 return None
@@ -295,7 +295,7 @@ class OrchestratorCore:
                 logger.warning(f"⚠️ [KG Legacy] Failed to get graph context: {e}")
                 return None
 
-        async def _fetch_langgraph_workflow_task():
+        async def _fetch_langgraph_workflow_task() -> None:
             """KGLangGraphOrchestrator task (Phase 3)"""
             if not self.kg_langgraph_orchestrator:
                 logger.warning(
@@ -877,7 +877,7 @@ class OrchestratorCore:
         """
 
         # Definisci i task da eseguire in parallelo
-        async def _load_context():
+        async def _load_context() -> Any:
             return await self.context_manager.get_full_context(
                 user_id=user_id,
                 query=query,
@@ -894,7 +894,7 @@ class OrchestratorCore:
             optimized_history = []
 
         # Then run entity/KG extraction with user_context
-        async def _extract_entities_kg_with_context():
+        async def _extract_entities_kg_with_context() -> Any:
             return await self.extract_entities_and_kg_context(query, user_context=user_context)
 
         workflow = None

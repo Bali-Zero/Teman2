@@ -47,6 +47,8 @@ class InstagramWebhook(BaseModel):
 @router.get("/conversations")
 async def get_instagram_conversations(
     limit: int = 50, offset: int = 0, db: Pool = Depends(get_database)
+
+
 ):
     try:
         async with db.acquire() as conn:
@@ -70,7 +72,8 @@ async def get_instagram_conversations(
                     )
                     if msgs and isinstance(msgs, list):
                         last_msg_text = msgs[-1].get("content", "")[:100]
-                except:
+                except Exception as e:
+                    logger.error(f"Failed to parse Instagram messages: {e}")
                     pass
 
                 metadata_raw = row["metadata"]
@@ -80,7 +83,8 @@ async def get_instagram_conversations(
                         json.loads(metadata_raw) if isinstance(metadata_raw, str) else metadata_raw
                     )
                     client_name = meta.get("sender_name") or meta.get("client_name") or client_name
-                except:
+                except Exception as e:
+                    logger.error(f"Failed to parse Instagram metadata: {e}")
                     pass
 
                 conversations.append(
@@ -100,7 +104,8 @@ async def get_instagram_conversations(
 
 
 @router.get("/messages/{user_id}")
-async def get_instagram_messages(user_id: str, limit: int = 100, db: Pool = Depends(get_database)):
+async def get_instagram_messages(user_id: str, limit: int = 100, db: Pool = Depends(get_database)) -> Any:
+
     try:
         async with db.acquire() as conn:
             row = await conn.fetchrow(
@@ -125,7 +130,8 @@ async def get_instagram_messages(user_id: str, limit: int = 100, db: Pool = Depe
                     }
                 )
             return result
-    except:
+    except Exception as e:
+        logger.error(f"Failed to get Instagram messages: {e}")
         return []
 
 
@@ -136,7 +142,7 @@ webhook_router = APIRouter(prefix="/webhook/instagram", tags=["instagram"])
 
 
 @webhook_router.get("")
-async def verify_instagram_webhook(request: Request):
+async def verify_instagram_webhook(request: Request) -> PlainTextResponse:
     """Verify Instagram webhook for Meta setup."""
     params = request.query_params
     mode = params.get("hub.mode")
@@ -154,7 +160,7 @@ async def verify_instagram_webhook(request: Request):
 
 
 @webhook_router.post("")
-async def instagram_webhook(request: Request):
+async def instagram_webhook(request: Request) -> dict[str, Any]:
     """Handle incoming Instagram DMs via ChannelRouter."""
     try:
         raw_payload = await request.json()

@@ -66,6 +66,8 @@ class DeactivateMappingRequest(BaseModel):
 # Dependency: Check admin role
 async def require_admin(
     email: Annotated[str, Depends(get_current_user_email)],
+
+
     request: Request,
 ) -> str:
     """
@@ -113,6 +115,8 @@ async def create_mapping(
     req: CreateMappingRequest,
     request: Request,
     _admin: Annotated[str, Depends(require_admin)],
+
+
 ):
     """
     Create new messaging identity mapping.
@@ -142,6 +146,8 @@ async def get_mappings_for_user(
     user_id: str,
     request: Request,
     _admin: Annotated[str, Depends(require_admin)],
+
+
 ):
     """
     Get all messaging channel mappings for a user (team member or portal client).
@@ -161,6 +167,8 @@ async def deactivate_mapping(
     req: DeactivateMappingRequest,
     request: Request,
     _admin: Annotated[str, Depends(require_admin)],
+
+
 ):
     """
     Deactivate (soft delete) a messaging identity mapping.
@@ -185,6 +193,8 @@ async def deactivate_mapping(
 async def list_all_mappings(
     request: Request,
     _admin: Annotated[str, Depends(require_admin)],
+
+
 ):
     """
     List all active messaging identity mappings.
@@ -240,6 +250,8 @@ async def lookup_by_phone(
     phone: str,
     request: Request,
     _admin: Annotated[str, Depends(require_admin)],
+
+
 ):
     """
     Lookup user by phone number.
@@ -262,6 +274,8 @@ async def lookup_by_telegram(
     chat_id: int,
     request: Request,
     _admin: Annotated[str, Depends(require_admin)],
+
+
 ):
     """
     Lookup user by Telegram chat ID.

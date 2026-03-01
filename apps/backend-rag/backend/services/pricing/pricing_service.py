@@ -19,7 +19,7 @@ class PricingService:
         self.loaded = False
         self._load_prices()
 
-    def _load_prices(self):
+    def _load_prices(self) -> None:
         """Load official prices from JSON file"""
         try:
             # Path to official prices JSON

@@ -13,7 +13,8 @@ router = APIRouter()
 
 
 @router.get("/admin/google-drive/auth-system")
-async def auth_system_user(x_admin_secret: str | None = Header(None, alias="X-Admin-Secret")):
+async def auth_system_user(x_admin_secret: str | None = Header(None, alias="X-Admin-Secret")) -> dict[str, Any]:
+
     """
     Authenticate Google Drive system user.
 
@@ -64,7 +65,8 @@ async def auth_system_user(x_admin_secret: str | None = Header(None, alias="X-Ad
 async def auth_callback_system(
     code: str,
     secret: str,
-):
+) -> dict[str, Any]:
+
     """
     Handle OAuth callback for system user.
 

@@ -26,7 +26,7 @@ class ImageGenerationResponse(BaseModel):
 
 
 @router.post("/generate", response_model=ImageGenerationResponse)
-async def generate_image(request: ImageGenerationRequest):
+async def generate_image(request: ImageGenerationRequest) -> ImageGenerationResponse:
     """
     Generate images using Google Imagen API
 

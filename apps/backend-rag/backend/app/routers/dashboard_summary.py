@@ -216,6 +216,8 @@ async def _calculate_revenue_growth(db_pool: asyncpg.Pool) -> float:
 @router.get("/summary")
 async def get_dashboard_summary(
     current_user: dict = Depends(get_current_user),
+
+
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
     """
@@ -230,7 +232,7 @@ async def get_dashboard_summary(
         # Per-task timeout to prevent one slow query from blocking the entire response
         TASK_TIMEOUT = 5.0  # seconds
 
-        async def _with_timeout(coro, fallback):
+        async def _with_timeout(coro, fallback) -> Any:
             try:
                 return await asyncio.wait_for(coro, timeout=TASK_TIMEOUT)
             except asyncio.TimeoutError:
@@ -431,6 +433,8 @@ async def get_dashboard_summary(
 @router.get("/neural-pulse")
 async def get_neural_pulse(
     db_pool: asyncpg.Pool = Depends(get_database_pool),
+
+
 ) -> dict[str, Any]:
     """
     Get real-time AI status metrics (Neural Pulse).

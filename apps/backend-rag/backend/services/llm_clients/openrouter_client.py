@@ -324,7 +324,7 @@ async def smart_complete_stream(
 if __name__ == "__main__":
     import asyncio
 
-    async def test():
+    async def test() -> None:
         logger.info("🚀 Testing OpenRouter Native Fallback Client...")
         logger.info(f"   API Key: {'✅ Set' if openrouter_client.api_key else '❌ Not set'}")
 

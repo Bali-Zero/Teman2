@@ -17,6 +17,8 @@ router = APIRouter(prefix="/api/telegram", tags=["telegram"])
 @router.get("/conversations")
 async def get_telegram_conversations(
     limit: int = 50, offset: int = 0, db: Pool = Depends(get_database)
+
+
 ):
     try:
         async with db.acquire() as conn:
@@ -40,7 +42,8 @@ async def get_telegram_conversations(
                     )
                     if msgs and isinstance(msgs, list):
                         last_msg_text = msgs[-1].get("content", "")[:100]
-                except:
+                except Exception as e:
+                    logger.error(f"Failed to parse Telegram messages: {e}")
                     pass
 
                 metadata_raw = row["metadata"]
@@ -50,7 +53,8 @@ async def get_telegram_conversations(
                         json.loads(metadata_raw) if isinstance(metadata_raw, str) else metadata_raw
                     )
                     client_name = meta.get("sender_name") or meta.get("client_name") or client_name
-                except:
+                except Exception as e:
+                    logger.error(f"Failed to parse Telegram metadata: {e}")
                     pass
 
                 conversations.append(
@@ -70,7 +74,8 @@ async def get_telegram_conversations(
 
 
 @router.get("/messages/{chat_id}")
-async def get_telegram_messages(chat_id: str, limit: int = 100, db: Pool = Depends(get_database)):
+async def get_telegram_messages(chat_id: str, limit: int = 100, db: Pool = Depends(get_database)) -> Any:
+
     try:
         async with db.acquire() as conn:
             row = await conn.fetchrow(
@@ -95,5 +100,6 @@ async def get_telegram_messages(chat_id: str, limit: int = 100, db: Pool = Depen
                     }
                 )
             return result
-    except:
+    except Exception as e:
+        logger.error(f"Failed to get Telegram messages: {e}")
         return []

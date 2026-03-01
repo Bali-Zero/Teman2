@@ -68,6 +68,8 @@ class IngestResponse(BaseModel):
 @router.post("/ingest", response_model=IngestResponse)
 async def ingest_documents(
     request: IngestRequest, service: SearchService = Depends(get_search_service)
+
+
 ):
     """
     Bulk ingest documents into Qdrant collection
@@ -181,7 +183,8 @@ async def ingest_documents(
 
 
 @router.get("/collections")
-async def list_collections(service: SearchService = Depends(get_search_service)):
+async def list_collections(service: SearchService = Depends(get_search_service)) -> dict[str, Any]:
+
     """
     List all available collections
 

@@ -17,7 +17,7 @@ class ImagePrompt(BaseModel):
 
 
 @router.post("/generate-image")
-async def generate_image(request: ImagePrompt):
+async def generate_image(request: ImagePrompt) -> Any:
     """
     Generate an image from a text prompt using pollinations.ai fallback.
 
@@ -72,7 +72,8 @@ async def generate_image(request: ImagePrompt):
 
 
 @router.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(file: UploadFile = File(...)) -> dict[str, Any]:
+
     """
     Upload a file (image, audio, doc) to the server.
     Returns the URL/path to the file.

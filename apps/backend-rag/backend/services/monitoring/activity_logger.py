@@ -53,7 +53,7 @@ class ActivityLogger:
         self.pool: asyncpg.Pool | None = None
         self._initialized = False
 
-    async def initialize(self, pool: asyncpg.Pool):
+    async def initialize(self, pool: asyncpg.Pool) -> None:
         """Initialize the logger with a database pool"""
         self.pool = pool
         self._initialized = True

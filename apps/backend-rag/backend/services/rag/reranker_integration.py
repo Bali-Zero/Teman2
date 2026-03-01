@@ -53,7 +53,7 @@ class CrossEncoderRerankerMixin:
         results = await service.search_with_cross_encoder_reranking("query", user_level=2)
     """
 
-    def _init_cross_encoder_reranker(self):
+    def _init_cross_encoder_reranker(self) -> Any:
         """Lazy initialization of cross-encoder reranker."""
         if not hasattr(self, "_cross_encoder_reranker"):
             from backend.services.rag.reranker import CrossEncoderReranker
@@ -65,7 +65,7 @@ class CrossEncoderRerankerMixin:
         return self._cross_encoder_reranker
 
     @property
-    def cross_encoder_reranker(self):
+    def cross_encoder_reranker(self) -> Any:
         """Access to CrossEncoderReranker instance."""
         return self._init_cross_encoder_reranker()
 

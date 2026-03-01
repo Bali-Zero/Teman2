@@ -34,7 +34,7 @@ def extract_handlers_from_router(module: Any) -> list[dict[str, Any]]:
 
 
 @router.get("/list")
-async def list_all_handlers():
+async def list_all_handlers() -> dict[str, Any]:
     """
     Returns complete registry of all available handlers
     This is the master catalog that ZANTARA uses to see all available tools
@@ -86,7 +86,7 @@ async def list_all_handlers():
 
 
 @router.get("/search")
-async def search_handlers(query: str):
+async def search_handlers(query: str) -> dict[str, Any]:
     """Search handlers by name, path, or description"""
 
     all_data = await list_all_handlers()
@@ -106,7 +106,7 @@ async def search_handlers(query: str):
 
 
 @router.get("/category/{category}")
-async def get_handlers_by_category(category: str):
+async def get_handlers_by_category(category: str) -> Any:
     """Get all handlers in a specific category"""
 
     all_data = await list_all_handlers()

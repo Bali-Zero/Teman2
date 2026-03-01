@@ -47,6 +47,8 @@ class ExtractEventRequest(BaseModel):
 async def add_event(
     request: AddEventRequest,
     current_user: dict = Depends(get_current_user),
+
+
     db_pool=Depends(get_db_pool),
 ):
     """
@@ -102,6 +104,8 @@ async def add_event(
 async def extract_and_save_event(
     request: ExtractEventRequest,
     current_user: dict = Depends(get_current_user),
+
+
     db_pool=Depends(get_db_pool),
 ):
     """
@@ -145,6 +149,8 @@ async def get_timeline(
     end_date: datetime | None = None,
     limit: int = 20,
     current_user: dict = Depends(get_current_user),
+
+
     db_pool=Depends(get_db_pool),
 ):
     """
@@ -179,6 +185,8 @@ async def get_timeline(
 async def get_context_summary(
     limit: int = 5,
     current_user: dict = Depends(get_current_user),
+
+
     db_pool=Depends(get_db_pool),
 ):
     """
@@ -204,6 +212,8 @@ async def get_context_summary(
 @router.get("/stats")
 async def get_stats(
     current_user: dict = Depends(get_current_user),
+
+
     db_pool=Depends(get_db_pool),
 ):
     """
@@ -226,6 +236,8 @@ async def get_stats(
 async def delete_event(
     event_id: int,
     current_user: dict = Depends(get_current_user),
+
+
     db_pool=Depends(get_db_pool),
 ):
     """

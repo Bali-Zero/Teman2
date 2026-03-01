@@ -96,7 +96,7 @@ def cache_crm_result(ttl: int = 300, key_prefix: str = "") -> Any:
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         """Decorator."""
         @wraps(func)
-        async def async_wrapper(*args, **kwargs):
+        async def async_wrapper(*args, **kwargs) -> Any:
             # Genera chiave cache
             key_data = f"{func.__name__}:{str(args)}:{str(kwargs)}"
             cache_key = f"{key_prefix}:{hashlib.md5(key_data.encode()).hexdigest()}"

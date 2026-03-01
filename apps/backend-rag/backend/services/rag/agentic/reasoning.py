@@ -341,7 +341,7 @@ class ReasoningEngine:
 
                     if tool_calls:
                         # Define async wrapper for parallel execution
-                        async def _exec_tool_wrapper(tc, step_idx):
+                        async def _exec_tool_wrapper(tc, step_idx) -> Any:
                             try:
                                 set_span_attribute("tool_name", tc.tool_name)
                                 add_span_event(
@@ -1114,7 +1114,8 @@ Do not invent information. If the context is insufficient, admit it.
         model_tier: int,
         tool_execution_counter: dict,
         images: list[dict] | None = None,  # Vision images: [{"base64": ..., "name": ...}]
-    ):
+    ) -> None:
+
         """
         Execute the ReAct reasoning loop with streaming output.
 

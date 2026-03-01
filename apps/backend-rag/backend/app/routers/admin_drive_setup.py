@@ -2,6 +2,7 @@
 Setup Service Account for Drive uploads (fallback when OAuth fails)
 """
 
+from typing import Any
 import os
 
 from fastapi import APIRouter, Request
@@ -10,7 +11,7 @@ router = APIRouter(prefix="/api/admin/drive", tags=["admin"])
 
 
 @router.post("/use-service-account")
-async def use_service_account(request: Request):
+async def use_service_account(request: Request) -> dict[str, Any]:
     """
     Switch document upload to use Service Account instead of OAuth.
     This is a fallback when OAuth token is expired/revoked.
@@ -60,7 +61,7 @@ async def use_service_account(request: Request):
 
 
 @router.get("/service-account-status")
-async def service_account_status():
+async def service_account_status() -> dict[str, Any]:
     """Check if Service Account is configured."""
     sa_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
 
@@ -72,7 +73,7 @@ async def service_account_status():
 
 
 @router.get("/test-list-files")
-async def test_list_files(request: Request):
+async def test_list_files(request: Request) -> dict[str, Any]:
     """
     Test Drive file listing via Service Account (public endpoint for diagnostics).
     Lists first 5 files to verify SA connectivity.

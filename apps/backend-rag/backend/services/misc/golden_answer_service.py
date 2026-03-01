@@ -46,7 +46,7 @@ class GoldenAnswerService:
         self.model: Any | None = None
         self.similarity_threshold = 0.80  # 80% similarity required
 
-    async def connect(self):
+    async def connect(self) -> None:
         """Initialize PostgreSQL connection pool"""
         try:
             # PERFORMANCE FIX: Increased pool size from max=10 to max=20 for better concurrency
@@ -59,13 +59,13 @@ class GoldenAnswerService:
             logger.error(f"❌ PostgreSQL connection failed: {e}")
             raise
 
-    async def close(self):
+    async def close(self) -> None:
         """Close PostgreSQL connection pool"""
         if self.pool:
             await self.pool.close()
             logger.info("GoldenAnswerService connection closed")
 
-    def _load_model(self):
+    def _load_model(self) -> None:
         """Lazy load embedding model"""
         if self.model is None:
             # Lazy import to avoid PyTorch import issues during test collection
@@ -221,7 +221,7 @@ class GoldenAnswerService:
             logger.error(f"❌ Semantic lookup failed: {e}")
             return None
 
-    async def _increment_usage(self, cluster_id: str):
+    async def _increment_usage(self, cluster_id: str) -> None:
         """
         Increment usage_count and update last_used_at for golden answer
 
@@ -302,7 +302,7 @@ class GoldenAnswerService:
 
 
 # Convenience function for testing
-async def test_service():
+async def test_service() -> None:
     """Test golden answer service"""
     import logging
 

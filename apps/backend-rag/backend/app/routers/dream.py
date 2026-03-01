@@ -59,7 +59,7 @@ MOCK_DB: dict[str, Any] = {}
 
 
 @router.post("/state")
-async def save_state(user_id: str, state: dict[str, Any]):
+async def save_state(user_id: str, state: dict[str, Any]) -> dict[str, Any]:
     """Persist Dream Room state (Articles, Inspirations, etc.)"""
     # TODO: Replace with real DB call (e.g. Postgres JSONB or Redis)
     MOCK_DB[user_id] = state
@@ -68,14 +68,14 @@ async def save_state(user_id: str, state: dict[str, Any]):
 
 
 @router.get("/state/{user_id}")
-async def get_state(user_id: str):
+async def get_state(user_id: str) -> dict[str, Any]:
     """Retrieve persisted state"""
     state = MOCK_DB.get(user_id)
     return {"success": True, "state": state}
 
 
 @router.post("/scrape", response_model=ScrapingResponse)
-async def scrape_url(request: ScrapingRequest):
+async def scrape_url(request: ScrapingRequest) -> dict[str, Any]:
     """
     Mock scraper for now.
     TODO: Integrate with Firecrawl or standard BeautifulSoup scraper.
@@ -101,7 +101,7 @@ async def scrape_url(request: ScrapingRequest):
 
 
 @router.post("/ai/generate", response_model=GenerateResponse)
-async def generate_content(request: GenerateRequest):
+async def generate_content(request: GenerateRequest) -> dict[str, Any]:
     """
     Generate content using Claude.
     """

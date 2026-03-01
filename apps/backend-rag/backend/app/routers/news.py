@@ -86,6 +86,8 @@ class SubscriptionCreate(BaseModel):
 @router.get("", response_model=NewsListResponse)
 async def list_news(
     category: str | None = Query(None, description="Filter by category"),
+
+
     status: str = Query("approved", description="Filter by status"),
     search: str | None = Query(None, description="Search in title/content"),
     priority: str | None = Query(None, description="Filter by priority"),
@@ -182,6 +184,8 @@ async def list_news(
 @router.get("/categories")
 async def get_categories(
     pool: asyncpg.Pool = Depends(get_database_pool),
+
+
 ):
     """Get available news categories with counts"""
 
@@ -208,6 +212,8 @@ async def get_categories(
 async def get_news_by_slug(
     slug: str,
     pool: asyncpg.Pool = Depends(get_database_pool),
+
+
 ):
     """Get a single news item by slug and increment view count"""
 
@@ -261,6 +267,8 @@ async def get_news_by_slug(
 async def create_news(
     item: NewsItemCreate,
     pool: asyncpg.Pool = Depends(get_database_pool),
+
+
 ):
     """Create a new news item (from scraper or manual)"""
 
@@ -308,6 +316,8 @@ async def create_news(
 async def create_news_bulk(
     items: list[NewsItemCreate],
     pool: asyncpg.Pool = Depends(get_database_pool),
+
+
 ):
     """Create multiple news items at once (for scraper batch uploads)"""
     created = 0
@@ -360,6 +370,8 @@ async def update_news_status(
     news_id: str,
     status: str,
     pool: asyncpg.Pool = Depends(get_database_pool),
+
+
 ):
     """Update news item status (approve/reject)"""
     if status not in ("pending", "approved", "rejected", "archived"):
@@ -396,6 +408,8 @@ async def update_news_status(
 async def subscribe_to_news(
     subscription: SubscriptionCreate,
     pool: asyncpg.Pool = Depends(get_database_pool),
+
+
 ):
     """Subscribe to news alerts"""
 
@@ -427,6 +441,8 @@ async def subscribe_to_news(
 async def unsubscribe_from_news(
     email: str,
     pool: asyncpg.Pool = Depends(get_database_pool),
+
+
 ):
     """Unsubscribe from news alerts"""
 
@@ -458,6 +474,8 @@ async def get_rss_feed(
     category: str | None = None,
     limit: int = 20,
     pool: asyncpg.Pool = Depends(get_database_pool),
+
+
 ):
     """Generate RSS feed for news items"""
 

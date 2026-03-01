@@ -37,7 +37,7 @@ async def _get_qdrant() -> QdrantClient:
     return _qdrant
 
 
-def _get_embedder():
+def _get_embedder() -> Any:
     global _embedder
     if _embedder is None:
         from backend.core.embeddings import create_embeddings_generator

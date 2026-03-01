@@ -7,6 +7,7 @@ Usa similarità semantica per matchare query utente → query canonica → docum
 import asyncio
 import json
 import logging
+from typing import Any
 
 import asyncpg
 import numpy as np
@@ -45,7 +46,7 @@ class GoldenRouterService:
         self.route_embeddings = None  # Matrix of embeddings for routes
         self.similarity_threshold = 0.85
 
-    async def _get_db_pool(self):
+    async def _get_db_pool(self) -> Any:
         """Get or create DB pool"""
         if not self.db_pool:
             try:
@@ -57,7 +58,7 @@ class GoldenRouterService:
                 raise
         return self.db_pool
 
-    async def initialize(self):
+    async def initialize(self) -> None:
         """Carica le Golden Routes dal DB in memoria"""
         logger.info("🌟 Initializing Golden Router...")
         pool = await self._get_db_pool()
@@ -103,7 +104,7 @@ class GoldenRouterService:
                 logger.warning("⚠️ No Golden Routes found in DB")
                 self.route_embeddings = None
 
-    async def _generate_embeddings_background(self, queries: list[str]):
+    async def _generate_embeddings_background(self, queries: list[str]) -> None:
         """Generate embeddings in background with caching"""
         try:
             import os
@@ -222,7 +223,7 @@ class GoldenRouterService:
 
         return None
 
-    async def _update_usage_stats(self, route_id: str):
+    async def _update_usage_stats(self, route_id: str) -> None:
         """Aggiorna contatore utilizzo rotta"""
         try:
             pool = await self._get_db_pool()
@@ -269,6 +270,6 @@ class GoldenRouterService:
         await self.initialize()
         return route_id
 
-    async def close(self):
+    async def close(self) -> None:
         if self.db_pool:
             await self.db_pool.close()

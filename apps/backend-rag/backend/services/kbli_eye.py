@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from datetime import datetime
 
 class KBLIEye:
@@ -35,7 +35,7 @@ class KBLIEye:
         self.data: List = []
         self._load_database()
 
-    def _load_database(self):
+    def _load_database(self) -> Any:
         if not self.db_path.exists():
             # Prova path alternativo se eseguito da diverse cartelle
             alt_path = Path("apps/backend-rag") / self.db_path
@@ -43,7 +43,7 @@ class KBLIEye:
                 self.db_path = alt_path
             else:
                 return # Database non caricato, get_decision darà errore
-        
+
         with open(self.db_path, "r") as f:
             content = json.load(f)
             if isinstance(content, dict) and "data" in content:
@@ -65,7 +65,7 @@ class KBLIEye:
 
         # 2. Parametri di input per la matrice
         is_open_pma = kbli.get("pma_status") == "TERBUKA"
-        
+
         # Gestione dati per_skala (può essere una lista o un dict a seconda del cleanup)
         per_skala = kbli.get("per_skala", [{}])
         if isinstance(per_skala, list) and len(per_skala) > 0:
@@ -75,7 +75,7 @@ class KBLIEye:
 
         oss_risk = primary_skala.get("kategori_risiko", "Unknown")
         is_low_risk = oss_risk in ["Rendah", "Menengah Rendah"]
-        
+
         # 3. Matrice di Decisione (Determinismo puro)
         resolved_code = kbli["kode_kbli_2025"]
 
@@ -124,5 +124,10 @@ class KBLIEye:
 
 if __name__ == "__main__":
     # Test rapido
+    import logging
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+
     eye = KBLIEye()
-    print(json.dumps(eye.get_decision("55203"), indent=2))
+    result = eye.get_decision("55203")
+    logger.info(f"KBLI Eye test result: {json.dumps(result, indent=2)}")

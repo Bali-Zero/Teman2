@@ -147,7 +147,7 @@ def download_pdf_from_drive(filename_from_qdrant: Any) -> Any:
 # --- MAIN ORACLE LOGIC ---
 
 
-async def smart_oracle(query, best_filename_from_qdrant):
+async def smart_oracle(query, best_filename_from_qdrant) -> str:
     """
     Enhanced Oracle that downloads full PDF from Drive and analyzes with Gemini AI
 
@@ -233,7 +233,7 @@ async def smart_oracle(query, best_filename_from_qdrant):
 # --- UTILITY FUNCTIONS ---
 
 
-def test_drive_connection():
+def test_drive_connection() -> bool:
     """Test connection to Google Drive service"""
     service = get_drive_service()
     if service:

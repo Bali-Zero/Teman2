@@ -41,6 +41,8 @@ def verify_founder_access(current_user: Any = Depends(get_current_user)) -> Any:
 @router.get("/completion-rates")
 async def get_completion_rates(
     practice_type: str | None = Query(None),
+
+
     start_date: date | None = Query(None),
     end_date: date | None = Query(None),
     db_pool=Depends(get_database_pool),
@@ -64,6 +66,8 @@ async def get_completion_rates(
 @router.get("/response-times")
 async def get_response_times(
     practice_type: str | None = Query(None),
+
+
     start_date: date | None = Query(None),
     end_date: date | None = Query(None),
     db_pool=Depends(get_database_pool),
@@ -85,6 +89,8 @@ async def get_response_times(
 @router.get("/sla-compliance")
 async def get_sla_compliance(
     practice_type: str | None = Query(None),
+
+
     start_date: date | None = Query(None),
     end_date: date | None = Query(None),
     db_pool=Depends(get_database_pool),
@@ -106,6 +112,8 @@ async def get_sla_compliance(
 @router.get("/revenue")
 async def get_revenue_metrics(
     practice_type: str | None = Query(None),
+
+
     start_date: date | None = Query(None),
     end_date: date | None = Query(None),
     db_pool=Depends(get_database_pool),
@@ -131,6 +139,8 @@ async def get_monthly_report(
     year: int,
     month: int,
     db_pool=Depends(get_database_pool),
+
+
     current_user=Depends(verify_founder_access),
 ):
     """

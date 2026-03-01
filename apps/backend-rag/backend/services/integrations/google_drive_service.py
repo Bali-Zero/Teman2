@@ -146,7 +146,8 @@ class GoogleDriveService:
         access_token: str,
         refresh_token: str | None,
         expires_at: datetime,
-    ):
+    ) -> None:
+
         """Store OAuth tokens in database."""
         async with self.db_pool.acquire() as conn:
             # Upsert tokens

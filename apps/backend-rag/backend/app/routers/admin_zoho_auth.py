@@ -10,7 +10,8 @@ router = APIRouter()
 
 
 @router.get("/admin/zoho/auth")
-async def admin_zoho_auth(x_admin_secret: str | None = Header(None, alias="X-Admin-Secret")):
+async def admin_zoho_auth(x_admin_secret: str | None = Header(None, alias="X-Admin-Secret")) -> dict[str, Any]:
+
     """
     Get Zoho OAuth URL for admin reconnection.
 
@@ -59,7 +60,8 @@ async def admin_zoho_auth(x_admin_secret: str | None = Header(None, alias="X-Adm
 async def admin_zoho_callback(
     code: str,
     secret: str,
-):
+) -> dict[str, Any]:
+
     """Handle Zoho OAuth callback."""
     import logging
 
@@ -107,7 +109,8 @@ async def admin_zoho_debug_callback(
     code: str | None = None,
     state: str | None = None,
     error: str | None = None,
-):
+) -> Any:
+
     """
     Debug endpoint to capture OAuth callback parameters.
     Use this when normal callback fails. It displays the code for easy copy-paste.
