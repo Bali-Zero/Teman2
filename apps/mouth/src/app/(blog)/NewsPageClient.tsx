@@ -47,9 +47,7 @@ export default function NewsPageClient({
   const articles = serverArticles?.length > 0 ? serverArticles : MOCK_ARTICLES;
 
   // Get specific articles for the asymmetric collage - SLOW PARALYSIS FEATURED
-  const mainNews1 = articles.find(
-    (a) => a.slug === "slow-paralysis-kbli-2025",
-  ); // RIGHT - large - MAIN FEATURE
+  const mainNews1 = articles.find((a) => a.slug === "slow-paralysis-kbli-2025"); // RIGHT - large - MAIN FEATURE
   const mainNews2 = articles.find(
     (a) => a.slug === "constitutional-clash-bank-statements",
   ); // LEFT top
@@ -109,7 +107,7 @@ export default function NewsPageClient({
                   <div className="absolute inset-0 pointer-events-none overflow-hidden">
                     <Image
                       src="/assets/static/indonesian-flag-drape.jpg"
-                      alt=""
+                      alt="Indonesian flag background"
                       fill
                       className="object-cover opacity-30"
                       style={{

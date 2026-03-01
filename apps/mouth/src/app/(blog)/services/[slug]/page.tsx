@@ -213,7 +213,7 @@ export default async function ServiceDetailPage({
                   >
                     <Image
                       src="/assets/logo/zantara-lotus.png"
-                      alt=""
+                      alt="Zantara Lotus Logo"
                       width={60}
                       height={60}
                     />

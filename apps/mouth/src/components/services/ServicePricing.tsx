@@ -247,7 +247,7 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
               >
                 <Image
                   src="/assets/logo/zantara-lotus.png"
-                  alt=""
+                  alt="Zantara Lotus Logo"
                   width={60}
                   height={60}
                 />

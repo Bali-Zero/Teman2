@@ -588,6 +588,7 @@ export default function ClientAnalyticsPage() {
             <button
               onClick={() => router.push("/clients")}
               className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-2 text-sm"
+              aria-label="Back to clients"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to Clients

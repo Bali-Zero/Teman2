@@ -276,7 +276,7 @@ export default function BlogLayout({
               >
                 <Image
                   src="/assets/logo/zantara-lotus.png"
-                  alt=""
+                  alt="Zantara Lotus Logo"
                   width={24}
                   height={24}
                   className="w-6 h-6"

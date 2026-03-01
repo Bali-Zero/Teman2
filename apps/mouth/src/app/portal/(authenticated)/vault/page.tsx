@@ -249,6 +249,7 @@ export default function VaultPage() {
                         download
                         target="_blank"
                         rel="noopener noreferrer"
+                        aria-label="Download document"
                       >
                         <Download className="w-4 h-4" />
                       </a>
