@@ -175,7 +175,7 @@ def test_determine_oracles_business_setup(cross_oracle_service):
     # Check required oracles are included
     oracle_names = [oq.collection for oq in oracle_queries]
     assert "kbli_eye" in oracle_names
-    assert "legal_architect" in oracle_names
+    assert "bali_zero_pricing_hybrid" in oracle_names
 
 
 def test_determine_oracles_visa_application(cross_oracle_service):

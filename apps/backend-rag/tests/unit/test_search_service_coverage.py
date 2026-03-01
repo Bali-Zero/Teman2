@@ -190,8 +190,8 @@ class TestSearchServiceCoverage:
         mock_manager, mock_collection = mock_collection_manager
 
         search_service.query_router.route_query.return_value = {
-            "collection_name": "bali_zero_pricing",
-            "collections": ["bali_zero_pricing"],
+            "collection_name": "bali_zero_pricing_hybrid",
+            "collections": ["bali_zero_pricing_hybrid"],
             "confidence": 1.0,
             "is_pricing": True,  # This triggers the pricing branch
         }

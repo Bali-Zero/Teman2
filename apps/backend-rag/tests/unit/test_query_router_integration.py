@@ -136,7 +136,7 @@ class TestQueryRouterIntegration:
             query="What is the price?", collection_override=None, enable_fallbacks=False
         )
 
-        assert result["collection_name"] == "bali_zero_pricing"
+        assert result["collection_name"] == "bali_zero_pricing_hybrid"
         assert result["is_pricing"] is True
         assert result["confidence"] == 0.95  # Pricing queries return 0.95 confidence
 
