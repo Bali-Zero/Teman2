@@ -241,9 +241,6 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
                 # Parse pricing result to extract recommended visa type
                 # The pricing service will return relevant visa options
                 if isinstance(pricing_result, dict) and not pricing_result.get("error"):
-                    # Analyze the pricing result to determine best visa type
-                    result_str = str(pricing_result).lower()
-
                     # Priority order based on business context
                     if "retirement" in business_description.lower() or "retire" in business_description.lower():
                         visa_type = "kitas_retirement"
@@ -661,7 +658,6 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
             for client in clients:
                 if not isinstance(client, dict):
                     continue
-                client_id = client.get("id") or client.get("client_id")
                 phone = client.get("phone")
                 email = client.get("email")
                 name = client.get("name", "")

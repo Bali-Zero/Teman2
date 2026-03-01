@@ -1,6 +1,6 @@
 # AI ONBOARDING GUIDE - Nuzantara Project
 
-**Last Updated:** 2026-03-01
+**Last Updated:** 2026-03-02
 **Purpose:** Quick-start guide for AI assistants working on Project Nuzantara
 
 **System Stats:**
@@ -13,6 +13,7 @@
 - Fly.io: 3 machines (Singapore), all healthy
 - DB Migrations: 060
 - MCP Server: 96 tools, 10 prompts, 5 resources, 8 workflow chains
+- Autonomous Scheduler: 11 tasks (auto-ingestion, self-healing, conversation trainer, golden routes, renewal alerts, birthplace enrichment, birthday notifier, conversation cleanup, daily ops autopilot)
 - Core Test Pass Rate: 100% (KG 82/82, Channels 43/43, RAG 244/244)
 
 > **READ THIS FIRST** before making any changes to the codebase.
@@ -417,6 +418,18 @@ Full-spectrum AI business intelligence and automation platform. **96 tools** acr
 | `heartbeat`  | 8 deterministic workflow chains                   |
 
 **8 Workflow Chains:** `daily_ops_autopilot`, `new_client_onboarding`, `practice_lifecycle_check`, `intel_pipeline`, `weekly_report`, `client_health_monitor`, `compliance_autopilot`, `journey_accelerator`
+
+**🆕 Chain Onboarding Enhancements (2026-03-02):**
+
+The `chain_new_client_onboarding` workflow now includes:
+
+1. **Intelligent Visa Determination (Step 3)**: Replaced hardcoded keyword matching with PricingTool consultation. Queries `/api/agents/pricing/calculate` with business context, falls back to keyword matching if service unavailable. Logs include `pricing_consulted` flag for tracking.
+
+2. **Auto-Trigger from WhatsApp**: New `whatsapp_onboarding_detector.py` service detects "new client" intent in messages (multilingual: EN/IT/ID keywords like "new client", "nuovo cliente", "klien baru", "moving to bali"). Auto-triggers chain + sends confirmation + notifies admin via Telegram.
+
+3. **Auto-Trigger from Web Form**: `POST /api/crm/clients` with `status=lead|prospect` and non-empty `service_interest` automatically prepares onboarding payload. Logs intent without blocking client creation.
+
+See `CHAIN_ONBOARDING_IMPROVEMENTS.md` for full implementation details.
 
 **Additional MCP servers:**
 
