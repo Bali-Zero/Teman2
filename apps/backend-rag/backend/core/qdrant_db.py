@@ -194,11 +194,11 @@ class QdrantClient:
     All methods are async to avoid blocking the event loop.
 
     Usage:
-        async with QdrantClient(url="http://localhost:6333") as client:
+        async with QdrantClient(url=settings.qdrant_default_url) as client:
             results = await client.search(embedding, limit=10)
 
     Or without context manager:
-        client = QdrantClient(url="http://localhost:6333")
+        client = QdrantClient(url=settings.qdrant_default_url)
         results = await client.search(embedding, limit=10)
         await client.close()  # Clean up connections
     """
@@ -221,7 +221,7 @@ class QdrantClient:
         """
         # Get Qdrant URL from settings
         self.qdrant_url = qdrant_url or (
-            settings.qdrant_url if settings else "http://localhost:6333"
+            settings.qdrant_url if settings else settings.qdrant_default_url
         )
         self.collection_name = collection_name or "knowledge_base"
 

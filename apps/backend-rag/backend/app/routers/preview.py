@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 
+from backend.app.core.config import settings
 from backend.app.utils.internal_api_auth import verify_internal_api_key
 
 logger = logging.getLogger(__name__)
@@ -62,7 +63,7 @@ async def upload_preview(
         # Save HTML file
         preview_path.write_text(html_content, encoding="utf-8")
 
-        preview_url = f"https://nuzantara-rag.fly.dev/preview/{payload.article_id}.html"
+        preview_url = f"{settings.backend_url}/preview/{payload.article_id}.html"
 
         logger.info(f"Preview uploaded: {payload.article_id} → {preview_path}")
 
@@ -81,7 +82,7 @@ async def upload_preview(
 
 
 @router.get("/{article_id}.html", response_class=HTMLResponse)
-async def get_preview(article_id: str):
+async def get_preview(article_id: str) -> HTMLResponse:
     """
     Serve HTML preview for article.
     Used by Telegram messages to show full article with images.
@@ -116,7 +117,7 @@ async def get_preview(article_id: str):
 
 
 @router.get("/", response_class=HTMLResponse)
-async def preview_index():
+async def preview_index() -> HTMLResponse:
     """List all available previews (dev only)"""
     html = "<h1>Preview Articles</h1><ul>"
 

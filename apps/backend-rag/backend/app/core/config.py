@@ -754,6 +754,34 @@ class Settings(BaseSettings):
     service_name: str = "nuzantara-rag"  # Set via SERVICE_NAME env var
 
     # ========================================
+    # EXTERNAL SERVICE URLS
+    # ========================================
+    indexnow_api_url: str = Field(
+        default="https://api.indexnow.org/indexnow",
+        description="IndexNow API URL for search engine indexing. Set via INDEXNOW_API_URL env var",
+    )
+    google_indexing_api_url: str = Field(
+        default="https://indexing.googleapis.com/v3/urlNotifications:publish",
+        description="Google Indexing API URL for search console notifications. Set via GOOGLE_INDEXING_API_URL env var",
+    )
+    backend_url: str = Field(
+        default="https://nuzantara-rag.fly.dev",
+        description="Backend API base URL. Set via BACKEND_URL env var (default: production Fly.io URL)",
+    )
+    frontend_portal_url: str = Field(
+        default="https://nuzantara-mouth.vercel.app",
+        description="Frontend portal base URL for client invitations. Set via FRONTEND_PORTAL_URL env var",
+    )
+    balizero_website_url: str = Field(
+        default="https://balizero.com",
+        description="Bali Zero public website URL for article publishing. Set via BALIZERO_WEBSITE_URL env var",
+    )
+    qdrant_default_url: str = Field(
+        default="http://localhost:6333",
+        description="Qdrant fallback URL when QDRANT_URL is not set. Set via QDRANT_DEFAULT_URL env var",
+    )
+
+    # ========================================
     # FILE SYSTEM PATHS
     # ========================================
     # Intel staging directories
