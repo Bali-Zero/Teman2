@@ -27,7 +27,7 @@ async def proxy_drive_file(
 
 
     db_pool=Depends(get_database_pool),
-):
+) -> Response:
     """
     Proxy Google Drive file through backend.
     Returns binary image/document data without Google branding.
@@ -105,7 +105,7 @@ async def get_drive_thumbnail(
 
     current_user: dict = Depends(get_current_user),
     db_pool=Depends(get_database_pool),
-):
+) -> Any:
     """
     Get thumbnail of Google Drive file.
     Smaller, faster-loading preview image for document cards.

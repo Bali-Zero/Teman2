@@ -33,7 +33,7 @@ def mock_openai_client():
     client = MagicMock()
     mock_response = MagicMock()
     mock_response.data = [MagicMock(embedding=[0.1] * 1536), MagicMock(embedding=[0.2] * 1536)]
-    client.embeddings.create = MagicMock(return_value=mock_response)
+    client.embeddings.create = AsyncMock(return_value=mock_response)
     return client
 
 

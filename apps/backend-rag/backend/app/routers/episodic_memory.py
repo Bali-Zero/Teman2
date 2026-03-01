@@ -50,7 +50,7 @@ async def add_event(
 
 
     db_pool=Depends(get_db_pool),
-):
+) -> dict[str, Any]:
     """
     Add an event to the user's episodic memory timeline.
 
@@ -107,7 +107,7 @@ async def extract_and_save_event(
 
 
     db_pool=Depends(get_db_pool),
-):
+) -> dict[str, Any]:
     """
     Automatically extract an event from a message and save it.
 
@@ -152,7 +152,7 @@ async def get_timeline(
 
 
     db_pool=Depends(get_db_pool),
-):
+) -> dict[str, Any]:
     """
     Get the user's event timeline.
 
@@ -188,7 +188,7 @@ async def get_context_summary(
 
 
     db_pool=Depends(get_db_pool),
-):
+) -> dict[str, Any]:
     """
     Get a formatted context summary for AI prompts.
 
@@ -215,7 +215,7 @@ async def get_stats(
 
 
     db_pool=Depends(get_db_pool),
-):
+) -> dict[str, Any]:
     """
     Get user's episodic memory statistics.
 
@@ -239,7 +239,7 @@ async def delete_event(
 
 
     db_pool=Depends(get_db_pool),
-):
+) -> dict[str, Any]:
     """
     Delete an event from the user's timeline.
 

@@ -185,7 +185,7 @@ async def create_practice(
 
 
     current_user: dict = Depends(get_current_user),
-):
+) -> PracticeResponse:
     """
     Create a new practice for a client
 
@@ -327,7 +327,7 @@ async def list_practices(
     # Support for direct calls from dashboard_summary.py
     user_id: str | None = None,
     pool: Any | None = None,
-):
+) -> list[Any]:
     """
     List practices with optional filtering.
 
@@ -431,7 +431,7 @@ async def get_active_practices(
 
 
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> list[Any]:
     """
     Get all active practices (in progress, not completed/cancelled)
 
@@ -469,7 +469,7 @@ async def get_upcoming_renewals(
 
 
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> list[Any]:
     """
     Get practices with upcoming renewal dates
 
@@ -499,7 +499,7 @@ async def get_practice(
 
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-):
+) -> Any:
     """
     Get practice details by ID with full client and type info.
 
@@ -547,7 +547,7 @@ async def update_practice(
     updates: PracticeUpdate = Body(...),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-):
+) -> Any:
     """
     Update practice information.
 
@@ -834,7 +834,7 @@ async def delete_practice(
 
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-):
+) -> dict[str, Any]:
     """
     Delete a practice (soft delete - marks as cancelled).
 
@@ -925,7 +925,7 @@ async def add_document_to_practice(
     drive_file_id: str = Query(...),
     uploaded_by: str = Query(...),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> dict[str, Any]:
     """
     Add a document to a practice
 
@@ -991,7 +991,7 @@ async def get_practices_stats(
     # Support for direct calls from dashboard_summary.py
     user_id: str | None = None,
     pool: Any | None = None,
-):
+) -> dict[str, Any]:
     """
     Get overall practice statistics
 
@@ -1086,7 +1086,7 @@ async def regenerate_invoice(
 
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-):
+) -> dict[str, Any]:
     """
     Manually regenerate and resend invoice for a practice.
 
@@ -1207,7 +1207,7 @@ async def get_required_documents(
 
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> list[Any]:
     """Get all required documents for a practice (for team members)."""
     try:
         async with db_pool.acquire() as conn:
@@ -1256,7 +1256,7 @@ async def add_required_document(
     doc: RequiredDocumentCreate = Body(...),
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> dict[str, Any]:
     """Add a required document to a practice (team member only)."""
     try:
         async with db_pool.acquire() as conn:
@@ -1339,7 +1339,7 @@ async def delete_required_document(
     doc_id: int = Path(..., gt=0),
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> dict[str, Any]:
     """Delete a required document from a practice."""
     try:
         async with db_pool.acquire() as conn:
@@ -1378,7 +1378,7 @@ async def update_required_document(
     update: RequiredDocumentUpdate = Body(...),
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> dict[str, Any]:
     """Update a required document (team member review)."""
     try:
         async with db_pool.acquire() as conn:
@@ -1456,7 +1456,7 @@ async def upload_client_document(
     request: ClientDocumentUploadRequest = Body(...),
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> dict[str, Any]:
     """Client uploads a document for a required field."""
     try:
         import base64

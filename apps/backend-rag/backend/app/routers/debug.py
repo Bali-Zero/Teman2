@@ -1098,7 +1098,7 @@ async def sentry_test_error(
     _current_user: dict = Depends(get_current_user),
 
 
-):
+) -> None:
     """
     Trigger a test error for Sentry monitoring verification.
     This endpoint intentionally raises an exception to test Sentry integration.

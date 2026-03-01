@@ -18,13 +18,7 @@ sys.path.insert(0, str(backend_path))
 import importlib.util
 import types
 
-# Mock qdrant_client and numpy BEFORE importing the module
-numpy_mock = types.ModuleType("numpy")
-numpy_mock._typing = types.ModuleType("numpy._typing")
-numpy_mock._typing._char_codes = types.ModuleType("numpy._typing._char_codes")
-sys.modules["numpy"] = numpy_mock
-sys.modules["numpy._typing"] = numpy_mock._typing
-sys.modules["numpy._typing._char_codes"] = numpy_mock._typing._char_codes
+# Mock qdrant_client BEFORE importing the module (numpy 1.26.4 is installed, use real numpy)
 
 qdrant_client_mock = types.ModuleType("qdrant_client")
 qdrant_client_mock.QdrantClient = MagicMock()

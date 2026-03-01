@@ -34,7 +34,7 @@ async def upload_preview(
     api_key_verified=Depends(verify_internal_api_key),
 
 
-):
+) -> JSONResponse:
     """
     Upload HTML preview from scraper (running locally on Mac).
 

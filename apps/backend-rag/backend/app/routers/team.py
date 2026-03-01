@@ -30,7 +30,7 @@ async def get_team_members(
 
 
     pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> list[Any]:
     """
     Get list of team members visible to the current user.
 

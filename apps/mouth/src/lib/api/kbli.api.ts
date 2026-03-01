@@ -8,6 +8,17 @@ export interface KBLILicense {
   requirements: string[];
 }
 
+export interface KBLISource {
+  chunk_id: string;
+  content: string;
+  metadata: {
+    kode_kbli?: string;
+    judul?: string;
+    source?: string;
+  };
+  score: number;
+}
+
 export interface KBLIDetail {
   code: string;
   title: string;
@@ -59,14 +70,14 @@ export class KBLIApi extends ApiClientBase {
     answer: string;
     detected_kbli: string[];
     results: KBLISearchResult[];
-    sources: any[];
+    sources: KBLISource[];
     suggested_queries: string[];
   }> {
     return this.post<{
       answer: string;
       detected_kbli: string[];
       results: KBLISearchResult[];
-      sources: any[];
+      sources: KBLISource[];
       suggested_queries: string[];
     }>("/api/v1/kbli-notebook/chat", {
       query,

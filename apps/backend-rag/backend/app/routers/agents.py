@@ -130,7 +130,7 @@ async def create_client_journey(
     request: CreateJourneyRequest, current_user: dict = Depends(get_current_user)
 
 
-):
+) -> dict[str, Any]:
     """
     🎯 AGENT 1: Client Journey Orchestrator
 
@@ -181,7 +181,7 @@ async def complete_journey_step(
     current_user: dict = Depends(get_current_user),
 
 
-):
+) -> dict[str, Any]:
     """Mark a journey step as completed"""
     try:
         journey_orchestrator.complete_step(journey_id, step_id, notes)
@@ -226,7 +226,7 @@ async def add_compliance_tracking(
     request: AddComplianceItemRequest, current_user: dict = Depends(get_current_user)
 
 
-):
+) -> dict[str, Any]:
     """
     ⚠️ AGENT 2: Proactive Compliance Monitor
 
@@ -271,7 +271,7 @@ async def get_compliance_alerts(
     current_user: dict = Depends(get_current_user),
 
 
-):
+) -> dict[str, Any]:
     """
     Get upcoming compliance alerts
 
@@ -373,7 +373,7 @@ async def extract_knowledge_graph(
 
 
     current_user: dict = Depends(get_current_user),
-):
+) -> dict[str, Any]:
     """
     🧠 AGENT 3: Knowledge Graph Builder
 
@@ -442,7 +442,7 @@ async def export_knowledge_graph(
     format: str = "neo4j", current_user: dict = Depends(get_current_user)
 
 
-):
+) -> dict[str, Any]:
     """
     Export knowledge graph in Neo4j-ready format
 
@@ -486,7 +486,7 @@ async def run_auto_ingestion(
     current_user: dict = Depends(get_current_user),
 
 
-):
+) -> dict[str, Any]:
     """
     🤖 AGENT 4: Auto Ingestion Orchestrator
 
@@ -544,7 +544,7 @@ async def cross_oracle_synthesis(
 
 
     current_user: dict = Depends(get_current_user),
-):
+) -> dict[str, Any]:
     """
     🔍 AGENT 5: Cross-Oracle Synthesis
 
@@ -614,7 +614,7 @@ async def calculate_dynamic_pricing(
     current_user: dict = Depends(get_current_user),
 
 
-):
+) -> dict[str, Any]:
     """
     💰 AGENT 6: Dynamic Pricing Service
 
@@ -639,7 +639,7 @@ async def run_autonomous_research(
     current_user: dict = Depends(get_current_user),
 
 
-):
+) -> dict[str, Any]:
     """
     🔬 AGENT 7: Autonomous Research Service
 

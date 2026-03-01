@@ -48,6 +48,7 @@ async def _call(
     headers: dict[str, str] = {"Content-Type": "application/json"}
     if API_KEY:
         headers["Authorization"] = f"Bearer {API_KEY}"
+        headers["X-API-Key"] = API_KEY
 
     async with httpx.AsyncClient(
         base_url=BACKEND_URL, timeout=timeout or TIMEOUT

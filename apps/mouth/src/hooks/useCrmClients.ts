@@ -24,13 +24,13 @@ interface ClientsResponse {
 }
 
 // Debug helper
-const debug = (...args: any[]) => {
+const debug = (...args: unknown[]) => {
   if (process.env.NODE_ENV === "development") {
     console.log("[CRM]", ...args);
   }
 };
 
-const logError = (...args: any[]) => {
+const logError = (...args: unknown[]) => {
   console.error("[CRM]", ...args);
 };
 

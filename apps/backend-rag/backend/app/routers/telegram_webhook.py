@@ -26,7 +26,7 @@ async def telegram_webhook(
     channel_router: ChannelRouter = Depends(get_channel_router),
 
 
-):
+) -> dict[str, Any]:
     """
     Telegram Bot API webhook endpoint.
 

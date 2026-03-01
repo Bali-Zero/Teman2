@@ -31,7 +31,7 @@ def mock_embedder():
     embedder = MagicMock()
     embedder.provider = "openai"
     embedder.dimensions = 1536
-    embedder.generate_query_embedding = MagicMock(return_value=[0.1] * 1536)
+    embedder.generate_query_embedding = AsyncMock(return_value=[0.1] * 1536)
     return embedder
 
 

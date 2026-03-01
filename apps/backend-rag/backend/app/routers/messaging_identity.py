@@ -117,7 +117,7 @@ async def create_mapping(
     _admin: Annotated[str, Depends(require_admin)],
 
 
-):
+) -> dict[str, Any]:
     """
     Create new messaging identity mapping.
 
@@ -148,7 +148,7 @@ async def get_mappings_for_user(
     _admin: Annotated[str, Depends(require_admin)],
 
 
-):
+) -> dict[str, Any]:
     """
     Get all messaging channel mappings for a user (team member or portal client).
 
@@ -169,7 +169,7 @@ async def deactivate_mapping(
     _admin: Annotated[str, Depends(require_admin)],
 
 
-):
+) -> dict[str, Any]:
     """
     Deactivate (soft delete) a messaging identity mapping.
 
@@ -195,7 +195,7 @@ async def list_all_mappings(
     _admin: Annotated[str, Depends(require_admin)],
 
 
-):
+) -> dict[str, Any]:
     """
     List all active messaging identity mappings.
 
@@ -252,7 +252,7 @@ async def lookup_by_phone(
     _admin: Annotated[str, Depends(require_admin)],
 
 
-):
+) -> dict[str, Any]:
     """
     Lookup user by phone number.
 
@@ -276,7 +276,7 @@ async def lookup_by_telegram(
     _admin: Annotated[str, Depends(require_admin)],
 
 
-):
+) -> dict[str, Any]:
     """
     Lookup user by Telegram chat ID.
 

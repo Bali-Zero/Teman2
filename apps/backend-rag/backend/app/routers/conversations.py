@@ -183,7 +183,7 @@ async def save_conversation(
 
 
     db_pool: asyncpg.Pool | None = Depends(get_database_pool),
-):
+) -> dict[str, Any]:
     """
     Save conversation messages to PostgreSQL
     + Auto-populate CRM with client/practice data
@@ -448,7 +448,7 @@ async def clear_conversation_history(
 
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> dict[str, Any]:
     """
     Clear conversation history for the authenticated user
 
@@ -504,7 +504,7 @@ async def get_conversation_stats(
 
 
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> dict[str, Any]:
     """
     Get conversation statistics for the authenticated user
 
@@ -560,7 +560,7 @@ async def list_conversations(
     offset: int = Query(0, ge=0),
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> ConversationListResponse:
     """
     List all conversations for the authenticated user
 
@@ -667,7 +667,7 @@ async def get_conversation(
 
 
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> SingleConversationResponse:
     """
     Get a single conversation by ID
 
@@ -727,7 +727,7 @@ async def delete_conversation(
 
 
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> dict[str, Any]:
     """
     Delete a single conversation by ID
 
@@ -778,7 +778,7 @@ async def get_user_memory_context(
 
 
     db_pool: asyncpg.Pool | None = Depends(get_database_pool),
-):
+) -> UserMemoryContextResponse:
     """
     Get user memory context (profile facts, summary, counters)
 

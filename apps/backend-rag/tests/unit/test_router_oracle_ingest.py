@@ -61,7 +61,7 @@ async def test_ingest_documents_success(mock_search_service, sample_ingest_reque
 
     # Mock EmbeddingsGenerator
     mock_embedder = MagicMock()
-    mock_embedder.generate_batch_embeddings = MagicMock(
+    mock_embedder.generate_batch_embeddings = AsyncMock(
         return_value=[[0.1] * 1536]
     )  # Return embeddings
 
@@ -94,7 +94,7 @@ async def test_ingest_documents_error_handling(mock_search_service, sample_inges
 
     # Mock EmbeddingsGenerator to raise exception
     mock_embedder = MagicMock()
-    mock_embedder.generate_batch_embeddings = MagicMock(side_effect=Exception("Embedding error"))
+    mock_embedder.generate_batch_embeddings = AsyncMock(side_effect=Exception("Embedding error"))
 
     with patch("backend.core.embeddings.create_embeddings_generator", return_value=mock_embedder):
         response = await ingest_documents(sample_ingest_request, mock_search_service)
@@ -116,7 +116,7 @@ async def test_ingest_documents_auto_create_collection(mock_search_service, samp
 
     # Mock EmbeddingsGenerator
     mock_embedder = MagicMock()
-    mock_embedder.generate_batch_embeddings = MagicMock(return_value=[[0.1] * 1536])
+    mock_embedder.generate_batch_embeddings = AsyncMock(return_value=[[0.1] * 1536])
 
     with patch(
         "backend.core.qdrant_db.QdrantClient", return_value=mock_qdrant_client
@@ -172,7 +172,7 @@ async def test_ingest_documents_multiple_documents(mock_search_service):
 
     # Mock EmbeddingsGenerator
     mock_embedder = MagicMock()
-    mock_embedder.generate_batch_embeddings = MagicMock(
+    mock_embedder.generate_batch_embeddings = AsyncMock(
         return_value=[[0.1] * 1536, [0.2] * 1536, [0.3] * 1536]
     )
 
@@ -220,7 +220,7 @@ async def test_ingest_documents_metadata_missing_fields(mock_search_service):
 
     # Mock EmbeddingsGenerator
     mock_embedder = MagicMock()
-    mock_embedder.generate_batch_embeddings = MagicMock(return_value=[[0.1] * 1536])
+    mock_embedder.generate_batch_embeddings = AsyncMock(return_value=[[0.1] * 1536])
 
     request = IngestRequest(
         collection="legal_intelligence",
@@ -274,8 +274,8 @@ async def test_ingest_documents_execution_time(mock_search_service, sample_inges
     mock_search_service.collections = {"legal_intelligence": mock_vector_db}
 
     # Mock EmbeddingsGenerator
-    mock_embedder = MagicMock()
-    mock_embedder.generate_batch_embeddings = MagicMock(return_value=[[0.1] * 1536])
+    mock_embedder = AsyncMock()
+    mock_embedder.generate_batch_embeddings = AsyncMock(return_value=[[0.1] * 1536])
 
     with patch("backend.core.embeddings.create_embeddings_generator", return_value=mock_embedder):
         response = await ingest_documents(sample_ingest_request, mock_search_service)

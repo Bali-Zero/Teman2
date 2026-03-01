@@ -26,7 +26,7 @@ async def transcribe_audio(
     language: str | None = None,
     audio_service: AudioService = Depends(get_audio_service),
     api_key_verified=Depends(verify_internal_api_key),
-):
+) -> dict[str, Any]:
     """
     Transcribe uploaded audio file to text.
     """
@@ -50,7 +50,7 @@ async def generate_speech(
 
 
     api_key_verified=Depends(verify_internal_api_key),
-):
+) -> StreamingResponse:
     """
     Generate speech from text (TTS). Returns audio/mpeg stream.
     """

@@ -173,7 +173,7 @@ def test_check_compliance_items(compliance_monitor):
 
     # Mock search service
     mock_search = MagicMock()
-    mock_search.search = MagicMock(
+    mock_search.search = AsyncMock(
         return_value={
             "results": [{"text": "Test compliance item", "metadata": {"type": "regulation"}}]
         }

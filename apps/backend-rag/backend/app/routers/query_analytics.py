@@ -45,7 +45,7 @@ async def get_query_insights_dashboard(
 
     repo: QueryAnalyticsRepository = Depends(_get_repo),
     current_user=Depends(_verify_founder_access),
-):
+) -> Any:
     """
     Full query analytics dashboard summary.
     Combines failed queries, collection hit rates, volume, and satisfaction.
@@ -64,7 +64,7 @@ async def get_failed_queries(
     days: int = Query(7, ge=1, le=90),
     repo: QueryAnalyticsRepository = Depends(_get_repo),
     current_user=Depends(_verify_founder_access),
-):
+) -> Any:
     """Top N queries that returned 0 chunks."""
     try:
         return await repo.get_failed_queries(limit=limit, days=days)
@@ -79,7 +79,7 @@ async def get_collection_hit_rates(
 
     repo: QueryAnalyticsRepository = Depends(_get_repo),
     current_user=Depends(_verify_founder_access),
-):
+) -> Any:
     """Collection usage and hit rate stats."""
     try:
         return await repo.get_collection_hit_rates(days=days)
@@ -95,7 +95,7 @@ async def get_query_volume(
     days: int = Query(7, ge=1, le=90),
     repo: QueryAnalyticsRepository = Depends(_get_repo),
     current_user=Depends(_verify_founder_access),
-):
+) -> Any:
     """Query volume over time (hourly or daily buckets)."""
     try:
         return await repo.get_query_volume(granularity=granularity, days=days)
@@ -110,7 +110,7 @@ async def get_satisfaction_score(
 
     repo: QueryAnalyticsRepository = Depends(_get_repo),
     current_user=Depends(_verify_founder_access),
-):
+) -> Any:
     """User satisfaction metrics from thumbs up/down feedback."""
     try:
         return await repo.get_satisfaction_score(days=days)
@@ -134,7 +134,7 @@ async def submit_feedback(
 
 
     current_user=Depends(get_current_user),
-):
+) -> dict[str, Any]:
     """
     Record user feedback for a query.
     Any authenticated user can submit feedback on their own queries.

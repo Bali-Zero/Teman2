@@ -955,8 +955,12 @@ describe("Cases Page", () => {
 
       // Should track filter applied only once (not multiple times due to closure)
       await waitFor(() => {
-        const calls = (analytics.trackFilterApplied as any).mock.calls.filter(
-          (call: any) => call[0] === "status" && call[1] === "inquiry",
+        const calls = (
+          analytics.trackFilterApplied as unknown as {
+            mock: { calls: unknown[][] };
+          }
+        ).mock.calls.filter(
+          (call: unknown[]) => call[0] === "status" && call[1] === "inquiry",
         );
         expect(calls.length).toBe(1);
       });

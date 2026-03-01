@@ -183,58 +183,64 @@ def test_generate_key_filters_self(cache_service_no_redis):
 # ============================================================================
 
 
-def test_get_from_redis_hit(cache_service_with_redis, mock_redis_client):
+@pytest.mark.asyncio
+async def test_get_from_redis_hit(cache_service_with_redis, mock_redis_client):
     """Test get from Redis with cache hit"""
     mock_redis_client.get.return_value = '{"key": "value"}'
-    result = cache_service_with_redis.get("test_key")
+    result = await cache_service_with_redis.get("test_key")
     assert result == {"key": "value"}
     assert cache_service_with_redis.stats["hits"] == 1
     assert cache_service_with_redis.stats["misses"] == 0
     mock_redis_client.get.assert_called_once_with("test_key")
 
 
-def test_get_from_redis_miss(cache_service_with_redis, mock_redis_client):
+@pytest.mark.asyncio
+async def test_get_from_redis_miss(cache_service_with_redis, mock_redis_client):
     """Test get from Redis with cache miss"""
     mock_redis_client.get.return_value = None
-    result = cache_service_with_redis.get("test_key")
+    result = await cache_service_with_redis.get("test_key")
     assert result is None
     assert cache_service_with_redis.stats["hits"] == 0
     assert cache_service_with_redis.stats["misses"] == 1
 
 
-def test_get_from_memory_hit(cache_service_no_redis, clear_memory_cache):
+@pytest.mark.asyncio
+async def test_get_from_memory_hit(cache_service_no_redis, clear_memory_cache):
     """Test get from memory cache with cache hit"""
     # Use instance-level memory cache
     cache_service_no_redis._memory_cache.set("test_key", {"key": "value"}, ttl=60)
-    result = cache_service_no_redis.get("test_key")
+    result = await cache_service_no_redis.get("test_key")
     assert result == {"key": "value"}
     assert cache_service_no_redis.stats["hits"] == 1
     assert cache_service_no_redis.stats["misses"] == 0
 
 
-def test_get_from_memory_miss(cache_service_no_redis, clear_memory_cache):
+@pytest.mark.asyncio
+async def test_get_from_memory_miss(cache_service_no_redis, clear_memory_cache):
     """Test get from memory cache with cache miss"""
-    result = cache_service_no_redis.get("test_key")
+    result = await cache_service_no_redis.get("test_key")
     assert result is None
     assert cache_service_no_redis.stats["hits"] == 0
     assert cache_service_no_redis.stats["misses"] == 1
 
 
-def test_get_redis_error(cache_service_with_redis, mock_redis_client):
+@pytest.mark.asyncio
+async def test_get_redis_error(cache_service_with_redis, mock_redis_client):
     """Test get when Redis raises exception"""
     mock_redis_client.get.side_effect = Exception("Redis error")
     with patch("backend.core.cache.logger") as mock_logger:
-        result = cache_service_with_redis.get("test_key")
+        result = await cache_service_with_redis.get("test_key")
         assert result is None
         assert cache_service_with_redis.stats["errors"] == 1
         mock_logger.error.assert_called_once()
 
 
-def test_get_invalid_json(cache_service_with_redis, mock_redis_client):
+@pytest.mark.asyncio
+async def test_get_invalid_json(cache_service_with_redis, mock_redis_client):
     """Test get with invalid JSON from Redis"""
     mock_redis_client.get.return_value = "invalid json"
     with patch("backend.core.cache.logger") as mock_logger:
-        result = cache_service_with_redis.get("test_key")
+        result = await cache_service_with_redis.get("test_key")
         # Exception should be caught and None returned
         assert result is None
         assert cache_service_with_redis.stats["errors"] == 1
@@ -246,35 +252,39 @@ def test_get_invalid_json(cache_service_with_redis, mock_redis_client):
 # ============================================================================
 
 
-def test_set_to_redis(cache_service_with_redis, mock_redis_client):
+@pytest.mark.asyncio
+async def test_set_to_redis(cache_service_with_redis, mock_redis_client):
     """Test set to Redis"""
-    result = cache_service_with_redis.set("test_key", {"key": "value"}, ttl=600)
+    result = await cache_service_with_redis.set("test_key", {"key": "value"}, ttl=600)
     assert result is True
     mock_redis_client.setex.assert_called_once_with("test_key", 600, '{"key": "value"}')
 
 
-def test_set_to_memory(cache_service_no_redis, clear_memory_cache):
+@pytest.mark.asyncio
+async def test_set_to_memory(cache_service_no_redis, clear_memory_cache):
     """Test set to memory cache"""
-    result = cache_service_no_redis.set("test_key", {"key": "value"}, ttl=600)
+    result = await cache_service_no_redis.set("test_key", {"key": "value"}, ttl=600)
     assert result is True
     # Verify in instance-level memory cache
     cached_value = cache_service_no_redis._memory_cache.get("test_key")
     assert cached_value == {"key": "value"}
 
 
-def test_set_redis_error(cache_service_with_redis, mock_redis_client):
+@pytest.mark.asyncio
+async def test_set_redis_error(cache_service_with_redis, mock_redis_client):
     """Test set when Redis raises exception"""
     mock_redis_client.setex.side_effect = Exception("Redis error")
     with patch("backend.core.cache.logger") as mock_logger:
-        result = cache_service_with_redis.set("test_key", {"key": "value"})
+        result = await cache_service_with_redis.set("test_key", {"key": "value"})
         assert result is False
         assert cache_service_with_redis.stats["errors"] == 1
         mock_logger.error.assert_called_once()
 
 
-def test_set_default_ttl(cache_service_with_redis, mock_redis_client):
+@pytest.mark.asyncio
+async def test_set_default_ttl(cache_service_with_redis, mock_redis_client):
     """Test set with default TTL"""
-    cache_service_with_redis.set("test_key", {"key": "value"})
+    await cache_service_with_redis.set("test_key", {"key": "value"})
     mock_redis_client.setex.assert_called_once_with("test_key", 300, '{"key": "value"}')
 
 
@@ -283,34 +293,38 @@ def test_set_default_ttl(cache_service_with_redis, mock_redis_client):
 # ============================================================================
 
 
-def test_delete_from_redis(cache_service_with_redis, mock_redis_client):
+@pytest.mark.asyncio
+async def test_delete_from_redis(cache_service_with_redis, mock_redis_client):
     """Test delete from Redis"""
-    result = cache_service_with_redis.delete("test_key")
+    result = await cache_service_with_redis.delete("test_key")
     assert result is True
     mock_redis_client.delete.assert_called_once_with("test_key")
 
 
-def test_delete_from_memory(cache_service_no_redis, clear_memory_cache):
+@pytest.mark.asyncio
+async def test_delete_from_memory(cache_service_no_redis, clear_memory_cache):
     """Test delete from memory cache"""
     # Use instance-level memory cache
     cache_service_no_redis._memory_cache.set("test_key", {"key": "value"}, ttl=60)
-    result = cache_service_no_redis.delete("test_key")
+    result = await cache_service_no_redis.delete("test_key")
     assert result is True
     assert cache_service_no_redis._memory_cache.get("test_key") is None
 
 
-def test_delete_nonexistent_memory(cache_service_no_redis, clear_memory_cache):
+@pytest.mark.asyncio
+async def test_delete_nonexistent_memory(cache_service_no_redis, clear_memory_cache):
     """Test delete non-existent key from memory cache"""
-    result = cache_service_no_redis.delete("nonexistent_key")
+    result = await cache_service_no_redis.delete("nonexistent_key")
     # LRUCache.delete() returns False if key doesn't exist
     assert result is False
 
 
-def test_delete_redis_error(cache_service_with_redis, mock_redis_client):
+@pytest.mark.asyncio
+async def test_delete_redis_error(cache_service_with_redis, mock_redis_client):
     """Test delete when Redis raises exception"""
     mock_redis_client.delete.side_effect = Exception("Redis error")
     with patch("backend.core.cache.logger") as mock_logger:
-        result = cache_service_with_redis.delete("test_key")
+        result = await cache_service_with_redis.delete("test_key")
         assert result is False
         mock_logger.error.assert_called_once()
 
@@ -320,51 +334,56 @@ def test_delete_redis_error(cache_service_with_redis, mock_redis_client):
 # ============================================================================
 
 
-def test_clear_pattern_redis_with_keys(cache_service_with_redis, mock_redis_client):
+@pytest.mark.asyncio
+async def test_clear_pattern_redis_with_keys(cache_service_with_redis, mock_redis_client):
     """Test clear_pattern with Redis and matching keys"""
     mock_redis_client.keys.return_value = ["key1", "key2", "key3"]
     mock_redis_client.delete.return_value = 3
-    result = cache_service_with_redis.clear_pattern("zantara:test:*")
+    result = await cache_service_with_redis.clear_pattern("zantara:test:*")
     assert result == 3
     mock_redis_client.keys.assert_called_once_with("zantara:test:*")
     mock_redis_client.delete.assert_called_once_with("key1", "key2", "key3")
 
 
-def test_clear_pattern_redis_no_keys(cache_service_with_redis, mock_redis_client):
+@pytest.mark.asyncio
+async def test_clear_pattern_redis_no_keys(cache_service_with_redis, mock_redis_client):
     """Test clear_pattern with Redis and no matching keys"""
     mock_redis_client.keys.return_value = []
-    result = cache_service_with_redis.clear_pattern("zantara:test:*")
+    result = await cache_service_with_redis.clear_pattern("zantara:test:*")
     assert result == 0
     mock_redis_client.delete.assert_not_called()
 
 
-def test_clear_pattern_memory(cache_service_no_redis, clear_memory_cache):
+@pytest.mark.asyncio
+async def test_clear_pattern_memory(cache_service_no_redis, clear_memory_cache):
     """Test clear_pattern with memory cache"""
     # Use instance-level memory cache
     cache_service_no_redis._memory_cache.set("zantara:test:key1", "value1", ttl=60)
     cache_service_no_redis._memory_cache.set("zantara:test:key2", "value2", ttl=60)
     cache_service_no_redis._memory_cache.set("zantara:other:key3", "value3", ttl=60)
-    result = cache_service_no_redis.clear_pattern("zantara:test:*")
+    result = await cache_service_no_redis.clear_pattern("zantara:test:*")
     assert result == 2
     assert cache_service_no_redis._memory_cache.get("zantara:test:key1") is None
     assert cache_service_no_redis._memory_cache.get("zantara:test:key2") is None
     assert cache_service_no_redis._memory_cache.get("zantara:other:key3") == "value3"
 
 
-def test_clear_pattern_memory_no_match(cache_service_no_redis, clear_memory_cache):
+@pytest.mark.asyncio
+async def test_clear_pattern_memory_no_match(cache_service_no_redis, clear_memory_cache):
     """Test clear_pattern with memory cache and no matches"""
     # Use instance-level memory cache
     cache_service_no_redis._memory_cache.set("zantara:other:key", "value", ttl=60)
-    result = cache_service_no_redis.clear_pattern("zantara:test:*")
+    result = await cache_service_no_redis.clear_pattern("zantara:test:*")
     assert result == 0
     assert cache_service_no_redis._memory_cache.get("zantara:other:key") == "value"
 
 
-def test_clear_pattern_redis_error(cache_service_with_redis, mock_redis_client):
+@pytest.mark.asyncio
+async def test_clear_pattern_redis_error(cache_service_with_redis, mock_redis_client):
     """Test clear_pattern when Redis raises exception"""
     mock_redis_client.keys.side_effect = Exception("Redis error")
     with patch("backend.core.cache.logger") as mock_logger:
-        result = cache_service_with_redis.clear_pattern("zantara:test:*")
+        result = await cache_service_with_redis.clear_pattern("zantara:test:*")
         assert result == 0
         mock_logger.error.assert_called_once()
 
@@ -565,19 +584,21 @@ async def test_invalidate_cache_no_matches(cache_service_no_redis, clear_memory_
 # ============================================================================
 
 
-def test_redis_unavailable_fallback(cache_service_with_redis, mock_redis_client):
+@pytest.mark.asyncio
+async def test_redis_unavailable_fallback(cache_service_with_redis, mock_redis_client):
     """Test that Redis errors fall back to memory cache"""
     # Simulate Redis becoming unavailable
     cache_service_with_redis.redis_available = False
     cache_service_with_redis.redis_client = None
 
-    result = cache_service_with_redis.set("test_key", {"key": "value"})
+    result = await cache_service_with_redis.set("test_key", {"key": "value"})
     assert result is True
     # Should use instance-level memory cache
     assert cache_service_with_redis._memory_cache.get("test_key") == {"key": "value"}
 
 
-def test_memory_cache_isolation(cache_service_no_redis, clear_memory_cache):
+@pytest.mark.asyncio
+async def test_memory_cache_isolation(cache_service_no_redis, clear_memory_cache):
     """Test that memory cache is isolated per service instance"""
     # Set value in first instance
     cache_service_no_redis._memory_cache.set("persistent_key", "persistent_value", ttl=60)
@@ -587,15 +608,16 @@ def test_memory_cache_isolation(cache_service_no_redis, clear_memory_cache):
         mock_settings.redis_url = None
         with patch("backend.core.cache.logger"):
             service2 = CacheService()
-            result = service2.get("persistent_key")
+            result = await service2.get("persistent_key")
             # Should be None (isolated instances)
             assert result is None
 
     # First instance should still have it
-    assert cache_service_no_redis.get("persistent_key") == "persistent_value"
+    assert await cache_service_no_redis.get("persistent_key") == "persistent_value"
 
 
-def test_stats_independence():
+@pytest.mark.asyncio
+async def test_stats_independence():
     """Test that stats are independent per service instance"""
     with patch("backend.app.core.config.settings") as mock_settings:
         mock_settings.redis_url = None
@@ -603,8 +625,8 @@ def test_stats_independence():
             service1 = CacheService()
             service2 = CacheService()
 
-            service1.get("key1")
-            service2.get("key2")
+            await service1.get("key1")
+            await service2.get("key2")
 
             assert service1.stats["misses"] == 1
             assert service2.stats["misses"] == 1

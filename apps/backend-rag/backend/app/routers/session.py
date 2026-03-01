@@ -82,7 +82,7 @@ async def update_session(
     service: SessionService = Depends(get_session_service),
 
 
-):
+) -> dict[str, Any]:
     """Update conversation history for a session"""
     try:
         success = await service.update_history(session_id, request.history)
@@ -103,7 +103,7 @@ async def update_session_with_ttl(
     service: SessionService = Depends(get_session_service),
 
 
-):
+) -> dict[str, Any]:
     """Update session with custom TTL"""
     try:
         success = await service.update_history_with_ttl(
@@ -137,7 +137,7 @@ async def extend_session_ttl(
     service: SessionService = Depends(get_session_service),
 
 
-):
+) -> dict[str, Any]:
     """Extend session TTL"""
     try:
         success = await service.extend_ttl(session_id)
@@ -154,7 +154,7 @@ async def extend_session_ttl_custom(
     service: SessionService = Depends(get_session_service),
 
 
-):
+) -> dict[str, Any]:
     """Extend session TTL to custom duration"""
     try:
         success = await service.extend_ttl_custom(session_id, request.ttl_hours)
@@ -187,7 +187,7 @@ async def export_session(
     service: SessionService = Depends(get_session_service),
 
 
-):
+) -> dict[str, Any]:
     """Export session conversation"""
     try:
         exported = await service.export_session(session_id, format)

@@ -297,7 +297,7 @@ export default function ArticleComposerPage() {
     setIsEditing(false);
   };
 
-  const updateEditedField = (path: string, value: any) => {
+  const updateEditedField = (path: string, value: unknown) => {
     if (!editedResult) return;
     const newResult = JSON.parse(JSON.stringify(editedResult));
     const parts = path.split(".");

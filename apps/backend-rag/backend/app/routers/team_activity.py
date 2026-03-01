@@ -237,7 +237,7 @@ async def get_daily_hours(
 
 
     _admin: dict = Depends(get_admin_user),
-):
+) -> list[Any]:
     """
     Get work hours for a specific date (ADMIN ONLY)
 
@@ -269,7 +269,7 @@ async def get_weekly_summary(
 
 
     _admin: dict = Depends(get_admin_user),
-):
+) -> list[Any]:
     """
     Get weekly work summary (ADMIN ONLY)
 
@@ -301,7 +301,7 @@ async def get_monthly_summary(
 
 
     _admin: dict = Depends(get_admin_user),
-):
+) -> list[Any]:
     """
     Get monthly work summary (ADMIN ONLY)
 
@@ -335,7 +335,7 @@ async def export_timesheet(
     end_date: str = Query(..., description="End date (YYYY-MM-DD)"),
     format: str = Query("csv", description="Export format (csv only for now)"),
     _admin: dict = Depends(get_admin_user),
-):
+) -> Response:
     """
     Export timesheet data (ADMIN ONLY)
 

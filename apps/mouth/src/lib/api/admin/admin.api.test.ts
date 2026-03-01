@@ -65,7 +65,7 @@ describe("AdminApi", () => {
     });
 
     it("should get daily hours with date", async () => {
-      const mockResponse: any[] = [];
+      const mockResponse: unknown[] = [];
       mockRequest.mockResolvedValueOnce(mockResponse);
 
       await adminApi.getDailyHours("2024-01-01");
@@ -103,7 +103,7 @@ describe("AdminApi", () => {
     });
 
     it("should get weekly summary with weekStart", async () => {
-      const mockResponse: any[] = [];
+      const mockResponse: unknown[] = [];
       mockRequest.mockResolvedValueOnce(mockResponse);
 
       await adminApi.getWeeklySummary("2024-01-01");
@@ -141,7 +141,7 @@ describe("AdminApi", () => {
     });
 
     it("should get monthly summary with monthStart", async () => {
-      const mockResponse: any[] = [];
+      const mockResponse: unknown[] = [];
       mockRequest.mockResolvedValueOnce(mockResponse);
 
       await adminApi.getMonthlySummary("2024-01-01");

@@ -61,18 +61,6 @@ def mock_memory_cache():
     return cache
 
 
-@pytest.fixture
-def mock_auto_crm_service():
-    """Mock AutoCRMService"""
-    service = MagicMock()
-    service.process_conversation = AsyncMock(
-        return_value={
-            "processed": True,
-            "client_id": 123,
-            "client_created": True,
-        }
-    )
-    return service
 
 
 @pytest.fixture
@@ -109,7 +97,6 @@ def test_init_with_pool(mock_db_pool):
     service = ConversationService(db_pool=pool)
 
     assert service.db_pool == pool
-    assert service._auto_crm_service is None
 
 
 def test_init_without_pool():
@@ -117,74 +104,6 @@ def test_init_without_pool():
     service = ConversationService(db_pool=None)
 
     assert service.db_pool is None
-    assert service._auto_crm_service is None
-
-
-# ============================================================================
-# Tests for _get_auto_crm
-# ============================================================================
-
-
-def test_get_auto_crm_success(conversation_service, mock_auto_crm_service):
-    """Test lazy loading of Auto-CRM service successfully"""
-    # Mock the import at the module level
-    with patch(
-        "backend.services.crm.auto_crm_service.get_auto_crm_service",
-        return_value=mock_auto_crm_service,
-    ):
-        result = conversation_service._get_auto_crm()
-
-        assert result == mock_auto_crm_service
-        assert conversation_service._auto_crm_service == mock_auto_crm_service
-
-
-def test_get_auto_crm_cached(conversation_service, mock_auto_crm_service):
-    """Test that Auto-CRM service is cached after first load"""
-    # Mock the import at the module level
-    with patch(
-        "backend.services.crm.auto_crm_service.get_auto_crm_service",
-        return_value=mock_auto_crm_service,
-    ) as mock_get_service:
-        # First call
-        result1 = conversation_service._get_auto_crm()
-        # Second call
-        result2 = conversation_service._get_auto_crm()
-
-        assert result1 == result2 == mock_auto_crm_service
-        # get_auto_crm_service should only be called once
-        assert mock_get_service.call_count == 1
-
-
-def test_get_auto_crm_import_error(conversation_service):
-    """Test handling of ImportError when loading Auto-CRM"""
-    # Patch builtins to make the import fail
-    with patch("builtins.__import__", side_effect=ImportError("Module not found")):
-        result = conversation_service._get_auto_crm()
-
-        assert result is None
-        assert conversation_service._auto_crm_service is False
-
-
-def test_get_auto_crm_general_exception(conversation_service):
-    """Test handling of general exception when loading Auto-CRM"""
-    # Mock the import to raise an exception
-    with patch(
-        "backend.services.crm.auto_crm_service.get_auto_crm_service",
-        side_effect=Exception("Unexpected error"),
-    ):
-        result = conversation_service._get_auto_crm()
-
-        assert result is None
-        assert conversation_service._auto_crm_service is False
-
-
-def test_get_auto_crm_returns_none_when_cached_false(conversation_service):
-    """Test that _get_auto_crm returns None when cached value is False"""
-    conversation_service._auto_crm_service = False
-
-    result = conversation_service._get_auto_crm()
-
-    assert result is None
 
 
 # ============================================================================
@@ -288,81 +207,6 @@ async def test_save_conversation_with_metadata(
     assert call_args[4] == metadata
 
 
-@pytest.mark.asyncio
-async def test_save_conversation_with_auto_crm(
-    conversation_service,
-    mock_db_pool,
-    mock_memory_cache,
-    mock_auto_crm_service,
-    sample_messages,
-):
-    """Test that Auto-CRM is triggered on successful DB save"""
-    pool, conn = mock_db_pool
-    conn.fetchrow.return_value = {"id": 50}
-
-    crm_result = {
-        "processed": True,
-        "client_id": 999,
-        "client_created": True,
-    }
-    mock_auto_crm_service.process_conversation.return_value = crm_result
-
-    with patch(
-        "backend.services.misc.conversation_service.get_memory_cache",
-        return_value=mock_memory_cache,
-    ):
-        with patch.object(
-            conversation_service, "_get_auto_crm", return_value=mock_auto_crm_service
-        ):
-            result = await conversation_service.save_conversation(
-                user_email="test@example.com",
-                messages=sample_messages,
-                session_id="session-123",
-            )
-
-    # Verify Auto-CRM was called
-    mock_auto_crm_service.process_conversation.assert_called_once()
-    call_kwargs = mock_auto_crm_service.process_conversation.call_args[1]
-    assert call_kwargs["conversation_id"] == 50
-    assert call_kwargs["messages"] == sample_messages
-    assert call_kwargs["user_email"] == "test@example.com"
-    assert call_kwargs["team_member"] == "system"
-    assert call_kwargs["db_pool"] == pool
-
-    # Verify CRM result in response
-    assert result["crm"] == crm_result
-
-
-@pytest.mark.asyncio
-async def test_save_conversation_with_auto_crm_team_member(
-    conversation_service,
-    mock_db_pool,
-    mock_memory_cache,
-    mock_auto_crm_service,
-    sample_messages,
-):
-    """Test that team_member from metadata is passed to Auto-CRM"""
-    pool, conn = mock_db_pool
-    conn.fetchrow.return_value = {"id": 60}
-
-    metadata = {"team_member": "jane@example.com"}
-
-    with patch(
-        "backend.services.misc.conversation_service.get_memory_cache",
-        return_value=mock_memory_cache,
-    ):
-        with patch.object(
-            conversation_service, "_get_auto_crm", return_value=mock_auto_crm_service
-        ):
-            await conversation_service.save_conversation(
-                user_email="test@example.com",
-                messages=sample_messages,
-                metadata=metadata,
-            )
-
-    # Verify team_member was passed
-    call_kwargs = mock_auto_crm_service.process_conversation.call_args[1]
-    assert call_kwargs["team_member"] == "jane@example.com"
 
 
 # ============================================================================
@@ -395,9 +239,6 @@ async def test_save_conversation_db_error_falls_back_to_memory(
     # Verify memory cache was still called
     assert mock_memory_cache.add_message.call_count == 3
 
-    # Verify Auto-CRM was not called
-    assert result["crm"] == {}
-
 
 @pytest.mark.asyncio
 async def test_save_conversation_no_db_pool(
@@ -417,7 +258,6 @@ async def test_save_conversation_no_db_pool(
     assert result["success"] is True
     assert result["conversation_id"] == 0
     assert result["persistence_mode"] == "memory_fallback"
-    assert result["crm"] == {}
 
     # Memory cache should still work
     assert mock_memory_cache.add_message.call_count == 3
@@ -448,85 +288,6 @@ async def test_save_conversation_memory_cache_error(
     assert result["persistence_mode"] == "db"
 
 
-@pytest.mark.asyncio
-async def test_save_conversation_auto_crm_error(
-    conversation_service,
-    mock_db_pool,
-    mock_memory_cache,
-    sample_messages,
-):
-    """Test that Auto-CRM errors don't break the save operation"""
-    pool, conn = mock_db_pool
-    conn.fetchrow.return_value = {"id": 30}
-
-    mock_crm = MagicMock()
-    mock_crm.process_conversation = AsyncMock(side_effect=Exception("CRM error"))
-
-    with patch(
-        "backend.services.misc.conversation_service.get_memory_cache",
-        return_value=mock_memory_cache,
-    ):
-        with patch.object(conversation_service, "_get_auto_crm", return_value=mock_crm):
-            result = await conversation_service.save_conversation(
-                user_email="test@example.com",
-                messages=sample_messages,
-            )
-
-    # Conversation should still be saved
-    assert result["success"] is True
-    assert result["conversation_id"] == 30
-
-    # CRM result should indicate error
-    assert result["crm"]["processed"] is False
-    assert "error" in result["crm"]
-
-
-@pytest.mark.asyncio
-async def test_save_conversation_no_auto_crm_available(
-    conversation_service, mock_db_pool, mock_memory_cache, sample_messages
-):
-    """Test behavior when Auto-CRM is not available"""
-    pool, conn = mock_db_pool
-    conn.fetchrow.return_value = {"id": 35}
-
-    with patch(
-        "backend.services.misc.conversation_service.get_memory_cache",
-        return_value=mock_memory_cache,
-    ):
-        with patch.object(conversation_service, "_get_auto_crm", return_value=None):
-            result = await conversation_service.save_conversation(
-                user_email="test@example.com",
-                messages=sample_messages,
-            )
-
-    # Should save successfully without CRM
-    assert result["success"] is True
-    assert result["crm"]["processed"] is False
-    assert result["crm"]["reason"] == "auto-crm not available"
-
-
-@pytest.mark.asyncio
-async def test_save_conversation_empty_messages(
-    conversation_service, mock_db_pool, mock_memory_cache
-):
-    """Test saving conversation with empty messages list"""
-    pool, conn = mock_db_pool
-    conn.fetchrow.return_value = {"id": 40}
-
-    with patch(
-        "backend.services.misc.conversation_service.get_memory_cache",
-        return_value=mock_memory_cache,
-    ):
-        with patch.object(conversation_service, "_get_auto_crm", return_value=None):
-            result = await conversation_service.save_conversation(
-                user_email="test@example.com",
-                messages=[],
-            )
-
-    # Should save but not trigger CRM (no messages)
-    assert result["success"] is True
-    assert result["messages_saved"] == 0
-    assert result["crm"]["processed"] is False
 
 
 # ============================================================================

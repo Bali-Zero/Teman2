@@ -348,7 +348,7 @@ async def list_subscribers(
     limit: int = Query(100, le=500),
     offset: int = Query(0),
     pool=Depends(get_database_pool),
-):
+) -> dict[str, Any]:
     """
     List newsletter subscribers (admin endpoint).
     """
@@ -421,7 +421,7 @@ async def log_newsletter_send(
     pool=Depends(get_database_pool),
 
 
-):
+) -> dict[str, Any]:
     """
     Log a newsletter send event (admin endpoint).
     """

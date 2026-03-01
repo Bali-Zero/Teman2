@@ -34,7 +34,7 @@ async def get_work_patterns(
 
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
     service: TeamAnalyticsService = Depends(get_team_analytics_service),
-):
+) -> dict[str, Any]:
     """Analyze work hour patterns and habits"""
     try:
         patterns = await service.analyze_work_patterns(user_email, days)
@@ -50,7 +50,7 @@ async def get_productivity_scores(
 
 
     service: TeamAnalyticsService = Depends(get_team_analytics_service),
-):
+) -> dict[str, Any]:
     """Calculate productivity scores for team members"""
     try:
         scores = await service.calculate_productivity_scores(days)
@@ -66,7 +66,7 @@ async def get_burnout_signals(
 
 
     service: TeamAnalyticsService = Depends(get_team_analytics_service),
-):
+) -> dict[str, Any]:
     """Detect early warning signs of burnout"""
     try:
         signals = await service.detect_burnout_signals(user_email)
@@ -83,7 +83,7 @@ async def get_performance_trends(
 
 
     service: TeamAnalyticsService = Depends(get_team_analytics_service),
-):
+) -> dict[str, Any]:
     """Analyze performance trends over time"""
     try:
         trends = await service.analyze_performance_trends(user_email, weeks)
@@ -99,7 +99,7 @@ async def get_workload_balance(
 
 
     service: TeamAnalyticsService = Depends(get_team_analytics_service),
-):
+) -> dict[str, Any]:
     """Analyze workload distribution across team"""
     try:
         balance = await service.analyze_workload_balance(days)
@@ -116,7 +116,7 @@ async def get_optimal_hours(
 
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
     service: TeamAnalyticsService = Depends(get_team_analytics_service),
-):
+) -> dict[str, Any]:
     """Identify most productive time windows"""
     try:
         optimal = await service.identify_optimal_hours(user_email, days)
@@ -132,7 +132,7 @@ async def get_team_insights(
 
 
     service: TeamAnalyticsService = Depends(get_team_analytics_service),
-):
+) -> dict[str, Any]:
     """Generate comprehensive team collaboration insights"""
     try:
         insights = await service.generate_team_insights(days)

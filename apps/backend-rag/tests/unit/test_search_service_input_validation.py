@@ -38,7 +38,7 @@ class TestSearchServiceInputValidation:
     def mock_embedder(self):
         """Create mock embedder"""
         mock_embedder = MagicMock()
-        mock_embedder.generate_query_embedding = MagicMock(return_value=[0.1] * 384)
+        mock_embedder.generate_query_embedding = AsyncMock(return_value=[0.1] * 384)
         mock_embedder.provider = "test"
         mock_embedder.dimensions = 384
         return mock_embedder

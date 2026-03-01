@@ -43,7 +43,7 @@ async def get_workflow_dashboard(
 
     repo: WorkflowAnalyticsRepository = Depends(_get_repo),
     current_user=Depends(_verify_founder_access),
-):
+) -> Any:
     """
     Full workflow analytics dashboard summary.
     Combines follow rate, top workflows, and volume data.
@@ -62,7 +62,7 @@ async def get_top_workflows(
     days: int = Query(7, ge=1, le=90),
     repo: WorkflowAnalyticsRepository = Depends(_get_repo),
     current_user=Depends(_verify_founder_access),
-):
+) -> Any:
     """Top N most generated workflow types."""
     try:
         return await repo.get_top_workflows(limit=limit, days=days)
@@ -78,7 +78,7 @@ async def get_workflow_volume(
     days: int = Query(7, ge=1, le=90),
     repo: WorkflowAnalyticsRepository = Depends(_get_repo),
     current_user=Depends(_verify_founder_access),
-):
+) -> Any:
     """Workflow generation volume over time (hourly or daily buckets)."""
     try:
         return await repo.get_workflow_volume(granularity=granularity, days=days)
@@ -103,7 +103,7 @@ async def submit_workflow_feedback(
 
 
     current_user=Depends(get_current_user),
-):
+) -> dict[str, Any]:
     """
     Record user feedback for a generated workflow.
     Any authenticated user can submit feedback.

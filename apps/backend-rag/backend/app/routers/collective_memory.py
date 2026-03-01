@@ -37,7 +37,7 @@ async def contribute_fact(
 
 
     db_pool=Depends(get_db_pool),
-):
+) -> dict[str, Any]:
     """
     Contribute a fact to collective memory.
 
@@ -65,7 +65,7 @@ async def refute_fact(
 
 
     db_pool=Depends(get_db_pool),
-):
+) -> dict[str, Any]:
     """
     Refute a collective memory fact.
 
@@ -90,7 +90,7 @@ async def get_collective_facts(
     db_pool=Depends(get_db_pool),
 
 
-):
+) -> dict[str, Any]:
     """
     Get all promoted collective facts.
 

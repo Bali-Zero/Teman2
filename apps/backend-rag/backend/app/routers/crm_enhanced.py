@@ -317,7 +317,7 @@ async def get_client_profile(
     client_id: int, pool=Depends(get_database_pool), current_user: dict = Depends(get_current_user)
 
 
-):
+) -> dict[str, Any]:
     """
     Get enhanced client profile with family members, documents, and expiry alerts.
     RBAC REMOVED: All authenticated users can view all client profiles.
@@ -461,7 +461,7 @@ async def update_client_profile(
 
 
     current_user: dict = Depends(get_current_user),
-):
+) -> dict[str, Any]:
     """
     Update client profile fields (avatar, Google Drive folder, etc.)
     RBAC REMOVED: All authenticated users can update client profiles.
@@ -523,7 +523,7 @@ async def get_family_members(
     client_id: int, pool=Depends(get_database_pool), current_user: dict = Depends(get_current_user)
 
 
-):
+) -> list[Any]:
     """
     Get all family members for a client.
     RBAC REMOVED: All authenticated users can view family members.
@@ -571,7 +571,7 @@ async def create_family_member(
 
 
     current_user: dict = Depends(get_current_user),
-):
+) -> dict[str, Any]:
     """
     Add a family member to a client.
     RBAC REMOVED: All authenticated users can create family members.
@@ -639,7 +639,7 @@ async def update_family_member(
 
 
     current_user: dict = Depends(get_current_user),
-):
+) -> dict[str, Any]:
     """
     Update a family member.
     RBAC REMOVED: All authenticated users can update family members.
@@ -696,7 +696,7 @@ async def delete_family_member(
 
 
     current_user: dict = Depends(get_current_user),
-):
+) -> dict[str, Any]:
     """
     Delete a family member.
     RBAC REMOVED: All authenticated users can delete family members.
@@ -729,7 +729,7 @@ async def get_client_documents(
     include_archived: bool = Query(False, description="Include archived documents"),
     pool=Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-):
+) -> list[Any]:
     """
     Get all documents for a client, optionally filtered by category.
     RBAC REMOVED: All authenticated users can view documents.
@@ -779,7 +779,7 @@ async def create_document(
 
 
     current_user: dict = Depends(get_current_user),
-):
+) -> dict[str, Any]:
     """
     Add a document to a client. Auto-triggers OCR for passport documents.
     RBAC REMOVED: All authenticated users can create documents.
@@ -839,7 +839,7 @@ async def create_documents_bulk(
 
 
     current_user: dict = Depends(get_current_user),
-):
+) -> dict[str, Any]:
     """
     Bulk insert documents for a client - optimized for migration.
     RBAC REMOVED: All authenticated users can bulk create documents.
@@ -969,7 +969,7 @@ async def update_document(
 
 
     current_user: dict = Depends(get_current_user),
-):
+) -> dict[str, Any]:
     """
     Update a document.
     RBAC REMOVED: All authenticated users can update documents.
@@ -1027,7 +1027,7 @@ async def archive_document(
 
     pool=Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-):
+) -> dict[str, Any]:
     """
     Archive or delete a document.
     RBAC REMOVED: All authenticated users can archive/delete documents.
@@ -1087,7 +1087,7 @@ async def get_all_expiry_alerts(
     limit: int = Query(100, le=500),
     pool=Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-):
+) -> list[Any]:
     """
     Get all expiry alerts across all clients (for team dashboard).
     RBAC REMOVED: All authenticated users can view all expiry alerts.

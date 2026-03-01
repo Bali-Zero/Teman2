@@ -106,7 +106,7 @@ async def run_conversation_trainer(
     days_back: int = Query(default=7, ge=1, le=365, description="Days to look back (1-365)"),
 
 
-):
+) -> AgentExecutionResponse:
     """
     🤖 Run Conversation Quality Trainer Agent
 
@@ -275,7 +275,7 @@ async def run_knowledge_graph_builder(
 
 
     init_schema: bool = Query(default=False, description="Initialize database schema"),
-):
+) -> AgentExecutionResponse:
     """
     🕸️ Run Knowledge Graph Builder Agent
 
@@ -322,7 +322,7 @@ async def extract_kg_sample(
 
 
     sample_size: int = Query(default=50, ge=10, le=200, description="Number of chunks to sample"),
-):
+) -> dict[str, Any]:
     """
     🔬 Extract KG sample from Qdrant for review (DRY RUN)
 
@@ -460,7 +460,7 @@ async def persist_kg_sample(
 
 
     sample_size: int = Query(default=50, ge=10, le=200),
-):
+) -> dict[str, Any]:
     """
     💾 Persist KG sample to database (LIVE)
 

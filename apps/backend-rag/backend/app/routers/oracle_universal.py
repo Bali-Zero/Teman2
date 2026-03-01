@@ -146,7 +146,7 @@ async def hybrid_oracle_query(
 
 
     current_user: dict = Depends(get_current_user),
-):
+) -> OracleQueryResponse:
     """
     Ultra Hybrid Oracle Query - v5.3 (Refactored)
     Integrates Qdrant search, Google Drive, and Gemini reasoning via OracleService.

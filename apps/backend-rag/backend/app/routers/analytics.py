@@ -47,7 +47,7 @@ async def get_completion_rates(
     end_date: date | None = Query(None),
     db_pool=Depends(get_database_pool),
     current_user=Depends(verify_founder_access),
-):
+) -> Any:
     """
     Get practice completion rates.
 
@@ -72,7 +72,7 @@ async def get_response_times(
     end_date: date | None = Query(None),
     db_pool=Depends(get_database_pool),
     current_user=Depends(verify_founder_access),
-):
+) -> Any:
     """
     Get average response times (inquiry to start, start to completion).
 
@@ -95,7 +95,7 @@ async def get_sla_compliance(
     end_date: date | None = Query(None),
     db_pool=Depends(get_database_pool),
     current_user=Depends(verify_founder_access),
-):
+) -> Any:
     """
     Get SLA compliance rates (practices completed within expected duration).
 
@@ -118,7 +118,7 @@ async def get_revenue_metrics(
     end_date: date | None = Query(None),
     db_pool=Depends(get_database_pool),
     current_user=Depends(verify_founder_access),
-):
+) -> Any:
     """
     Get revenue metrics by practice type.
 
@@ -142,7 +142,7 @@ async def get_monthly_report(
 
 
     current_user=Depends(verify_founder_access),
-):
+) -> Any:
     """
     Generate comprehensive monthly analytics report.
 
