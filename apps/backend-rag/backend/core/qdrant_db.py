@@ -918,6 +918,54 @@ class QdrantClient:
             logger.error(f"Error deleting from Qdrant: {e}")
             raise
 
+    async def scroll(
+        self,
+        limit: int = 10,
+        metadata_filter: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        """
+        Scroll through points in the collection with optional filtering.
+
+        Args:
+            limit: Maximum number of points to return
+            metadata_filter: Optional filter dict (e.g., {"agent": "main"})
+
+        Returns:
+            List of points with id and payload: [{"id": "...", "payload": {...}}, ...]
+        """
+        try:
+            client = await self._get_client()
+            url = f"/collections/{self.collection_name}/points/scroll"
+
+            payload = {"limit": limit, "with_payload": True, "with_vectors": False}
+
+            # Add filter if provided
+            if metadata_filter:
+                qdrant_filter = self._convert_filter_to_qdrant_format(metadata_filter)
+                if qdrant_filter:
+                    payload["filter"] = qdrant_filter
+
+            try:
+                response = await client.post(url, json=payload)
+                response.raise_for_status()
+
+                data = response.json().get("result", {})
+                points = data.get("points", [])
+
+                # Return list of points with id and payload
+                return [{"id": str(p["id"]), "payload": p.get("payload", {})} for p in points]
+
+            except httpx.HTTPStatusError as e:
+                logger.error(f"Qdrant scroll failed: {e.response.status_code}")
+                return []
+            except Exception as e:
+                logger.error(f"Qdrant scroll request error: {e}")
+                return []
+
+        except Exception as e:
+            logger.error(f"Error scrolling Qdrant collection: {e}")
+            return []
+
     async def peek(
         self,
         limit: int = 10,
