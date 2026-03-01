@@ -69,9 +69,17 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
             if alert_service is not None:
                 from backend.app.core.config import settings
 
+                # Webhook paths do AI processing (15-30s normal), skip latency alerts
+                skip_latency = request.url.path in (
+                    "/health",
+                    "/webhook/instagram",
+                    "/webhook/whatsapp",
+                    "/webhook/telegram",
+                    "/webhook/twitter",
+                )
                 if (
                     duration_ms > settings.latency_alert_threshold_ms
-                    and request.url.path != "/health"
+                    and not skip_latency
                 ):
                     # Run in background to not block response
                     try:
@@ -135,6 +143,22 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         user_agent = request.headers.get("user-agent", "Unknown")
 
+        # Suppress noisy logs for known non-critical patterns
+        _suppressed_patterns = {
+            401: ("/api/dashboard/",),  # Browser tabs with expired JWT
+            404: ("/api/drive/",),  # Deleted Drive folders
+        }
+        is_suppressed = any(
+            path.startswith(p)
+            for p in _suppressed_patterns.get(status_code, ())
+        )
+
+        if is_suppressed:
+            logger.debug(
+                f"[{request_id}] {method} {path} → {status_code} (suppressed)"
+            )
+            return
+
         # Log error
         logger.warning(
             f"[{request_id}] {method} {path} → {status_code} "
@@ -145,10 +169,14 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
         alert_service = self._resolve_alert_service(request)
         if alert_service is not None:
             # Only alert for:
-            # - All 5xx errors
+            # - All 5xx errors (except 503 transient)
             # - 429 (Too Many Requests) - potential DoS
             # - 403 (Forbidden) - potential security issue
-            should_alert = status_code >= 500 or status_code == 429 or status_code == 403
+            should_alert = (
+                (status_code >= 500 and status_code != 503)
+                or status_code == 429
+                or status_code == 403
+            )
 
             if should_alert:
                 try:
