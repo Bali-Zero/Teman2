@@ -1,16 +1,18 @@
 # AI ONBOARDING GUIDE - Nuzantara Project
 
-**Last Updated:** 2026-02-21
+**Last Updated:** 2026-03-01
 **Purpose:** Quick-start guide for AI assistants working on Project Nuzantara
 
 **System Stats:**
 
-- Router Files: 78
-- Services: 244 Python files
-- Test Files: 922 (415 primary + 506 secondary)
-- Qdrant Collections: 7 collections, 58,880 vectors total
+- Router Files: 86
+- Services: 236 Python files
+- Test Files: 414
+- Qdrant Collections: 9 live on Fly.io (11 defined in code), 66,595 total documents
 - Knowledge Graph: 56,113 nodes, 161,173 edges (PostgreSQL)
-- Fly.io: Version 2023, 3 machines (Singapore), all healthy
+- Fly.io: 3 machines (Singapore), all healthy
+- DB Migrations: 060
+- MCP Server: 96 tools, 10 prompts, 5 resources, 8 workflow chains
 - Core Test Pass Rate: 100% (KG 82/82, Channels 43/43, RAG 244/244)
 
 > **READ THIS FIRST** before making any changes to the codebase.
@@ -22,10 +24,11 @@
 When starting a new session, verify you understand:
 
 - [ ] **Virtualenv:** `.venv` created and activated (`source .venv/bin/activate`)
-- [ ] **Project Structure:** Monorepo with `apps/backend-rag` (FastAPI) and `apps/mouth` (Next.js)
+- [ ] **Project Structure:** Monorepo with 14 apps, core: `apps/backend-rag` (FastAPI) and `apps/mouth` (Next.js)
 - [ ] **Golden Rules:** No root execution, absolute imports, async-first, type hints required
 - [ ] **Critical Knowledge:** Embedding model must be `text-embedding-3-small`, KBLI has flat payload
 - [ ] **Deployment:** Backend on Fly.io (`nuzantara-rag`, Singapore), Frontend on Vercel
+- [ ] **Pro <-> Air connectivity:** Both machines reachable via `ssh air` / `ssh pro` (see [`docs/PRO_AIR_CONNECTION.md`](PRO_AIR_CONNECTION.md))
 
 ---
 
@@ -234,10 +237,19 @@ The Knowledge Graph contains `HAS_FEE` relationships with **government fees** (P
 
 **File:** `backend/middleware/hybrid_auth.py`
 
-Public endpoints use `path.startswith(endpoint)` matching. Currently public:
+Public endpoints use `path.startswith(endpoint)` matching. **40 public endpoint patterns** including:
 
 - `/api/v1/kbli-notebook/` (KBLI search, inspect, chat)
-- `/health`, `/health/detailed`, `/health/ready`, `/health/live`
+- `/health`, `/api/health` (health checks)
+- `/webhook/whatsapp`, `/webhook/instagram`, `/webhook/twitter` (channel webhooks)
+- `/api/agentic-rag/stream` (chat streaming)
+- `/api/blog/` (blog/marketing)
+- `/api/portal/invite/` (portal invitations)
+- `/api/auth/team/login`, `/api/auth/login` (authentication)
+- Various OAuth callbacks (Zoho, Google Drive)
+- Various test endpoints (`/test/*`)
+
+Protected infra (require admin API key): `/docs`, `/openapi.json`, `/redoc`, `/metrics`
 
 Agentic RAG (`/api/agentic-rag/query`) requires JWT authentication.
 
@@ -248,35 +260,76 @@ Agentic RAG (`/api/agentic-rag/query`) requires JWT authentication.
 ```
 nuzantara/
 ├── apps/
-│   ├── backend-rag/          # CORE: FastAPI Backend (Fly.io)
+│   ├── backend-rag/             # CORE: FastAPI Backend (Fly.io)
 │   │   ├── backend/
-│   │   │   ├── app/          # FastAPI entrypoint (main_cloud.py)
-│   │   │   │   └── routers/  # 68 route files
-│   │   │   ├── core/         # Config, Security, Logging
-│   │   │   ├── services/     # Business Logic (228 files)
-│   │   │   │   ├── rag/agentic/  # CORE: Orchestrator, ReAct, LLM Gateway
+│   │   │   ├── app/             # FastAPI entrypoint (main_cloud.py)
+│   │   │   │   ├── routers/     # 86 route files
+│   │   │   │   └── modules/     # identity, knowledge, notifications
+│   │   │   ├── channels/        # 5 channels: whatsapp, telegram, instagram, twitter, web
+│   │   │   ├── core/            # Config, Security, Logging
+│   │   │   ├── generals/        # Multi-agent task coordinator
+│   │   │   ├── prompts/         # Prompt Single Source of Truth (zantara_core.py)
+│   │   │   ├── services/        # Business Logic (236 files)
+│   │   │   │   ├── rag/agentic/ # CORE: Orchestrator, ReAct, LLM Gateway
 │   │   │   │   ├── knowledge_graph/  # KG extraction + query
-│   │   │   │   └── memory/       # Memory Orchestrator
-│   │   │   └── tests/        # 477 test files
-│   │   └── scripts/          # Maintenance + ingestion scripts
+│   │   │   │   ├── social/      # X/Twitter monitoring (NEW)
+│   │   │   │   ├── compliance/  # 5 compliance services
+│   │   │   │   ├── journey/     # 5 journey services
+│   │   │   │   └── memory/      # Memory Orchestrator
+│   │   │   └── migrations/      # 43 migration files (up to 060)
+│   │   ├── tests/               # 414 test files
+│   │   └── scripts/             # Maintenance + ingestion scripts
 │   │
-│   ├── mouth/                # Frontend: Next.js + React (Vercel)
+│   ├── mouth/                   # Frontend: Next.js + React (Vercel)
 │   │   └── src/
-│   │       ├── app/          # Pages (chat, portal, dashboard, documents)
-│   │       ├── components/   # UI components
-│   │       └── lib/          # API clients, store
+│   │       ├── app/             # 83 page routes (blog, workspace, portal, kbli)
+│   │       ├── components/      # UI components
+│   │       └── lib/             # API clients, store
 │   │
-│   ├── nuzantara-mcp/        # MCP Server (FastMCP, stdio transport)
-│   │   └── nuzantara_mcp/
-│   │       └── server.py     # 7 tools, 3 prompts, 1 resource
+│   ├── nuzantara-mcp/           # MCP Server v2.1 (FastMCP, stdio)
+│   │   └── nuzantara_mcp/       # 96 tools, 10 prompts, 5 resources, 8 chains
 │   │
-│   ├── bali-intel-scraper/   # News processing pipeline
-│   └── zantara-media/        # Editorial content system
+│   ├── nuzantara-mcp-advanced/  # Advanced MCP (Fly.io ops, diagnostics)
+│   ├── nuzantara-mcp-browser/   # Browser automation MCP
+│   ├── bali-intel-scraper/      # News processing pipeline
+│   ├── zantara-media/           # Editorial content system
+│   ├── graph-engine/            # Graph processing engine
+│   ├── kbli-voice/              # KBLI voice interface
+│   ├── admin-dashboard/         # Admin UI
+│   ├── webapp/                  # Web application
+│   ├── evaluator/               # Quality assurance
+│   └── web/                     # Web app variant
 │
-├── docs/                     # Documentation
-├── scripts/                  # Root-level utilities
-└── source_documents/         # KBLI JSON, legal PDFs
+├── packages/
+│   ├── core/                    # Core libraries
+│   └── kb/                      # Knowledge base
+│
+├── docs/                        # Documentation
+├── scripts/                     # Root-level utilities
+└── source_documents/            # KBLI JSON, legal PDFs
 ```
+
+---
+
+## QDRANT COLLECTIONS
+
+**9 collections live on Fly.io** (66,595 total documents), 11 defined in `CollectionManager` (`backend/services/ingestion/collection_manager.py`):
+
+| Collection | Priority | Docs | Purpose |
+| --- | --- | --- | --- |
+| `collective_memories` | high | dynamic | Conversation memories |
+| `bali_zero_pricing_hybrid` | high | 29 | Service pricing |
+| `bali_zero_team` | high | 22 | Team member profiles |
+| `visa_oracle` | high | 1,612 | Visa requirements |
+| `kbli_2025_final` | high | 8,886 | KBLI business codes (FLAT payload) |
+| `tax_genius` | high | 895 | Tax knowledge |
+| `legal_unified` | high | 5,041 | Legal documents |
+| `legal_unified_hybrid` | high | 47,959 | Legal hybrid search |
+| `tax_genius_hybrid` | high | 332 | Tax hybrid search |
+| `training_conversations_hybrid` | high | 2,898 | Training data |
+| `immigration_circulars` | high | 4 | Immigration circulars |
+
+**Aliases** (map to existing collections): `legal_architect`, `kb_indonesian`, `kbli_comprehensive`, `zantara_books`, `cultural_insights`, `tax_updates`, `tax_knowledge`, `property_listings`, `property_knowledge`, `legal_updates`, `legal_intelligence`.
 
 ---
 
@@ -289,14 +342,20 @@ cd apps/backend-rag
 fly deploy --strategy rolling
 ```
 
-- App: `nuzantara-rag` (2 machines, Singapore)
+- App: `nuzantara-rag` (3 machines, Singapore)
 - Health: `GET /health` shows runtime state
 - Secrets: `fly secrets list -a nuzantara-rag`
 - Logs: `fly logs -a nuzantara-rag`
+- **1 worker only** in Dockerfile (2 workers = OOM on 4GB VM)
+- **Lazy loading:** Heavy imports deferred to background init; health returns `"initializing"` while loading
 
 ### Frontend (Vercel)
 
 Auto-deploys from `apps/mouth/` on push to main. No manual deploy needed.
+
+**Vercel build notes:**
+- `outputFileTracingExcludes` in `next.config.ts` prevents 580 MB of public assets bundling into serverless functions
+- KBLI data must live inside `apps/mouth/data/` (not root `source_documents/`) for Vercel build access
 
 ### Git Commits
 
@@ -312,20 +371,35 @@ This is a known issue, not a hack. The hook validates JS/TS formatting which is 
 
 ## MCP SERVER (Nuzantara RAG)
 
-**Package:** `apps/nuzantara-mcp/` (FastMCP 2.x, stdio transport)
+**Package:** `apps/nuzantara-mcp/` (FastMCP 2.x, stdio transport, v2.1)
 
-Exposes the Fly.io backend as MCP tools for AI agents (OpenClaw, Claude Code).
+Full-spectrum AI business intelligence and automation platform. **96 tools** across 17 modules:
 
-**Tools:**
-| Tool | Endpoint | Auth |
-| --- | --- | --- |
-| `search_kbli` | `GET /api/v1/kbli-notebook/search` | Public |
-| `inspect_kbli` | `GET /api/v1/kbli-notebook/inspect/{code}` | Public |
-| `chat_kbli` | `POST /api/v1/kbli-notebook/chat` | Public |
-| `ask_legal` | `POST /api/agentic-rag/query` | JWT |
-| `check_health` | `GET /health` | Public |
-| `check_health_detailed` | `GET /health/detailed` | Public |
-| `get_qdrant_metrics` | `GET /health/metrics/qdrant` | Public |
+| Module | Capabilities |
+| --- | --- |
+| `crm` | Client management, practices, timelines |
+| `portal` | Client portal dashboard, messages, documents |
+| `intel` | Scraping, staging, publishing, search, trends |
+| `content` | Article composition, publishing, newsletters |
+| `analytics` | Completion rates, SLA, revenue, team productivity |
+| `knowledge` | KBLI search/inspect/chat, legal Q&A, visa types |
+| `comms` | Email, WhatsApp, Telegram |
+| `drive` | Google Drive files, folders, storage |
+| `workflows` | Execution plans, autonomous step approval |
+| `admin` | Clock in/out, team hours, admin logs, health |
+| `health` | System health, Qdrant metrics |
+| `journey` | Client journey tracking, pricing |
+| `pricing` | Service pricing, invoicing |
+| `compliance` | Regulatory compliance tracking |
+| `generals` | Multi-agent LAM memory, grounding |
+| `memory` | Episodic memory (save, recall, list, delete) |
+| `heartbeat` | 8 deterministic workflow chains |
+
+**8 Workflow Chains:** `daily_ops_autopilot`, `new_client_onboarding`, `practice_lifecycle_check`, `intel_pipeline`, `weekly_report`, `client_health_monitor`, `compliance_autopilot`, `journey_accelerator`
+
+**Additional MCP servers:**
+- `apps/nuzantara-mcp-advanced/` — Fly.io ops, deployment readiness, code search, diagnostics
+- `apps/nuzantara-mcp-browser/` — Browser automation
 
 **Run locally:**
 
@@ -338,26 +412,44 @@ nuzantara-mcp  # starts stdio server
 
 ---
 
+## COMMUNICATION CHANNELS
+
+**5 omnichannel integrations** in `backend/channels/`:
+
+| Channel | Adapter | Webhook |
+| --- | --- | --- |
+| WhatsApp | `whatsapp/adapter.py` | `/webhook/whatsapp` |
+| Telegram | `telegram/adapter.py` | `/api/telegram/webhook` |
+| Instagram | `instagram/adapter.py` | `/webhook/instagram` |
+| X/Twitter | `twitter/adapter.py` | `/webhook/twitter` |
+| Web Chat | `web/adapter.py` | `/api/webhook/chat` |
+
+Each channel has `adapter.py`, `config.py`, `formatter.py` following a consistent pattern.
+
+**NEW:** X/Twitter social monitoring via `services/social/x_monitor_service.py` + `routers/x_monitor.py`.
+
+---
+
 ## CHAT STREAMING (Unified Endpoint)
 
 **Endpoint:** `POST /api/agentic-rag/stream` (SSE)
 
 Single source of truth for all chat streaming. Features:
 
-- ✅ Timeout: 120s request, 300s idle, 600s max total
-- ✅ Abort handling via AbortController
-- ✅ 13+ event types (token, sources, metadata, thinking, tool_call, reasoning_step, etc.)
-- ✅ Vision support (base64 images)
-- ✅ Automatic conversation persistence
-- ✅ Correlation ID for end-to-end tracing
+- Timeout: 120s request, 300s idle, 600s max total
+- Abort handling via AbortController
+- 13+ event types (token, sources, metadata, thinking, tool_call, reasoning_step, etc.)
+- Vision support (base64 images)
+- Automatic conversation persistence
+- Correlation ID for end-to-end tracing
 
-**Frontend:** `useChatStreaming.ts` → `api.sendMessageStreaming()`
+**Frontend:** `useChatStreaming.ts` -> `api.sendMessageStreaming()`
 
 ---
 
 ## LANGGRAPH KNOWLEDGE GRAPH (PHASES 1-4 COMPLETE)
 
-**Status:** ✅ **PRODUCTION READY** (2026-02-09)
+**Status:** **PRODUCTION READY** (2026-02-09)
 
 **Implementation:** Agentic Knowledge Graph system built on LangGraph for intelligent query routing and workflow synthesis.
 
@@ -431,12 +523,6 @@ Single source of truth for all chat streaming. Features:
 - `backend/tests/services/rag/test_kg_subgraphs.py`
 - `backend/tests/services/rag/test_confidence.py`
 
-### Documentation
-
-- **Architecture Guide:** `docs/KG_LANGGRAPH_ARCHITECTURE.md` (1,100+ lines)
-- **Evolution Plan:** `memory/langgraph-kg-evolution-plan.md` (954 lines, 4 phases)
-- **Session Notes:** `CLAUDE.md` backend session update (2026-02-09)
-
 ### Confidence Scoring (Phase 2)
 
 **6-Factor Dynamic Scoring:**
@@ -450,10 +536,33 @@ Single source of truth for all chat streaming. Features:
 
 **Warning Levels:**
 
-- High: ≥0.80
-- Medium: ≥0.55
-- Low: ≥0.35
+- High: >=0.80
+- Medium: >=0.55
+- Low: >=0.35
 - Very Low: <0.35
+
+---
+
+## PROMPT ARCHITECTURE (Single Source of Truth)
+
+```
+backend/prompts/
+├── __init__.py              # Re-exports ZANTARA_MASTER_TEMPLATE, CREATOR_PERSONA, TEAM_PERSONA
+├── zantara_core.py          # THE file — all prompt sections as composable constants
+├── channel_overlays.py      # Per-channel config (word limits, markdown, emoji)
+├── few_shot_examples.py     # Consolidated few-shot examples
+├── zantara_persona.py       # Backward compat wrapper -> imports from zantara_core
+├── whatsapp_persona.py      # Dynamic builder for WhatsApp context -> imports from zantara_core
+└── zantara_prompt_builder.py # Legacy builder -> imports from zantara_core
+```
+
+**Rule:** To add/edit ANY Zantara prompt rule, edit ONLY `zantara_core.py`. All consumers import from it.
+
+**Sections in `zantara_core.py`:**
+`SECURITY_BOUNDARY` - `TOOL_USAGE_POLICY` - `SYSTEM_INSTRUCTIONS` - `KNOWLEDGE_GOVERNANCE` -
+`LANGUAGE_PROTOCOL` - `GREETING_RULES` - `CITATION_RULES` - `INTERNAL_MONOLOGUE` -
+`ESCALATION_PROTOCOL` - `CRASH_PROTOCOL` - `CLOSING_PHRASES` - `CREATOR_PERSONA` -
+`TEAM_PERSONA` - `ZANTARA_MASTER_TEMPLATE`
 
 ---
 
@@ -468,6 +577,8 @@ The system uses `evidence_score` (0.0-1.0) to decide responses:
 - **< 0.15** -> ABSTAIN (refuses to answer)
 - **0.15-0.6** -> Cautious response
 - **> 0.6** -> Normal response
+
+**Tools-available bypass:** If LLM had tools and produced an answer, trust it (fixes English query ABSTAIN bug, deployed v2131).
 
 ### Trusted Tools (Bypass Evidence Check)
 
@@ -502,6 +613,18 @@ PostgreSQL DATE fields must be converted explicitly when using asyncpg:
 date_value = row['date_field'].isoformat() if row['date_field'] else None
 ```
 
+### Lazy Loading (Fly.io Startup)
+
+**Problem:** Heavy Python imports (torch, sentence-transformers, 70+ routers) loaded synchronously caused crash-loops.
+
+**Solution:** Lazy imports + background init via `asyncio.create_task()` in `lifespan()`. Health returns `"initializing"` (HTTP 200) while services load.
+
+**Key files:**
+- `backend/app/setup/app_factory.py` — `_background_init()` + lazy router imports
+- `backend/app/setup/service_initializer.py` — All 20+ service imports inside functions
+- `backend/app/setup/router_registration.py` — All 70+ router imports inside `include_routers()`
+- `Dockerfile` — `--workers 1` (DO NOT change without upgrading VM)
+
 ---
 
 ## DEBUGGING PATTERNS
@@ -535,6 +658,7 @@ Common causes:
 1. Missing `PORT` env var -> Check `fly.toml`
 2. Missing `QDRANT_URL` -> Check secrets
 3. Database connection -> Check `DATABASE_URL`
+4. OOM with 2 workers -> Must use `--workers 1`
 
 ```bash
 fly logs -a nuzantara-rag
@@ -545,7 +669,7 @@ fly ssh console -a nuzantara-rag
 
 Other AI tools (Gemini, Windsurf, Cursor) have **repeatedly** broken production code by:
 
-- Removing imports they consider "unused" (e.g., `Any` from typing — caused production crash 2026-02-16)
+- Removing imports they consider "unused" (e.g., `Any` from typing -- caused production crash 2026-02-16)
 - Renaming/deleting functions (e.g., `get_logger`, `db_retry`, `invalidate_cache`)
 - Deleting entire modules (e.g., `backend.services.integrations.service`)
 
@@ -602,7 +726,7 @@ fly secrets list -a nuzantara-rag
 
 1. Create router in `backend/app/routers/`
 2. Add business logic in `backend/services/`
-3. Register router in `backend/app/main_cloud.py`
+3. Register router in `backend/app/setup/router_registration.py` (NOT `main_cloud.py`)
 4. Add tests in `backend/tests/`
 5. If endpoint should be public, add to `hybrid_auth.py` public endpoints list
 
@@ -619,6 +743,8 @@ Read `docs/operations/AGENTIC_RAG_FIXES.md` first (if it exists).
 ### Adding a New Qdrant Collection
 
 If the payload is flat (like KBLI), bypass `SearchService` and query Qdrant REST API directly. If nested (`text` + `metadata` keys), use `SearchService.search_collection()`.
+
+Collection config lives in `CollectionManager` (`backend/services/ingestion/collection_manager.py`).
 
 Always use `text-embedding-3-small` for embeddings. Verify with `GET /health`.
 
@@ -647,11 +773,11 @@ npm run dev
 
 ## PRE-DEPLOY CHECKLIST (CRITICAL)
 
-- [ ] `git diff --name-only HEAD -- apps/backend-rag/backend/` — No rogue changes
-- [ ] `python -c "from backend.app.dependencies import get_current_user; print('OK')"` — Import chain OK
-- [ ] `PYTHONPATH=. pytest backend/tests/services/rag/ -q` — Core KG tests pass
-- [ ] `fly deploy --strategy rolling` — Rolling deploy (not all-at-once)
-- [ ] `curl https://nuzantara-rag.fly.dev/health` — Health check after deploy
+- [ ] `git diff --name-only HEAD -- apps/backend-rag/backend/` -- No rogue changes
+- [ ] `python -c "from backend.app.dependencies import get_current_user; print('OK')"` -- Import chain OK
+- [ ] `PYTHONPATH=. pytest backend/tests/services/rag/ -q` -- Core KG tests pass
+- [ ] `fly deploy --strategy rolling` -- Rolling deploy (not all-at-once)
+- [ ] `curl https://nuzantara-rag.fly.dev/health` -- Health check after deploy
 
 ---
 
@@ -683,7 +809,9 @@ npm run dev
 7. **LangGraph KG is production-ready** - 82 tests passing, 4 subgraphs deployed, feature flag controlled
 8. **Test import chain before deploy** - `python -c "from backend.app.dependencies import get_current_user"` prevents production crashes
 9. **~448 unit test failures are PRE-EXISTING** - caused by rogue AI refactors, NOT by your changes. Core tests (KG, Channels, RAG) are 100%
-10. **Stats updated 2026-02-16** - 922 test files, 7 Qdrant collections, 58,880 vectors, Version 2023
+10. **Router registration** is in `backend/app/setup/router_registration.py`, NOT in `main_cloud.py`
+11. **Lazy loading** - backend uses deferred imports and background init. Health returns 200 during startup.
+12. **MCP server has 96+ tools** - not 7. Check `apps/nuzantara-mcp/` for the full inventory.
 
 **Remember:** This is a production system serving real clients. Be careful with changes, verify the embedding model matches, and test your work.
 
