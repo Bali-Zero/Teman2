@@ -464,7 +464,7 @@ async def list_pending_items(
 
 
 @router.get("/api/intel/staging/preview/{type}/{item_id}")
-async def preview_staging_item(type: str, item_id: str):
+async def preview_staging_item(type: str, item_id: str) -> Any:
     """Get full content of a staging item"""
     logger.info(
         "Preview staging item requested",
@@ -489,7 +489,7 @@ async def preview_staging_item(type: str, item_id: str):
 
 
 @router.post("/api/intel/staging/bulk-approve/{type}")
-async def bulk_approve_items(type: str, item_ids: list[str]):
+async def bulk_approve_items(type: str, item_ids: list[str]) -> Any:
     """Bulk approve multiple items"""
     logger.info(
         "Bulk approval requested",
@@ -525,7 +525,7 @@ async def bulk_approve_items(type: str, item_ids: list[str]):
 
 
 @router.post("/api/intel/staging/bulk-reject/{type}")
-async def bulk_reject_items(type: str, item_ids: list[str]):
+async def bulk_reject_items(type: str, item_ids: list[str]) -> Any:
     """Bulk reject multiple items"""
     logger.info(
         "Bulk rejection requested",
@@ -639,7 +639,7 @@ async def approve_staging_item(
 
 
 @router.put("/api/intel/staging/{type}/{item_id}")
-async def edit_staging_item(type: str, item_id: str, request: EditStagingItemRequest):
+async def edit_staging_item(type: str, item_id: str, request: EditStagingItemRequest) -> dict[str, Any]:
     """
     Edit staging item (title, content, category).
 
@@ -694,7 +694,7 @@ async def edit_staging_item(type: str, item_id: str, request: EditStagingItemReq
 
 
 @router.post("/api/intel/staging/{type}/{item_id}/cover")
-async def upload_cover_image(type: str, item_id: str, request: CoverImageUploadRequest):
+async def upload_cover_image(type: str, item_id: str, request: CoverImageUploadRequest) -> dict[str, Any]:
     """
     Upload cover image for staging item.
 
@@ -761,7 +761,7 @@ async def upload_cover_image(type: str, item_id: str, request: CoverImageUploadR
 
 
 @router.post("/api/intel/staging/reject/{type}/{item_id}")
-async def reject_staging_item(type: str, item_id: str):
+async def reject_staging_item(type: str, item_id: str) -> dict[str, Any]:
     """Reject item and move to archive"""
     logger.info(
         "Rejection started",
@@ -801,7 +801,7 @@ async def reject_staging_item(type: str, item_id: str):
 
 
 @router.post("/api/intel/staging/publish/{type}/{item_id}")
-async def publish_staging_item(type: str, item_id: str):
+async def publish_staging_item(type: str, item_id: str) -> dict[str, Any]:
     """
     Publish approved item to Qdrant knowledge base and register in anti-duplicate system.
 
@@ -857,7 +857,7 @@ async def publish_staging_item(type: str, item_id: str):
         try:
             from claude_validator import ClaudeValidator
 
-            published_url = f"https://balizero.com/{category}/{item_id}"
+            published_url = f"{settings.balizero_website_url}/{category}/{item_id}"
 
             ClaudeValidator.add_published_article(
                 title=title,
@@ -884,7 +884,7 @@ async def publish_staging_item(type: str, item_id: str):
             )
 
         # Step 3: Publish to GitHub/Vercel → balizero.com
-        published_url = f"https://balizero.com/{category}/{item_id}"
+        published_url = f"{settings.balizero_website_url}/{category}/{item_id}"
         github_commit_sha = None
         mdx_path = None
 
@@ -1056,7 +1056,7 @@ async def publish_staging_item(type: str, item_id: str):
 
 
 @router.get("/api/intel/metrics")
-async def get_system_metrics():
+async def get_system_metrics() -> Any:
     """Get real-time system metrics for System Pulse dashboard"""
     logger.info("System metrics requested", extra={"endpoint": "/api/intel/metrics"})
 
@@ -1191,7 +1191,7 @@ async def get_system_metrics():
 
 
 @router.post("/api/intel/search")
-async def search_intel(request: IntelSearchRequest):
+async def search_intel(request: IntelSearchRequest) -> dict[str, Any]:
     """Search intel news with semantic search"""
     try:
         # Generate query embedding
@@ -1282,7 +1282,7 @@ async def search_intel(request: IntelSearchRequest):
 
 
 @router.post("/api/intel/store")
-async def store_intel(request: IntelStoreRequest):
+async def store_intel(request: IntelStoreRequest) -> dict[str, Any]:
     """Store intel news item in Qdrant"""
     try:
         collection_name = INTEL_COLLECTIONS.get(request.collection)
@@ -1405,7 +1405,7 @@ async def get_critical_items(
 
 
 @router.get("/api/intel/trends")
-async def get_trends(category: str | None = None, _days: int = IntelConstants.TRENDS_ANALYSIS_DAYS):
+async def get_trends(category: str | None = None, _days: int = IntelConstants.TRENDS_ANALYSIS_DAYS) -> dict[str, Any]:
     """Get trending topics and keywords"""
     try:
         if category:
@@ -1444,7 +1444,7 @@ async def get_trends(category: str | None = None, _days: int = IntelConstants.TR
 
 
 @router.get("/api/intel/analytics")
-async def get_intelligence_analytics(days: int = IntelConstants.TRENDS_ANALYSIS_DAYS):
+async def get_intelligence_analytics(days: int = IntelConstants.TRENDS_ANALYSIS_DAYS) -> Any:
     """Get historical analytics and trends for Intelligence Center"""
     logger.info("Analytics requested", extra={"endpoint": "/api/intel/analytics", "days": days})
 
@@ -1458,7 +1458,7 @@ async def get_intelligence_analytics(days: int = IntelConstants.TRENDS_ANALYSIS_
 
 
 @router.get("/api/intel/stats/{collection}")
-async def get_collection_stats(collection: str):
+async def get_collection_stats(collection: str) -> dict[str, Any]:
     """Get statistics for a specific intel collection"""
     try:
         collection_name = INTEL_COLLECTIONS.get(collection)

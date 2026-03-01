@@ -278,13 +278,13 @@ def get_request_id() -> str:
 
 
 @router.on_event("startup")
-async def startup_event():
+async def startup_event() -> None:
     """Initialize cache service on startup"""
     await cache_service.initialize()
 
 
 @router.on_event("shutdown")
-async def shutdown_event():
+async def shutdown_event() -> None:
     """Close cache service on shutdown"""
     await cache_service.close()
 
@@ -521,7 +521,7 @@ async def compose_article(
 
 
 @router.get("/compose/status")
-async def compose_status():
+async def compose_status() -> dict[str, Any]:
     """Check if article composer is properly configured"""
     api_key = os.getenv("ANTHROPIC_API_KEY")
 
@@ -691,7 +691,7 @@ seoDescription: "{article.ai_summary}"
 
 
 @router.post("/publish", response_model=PublishResponse)
-async def publish_article(request: PublishRequest):
+async def publish_article(request: PublishRequest) -> PublishResponse:
     """
     Publish an enriched article to the Bali Zero website.
 
@@ -782,7 +782,7 @@ async def publish_article(request: PublishRequest):
 
             async with httpx.AsyncClient(timeout=10.0) as http_client:
                 indexnow_resp = await http_client.post(
-                    "https://api.indexnow.org/indexnow",
+                    settings.indexnow_api_url,
                     json={
                         "host": "balizero.com",
                         "key": "2633309a0003ec408c59ec48c952604f",
@@ -811,7 +811,7 @@ async def publish_article(request: PublishRequest):
 
                 async with httpx.AsyncClient(timeout=10.0) as http_client:
                     google_resp = await http_client.post(
-                        "https://indexing.googleapis.com/v3/urlNotifications:publish",
+                        settings.google_indexing_api_url,
                         headers={"Authorization": f"Bearer {credentials.token}"},
                         json={
                             "url": article_url,
@@ -851,7 +851,7 @@ async def publish_article(request: PublishRequest):
 
 
 @router.get("/publish/status")
-async def publish_status():
+async def publish_status() -> dict[str, Any]:
     """Check if article publishing is properly configured"""
     from backend.app.core.config import settings
     from backend.services.integrations.github_publisher import github_publisher
