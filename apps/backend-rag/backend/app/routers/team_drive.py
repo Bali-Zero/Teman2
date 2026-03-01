@@ -331,20 +331,9 @@ async def list_files(
     try:
         user_email = current_user.get("email", "")
 
-        # Determine context folder name for permission lookup
-        context_folder = None
-        if folder_id:
-            # Get the folder's name to use as context
-            try:
-                folder_path = await drive.get_folder_path(folder_id)
-                if folder_path:
-                    # Use the current folder's name as context
-                    context_folder = folder_path[-1]["name"] if folder_path else None
-            except Exception as e:
-                logger.warning(f"[TEAM_DRIVE] Could not get folder path: {e}")
-
-        # Get user's allowed folders for this context
-        allowed_folders, _ = await get_user_allowed_folders(user_email, pool, context_folder)
+        # Admin API keys bypass folder permission filtering
+        user_role = current_user.get("role", "")
+        is_admin = user_role == "admin"
 
         result = await drive.list_files(
             folder_id=folder_id,
@@ -355,20 +344,32 @@ async def list_files(
 
         files = result["files"]
 
-        # Apply folder filtering (at ALL levels, not just root)
-        filtered_files = []
-        for f in files:
-            # Allow all non-folder files
-            if f["type"] != "folder" or folder_matches_allowed(f["name"], allowed_folders):
-                filtered_files.append(f)
+        if not is_admin:
+            # Determine context folder name for permission lookup
+            context_folder = None
+            if folder_id:
+                try:
+                    folder_path = await drive.get_folder_path(folder_id)
+                    if folder_path:
+                        context_folder = folder_path[-1]["name"] if folder_path else None
+                except Exception as e:
+                    logger.warning(f"[TEAM_DRIVE] Could not get folder path: {e}")
 
-        if len(filtered_files) != len(files):
-            logger.info(
-                f"[TEAM_DRIVE] Filtered {len(files)} -> {len(filtered_files)} for {user_email} "
-                f"(context={context_folder})"
-            )
+            allowed_folders, _ = await get_user_allowed_folders(user_email, pool, context_folder)
 
-        files = filtered_files
+            # Apply folder filtering (at ALL levels, not just root)
+            filtered_files = []
+            for f in files:
+                if f["type"] != "folder" or folder_matches_allowed(f["name"], allowed_folders):
+                    filtered_files.append(f)
+
+            if len(filtered_files) != len(files):
+                logger.info(
+                    f"[TEAM_DRIVE] Filtered {len(files)} -> {len(filtered_files)} for {user_email} "
+                    f"(context={context_folder})"
+                )
+
+            files = filtered_files
 
         return FileListResponse(
             files=[FileItem(**f) for f in files],

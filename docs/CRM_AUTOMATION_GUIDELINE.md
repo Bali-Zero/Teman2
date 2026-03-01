@@ -73,11 +73,36 @@ MASTER_SHEET_ID    = "1CcsZmYOiajdWtTlgmoHNeCqBXhbLRZrQVQOBRs422oY"
 SHEET_NAME         = "Company"
 HEADER_ROW         = 9
 DATA_START_ROW     = 10
-CRM_ROOT_PATH      = "BALI ZERO/CRM/Company_CRM/"
+
+# Google Drive folder IDs (CRITICAL — you need these to navigate)
+BALI_ZERO_FOLDER   = "1hkOeV03YM5-sHbQhswYz809jsrnwC0At"
+CRM_FOLDER         = "1je2YOEzBf2APKDbAdaXo2MGIu4N5nAEl"
+COMPANY_CRM_FOLDER = "1rLlr2G7TdNUmmvQ_xN9pZQLbPrDFjUsW"   # ← START HERE
+
 SA_EMAIL           = "nuzantara-google-drive-sa@nuzantara.iam.gserviceaccount.com"
 
 STANDARD_FOLDERS   = ["AKTA", "NIB", "NPWP", "Profile Perseroan", "Other"]
 ```
+
+**To list all company folders**, call:
+```
+GET /api/drive/files?folder_id=1rLlr2G7TdNUmmvQ_xN9pZQLbPrDFjUsW
+```
+This returns all ~1,700 company folders with their IDs and names.
+
+**IMPORTANT — CURL WITH "!" IN JSON:**
+The `!` character in sheet ranges (e.g. `Company!A9:U`) causes JSON parse errors in bash/zsh.
+You MUST always write the JSON body with Python first:
+```bash
+python3 -c "
+import json
+data = {'spreadsheet_id': '1CcsZmYOiajdWtTlgmoHNeCqBXhbLRZrQVQOBRs422oY', 'range': 'Company!B10:U30'}
+with open('/tmp/req.json', 'w') as f: json.dump(data, f)
+"
+curl -s -H "X-API-Key: REDACTED-ROTATED-KEY" -H "Content-Type: application/json" \
+  https://nuzantara-rag.fly.dev/api/sheets/read -X POST -d @/tmp/req.json
+```
+This workaround is MANDATORY for every curl that contains `!` in the JSON body.
 
 ---
 
