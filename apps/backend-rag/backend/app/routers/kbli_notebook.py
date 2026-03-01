@@ -220,6 +220,12 @@ async def search_kbli(query: str, limit: int = 10, search_service=Depends(get_se
             f"✅ KBLI Search Completed: found {len(search_results)} results in {duration:.2f}ms"
         )
         return search_results
+    except httpx.HTTPStatusError as e:
+        logger.warning(f"⚠️ KBLI Search Qdrant error: {e}")
+        raise HTTPException(status_code=503, detail="Search engine temporarily unavailable") from e
+    except httpx.TimeoutException as e:
+        logger.warning(f"⚠️ KBLI Search timeout: {e}")
+        raise HTTPException(status_code=503, detail="Search engine temporarily unavailable") from e
     except Exception as e:
         logger.error(f"❌ KBLI Search Failed: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Search engine unavailable") from e

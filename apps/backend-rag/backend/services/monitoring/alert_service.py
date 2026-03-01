@@ -150,21 +150,24 @@ class AlertService:
 
         emoji = _LEVEL_EMOJI.get(level, "ℹ️")
 
-        # Build compact Telegram message (Markdown)
+        # Build compact Telegram message (HTML — more robust than Markdown)
+        # Escape HTML special chars in dynamic content
+        def _esc(s: str) -> str:
+            return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
         lines = [
-            f"{emoji} *{title}*",
+            f"{emoji} <b>{_esc(title)}</b>",
             "",
-            message,
+            _esc(message),
         ]
 
         if metadata:
             lines.append("")
             for key, value in metadata.items():
-                # Truncate long values
-                val_str = str(value)[:200]
-                lines.append(f"• `{key}`: {val_str}")
+                val_str = _esc(str(value)[:200])
+                lines.append(f"• <code>{_esc(key)}</code>: {val_str}")
 
-        lines.append(f"\n_Zantara RAG — {datetime.utcnow().strftime('%H:%M:%S UTC')}_")
+        lines.append(f"\n<i>Zantara RAG — {datetime.utcnow().strftime('%H:%M:%S UTC')}</i>")
 
         text = "\n".join(lines)
 
@@ -172,7 +175,7 @@ class AlertService:
         payload = {
             "chat_id": self.telegram_admin_chat_id,
             "text": text,
-            "parse_mode": "Markdown",
+            "parse_mode": "HTML",
             "disable_web_page_preview": True,
         }
 
