@@ -160,8 +160,8 @@ class TestTextChunker:
 
         # Adjacent chunks should have some overlap
         if len(chunks) > 1:
-            overlap_exists = any(chunks[i][-10:] in chunks[i + 1] for i in range(len(chunks) - 1))
             # Overlap may or may not exist depending on implementation
+            pass
 
 
 # ===== PARSER TESTS =====
@@ -305,45 +305,50 @@ class TestCacheService:
             # Force use memory cache for tests
             self.cache.redis_available = False
 
-    def test_set_cache(self):
+    @pytest.mark.asyncio
+    async def test_set_cache(self):
         """Test setting cache value"""
         key = "test_key"
         value = "test_value"
 
-        self.cache.set(key, value, ttl=60)
+        await self.cache.set(key, value, ttl=60)
 
         # Verify value was set
-        assert self.cache.get(key) == value
+        assert await self.cache.get(key) == value
 
-    def test_get_cache_hit(self):
+    @pytest.mark.asyncio
+    async def test_get_cache_hit(self):
         """Test cache hit"""
         key = "test_key"
-        self.cache.set(key, "cached_value")
+        await self.cache.set(key, "cached_value")
 
-        value = self.cache.get(key)
+        value = await self.cache.get(key)
 
         assert value == "cached_value"
 
-    def test_get_cache_miss(self):
+    @pytest.mark.asyncio
+    async def test_get_cache_miss(self):
         """Test cache miss"""
         key = "missing_key"
 
-        value = self.cache.get(key)
+        value = await self.cache.get(key)
 
         assert value is None
 
-    def test_delete_cache(self):
+    @pytest.mark.asyncio
+    async def test_delete_cache(self):
         """Test deleting cache key"""
         key = "test_key"
-        self.cache.set(key, "value")
+        await self.cache.set(key, "value")
 
-        result = self.cache.delete(key)
+        result = await self.cache.delete(key)
 
         assert result is True
-        assert self.cache.get(key) is None
+        assert await self.cache.get(key) is None
 
     @patch("time.time")
-    def test_cache_with_ttl(self, mock_time):
+    @pytest.mark.asyncio
+    async def test_cache_with_ttl(self, mock_time):
         """Test cache expiration with TTL"""
         mock_time.return_value = 1000.0
 
@@ -351,16 +356,16 @@ class TestCacheService:
         value = "test_value"
         ttl = 60  # 60 seconds
 
-        self.cache.set(key, value, ttl=ttl)
+        await self.cache.set(key, value, ttl=ttl)
 
         # Verify value was set
-        assert self.cache.get(key) == value
+        assert await self.cache.get(key) == value
 
         # Simulate time passing
         mock_time.return_value = 1061.0  # 61 seconds later
 
         # Value should be expired
-        assert self.cache.get(key) is None
+        assert await self.cache.get(key) is None
 
 
 class TestCacheDecorator:
