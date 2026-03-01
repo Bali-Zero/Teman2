@@ -102,3 +102,11 @@ class InstagramChannelAdapter(BaseChannel):
     @property
     def supports_markdown(self) -> bool:
         return False
+
+    @property
+    def supports_media(self) -> bool:
+        return self.instagram_config.supports_media
+
+    @property
+    def max_message_length(self) -> int:
+        return self.instagram_config.max_message_length
