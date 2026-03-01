@@ -320,16 +320,25 @@ async def detailed_health(request: Request) -> dict[str, Any]:
                     },
                 }
         else:
-            services["kg_langgraph"] = {
-                "status": "initializing" if kg_langgraph_enabled else "disabled",
-                "critical": False,
-                "details": {
-                    "enabled": kg_langgraph_enabled,
-                    "reason": "Orchestrator not yet initialized"
-                    if kg_langgraph_enabled
-                    else "ENABLE_KG_LANGGRAPH=false",
-                },
-            }
+            # Orchestrator not yet created (lazy-init on first query)
+            if kg_langgraph_enabled:
+                services["kg_langgraph"] = {
+                    "status": "pending_first_query",
+                    "critical": False,
+                    "details": {
+                        "enabled": True,
+                        "reason": "Lazy-init: orchestrator will initialize on first query",
+                    },
+                }
+            else:
+                services["kg_langgraph"] = {
+                    "status": "disabled",
+                    "critical": False,
+                    "details": {
+                        "enabled": False,
+                        "reason": "ENABLE_KG_LANGGRAPH=false",
+                    },
+                }
     except Exception as e:
         services["kg_langgraph"] = {"status": "error", "critical": False, "error": str(e)}
 

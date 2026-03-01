@@ -76,7 +76,7 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
 
         # Step 1: Expiry alerts
         try:
-            alerts = await _call_safe("/api/crm/enhanced/expiry-alerts", params={"days_ahead": 90})
+            alerts = await _call_safe("/api/crm/expiry-alerts", params={"days_ahead": 90})
             urgent = [a for a in (alerts.get("alerts") or alerts.get("data") or []) if isinstance(a, dict) and a.get("days_remaining", 999) < 30]
             reminders_sent = 0
             for alert in urgent[:10]:  # Cap at 10 reminders per run
