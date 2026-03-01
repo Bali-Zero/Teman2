@@ -19,7 +19,7 @@ router = APIRouter(prefix="/api/performance", tags=["performance"])
 
 
 @router.get("/metrics")
-async def get_performance_metrics():
+async def get_performance_metrics() -> dict[str, Any]:
     """Get performance metrics"""
     try:
         metrics = perf_monitor.get_metrics()
@@ -30,7 +30,7 @@ async def get_performance_metrics():
 
 
 @router.post("/clear-cache")
-async def clear_caches():
+async def clear_caches() -> dict[str, Any]:
     """Clear all caches"""
     try:
         await embedding_cache.clear()
@@ -42,7 +42,7 @@ async def clear_caches():
 
 
 @router.post("/clear-cache/embedding")
-async def clear_embedding_cache():
+async def clear_embedding_cache() -> dict[str, Any]:
     """Clear embedding cache only"""
     try:
         await embedding_cache.clear()
@@ -53,7 +53,7 @@ async def clear_embedding_cache():
 
 
 @router.post("/clear-cache/search")
-async def clear_search_cache():
+async def clear_search_cache() -> dict[str, Any]:
     """Clear search cache only"""
     try:
         await search_cache.clear()
@@ -64,7 +64,7 @@ async def clear_search_cache():
 
 
 @router.get("/cache/stats")
-async def get_cache_stats():
+async def get_cache_stats() -> dict[str, Any]:
     """Get cache statistics"""
     try:
         embedding_stats = {

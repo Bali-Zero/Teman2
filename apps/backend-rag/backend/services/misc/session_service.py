@@ -403,7 +403,7 @@ class SessionService:
             logger.error(f"❌ Failed to export session: {e}")
             return None
 
-    async def close(self):
+    async def close(self) -> None:
         """Close Redis connection"""
         try:
             await self.redis.close()
@@ -413,7 +413,7 @@ class SessionService:
 
 
 # Example usage
-async def main():
+async def main() -> None:
     """Example usage of SessionService"""
     import logging
 

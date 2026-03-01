@@ -25,7 +25,7 @@ class AuditService:
         self.pool: asyncpg.Pool | None = None
         self.enabled = bool(self.database_url)
 
-    async def connect(self):
+    async def connect(self) -> None:
         """Initialize PostgreSQL connection pool"""
         if not self.enabled:
             logger.warning("⚠️ AuditService disabled: No DATABASE_URL")
@@ -40,7 +40,7 @@ class AuditService:
             logger.error(f"❌ AuditService connection failed: {e}")
             self.enabled = False
 
-    async def close(self):
+    async def close(self) -> None:
         """Close PostgreSQL connection pool"""
         if self.pool:
             await self.pool.close()
@@ -55,7 +55,8 @@ class AuditService:
         user_id: str | None = None,
         failure_reason: str | None = None,
         metadata: dict[str, Any] | None = None,
-    ):
+    ) -> Any:
+
         """
         Log an authentication event (login, logout, failed attempt).
 
@@ -104,7 +105,8 @@ class AuditService:
         details: dict[str, Any] | None = None,
         ip_address: str | None = None,
         user_agent: str | None = None,
-    ):
+    ) -> Any:
+
         """
         Log a general system event for audit trail.
 

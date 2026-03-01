@@ -215,7 +215,7 @@ class SemanticCache:
         query_hash = hashlib.md5(query.lower().strip().encode()).hexdigest()
         return f"{self.embedding_prefix}{query_hash}"
 
-    async def _enforce_cache_size(self):
+    async def _enforce_cache_size(self) -> None:
         """Enforce max cache size using LRU eviction"""
         try:
             # Get cache size
@@ -256,7 +256,7 @@ class SemanticCache:
             logger.error(f"[Cache] Error getting stats: {e}")
             return {}
 
-    async def clear_cache(self):
+    async def clear_cache(self) -> None:
         """Clear all cached data"""
         try:
             # Get all keys

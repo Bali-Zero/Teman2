@@ -54,7 +54,7 @@ cache_service.set = MagicMock(return_value=True)
 cache_service.delete = MagicMock(return_value=True)
 
 
-def call_claude_with_retry(*args, **kwargs):
+def call_claude_with_retry(*args, **kwargs) -> None:
     """Call Claude API with retry logic."""
     pass
 

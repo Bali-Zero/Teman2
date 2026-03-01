@@ -111,14 +111,14 @@ class StepManagerService:
         logger.warning(f"🚫 Blocked step: {step_id} - {step.title} (Reason: {reason})")
         return True
 
-    def _find_step(self, journey, step_id: str):
+    def _find_step(self, journey, step_id: str) -> None:
         """Find step by ID."""
         for step in journey.steps:
             if step.step_id == step_id:
                 return step
         return None
 
-    def _update_journey_status(self, journey):
+    def _update_journey_status(self, journey) -> None:
         """Update journey status based on step completion."""
         from backend.services.misc.client_journey_orchestrator import (
             JourneyStatus,  # noqa: F401

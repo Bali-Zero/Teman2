@@ -287,7 +287,7 @@ class SearchService:
 
         return False
 
-    async def _alert_bm25_failure(self, error: Exception):
+    async def _alert_bm25_failure(self, error: Exception) -> None:
         """Alert on BM25 persistent failure."""
         # Send alert to monitoring system
         try:
@@ -570,7 +570,7 @@ class SearchService:
             }
             raise
 
-    def _init_reranker(self):
+    def _init_reranker(self) -> Any:
         """Lazy load the re-ranker"""
         if not hasattr(self, "_reranker"):
             from backend.core.reranker import ReRanker

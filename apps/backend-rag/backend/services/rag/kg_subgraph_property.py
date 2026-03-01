@@ -176,13 +176,13 @@ def build_property_subgraph(db_pool: asyncpg.Pool, llm: Any) -> StateGraph:
     subgraph = StateGraph(PropertyState)
 
     # Async closures (lambdas can't be async, causing coroutine-instead-of-dict errors)
-    async def _identify(s):
+    async def _identify(s) -> Any:
         return await identify_property_type_node(s, llm)
 
-    async def _get_reqs(s):
+    async def _get_reqs(s) -> Any:
         return await get_property_requirements_node(s, db_pool)
 
-    async def _synthesize(s):
+    async def _synthesize(s) -> Any:
         return await synthesize_property_workflow_node(s)
 
     subgraph.add_node("identify_property_type", _identify)

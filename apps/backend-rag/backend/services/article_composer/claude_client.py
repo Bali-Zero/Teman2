@@ -85,7 +85,7 @@ class CircuitBreaker:
             return True
         return time.time() - self.last_failure_time >= self.recovery_timeout
 
-    def _on_success(self):
+    def _on_success(self) -> None:
         """Handle successful call"""
         if self.state == CircuitState.HALF_OPEN:
             self.half_open_calls += 1
@@ -96,7 +96,7 @@ class CircuitBreaker:
         else:
             self.failure_count = 0
 
-    def _on_failure(self):
+    def _on_failure(self) -> None:
         """Handle failed call"""
         self.failure_count += 1
         self.last_failure_time = time.time()
@@ -182,7 +182,7 @@ async def call_claude_with_retry(
     """
     client = get_anthropic_client()
 
-    def _make_request():
+    def _make_request() -> Any:
         """Make the actual API request"""
         return client.messages.create(
             model=model,

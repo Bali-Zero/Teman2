@@ -110,12 +110,12 @@ class OrchestratorStreamingCore:
             )
 
             # Parallel Enrichment: Memory + Entities + LangGraph
-            async def _enrich_memory():
+            async def _enrich_memory() -> Any:
                 return await self.core.context_manager.enrich_user_context(
                     user_context, user_id, query
                 )
 
-            async def _extract_entities_and_kg():
+            async def _extract_entities_and_kg() -> Any:
                 return await self.core.extract_entities_and_kg_context(
                     query, user_context=user_context
                 )

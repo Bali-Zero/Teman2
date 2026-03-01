@@ -98,7 +98,7 @@ class AnalyticsAggregator:
         self.app_state = app_state
         self._boot_time = getattr(app_state, "boot_time", time.time())
 
-    async def _get_db_pool(self):
+    async def _get_db_pool(self) -> Any:
         """Get database connection pool from app state"""
         pool = getattr(self.app_state, "db_pool", None)
         if not pool:

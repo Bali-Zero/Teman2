@@ -20,10 +20,10 @@ class KBLIEnricher:
         self.retries = retries
         self.db_url = settings.database_url
 
-    async def get_db_pool(self):
+    async def get_db_pool(self) -> Any:
         return await asyncpg.create_pool(self.db_url)
 
-    async def enrich_kbli_node(self, pool: asyncpg.Pool, code: str, intel: dict[str, Any]):
+    async def enrich_kbli_node(self, pool: asyncpg.Pool, code: str, intel: dict[str, Any]) -> bool:
         """Update PostgreSQL kg_nodes properties with discursive intelligence."""
         entity_id = f"kbli:{code}"
         attempt = 0
@@ -95,7 +95,7 @@ class KBLIEnricher:
 
         return False
 
-    async def run_batch(self, enriched_map: dict[str, Any]):
+    async def run_batch(self, enriched_map: dict[str, Any]) -> None:
         """Run enrichment for a batch of codes."""
         pool = await self.get_db_pool()
         tasks = []

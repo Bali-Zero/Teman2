@@ -39,7 +39,8 @@ SUMMARY_MAX_LENGTH = 200  # Max length for auto-generated summaries
 
 async def _generate_and_update_title(
     conversation_id: int, first_user_message: str, db_pool: asyncpg.Pool
-):
+) -> None:
+
     """
     Background task to generate and store conversation title.
 
@@ -179,6 +180,8 @@ async def get_memory_orchestrator(db_pool: asyncpg.Pool | None = None) -> Memory
 async def save_conversation(
     request: SaveConversationRequest,
     current_user: dict = Depends(get_current_user),
+
+
     db_pool: asyncpg.Pool | None = Depends(get_database_pool),
 ):
     """
@@ -337,6 +340,8 @@ async def save_conversation(
 @router.get("/history")
 async def get_conversation_history(
     limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
+
+
     session_id: str | None = Query(None, description="Optional session filter"),
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool | None = Depends(get_database_pool),
@@ -439,6 +444,8 @@ async def get_conversation_history(
 @router.delete("/clear")
 async def clear_conversation_history(
     session_id: str | None = Query(None, description="Optional session filter"),
+
+
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
@@ -494,6 +501,8 @@ async def clear_conversation_history(
 @router.get("/stats")
 async def get_conversation_stats(
     current_user: dict = Depends(get_current_user),
+
+
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
@@ -546,6 +555,8 @@ async def get_conversation_stats(
 @router.get("/list", response_model=ConversationListResponse)
 async def list_conversations(
     limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
+
+
     offset: int = Query(0, ge=0),
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
@@ -653,6 +664,8 @@ async def list_conversations(
 async def get_conversation(
     conversation_id: int,
     current_user: dict = Depends(get_current_user),
+
+
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
@@ -711,6 +724,8 @@ async def get_conversation(
 async def delete_conversation(
     conversation_id: int,
     current_user: dict = Depends(get_current_user),
+
+
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
@@ -760,6 +775,8 @@ async def delete_conversation(
 @router.get("/memory/context", response_model=UserMemoryContextResponse)
 async def get_user_memory_context(
     current_user: dict = Depends(get_current_user),
+
+
     db_pool: asyncpg.Pool | None = Depends(get_database_pool),
 ):
     """

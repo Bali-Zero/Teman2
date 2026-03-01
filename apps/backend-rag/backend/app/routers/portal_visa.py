@@ -21,7 +21,7 @@ visa_latency = Histogram("portal_visa_latency_seconds", "Visa endpoint latency")
 @router.get("/", response_model=dict)
 async def get_visa_status(
     current_client=Depends(get_current_portal_client), db_pool=Depends(get_database_pool)
-):
+) -> dict[str, Any]:
     """
     Get immigration status for authenticated client.
 
@@ -53,7 +53,7 @@ async def get_visa_status(
 @router.get("/summary", response_model=VisaSummary)
 async def get_visa_summary(
     current_client=Depends(get_current_portal_client), db_pool=Depends(get_database_pool)
-):
+) -> Any:
     """Get visa summary for dashboard card."""
     service = VisaService(db_pool)
     return await service.get_visa_summary(current_client["id"])

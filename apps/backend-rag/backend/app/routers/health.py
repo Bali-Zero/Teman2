@@ -68,7 +68,7 @@ router = APIRouter(prefix="/health", tags=["health"])
 @router.get(
     "/", response_model=HealthResponse, include_in_schema=False
 )  # /health/ with trailing slash
-async def health_check(request: Request):
+async def health_check(request: Request) -> HealthResponse:
     """
     System health check - Non-blocking during startup.
 

@@ -767,7 +767,7 @@ Return ONLY valid JSON, no markdown."""
 
         return current_parent_id
 
-    async def _get_kg_extractor(self):
+    async def _get_kg_extractor(self) -> None:
         """Lazy initialization of KG extractor."""
         if self.kg_extractor is None:
             import os

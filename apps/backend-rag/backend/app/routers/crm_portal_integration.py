@@ -100,6 +100,8 @@ def get_portal_service(db_pool: asyncpg.Pool = Depends(get_database_pool)) -> Po
 async def get_portal_status(
     client_id: int,
     current_user: dict = Depends(require_team_auth),
+
+
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
     """
@@ -201,6 +203,8 @@ async def send_portal_invite(
     client_id: int,
     request: SendInviteRequest | None = None,
     current_user: dict = Depends(require_team_auth),
+
+
     invite_service: InviteService = Depends(get_invite_service),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
@@ -275,6 +279,8 @@ async def send_portal_invite(
 async def get_portal_preview(
     client_id: int,
     current_user: dict = Depends(require_team_auth),
+
+
     portal_service: PortalService = Depends(get_portal_service),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
@@ -328,6 +334,8 @@ async def get_portal_preview(
 @router.get("/messages/unread-count")
 async def get_unread_messages_count(
     _current_user: dict = Depends(require_team_auth),
+
+
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
     """
@@ -383,6 +391,8 @@ async def get_unread_messages_count(
 async def get_client_messages(
     client_id: int,
     limit: int = Query(50, ge=1, le=100),
+
+
     offset: int = Query(0, ge=0),
     current_user: dict = Depends(require_team_auth),
     portal_service: PortalService = Depends(get_portal_service),
@@ -426,6 +436,8 @@ async def send_message_to_client(
     client_id: int,
     request: TeamMessageRequest,
     current_user: dict = Depends(require_team_auth),
+
+
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
     """
@@ -473,6 +485,8 @@ async def mark_client_message_read(
     client_id: int,
     message_id: int,
     _current_user: dict = Depends(require_team_auth),
+
+
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
     """
@@ -513,6 +527,8 @@ async def mark_client_message_read(
 @router.get("/activity/recent")
 async def get_recent_portal_activity(
     limit: int = Query(10, ge=1, le=50),
+
+
     current_user: dict = Depends(require_team_auth),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:

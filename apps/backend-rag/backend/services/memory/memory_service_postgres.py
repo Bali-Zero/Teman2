@@ -73,7 +73,7 @@ class MemoryServicePostgres:
 
         logger.info("✅ MemoryServicePostgres initialized")
 
-    async def connect(self):
+    async def connect(self) -> None:
         """Initialize PostgreSQL connection pool"""
         if not self.use_postgres:
             logger.warning("⚠️ No DATABASE_URL found, using in-memory only")
@@ -88,7 +88,7 @@ class MemoryServicePostgres:
             logger.error(f"❌ PostgreSQL connection failed: {e}", exc_info=True)
             self.use_postgres = False
 
-    async def close(self):
+    async def close(self) -> None:
         """Close PostgreSQL connection pool"""
         if self.pool:
             await self.pool.close()

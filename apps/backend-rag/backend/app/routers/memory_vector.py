@@ -123,7 +123,7 @@ async def init_memory_collection(request: InitRequest) -> InitResponse:
 
 
 @router.post("/embed", response_model=EmbedResponse)
-async def generate_embedding(request: EmbedRequest):
+async def generate_embedding(request: EmbedRequest) -> EmbedResponse:
     """
     Generate embedding for text.
     Uses sentence-transformers (FREE, local) by default.
@@ -138,7 +138,7 @@ async def generate_embedding(request: EmbedRequest):
 
 
 @router.post("/store")
-async def store_memory_vector(request: StoreMemoryRequest):
+async def store_memory_vector(request: StoreMemoryRequest) -> dict[str, Any]:
     """
     Store memory in Qdrant for semantic search.
 
@@ -166,7 +166,7 @@ async def store_memory_vector(request: StoreMemoryRequest):
 
 
 @router.post("/search", response_model=MemorySearchResponse)
-async def search_memories_semantic(request: SearchMemoryRequest):
+async def search_memories_semantic(request: SearchMemoryRequest) -> MemorySearchResponse:
     """
     Semantic search across all memories using vector similarity.
 
@@ -226,7 +226,7 @@ async def search_memories_semantic(request: SearchMemoryRequest):
 
 
 @router.post("/similar", response_model=MemorySearchResponse)
-async def find_similar_memories(request: SimilarMemoryRequest):
+async def find_similar_memories(request: SimilarMemoryRequest) -> MemorySearchResponse:
     """
     Find memories similar to a given memory.
     Uses the stored memory's embedding to find neighbors.
@@ -308,7 +308,7 @@ async def find_similar_memories(request: SimilarMemoryRequest):
 
 
 @router.delete("/{memory_id}")
-async def delete_memory_vector(memory_id: str):
+async def delete_memory_vector(memory_id: str) -> dict[str, Any]:
     """Delete memory from vector store"""
     try:
         db = await get_memory_vector_db()
@@ -323,7 +323,7 @@ async def delete_memory_vector(memory_id: str):
 
 
 @router.get("/stats")
-async def get_memory_stats():
+async def get_memory_stats() -> dict[str, Any]:
     """Get memory collection statistics"""
     try:
         db = await get_memory_vector_db()
@@ -343,7 +343,7 @@ async def get_memory_stats():
 
 
 @router.get("/health")
-async def memory_vector_health():
+async def memory_vector_health() -> dict[str, Any]:
     """Health check for memory vector service"""
     try:
         db = await get_memory_vector_db()

@@ -39,7 +39,7 @@ class VertexAIService:
         self._initialized = False
         self.model = None
 
-    def _ensure_initialized(self):
+    def _ensure_initialized(self) -> None:
         """Lazy initialization of Vertex AI client."""
         if self._initialized:
             return

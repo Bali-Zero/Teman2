@@ -81,6 +81,8 @@ class OverviewStats(BaseModel):
 async def get_overview(
     start_date: str | None = Query(
         None, description="Start date (YYYY-MM-DD), defaults to 30 days ago"
+
+
     ),
     _admin: dict = Depends(verify_admin),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
@@ -161,6 +163,8 @@ async def get_overview(
 @router.get("/messages")
 async def get_messages(
     user_id: str | None = Query(None, description="Filter by user email"),
+
+
     role: str | None = Query(None, description="Filter by role (user/assistant)"),
     search: str | None = Query(None, description="Search in message content"),
     date_from: str | None = Query(None, description="Start date (YYYY-MM-DD)"),
@@ -241,6 +245,8 @@ async def get_messages(
 @router.get("/team-stats")
 async def get_team_stats(
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
+
+
     start_date: str | None = Query(
         None, description="Start date (YYYY-MM-DD), overrides days if provided"
     ),
@@ -404,6 +410,8 @@ async def get_team_stats(
 @router.get("/timesheet")
 async def get_timesheet(
     email: str | None = Query(None, description="Filter by email"),
+
+
     date_from: str | None = Query(None, description="Start date (YYYY-MM-DD)"),
     date_to: str | None = Query(None, description="End date (YYYY-MM-DD)"),
     limit: int = Query(100, ge=1, le=500),
@@ -467,6 +475,8 @@ async def get_timesheet(
 @router.get("/crm-actions")
 async def get_crm_actions(
     email: str | None = Query(None, description="Filter by email"),
+
+
     action: str | None = Query(None, description="Filter by action type"),
     entity_type: str | None = Query(None, description="Filter by entity type"),
     limit: int = Query(100, ge=1, le=500),
@@ -531,6 +541,8 @@ async def get_crm_actions(
 @router.get("/export/messages")
 async def export_messages(
     user_id: str | None = Query(None),
+
+
     date_from: str | None = Query(None),
     date_to: str | None = Query(None),
     _admin: dict = Depends(verify_admin),

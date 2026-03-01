@@ -99,7 +99,8 @@ class SubscriberResponse(BaseModel):
 
 
 @router.post("/subscribe", response_model=SubscribeResponse)
-async def subscribe(request: SubscribeRequest, pool=Depends(get_database_pool)):
+async def subscribe(request: SubscribeRequest, pool=Depends(get_database_pool)) -> SubscribeResponse:
+
     """
     Subscribe to the newsletter.
     Creates a new subscriber and sends confirmation email.
@@ -212,7 +213,8 @@ async def subscribe(request: SubscribeRequest, pool=Depends(get_database_pool)):
 
 
 @router.post("/confirm")
-async def confirm_subscription(request: ConfirmRequest, pool=Depends(get_database_pool)):
+async def confirm_subscription(request: ConfirmRequest, pool=Depends(get_database_pool)) -> dict[str, Any]:
+
     """
     Confirm a newsletter subscription using the token from email.
     """
@@ -249,7 +251,8 @@ async def confirm_subscription(request: ConfirmRequest, pool=Depends(get_databas
 
 
 @router.post("/unsubscribe")
-async def unsubscribe(request: UnsubscribeRequest, pool=Depends(get_database_pool)):
+async def unsubscribe(request: UnsubscribeRequest, pool=Depends(get_database_pool)) -> dict[str, Any]:
+
     """
     Unsubscribe from the newsletter.
     """
@@ -283,7 +286,8 @@ async def unsubscribe(request: UnsubscribeRequest, pool=Depends(get_database_poo
 
 
 @router.patch("/preferences")
-async def update_preferences(request: PreferencesRequest, pool=Depends(get_database_pool)):
+async def update_preferences(request: PreferencesRequest, pool=Depends(get_database_pool)) -> dict[str, Any]:
+
     """
     Update newsletter preferences.
     """
@@ -337,6 +341,8 @@ async def update_preferences(request: PreferencesRequest, pool=Depends(get_datab
 @router.get("/subscribers")
 async def list_subscribers(
     category: str | None = Query(None),
+
+
     frequency: str | None = Query(None),
     confirmed: bool | None = Query(None),
     limit: int = Query(100, le=500),
@@ -413,6 +419,8 @@ async def log_newsletter_send(
     sent_count: int,
     failed_count: int,
     pool=Depends(get_database_pool),
+
+
 ):
     """
     Log a newsletter send event (admin endpoint).

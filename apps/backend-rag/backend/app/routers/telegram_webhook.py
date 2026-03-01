@@ -24,6 +24,8 @@ router = APIRouter(prefix="/webhook", tags=["telegram"])
 async def telegram_webhook(
     request: Request,
     channel_router: ChannelRouter = Depends(get_channel_router),
+
+
 ):
     """
     Telegram Bot API webhook endpoint.
@@ -78,7 +80,7 @@ async def telegram_webhook(
 
 
 @router.get("/telegram/health")
-async def telegram_health():
+async def telegram_health() -> dict[str, Any]:
     """Health check for Telegram webhook."""
     telegram_token = os.getenv("TELEGRAM_BOT_TOKEN")
 

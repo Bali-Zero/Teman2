@@ -18,7 +18,7 @@ router = APIRouter(prefix="/api/blog", tags=["blog"])
 _blog_orchestrator: AgenticRAGOrchestrator | None = None
 
 
-async def get_blog_orchestrator(request: Request):
+async def get_blog_orchestrator(request: Request) -> Any:
     """Get or create the RAG orchestrator for blog queries"""
     global _blog_orchestrator
     if _blog_orchestrator is None:
@@ -46,7 +46,7 @@ class BlogAskResponse(BaseModel):
 
 
 @router.post("/ask", response_model=BlogAskResponse)
-async def ask_zantara(request: Request, body: BlogAskRequest):
+async def ask_zantara(request: Request, body: BlogAskRequest) -> BlogAskResponse:
     """
     Public endpoint for AskZantara widget on blog articles.
 

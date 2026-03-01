@@ -446,7 +446,7 @@ async def generate_monthly_report(db_pool, year: int, month: int) -> dict:
     return report
 
 
-async def main():
+async def main() -> Any:
     """Entry point for direct execution (generate report)"""
     import asyncpg
 

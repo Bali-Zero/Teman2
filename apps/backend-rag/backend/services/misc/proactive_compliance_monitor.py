@@ -29,6 +29,7 @@ Example Monitored Items:
 import asyncio
 import logging
 from datetime import datetime
+from typing import Any
 
 from backend.services.compliance import (
     AlertGeneratorService,
@@ -110,7 +111,7 @@ class ProactiveComplianceMonitor:
         self.task = None
         self.check_interval = 86400  # 24 hours (daily check)
 
-    async def start(self):
+    async def start(self) -> None:
         """Start the compliance monitoring loop"""
         if self.running:
             logger.warning("⚠️ ProactiveComplianceMonitor already running")
@@ -122,7 +123,7 @@ class ProactiveComplianceMonitor:
         self.task = asyncio.create_task(self._monitoring_loop())
         logger.info("🚀 ProactiveComplianceMonitor started (Daily checks)")
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop the compliance monitoring loop"""
         self.running = False
         if self.task:
@@ -135,7 +136,7 @@ class ProactiveComplianceMonitor:
                 logger.debug(f"Task cleanup exception (safe to ignore): {e}")
         logger.info("🛑 ProactiveComplianceMonitor stopped")
 
-    async def _monitoring_loop(self):
+    async def _monitoring_loop(self) -> None:
         """Main monitoring loop"""
         import asyncio
 
@@ -429,7 +430,7 @@ class ProactiveComplianceMonitor:
         """
         return self.alert_generator.get_alerts_for_client(client_id, status_filter)
 
-    def get_monitor_stats(self) -> dict:
+    def get_monitor_stats(self) -> dict[str, Any]:
         """
         Get monitoring statistics.
 
@@ -452,7 +453,7 @@ class ProactiveComplianceMonitor:
             },
         }
 
-    def generate_alerts(self) -> list[dict]:
+    def generate_alerts(self) -> list[dict[str, Any]]:
         """
         Generate compliance alerts for all monitored items.
 

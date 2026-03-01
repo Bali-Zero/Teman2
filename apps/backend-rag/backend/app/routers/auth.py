@@ -91,6 +91,8 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> A
 async def get_current_user(
     request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security),
+
+
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """Get current authenticated user from JWT token"""
@@ -138,6 +140,8 @@ async def login(
     req: Request,
     response: Response,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
+
+
 ):
     """
     User login with email and PIN
@@ -291,7 +295,8 @@ async def login(
 
 
 @router.get("/profile", response_model=UserProfile)
-async def get_profile(current_user: dict = Depends(get_current_user)):
+async def get_profile(current_user: dict = Depends(get_current_user)) -> UserProfile:
+
     """Get current user profile"""
     return UserProfile(**current_user)
 
@@ -300,6 +305,8 @@ async def get_profile(current_user: dict = Depends(get_current_user)):
 async def logout(
     response: Response,
     _current_user: dict = Depends(get_current_user),
+
+
 ):
     """
     Logout user and clear authentication cookies.
@@ -312,7 +319,8 @@ async def logout(
 
 
 @router.get("/check")
-async def check_auth(current_user: dict = Depends(get_current_user)):
+async def check_auth(current_user: dict = Depends(get_current_user)) -> dict[str, Any]:
+
     """Check if current session is valid"""
     return {
         "valid": True,
@@ -325,7 +333,7 @@ async def check_auth(current_user: dict = Depends(get_current_user)):
 
 
 @router.get("/csrf-token")
-async def get_csrf_token():
+async def get_csrf_token() -> Any:
     """
     Generate CSRF token and session ID for frontend security.
     Returns token in both JSON body and response headers.
@@ -354,6 +362,8 @@ async def get_csrf_token():
 async def refresh_token(
     response: Response,
     current_user: dict = Depends(get_current_user),
+
+
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """

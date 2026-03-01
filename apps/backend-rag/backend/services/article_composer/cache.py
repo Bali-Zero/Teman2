@@ -32,7 +32,7 @@ class CacheService:
         self.redis_client: redis.Redis | None = None
         self.enabled = False
 
-    async def initialize(self):
+    async def initialize(self) -> None:
         """Initialize Redis connection"""
         if redis is None:
             logger.warning("Redis not available - caching disabled")
@@ -53,7 +53,7 @@ class CacheService:
             logger.warning(f"Redis connection failed - caching disabled: {e}")
             self.enabled = False
 
-    async def close(self):
+    async def close(self) -> None:
         """Close Redis connection"""
         if self.redis_client:
             await self.redis_client.close()
@@ -78,7 +78,7 @@ class CacheService:
             logger.warning(f"Cache get error: {e}")
             return None
 
-    async def set(self, key: str, value: Any, ttl: int = CACHE_TTL_COMPOSE):
+    async def set(self, key: str, value: Any, ttl: int = CACHE_TTL_COMPOSE) -> None:
         """Set value in cache"""
         if not self.enabled or not self.redis_client:
             return
@@ -92,7 +92,7 @@ class CacheService:
         except Exception as e:
             logger.warning(f"Cache set error: {e}")
 
-    async def delete(self, key: str):
+    async def delete(self, key: str) -> None:
         """Delete key from cache"""
         if not self.enabled or not self.redis_client:
             return
@@ -107,12 +107,12 @@ class CacheService:
         cache_key = self._generate_cache_key("compose", title, content[:1000], category)
         return await self.get(cache_key)
 
-    async def set_compose_cache(self, title: str, content: str, category: str, result: dict):
+    async def set_compose_cache(self, title: str, content: str, category: str, result: dict) -> None:
         """Cache compose result"""
         cache_key = self._generate_cache_key("compose", title, content[:1000], category)
         await self.set(cache_key, result, ttl=CACHE_TTL_COMPOSE)
 
-    async def invalidate_compose_cache(self, title: str | None = None):
+    async def invalidate_compose_cache(self, title: str | None = None) -> None:
         """Invalidate compose cache (all or by title)"""
         if not self.enabled or not self.redis_client:
             return

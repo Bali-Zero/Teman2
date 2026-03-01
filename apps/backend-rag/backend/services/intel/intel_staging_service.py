@@ -117,7 +117,8 @@ class IntelStagingService:
             if temp_file.exists():
                 try:
                     temp_file.unlink()
-                except Exception:
+                except Exception as e:
+                    logger.debug(f"Failed to clean up temp file {temp_file}: {e}")
                     pass
             raise
 
@@ -306,7 +307,8 @@ class IntelStagingService:
         try:
             shutil.move(str(file_path), str(archive_path))
 
-        except Exception:
+        except Exception as e:
+            logger.error(f"Failed to archive file {file_path} to {archive_path}: {e}")
             raise
 
         return archive_path

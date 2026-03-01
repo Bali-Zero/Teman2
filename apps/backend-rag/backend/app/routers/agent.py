@@ -115,6 +115,8 @@ class AgentHealthResponse(BaseModel):
 async def invoke_agent(
     request: AgentInvokeRequest,
     current_user: Any = Depends(get_current_user),
+
+
 ) -> AgentInvokeResponse:
     """
     Invoke the RAG workflow with a question.

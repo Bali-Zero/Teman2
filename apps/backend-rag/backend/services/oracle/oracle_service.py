@@ -492,7 +492,7 @@ class OracleService:
                 "execution_time_ms": execution_time,
             }
 
-    async def submit_feedback(self, feedback_data: dict[str, Any]):
+    async def submit_feedback(self, feedback_data: dict[str, Any]) -> Any:
         """Submit feedback logic"""
         logger.info(f"📝 Processing feedback from {feedback_data.get('user_email')}")
         return await db_manager.store_feedback(feedback_data)

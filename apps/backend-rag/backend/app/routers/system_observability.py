@@ -22,6 +22,8 @@ router = APIRouter(prefix="/api/admin", tags=["system-observability"])
 @router.get("/system-health")
 async def get_system_health(
     admin_user: dict = Depends(get_admin_user),
+
+
     service: UnifiedHealthService = Depends(get_unified_health_service),
 ) -> dict[str, Any]:
     """
@@ -55,6 +57,8 @@ async def get_system_health(
 @router.get("/postgres/tables")
 async def get_postgres_tables(
     admin_user: dict = Depends(get_admin_user),
+
+
 ) -> list[str]:
     """List all public tables in PostgreSQL (ADMIN ONLY)"""
     import asyncpg
@@ -85,6 +89,8 @@ async def get_table_data(
     limit: int = 50,
     offset: int = 0,
     admin_user: dict = Depends(get_admin_user),
+
+
 ) -> dict[str, Any]:
     """Get raw data from a table (ADMIN ONLY)"""
     from datetime import datetime
@@ -145,6 +151,8 @@ async def get_table_data(
 @router.get("/qdrant/collections")
 async def get_qdrant_collections(
     admin_user: dict = Depends(get_admin_user),
+
+
 ) -> dict[str, Any]:
     """List Qdrant collections with stats (ADMIN ONLY)"""
     from backend.app.core.config import settings
@@ -182,6 +190,8 @@ async def get_qdrant_points(
     limit: int = 20,
     offset: str | None = None,  # scroll_id
     admin_user: dict = Depends(get_admin_user),
+
+
 ) -> dict[str, Any]:
     """Browse Qdrant points (ADMIN ONLY)"""
     import httpx

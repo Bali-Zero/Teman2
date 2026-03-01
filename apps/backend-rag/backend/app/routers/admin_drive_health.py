@@ -2,13 +2,14 @@
 Admin endpoint per verificare stato Google Drive.
 """
 
+from typing import Any
 from fastapi import APIRouter, Request
 
 router = APIRouter(prefix="/api/admin/drive", tags=["admin"])
 
 
 @router.get("/health")
-async def drive_health(request: Request):
+async def drive_health(request: Request) -> dict[str, Any]:
     """Verifica stato token Google Drive (public endpoint)."""
     pool = getattr(request.app.state, "db_pool", None)
     if not pool:

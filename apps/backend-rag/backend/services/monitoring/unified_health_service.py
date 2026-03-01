@@ -69,7 +69,7 @@ class UnifiedHealthService:
         self._check_cache: dict[str, tuple[float, HealthCheckResult]] = {}
         self._cache_ttl = 5.0  # Cache results for 5 seconds
 
-    async def initialize(self):
+    async def initialize(self) -> None:
         """Initialize HTTP and Redis clients"""
         self.http_client = httpx.AsyncClient(timeout=10.0)
 
@@ -81,7 +81,7 @@ class UnifiedHealthService:
             except Exception as e:
                 logger.warning(f"Redis not available for health checks: {e}")
 
-    async def close(self):
+    async def close(self) -> None:
         """Cleanup resources"""
         if self.http_client:
             await self.http_client.aclose()

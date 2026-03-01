@@ -366,7 +366,7 @@ class ScraperDataNormalizer:
 
         return normalized
 
-    def _validate_required_fields(self, data: dict[str, Any], required_fields: list[str]):
+    def _validate_required_fields(self, data: dict[str, Any], required_fields: list[str]) -> None:
         """Validate that required fields are present and not empty"""
         missing_fields = []
 

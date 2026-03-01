@@ -124,6 +124,8 @@ async def ingest_legal_document(request: LegalIngestRequest) -> LegalIngestRespo
 @router.post("/upload", response_model=LegalIngestResponse, status_code=status.HTTP_200_OK)
 async def upload_legal_document(
     file: UploadFile = File(...),
+
+
     title: str | None = None,
     tier: str | None = None,
     collection_name: str | None = None,
@@ -305,6 +307,8 @@ class RegisterParentDocRequest(BaseModel):
 async def register_parent_document(
     request: RegisterParentDocRequest,
     api_key_verified=Depends(verify_internal_api_key),
+
+
 ) -> dict[str, Any]:
     """
     Register a parent document in PostgreSQL.

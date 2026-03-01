@@ -132,7 +132,7 @@ async def get_admin_user(current_user: dict = Depends(get_current_user)) -> dict
 
 
 @router.post("/clock-in", response_model=ClockResponse)
-async def clock_in(request: ClockInRequest):
+async def clock_in(request: ClockInRequest) -> ClockResponse:
     """
     Clock in for work day
 
@@ -156,7 +156,7 @@ async def clock_in(request: ClockInRequest):
 
 
 @router.post("/clock-out", response_model=ClockResponse)
-async def clock_out(request: ClockOutRequest):
+async def clock_out(request: ClockOutRequest) -> ClockResponse:
     """
     Clock out for work day
 
@@ -180,7 +180,8 @@ async def clock_out(request: ClockOutRequest):
 
 
 @router.get("/my-status", response_model=UserStatusResponse)
-async def get_my_status(user_id: str = Query(..., description="User ID")):
+async def get_my_status(user_id: str = Query(..., description="User ID")) -> UserStatusResponse:
+
     """
     Get my current work status
 
@@ -209,7 +210,8 @@ async def get_my_status(user_id: str = Query(..., description="User ID")):
 
 
 @router.get("/status", response_model=list[TeamMemberStatus])
-async def get_team_status(_admin: dict = Depends(get_admin_user)):
+async def get_team_status(_admin: dict = Depends(get_admin_user)) -> list[Any]:
+
     """
     Get current online status of all team members (ADMIN ONLY)
 
@@ -232,6 +234,8 @@ async def get_team_status(_admin: dict = Depends(get_admin_user)):
 @router.get("/hours", response_model=list[DailyHours])
 async def get_daily_hours(
     date: str | None = Query(None, description="Date (YYYY-MM-DD, defaults to today)"),
+
+
     _admin: dict = Depends(get_admin_user),
 ):
     """
@@ -262,6 +266,8 @@ async def get_daily_hours(
 @router.get("/activity/weekly", response_model=list[WeeklySummary])
 async def get_weekly_summary(
     week_start: str | None = Query(None, description="Week start date (YYYY-MM-DD)"),
+
+
     _admin: dict = Depends(get_admin_user),
 ):
     """
@@ -292,6 +298,8 @@ async def get_weekly_summary(
 @router.get("/activity/monthly", response_model=list[MonthlySummary])
 async def get_monthly_summary(
     month_start: str | None = Query(None, description="Month start date (YYYY-MM-DD)"),
+
+
     _admin: dict = Depends(get_admin_user),
 ):
     """
@@ -322,6 +330,8 @@ async def get_monthly_summary(
 @router.get("/export")
 async def export_timesheet(
     start_date: str = Query(..., description="Start date (YYYY-MM-DD)"),
+
+
     end_date: str = Query(..., description="End date (YYYY-MM-DD)"),
     format: str = Query("csv", description="Export format (csv only for now)"),
     _admin: dict = Depends(get_admin_user),
@@ -368,7 +378,7 @@ async def export_timesheet(
 
 
 @router.get("/health")
-async def health_check():
+async def health_check() -> dict[str, Any]:
     """Health check for team activity service"""
     from backend.services.analytics.team_timesheet_service import get_timesheet_service
 

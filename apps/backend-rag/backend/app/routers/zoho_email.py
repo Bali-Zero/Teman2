@@ -180,6 +180,8 @@ def _get_user_id(current_user: dict) -> str:
 @router.get("/auth/url")
 async def get_auth_url(
     current_user: dict = Depends(get_current_user),
+
+
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, str]:
     """
@@ -205,6 +207,8 @@ async def get_auth_url(
 @router.get("/callback")
 async def oauth_callback(
     code: str | None = Query(None),
+
+
     state: str | None = Query(None),
     error: str | None = Query(None),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
@@ -258,6 +262,8 @@ async def oauth_callback(
 @router.get("/status", response_model=ConnectionStatusResponse)
 async def get_connection_status(
     current_user: dict = Depends(get_current_user),
+
+
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> ConnectionStatusResponse:
     """
@@ -288,6 +294,8 @@ async def get_connection_status(
 @router.delete("/disconnect")
 async def disconnect_account(
     current_user: dict = Depends(get_current_user),
+
+
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
     """
@@ -314,6 +322,8 @@ async def disconnect_account(
 @router.get("/folders")
 async def list_folders(
     current_user: dict = Depends(get_current_user),
+
+
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
     """
@@ -341,6 +351,8 @@ async def list_folders(
 @router.get("/emails")
 async def list_emails(
     folder_id: str = Query("inbox", description="Folder ID"),
+
+
     limit: int = Query(50, ge=1, le=200, description="Max emails to return"),
     start: int = Query(0, ge=0, description="Offset for pagination"),
     search: str | None = Query(None, description="Search query"),
@@ -375,6 +387,8 @@ async def list_emails(
 @router.get("/emails/{message_id}")
 async def get_email(
     message_id: str = Path(..., description="Email message ID"),
+
+
     folder_id: str | None = Query(None, description="Folder ID (required for Zoho API)"),
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
@@ -400,6 +414,8 @@ async def get_email(
 async def send_email(
     request: SendEmailRequest,
     current_user: dict = Depends(get_current_user),
+
+
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
     """
@@ -433,6 +449,8 @@ async def send_email(
 @router.get("/emails/search")
 async def search_emails(
     query: str = Query(..., min_length=1, description="Search query"),
+
+
     limit: int = Query(50, ge=1, le=100, description="Max results"),
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
@@ -456,6 +474,8 @@ async def search_emails(
 @router.post("/emails/{message_id}/reply")
 async def reply_email(
     message_id: str = Path(..., description="Original message ID"),
+
+
     request: ReplyEmailRequest = ...,
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
@@ -487,6 +507,8 @@ async def reply_email(
 @router.post("/emails/{message_id}/forward")
 async def forward_email(
     message_id: str = Path(..., description="Message ID to forward"),
+
+
     request: ForwardEmailRequest = ...,
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
@@ -517,6 +539,8 @@ async def forward_email(
 async def mark_emails_read(
     request: MarkReadRequest,
     current_user: dict = Depends(get_current_user),
+
+
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, bool]:
     """
@@ -544,6 +568,8 @@ async def mark_emails_read(
 @router.patch("/emails/{message_id}/flag")
 async def toggle_flag(
     message_id: str = Path(..., description="Message ID"),
+
+
     is_flagged: bool = Query(..., description="Flag status"),
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
@@ -571,6 +597,8 @@ async def toggle_flag(
 @router.delete("/emails")
 async def delete_emails(
     request: DeleteEmailsRequest = Body(...),
+
+
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, bool]:
@@ -598,6 +626,8 @@ async def delete_emails(
 @router.post("/emails/delete")
 async def delete_emails_post(
     request: DeleteEmailsRequest = Body(...),
+
+
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, bool]:
@@ -642,6 +672,8 @@ class SaveDraftRequest(BaseModel):
 async def save_draft(
     request: SaveDraftRequest,
     current_user: dict = Depends(get_current_user),
+
+
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
     """
@@ -677,6 +709,8 @@ async def save_draft(
 @router.post("/attachments")
 async def upload_attachment(
     file: UploadFile = File(...),
+
+
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
@@ -707,6 +741,8 @@ async def upload_attachment(
 @router.get("/emails/{message_id}/attachments/{attachment_id}")
 async def download_attachment(
     message_id: str = Path(..., description="Message ID"),
+
+
     attachment_id: str = Path(..., description="Attachment ID"),
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
@@ -746,6 +782,8 @@ async def download_attachment(
 @router.get("/unread-count")
 async def get_unread_count(
     current_user: dict = Depends(get_current_user),
+
+
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, int]:
     """
@@ -767,6 +805,6 @@ async def get_unread_count(
 
 
 @router.options("/emails")
-async def options_emails():
+async def options_emails() -> dict[str, Any]:
     """Handle OPTIONS requests for DELETE /emails endpoint."""
     return {"detail": "Method allowed"}

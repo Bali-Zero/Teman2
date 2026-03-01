@@ -159,6 +159,8 @@ async def get_kg_orchestrator(
 async def kg_query(
     request: KGQueryRequest,
     orchestrator: KGAgenticOrchestrator = Depends(get_kg_orchestrator),
+
+
     current_user: dict = Depends(get_current_user),
 ) -> KGQueryResponse:
     """
@@ -227,6 +229,8 @@ async def kg_query(
 )
 async def list_golden_routes(
     orchestrator: KGAgenticOrchestrator = Depends(get_kg_orchestrator),
+
+
 ) -> list[GoldenRouteInfo]:
     """
     List all available golden routes.
@@ -263,6 +267,8 @@ async def list_golden_routes(
 )
 async def kg_stats(
     orchestrator: KGAgenticOrchestrator = Depends(get_kg_orchestrator),
+
+
 ) -> KGStatsResponse:
     """
     Get Knowledge Graph statistics. Cached for 2 minutes.
@@ -336,6 +342,8 @@ async def kg_stats(
 )
 async def find_kg_path(
     source: str = Query(..., description="Source entity ID (e.g., kbli:56101)"),
+
+
     target: str = Query(..., description="Target entity ID (e.g., permit:kitas)"),
     max_depth: int = Query(3, ge=1, le=6, description="Maximum path depth"),
     orchestrator: KGAgenticOrchestrator = Depends(get_kg_orchestrator),
@@ -429,6 +437,8 @@ async def find_kg_path(
 )
 async def kg_visualize(
     subgraph: str | None = Query(None, description="Optional subgraph name"),
+
+
     db_pool=Depends(get_optional_database_pool),
 ) -> dict[str, str]:
     """
@@ -459,6 +469,8 @@ async def kg_visualize(
 )
 async def invalidate_kg_cache(
     current_user: dict = Depends(get_current_user),
+
+
 ) -> dict[str, Any]:
     """Invalidate all KG cache entries (requires auth)."""
     from backend.services.rag.kg_cache import get_kg_cache

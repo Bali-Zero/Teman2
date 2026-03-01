@@ -30,6 +30,8 @@ def get_team_analytics_service(db_pool: Any = Depends(get_database_pool)) -> Tea
 @router.get("/patterns")
 async def get_work_patterns(
     user_email: str | None = Query(None, description="Filter by user email"),
+
+
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
     service: TeamAnalyticsService = Depends(get_team_analytics_service),
 ):
@@ -45,6 +47,8 @@ async def get_work_patterns(
 @router.get("/productivity")
 async def get_productivity_scores(
     days: int = Query(7, ge=1, le=365, description="Number of days to analyze"),
+
+
     service: TeamAnalyticsService = Depends(get_team_analytics_service),
 ):
     """Calculate productivity scores for team members"""
@@ -59,6 +63,8 @@ async def get_productivity_scores(
 @router.get("/burnout")
 async def get_burnout_signals(
     user_email: str | None = Query(None, description="Filter by user email"),
+
+
     service: TeamAnalyticsService = Depends(get_team_analytics_service),
 ):
     """Detect early warning signs of burnout"""
@@ -74,6 +80,8 @@ async def get_burnout_signals(
 async def get_performance_trends(
     user_email: str,
     weeks: int = Query(4, ge=1, le=52, description="Number of weeks to analyze"),
+
+
     service: TeamAnalyticsService = Depends(get_team_analytics_service),
 ):
     """Analyze performance trends over time"""
@@ -88,6 +96,8 @@ async def get_performance_trends(
 @router.get("/workload-balance")
 async def get_workload_balance(
     days: int = Query(7, ge=1, le=365, description="Number of days to analyze"),
+
+
     service: TeamAnalyticsService = Depends(get_team_analytics_service),
 ):
     """Analyze workload distribution across team"""
@@ -102,6 +112,8 @@ async def get_workload_balance(
 @router.get("/optimal-hours")
 async def get_optimal_hours(
     user_email: str | None = Query(None, description="Filter by user email"),
+
+
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
     service: TeamAnalyticsService = Depends(get_team_analytics_service),
 ):
@@ -117,6 +129,8 @@ async def get_optimal_hours(
 @router.get("/team-insights")
 async def get_team_insights(
     days: int = Query(7, ge=1, le=365, description="Number of days to analyze"),
+
+
     service: TeamAnalyticsService = Depends(get_team_analytics_service),
 ):
     """Generate comprehensive team collaboration insights"""

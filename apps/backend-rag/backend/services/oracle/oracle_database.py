@@ -25,7 +25,7 @@ class DatabaseManager:
         self._engine = None
         self._init_engine()
 
-    def _init_engine(self):
+    def _init_engine(self) -> None:
         """Initialize SQLAlchemy engine with connection pooling"""
         try:
             # Skip initialization if database_url is a placeholder
@@ -219,13 +219,13 @@ def get_db_manager() -> DatabaseManager:
             # Create a dummy instance that will fail gracefully when used
             # This allows imports to succeed even if DB is not available
             class DummyDatabaseManager:
-                async def get_user_profile(self, *args, **kwargs):
+                async def get_user_profile(self, *args, **kwargs) -> None:
                     return None
 
-                async def store_feedback(self, *args, **kwargs):
+                async def store_feedback(self, *args, **kwargs) -> None:
                     pass
 
-                async def store_query_analytics(self, *args, **kwargs):
+                async def store_query_analytics(self, *args, **kwargs) -> None:
                     pass
 
             _db_manager_instance = DummyDatabaseManager()  # type: ignore

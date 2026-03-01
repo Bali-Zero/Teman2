@@ -27,6 +27,8 @@ class TeamMember(BaseModel):
 @router.get("/members", response_model=list[TeamMember])
 async def get_team_members(
     current_user: dict = Depends(get_current_user),
+
+
     pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """

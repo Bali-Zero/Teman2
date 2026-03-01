@@ -9,7 +9,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/integrations/gumloop", tags=["Integrations"])
 
 
-async def verify_gumloop_key(x_gumloop_key: str = Header(None)):
+async def verify_gumloop_key(x_gumloop_key: str = Header(None)) -> bool:
+
     """Verifica che la chiamata arrivi da Gumloop usando una chiave statica."""
     expected_key = settings.admin_api_key
     if not expected_key:
@@ -21,7 +22,7 @@ async def verify_gumloop_key(x_gumloop_key: str = Header(None)):
 
 
 @router.post("/kbli-sync", dependencies=[Depends(verify_gumloop_key)])
-async def ingest_kbli_enriched(payload: list[dict[str, Any]]):
+async def ingest_kbli_enriched(payload: list[dict[str, Any]]) -> dict[str, Any]:
     """
     Riceve i dati KBLI 2025 arricchiti da Gumloop.
     Aggiorna il database PostgreSQL in modalità Upsert.
@@ -35,7 +36,7 @@ async def ingest_kbli_enriched(payload: list[dict[str, Any]]):
 
 
 @router.post("/legal-harvest", dependencies=[Depends(verify_gumloop_key)])
-async def ingest_legal_harvest(payload: list[dict[str, Any]]):
+async def ingest_legal_harvest(payload: list[dict[str, Any]]) -> dict[str, Any]:
     """
     Riceve i Pasal (Articoli) estratti dalle 400 leggi.
     """

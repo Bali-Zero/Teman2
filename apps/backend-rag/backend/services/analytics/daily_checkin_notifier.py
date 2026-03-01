@@ -36,7 +36,7 @@ class DailyCheckinNotifier:
         self.running = False
         logger.info("✅ DailyCheckinNotifier initialized")
 
-    async def start(self):
+    async def start(self) -> None:
         """Start the daily notifier background task."""
         if self.running:
             logger.warning("⚠️ Daily notifier already running")
@@ -46,7 +46,7 @@ class DailyCheckinNotifier:
         self.task = asyncio.create_task(self._scheduler_loop())
         logger.info(f"📧 Daily check-in notifier started (sends at {CHECK_TIME_HOUR}:00 Bali time)")
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop the notifier."""
         self.running = False
         if self.task:
@@ -57,7 +57,7 @@ class DailyCheckinNotifier:
                 pass
         logger.info("🛑 Daily check-in notifier stopped")
 
-    async def _scheduler_loop(self):
+    async def _scheduler_loop(self) -> None:
         """Background loop that checks every minute if it's time to send."""
         last_sent_date = None
 
@@ -247,7 +247,7 @@ class DailyCheckinNotifier:
         """
         return html
 
-    async def _send_daily_report(self):
+    async def _send_daily_report(self) -> None:
         """Send the daily check-in report email."""
         # Check SMTP config
         if not settings.smtp_host or not settings.smtp_user:
@@ -285,7 +285,7 @@ class DailyCheckinNotifier:
         except Exception as e:
             logger.error(f"❌ Failed to send daily email: {e}")
 
-    async def send_now(self):
+    async def send_now(self) -> None:
         """Send the report immediately (for testing)."""
         await self._send_daily_report()
 

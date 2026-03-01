@@ -24,7 +24,7 @@ class MCPClientService:
         self._initialized = False
         logger.info("🔌 MCPClientService created")
 
-    async def initialize(self):
+    async def initialize(self) -> None:
         """Inizializza connessioni ai server MCP configurati"""
         if self._initialized:
             return
@@ -56,7 +56,7 @@ class MCPClientService:
         self._initialized = True
         logger.info(f"🔌 MCPClientService initialized with {len(self.available_tools)} tools")
 
-    async def _connect_server(self, name: str, config: dict):
+    async def _connect_server(self, name: str, config: dict) -> None:
         """Connette a un singolo server MCP"""
         server_params = StdioServerParameters(
             command=config["command"],
@@ -180,7 +180,7 @@ def get_mcp_client() -> MCPClientService:
     return _mcp_client
 
 
-async def initialize_mcp_client():
+async def initialize_mcp_client() -> Any:
     """Initialize MCP client (call at startup)"""
     client = get_mcp_client()
     await client.initialize()

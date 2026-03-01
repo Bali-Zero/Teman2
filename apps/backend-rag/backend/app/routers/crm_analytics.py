@@ -95,6 +95,8 @@ class ClientTrendPoint:
 @router.get("/clients/overview", response_model=dict[str, Any])
 async def get_client_overview(
     current_user: dict = Depends(get_current_user),
+
+
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
@@ -182,6 +184,8 @@ async def get_client_overview(
 async def get_team_performance(
     period_days: int = 30,
     current_user: dict = Depends(get_current_user),
+
+
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
@@ -282,6 +286,8 @@ async def get_team_performance(
 @router.get("/revenue/summary", response_model=dict[str, Any])
 async def get_revenue_summary(
     current_user: dict = Depends(get_current_user),
+
+
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
@@ -373,6 +379,8 @@ async def get_revenue_summary(
 @router.get("/processes/by-type", response_model=list[dict[str, Any]])
 async def get_processes_by_type(
     current_user: dict = Depends(get_current_user),
+
+
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
@@ -434,6 +442,8 @@ async def get_processes_by_type(
 async def get_client_trend(
     months: int = 6,
     current_user: dict = Depends(get_current_user),
+
+
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """

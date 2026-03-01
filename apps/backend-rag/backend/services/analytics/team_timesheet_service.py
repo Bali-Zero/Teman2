@@ -39,7 +39,7 @@ class TeamTimesheetService:
         self.running = False
         logger.info("✅ TeamTimesheetService initialized")
 
-    async def start_auto_logout_monitor(self):
+    async def start_auto_logout_monitor(self) -> None:
         """Start background task for auto-logout at 18:30"""
         if self.running:
             logger.warning("⚠️ Auto-logout monitor already running")
@@ -49,7 +49,7 @@ class TeamTimesheetService:
         self.auto_logout_task = asyncio.create_task(self._auto_logout_loop())
         logger.info("🕕 Auto-logout monitor started (18:30 Bali time)")
 
-    async def stop_auto_logout_monitor(self):
+    async def stop_auto_logout_monitor(self) -> None:
         """Stop auto-logout monitor"""
         self.running = False
         if self.auto_logout_task:
@@ -58,7 +58,7 @@ class TeamTimesheetService:
                 await self.auto_logout_task
         logger.info("🛑 Auto-logout monitor stopped")
 
-    async def _auto_logout_loop(self):
+    async def _auto_logout_loop(self) -> None:
         """Background loop checking for expired sessions every 5 minutes"""
         while self.running:
             try:
@@ -73,7 +73,7 @@ class TeamTimesheetService:
                 logger.info("🛑 Auto-logout loop cancelled")
                 break
 
-    async def _process_auto_logout(self):
+    async def _process_auto_logout(self) -> None:
         """Process auto-logout for sessions past 18:30 Bali time"""
         async with self.pool.acquire() as conn:
             result = await conn.fetch("SELECT * FROM auto_logout_expired_sessions()")

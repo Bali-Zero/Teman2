@@ -294,10 +294,10 @@ def create_collective_memory_workflow(memory_service: Any = None, _mcp_client: A
     workflow = StateGraph(CollectiveMemoryState)
 
     # Wrappers for dependency injection
-    async def check_existing_wrapper(state):
+    async def check_existing_wrapper(state) -> Any:
         return await check_existing_memories(state, memory_service)
 
-    async def store_memory_wrapper(state):
+    async def store_memory_wrapper(state) -> Any:
         return await store_collective_memory(state, memory_service)
 
     # NODES

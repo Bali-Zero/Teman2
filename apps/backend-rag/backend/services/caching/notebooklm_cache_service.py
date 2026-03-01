@@ -53,7 +53,7 @@ class NotebookLMCacheService:
         self.ttl_seconds = 30 * 24 * 60 * 60  # 30 days
         self.cache_prefix = "notebooklm:qa:"
 
-    async def initialize(self):
+    async def initialize(self) -> None:
         """Initialize Redis connection."""
         try:
             self.redis_client = await redis.from_url(
@@ -66,7 +66,7 @@ class NotebookLMCacheService:
             logger.error(f"❌ Redis connection failed: {e}")
             self.redis_client = None
 
-    async def close(self):
+    async def close(self) -> None:
         """Close Redis connection."""
         if self.redis_client:
             await self.redis_client.close()

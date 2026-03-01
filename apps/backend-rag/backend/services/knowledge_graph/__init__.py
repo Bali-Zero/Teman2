@@ -11,7 +11,7 @@ from .quality_filter import KGQualityFilter, apply_quality_filter_to_batch
 
 
 # Lazy import for Gemini (requires vertexai SDK)
-def get_gemini_extractor():
+def get_gemini_extractor() -> Any:
     """Get GeminiKGExtractor (lazy import)"""
     from .extractor_gemini import GeminiKGExtractor
 

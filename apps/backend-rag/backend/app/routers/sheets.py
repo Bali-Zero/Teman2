@@ -50,7 +50,7 @@ class UpdateRowRequest(BaseModel):
 
 # ---- Helpers ----
 
-def _get_sheets_service():
+def _get_sheets_service() -> SheetsService:
     from backend.services.integrations.sheets_service import SheetsService
     return SheetsService()
 
@@ -58,7 +58,7 @@ def _get_sheets_service():
 # ---- Endpoints ----
 
 @router.get("/read")
-async def read_range(spreadsheet_id: str, range: str):
+async def read_range(spreadsheet_id: str, range: str) -> dict[str, Any]:
     """Read a range from a Google Spreadsheet."""
     try:
         svc = _get_sheets_service()
@@ -71,7 +71,7 @@ async def read_range(spreadsheet_id: str, range: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/read")
-async def read_range_post(req: ReadRequest):
+async def read_range_post(req: ReadRequest) -> dict[str, Any]:
     """Read a range (POST version to avoid URL encoding issues with '!')."""
     try:
         svc = _get_sheets_service()
@@ -83,7 +83,7 @@ async def read_range_post(req: ReadRequest):
 
 
 @router.post("/write")
-async def write_range(req: WriteRequest):
+async def write_range(req: WriteRequest) -> dict[str, Any]:
     """Write values to a specific range."""
     try:
         svc = _get_sheets_service()
@@ -95,7 +95,7 @@ async def write_range(req: WriteRequest):
 
 
 @router.post("/append")
-async def append_rows(req: WriteRequest):
+async def append_rows(req: WriteRequest) -> dict[str, Any]:
     """Append rows after the last data row."""
     try:
         svc = _get_sheets_service()
@@ -110,7 +110,7 @@ async def append_rows(req: WriteRequest):
 
 
 @router.post("/find")
-async def find_row(req: FindRequest):
+async def find_row(req: FindRequest) -> dict[str, Any]:
     """Find a row by matching a column value."""
     try:
         svc = _get_sheets_service()
@@ -126,7 +126,7 @@ async def find_row(req: FindRequest):
 
 
 @router.post("/update-row")
-async def update_row(req: UpdateRowRequest):
+async def update_row(req: UpdateRowRequest) -> dict[str, Any]:
     """
     Write values to a specific row starting at a given column.
     Example: sheet_name='Company', row_number=5, column_start='D', values=['addr','nib',...]

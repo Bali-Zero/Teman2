@@ -80,7 +80,7 @@ def async_timed(component: str = "request") -> Any:
     def decorator(func: Any) -> Any:
         """Decorator."""
         @wraps(func)
-        async def wrapper(*args, **kwargs):
+        async def wrapper(*args, **kwargs) -> Any:
             start_time = time.time()
             try:
                 result = await func(*args, **kwargs)
@@ -171,7 +171,7 @@ class ConnectionPool:
         self.created_connections = 0
         self.lock = asyncio.Lock()
 
-    async def get_connection(self):
+    async def get_connection(self) -> Any:
         """Get a connection from pool or create new one"""
         try:
             # Try to get existing connection
@@ -363,12 +363,12 @@ def create_optimized_app() -> Any:
         thread_pool.shutdown(wait=True)
 
     @app.get("/metrics")
-    async def get_performance_metrics():
+    async def get_performance_metrics() -> Any:
         """Get performance metrics"""
         return perf_monitor.get_metrics()
 
     @app.post("/clear-cache")
-    async def clear_caches():
+    async def clear_caches() -> dict[str, Any]:
         """Clear all caches"""
         await embedding_cache.clear()
         await search_cache.clear()

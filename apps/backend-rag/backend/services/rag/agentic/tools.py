@@ -139,7 +139,7 @@ class VectorSearchTool(BaseTool):
             # Execute search across target collections in parallel for better performance
             import asyncio
 
-            async def _search_collection(target_col):
+            async def _search_collection(target_col) -> Any:
                 try:
                     # Per-collection timeout to prevent one slow collection from blocking everything
                     async with asyncio.timeout(10.0):

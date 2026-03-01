@@ -32,6 +32,8 @@ STANDARD_SUBFOLDERS = [
 async def create_client_drive_folder(
     client_id: int,
     pool=Depends(get_database_pool),
+
+
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
@@ -187,6 +189,8 @@ async def create_client_drive_folder(
 async def get_client_drive_folder(
     client_id: int,
     pool=Depends(get_database_pool),
+
+
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
@@ -256,6 +260,8 @@ async def get_client_drive_folder(
 async def unlink_client_drive_folder(
     client_id: int,
     pool=Depends(get_database_pool),
+
+
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
@@ -307,6 +313,8 @@ async def unlink_client_drive_folder(
 async def get_client_drive_folder_structure(
     client_id: int,
     pool=Depends(get_database_pool),
+
+
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
@@ -369,6 +377,8 @@ async def list_folder_files(
     client_id: int,
     folder_name: str,
     limit: int = Query(50, ge=1, le=200),
+
+
     offset: int = Query(0, ge=0),
     search: str | None = Query(None),
     pool=Depends(get_database_pool),
@@ -464,6 +474,8 @@ async def upload_file_to_folder(
     client_id: int,
     folder_name: str,
     file: UploadFile = File(...),
+
+
     pool=Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
@@ -562,6 +574,8 @@ async def upload_file_to_folder(
 async def get_client_drive_folder_stats(
     client_id: int,
     pool=Depends(get_database_pool),
+
+
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """

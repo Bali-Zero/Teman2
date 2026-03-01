@@ -398,13 +398,13 @@ def create_lead_assignment_workflow(db_pool: "asyncpg.Pool", telegram_service: A
     workflow = StateGraph(LeadAssignmentState)
 
     # Dependency injection wrappers
-    async def check_dup_wrapper(state):
+    async def check_dup_wrapper(state) -> Any:
         return await check_duplicates(state, db_pool)
 
-    async def assign_wrapper(state):
+    async def assign_wrapper(state) -> Any:
         return await assign_lead(state, db_pool)
 
-    async def notify_wrapper(state):
+    async def notify_wrapper(state) -> Any:
         return await send_telegram_notification(state, db_pool, telegram_service)
 
     # Add nodes

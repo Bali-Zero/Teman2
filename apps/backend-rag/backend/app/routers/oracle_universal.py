@@ -143,6 +143,8 @@ router = APIRouter(prefix="/api/oracle", tags=["Oracle v5.3 - Ultra Hybrid"])
 async def hybrid_oracle_query(
     request: OracleQueryRequest,
     service: SearchService = Depends(get_search_service),
+
+
     current_user: dict = Depends(get_current_user),
 ):
     """
@@ -182,7 +184,7 @@ async def hybrid_oracle_query(
 
 
 @router.post("/feedback")
-async def submit_user_feedback(feedback: FeedbackRequest):
+async def submit_user_feedback(feedback: FeedbackRequest) -> dict[str, Any]:
     """
     Submit user feedback for continuous learning and system improvement
     """
@@ -195,7 +197,7 @@ async def submit_user_feedback(feedback: FeedbackRequest):
 
 
 @router.get("/health")
-async def oracle_health_check():
+async def oracle_health_check() -> dict[str, Any]:
     """Health check for Oracle v5.3 services"""
     return {
         "status": "active",
@@ -206,18 +208,18 @@ async def oracle_health_check():
 
 
 @router.get("/drive/test")
-async def test_drive_connection():
+async def test_drive_connection() -> dict[str, Any]:
     """Test Google Drive integration"""
     return {"status": "moved_to_service", "available": True}
 
 
 @router.get("/gemini/test")
-async def test_gemini_integration():
+async def test_gemini_integration() -> dict[str, Any]:
     """Test Google Gemini integration"""
     return {"status": "moved_to_service", "available": True}
 
 
 @router.get("/user/profile/{user_email}")
-async def get_user_profile_endpoint(user_email: str):
+async def get_user_profile_endpoint(user_email: str) -> dict[str, Any]:
     """Get user profile with localization preferences"""
     return {"status": "not_implemented", "email": user_email}

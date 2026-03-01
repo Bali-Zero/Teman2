@@ -35,6 +35,8 @@ def save_upload_file_sync(path: Path, content: bytes) -> Any:
 @router.post("/upload", response_model=BookIngestionResponse)
 async def upload_and_ingest(
     file: UploadFile = File(...),
+
+
     title: str | None = None,
     author: str | None = None,
     tier_override: TierLevel | None = None,
@@ -84,7 +86,7 @@ async def upload_and_ingest(
 
 
 @router.post("/file", response_model=BookIngestionResponse)
-async def ingest_local_file(request: BookIngestionRequest):
+async def ingest_local_file(request: BookIngestionRequest) -> BookIngestionResponse:
     """
     Ingest a book from local file path.
 
@@ -116,7 +118,7 @@ async def ingest_local_file(request: BookIngestionRequest):
 
 
 @router.post("/batch", response_model=BatchIngestionResponse)
-async def batch_ingest(request: BatchIngestionRequest, _background_tasks: BackgroundTasks):
+async def batch_ingest(request: BatchIngestionRequest, _background_tasks: BackgroundTasks) -> BatchIngestionResponse:
     """
     Process all books in a directory.
 
@@ -199,7 +201,7 @@ async def batch_ingest(request: BatchIngestionRequest, _background_tasks: Backgr
 
 
 @router.get("/stats")
-async def get_ingestion_stats():
+async def get_ingestion_stats() -> dict[str, Any]:
     """
     Get current database statistics.
 

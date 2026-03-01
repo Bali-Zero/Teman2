@@ -77,7 +77,7 @@ STYLE:
 Use the context below to answer. If no relevant context, say you don't have that information."""
 
 
-async def get_search_service(request: Request):
+async def get_search_service(request: Request) -> Any:
     """Get search service from app state."""
     search_service = getattr(request.app.state, "search_service", None)
     if not search_service:
@@ -137,6 +137,8 @@ Answer briefly (2-3 sentences):"""
 async def voice_query(
     request: VoiceQueryRequest,
     search_service=Depends(get_search_service),
+
+
     _auth: dict = Depends(verify_api_key),
 ):
     """
@@ -218,6 +220,8 @@ from fastapi import Header
 async def elevenlabs_kbli_audit(
     request: ElevenLabsRequest,
     x_elevenlabs_signature: str | None = Header(None),
+
+
     http_raw_request: Request = None
 ):
     """

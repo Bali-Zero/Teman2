@@ -373,12 +373,12 @@ class LLMGateway:
         circuit = self._get_circuit_breaker(model_name)
         return circuit.is_open()
 
-    def _record_success(self, model_name: str):
+    def _record_success(self, model_name: str) -> None:
         """Record successful call."""
         circuit = self._get_circuit_breaker(model_name)
         circuit.record_success()
 
-    def _record_failure(self, model_name: str, error: Exception):
+    def _record_failure(self, model_name: str, error: Exception) -> None:
         """Record failed call with error classification."""
         circuit = self._get_circuit_breaker(model_name)
         circuit.record_failure()
