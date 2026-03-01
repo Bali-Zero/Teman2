@@ -6,10 +6,10 @@
 
 Two machines exist on the local network:
 
-| Machine | User | Hostname | Role |
-|---------|------|----------|------|
-| **Pro** | `nuzantara` | `Nuzantara` | Development (48GB, M4 Pro) |
-| **Air** | `antonellosiano` | `Nuzantara-9` | Server H24 (16GB, M4) |
+| Machine | User             | Hostname      | Role                       |
+| ------- | ---------------- | ------------- | -------------------------- |
+| **Pro** | `nuzantara`      | `Nuzantara`   | Development (48GB, M4 Pro) |
+| **Air** | `antonellosiano` | `Nuzantara-9` | Server H24 (16GB, M4)      |
 
 **At every session start, run this check:**
 
@@ -23,6 +23,7 @@ if [ "$LOCAL_HEAD" = "$REMOTE_HEAD" ]; then echo "Git sync: OK ($LOCAL_HEAD)"; e
 ```
 
 This tells you:
+
 - `whoami` = `nuzantara` → you are on **Pro**
 - `whoami` = `antonellosiano` → you are on **Air**
 - Whether the other machine is reachable via SSH
@@ -268,6 +269,7 @@ Classification confidence thresholds:
 - **8 Workflow Chains** for deterministic automation (daily_ops_autopilot, new_client_onboarding, practice_lifecycle_check, intel_pipeline, weekly_report, client_health_monitor, compliance_autopilot, journey_accelerator)
 
 **Additional MCP servers:**
+
 - `apps/nuzantara-mcp-advanced/` — Fly.io ops, deployment readiness, code search, diagnostics
 - `apps/nuzantara-mcp-browser/` — Browser automation
 

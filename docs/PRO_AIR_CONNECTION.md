@@ -4,10 +4,10 @@
 
 ## Machines
 
-| Machine | Hostname | mDNS | User | Hardware |
-|---------|----------|------|------|----------|
-| **Pro** | Nuzantara | `Nuzantara.local` | `nuzantara` | MacBook Pro M4 Pro 48GB |
-| **Air** | Nuzantara-9 | `Nuzantara-9.local` | `antonellosiano` | MacBook Air M4 16GB |
+| Machine | Hostname    | mDNS                | User             | Hardware                |
+| ------- | ----------- | ------------------- | ---------------- | ----------------------- |
+| **Pro** | Nuzantara   | `Nuzantara.local`   | `nuzantara`      | MacBook Pro M4 Pro 48GB |
+| **Air** | Nuzantara-9 | `Nuzantara-9.local` | `antonellosiano` | MacBook Air M4 16GB     |
 
 ## SSH Connection
 
@@ -24,6 +24,7 @@ ssh pro
 ### SSH Config (both machines)
 
 **Pro** (`~/.ssh/config`):
+
 ```
 Host air
     HostName Nuzantara-9.local
@@ -41,6 +42,7 @@ Host pro
 ```
 
 **Air** (`~/.ssh/config`):
+
 ```
 Include /Users/antonellosiano/.colima/ssh_config
 
@@ -80,6 +82,7 @@ ssh pro "echo 'Pro SSH: OK'" 2>/dev/null || echo "Pro SSH: FAILED"
 ## Troubleshooting
 
 ### mDNS not resolving
+
 Both machines must be on the **same local network** (same WiFi/router). mDNS doesn't work across different networks.
 
 ```bash
@@ -88,17 +91,23 @@ dns-sd -B _ssh._tcp local.
 ```
 
 ### SSH connection refused
+
 Remote Login must be enabled on the target machine:
+
 - **System Settings → General → Sharing → Remote Login → ON**
 
 ### Host key changed
+
 If a machine gets reinstalled or hostname changes:
+
 ```bash
 ssh-keygen -R Nuzantara-9.local  # or Nuzantara.local
 ```
 
 ### Public key not accepted
+
 Copy your public key to the other machine:
+
 ```bash
 ssh-copy-id -i ~/.ssh/id_ed25519.pub air   # from Pro
 ssh-copy-id -i ~/.ssh/id_ed25519.pub pro   # from Air
@@ -107,6 +116,7 @@ ssh-copy-id -i ~/.ssh/id_ed25519.pub pro   # from Air
 ## Syncthing
 
 Bidirectional sync is configured between the machines:
+
 - **Pro:** `~/Desktop/nuzantara` → **Air:** `~/Desktop/projects/nuzantara`
 - Syncs: `~/.claude/`, `~/.config/`
 - Excludes: `node_modules`, `build`, `cache`, `logs` (via `.stignore`)
