@@ -7,6 +7,7 @@ Refactored: Migrated to asyncpg with connection pooling (2025-12-07)
 """
 
 import asyncpg
+from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
 from backend.app.dependencies import get_current_user, get_database_pool

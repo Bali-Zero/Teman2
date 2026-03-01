@@ -3,6 +3,7 @@ WhatsApp Conversations API - Final Stabilized Version
 """
 
 import json
+from typing import Any
 import logging
 
 from asyncpg import Pool

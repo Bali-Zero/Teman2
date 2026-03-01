@@ -4,6 +4,7 @@ Endpoints for managing user timeline events and experiences
 """
 
 import logging
+from typing import Any
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
