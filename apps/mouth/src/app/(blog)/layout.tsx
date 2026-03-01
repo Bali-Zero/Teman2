@@ -6,14 +6,15 @@ import Image from "next/image";
 import { Search, Menu, ChevronDown, X, Globe } from "lucide-react";
 import { SearchModal } from "@/components/blog/SearchBar";
 import { ErrorBoundary } from "@/components/optimization";
+import { I18nProvider, useTranslation } from "@/i18n";
+import { LocaleHead } from "@/i18n/LocaleHead";
+import type { Locale } from "@/i18n/types";
 
 // Language options
 const LANGUAGES = [
-  { code: "en", name: "English", flag: "🇬🇧" },
-  { code: "id", name: "Bahasa Indonesia", flag: "🇮🇩" },
+  { code: "en", name: "English", flag: "\u{1F1EC}\u{1F1E7}" },
+  { code: "id", name: "Bahasa Indonesia", flag: "\u{1F1EE}\u{1F1E9}" },
 ] as const;
-
-type LanguageCode = (typeof LANGUAGES)[number]["code"];
 
 /**
  * Blog Layout - "The Chronicle"
@@ -24,24 +25,25 @@ export default function BlogLayout({
 }: {
   children: React.ReactNode;
 }) {
+  return (
+    <I18nProvider>
+      <BlogLayoutInner>{children}</BlogLayoutInner>
+    </I18nProvider>
+  );
+}
+
+function BlogLayoutInner({ children }: { children: React.ReactNode }) {
+  const { t, locale, setLocale } = useTranslation();
+
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [activeDropdown, setActiveDropdown] = React.useState<string | null>(
     null,
   );
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
-  const [language, setLanguage] = React.useState<LanguageCode>("en");
   const [langMenuOpen, setLangMenuOpen] = React.useState(false);
   const langMenuRef = React.useRef<HTMLDivElement>(null);
   const [pendingNewsCount, setPendingNewsCount] = React.useState(0);
   const [isAdmin, setIsAdmin] = React.useState(false);
-
-  // Load saved language preference
-  React.useEffect(() => {
-    const saved = localStorage.getItem("blog-language") as LanguageCode | null;
-    if (saved && LANGUAGES.some((l) => l.code === saved)) {
-      setLanguage(saved);
-    }
-  }, []);
 
   // Check admin status and fetch pending news count
   React.useEffect(() => {
@@ -63,7 +65,7 @@ export default function BlogLayout({
           setPendingNewsCount(data.data?.length || 0);
         }
       } catch (error) {
-        console.error("Failed to fetch pending news count:", error);
+        // silently ignore fetch errors for pending count
       }
     };
 
@@ -89,15 +91,7 @@ export default function BlogLayout({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleLanguageChange = (code: LanguageCode) => {
-    setLanguage(code);
-    localStorage.setItem("blog-language", code);
-    setLangMenuOpen(false);
-    // In future: trigger content translation or reload
-  };
-
-  const currentLang =
-    LANGUAGES.find((l) => l.code === language) || LANGUAGES[0];
+  const currentLang = LANGUAGES.find((l) => l.code === locale) || LANGUAGES[0];
 
   // Global keyboard shortcut for search (Cmd/Ctrl + K)
   React.useEffect(() => {
@@ -114,6 +108,8 @@ export default function BlogLayout({
 
   return (
     <div className="min-h-screen bg-[#0c1f3a] text-white">
+      <LocaleHead />
+
       {/* Header */}
       <header className="sticky top-0 z-50 bg-[#0c1f3a] border-b border-white/10">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
@@ -138,7 +134,7 @@ export default function BlogLayout({
                 onMouseLeave={() => setActiveDropdown(null)}
               >
                 <button className="flex items-center gap-1 px-4 py-2 text-sm text-white/80 hover:text-white transition-colors">
-                  News
+                  {t("common.nav.news")}
                   <ChevronDown className="w-4 h-4" />
                 </button>
 
@@ -167,7 +163,7 @@ export default function BlogLayout({
                   href="/services"
                   className="flex items-center gap-1 px-4 py-2 text-sm text-white/80 hover:text-white transition-colors"
                 >
-                  Services
+                  {t("common.nav.services")}
                   <ChevronDown className="w-4 h-4" />
                 </Link>
 
@@ -191,7 +187,7 @@ export default function BlogLayout({
                 href="/team"
                 className="px-4 py-2 text-sm text-white/80 hover:text-white transition-colors"
               >
-                Team
+                {t("common.nav.team")}
               </Link>
 
               {/* Contact */}
@@ -199,7 +195,7 @@ export default function BlogLayout({
                 href="/contact"
                 className="px-4 py-2 text-sm text-white/80 hover:text-white transition-colors"
               >
-                Contact
+                {t("common.nav.contact")}
               </Link>
             </nav>
 
@@ -239,16 +235,19 @@ export default function BlogLayout({
                     {LANGUAGES.map((lang) => (
                       <button
                         key={lang.code}
-                        onClick={() => handleLanguageChange(lang.code)}
+                        onClick={() => {
+                          setLocale(lang.code as Locale);
+                          setLangMenuOpen(false);
+                        }}
                         className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
-                          language === lang.code
+                          locale === lang.code
                             ? "bg-white/10 text-white"
                             : "text-white/70 hover:text-white hover:bg-white/5"
                         }`}
                       >
                         <span className="text-lg">{lang.flag}</span>
                         <span>{lang.name}</span>
-                        {language === lang.code && (
+                        {locale === lang.code && (
                           <svg
                             className="w-4 h-4 ml-auto text-[#2251ff]"
                             fill="none"
@@ -305,7 +304,7 @@ export default function BlogLayout({
             <nav className="max-w-[1400px] mx-auto px-4 py-4 space-y-1">
               <div className="py-2">
                 <p className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white/40">
-                  News
+                  {t("common.nav.news")}
                 </p>
                 {INSIGHT_CATEGORIES.map((category) => (
                   <Link
@@ -321,7 +320,7 @@ export default function BlogLayout({
 
               <div className="py-2 border-t border-white/10">
                 <p className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white/40">
-                  Services
+                  {t("common.nav.services")}
                 </p>
                 {SERVICES.map((service) => (
                   <Link
@@ -341,32 +340,32 @@ export default function BlogLayout({
                   className="block px-4 py-2.5 text-sm text-white/70 hover:text-white transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  Team
+                  {t("common.nav.team")}
                 </Link>
                 <Link
                   href="/contact"
                   className="block px-4 py-2.5 text-sm text-white/70 hover:text-white transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  Contact
+                  {t("common.nav.contact")}
                 </Link>
               </div>
 
               {/* Language switcher for mobile */}
               <div className="py-2 border-t border-white/10">
                 <p className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white/40">
-                  Language
+                  {t("common.nav.language")}
                 </p>
                 <div className="flex gap-2 px-4">
                   {LANGUAGES.map((lang) => (
                     <button
                       key={lang.code}
                       onClick={() => {
-                        handleLanguageChange(lang.code);
+                        setLocale(lang.code as Locale);
                         setMobileMenuOpen(false);
                       }}
                       className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors ${
-                        language === lang.code
+                        locale === lang.code
                           ? "bg-[#2251ff] text-white"
                           : "bg-white/5 text-white/70 hover:bg-white/10"
                       }`}
@@ -404,7 +403,7 @@ export default function BlogLayout({
         <ErrorBoundary
           fallback={
             <div className="p-8 text-center text-white">
-              Something went wrong. Please refresh the page.
+              {t("common.error")}
             </div>
           }
         >
@@ -434,8 +433,7 @@ export default function BlogLayout({
                 />
               </Link>
               <p className="text-white/50 max-w-sm mb-6 leading-relaxed">
-                Your trusted partner for business, immigration, and life in
-                Indonesia. Expert guidance for every step of your journey.
+                {t("common.footer.description")}
               </p>
 
               {/* Social Links */}
@@ -488,7 +486,7 @@ export default function BlogLayout({
             {/* Services */}
             <div>
               <h4 className="text-sm font-semibold uppercase tracking-wider text-white mb-5">
-                Services
+                {t("common.footer.services")}
               </h4>
               <ul className="space-y-3">
                 {SERVICES.map((service) => (
@@ -507,7 +505,7 @@ export default function BlogLayout({
             {/* News */}
             <div>
               <h4 className="text-sm font-semibold uppercase tracking-wider text-white mb-5">
-                News
+                {t("common.footer.news")}
               </h4>
               <ul className="space-y-3">
                 {INSIGHT_CATEGORIES.map((category) => (
@@ -526,7 +524,7 @@ export default function BlogLayout({
             {/* Contact */}
             <div>
               <h4 className="text-sm font-semibold uppercase tracking-wider text-white mb-5">
-                Contact
+                {t("common.footer.contact")}
               </h4>
               <ul className="space-y-3">
                 <li>
@@ -573,7 +571,7 @@ export default function BlogLayout({
           {/* Copyright */}
           <div className="mt-16 pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-center">
             <p className="text-xs text-white/40">
-              &copy; {new Date().getFullYear()} Bali Zero. All rights reserved.
+              &copy; {new Date().getFullYear()} {t("common.footer.copyright")}
             </p>
           </div>
         </div>

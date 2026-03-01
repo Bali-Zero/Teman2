@@ -14,12 +14,14 @@ import {
   CheckCircle,
   Loader2,
 } from "lucide-react";
+import { useTranslation } from "@/i18n";
 
 /**
  * Contact Page - Bali Zero
  * McKinsey-inspired layout with contact form
  */
 export default function ContactPage() {
+  const { t } = useTranslation();
   const [formState, setFormState] = React.useState<
     "idle" | "loading" | "success" | "error"
   >("idle");
@@ -70,15 +72,16 @@ export default function ContactPage() {
               />
             </div>
             <span className="text-[#2251ff] text-xs font-semibold uppercase tracking-wider mb-4 block">
-              Contact Us
+              {t("contact.hero.label")}
             </span>
             <h1 className="font-serif text-4xl lg:text-5xl xl:text-6xl text-white leading-[1.1] mb-6">
-              Let's Start Your{" "}
-              <span className="text-[#e85c41]">Indonesian Journey</span>
+              {t("contact.hero.title")}{" "}
+              <span className="text-[#e85c41]">
+                {t("contact.hero.titleAccent")}
+              </span>
             </h1>
             <p className="text-lg text-white/70 mb-8 leading-relaxed">
-              Have questions about visas, company setup, or taxes? We're here to
-              help. Get in touch and we'll respond within 24 hours.
+              {t("contact.hero.subtitle")}
             </p>
           </div>
         </div>
@@ -91,7 +94,7 @@ export default function ContactPage() {
             {/* Contact Info */}
             <div>
               <h2 className="font-serif text-2xl text-white mb-8">
-                Get in Touch
+                {t("contact.info.getInTouch")}
               </h2>
 
               <div className="space-y-6">
@@ -107,10 +110,10 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="text-white font-medium mb-1 group-hover:text-[#25D366] transition-colors">
-                      WhatsApp
+                      {t("contact.info.whatsapp")}
                     </h3>
                     <p className="text-white/60 text-sm mb-2">
-                      Fastest response - usually within minutes
+                      {t("contact.info.whatsappDesc")}
                     </p>
                     <p className="text-[#25D366] font-medium">
                       +62 859 0436 9574
@@ -128,10 +131,10 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="text-white font-medium mb-1 group-hover:text-[#2251ff] transition-colors">
-                      Email
+                      {t("contact.info.email")}
                     </h3>
                     <p className="text-white/60 text-sm mb-2">
-                      For detailed inquiries and documents
+                      {t("contact.info.emailDesc")}
                     </p>
                     <p className="text-[#2251ff] font-medium">
                       info@balizero.com
@@ -151,10 +154,10 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="text-white font-medium mb-1 group-hover:text-[#E4405F] transition-colors">
-                      Instagram
+                      {t("contact.info.instagram")}
                     </h3>
                     <p className="text-white/60 text-sm mb-2">
-                      Follow us for updates and tips
+                      {t("contact.info.instagramDesc")}
                     </p>
                     <p className="text-[#E4405F] font-medium">@balizero0</p>
                   </div>
@@ -167,14 +170,16 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="text-white font-medium mb-1">
-                      Office Location
+                      {t("contact.info.officeLocation")}
                     </h3>
                     <p className="text-white/60 text-sm mb-2">
-                      By appointment only
+                      {t("contact.info.officeDesc")}
                     </p>
-                    <p className="text-white/80">Kerobokan, Bali</p>
+                    <p className="text-white/80">
+                      {t("contact.info.officeAddress")}
+                    </p>
                     <p className="text-white/50 text-sm mt-1">
-                      Exact location shared upon appointment
+                      {t("contact.info.officeNote")}
                     </p>
                   </div>
                 </div>
@@ -184,24 +189,38 @@ export default function ContactPage() {
               <div className="mt-8 p-6 rounded-xl border border-white/10 bg-[#0a2540]">
                 <div className="flex items-center gap-3 mb-4">
                   <Clock className="w-5 h-5 text-[#2251ff]" />
-                  <h3 className="text-white font-medium">Office Hours</h3>
+                  <h3 className="text-white font-medium">
+                    {t("contact.hours.title")}
+                  </h3>
                 </div>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-white/60">Monday - Friday</span>
-                    <span className="text-white">9:00 AM - 5:00 PM</span>
+                    <span className="text-white/60">
+                      {t("contact.hours.monFri")}
+                    </span>
+                    <span className="text-white">
+                      {t("contact.hours.monFriHours")}
+                    </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-white/60">Saturday</span>
-                    <span className="text-white">10:00 AM - 2:00 PM</span>
+                    <span className="text-white/60">
+                      {t("contact.hours.saturday")}
+                    </span>
+                    <span className="text-white">
+                      {t("contact.hours.saturdayHours")}
+                    </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-white/60">Sunday</span>
-                    <span className="text-white/40">Closed</span>
+                    <span className="text-white/60">
+                      {t("contact.hours.sunday")}
+                    </span>
+                    <span className="text-white/40">
+                      {t("contact.hours.sundayClosed")}
+                    </span>
                   </div>
                   <div className="pt-2 border-t border-white/10 mt-2">
                     <span className="text-white/40 text-xs">
-                      Timezone: WITA (Bali Time, UTC+8)
+                      {t("contact.hours.timezone")}
                     </span>
                   </div>
                 </div>
@@ -211,24 +230,23 @@ export default function ContactPage() {
             {/* Contact Form */}
             <div>
               <h2 className="font-serif text-2xl text-white mb-8">
-                Send Us a Message
+                {t("contact.form.title")}
               </h2>
 
               {formState === "success" ? (
                 <div className="p-8 rounded-xl border border-[#22c55e]/30 bg-[#22c55e]/10 text-center">
                   <CheckCircle className="w-16 h-16 text-[#22c55e] mx-auto mb-4" />
                   <h3 className="text-xl font-medium text-white mb-2">
-                    Message Sent!
+                    {t("contact.success.title")}
                   </h3>
                   <p className="text-white/60 mb-6">
-                    We've opened WhatsApp with your message. If it didn't open,
-                    please contact us directly.
+                    {t("contact.success.description")}
                   </p>
                   <button
                     onClick={() => setFormState("idle")}
                     className="text-[#2251ff] hover:text-[#1a41cc] font-medium"
                   >
-                    Send another message
+                    {t("common.cta.sendAnother")}
                   </button>
                 </div>
               ) : (
@@ -239,7 +257,8 @@ export default function ContactPage() {
                       htmlFor="name"
                       className="block text-sm font-medium text-white/80 mb-2"
                     >
-                      Full Name <span className="text-[#e85c41]">*</span>
+                      {t("contact.form.fullName")}{" "}
+                      <span className="text-[#e85c41]">*</span>
                     </label>
                     <input
                       type="text"
@@ -259,7 +278,8 @@ export default function ContactPage() {
                       htmlFor="email"
                       className="block text-sm font-medium text-white/80 mb-2"
                     >
-                      Email Address <span className="text-[#e85c41]">*</span>
+                      {t("contact.form.emailAddress")}{" "}
+                      <span className="text-[#e85c41]">*</span>
                     </label>
                     <input
                       type="email"
@@ -279,7 +299,7 @@ export default function ContactPage() {
                       htmlFor="phone"
                       className="block text-sm font-medium text-white/80 mb-2"
                     >
-                      Phone Number
+                      {t("contact.form.phone")}
                     </label>
                     <input
                       type="tel"
@@ -298,7 +318,7 @@ export default function ContactPage() {
                       htmlFor="service"
                       className="block text-sm font-medium text-white/80 mb-2"
                     >
-                      Service Interested In
+                      {t("contact.form.service")}
                     </label>
                     <select
                       id="service"
@@ -307,15 +327,27 @@ export default function ContactPage() {
                       onChange={handleChange}
                       className="w-full px-4 py-3 rounded-lg bg-[#0a2540] border border-white/10 text-white focus:outline-none focus:border-[#2251ff] transition-colors"
                     >
-                      <option value="">Select a service...</option>
-                      <option value="Visa Services">Visa Services</option>
-                      <option value="Company Setup">Company Setup</option>
-                      <option value="Tax Consulting">Tax Consulting</option>
-                      <option value="Real Estate">Real Estate</option>
-                      <option value="Multiple Services">
-                        Multiple Services
+                      <option value="">
+                        {t("contact.form.servicePlaceholder")}
                       </option>
-                      <option value="Other">Other</option>
+                      <option value="Visa Services">
+                        {t("contact.form.serviceVisa")}
+                      </option>
+                      <option value="Company Setup">
+                        {t("contact.form.serviceCompany")}
+                      </option>
+                      <option value="Tax Consulting">
+                        {t("contact.form.serviceTax")}
+                      </option>
+                      <option value="Real Estate">
+                        {t("contact.form.serviceRealEstate")}
+                      </option>
+                      <option value="Multiple Services">
+                        {t("contact.form.serviceMultiple")}
+                      </option>
+                      <option value="Other">
+                        {t("contact.form.serviceOther")}
+                      </option>
                     </select>
                   </div>
 
@@ -325,7 +357,8 @@ export default function ContactPage() {
                       htmlFor="message"
                       className="block text-sm font-medium text-white/80 mb-2"
                     >
-                      Message <span className="text-[#e85c41]">*</span>
+                      {t("contact.form.message")}{" "}
+                      <span className="text-[#e85c41]">*</span>
                     </label>
                     <textarea
                       id="message"
@@ -335,7 +368,7 @@ export default function ContactPage() {
                       value={formData.message}
                       onChange={handleChange}
                       className="w-full px-4 py-3 rounded-lg bg-[#0a2540] border border-white/10 text-white placeholder:text-white/40 focus:outline-none focus:border-[#2251ff] transition-colors resize-none"
-                      placeholder="Tell us about your needs..."
+                      placeholder={t("contact.form.messagePlaceholder")}
                     />
                   </div>
 
@@ -348,18 +381,18 @@ export default function ContactPage() {
                     {formState === "loading" ? (
                       <>
                         <Loader2 className="w-5 h-5 animate-spin" />
-                        Sending...
+                        {t("common.cta.sending")}
                       </>
                     ) : (
                       <>
                         <Send className="w-5 h-5" />
-                        Send Message via WhatsApp
+                        {t("common.cta.sendMessage")}
                       </>
                     )}
                   </button>
 
                   <p className="text-center text-white/40 text-sm">
-                    We'll respond within 24 hours
+                    {t("contact.form.responseTime")}
                   </p>
                 </form>
               )}
@@ -380,17 +413,16 @@ export default function ContactPage() {
             />
             <div className="text-center md:text-left max-w-xl">
               <h3 className="font-serif text-2xl text-white mb-2">
-                Need Instant Answers?
+                {t("contact.aiCta.title")}
               </h3>
               <p className="text-white/60 mb-4">
-                Get immediate help with visas, company setup, taxes, and more
-                from our AI assistant. Available 24/7 with instant responses.
+                {t("contact.aiCta.description")}
               </p>
               <Link
                 href="/chat"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-[#2251ff] text-white font-medium hover:bg-[#1a41cc] transition-colors"
               >
-                Ask Zantara AI Now
+                {t("contact.aiCta.button")}
               </Link>
             </div>
           </div>

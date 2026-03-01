@@ -123,6 +123,7 @@ export const metadata: Metadata = {
     canonical: appUrl,
     languages: {
       "en-US": appUrl,
+      "id-ID": appUrl,
       "x-default": appUrl,
     },
     types: {
