@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from pydantic import BaseModel, EmailStr, Field
 
 from backend.app.dependencies import get_current_user
@@ -341,8 +342,6 @@ async def export_timesheet(
 
     Returns CSV file with all work hours in the specified date range.
     """
-    from fastapi.responses import Response
-
     from backend.services.analytics.team_timesheet_service import get_timesheet_service
 
     service = get_timesheet_service()
