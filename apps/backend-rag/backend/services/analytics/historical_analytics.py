@@ -23,6 +23,7 @@ Metrics Tracked:
 
 import asyncio
 from datetime import date, datetime, timedelta
+from typing import Any
 
 import structlog
 from prometheus_client import Gauge, Histogram
@@ -83,15 +84,15 @@ async def calculate_completion_rate(
     """
     async with db_pool.acquire() as conn:
         query = """
-            SELECT 
+            SELECT
                 pt.code as practice_type,
                 pt.name as practice_name,
                 COUNT(*) as total_practices,
                 COUNT(*) FILTER (WHERE p.status = 'completed') as completed_practices,
                 COUNT(*) FILTER (WHERE p.status = 'cancelled') as cancelled_practices,
                 ROUND(
-                    COUNT(*) FILTER (WHERE p.status = 'completed')::numeric / 
-                    NULLIF(COUNT(*), 0) * 100, 
+                    COUNT(*) FILTER (WHERE p.status = 'completed')::numeric /
+                    NULLIF(COUNT(*), 0) * 100,
                     2
                 ) as completion_rate_pct
             FROM practices p
@@ -158,29 +159,29 @@ async def calculate_response_times(
     """
     async with db_pool.acquire() as conn:
         query = """
-            SELECT 
+            SELECT
                 pt.code as practice_type,
                 pt.name as practice_name,
                 COUNT(*) as total_practices,
-                
+
                 -- Inquiry to Start
-                ROUND(AVG(EXTRACT(EPOCH FROM (p.start_date - p.inquiry_date)) / 86400), 2) 
+                ROUND(AVG(EXTRACT(EPOCH FROM (p.start_date - p.inquiry_date)) / 86400), 2)
                     as avg_days_inquiry_to_start,
                 ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (p.start_date - p.inquiry_date)) / 86400), 2)
                     as median_days_inquiry_to_start,
-                
+
                 -- Start to Completion
-                ROUND(AVG(EXTRACT(EPOCH FROM (p.completion_date - p.start_date)) / 86400), 2) 
+                ROUND(AVG(EXTRACT(EPOCH FROM (p.completion_date - p.start_date)) / 86400), 2)
                     as avg_days_start_to_completion,
                 ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (p.completion_date - p.start_date)) / 86400), 2)
                     as median_days_start_to_completion,
-                
+
                 -- Total Cycle Time
-                ROUND(AVG(EXTRACT(EPOCH FROM (p.completion_date - p.inquiry_date)) / 86400), 2) 
+                ROUND(AVG(EXTRACT(EPOCH FROM (p.completion_date - p.inquiry_date)) / 86400), 2)
                     as avg_days_total_cycle,
                 ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (p.completion_date - p.inquiry_date)) / 86400), 2)
                     as median_days_total_cycle
-                
+
             FROM practices p
             JOIN practice_types pt ON p.practice_type_id = pt.id
             WHERE p.status = 'completed'
@@ -255,7 +256,7 @@ async def calculate_sla_compliance(
     """
     async with db_pool.acquire() as conn:
         query = """
-            SELECT 
+            SELECT
                 pt.code as practice_type,
                 pt.name as practice_name,
                 pt.duration_days as expected_duration,
@@ -335,7 +336,7 @@ async def calculate_revenue_metrics(
     """
     async with db_pool.acquire() as conn:
         query = """
-            SELECT 
+            SELECT
                 pt.code as practice_type,
                 pt.name as practice_name,
                 COUNT(*) as total_practices,
@@ -345,7 +346,7 @@ async def calculate_revenue_metrics(
                 SUM(p.actual_price - p.paid_amount) as total_outstanding,
                 COUNT(*) FILTER (WHERE p.payment_status = 'paid') as fully_paid_count,
                 ROUND(
-                    COUNT(*) FILTER (WHERE p.payment_status = 'paid')::numeric / 
+                    COUNT(*) FILTER (WHERE p.payment_status = 'paid')::numeric /
                     NULLIF(COUNT(*), 0) * 100,
                     2
                 ) as payment_completion_rate_pct
