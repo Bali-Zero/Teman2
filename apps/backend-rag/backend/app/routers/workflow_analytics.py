@@ -10,6 +10,7 @@ Endpoints:
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import Any
 from pydantic import BaseModel, Field
 
 from backend.app.dependencies import get_current_user, get_database_pool

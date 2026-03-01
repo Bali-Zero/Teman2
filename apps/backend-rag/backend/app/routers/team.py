@@ -4,6 +4,7 @@ Handles team member listing with visibility rules
 """
 
 import asyncpg
+from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 

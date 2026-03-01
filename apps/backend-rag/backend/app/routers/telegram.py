@@ -3,6 +3,7 @@ Telegram Conversations API - Ultra-Safe Version
 """
 
 import json
+from typing import Any
 import logging
 
 from asyncpg import Pool

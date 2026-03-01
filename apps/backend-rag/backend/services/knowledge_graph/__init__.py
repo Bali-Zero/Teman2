@@ -3,6 +3,8 @@ Knowledge Graph Services
 LLM-powered entity and relation extraction for Indonesian legal documents
 """
 
+from typing import Any
+
 from .coreference import CoreferenceResolver
 from .extractor import KGExtractor
 from .ontology import ENTITY_SCHEMAS, RELATION_SCHEMAS, EntityType, RelationType
