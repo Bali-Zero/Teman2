@@ -21,10 +21,12 @@ from typing import Any
 import asyncpg
 import httpx
 
+from backend.app.core.config import settings
+
 logger = logging.getLogger(__name__)
 
 # Ollama configuration
-OLLAMA_BASE_URL = "http://localhost:11434"
+OLLAMA_BASE_URL = settings.ollama_url
 OLLAMA_MODEL = "qwen2.5:7b"  # or "llama3.1:8b"
 OLLAMA_TIMEOUT = 120.0  # 2 minutes for generation
 
