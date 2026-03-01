@@ -21,12 +21,50 @@ import {
   Star,
   Quote,
 } from "lucide-react";
+import { useTranslation } from "@/i18n";
 
 /**
  * Services Overview Page - Blog Style
  * McKinsey-inspired layout with pricing
  */
 export default function ServicesPage() {
+  const { t } = useTranslation();
+
+  const PROCESS_STEPS = [
+    {
+      title: t("services.process.step1Title"),
+      description: t("services.process.step1Desc"),
+    },
+    {
+      title: t("services.process.step2Title"),
+      description: t("services.process.step2Desc"),
+    },
+    {
+      title: t("services.process.step3Title"),
+      description: t("services.process.step3Desc"),
+    },
+    {
+      title: t("services.process.step4Title"),
+      description: t("services.process.step4Desc"),
+    },
+  ];
+
+  const CONTACT_INFO = [
+    { label: t("services.contactInfo.office"), value: "Kerobokan, Bali" },
+    {
+      label: t("services.contactInfo.hours"),
+      value: t("services.contactInfo.hoursValue"),
+    },
+    {
+      label: t("services.contactInfo.response"),
+      value: t("services.contactInfo.responseValue"),
+    },
+    {
+      label: t("services.contactInfo.languages"),
+      value: t("services.contactInfo.languagesValue"),
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-[#051C2C]">
       {/* Hero Section */}
@@ -44,16 +82,17 @@ export default function ServicesPage() {
               />
             </div>
             <span className="text-[#2251ff] text-xs font-semibold uppercase tracking-wider mb-4 block">
-              Our Services
+              {t("services.hero.label")}
             </span>
             <h1 className="font-serif text-4xl lg:text-5xl xl:text-6xl text-white leading-[1.1] mb-6">
-              Build Your{" "}
-              <span className="text-[#e85c41]">Indonesian Dream</span> with
-              Confidence
+              {t("services.hero.title")}{" "}
+              <span className="text-[#e85c41]">
+                {t("services.hero.titleAccent")}
+              </span>{" "}
+              {t("services.hero.titleSuffix")}
             </h1>
             <p className="text-lg text-white/70 mb-8 leading-relaxed">
-              From Zero to Infinity. We handle visas, company setup, taxes, and
-              property — so you can focus on what matters most.
+              {t("services.hero.subtitle")}
             </p>
 
             <div className="flex flex-wrap gap-4">
@@ -63,7 +102,7 @@ export default function ServicesPage() {
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-[#2251ff] text-white font-medium hover:bg-[#1a41cc] transition-colors"
               >
                 <Phone className="w-4 h-4" />
-                WhatsApp Us
+                {t("common.cta.whatsappUs")}
               </Link>
               <Link
                 href="/chat"
@@ -75,7 +114,7 @@ export default function ServicesPage() {
                   width={60}
                   height={60}
                 />
-                Ask Zantara AI
+                {t("common.cta.askZantaraAi")}
               </Link>
             </div>
           </div>
@@ -121,9 +160,11 @@ export default function ServicesPage() {
             <span className="text-4xl font-bold text-white">5.0</span>
             <div className="flex flex-col">
               <span className="text-white/80 text-sm font-medium">
-                700+ reviews
+                {t("services.reviews.reviewCount")}
               </span>
-              <span className="text-white/50 text-xs">on Google Maps</span>
+              <span className="text-white/50 text-xs">
+                {t("services.reviews.onGoogleMaps")}
+              </span>
             </div>
           </a>
 
@@ -211,10 +252,10 @@ export default function ServicesPage() {
         <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
           <div className="text-center mb-12">
             <h2 className="font-serif text-3xl text-white mb-4">
-              Our Services & Pricing
+              {t("services.grid.title")}
             </h2>
             <p className="text-white/60 max-w-2xl mx-auto">
-              Transparent pricing with no hidden fees. All prices in IDR.
+              {t("services.grid.subtitle")}
             </p>
           </div>
 
@@ -246,12 +287,12 @@ export default function ServicesPage() {
                   {/* Pricing */}
                   <div className="mb-6">
                     <p className="text-white/40 text-xs uppercase tracking-wider mb-2">
-                      Starting from
+                      {t("services.grid.startingFrom")}
                     </p>
                     <p className="text-2xl font-bold text-white">
                       {service.startingPrice === "Contact" ? (
                         <span className="text-[#2251ff]">
-                          Contact for quote
+                          {t("services.grid.contactForQuote")}
                         </span>
                       ) : (
                         <>
@@ -279,7 +320,7 @@ export default function ServicesPage() {
 
                   {/* CTA */}
                   <div className="flex items-center gap-2 text-[#2251ff] font-medium group-hover:gap-3 transition-all">
-                    View details & pricing
+                    {t("common.cta.viewDetails")}
                     <ArrowRight className="w-4 h-4" />
                   </div>
                 </div>
@@ -294,9 +335,9 @@ export default function ServicesPage() {
         <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
           <div className="text-center mb-12">
             <h2 className="font-serif text-3xl text-white mb-4">
-              How It Works
+              {t("services.process.title")}
             </h2>
-            <p className="text-white/60">Simple, transparent, professional</p>
+            <p className="text-white/60">{t("services.process.subtitle")}</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
@@ -318,11 +359,10 @@ export default function ServicesPage() {
         <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
           <div className="text-center mb-12">
             <h2 className="font-serif text-3xl text-white mb-4">
-              Meet Our Team
+              {t("services.teamSection.title")}
             </h2>
             <p className="text-white/60 max-w-2xl mx-auto">
-              A dedicated team of visa specialists, tax consultants, and
-              business advisors.
+              {t("services.teamSection.subtitle")}
             </p>
           </div>
 
@@ -371,14 +411,14 @@ export default function ServicesPage() {
             <div>
               <p className="text-white font-medium">Zantara AI</p>
               <p className="text-white/60 text-sm">
-                Your 24/7 intelligent assistant
+                {t("home.zantaraAi.shortDescription")}
               </p>
             </div>
             <Link
               href="/chat"
               className="ml-auto px-4 py-2 rounded-lg bg-[#2251ff] text-white text-sm font-medium hover:bg-[#1a41cc] transition-colors"
             >
-              Ask Now
+              {t("common.cta.askNow")}
             </Link>
           </div>
 
@@ -388,7 +428,7 @@ export default function ServicesPage() {
               href="/team"
               className="inline-flex items-center gap-2 text-[#2251ff] hover:text-[#1a41cc] font-medium transition-colors"
             >
-              View full team
+              {t("common.cta.viewFullTeam")}
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
@@ -411,11 +451,10 @@ export default function ServicesPage() {
                 />
               </div>
               <h2 className="font-serif text-3xl lg:text-4xl text-white mb-4">
-                Ready to Start?
+                {t("services.cta.title")}
               </h2>
               <p className="text-white/80 text-lg mb-8 leading-relaxed">
-                Get a free consultation with our experts. We'll guide you
-                through the process and give you a clear timeline and quote.
+                {t("services.cta.subtitle")}
               </p>
 
               <div className="flex flex-wrap gap-4">
@@ -557,32 +596,6 @@ const SERVICES = [
       "Ownership Structures (PT PMA)",
     ],
   },
-];
-
-const PROCESS_STEPS = [
-  {
-    title: "Consultation",
-    description: "Free initial call to understand your needs",
-  },
-  {
-    title: "Proposal",
-    description: "Clear timeline and transparent pricing",
-  },
-  {
-    title: "Execution",
-    description: "We handle all paperwork and processes",
-  },
-  {
-    title: "Delivery",
-    description: "Receive your documents and ongoing support",
-  },
-];
-
-const CONTACT_INFO = [
-  { label: "Office", value: "Kerobokan, Bali" },
-  { label: "Hours", value: "Mon-Fri 9am-6pm" },
-  { label: "Response", value: "Within 24 hours" },
-  { label: "Languages", value: "EN, ID, IT" },
 ];
 
 const TEAM_MEMBERS = [

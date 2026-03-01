@@ -4,12 +4,15 @@ import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Users, Phone, Mail, ArrowRight, Sparkles } from "lucide-react";
+import { useTranslation } from "@/i18n";
 
 /**
  * Team Page - Bali Zero Team
  * McKinsey-inspired layout showcasing our team
  */
 export default function TeamPage() {
+  const { t } = useTranslation();
+
   return (
     <div className="min-h-screen bg-[#051C2C]">
       {/* Hero Section */}
@@ -28,16 +31,17 @@ export default function TeamPage() {
                 />
               </div>
               <span className="text-[#2251ff] text-xs font-semibold uppercase tracking-wider mb-4 block">
-                Our Team
+                {t("team.hero.label")}
               </span>
               <h1 className="font-serif text-4xl lg:text-5xl xl:text-6xl text-white leading-[1.1] mb-6">
-                Meet the <span className="text-[#e85c41]">Experts</span> Behind
-                Your Success
+                {t("team.hero.title")}{" "}
+                <span className="text-[#e85c41]">
+                  {t("team.hero.titleAccent")}
+                </span>{" "}
+                {t("team.hero.titleSuffix")}
               </h1>
               <p className="text-lg text-white/70 mb-8 leading-relaxed">
-                A dedicated team of visa specialists, tax consultants, and
-                business advisors committed to making your Indonesian journey
-                seamless.
+                {t("team.hero.subtitle")}
               </p>
 
               <div className="flex flex-wrap gap-4">
@@ -47,13 +51,13 @@ export default function TeamPage() {
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-[#2251ff] text-white font-medium hover:bg-[#1a41cc] transition-colors"
                 >
                   <Phone className="w-4 h-4" />
-                  Contact Us
+                  {t("common.cta.contactUs")}
                 </Link>
                 <Link
                   href="/services"
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-lg border border-white/20 text-white font-medium hover:bg-white/10 transition-colors"
                 >
-                  View Services
+                  {t("common.cta.viewServices")}
                   <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
@@ -107,10 +111,11 @@ export default function TeamPage() {
       <section className="border-b border-white/10">
         <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
           <div className="text-center mb-12">
-            <h2 className="font-serif text-3xl text-white mb-4">Leadership</h2>
+            <h2 className="font-serif text-3xl text-white mb-4">
+              {t("team.sections.leadership")}
+            </h2>
             <p className="text-white/60 max-w-2xl mx-auto">
-              Guiding our vision and ensuring excellence in every service we
-              provide.
+              {t("team.sections.leadershipDesc")}
             </p>
           </div>
 
@@ -126,10 +131,11 @@ export default function TeamPage() {
       <section className="border-b border-white/10">
         <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
           <div className="text-center mb-12">
-            <h2 className="font-serif text-3xl text-white mb-4">Setup Team</h2>
+            <h2 className="font-serif text-3xl text-white mb-4">
+              {t("team.sections.setupTeam")}
+            </h2>
             <p className="text-white/60 max-w-2xl mx-auto">
-              Company formation, visa processing, and business consulting
-              experts.
+              {t("team.sections.setupTeamDesc")}
             </p>
           </div>
 
@@ -146,11 +152,10 @@ export default function TeamPage() {
         <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
           <div className="text-center mb-12">
             <h2 className="font-serif text-3xl text-white mb-4">
-              Tax Department
+              {t("team.sections.taxDepartment")}
             </h2>
             <p className="text-white/60 max-w-2xl mx-auto">
-              Certified tax professionals ensuring your compliance and
-              optimization.
+              {t("team.sections.taxDepartmentDesc")}
             </p>
           </div>
 
@@ -166,9 +171,11 @@ export default function TeamPage() {
       <section className="border-b border-white/10">
         <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
           <div className="text-center mb-12">
-            <h2 className="font-serif text-3xl text-white mb-4">Accounting</h2>
+            <h2 className="font-serif text-3xl text-white mb-4">
+              {t("team.sections.accounting")}
+            </h2>
             <p className="text-white/60 max-w-2xl mx-auto">
-              Managing financial operations with precision and reliability.
+              {t("team.sections.accountingDesc")}
             </p>
           </div>
 
@@ -185,10 +192,10 @@ export default function TeamPage() {
         <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
           <div className="text-center mb-12">
             <h2 className="font-serif text-3xl text-white mb-4">
-              Support & Marketing
+              {t("team.sections.supportMarketing")}
             </h2>
             <p className="text-white/60 max-w-2xl mx-auto">
-              Keeping you connected and informed throughout your journey.
+              {t("team.sections.supportMarketingDesc")}
             </p>
           </div>
 
@@ -220,20 +227,18 @@ export default function TeamPage() {
             </div>
             <div className="text-center md:text-left max-w-xl">
               <h3 className="font-serif text-2xl text-white mb-2">
-                Zantara AI
+                {t("team.ai.title")}
               </h3>
-              <p className="text-[#2251ff] font-medium mb-4">AI Bridge</p>
-              <p className="text-white/60">
-                Your 24/7 intelligent assistant. Zantara AI helps you get
-                instant answers about visas, company setup, taxes, and more —
-                bridging you to the right expert when you need human support.
+              <p className="text-[#2251ff] font-medium mb-4">
+                {t("team.ai.role")}
               </p>
+              <p className="text-white/60">{t("team.ai.description")}</p>
               <Link
                 href="/chat"
                 className="inline-flex items-center gap-2 mt-6 px-6 py-3 rounded-lg bg-[#2251ff] text-white font-medium hover:bg-[#1a41cc] transition-colors"
               >
                 <Sparkles className="w-4 h-4" />
-                Ask Zantara AI
+                {t("common.cta.askZantaraAi")}
               </Link>
             </div>
           </div>
@@ -245,11 +250,10 @@ export default function TeamPage() {
         <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
           <div className="text-center max-w-2xl mx-auto">
             <h2 className="font-serif text-3xl lg:text-4xl text-white mb-4">
-              Ready to Work With Us?
+              {t("team.cta.title")}
             </h2>
             <p className="text-white/80 text-lg mb-8">
-              Get in touch with our team for a free consultation. We're here to
-              help you navigate Indonesia with confidence.
+              {t("team.cta.description")}
             </p>
 
             <div className="flex flex-wrap gap-4 justify-center">
@@ -293,6 +297,7 @@ function TeamCard({
   member: TeamMember;
   size?: "normal" | "large";
 }) {
+  const { t } = useTranslation();
   const isLarge = size === "large";
 
   return (
@@ -329,7 +334,9 @@ function TeamCard({
       <p className={`${isLarge ? "text-sm" : "text-xs"} text-white/60`}>
         {member.role}
         {member.external && (
-          <span className="ml-2 text-[#2251ff]">(External)</span>
+          <span className="ml-2 text-[#2251ff]">
+            {t("team.sections.external")}
+          </span>
         )}
       </p>
     </div>

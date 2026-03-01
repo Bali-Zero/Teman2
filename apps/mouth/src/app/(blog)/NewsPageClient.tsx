@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import type { ArticleListItem } from "@/lib/blog/types";
 import { HomepageSEOSchemas } from "@/components/seo/HomepageFAQ";
+import { useTranslation } from "@/i18n";
 
 // Lazy load non-critical sections
 const KBLINavigatorSection = lazy(
@@ -43,6 +44,8 @@ interface NewsPageClientProps {
 export default function NewsPageClient({
   articles: serverArticles,
 }: NewsPageClientProps) {
+  const { t } = useTranslation();
+
   // Fallback a MOCK_ARTICLES se il server non fornisce articoli
   const articles = serverArticles?.length > 0 ? serverArticles : MOCK_ARTICLES;
 
@@ -122,14 +125,16 @@ export default function NewsPageClient({
                   </div>
                   <div className="relative z-10">
                     <h1 className="font-serif text-4xl lg:text-5xl xl:text-6xl text-white leading-[1.1] mb-4">
-                      Decode Indonesia.{" "}
-                      <span className="text-red-500">Thrive</span> here
+                      {t("home.hero.title")}{" "}
+                      <span className="text-red-500">
+                        {t("home.hero.titleAccent")}
+                      </span>{" "}
+                      {t("home.hero.titleSuffix")}
                     </h1>
                     <p className="text-lg text-white/70">
-                      Legal, immigration, fiscal & business intelligence for
-                      Indonesia.{" "}
+                      {t("home.hero.subtitle")}{" "}
                       <span className="text-[#2251ff]">
-                        Forged by Zantara AI.
+                        {t("home.hero.subtitleAccent")}
                       </span>
                     </p>
                   </div>
@@ -173,15 +178,15 @@ export default function NewsPageClient({
                 {/* Newsletter Box */}
                 <div className="bg-[#0a2540] p-6 flex-[0.6]">
                   <p className="text-white font-medium mb-2">
-                    Subscribe to the latest Indonesia Insights
+                    {t("home.newsletter.title")}
                   </p>
                   <p className="text-white/60 text-sm mb-4">
-                    Expert analysis delivered to your inbox
+                    {t("home.newsletter.subtitle")}
                   </p>
                   <form className="flex gap-2">
                     <input
                       type="email"
-                      placeholder="Email address"
+                      placeholder={t("home.newsletter.placeholder")}
                       className="flex-1 px-4 py-2.5 rounded bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:border-[#2251ff] transition-colors text-sm"
                     />
                     <button
@@ -193,7 +198,7 @@ export default function NewsPageClient({
                   </form>
                   <div className="flex items-center gap-3 mt-4 pt-4 border-t border-white/10">
                     <span className="text-white/40 text-xs">
-                      Or continue with
+                      {t("home.newsletter.orContinueWith")}
                     </span>
                     <div className="flex gap-2">
                       <button className="px-3 py-1.5 rounded bg-white/10 text-white/70 text-xs hover:bg-white/20 transition-colors">
@@ -237,7 +242,7 @@ export default function NewsPageClient({
           <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
             <div className="flex items-center justify-between mb-10">
               <h2 className="text-2xl font-serif text-white">
-                Latest Insights
+                {t("home.insights.latestTitle")}
               </h2>
               <Link
                 href="/immigration"
@@ -279,7 +284,7 @@ export default function NewsPageClient({
                       </div>
 
                       <span className="text-[#2251ff] text-xs font-semibold uppercase tracking-wider mb-2 block">
-                        {formatCategory(article.category)}
+                        {formatCategory(article.category, t)}
                       </span>
 
                       <h3 className="font-serif text-xl text-white mb-3 leading-snug group-hover:text-[#2251ff] transition-colors line-clamp-2">
@@ -291,7 +296,9 @@ export default function NewsPageClient({
                       </p>
 
                       <div className="flex items-center gap-3 text-white/40 text-sm">
-                        <span>{article.readingTime} min read</span>
+                        <span>
+                          {article.readingTime} {t("news.minuteRead")}
+                        </span>
                         <span>•</span>
                         <span>{formatViewCount(article.viewCount)} views</span>
                       </div>
@@ -460,6 +467,7 @@ function CollageCard({
   showCTA?: boolean;
   imagePosition?: "center" | "top" | "bottom";
 }) {
+  const { t } = useTranslation();
   const positionClass =
     imagePosition === "top"
       ? "object-top"
@@ -482,7 +490,7 @@ function CollageCard({
 
         <div className="absolute inset-0 p-5 lg:p-6 flex flex-col justify-end">
           <span className="text-[#2251ff] text-[10px] font-bold uppercase tracking-wider mb-2">
-            {formatCategory(article.category)}
+            {formatCategory(article.category, t)}
           </span>
           <h3 className="font-serif text-white leading-tight group-hover:text-[#2251ff] transition-colors text-base lg:text-lg">
             {article.title}
@@ -510,7 +518,19 @@ function CollageCard({
   );
 }
 
-function formatCategory(category: string): string {
+function formatCategory(category: string, t?: (key: string) => string): string {
+  if (t) {
+    const keyMap: Record<string, string> = {
+      immigration: "home.categories.immigration",
+      business: "home.categories.business",
+      "tax-legal": "home.categories.taxLegal",
+      property: "home.categories.property",
+      lifestyle: "home.categories.lifestyle",
+    };
+    if (keyMap[category]) {
+      return t(keyMap[category]);
+    }
+  }
   const categoryMap: Record<string, string> = {
     immigration: "Immigration",
     business: "Business",
