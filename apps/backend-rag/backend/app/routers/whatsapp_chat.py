@@ -30,6 +30,7 @@ from backend.services.integrations.whatsapp_triage_service import (
     TriageDecision,
     whatsapp_triage_service,
 )
+from backend.services.whatsapp_onboarding_detector import get_onboarding_detector
 
 logger = logging.getLogger(__name__)
 
@@ -253,6 +254,35 @@ async def process_whatsapp_message(
         )
 
         logger.info(f"Triage decision for {phone}: {decision} (reason: {reason})")
+
+        # 1.5. AUTO-DETECT NEW CLIENT ONBOARDING INTENT
+        # Check if message indicates new client onboarding before processing
+        try:
+            onboarding_detector = get_onboarding_detector()
+            onboarding_result = await onboarding_detector.detect_and_trigger(
+                phone=phone,
+                message_text=message_text,
+                sender_name=sender_name,
+            )
+            if onboarding_result:
+                logger.info(f"🎯 Auto-triggered onboarding chain for {phone}: {onboarding_result}")
+                # Send confirmation message to client
+                await whatsapp_service.send_message(
+                    phone=phone,
+                    text="Great! I've started your onboarding process. You'll receive updates shortly! 🎉",
+                    reply_to_message_id=message_id,
+                )
+                # Notify admin via Telegram
+                if settings.admin_telegram_chat_id:
+                    await telegram_bot.send_message(
+                        chat_id=settings.admin_telegram_chat_id,
+                        text=f"🚀 **Auto-Onboarding Triggered**\n\nPhone: +{phone}\nName: {sender_name or 'Unknown'}\nChain: {onboarding_result.get('chain')}\nStatus: {onboarding_result.get('status')}",
+                        parse_mode="Markdown",
+                    )
+                return
+        except Exception as e:
+            logger.error(f"Onboarding detection failed for {phone}: {e}", exc_info=True)
+            # Continue with normal flow if detection fails
 
         # 2. ESCALATE TO HUMAN
         if decision in [

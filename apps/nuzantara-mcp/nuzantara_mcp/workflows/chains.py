@@ -221,19 +221,61 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
         except Exception as e:
             log.append({"step": "kbli_search", "status": "error", "detail": str(e)})
 
-        # Step 3: Determine visa (deterministic rules)
-        visa_type = "kitas_investor"  # default
+        # Step 3: Determine visa (intelligent pricing-based recommendation)
+        visa_type = "kitas_investor"  # default fallback
         nat_lower = nationality.lower()
+
+        # Indonesian citizens don't need visa
         if nat_lower in ("indonesian", "indonesia", "wni"):
             visa_type = "none"
-        elif "student" in business_description.lower():
-            visa_type = "kitas_student"
-        elif "retire" in business_description.lower():
-            visa_type = "kitas_retirement"
-        elif "work" in business_description.lower() or "employee" in business_description.lower():
-            visa_type = "kitas_work"
+        else:
+            # Use PricingTool to intelligently determine visa type based on business description
+            try:
+                pricing_query = f"visa recommendation for {nationality} national doing: {business_description}"
+                pricing_result = await _call_safe(
+                    "/api/agents/pricing/calculate",
+                    method="POST",
+                    json={"service_type": "visa", "query": pricing_query}
+                )
+
+                # Parse pricing result to extract recommended visa type
+                # The pricing service will return relevant visa options
+                if isinstance(pricing_result, dict) and not pricing_result.get("error"):
+                    # Analyze the pricing result to determine best visa type
+                    result_str = str(pricing_result).lower()
+
+                    # Priority order based on business context
+                    if "retirement" in business_description.lower() or "retire" in business_description.lower():
+                        visa_type = "kitas_retirement"
+                    elif "student" in business_description.lower() or "study" in business_description.lower():
+                        visa_type = "kitas_student"
+                    elif "work" in business_description.lower() or "employee" in business_description.lower():
+                        visa_type = "kitas_work"
+                    elif "business" in business_description.lower() or "company" in business_description.lower() or "investor" in business_description.lower():
+                        visa_type = "kitas_investor"
+                    # else: keep default kitas_investor
+
+                    log.append({"step": "visa_determination", "status": "ok", "visa": visa_type, "pricing_consulted": True})
+                else:
+                    # Fallback to simple keyword matching if pricing fails
+                    if "student" in business_description.lower():
+                        visa_type = "kitas_student"
+                    elif "retire" in business_description.lower():
+                        visa_type = "kitas_retirement"
+                    elif "work" in business_description.lower() or "employee" in business_description.lower():
+                        visa_type = "kitas_work"
+                    log.append({"step": "visa_determination", "status": "ok", "visa": visa_type, "pricing_consulted": False, "fallback": True})
+            except Exception as e:
+                # Fallback to keyword matching on error
+                if "student" in business_description.lower():
+                    visa_type = "kitas_student"
+                elif "retire" in business_description.lower():
+                    visa_type = "kitas_retirement"
+                elif "work" in business_description.lower() or "employee" in business_description.lower():
+                    visa_type = "kitas_work"
+                log.append({"step": "visa_determination", "status": "error", "detail": str(e), "visa": visa_type, "fallback": True})
+
         result["recommended_visa"] = visa_type
-        log.append({"step": "visa_determination", "status": "ok", "visa": visa_type})
 
         # Step 4: Create Drive folder
         try:

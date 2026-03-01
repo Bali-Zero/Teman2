@@ -680,6 +680,51 @@ async def create_and_start_scheduler(
         except Exception as e:
             logger.error(f"❌ Failed to register Conversation Cleanup: {e}")
 
+    # ═══════════════════════════════════════════════════════════════════════════
+    # TASK 11: DAILY OPS AUTOPILOT (daily at 08:00 WITA / 00:00 UTC)
+    # Runs chain_daily_ops_autopilot MCP workflow:
+    # 1. Check expiry alerts → send WhatsApp reminders (<30 days)
+    # 2. Check autonomous agent health → restart stale agents
+    # 3. Check critical intel alerts → auto-compose articles for high-impact items
+    # 4. Gather team hours and completion rates
+    # 5. Compile and email daily report
+    # ═══════════════════════════════════════════════════════════════════════════
+    try:
+        import httpx
+
+        async def run_daily_ops_autopilot() -> None:
+            """Execute chain_daily_ops_autopilot via MCP server"""
+            try:
+                # Call MCP server endpoint to execute the chain
+                mcp_base_url = os.getenv("MCP_SERVER_URL", "http://localhost:8000")
+                async with httpx.AsyncClient(timeout=300.0) as client:
+                    response = await client.post(
+                        f"{mcp_base_url}/tools/chain_daily_ops_autopilot",
+                        json={"send_report_to": "zero@balizero.com"},
+                    )
+                    response.raise_for_status()
+                    result = response.json()
+
+                    reminders = result.get("report", {}).get("expiry_alerts", {}).get("reminders_sent", 0)
+                    articles = result.get("report", {}).get("intel", {}).get("articles_composed", 0)
+
+                    logger.info(
+                        f"🤖 Daily Ops Autopilot completed: "
+                        f"{reminders} reminders sent, {articles} articles composed"
+                    )
+            except Exception as e:
+                logger.error(f"❌ Daily Ops Autopilot error: {e}", exc_info=True)
+
+        scheduler.register_task(
+            name="daily_ops_autopilot",
+            task_func=run_daily_ops_autopilot,
+            interval_seconds=86400,  # 24 hours
+            enabled=True,
+        )
+        logger.info("✅ Daily Ops Autopilot registered (24h interval, runs at 08:00 WITA)")
+    except Exception as e:
+        logger.error(f"❌ Failed to register Daily Ops Autopilot: {e}")
+
     # Start the scheduler
     await scheduler.start()
 
