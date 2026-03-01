@@ -51,7 +51,7 @@ class UpdateRowRequest(BaseModel):
 
 # ---- Helpers ----
 
-def _get_sheets_service() -> SheetsService:
+def _get_sheets_service() -> Any:
     from backend.services.integrations.sheets_service import SheetsService
     return SheetsService()
 
