@@ -1,5 +1,27 @@
 # CLAUDE.md - Nuzantara Project Context for Claude Code
 
+## 0. Machine Identification (IMPORTANT)
+
+**You MUST identify which machine you are running on at session start.**
+
+Two machines exist on the local network:
+
+| Machine | User | Hostname | Role |
+|---------|------|----------|------|
+| **Pro** | `nuzantara` | `Nuzantara` | Development (48GB, M4 Pro) |
+| **Air** | `antonellosiano` | `Nuzantara-9` | Server H24 (16GB, M4) |
+
+**How to detect:** Run `whoami` and `hostname` at session start.
+- `whoami` = `nuzantara` → you are on **Pro**
+- `whoami` = `antonellosiano` → you are on **Air**
+
+**Always prefix your first response with which machine you're on**, e.g. "[Pro]" or "[Air]".
+
+**SSH between machines:** `ssh air` (from Pro) / `ssh pro` (from Air) — uses mDNS, works on any WiFi.
+See `docs/PRO_AIR_CONNECTION.md` for full details.
+
+---
+
 ## 1. Project Overview
 
 **Name:** Nuzantara (Zantara)  
@@ -16,19 +38,24 @@
 - `apps/admin-dashboard/` - Admin UI
 - `apps/webapp/` - Web application
 - `apps/bali-intel-scraper/` - Intelligence gathering
-- `apps/nuzantara-mcp/` - MCP server (7 tools, 3 prompts, 1 resource)
+- `apps/nuzantara-mcp/` - MCP server v2.1 (96 tools, 10 prompts, 5 resources, 8 chains)
+- `apps/nuzantara-mcp-advanced/` - Advanced MCP (Fly.io ops, diagnostics)
+- `apps/nuzantara-mcp-browser/` - Browser automation MCP
+- `apps/graph-engine/` - Graph processing engine
+- `apps/kbli-voice/` - KBLI voice interface
 - `apps/evaluator/` - Quality assurance
+- `apps/zantara-media/` - Editorial content system
 - `packages/kb/` - Knowledge base
 - `packages/core/` - Core libraries
 
 ### Tech Stack
 
-- **Backend:** Python 3.11+, FastAPI, 68 routers, 228 services, 477 tests
+- **Backend:** Python 3.11+, FastAPI, 86 routers, 236 services, 414 test files
 - **Frontend:** Next.js, TypeScript, Tailwind CSS
 - **Databases:** PostgreSQL (relational), Qdrant (vector), Redis (cache)
 - **Infrastructure:** Fly.io (backend), Vercel (frontend)
 - **Knowledge Graph:** 56,113 nodes, 161,173 edges
-- **Vector Collections:** 7 collections, ~58,880 vectors
+- **Vector Collections:** 9 live on Fly.io (66,595 documents), 11 defined in code
 - **Embedding Model:** `text-embedding-3-small` (1536 dims) — **NEVER CHANGE**
 
 ## 2. Claude Code Behavior Rules (IMPORTANT)
@@ -118,13 +145,13 @@ apps/backend-rag/
 ├── backend/
 │   ├── core/          # Core configuration, dependencies
 │   ├── prompts/       # ⭐ Prompt Single Source of Truth (see below)
-│   ├── routers/       # API endpoints (68 routers)
-│   ├── services/      # Business logic (228 services)
+│   ├── routers/       # API endpoints (86 routers)
+│   ├── services/      # Business logic (236 services)
 │   ├── models/        # Pydantic models
 │   ├── db/            # Database access layer
 │   ├── utils/         # Utility functions
-│   └── main.py        # FastAPI app entry
-├── tests/             # 477 test files
+│   └── main.py        # FastAPI app entry (alias for main_cloud.py)
+├── tests/             # 414 test files
 ├── alembic/           # Database migrations
 ├── requirements.txt   # Python dependencies
 └── fly.toml          # Fly.io configuration
@@ -213,27 +240,22 @@ Classification confidence thresholds:
 
 **Model:** `text-embedding-3-small` (OpenAI)  
 **Dimensions:** 1536  
-**CRITICAL:** This model is FROZEN. Changing it would invalidate 58,880 existing vectors.  
+**CRITICAL:** This model is FROZEN. Changing it would invalidate 66,595 existing vectors.  
 **Never:** Switch to another model without explicit authorization and full re-indexing plan.
 
-## 6. MCP Server
+## 6. MCP Servers
 
-**Location:** `apps/nuzantara-mcp/`  
+**Primary:** `apps/nuzantara-mcp/` (v2.1, FastMCP, stdio transport)
 **Capabilities:**
 
-- **7 Tools:** Query routing, pricing lookup, visa info, KBLI search, etc.
-- **3 Prompts:** Business setup, visa consultation, pricing inquiry
-- **1 Resource:** Knowledge base access
+- **96 Tools** across 17 modules (CRM, portal, intel, content, analytics, knowledge, comms, drive, workflows, admin, health, journey, pricing, compliance, generals, memory, heartbeat)
+- **10 Prompts** for guided workflows
+- **5 Resources** for knowledge base access
+- **8 Workflow Chains** for deterministic automation (daily_ops_autopilot, new_client_onboarding, practice_lifecycle_check, intel_pipeline, weekly_report, client_health_monitor, compliance_autopilot, journey_accelerator)
 
-**Usage:**
-
-```typescript
-// Tool invocation example
-const result = await mcpServer.callTool("pricing-lookup", {
-  serviceType: "kitas",
-  visaType: "investor",
-});
-```
+**Additional MCP servers:**
+- `apps/nuzantara-mcp-advanced/` — Fly.io ops, deployment readiness, code search, diagnostics
+- `apps/nuzantara-mcp-browser/` — Browser automation
 
 ## 7. Deployment Architecture
 
@@ -399,7 +421,7 @@ fly deploy --strategy rolling
 
 ---
 
-**Last Updated:** 2026-02-27
+**Last Updated:** 2026-03-01
 **Maintained by:** Bali Zero AI Team
 
 ---
