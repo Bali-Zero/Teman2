@@ -198,15 +198,15 @@ class TestSearchServiceRefactored:
     async def test_search_pricing_query(self, search_service, mock_query_router):
         """Test that pricing queries route correctly"""
         mock_query_router.route_query.return_value = {
-            "collection_name": "bali_zero_pricing",
-            "collections": ["bali_zero_pricing"],
+            "collection_name": "bali_zero_pricing_hybrid",
+            "collections": ["bali_zero_pricing_hybrid"],
             "confidence": 1.0,
             "is_pricing": True,
         }
 
         result = await search_service.search(query="What is the price?", user_level=3)
 
-        assert result["collection_used"] == "bali_zero_pricing"
+        assert result["collection_used"] == "bali_zero_pricing_hybrid"
         # Note: result might be cached, collection_used assertion is sufficient
 
     @pytest.mark.asyncio

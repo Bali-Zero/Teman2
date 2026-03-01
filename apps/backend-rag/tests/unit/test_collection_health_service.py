@@ -94,7 +94,7 @@ class TestCollectionHealthService:
         assert service.search_service is None
         assert len(service.metrics) == 14  # 14 collections
         assert "visa_oracle" in service.metrics
-        assert "bali_zero_pricing" in service.metrics
+        assert "bali_zero_pricing_hybrid" in service.metrics
 
     def test_init_with_deps(self, service_with_deps):
         """Test initialization with dependencies"""
@@ -490,7 +490,7 @@ class TestCollectionHealthService:
 
         assert len(all_health) == 14
         assert "visa_oracle" in all_health
-        assert "bali_zero_pricing" in all_health
+        assert "bali_zero_pricing_hybrid" in all_health
 
     def test_get_all_collection_health_exclude_empty(self, service):
         """Test getting health excluding empty collections"""

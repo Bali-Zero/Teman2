@@ -126,7 +126,7 @@ async def test_search_with_pricing_query(knowledge_service, mock_qdrant_client):
         limit=5,
     )
 
-    assert result["collection_used"] == "bali_zero_pricing"
+    assert result["collection_used"] == "bali_zero_pricing_hybrid"
 
 
 @pytest.mark.asyncio
@@ -236,7 +236,7 @@ async def test_search_pricing_priority_bias(knowledge_service, mock_qdrant_clien
         limit=5,
     )
 
-    assert result["collection_used"] == "bali_zero_pricing"
+    assert result["collection_used"] == "bali_zero_pricing_hybrid"
     # Check that results have pricing_priority metadata
     if result["results"]:
         assert result["results"][0]["metadata"].get("pricing_priority") == "high"
