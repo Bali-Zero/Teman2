@@ -6,7 +6,7 @@ Comprehensive coverage for intelligent caching with Redis fallback
 import json
 import time
 from collections import OrderedDict
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -316,25 +316,27 @@ class TestCacheService:
         assert key1 != key2
 
     @patch("backend.app.core.config.settings")
-    def test_get_memory_cache_hit(self, mock_settings):
+    @pytest.mark.asyncio
+    async def test_get_memory_cache_hit(self, mock_settings):
         """Test get() with memory cache hit"""
         mock_settings.redis_url = None
         cache = CacheService()
 
-        cache.set("key1", "value1")
-        result = cache.get("key1")
+        await cache.set("key1", "value1")
+        result = await cache.get("key1")
 
         assert result == "value1"
         assert cache.stats["hits"] == 1
         assert cache.stats["misses"] == 0
 
     @patch("backend.app.core.config.settings")
-    def test_get_memory_cache_miss(self, mock_settings):
+    @pytest.mark.asyncio
+    async def test_get_memory_cache_miss(self, mock_settings):
         """Test get() with memory cache miss"""
         mock_settings.redis_url = None
         cache = CacheService()
 
-        result = cache.get("nonexistent")
+        result = await cache.get("nonexistent")
 
         assert result is None
         assert cache.stats["hits"] == 0
@@ -342,100 +344,109 @@ class TestCacheService:
 
     @patch("backend.app.core.config.settings")
     @patch("redis.asyncio.from_url")
-    def test_get_redis_cache_hit(self, mock_redis_from_url, mock_settings):
+    @pytest.mark.asyncio
+    async def test_get_redis_cache_hit(self, mock_redis_from_url, mock_settings):
         """Test get() with Redis cache hit"""
         mock_settings.redis_url = "redis://localhost"
-        mock_redis_client = Mock()
-        mock_redis_client.ping.return_value = True
-        mock_redis_client.get.return_value = json.dumps("value1")
+        mock_redis_client = AsyncMock()
+        mock_redis_client.ping = AsyncMock(return_value=True)
+        mock_redis_client.get = AsyncMock(return_value=json.dumps("value1"))
         mock_redis_from_url.return_value = mock_redis_client
 
         cache = CacheService()
-        result = cache.get("key1")
+        result = await cache.get("key1")
 
         assert result == "value1"
         assert cache.stats["hits"] == 1
 
     @patch("backend.app.core.config.settings")
     @patch("redis.asyncio.from_url")
-    def test_get_redis_cache_miss(self, mock_redis_from_url, mock_settings):
+    @pytest.mark.asyncio
+    async def test_get_redis_cache_miss(self, mock_redis_from_url, mock_settings):
         """Test get() with Redis cache miss"""
         mock_settings.redis_url = "redis://localhost"
-        mock_redis_client = Mock()
-        mock_redis_client.ping.return_value = True
-        mock_redis_client.get.return_value = None
+        mock_redis_client = AsyncMock()
+        mock_redis_client.ping = AsyncMock(return_value=True)
+        mock_redis_client.get = AsyncMock(return_value=None)
         mock_redis_from_url.return_value = mock_redis_client
 
         cache = CacheService()
-        result = cache.get("nonexistent")
+        result = await cache.get("nonexistent")
 
         assert result is None
         assert cache.stats["misses"] == 1
 
     @patch("backend.app.core.config.settings")
-    def test_set_memory_cache(self, mock_settings):
+    @pytest.mark.asyncio
+    async def test_set_memory_cache(self, mock_settings):
         """Test set() with memory cache"""
         mock_settings.redis_url = None
         cache = CacheService()
 
-        result = cache.set("key1", "value1", ttl=300)
+        result = await cache.set("key1", "value1", ttl=300)
 
         assert result is True
-        assert cache.get("key1") == "value1"
+        assert await cache.get("key1") == "value1"
 
     @patch("backend.app.core.config.settings")
     @patch("redis.asyncio.from_url")
-    def test_set_redis_cache(self, mock_redis_from_url, mock_settings):
+    @pytest.mark.asyncio
+    async def test_set_redis_cache(self, mock_redis_from_url, mock_settings):
         """Test set() with Redis cache"""
         mock_settings.redis_url = "redis://localhost"
-        mock_redis_client = Mock()
-        mock_redis_client.ping.return_value = True
+        mock_redis_client = AsyncMock()
+        mock_redis_client.ping = AsyncMock(return_value=True)
+        mock_redis_client.setex = AsyncMock(return_value=True)
         mock_redis_from_url.return_value = mock_redis_client
 
         cache = CacheService()
-        result = cache.set("key1", "value1", ttl=300)
+        result = await cache.set("key1", "value1", ttl=300)
 
         assert result is True
         mock_redis_client.setex.assert_called_once()
 
     @patch("backend.app.core.config.settings")
-    def test_delete_memory_cache(self, mock_settings):
+    @pytest.mark.asyncio
+    async def test_delete_memory_cache(self, mock_settings):
         """Test delete() with memory cache"""
         mock_settings.redis_url = None
         cache = CacheService()
 
-        cache.set("key1", "value1")
-        result = cache.delete("key1")
+        await cache.set("key1", "value1")
+        result = await cache.delete("key1")
 
         assert result is True
-        assert cache.get("key1") is None
+        assert await cache.get("key1") is None
 
     @patch("backend.app.core.config.settings")
     @patch("redis.asyncio.from_url")
-    def test_delete_redis_cache(self, mock_redis_from_url, mock_settings):
+    @pytest.mark.asyncio
+    async def test_delete_redis_cache(self, mock_redis_from_url, mock_settings):
         """Test delete() with Redis cache"""
         mock_settings.redis_url = "redis://localhost"
-        mock_redis_client = Mock()
-        mock_redis_client.ping.return_value = True
+        mock_redis_client = AsyncMock()
+        mock_redis_client.ping = AsyncMock(return_value=True)
+        mock_redis_client.delete = AsyncMock(return_value=1)
         mock_redis_from_url.return_value = mock_redis_client
 
         cache = CacheService()
-        result = cache.delete("key1")
+        result = await cache.delete("key1")
 
         assert result is True
         mock_redis_client.delete.assert_called_once_with("key1")
 
     @patch("backend.app.core.config.settings")
-    def test_clear_pattern_memory(self, mock_settings):
+    @pytest.mark.asyncio
+    async def test_clear_pattern_memory(self, mock_settings):
         """Test clear_pattern() with memory cache"""
         mock_settings.redis_url = None
         cache = CacheService()
 
-        cache.set("user:1", "data1")
-        cache.set("user:2", "data2")
-        cache.set("session:1", "data3")
+        await cache.set("user:1", "data1")
+        await cache.set("user:2", "data2")
+        await cache.set("session:1", "data3")
 
-        count = cache.clear_pattern("user:*")
+        count = await cache.clear_pattern("user:*")
 
         assert count == 2
 
@@ -455,14 +466,15 @@ class TestCacheService:
         assert stats["hit_rate"] == "0.0%"
 
     @patch("backend.app.core.config.settings")
-    def test_get_stats_with_operations(self, mock_settings):
+    @pytest.mark.asyncio
+    async def test_get_stats_with_operations(self, mock_settings):
         """Test get_stats() after cache operations"""
         mock_settings.redis_url = None
         cache = CacheService()
 
-        cache.set("key1", "value1")
-        cache.get("key1")  # Hit
-        cache.get("key2")  # Miss
+        await cache.set("key1", "value1")
+        await cache.get("key1")  # Hit
+        await cache.get("key2")  # Miss
 
         stats = cache.get_stats()
 
