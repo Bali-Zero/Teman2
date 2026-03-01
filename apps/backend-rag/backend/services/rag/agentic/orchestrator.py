@@ -23,7 +23,10 @@ import os
 import time
 import uuid
 from collections.abc import AsyncGenerator
-from typing import Any
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from backend.services.memory.orchestrator import MemoryOrchestrator
 
 from pydantic import BaseModel
 

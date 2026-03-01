@@ -33,6 +33,7 @@ from pydantic import BaseModel, Field
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
+from backend.app.core.config import settings
 from backend.services.article_composer import (
     APIError,
     ComposeRequestValidator,

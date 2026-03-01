@@ -9,7 +9,10 @@ Date: 2026-02-10
 """
 
 import logging
-from typing import Any
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from backend.conversation.engine import ConversationEngine
 
 from backend.channels.base import BaseChannel
 from backend.channels.optimizations import message_deduplicator
