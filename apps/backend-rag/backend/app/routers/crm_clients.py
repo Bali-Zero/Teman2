@@ -347,9 +347,33 @@ async def create_client(
                         logger.info(
                             f"🚀 Drive folder creation initiated for client {new_client['id']}"
                         )
-                    except Exception as drive_error:
-                        logger.warning(f"Failed to initiate Drive folder creation: {drive_error}")
-                        # Don't fail client creation if Drive folder fails
+                    except Exception as e:
+                        logger.error(f"Drive folder creation failed: {e}")
+
+                    # 🎯 Auto-trigger onboarding chain for new leads/prospects
+                    if client.status in ("lead", "prospect") and client.service_interest:
+                        try:
+                            logger.info(
+                                f"🎯 Auto-triggering onboarding chain for new {client.status}: {client.full_name}"
+                            )
+                            # Note: This would call the MCP chain_new_client_onboarding
+                            # For now, we log the intent - actual MCP integration would go here
+                            onboarding_payload = {
+                                "name": client.full_name,
+                                "email": client.email or f"temp_{new_client['id']}@balizero.com",
+                                "nationality": client.nationality or "Unknown",
+                                "business_description": ", ".join(client.service_interest),
+                                "phone": client.whatsapp or client.phone,
+                                "client_id": new_client["id"],
+                            }
+                            logger.info(
+                                f"📋 Onboarding payload prepared for {client.full_name}: {onboarding_payload}"
+                            )
+                            # TODO: Call MCP chain_new_client_onboarding here
+                            # await mcp_client.call_tool("chain_new_client_onboarding", onboarding_payload)
+                        except Exception as onboarding_error:
+                            logger.warning(f"Failed to trigger onboarding chain: {onboarding_error}")
+                            # Don't fail client creation if onboarding trigger fails
 
                     await invalidate_cache("zantara:crm_clients_stats:*")
                     return ClientResponse(**new_client)

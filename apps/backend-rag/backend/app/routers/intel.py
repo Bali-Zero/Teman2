@@ -1395,6 +1395,7 @@ async def get_critical_items(
                             "url": metadata.get("url"),
                             "action_required": metadata.get("action_required") == "True",
                             "deadline_date": metadata.get("deadline_date"),
+                            "severity": "high",  # All critical items are high severity for chain compatibility
                         }
                     )
 
@@ -1404,7 +1405,12 @@ async def get_critical_items(
         # Sort by date (newest first)
         critical_items.sort(key=lambda x: x.get("published_date", ""), reverse=True)
 
-        return {"items": critical_items, "count": len(critical_items)}
+        # Return with both 'items' and 'alerts' keys for backward compatibility
+        return {
+            "items": critical_items,
+            "alerts": critical_items,  # Alias for chain_daily_ops_autopilot compatibility
+            "count": len(critical_items),
+        }
 
     except Exception as e:
         logger.error(f"Get critical items error: {e}")
