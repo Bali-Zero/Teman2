@@ -35,7 +35,7 @@ def register(
     @mcp.resource("data://intel/alerts")
     async def get_active_alerts() -> dict[str, Any]:
         """Active intelligence and regulatory alerts requiring attention."""
-        return await _call_safe("/api/intel/critical-alerts")
+        return await _call_safe("/api/intel/critical")
 
     @mcp.resource("data://workflows/active")
     async def get_active_workflows() -> dict[str, Any]:

@@ -173,16 +173,19 @@ export function createAbortableWrapper<T extends Record<string, any>>(
 
   for (const [key, value] of Object.entries(api)) {
     if (typeof value === "function") {
-      (wrapped as any)[key] = (...args: any[]) => {
+      (wrapped as Record<string, unknown>)[key] = (...args: unknown[]) => {
         if (signal.aborted) {
           return Promise.reject(new Error("Request aborted"));
         }
-        return value(...args);
+        return (value as (...args: unknown[]) => unknown)(...args);
       };
     } else if (typeof value === "object" && value !== null) {
-      (wrapped as any)[key] = createAbortableWrapper(value, signal);
+      (wrapped as Record<string, unknown>)[key] = createAbortableWrapper(
+        value,
+        signal,
+      );
     } else {
-      (wrapped as any)[key] = value;
+      (wrapped as Record<string, unknown>)[key] = value;
     }
   }
 

@@ -257,7 +257,7 @@ class TestCacheService:
         assert isinstance(cache._memory_cache, LRUCache)
 
     @patch("backend.app.core.config.settings")
-    @patch("redis.from_url")
+    @patch("redis.asyncio.from_url")
     def test_init_with_redis_success(self, mock_redis_from_url, mock_settings):
         """Test CacheService initialization with Redis"""
         mock_settings.redis_url = "redis://localhost:6379"
@@ -271,7 +271,7 @@ class TestCacheService:
         assert cache.redis_client == mock_redis_client
 
     @patch("backend.app.core.config.settings")
-    @patch("redis.from_url")
+    @patch("redis.asyncio.from_url")
     def test_init_with_redis_failure(self, mock_redis_from_url, mock_settings):
         """Test CacheService falls back when Redis fails"""
         mock_settings.redis_url = "redis://localhost:6379"
@@ -341,7 +341,7 @@ class TestCacheService:
         assert cache.stats["misses"] == 1
 
     @patch("backend.app.core.config.settings")
-    @patch("redis.from_url")
+    @patch("redis.asyncio.from_url")
     def test_get_redis_cache_hit(self, mock_redis_from_url, mock_settings):
         """Test get() with Redis cache hit"""
         mock_settings.redis_url = "redis://localhost"
@@ -357,7 +357,7 @@ class TestCacheService:
         assert cache.stats["hits"] == 1
 
     @patch("backend.app.core.config.settings")
-    @patch("redis.from_url")
+    @patch("redis.asyncio.from_url")
     def test_get_redis_cache_miss(self, mock_redis_from_url, mock_settings):
         """Test get() with Redis cache miss"""
         mock_settings.redis_url = "redis://localhost"
@@ -384,7 +384,7 @@ class TestCacheService:
         assert cache.get("key1") == "value1"
 
     @patch("backend.app.core.config.settings")
-    @patch("redis.from_url")
+    @patch("redis.asyncio.from_url")
     def test_set_redis_cache(self, mock_redis_from_url, mock_settings):
         """Test set() with Redis cache"""
         mock_settings.redis_url = "redis://localhost"
@@ -411,7 +411,7 @@ class TestCacheService:
         assert cache.get("key1") is None
 
     @patch("backend.app.core.config.settings")
-    @patch("redis.from_url")
+    @patch("redis.asyncio.from_url")
     def test_delete_redis_cache(self, mock_redis_from_url, mock_settings):
         """Test delete() with Redis cache"""
         mock_settings.redis_url = "redis://localhost"

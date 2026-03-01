@@ -11,7 +11,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { ExpiryAlert, Practice } from "@/lib/api/crm/crm.types";
+import type {
+  ExpiryAlert,
+  Practice,
+  RenewalAlert,
+  Interaction,
+} from "@/lib/api/crm/crm.types";
 
 interface Notification {
   id: string;
@@ -165,7 +170,7 @@ export function useUpcomingRenewals(days: number = 90) {
       const renewals = await api.crm.getUpcomingRenewals(days);
       // Map renewals to practices (they share many fields)
       return renewals.map(
-        (r: any) =>
+        (r: RenewalAlert) =>
           ({
             id: r.practice_id, // Use practice_id, not alert id
             client_id: r.client_id,
@@ -229,7 +234,7 @@ export function useRecentActivity(limit: number = 10) {
     queryFn: async () => {
       const interactions = await api.crm.getInteractions({ limit });
 
-      return interactions.map((interaction: any) => ({
+      return interactions.map((interaction: Interaction) => ({
         id: `interaction-${interaction.id}`,
         type:
           interaction.interaction_type === "chat"

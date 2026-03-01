@@ -19,7 +19,7 @@ async def get_telegram_conversations(
     limit: int = 50, offset: int = 0, db: Pool = Depends(get_database)
 
 
-):
+) -> Any:
     try:
         async with db.acquire() as conn:
             rows = await conn.fetch(

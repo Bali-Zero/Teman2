@@ -63,7 +63,7 @@ async def search_shared_memory(
     limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> Any:
     """
     Natural language search across CRM data
 
@@ -333,7 +333,7 @@ async def get_upcoming_renewals(
 
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> dict[str, Any]:
     """
     Get all practices with upcoming renewal dates
 
@@ -388,7 +388,7 @@ async def get_client_full_context(
 
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> dict[str, Any]:
     """
     Get complete context for a client
     Everything the AI needs to know about this client
@@ -515,7 +515,7 @@ async def get_team_overview(
 
 
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> Any:
     """
     Get team-wide CRM overview
 

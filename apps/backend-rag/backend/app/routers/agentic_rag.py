@@ -211,7 +211,7 @@ async def query_agentic_rag(
 
     orchestrator: AgenticRAGOrchestrator = Depends(get_orchestrator),
     db_pool: Any | None = Depends(get_optional_database_pool),
-):
+) -> AgenticQueryResponse:
     """
     Esegue una query usando il sistema Agentic RAG completo.
 
@@ -483,7 +483,7 @@ async def stream_agentic_rag(
 
     orchestrator: AgenticRAGOrchestrator = Depends(get_orchestrator),
     db_pool: Any | None = Depends(get_optional_database_pool),
-):
+) -> Any:
     """
     Stream the Agentic RAG process (SSE).
 
@@ -899,7 +899,7 @@ async def trigger_proactivity(
 
 
     orchestrator: AgenticRAGOrchestrator = Depends(get_orchestrator),
-):
+) -> StreamingResponse:
     """
     Trigger a proactive AI event (Zero-Shot Proactivity).
     The AI will analyze the user's context/memory and decide whether to speak.
@@ -973,7 +973,7 @@ async def record_ab_test_feedback(
     current_user: dict | None = Depends(get_current_user_optional),
 
 
-):
+) -> dict[str, Any]:
     """
     Record user feedback for A/B testing metrics.
 
@@ -1023,7 +1023,7 @@ async def get_ab_test_results(
     current_user: dict = Depends(get_current_user),
 
 
-):
+) -> Any:
     """
     Get A/B test results for a specific experiment.
 
@@ -1045,7 +1045,7 @@ async def get_ab_test_dashboard(
     current_user: dict = Depends(get_current_user),
 
 
-):
+) -> Any:
     """
     Get A/B testing dashboard data.
 
@@ -1064,7 +1064,7 @@ async def list_ab_test_experiments(
     current_user: dict = Depends(get_current_user),
 
 
-):
+) -> dict[str, Any]:
     """
     List all available A/B test experiments.
 
@@ -1090,7 +1090,7 @@ async def control_ab_test_experiment(
     current_user: dict = Depends(get_current_user),
 
 
-):
+) -> dict[str, Any]:
     """
     Enable or disable an A/B test experiment.
 
@@ -1126,7 +1126,7 @@ async def get_user_exposure(
     current_user: dict = Depends(get_current_user),
 
 
-):
+) -> dict[str, Any]:
     """
     Get experiment exposure history for a specific user.
 

@@ -140,7 +140,7 @@ async def voice_query(
 
 
     _auth: dict = Depends(verify_api_key),
-):
+) -> VoiceQueryResponse:
     """
     Fast voice query endpoint.
 
@@ -223,7 +223,7 @@ async def elevenlabs_kbli_audit(
 
 
     http_raw_request: Request = None
-):
+) -> dict[str, Any]:
     """
     ElevenLabs Tool Endpoint for KBLI Audit with Signature Verification.
     """

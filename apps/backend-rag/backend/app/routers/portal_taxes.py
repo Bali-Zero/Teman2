@@ -23,7 +23,7 @@ async def get_taxes(
 
 
     db_pool=Depends(get_database_pool),
-):
+) -> dict[str, Any]:
     """
     Get all tax obligations for the authenticated client.
 

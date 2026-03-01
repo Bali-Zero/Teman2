@@ -39,57 +39,11 @@ class TestConversationServiceInit:
         pool, _ = mock_db_pool
         service = ConversationService(db_pool=pool)
         assert service.db_pool == pool
-        assert service._auto_crm_service is None
 
     def test_init_without_db_pool(self):
         """Test initialization without database pool"""
         service = ConversationService(db_pool=None)
         assert service.db_pool is None
-
-
-class TestGetAutoCrm:
-    """Tests for _get_auto_crm method"""
-
-    def test_get_auto_crm_lazy_load(self, conversation_service):
-        """Test that auto CRM is lazy loaded"""
-        # First call should load the service
-        with patch("backend.services.crm.auto_crm_service.get_auto_crm_service") as mock_get:
-            mock_service = MagicMock()
-            mock_get.return_value = mock_service
-            result = conversation_service._get_auto_crm()
-            assert result == mock_service
-            mock_get.assert_called_once()
-
-    def test_get_auto_crm_import_error(self, conversation_service):
-        """Test _get_auto_crm handles ImportError"""
-        # Patch the import inside the method
-        with patch("builtins.__import__", side_effect=ImportError("Module not found")):
-            result = conversation_service._get_auto_crm()
-            assert result is None
-
-    def test_get_auto_crm_general_exception(self, conversation_service):
-        """Test _get_auto_crm handles general exceptions"""
-        with patch(
-            "backend.services.crm.auto_crm_service.get_auto_crm_service",
-            side_effect=Exception("Error"),
-        ):
-            result = conversation_service._get_auto_crm()
-            assert result is None
-
-    def test_get_auto_crm_caches_result(self, conversation_service):
-        """Test that _get_auto_crm caches the result"""
-        with patch("backend.services.crm.auto_crm_service.get_auto_crm_service") as mock_get:
-            mock_service = MagicMock()
-            mock_get.return_value = mock_service
-
-            # First call
-            result1 = conversation_service._get_auto_crm()
-            # Second call should use cached result
-            result2 = conversation_service._get_auto_crm()
-
-            assert result1 == result2 == mock_service
-            # Should only be called once
-            assert mock_get.call_count == 1
 
 
 class TestSaveConversation:
@@ -240,91 +194,6 @@ class TestSaveConversation:
             assert result["persistence_mode"] == "memory_fallback"
             assert result["conversation_id"] == 0
 
-    @pytest.mark.asyncio
-    async def test_save_conversation_triggers_auto_crm(self, conversation_service, mock_db_pool):
-        """Test save_conversation triggers auto CRM processing"""
-        pool, conn = mock_db_pool
-
-        mock_row = MagicMock()
-        mock_row.__getitem__ = lambda self, key: {"id": 123}.get(key, None)
-        conn.fetchrow = AsyncMock(return_value=mock_row)
-
-        mock_cache = MagicMock()
-        mock_cache.add_message = MagicMock()
-
-        mock_auto_crm = MagicMock()
-        mock_auto_crm.process_conversation = AsyncMock(
-            return_value={"processed": True, "extracted": {}}
-        )
-
-        with patch(
-            "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_cache
-        ):
-            with patch.object(conversation_service, "_get_auto_crm", return_value=mock_auto_crm):
-                result = await conversation_service.save_conversation(
-                    user_email="test@test.com",
-                    messages=[{"role": "user", "content": "Hello"}],
-                    metadata={"team_member": "Alice"},
-                )
-
-                assert result["crm"]["processed"] is True
-                mock_auto_crm.process_conversation.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_save_conversation_auto_crm_error(self, conversation_service, mock_db_pool):
-        """Test save_conversation handles auto CRM errors"""
-        pool, conn = mock_db_pool
-
-        mock_row = MagicMock()
-        mock_row.__getitem__ = lambda self, key: {"id": 123}.get(key, None)
-        conn.fetchrow = AsyncMock(return_value=mock_row)
-
-        mock_cache = MagicMock()
-        mock_cache.add_message = MagicMock()
-
-        mock_auto_crm = MagicMock()
-        mock_auto_crm.process_conversation = AsyncMock(side_effect=Exception("CRM error"))
-
-        with patch(
-            "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_cache
-        ):
-            with patch.object(conversation_service, "_get_auto_crm", return_value=mock_auto_crm):
-                result = await conversation_service.save_conversation(
-                    user_email="test@test.com",
-                    messages=[{"role": "user", "content": "Hello"}],
-                )
-
-                assert result["crm"]["processed"] is False
-                assert "error" in result["crm"]
-
-    @pytest.mark.asyncio
-    async def test_save_conversation_empty_messages_no_crm(
-        self, conversation_service, mock_db_pool
-    ):
-        """Test save_conversation doesn't trigger CRM for empty messages"""
-        pool, conn = mock_db_pool
-
-        mock_row = MagicMock()
-        mock_row.__getitem__ = lambda self, key: {"id": 123}.get(key, None)
-        conn.fetchrow = AsyncMock(return_value=mock_row)
-
-        mock_cache = MagicMock()
-        mock_cache.add_message = MagicMock()
-
-        mock_auto_crm = MagicMock()
-
-        with patch(
-            "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_cache
-        ):
-            with patch.object(conversation_service, "_get_auto_crm", return_value=mock_auto_crm):
-                result = await conversation_service.save_conversation(
-                    user_email="test@test.com",
-                    messages=[],
-                )
-
-                assert result["crm"]["processed"] is False
-                assert result["crm"]["reason"] == "auto-crm not available"
-                mock_auto_crm.process_conversation.assert_not_called()
 
 
 class TestGetHistory:

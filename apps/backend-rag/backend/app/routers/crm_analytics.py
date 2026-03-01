@@ -98,7 +98,7 @@ async def get_client_overview(
 
 
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> dict[str, Any]:
     """
     Get client overview metrics.
 
@@ -187,7 +187,7 @@ async def get_team_performance(
 
 
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> Any:
     """
     Get team member performance metrics.
 
@@ -289,7 +289,7 @@ async def get_revenue_summary(
 
 
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> dict[str, Any]:
     """
     Get revenue summary metrics.
 
@@ -382,7 +382,7 @@ async def get_processes_by_type(
 
 
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> Any:
     """
     Get process/case analytics grouped by type.
 
@@ -445,7 +445,7 @@ async def get_client_trend(
 
 
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> Any:
     """
     Get client acquisition trend over time.
 

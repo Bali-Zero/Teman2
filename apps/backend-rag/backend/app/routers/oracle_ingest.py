@@ -70,7 +70,7 @@ async def ingest_documents(
     request: IngestRequest, service: SearchService = Depends(get_search_service)
 
 
-):
+) -> IngestResponse:
     """
     Bulk ingest documents into Qdrant collection
 

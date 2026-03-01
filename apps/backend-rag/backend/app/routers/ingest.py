@@ -40,7 +40,7 @@ async def upload_and_ingest(
     title: str | None = None,
     author: str | None = None,
     tier_override: TierLevel | None = None,
-):
+) -> BookIngestionResponse:
     """
     Upload and ingest a single book.
 

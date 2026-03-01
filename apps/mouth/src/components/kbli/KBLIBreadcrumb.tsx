@@ -1,5 +1,10 @@
+interface BreadcrumbItem {
+  label: string;
+  href?: string;
+}
+
 interface Props {
-  items?: any[];
+  items?: BreadcrumbItem[];
 }
 
 export function KBLIBreadcrumb({ items }: Props) {

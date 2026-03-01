@@ -111,7 +111,7 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
 
         # Step 3: Critical intel alerts
         try:
-            intel = await _call_safe("/api/intel/critical-alerts")
+            intel = await _call_safe("/api/intel/critical")
             critical_items = intel.get("alerts") or intel.get("data") or []
             articles_composed = 0
             for item in critical_items[:3]:  # Max 3 auto-articles per day

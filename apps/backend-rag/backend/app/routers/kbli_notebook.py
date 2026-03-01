@@ -955,7 +955,7 @@ async def chat_kbli(
 
 
     pool=Depends(get_optional_database_pool),
-):
+) -> KBLINotebookChatResponse:
     """Specialized chat for KBLI Notebook with BPS 2025 focus."""
     logger.info(f"💬 KBLI Chat Request: '{kbli_request.query[:50]}...'")
 

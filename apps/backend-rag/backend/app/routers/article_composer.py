@@ -303,7 +303,7 @@ async def compose_article(
     request_id: str = Depends(get_request_id),
 
 
-):
+) -> ComposeResponse:
     """
     Compose/enrich an article with Bali Zero style.
 

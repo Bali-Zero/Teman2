@@ -94,7 +94,7 @@ async def list_news(
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(20, ge=1, le=100, description="Items per page"),
     pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> NewsListResponse:
     """
     List news items with filtering, search, and pagination.
     """
@@ -186,7 +186,7 @@ async def get_categories(
     pool: asyncpg.Pool = Depends(get_database_pool),
 
 
-):
+) -> dict[str, Any]:
     """Get available news categories with counts"""
 
     try:
@@ -214,7 +214,7 @@ async def get_news_by_slug(
     pool: asyncpg.Pool = Depends(get_database_pool),
 
 
-):
+) -> dict[str, Any]:
     """Get a single news item by slug and increment view count"""
 
     try:
@@ -269,7 +269,7 @@ async def create_news(
     pool: asyncpg.Pool = Depends(get_database_pool),
 
 
-):
+) -> dict[str, Any]:
     """Create a new news item (from scraper or manual)"""
 
     try:
@@ -318,7 +318,7 @@ async def create_news_bulk(
     pool: asyncpg.Pool = Depends(get_database_pool),
 
 
-):
+) -> dict[str, Any]:
     """Create multiple news items at once (for scraper batch uploads)"""
     created = 0
     duplicates = 0
@@ -372,7 +372,7 @@ async def update_news_status(
     pool: asyncpg.Pool = Depends(get_database_pool),
 
 
-):
+) -> dict[str, Any]:
     """Update news item status (approve/reject)"""
     if status not in ("pending", "approved", "rejected", "archived"):
         raise HTTPException(status_code=400, detail="Invalid status")
@@ -410,7 +410,7 @@ async def subscribe_to_news(
     pool: asyncpg.Pool = Depends(get_database_pool),
 
 
-):
+) -> dict[str, Any]:
     """Subscribe to news alerts"""
 
     try:
@@ -443,7 +443,7 @@ async def unsubscribe_from_news(
     pool: asyncpg.Pool = Depends(get_database_pool),
 
 
-):
+) -> dict[str, Any]:
     """Unsubscribe from news alerts"""
 
     try:
@@ -476,7 +476,7 @@ async def get_rss_feed(
     pool: asyncpg.Pool = Depends(get_database_pool),
 
 
-):
+) -> Response:
     """Generate RSS feed for news items"""
 
     try:

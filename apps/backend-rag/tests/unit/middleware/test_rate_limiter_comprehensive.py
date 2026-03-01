@@ -108,7 +108,7 @@ class TestRateLimiterInMemory:
 class TestRateLimiterWithRedis:
     """Tests for RateLimiter with Redis (mocked)."""
 
-    @patch("redis.from_url")
+    @patch("redis.asyncio.from_url")
     @patch("backend.app.core.config.settings")
     def test_init_with_redis(
         self, mock_settings: MagicMock, mock_redis_from_url: MagicMock
@@ -124,7 +124,7 @@ class TestRateLimiterWithRedis:
         mock_client.ping.assert_called_once()
         assert limiter.redis_available is True
 
-    @patch("redis.from_url")
+    @patch("redis.asyncio.from_url")
     @patch("backend.app.core.config.settings")
     def test_redis_failure_falls_back_to_memory(
         self, mock_settings: MagicMock, mock_redis_from_url: MagicMock
@@ -137,7 +137,7 @@ class TestRateLimiterWithRedis:
 
         assert limiter.redis_available is False
 
-    @patch("redis.from_url")
+    @patch("redis.asyncio.from_url")
     @patch("backend.app.core.config.settings")
     def test_is_allowed_with_redis(
         self, mock_settings: MagicMock, mock_redis_from_url: MagicMock

@@ -286,7 +286,7 @@ async def drive_status(
 
 
     drive: Annotated[TeamDriveService, Depends(get_drive)],
-):
+) -> dict[str, Any]:
     """
     Check if Drive integration is configured and accessible.
 
@@ -325,7 +325,7 @@ async def list_files(
     page_size: int = Query(50, ge=1, le=100),
     page_token: str | None = Query(None, description="Pagination token"),
     q: str | None = Query(None, description="Search query"),
-):
+) -> FileListResponse:
     """
     List files in a folder or search across all shared files.
     Files are filtered based on user's folder_access_rules permissions.
@@ -398,7 +398,7 @@ async def get_file(
 
 
     drive: Annotated[TeamDriveService, Depends(get_drive)],
-):
+) -> FileItem:
     """
     Get metadata for a specific file.
     """
@@ -418,7 +418,7 @@ async def download_file(
 
 
     drive: Annotated[TeamDriveService, Depends(get_drive)],
-):
+) -> Response:
     """
     Download a file's content.
 
@@ -453,7 +453,7 @@ async def get_folder_path(
 
 
     drive: Annotated[TeamDriveService, Depends(get_drive)],
-):
+) -> list[Any]:
     """
     Get the breadcrumb path to a folder.
     """
@@ -477,7 +477,7 @@ async def search_files(
         None, description="Filter by type: folder, document, spreadsheet, pdf"
     ),
     page_size: int = Query(20, ge=1, le=50),
-):
+) -> dict[str, Any]:
     """
     Search for files by name.
     """
@@ -541,7 +541,7 @@ async def upload_file(
     pool: Annotated[any, Depends(get_database_pool)],
     file: UploadFile = File(...),
     parent_id: str = Form(...),
-):
+) -> OperationResponse:
     """
     Upload a file to Google Drive.
     """
@@ -583,7 +583,7 @@ async def create_folder(
 
     drive: Annotated[TeamDriveService, Depends(get_drive)],
     pool: Annotated[any, Depends(get_database_pool)],
-):
+) -> OperationResponse:
     """
     Create a new folder.
     """
@@ -618,7 +618,7 @@ async def create_doc(
 
     drive: Annotated[TeamDriveService, Depends(get_drive)],
     pool: Annotated[any, Depends(get_database_pool)],
-):
+) -> OperationResponse:
     """
     Create a new Google Doc, Sheet, or Slides.
     """
@@ -664,7 +664,7 @@ async def rename_file(
 
 
     drive: Annotated[TeamDriveService, Depends(get_drive)],
-):
+) -> OperationResponse:
     """
     Rename a file or folder.
     """
@@ -695,7 +695,7 @@ async def delete_file(
 
     drive: Annotated[TeamDriveService, Depends(get_drive)],
     permanent: bool = Query(False, description="Permanently delete instead of trashing"),
-):
+) -> dict[str, Any]:
     """
     Delete a file or folder (move to trash by default).
     """
@@ -726,7 +726,7 @@ async def move_file(
 
     drive: Annotated[TeamDriveService, Depends(get_drive)],
     pool: Annotated[any, Depends(get_database_pool)],
-):
+) -> OperationResponse:
     """
     Move a file to a different folder.
     """
@@ -763,7 +763,7 @@ async def copy_file(
 
     drive: Annotated[TeamDriveService, Depends(get_drive)],
     pool: Annotated[any, Depends(get_database_pool)],
-):
+) -> OperationResponse:
     """
     Copy a file.
     """
@@ -846,7 +846,7 @@ async def list_permissions(
 
 
     drive: Annotated[TeamDriveService, Depends(get_drive)],
-):
+) -> list[Any]:
     """
     List permissions for a file/folder.
     All authenticated users can view who has access.
@@ -878,7 +878,7 @@ async def add_permission(
 
 
     drive: Annotated[TeamDriveService, Depends(get_drive)],
-):
+) -> PermissionItem:
     """
     Add permission for a user. All authenticated users can manage permissions.
     """
@@ -912,7 +912,7 @@ async def update_permission(
 
 
     drive: Annotated[TeamDriveService, Depends(get_drive)],
-):
+) -> PermissionItem:
     """
     Update permission role. All authenticated users can manage permissions.
     """
@@ -944,7 +944,7 @@ async def remove_permission(
 
 
     drive: Annotated[TeamDriveService, Depends(get_drive)],
-):
+) -> dict[str, Any]:
     """
     Remove permission. All authenticated users can manage permissions.
     """

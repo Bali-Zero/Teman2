@@ -22,7 +22,7 @@ async def get_whatsapp_conversations(
     db: Pool | None = Depends(get_optional_database_pool),
 
 
-):
+) -> Any:
     if not db:
         logger.warning("Database unavailable")
         # Return empty list gracefully if DB is down, but don't fake data
@@ -118,7 +118,7 @@ async def get_whatsapp_messages(
 
 
     current_user: dict = Depends(get_current_user),
-):
+) -> Any:
     if not db:
         return []
 

@@ -10,9 +10,36 @@ const apiClient = new ApiClientBase(API_BASE_URL);
 
 // --- Types ---
 
+export interface ArticleVersion {
+  id: number;
+  timestamp: string;
+  content: string;
+}
+
+export interface Article {
+  id: number;
+  title: string;
+  content: string;
+  outline: string[];
+  wordCount: number;
+  seoScore: number;
+  createdAt: string;
+  versions: ArticleVersion[];
+}
+
+export interface Inspiration {
+  id: number;
+  type: "color" | "quote" | "prompt";
+  value?: string;
+  name?: string;
+  source?: string;
+  content?: string;
+  author?: string;
+}
+
 export interface DreamState {
-  articles: any[]; // TODO: Type properly
-  inspirations: any[];
+  articles: Article[];
+  inspirations: Inspiration[];
   activeZone: string;
   // Add other state properties
 }
@@ -47,7 +74,7 @@ export const dreamApi = {
    */
   async saveState(
     userId: string,
-    state: any,
+    state: DreamState,
   ): Promise<{ success: boolean; timestamp: string }> {
     return apiClient.request("/api/dream/state", {
       method: "POST",
@@ -63,7 +90,9 @@ export const dreamApi = {
   /**
    * Load Dream Room state
    */
-  async loadState(userId: string): Promise<{ success: boolean; state: any }> {
+  async loadState(
+    userId: string,
+  ): Promise<{ success: boolean; state: DreamState }> {
     return apiClient.request(`/api/dream/state/${userId}`, {
       method: "GET",
     });

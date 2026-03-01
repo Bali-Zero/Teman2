@@ -94,7 +94,7 @@ async def get_current_user(
 
 
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> Any:
     """Get current authenticated user from JWT token"""
     credentials_exception = HTTPException(
         status_code=401,
@@ -142,7 +142,7 @@ async def login(
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 
 
-):
+) -> LoginResponse:
     """
     User login with email and PIN
 
@@ -307,7 +307,7 @@ async def logout(
     _current_user: dict = Depends(get_current_user),
 
 
-):
+) -> dict[str, Any]:
     """
     Logout user and clear authentication cookies.
 
@@ -365,7 +365,7 @@ async def refresh_token(
 
 
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> LoginResponse:
     """
     Refresh JWT access token
 

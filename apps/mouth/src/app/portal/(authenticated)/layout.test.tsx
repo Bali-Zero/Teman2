@@ -31,7 +31,13 @@ vi.mock("next/navigation", () => ({
 
 // Mock components
 vi.mock("@/components/workspace/AppSidebar", () => ({
-  AppSidebar: ({ user, onLogout }: { user: any; onLogout: () => void }) => {
+  AppSidebar: ({
+    user,
+    onLogout,
+  }: {
+    user: { name: string };
+    onLogout: () => void;
+  }) => {
     const handleClick = () => {
       onLogout();
     };

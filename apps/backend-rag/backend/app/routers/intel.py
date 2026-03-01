@@ -331,7 +331,7 @@ async def submit_from_scraper(
     api_key_verified=Depends(verify_internal_api_key),
 
 
-):
+) -> dict[str, Any]:
     """
     Receive article from bali-intel-scraper and save to staging.
 
@@ -571,7 +571,7 @@ async def approve_staging_item(
     api_key_verified=Depends(verify_internal_api_key),
 
 
-):
+) -> dict[str, Any]:
     """
     Initiate approval process by sending Telegram notification to team.
 

@@ -134,7 +134,7 @@ async def create_interaction(
 
 
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> InteractionResponse:
     """
     Log a new interaction
 
@@ -245,7 +245,7 @@ async def list_interactions(
     # Support for direct calls from dashboard_summary.py
     user_id: str | None = None,
     pool: Any | None = None,
-):
+) -> list[Any]:
     """
     List interactions with optional filtering
     """
@@ -330,7 +330,7 @@ async def get_interaction(
 
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> Any:
     """Get full interaction details by ID"""
     user_email = current_user.get("email", "").lower()
     user_is_admin = is_crm_admin(current_user)
@@ -377,7 +377,7 @@ async def get_client_timeline(
     limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> dict[str, Any]:
     """
     Get complete interaction timeline for a client.
     RBAC REMOVED: All authenticated users can view all client timelines.
@@ -425,7 +425,7 @@ async def get_practice_history(
 
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> dict[str, Any]:
     """
     Get all interactions related to a specific practice.
     RBAC REMOVED: All authenticated users can view all practice histories.
@@ -472,7 +472,7 @@ async def get_interactions_stats(
     # Support for direct calls from dashboard_summary.py
     user_id: str | None = None,
     pool: Any | None = None,
-):
+) -> dict[str, Any]:
     """
     Get interaction statistics
 
@@ -609,7 +609,7 @@ async def create_interaction_from_conversation(
     summary: str | None = Query(None, description="AI-generated summary"),
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> dict[str, Any]:
     """
     Auto-create interaction record from a chat conversation
 
@@ -741,7 +741,7 @@ async def delete_interaction(
 
 
     pool=Depends(get_database_pool),
-):
+) -> dict[str, Any]:
     """
     Delete an interaction (soft delete - marks as archived).
     User must be admin or the creator of the interaction.

@@ -231,7 +231,7 @@ async def create_client(
 
 
     current_user: dict = Depends(get_current_user),
-):
+) -> ClientResponse:
     """
     Create a new client
 
@@ -386,7 +386,7 @@ async def list_clients(
     offset: int = Query(0, ge=0, description="Offset for pagination"),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-):
+) -> Any:
     """
     List clients with pagination and search.
 
@@ -483,7 +483,7 @@ async def get_client(
 
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-):
+) -> ClientResponse:
     """
     Get client by ID
 
@@ -521,7 +521,7 @@ async def get_client_by_email(
 
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),  # noqa: ARG001  # Used for auth
-):
+) -> ClientResponse:
     """
     Get client by email address
 
@@ -556,7 +556,7 @@ async def update_client(
     client_id: int = Path(..., gt=0, description="Client ID"),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-):
+) -> ClientResponse:
     """
     Update client information
 
@@ -682,7 +682,7 @@ async def delete_client(
 
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-):
+) -> dict[str, Any]:
     """
     Delete a client (soft delete - marks as inactive)
 
@@ -751,7 +751,7 @@ async def get_client_summary(
 
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),  # noqa: ARG001  # Used for auth
-):
+) -> dict[str, Any]:
     """
     Get comprehensive client summary including:
     - Basic client info
@@ -847,7 +847,7 @@ async def get_clients_stats(
 
 
     _current_user: dict = Depends(get_current_user),
-):
+) -> dict[str, Any]:
     """
     Get overall client statistics
 
@@ -913,7 +913,7 @@ async def get_client_audit_trail(
     limit: int = Query(50, ge=1, le=200, description="Max audit entries to return"),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),  # noqa: ARG001  # Used for auth
-):
+) -> dict[str, Any]:
     """
     Get audit trail for a specific client.
 
@@ -955,7 +955,7 @@ async def get_crm_metrics_summary(
 
 
     _db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> Any:
     """
     Get CRM metrics summary for dashboard
     """
@@ -979,7 +979,7 @@ async def refresh_crm_metrics(
 
 
     _db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> dict[str, Any]:
     """
     Force refresh of CRM metrics (Admin only)
     """
@@ -1030,7 +1030,7 @@ async def extract_passport_data(
 
 
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> PassportExtractResponse:
     """
     Extract passport number and expiry date from passport image using Gemini Vision.
     Updates the client record with extracted data.
@@ -1201,7 +1201,7 @@ async def extract_passport_enhanced(
 
 
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> PassportEnhancedResponse:
     """
     Enhanced passport OCR using Gemini Vision.
     Extracts all visible data from passport and updates client record.
@@ -1441,7 +1441,7 @@ async def delete_client_document(
 
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-):
+) -> dict[str, Any]:
     """
     Delete a client document (soft delete).
 
@@ -1526,7 +1526,7 @@ async def extract_npwp(
     _current_user: dict = Depends(get_current_user),
 
 
-):
+) -> NpwpExtractResponse:
     """
     Extract NPWP data from uploaded NPWP card image using Gemini Vision.
 
@@ -1659,7 +1659,7 @@ async def extract_nib(
     _current_user: dict = Depends(get_current_user),
 
 
-):
+) -> NibExtractResponse:
     """
     Extract NIB (Nomor Induk Berusaha) data from uploaded NIB document using Gemini Vision.
 
@@ -1776,7 +1776,7 @@ async def get_client_required_documents(
 
 
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> list[Any]:
     """Get all required documents for a client across all their practices (for Portal)."""
     try:
         async with db_pool.acquire() as conn:

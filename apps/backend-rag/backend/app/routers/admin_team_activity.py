@@ -547,7 +547,7 @@ async def export_messages(
     date_to: str | None = Query(None),
     _admin: dict = Depends(verify_admin),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-):
+) -> StreamingResponse:
     """Export messages as CSV"""
     try:
         conditions = []

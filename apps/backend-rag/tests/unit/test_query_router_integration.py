@@ -19,20 +19,7 @@ if str(backend_path) not in sys.path:
 
 # Aggressively mock problematic modules before any backend imports
 def mock_problematic_modules():
-    # Mock NumPy and PIL
-    numpy_mock = types.ModuleType("numpy")
-    numpy_mock.__version__ = "1.26.4"  # Needed by scipy
-    numpy_mock.__path__ = []
-
-    # Create submodules
-    numpy_typing_mock = types.ModuleType("numpy.typing")
-    numpy_typing_mock.__path__ = []
-
-    # Attach submodules
-    numpy_mock.typing = numpy_typing_mock
-
-    # Register in sys.modules
-    sys.modules["numpy"] = numpy_mock
+    # Mock PIL only (numpy 1.26.4 is installed, use real numpy)
     sys.modules["numpy.typing"] = numpy_typing_mock
     sys.modules["numpy._typing"] = MagicMock()
     sys.modules["numpy._typing._char_codes"] = MagicMock()

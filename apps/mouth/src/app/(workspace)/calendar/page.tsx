@@ -104,8 +104,8 @@ export default function CalendarPage() {
       } else {
         setError(data.error);
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
     }
@@ -135,8 +135,10 @@ export default function CalendarPage() {
       } else {
         alert("Errore: " + data.error);
       }
-    } catch (err: any) {
-      alert("Errore: " + err.message);
+    } catch (err: unknown) {
+      alert(
+        "Errore: " + (err instanceof Error ? err.message : "Unknown error"),
+      );
     }
   };
 
@@ -154,8 +156,10 @@ export default function CalendarPage() {
         setSelectedEvent(null);
         fetchEvents();
       }
-    } catch (err: any) {
-      alert("Errore: " + err.message);
+    } catch (err: unknown) {
+      alert(
+        "Errore: " + (err instanceof Error ? err.message : "Unknown error"),
+      );
     }
   };
 
