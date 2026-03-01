@@ -5,6 +5,7 @@ to ensure consistency and readability.
 """
 
 from backend.app.core.config import settings
+from typing import Any
 
 
 def get_visa_template(language: str = "en") -> str:
