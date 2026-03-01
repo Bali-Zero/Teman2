@@ -593,24 +593,87 @@ export function getSectionMeta(sectionId: string): {
 // =============================================================================
 
 const SECTOR_HERO: Record<string, { gradient: string; pattern: string }> = {
-  I: { gradient: "135deg, #e85d04, #f48c06, #dc2f02", pattern: "radial-gradient(circle at 20% 80%, rgba(255,255,255,0.08) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.05) 0%, transparent 40%)" },
-  L: { gradient: "135deg, #0077b6, #00b4d8, #0096c7", pattern: "radial-gradient(circle at 75% 75%, rgba(255,255,255,0.07) 0%, transparent 50%), radial-gradient(circle at 15% 30%, rgba(255,255,255,0.04) 0%, transparent 40%)" },
-  G: { gradient: "135deg, #d00000, #e85d04, #dc2f02", pattern: "radial-gradient(circle at 30% 70%, rgba(255,255,255,0.06) 0%, transparent 45%), radial-gradient(circle at 85% 25%, rgba(255,255,255,0.04) 0%, transparent 35%)" },
-  J: { gradient: "135deg, #3a0ca3, #7209b7, #560bad", pattern: "radial-gradient(circle at 60% 80%, rgba(255,255,255,0.06) 0%, transparent 50%), radial-gradient(circle at 20% 20%, rgba(255,255,255,0.04) 0%, transparent 40%)" },
-  N: { gradient: "135deg, #006d77, #83c5be, #0a9396", pattern: "radial-gradient(circle at 50% 70%, rgba(255,255,255,0.06) 0%, transparent 45%)" },
-  A: { gradient: "135deg, #2d6a4f, #52b788, #40916c", pattern: "radial-gradient(circle at 40% 80%, rgba(255,255,255,0.06) 0%, transparent 50%)" },
-  F: { gradient: "135deg, #774936, #c6893e, #a67c52", pattern: "radial-gradient(circle at 70% 70%, rgba(255,255,255,0.06) 0%, transparent 45%)" },
-  M: { gradient: "135deg, #1d3557, #457b9d, #2a6f97", pattern: "radial-gradient(circle at 25% 75%, rgba(255,255,255,0.06) 0%, transparent 50%)" },
-  R: { gradient: "135deg, #f72585, #b5179e, #7209b7", pattern: "radial-gradient(circle at 65% 80%, rgba(255,255,255,0.07) 0%, transparent 45%)" },
-  P: { gradient: "135deg, #0466c8, #4cc9f0, #4895ef", pattern: "radial-gradient(circle at 35% 70%, rgba(255,255,255,0.06) 0%, transparent 50%)" },
-  Q: { gradient: "135deg, #38b000, #70e000, #55a630", pattern: "radial-gradient(circle at 55% 75%, rgba(255,255,255,0.06) 0%, transparent 45%)" },
-  C: { gradient: "135deg, #495057, #adb5bd, #6c757d", pattern: "radial-gradient(circle at 45% 65%, rgba(255,255,255,0.05) 0%, transparent 45%)" },
-  E: { gradient: "135deg, #1b4332, #40916c, #2d6a4f", pattern: "radial-gradient(circle at 60% 80%, rgba(255,255,255,0.06) 0%, transparent 50%)" },
-  S: { gradient: "135deg, #7b2cbf, #c77dff, #9d4edd", pattern: "radial-gradient(circle at 30% 75%, rgba(255,255,255,0.06) 0%, transparent 45%)" },
+  I: {
+    gradient: "135deg, #e85d04, #f48c06, #dc2f02",
+    pattern:
+      "radial-gradient(circle at 20% 80%, rgba(255,255,255,0.08) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.05) 0%, transparent 40%)",
+  },
+  L: {
+    gradient: "135deg, #0077b6, #00b4d8, #0096c7",
+    pattern:
+      "radial-gradient(circle at 75% 75%, rgba(255,255,255,0.07) 0%, transparent 50%), radial-gradient(circle at 15% 30%, rgba(255,255,255,0.04) 0%, transparent 40%)",
+  },
+  G: {
+    gradient: "135deg, #d00000, #e85d04, #dc2f02",
+    pattern:
+      "radial-gradient(circle at 30% 70%, rgba(255,255,255,0.06) 0%, transparent 45%), radial-gradient(circle at 85% 25%, rgba(255,255,255,0.04) 0%, transparent 35%)",
+  },
+  J: {
+    gradient: "135deg, #3a0ca3, #7209b7, #560bad",
+    pattern:
+      "radial-gradient(circle at 60% 80%, rgba(255,255,255,0.06) 0%, transparent 50%), radial-gradient(circle at 20% 20%, rgba(255,255,255,0.04) 0%, transparent 40%)",
+  },
+  N: {
+    gradient: "135deg, #006d77, #83c5be, #0a9396",
+    pattern:
+      "radial-gradient(circle at 50% 70%, rgba(255,255,255,0.06) 0%, transparent 45%)",
+  },
+  A: {
+    gradient: "135deg, #2d6a4f, #52b788, #40916c",
+    pattern:
+      "radial-gradient(circle at 40% 80%, rgba(255,255,255,0.06) 0%, transparent 50%)",
+  },
+  F: {
+    gradient: "135deg, #774936, #c6893e, #a67c52",
+    pattern:
+      "radial-gradient(circle at 70% 70%, rgba(255,255,255,0.06) 0%, transparent 45%)",
+  },
+  M: {
+    gradient: "135deg, #1d3557, #457b9d, #2a6f97",
+    pattern:
+      "radial-gradient(circle at 25% 75%, rgba(255,255,255,0.06) 0%, transparent 50%)",
+  },
+  R: {
+    gradient: "135deg, #f72585, #b5179e, #7209b7",
+    pattern:
+      "radial-gradient(circle at 65% 80%, rgba(255,255,255,0.07) 0%, transparent 45%)",
+  },
+  P: {
+    gradient: "135deg, #0466c8, #4cc9f0, #4895ef",
+    pattern:
+      "radial-gradient(circle at 35% 70%, rgba(255,255,255,0.06) 0%, transparent 50%)",
+  },
+  Q: {
+    gradient: "135deg, #38b000, #70e000, #55a630",
+    pattern:
+      "radial-gradient(circle at 55% 75%, rgba(255,255,255,0.06) 0%, transparent 45%)",
+  },
+  C: {
+    gradient: "135deg, #495057, #adb5bd, #6c757d",
+    pattern:
+      "radial-gradient(circle at 45% 65%, rgba(255,255,255,0.05) 0%, transparent 45%)",
+  },
+  E: {
+    gradient: "135deg, #1b4332, #40916c, #2d6a4f",
+    pattern:
+      "radial-gradient(circle at 60% 80%, rgba(255,255,255,0.06) 0%, transparent 50%)",
+  },
+  S: {
+    gradient: "135deg, #7b2cbf, #c77dff, #9d4edd",
+    pattern:
+      "radial-gradient(circle at 30% 75%, rgba(255,255,255,0.06) 0%, transparent 45%)",
+  },
 };
 
-const DEFAULT_HERO = { gradient: "135deg, #343434, #4a4a4a, #3d3d3d", pattern: "radial-gradient(circle at 50% 70%, rgba(212,132,90,0.08) 0%, transparent 50%)" };
+const DEFAULT_HERO = {
+  gradient: "135deg, #343434, #4a4a4a, #3d3d3d",
+  pattern:
+    "radial-gradient(circle at 50% 70%, rgba(212,132,90,0.08) 0%, transparent 50%)",
+};
 
-export function getHeroStyle(section: string | null): { gradient: string; pattern: string } {
+export function getHeroStyle(section: string | null): {
+  gradient: string;
+  pattern: string;
+} {
   return (section && SECTOR_HERO[section]) || DEFAULT_HERO;
 }

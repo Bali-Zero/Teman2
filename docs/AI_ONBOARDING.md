@@ -33,6 +33,7 @@ if [ "$LOCAL_HEAD" = "$REMOTE_HEAD" ]; then echo "Git sync: OK ($LOCAL_HEAD)"; e
 ```
 
 Expected output:
+
 - **Machine:** `nuzantara@Nuzantara` (Pro) or `antonellosiano@Nuzantara-9` (Air)
 - **Peer:** The other machine — must show connected, not UNREACHABLE
 - **Git sync:** Must show OK. If OUT OF SYNC, run `git pull` on the behind machine before working.
@@ -334,19 +335,19 @@ nuzantara/
 
 **9 collections live on Fly.io** (66,595 total documents), 11 defined in `CollectionManager` (`backend/services/ingestion/collection_manager.py`):
 
-| Collection | Priority | Docs | Purpose |
-| --- | --- | --- | --- |
-| `collective_memories` | high | dynamic | Conversation memories |
-| `bali_zero_pricing_hybrid` | high | 29 | Service pricing |
-| `bali_zero_team` | high | 22 | Team member profiles |
-| `visa_oracle` | high | 1,612 | Visa requirements |
-| `kbli_2025_final` | high | 8,886 | KBLI business codes (FLAT payload) |
-| `tax_genius` | high | 895 | Tax knowledge |
-| `legal_unified` | high | 5,041 | Legal documents |
-| `legal_unified_hybrid` | high | 47,959 | Legal hybrid search |
-| `tax_genius_hybrid` | high | 332 | Tax hybrid search |
-| `training_conversations_hybrid` | high | 2,898 | Training data |
-| `immigration_circulars` | high | 4 | Immigration circulars |
+| Collection                      | Priority | Docs    | Purpose                            |
+| ------------------------------- | -------- | ------- | ---------------------------------- |
+| `collective_memories`           | high     | dynamic | Conversation memories              |
+| `bali_zero_pricing_hybrid`      | high     | 29      | Service pricing                    |
+| `bali_zero_team`                | high     | 22      | Team member profiles               |
+| `visa_oracle`                   | high     | 1,612   | Visa requirements                  |
+| `kbli_2025_final`               | high     | 8,886   | KBLI business codes (FLAT payload) |
+| `tax_genius`                    | high     | 895     | Tax knowledge                      |
+| `legal_unified`                 | high     | 5,041   | Legal documents                    |
+| `legal_unified_hybrid`          | high     | 47,959  | Legal hybrid search                |
+| `tax_genius_hybrid`             | high     | 332     | Tax hybrid search                  |
+| `training_conversations_hybrid` | high     | 2,898   | Training data                      |
+| `immigration_circulars`         | high     | 4       | Immigration circulars              |
 
 **Aliases** (map to existing collections): `legal_architect`, `kb_indonesian`, `kbli_comprehensive`, `zantara_books`, `cultural_insights`, `tax_updates`, `tax_knowledge`, `property_listings`, `property_knowledge`, `legal_updates`, `legal_intelligence`.
 
@@ -373,6 +374,7 @@ fly deploy --strategy rolling
 Auto-deploys from `apps/mouth/` on push to main. No manual deploy needed.
 
 **Vercel build notes:**
+
 - `outputFileTracingExcludes` in `next.config.ts` prevents 580 MB of public assets bundling into serverless functions
 - KBLI data must live inside `apps/mouth/data/` (not root `source_documents/`) for Vercel build access
 
@@ -394,29 +396,30 @@ This is a known issue, not a hack. The hook validates JS/TS formatting which is 
 
 Full-spectrum AI business intelligence and automation platform. **96 tools** across 17 modules:
 
-| Module | Capabilities |
-| --- | --- |
-| `crm` | Client management, practices, timelines |
-| `portal` | Client portal dashboard, messages, documents |
-| `intel` | Scraping, staging, publishing, search, trends |
-| `content` | Article composition, publishing, newsletters |
-| `analytics` | Completion rates, SLA, revenue, team productivity |
-| `knowledge` | KBLI search/inspect/chat, legal Q&A, visa types |
-| `comms` | Email, WhatsApp, Telegram |
-| `drive` | Google Drive files, folders, storage |
-| `workflows` | Execution plans, autonomous step approval |
-| `admin` | Clock in/out, team hours, admin logs, health |
-| `health` | System health, Qdrant metrics |
-| `journey` | Client journey tracking, pricing |
-| `pricing` | Service pricing, invoicing |
-| `compliance` | Regulatory compliance tracking |
-| `generals` | Multi-agent LAM memory, grounding |
-| `memory` | Episodic memory (save, recall, list, delete) |
-| `heartbeat` | 8 deterministic workflow chains |
+| Module       | Capabilities                                      |
+| ------------ | ------------------------------------------------- |
+| `crm`        | Client management, practices, timelines           |
+| `portal`     | Client portal dashboard, messages, documents      |
+| `intel`      | Scraping, staging, publishing, search, trends     |
+| `content`    | Article composition, publishing, newsletters      |
+| `analytics`  | Completion rates, SLA, revenue, team productivity |
+| `knowledge`  | KBLI search/inspect/chat, legal Q&A, visa types   |
+| `comms`      | Email, WhatsApp, Telegram                         |
+| `drive`      | Google Drive files, folders, storage              |
+| `workflows`  | Execution plans, autonomous step approval         |
+| `admin`      | Clock in/out, team hours, admin logs, health      |
+| `health`     | System health, Qdrant metrics                     |
+| `journey`    | Client journey tracking, pricing                  |
+| `pricing`    | Service pricing, invoicing                        |
+| `compliance` | Regulatory compliance tracking                    |
+| `generals`   | Multi-agent LAM memory, grounding                 |
+| `memory`     | Episodic memory (save, recall, list, delete)      |
+| `heartbeat`  | 8 deterministic workflow chains                   |
 
 **8 Workflow Chains:** `daily_ops_autopilot`, `new_client_onboarding`, `practice_lifecycle_check`, `intel_pipeline`, `weekly_report`, `client_health_monitor`, `compliance_autopilot`, `journey_accelerator`
 
 **Additional MCP servers:**
+
 - `apps/nuzantara-mcp-advanced/` — Fly.io ops, deployment readiness, code search, diagnostics
 - `apps/nuzantara-mcp-browser/` — Browser automation
 
@@ -435,13 +438,13 @@ nuzantara-mcp  # starts stdio server
 
 **5 omnichannel integrations** in `backend/channels/`:
 
-| Channel | Adapter | Webhook |
-| --- | --- | --- |
-| WhatsApp | `whatsapp/adapter.py` | `/webhook/whatsapp` |
-| Telegram | `telegram/adapter.py` | `/api/telegram/webhook` |
-| Instagram | `instagram/adapter.py` | `/webhook/instagram` |
-| X/Twitter | `twitter/adapter.py` | `/webhook/twitter` |
-| Web Chat | `web/adapter.py` | `/api/webhook/chat` |
+| Channel   | Adapter                | Webhook                 |
+| --------- | ---------------------- | ----------------------- |
+| WhatsApp  | `whatsapp/adapter.py`  | `/webhook/whatsapp`     |
+| Telegram  | `telegram/adapter.py`  | `/api/telegram/webhook` |
+| Instagram | `instagram/adapter.py` | `/webhook/instagram`    |
+| X/Twitter | `twitter/adapter.py`   | `/webhook/twitter`      |
+| Web Chat  | `web/adapter.py`       | `/api/webhook/chat`     |
 
 Each channel has `adapter.py`, `config.py`, `formatter.py` following a consistent pattern.
 
@@ -639,6 +642,7 @@ date_value = row['date_field'].isoformat() if row['date_field'] else None
 **Solution:** Lazy imports + background init via `asyncio.create_task()` in `lifespan()`. Health returns `"initializing"` (HTTP 200) while services load.
 
 **Key files:**
+
 - `backend/app/setup/app_factory.py` — `_background_init()` + lazy router imports
 - `backend/app/setup/service_initializer.py` — All 20+ service imports inside functions
 - `backend/app/setup/router_registration.py` — All 70+ router imports inside `include_routers()`

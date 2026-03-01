@@ -82,6 +82,7 @@ kimi
 ```
 
 Per continuare una sessione precedente:
+
 ```bash
 cd ~/Desktop/nuzantara
 kimi -C
