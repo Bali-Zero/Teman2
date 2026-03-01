@@ -114,6 +114,25 @@ pytest -v
 ./sentinel
 ```
 
+## Testing Status
+
+**Unit Tests Progress:** 3649 passing (+2048 fixed) | 331 failed | 127 errors
+
+Recent fixes (Mar 2026):
+
+- ✅ Fixed 2048+ async/await patterns across test suite
+- ✅ Updated collection names: `bali_zero_pricing` → `bali_zero_pricing_hybrid`
+- ✅ Fixed AsyncMock patterns for httpx and async methods
+- ✅ Fixed test_cache.py, test_core_cache.py, test_core_utilities_comprehensive.py
+- ✅ Fixed test_github_publisher.py (26/26 passing individually)
+- ✅ Fixed test_search_service_extended.py (21/21 passing individually)
+
+**Known Issues:**
+
+- Some tests pass individually but fail in full suite (test isolation issues)
+- 127 ModuleNotFoundError to investigate
+- Test infrastructure refactoring needed for full suite stability
+
 ## Documentation
 
 | Document                                                                   | Description                                |
