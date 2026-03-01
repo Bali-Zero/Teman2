@@ -11,11 +11,25 @@ Two machines exist on the local network:
 | **Pro** | `nuzantara` | `Nuzantara` | Development (48GB, M4 Pro) |
 | **Air** | `antonellosiano` | `Nuzantara-9` | Server H24 (16GB, M4) |
 
-**How to detect:** Run `whoami` and `hostname` at session start.
+**At every session start, run this check:**
+
+```bash
+echo "Machine: $(whoami)@$(hostname)" && \
+OTHER=$(if [ "$(whoami)" = "nuzantara" ]; then echo "air"; else echo "pro"; fi) && \
+ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null || echo "Peer: UNREACHABLE" && \
+LOCAL_HEAD=$(git log --oneline -1 2>/dev/null) && \
+REMOTE_HEAD=$(ssh -o ConnectTimeout=3 $OTHER 'cd ~/Desktop/projects/nuzantara 2>/dev/null || cd ~/Desktop/nuzantara 2>/dev/null; git log --oneline -1' 2>/dev/null) && \
+if [ "$LOCAL_HEAD" = "$REMOTE_HEAD" ]; then echo "Git sync: OK ($LOCAL_HEAD)"; else echo "Git sync: OUT OF SYNC! Local=$LOCAL_HEAD Remote=$REMOTE_HEAD"; fi
+```
+
+This tells you:
 - `whoami` = `nuzantara` → you are on **Pro**
 - `whoami` = `antonellosiano` → you are on **Air**
+- Whether the other machine is reachable via SSH
+- Whether both repos are on the same commit
 
 **Always prefix your first response with which machine you're on**, e.g. "[Pro]" or "[Air]".
+If the peer is unreachable or out of sync, **warn the user immediately**.
 
 **SSH between machines:** `ssh air` (from Pro) / `ssh pro` (from Air) — uses mDNS, works on any WiFi.
 See `docs/PRO_AIR_CONNECTION.md` for full details.
