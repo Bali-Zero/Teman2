@@ -17,17 +17,20 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/instagram", tags=["instagram"])
 
 
-# Instagram Webhook Models (Meta Standard)
+# Instagram Webhook Models (Meta Standard — lenient to accept all event types)
 class InstagramMessage(BaseModel):
-    mid: str
-    text: str
+    mid: str = ""
+    text: str = ""
+    is_echo: bool = False
 
 
 class InstagramMessaging(BaseModel):
     sender: dict[str, str]
     recipient: dict[str, str]
     timestamp: int
-    message: InstagramMessage
+    message: InstagramMessage | None = None
+    read: dict | None = None
+    delivery: dict | None = None
 
 
 class InstagramEntry(BaseModel):
@@ -154,6 +157,23 @@ async def verify_instagram_webhook(request: Request):
 async def instagram_webhook(webhook: InstagramWebhook, request: Request):
     """Handle incoming Instagram DMs via ChannelRouter."""
     logger.info(f"IG Webhook received: {webhook.object}, {len(webhook.entry)} entries")
+
+    for entry in webhook.entry:
+        for messaging in entry.messaging:
+            # Filter read receipts and delivery confirmations
+            if messaging.message is None:
+                logger.info("IG Webhook: skipping non-message event (read/delivery)")
+                return {"status": "ok"}
+
+            # Filter echo messages (sent by the bot itself)
+            if messaging.message.is_echo:
+                logger.info("IG Webhook: skipping echo message")
+                return {"status": "ok"}
+
+            # Filter messages without text (reactions, attachments-only, etc.)
+            if not messaging.message.text:
+                logger.info("IG Webhook: skipping non-text message")
+                return {"status": "ok"}
 
     try:
         from backend.app.dependencies import get_channel_router
