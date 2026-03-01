@@ -21,14 +21,33 @@
 
 ## QUICK START CHECKLIST
 
-When starting a new session, verify you understand:
+**FIRST: Identify your machine and check connectivity.** Run this before anything else:
+
+```bash
+echo "Machine: $(whoami)@$(hostname)" && \
+OTHER=$(if [ "$(whoami)" = "nuzantara" ]; then echo "air"; else echo "pro"; fi) && \
+ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null || echo "Peer: UNREACHABLE" && \
+LOCAL_HEAD=$(git log --oneline -1 2>/dev/null) && \
+REMOTE_HEAD=$(ssh -o ConnectTimeout=3 $OTHER 'cd ~/Desktop/projects/nuzantara 2>/dev/null || cd ~/Desktop/nuzantara 2>/dev/null; git log --oneline -1' 2>/dev/null) && \
+if [ "$LOCAL_HEAD" = "$REMOTE_HEAD" ]; then echo "Git sync: OK ($LOCAL_HEAD)"; else echo "Git sync: OUT OF SYNC! Local=$LOCAL_HEAD Remote=$REMOTE_HEAD"; fi
+```
+
+Expected output:
+- **Machine:** `nuzantara@Nuzantara` (Pro) or `antonellosiano@Nuzantara-9` (Air)
+- **Peer:** The other machine — must show connected, not UNREACHABLE
+- **Git sync:** Must show OK. If OUT OF SYNC, run `git pull` on the behind machine before working.
+
+**Always prefix your first response with [Pro] or [Air].** Warn the user if peer is unreachable or repos are out of sync.
+
+See [`docs/PRO_AIR_CONNECTION.md`](PRO_AIR_CONNECTION.md) for SSH setup and troubleshooting.
+
+Then verify you understand:
 
 - [ ] **Virtualenv:** `.venv` created and activated (`source .venv/bin/activate`)
 - [ ] **Project Structure:** Monorepo with 14 apps, core: `apps/backend-rag` (FastAPI) and `apps/mouth` (Next.js)
 - [ ] **Golden Rules:** No root execution, absolute imports, async-first, type hints required
 - [ ] **Critical Knowledge:** Embedding model must be `text-embedding-3-small`, KBLI has flat payload
 - [ ] **Deployment:** Backend on Fly.io (`nuzantara-rag`, Singapore), Frontend on Vercel
-- [ ] **Pro <-> Air connectivity:** Both machines reachable via `ssh air` / `ssh pro` (see [`docs/PRO_AIR_CONNECTION.md`](PRO_AIR_CONNECTION.md))
 
 ---
 
