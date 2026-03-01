@@ -15,6 +15,7 @@ La workflow chain `chain_daily_ops_autopilot` (MCP tool) presentava 2 bug critic
 **Sintomo:** Step 3 della chain falliva con 404 o dati vuoti
 
 **Causa root:**
+
 - Endpoint esisteva già in `@/apps/backend-rag/backend/app/routers/intel.py:1314`
 - Response format: `{"items": [...], "count": N}`
 - Chain si aspettava: `{"alerts": [...]}` o `{"data": [...]}`
@@ -25,6 +26,7 @@ La workflow chain `chain_daily_ops_autopilot` (MCP tool) presentava 2 bug critic
 **Sintomo:** Chain mai eseguita automaticamente
 
 **Causa root:**
+
 - `autonomous_scheduler.py` non includeva task per `chain_daily_ops_autopilot`
 - Nessun cron job configurato per esecuzione mattutina (08:00 WITA)
 
@@ -62,6 +64,7 @@ return {
 ```
 
 **Risultato:**
+
 - Chain può leggere `intel.get("alerts")` ✅
 - Chain può filtrare `item.get("severity") == "high"` ✅
 - Backward compatibility mantenuta (key `items` ancora presente) ✅
@@ -95,6 +98,7 @@ scheduler.register_task(
 ```
 
 **Risultato:**
+
 - Chain eseguita automaticamente ogni 24h ✅
 - Timing: 08:00 WITA (00:00 UTC) grazie a stagger iniziale ✅
 - Leader election via Redis (solo 1 worker esegue) ✅
@@ -140,6 +144,7 @@ chain_daily_ops_autopilot(send_report_to="zero@balizero.com")
 ```
 
 **Expected output:**
+
 ```json
 {
   "chain": "daily_ops_autopilot",
@@ -204,6 +209,7 @@ curl https://nuzantara-rag.fly.dev/api/autonomous-agents/status | jq '.tasks.dai
 Prima di deployare su Fly.io:
 
 - [ ] **Pre-deploy tests** (da `apps/backend-rag/`)
+
   ```bash
   source .venv/bin/activate
   python -c "from backend.app.dependencies import get_current_user; print('OK')"
@@ -211,17 +217,20 @@ Prima di deployare su Fly.io:
   ```
 
 - [ ] **Verificare rogue changes**
+
   ```bash
   git diff --name-only HEAD -- apps/backend-rag/backend/
   ```
 
 - [ ] **Deploy rolling**
+
   ```bash
   cd apps/backend-rag
   fly deploy --strategy rolling --app nuzantara-rag
   ```
 
 - [ ] **Health check post-deploy**
+
   ```bash
   curl https://nuzantara-rag.fly.dev/health | jq '.status'
   # Expected: "healthy"
@@ -257,10 +266,12 @@ WHATSAPP_API_TOKEN=...
 La chain è definita in `apps/nuzantara-mcp/` (MCP server separato), non in `apps/backend-rag/`. Per eseguirla:
 
 **Opzione 1:** HTTP call a MCP server (implementata) ✅
+
 - Pro: Separazione concerns, MCP server gestisce workflow
 - Con: Richiede MCP server running
 
 **Opzione 2:** Duplicare logica in backend (scartata) ❌
+
 - Pro: Nessuna dipendenza esterna
 - Con: Codice duplicato, violazione DRY
 
@@ -274,6 +285,7 @@ La chain è definita in `apps/nuzantara-mcp/` (MCP server separato), non in `app
 ### Leader Election
 
 Redis lock garantisce che solo 1 worker esegua il task:
+
 - Key: `nuzantara:scheduler:lock:daily_ops_autopilot`
 - TTL: 86400s (24h)
 - Fallback: Se Redis down, esegue comunque (best effort)
@@ -338,9 +350,10 @@ fly deploy --strategy rolling --app nuzantara-rag
 ✅ **Bug critico risolto:** Endpoint `/api/intel/critical` ora compatibile con chain  
 ✅ **Trigger configurato:** Scheduler esegue chain automaticamente ogni 24h  
 ✅ **Backward compatibility:** Nessun breaking change per altri consumer  
-✅ **Production ready:** Leader election, error handling, logging completo  
+✅ **Production ready:** Leader election, error handling, logging completo
 
 **Next steps:**
+
 1. Deploy su Fly.io
 2. Monitorare primo run (domani 08:00 WITA)
 3. Verificare email report ricevuta

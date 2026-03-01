@@ -584,7 +584,6 @@ async def metrics_summary(request: Request) -> dict[str, Any]:
 
     from backend.app.metrics import (
         BOOT_TIME,
-        metrics_collector,
     )
 
     now = datetime.now(timezone.utc)

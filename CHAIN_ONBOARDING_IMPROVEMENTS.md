@@ -15,6 +15,7 @@ Migliorare la chain `chain_new_client_onboarding` sostituendo la logica hardcode
 **File:** `apps/nuzantara-mcp/nuzantara_mcp/workflows/chains.py`
 
 **Prima (Logica Hardcoded):**
+
 ```python
 # Step 3: Determine visa (deterministic rules)
 visa_type = "kitas_investor"  # default
@@ -30,6 +31,7 @@ elif "work" in business_description.lower() or "employee" in business_descriptio
 ```
 
 **Dopo (Logica Intelligente con PricingTool):**
+
 ```python
 # Step 3: Determine visa (intelligent pricing-based recommendation)
 visa_type = "kitas_investor"  # default fallback
@@ -47,13 +49,14 @@ else:
             method="POST",
             json={"service_type": "visa", "query": pricing_query}
         )
-        
+
         # Parse pricing result and determine best visa type
         # Priority: retirement > student > work > investor (default)
         # Includes fallback to keyword matching if pricing fails
 ```
 
 **Vantaggi:**
+
 - ✅ Consulta il PricingTool ufficiale invece di logica hardcoded
 - ✅ Fallback robusto a keyword matching se il pricing service non è disponibile
 - ✅ Log dettagliato con flag `pricing_consulted` per tracking
@@ -66,12 +69,14 @@ else:
 **File Creato:** `apps/backend-rag/backend/services/whatsapp_onboarding_detector.py`
 
 **Funzionalità:**
+
 - Detector intelligente per rilevare intent "nuovo cliente" nei messaggi WhatsApp
 - Keywords multilingua (English, Italian, Indonesian)
 - Estrazione automatica di: nome, email, nationality, business_description
 - Pattern matching avanzato con regex
 
 **Keywords Rilevate:**
+
 - English: "new client", "onboard", "sign up", "register", "start business", "open company", "need visa", "moving to bali", "relocating"
 - Italian: "nuovo cliente", "nuova cliente", "registrare", "aprire azienda", "trasferirmi", "voglio aprire"
 - Indonesian: "klien baru", "daftar", "buka perusahaan", "butuh visa"
@@ -79,6 +84,7 @@ else:
 **File Modificato:** `apps/backend-rag/backend/app/routers/whatsapp_chat.py`
 
 **Integrazione:**
+
 ```python
 # 1.5. AUTO-DETECT NEW CLIENT ONBOARDING INTENT
 try:
@@ -103,6 +109,7 @@ except Exception as e:
 ```
 
 **Flusso:**
+
 1. Messaggio WhatsApp arriva → webhook riceve
 2. Triage decide se business o personal
 3. **NUOVO:** Detector controlla se è intent "nuovo cliente"
@@ -116,6 +123,7 @@ except Exception as e:
 **File Modificato:** `apps/backend-rag/backend/app/routers/crm_clients.py`
 
 **Integrazione nell'endpoint `POST /api/crm/clients`:**
+
 ```python
 # 🎯 Auto-trigger onboarding chain for new leads/prospects
 if client.status in ("lead", "prospect") and client.service_interest:
@@ -137,10 +145,12 @@ if client.status in ("lead", "prospect") and client.service_interest:
 ```
 
 **Condizioni di Trigger:**
+
 - Status = "lead" OR "prospect"
 - `service_interest` non vuoto (indica interesse specifico)
 
 **Vantaggi:**
+
 - ✅ Onboarding automatico per nuovi lead dal web form
 - ✅ Non blocca la creazione del cliente se il trigger fallisce
 - ✅ Log dettagliato per debugging
@@ -279,6 +289,7 @@ Per completare l'integrazione:
 ## Deployment Notes
 
 **Pre-deploy checklist:**
+
 ```bash
 cd apps/backend-rag
 source .venv/bin/activate
@@ -297,6 +308,7 @@ fly deploy --strategy rolling --app nuzantara-rag
 ```
 
 **Monitoraggio post-deploy:**
+
 ```bash
 # Verifica log per onboarding triggers
 fly logs -a nuzantara-rag | grep -E "onboarding|🎯|pricing_consulted"
@@ -310,6 +322,7 @@ curl https://nuzantara-rag.fly.dev/health
 ## Conclusioni
 
 ✅ **Completato:**
+
 - Step 3 ora usa PricingTool invece di logica hardcoded
 - Trigger automatico WhatsApp con detection intelligente
 - Trigger automatico web form per lead/prospect
@@ -317,11 +330,13 @@ curl https://nuzantara-rag.fly.dev/health
 - Log dettagliato per debugging e monitoring
 
 ⏳ **Da Completare:**
+
 - Integrazione MCP completa (chiamate reali invece di mock)
 - Test end-to-end con MCP server attivo
 - Monitoring dashboard per tracking onboarding automatici
 
 🎯 **Impatto:**
+
 - Riduzione intervento manuale per onboarding nuovi clienti
 - Determinazione visa più accurata basata su pricing ufficiale
 - Esperienza utente migliorata con conferme automatiche
