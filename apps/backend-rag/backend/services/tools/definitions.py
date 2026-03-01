@@ -112,16 +112,19 @@ class BaseTool(ABC):
     @property
     @abstractmethod
     def name(self) -> str:
+        """Name."""
         pass
 
     @property
     @abstractmethod
     def description(self) -> str:
+        """Description."""
         pass
 
     @property
     @abstractmethod
     def parameters_schema(self) -> dict:
+        """Parameters schema."""
         pass
 
     @abstractmethod

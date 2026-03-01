@@ -97,6 +97,7 @@ class PoliticsIngestionService:
         return json.dumps(record, ensure_ascii=False)
 
     def ingest_jsonl_files(self, paths: list[Path]) -> dict[str, Any]:
+        """Ingest jsonl files."""
         documents: list[str] = []
         metadatas: list[dict[str, Any]] = []
         ids: list[str] = []
@@ -138,6 +139,7 @@ class PoliticsIngestionService:
         return {"success": True, "documents_added": len(documents)}
 
     def ingest_dir(self, root: Path) -> dict[str, Any]:
+        """Ingest dir."""
         root = Path(root)
         jsonl_files = []
         for sub in ["persons", "parties", "elections", "jurisdictions"]:

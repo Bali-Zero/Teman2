@@ -54,12 +54,12 @@ class MigrationRunner:
         self.migration_manager: MigrationManager | None = None
         self._migration_classes: dict[int, type[BaseMigration]] = {}
 
-    async def initialize(self):
+    async def initialize(self) -> None:
         """Initialize migration manager"""
         self.migration_manager = MigrationManager()
         await self.migration_manager.connect()
 
-    async def close(self):
+    async def close(self) -> None:
         """Close migration manager"""
         if self.migration_manager:
             await self.migration_manager.close()
@@ -161,6 +161,7 @@ class MigrationRunner:
         temp_visited: set[int] = set()
 
         def visit(node: int) -> Any:
+            """Visit."""
             if node in temp_visited:
                 raise MigrationError(f"Circular dependency detected involving migration {node}")
             if node in visited:

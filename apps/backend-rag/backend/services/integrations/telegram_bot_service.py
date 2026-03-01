@@ -25,10 +25,12 @@ class TelegramBotService:
 
     @property
     def token(self) -> str | None:
+        """Token."""
         return self._token or settings.telegram_bot_token
 
     @property
     def api_url(self) -> str:
+        """Api url."""
         return f"{TELEGRAM_API_BASE}{self.token}"
 
     async def _get_client(self) -> httpx.AsyncClient:
@@ -36,7 +38,7 @@ class TelegramBotService:
             self._client = httpx.AsyncClient(timeout=HttpTimeoutConstants.TELEGRAM_TIMEOUT)
         return self._client
 
-    async def close(self):
+    async def close(self) -> None:
         if self._client and not self._client.is_closed:
             await self._client.aclose()
 

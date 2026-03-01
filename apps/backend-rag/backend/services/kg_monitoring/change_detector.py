@@ -99,6 +99,7 @@ class ChangeEvent:
     details: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
+        """To dict."""
         return {
             "document_id": self.document_id,
             "source_id": self.source_id,

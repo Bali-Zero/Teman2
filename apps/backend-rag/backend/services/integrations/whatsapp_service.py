@@ -29,14 +29,17 @@ class WhatsAppService:
 
     @property
     def token(self) -> str | None:
+        """Token."""
         return self._token or settings.whatsapp_api_token
 
     @property
     def phone_number_id(self) -> str | None:
+        """Phone number id."""
         return self._phone_number_id or settings.whatsapp_phone_number_id
 
     @property
     def api_url(self) -> str:
+        """Api url."""
         return f"https://graph.facebook.com/v22.0/{self.phone_number_id}"
 
     async def _get_client(self) -> httpx.AsyncClient:
@@ -44,7 +47,7 @@ class WhatsAppService:
             self._client = httpx.AsyncClient(timeout=HttpTimeoutConstants.EXTERNAL_API_TIMEOUT)
         return self._client
 
-    async def close(self):
+    async def close(self) -> None:
         if self._client and not self._client.is_closed:
             await self._client.aclose()
 

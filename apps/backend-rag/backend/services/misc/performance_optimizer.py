@@ -34,6 +34,7 @@ class PerformanceMonitor:
         self.lock = threading.Lock()
 
     def record_request(self, duration: float, cache_hit: bool = False) -> Any:
+        """Record request."""
         with self.lock:
             self.metrics["request_count"] += 1
             self.metrics["total_time"] += duration
@@ -47,11 +48,13 @@ class PerformanceMonitor:
                 self.metrics["cache_misses"] += 1
 
     def record_component_time(self, component: str, duration: float) -> Any:
+        """Record component time."""
         with self.lock:
             if component in self.metrics:
                 self.metrics[component] += duration
 
     def get_metrics(self) -> dict[str, Any]:
+        """Get metrics."""
         with self.lock:
             cache_hit_rate = 0
             if self.metrics["cache_hits"] + self.metrics["cache_misses"] > 0:
@@ -75,6 +78,7 @@ def async_timed(component: str = "request") -> Any:
     """Decorator to time async functions"""
 
     def decorator(func: Any) -> Any:
+        """Decorator."""
         @wraps(func)
         async def wrapper(*args, **kwargs):
             start_time = time.time()
@@ -95,8 +99,10 @@ def timed(component: str = "request") -> Any:
     """Decorator to time sync functions"""
 
     def decorator(func: Any) -> Any:
+        """Decorator."""
         @wraps(func)
         def wrapper(*args, **kwargs) -> Any:
+            """Wrapper."""
             start_time = time.time()
             try:
                 result = func(*args, **kwargs)
@@ -133,7 +139,7 @@ class AsyncLRUCache:
                     del self.timestamps[key]
             return None
 
-    async def set(self, key: str, value: Any):
+    async def set(self, key: str, value: Any) -> None:
         async with self.lock:
             # Implement LRU eviction if needed
             if len(self.cache) >= self.maxsize and key not in self.cache:
@@ -145,7 +151,7 @@ class AsyncLRUCache:
             self.cache[key] = value
             self.timestamps[key] = time.time()
 
-    async def clear(self):
+    async def clear(self) -> None:
         async with self.lock:
             self.cache.clear()
             self.timestamps.clear()
@@ -186,7 +192,7 @@ class ConnectionPool:
                     # Wait for available connection
                     return await self.connections.get()
 
-    async def return_connection(self, connection):
+    async def return_connection(self, connection) -> None:
         """Return connection to pool"""
         try:
             self.connections.put_nowait(connection)
@@ -219,7 +225,7 @@ class BatchProcessor:
 
         return await future
 
-    async def _process_batch(self):
+    async def _process_batch(self) -> None:
         """Process requests in batches"""
         if self.processing:
             return
@@ -343,13 +349,13 @@ def create_optimized_app() -> Any:
     )
 
     @app.on_event("startup")
-    async def startup_event():
+    async def startup_event() -> None:
         """Initialize services with optimization"""
         logger.info("🚀 Starting optimized RAG backend...")
         # Initialize optimized services here
 
     @app.on_event("shutdown")
-    async def shutdown_event():
+    async def shutdown_event() -> None:
         """Cleanup on shutdown"""
         logger.info("🛑 Shutting down optimized RAG backend...")
         await embedding_cache.clear()

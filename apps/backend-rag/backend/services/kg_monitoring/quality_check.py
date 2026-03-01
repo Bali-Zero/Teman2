@@ -51,6 +51,7 @@ class DimensionScore:
 
     @property
     def weighted_score(self) -> float:
+        """Weighted score."""
         return self.score * self.weight
 
 
@@ -69,6 +70,7 @@ class QualityReport:
     checked_at: str = ""
 
     def to_dict(self) -> dict[str, Any]:
+        """To dict."""
         return {
             "document_id": self.document_id,
             "overall_score": f"{self.overall_score:.2%}",

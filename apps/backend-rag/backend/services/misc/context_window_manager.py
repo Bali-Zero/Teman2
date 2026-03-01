@@ -303,6 +303,7 @@ class AdvancedContextWindowManager:
             logger.warning("⚠️ tiktoken not found, using character estimation")
 
     def count_tokens(self, text: str) -> int:
+        """Count items."""
         if self.tokenizer:
             return len(self.tokenizer.encode(text))
         return len(text) // 4  # Rough estimation

@@ -22,10 +22,12 @@ class GraphTraversalTool(BaseTool):
 
     @property
     def name(self) -> str:
+        """Name."""
         return "graph_traversal"
 
     @property
     def description(self) -> str:
+        """Description."""
         return (
             "Explore the legal Knowledge Graph. Use this to find precise relationships like "
             "prerequisites, costs, or dependencies between entities (e.g., 'What does KITAS require?'). "
@@ -34,6 +36,7 @@ class GraphTraversalTool(BaseTool):
 
     @property
     def parameters_schema(self) -> dict:
+        """Parameters schema."""
         return {
             "type": "object",
             "properties": {

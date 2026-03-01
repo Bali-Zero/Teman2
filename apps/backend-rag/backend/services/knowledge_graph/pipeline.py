@@ -77,6 +77,7 @@ class PipelineStats:
     end_time: datetime | None = None
 
     def to_dict(self) -> dict[str, Any]:
+        """To dict."""
         return {
             "chunks_processed": self.chunks_processed,
             "entities_extracted": self.entities_extracted,
@@ -168,7 +169,7 @@ class KGPipeline:
             self._db_pool = await asyncpg.create_pool(db_url, min_size=2, max_size=10)
         return self._db_pool
 
-    async def close(self):
+    async def close(self) -> None:
         """Close resources"""
         if self._db_pool:
             await self._db_pool.close()

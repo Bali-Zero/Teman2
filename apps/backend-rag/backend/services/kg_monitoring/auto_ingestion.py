@@ -72,6 +72,7 @@ class ExtractedDocument:
     confidence_score: float = 0.0  # LLM confidence
 
     def to_dict(self) -> dict[str, Any]:
+        """To dict."""
         return {
             "document_id": self.document_id,
             "source_id": self.source_id,
@@ -107,6 +108,7 @@ class IngestionResult:
     processing_time_ms: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
+        """To dict."""
         return {
             "document_id": self.document_id,
             "status": self.status.value,

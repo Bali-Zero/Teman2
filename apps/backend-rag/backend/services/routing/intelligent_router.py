@@ -53,7 +53,7 @@ class IntelligentRouter:
 
         logger.info("🎯 [IntelligentRouter] Initialized (NEXT-GEN AGENTIC RAG MODE)")
 
-    async def initialize(self):
+    async def initialize(self) -> None:
         """Async initialization of the orchestrator"""
         await self.orchestrator.initialize()
 
@@ -102,6 +102,7 @@ class IntelligentRouter:
 
             # Helper to get attribute or dict item
             def get_val(obj: Any, attr: Any, default: Any = None) -> Any:
+                """Get val."""
                 if hasattr(obj, attr):
                     return getattr(obj, attr)
                 if isinstance(obj, dict):
@@ -200,6 +201,7 @@ class IntelligentRouter:
             raise Exception(f"Streaming failed: {str(e)}") from e
 
     def get_stats(self) -> dict:
+        """Get stats."""
         return {
             "router": "agentic_rag_wrapper",
             "model": "gemini-2.0-flash-001",
