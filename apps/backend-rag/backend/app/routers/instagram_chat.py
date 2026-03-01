@@ -165,19 +165,20 @@ async def instagram_webhook(request: Request) -> dict[str, Any]:
     """Handle incoming Instagram DMs via ChannelRouter."""
     try:
         raw_payload = await request.json()
+        webhook = InstagramWebhook(**raw_payload)
     except Exception:
         return {"status": "ok"}
 
-    obj = raw_payload.get("object", "")
-    entries = raw_payload.get("entry", [])
+    obj = webhook.object
+    entries = webhook.entry
     logger.info(f"IG Webhook received: {obj}, {len(entries)} entries")
 
     # Only process actual messages (skip read receipts, delivery, echoes)
     has_message = False
     for entry in entries:
-        for messaging in entry.get("messaging", []):
-            msg = messaging.get("message", {})
-            if "text" in msg and not msg.get("is_echo", False):
+        for messaging in entry.messaging:
+            msg = messaging.message
+            if msg and msg.text and not msg.is_echo:
                 has_message = True
                 break
 

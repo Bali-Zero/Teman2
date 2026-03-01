@@ -12,6 +12,8 @@ from contextlib import contextmanager
 from functools import wraps
 from typing import Any, TypeVar
 
+logger = logging.getLogger(__name__)
+
 # Standard log levels
 LOG_LEVELS = {
     "DEBUG": logging.DEBUG,

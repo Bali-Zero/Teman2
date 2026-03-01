@@ -8,6 +8,7 @@ Pipeline: Query → Vector Search → Fast LLM → Response (~5-8s instead of 40
 """
 
 import logging
+import os
 from typing import Any
 import time
 
