@@ -79,6 +79,7 @@ def include_routers(api: FastAPI) -> None:
         portal_visa,
         query_analytics,
         session,
+        sheets,
         team,
         team_activity,
         team_analytics,
@@ -87,6 +88,7 @@ def include_routers(api: FastAPI) -> None:
         telegram_webhook,
         twitter,
         voice,
+        x_monitor,
         webhooks,
         websocket,
         whatsapp_chat,
@@ -178,6 +180,8 @@ def include_routers(api: FastAPI) -> None:
         telegram_webhook.router
     )  # [NEW] Telegram webhook (multi-channel architecture)
     api.include_router(twitter.router)  # Twitter/X omnichannel API
+    api.include_router(twitter.webhook_router)  # X/Twitter Account Activity webhook
+    api.include_router(x_monitor.router)  # X/Twitter social listening monitor
     api.include_router(
         whatsapp_chat.router
     )  # WhatsApp Cloud API with intelligent triage (Gemini 3 Flash + Zan v2)
@@ -197,6 +201,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(google_drive.router)
     api.include_router(documents_proxy.router)  # Proxy Drive files without Google branding
     api.include_router(team_drive.router)  # Service Account based - for Zoho team members
+    api.include_router(sheets.router)  # Google Sheets read/write via SA
 
     # Admin Drive Auth (for system user OAuth)
     from backend.app.routers import (

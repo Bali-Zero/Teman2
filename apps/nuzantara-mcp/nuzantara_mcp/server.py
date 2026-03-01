@@ -85,6 +85,7 @@ from nuzantara_mcp.tools.analytics import register as register_analytics
 from nuzantara_mcp.tools.knowledge import register as register_knowledge
 from nuzantara_mcp.tools.comms import register as register_comms
 from nuzantara_mcp.tools.drive import register as register_drive
+from nuzantara_mcp.tools.sheets import register as register_sheets
 from nuzantara_mcp.tools.workflows import register as register_workflows
 from nuzantara_mcp.tools.admin import register as register_admin
 from nuzantara_mcp.tools.health import register as register_health
@@ -115,6 +116,7 @@ register_analytics(mcp, _call, _call_safe)
 register_knowledge(mcp, _call, _call_safe)
 register_comms(mcp, _call, _call_safe)
 register_drive(mcp, _call, _call_safe)
+register_sheets(mcp, _call, _call_safe)
 register_workflows(mcp, _call, _call_safe)
 register_admin(mcp, _call, _call_safe)
 register_health(mcp, _call, _call_safe)

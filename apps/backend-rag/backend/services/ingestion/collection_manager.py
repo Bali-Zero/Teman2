@@ -76,7 +76,6 @@ class CollectionManager:
                 "doc_count": 8886,
                 "alias": "kbli_2025_final",
             },
-            "kbli_2025_final": {"priority": "high", "doc_count": 8886},
             "zantara_books": {"priority": "medium", "doc_count": 8923, "alias": "knowledge_base"},
             "cultural_insights": {"priority": "low", "doc_count": 0, "alias": "knowledge_base"},
             "tax_updates": {"priority": "medium", "doc_count": 895, "alias": "tax_genius"},

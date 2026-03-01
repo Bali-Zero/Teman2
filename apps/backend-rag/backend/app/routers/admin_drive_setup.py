@@ -69,3 +69,28 @@ async def service_account_status():
         "path": sa_path,
         "file_exists": os.path.exists(sa_path) if sa_path else False,
     }
+
+
+@router.get("/test-list-files")
+async def test_list_files(request: Request):
+    """
+    Test Drive file listing via Service Account (public endpoint for diagnostics).
+    Lists first 5 files to verify SA connectivity.
+    """
+    try:
+        from backend.services.integrations.team_drive_service import TeamDriveService
+
+        drive = TeamDriveService()
+        result = await drive.list_files(page_size=5)
+        files = result.get("files", [])
+        return {
+            "status": "success",
+            "mode": "service_account",
+            "file_count": len(files),
+            "files": [
+                {"name": f.get("name"), "type": f.get("mimeType"), "id": f.get("id")}
+                for f in files
+            ],
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}

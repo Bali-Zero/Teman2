@@ -101,7 +101,7 @@ def register(mcp, _call, _call_safe):
         Returns:
             List of critical alerts with severity, impact area, affected clients.
         """
-        return await _call("/api/intel/critical-alerts")
+        return await _call("/api/intel/critical")
 
     @mcp.tool()
     async def get_intel_trends(period: str = "30d") -> dict:

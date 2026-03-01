@@ -1,23 +1,34 @@
-import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import Image from "next/image";
-import { getCode, getAllCodes } from "@/lib/kbli-data.server";
+import { notFound } from "next/navigation";
+import { Suspense, lazy } from "react";
+import { getAllCodes, getCode, getRelatedCodes, getSectionMeta, getHeroStyle } from "@/lib/kbli-data";
+import { getGoldContent } from "@/lib/kbli-data.server";
+import { KBLIBreadcrumb } from "@/components/kbli/KBLIBreadcrumb";
+import { PMABadge } from "@/components/kbli/PMABadge";
+import { RiskBadge } from "@/components/kbli/RiskBadge";
+import { TransitionBadge } from "@/components/kbli/TransitionBadge";
+import { KBLICard } from "@/components/kbli/KBLICard";
 import {
   KBLICodeJsonLd,
   KBLIBreadcrumbJsonLd,
 } from "@/components/kbli/KBLIStructuredData";
+import { LicensingSection } from "@/components/kbli/LicensingSection";
+import { getRelatedArticle } from "@/lib/kbli-articles";
+import { GOLD_HERO_IMAGES } from "@/lib/kbli-hero-images";
 import Link from "next/link";
-import { Activity, Building2 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+
+const ZantaraChat = lazy(() =>
+  import("@/components/kbli/ZantaraChat").then((mod) => ({
+    default: mod.ZantaraChat,
+  })),
+);
 
 // ISR: Generate pages on-demand, cache for 1 week
-// Pre-generating all 1,563 pages exceeded Vercel's 300MB serverless function limit (507MB)
-// Pages are now built on first request and cached via revalidate
 export const dynamicParams = true;
-export const revalidate = 604800; // 1 week in seconds
+export const revalidate = 604800;
 
 export async function generateStaticParams() {
-  // Only pre-generate top 50 most important codes to stay within Vercel limits
-  // Remaining pages are generated on-demand via ISR
   const codes = getAllCodes();
   return codes.slice(0, 50).map((c) => ({ code: c.code }));
 }
@@ -28,11 +39,18 @@ export async function generateMetadata({
   params: Promise<{ code: string }>;
 }): Promise<Metadata> {
   const { code: codeParam } = await params;
-  const codeData = getCode(codeParam);
-  if (!codeData) return { title: "KBLI Code Not Found" };
+  const kbli = getCode(codeParam);
+  if (!kbli) return { title: "KBLI Code Not Found" };
 
-  const title = `KBLI ${codeData.code}: ${codeData.titleId} — Business Guide | Bali Zero`;
-  const description = `Complete guide for KBLI ${codeData.code} (${codeData.titleId}). Check foreign ownership (PMA) status, license requirements, and risk level for this Indonesian business activity.`;
+  const pmaLabel =
+    kbli.pma.status === "open"
+      ? "100% Foreign Ownership"
+      : kbli.pma.status === "restricted"
+        ? `Restricted (max ${kbli.pma.maxForeign}% foreign)`
+        : "Closed to Foreign Investment";
+
+  const title = `KBLI ${kbli.code} — ${kbli.titleEn} | KBLI 2025 Navigator`;
+  const description = `Complete guide for KBLI ${kbli.code} (${kbli.titleId}). ${pmaLabel}. Check licensing requirements, risk level, and PMA rules for this Indonesian business activity.`;
 
   return {
     title,
@@ -41,10 +59,10 @@ export async function generateMetadata({
       title,
       description,
       type: "article",
-      url: `https://balizero.com/kbli/${codeData.code}`,
+      url: `https://balizero.com/kbli/${kbli.code}`,
     },
     alternates: {
-      canonical: `https://balizero.com/kbli/${codeData.code}`,
+      canonical: `https://balizero.com/kbli/${kbli.code}`,
     },
   };
 }
@@ -55,328 +73,628 @@ export default async function KBLICodePage({
   params: Promise<{ code: string }>;
 }) {
   const { code: codeParam } = await params;
-  const codeData = getCode(codeParam);
+  const kbli = getCode(codeParam);
+  if (!kbli) notFound();
 
-  if (!codeData) {
-    notFound();
-  }
+  const gold = getGoldContent(kbli.code);
+  const related = getRelatedCodes(kbli.code, 6);
+  const sectionMeta = kbli.section ? getSectionMeta(kbli.section) : null;
 
-  const coverImage = codeData.intel?.coverImage;
+  const breadcrumbs = [
+    { label: "KBLI Navigator", href: "/kbli" },
+    ...(kbli.section
+      ? [{ label: `Section ${kbli.section}`, href: `/kbli/sectors/${kbli.section}` }]
+      : []),
+    { label: kbli.code },
+  ];
+
+  const isGold = !!gold;
+  const heroStyle = getHeroStyle(kbli.section);
+  const heroImage = GOLD_HERO_IMAGES[kbli.code] ?? null;
+  const article = getRelatedArticle(kbli.code);
 
   return (
     <>
-      <KBLICodeJsonLd code={codeData} />
+      <KBLICodeJsonLd code={kbli} />
       <KBLIBreadcrumbJsonLd
         items={[
           { name: "KBLI Navigator", url: "https://balizero.com/kbli" },
+          ...(kbli.section
+            ? [{
+                name: `Section ${kbli.section}`,
+                url: `https://balizero.com/kbli/sectors/${kbli.section}`,
+              }]
+            : []),
           {
-            name: `Section ${codeData.section}`,
-            url: "https://balizero.com/kbli",
-          },
-          {
-            name: codeData.code,
-            url: `https://balizero.com/kbli/${codeData.code}`,
+            name: kbli.code,
+            url: `https://balizero.com/kbli/${kbli.code}`,
           },
         ]}
       />
 
-      {/* Gold Header Image */}
-      {coverImage && (
-        <div className="w-full h-[300px] md:h-[450px] relative">
-          <Image
-            src={coverImage}
-            alt={codeData.titleId}
-            fill
-            className="object-cover"
-            priority
+      <article className="pb-16">
+        {/* BREADCRUMB */}
+        <KBLIBreadcrumb items={breadcrumbs} />
+
+        {/* HERO ZONE */}
+        <div className="relative -mx-4 mb-10 mt-4 overflow-hidden rounded-2xl sm:-mx-6 lg:-mx-8">
+          {heroImage ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={heroImage.src}
+                alt={heroImage.alt}
+                className="absolute inset-0 h-full w-full object-cover object-center"
+                loading="eager"
+              />
+              <div
+                className="absolute inset-0"
+                style={{ background: heroImage.overlay }}
+              />
+              <div
+                className="absolute inset-0"
+                style={{
+                  background: `linear-gradient(to bottom, transparent 20%, rgba(0,0,0,0.15) 55%, var(--kbli-bg-base) 100%)`,
+                }}
+              />
+            </>
+          ) : (
+            <>
+              <div
+                className="absolute inset-0"
+                style={{
+                  background: `linear-gradient(${heroStyle.gradient})`,
+                }}
+              />
+              <div
+                className="absolute inset-0"
+                style={{ background: heroStyle.pattern }}
+              />
+              <div
+                className="absolute inset-0"
+                style={{
+                  background: `linear-gradient(to bottom, transparent 30%, rgba(43,43,43,0.4) 60%, var(--kbli-bg-base) 100%)`,
+                }}
+              />
+            </>
+          )}
+          {/* Noise texture */}
+          <div
+            className="absolute inset-0 opacity-[0.03]"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+            }}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-50 to-transparent" />
-        </div>
-      )}
 
-      <div
-        className={`max-w-4xl mx-auto px-4 ${coverImage ? "py-6 -mt-20 relative z-10" : "py-12"}`}
-      >
-        <nav className="mb-8">
-          <Link
-            href="/kbli"
-            className={`text-amber-600 hover:underline font-medium ${coverImage ? "bg-white/80 backdrop-blur px-3 py-1 rounded-full w-fit shadow-sm" : ""}`}
-          >
-            ← Back to KBLI Navigator
-          </Link>
-        </nav>
+          {/* Hero content */}
+          <div className={`relative px-6 pb-8 sm:px-8 lg:px-10 ${isGold ? "pt-24 sm:pt-32" : "pt-16 sm:pt-20"}`}>
+            {/* Code pill */}
+            <div className="mb-4 flex items-center gap-3">
+              <span
+                className="inline-flex items-center rounded-full px-3.5 py-1 font-mono text-sm font-bold tracking-wide"
+                style={{
+                  background: "rgba(212, 132, 90, 0.15)",
+                  color: "var(--kbli-accent)",
+                  border: "1px solid rgba(212, 132, 90, 0.25)",
+                  backdropFilter: "blur(8px)",
+                }}
+              >
+                KBLI {kbli.code}
+              </span>
+              {isGold && (
+                <span className="text-xs text-amber-400 font-medium">
+                  ★ Gold-Tier Intel
+                </span>
+              )}
+            </div>
 
-        <header className="mb-12">
-          <div className="flex items-center gap-4 mb-4">
-            <span className="bg-amber-100 text-amber-800 px-3 py-1 rounded-full font-mono font-bold text-lg border border-amber-200">
-              KBLI {codeData.code}
-            </span>
-            <span
-              className={`px-3 py-1 rounded-full text-sm font-medium uppercase border ${
-                codeData.pma.status === "open"
-                  ? "bg-green-50 text-green-700 border-green-200"
-                  : codeData.pma.status === "restricted"
-                    ? "bg-yellow-50 text-amber-700 border-yellow-200"
-                    : "bg-red-50 text-red-700 border-red-200"
-              }`}
+            {/* Title with text-shadow for visibility */}
+            <h1
+              className={`font-black tracking-tight text-white ${isGold ? "text-3xl sm:text-4xl lg:text-5xl" : "text-2xl sm:text-3xl lg:text-4xl"}`}
+              style={{ textShadow: "0 2px 8px rgba(0,0,0,0.5)" }}
             >
-              PMA: {codeData.pma.status}
-            </span>
-          </div>
-          <h1 className="text-4xl font-bold text-slate-900 mb-2 leading-tight">
-            {codeData.titleId}
-          </h1>
-          <p className="text-xl text-slate-500 italic">{codeData.titleEn}</p>
-        </header>
+              {kbli.titleEn}
+            </h1>
+            <p
+              className="mt-2 text-lg text-white/60"
+              style={{ textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}
+            >
+              {kbli.titleId}
+            </p>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-          <div className="lg:col-span-2 space-y-10">
-            <section>
-              <h2 className="text-2xl font-semibold text-slate-800 mb-4">
-                Description
+            {/* Section line */}
+            {sectionMeta && (
+              <p className="mt-3 text-sm text-white/40">
+                {sectionMeta.icon} Section {kbli.section} — {sectionMeta.nameEn}
+              </p>
+            )}
+
+            {/* Badge strip */}
+            <div className="mt-5 flex flex-wrap gap-2.5">
+              <PMABadge status={kbli.pma.status} maxForeign={kbli.pma.maxForeign} />
+              {kbli.licensing[0] && (
+                <RiskBadge category={kbli.licensing[0].riskCategory} />
+              )}
+              <TransitionBadge status={kbli.transition.mappingStatus} />
+            </div>
+          </div>
+        </div>
+
+        {/* GOLD CONTENT — editorial magazine layout */}
+        {gold ? (
+          <div className="space-y-0">
+            {/* THE LEAD */}
+            <section className="pb-10">
+              <p
+                className="text-xl leading-relaxed text-[var(--foreground-secondary)] sm:text-[22px] sm:leading-[1.7]"
+                style={{ maxWidth: "680px" }}
+              >
+                {gold.whatItMeans}
+              </p>
+            </section>
+
+            {/* VISUAL DIVIDER */}
+            <div className="flex items-center gap-4 py-2">
+              <div className="h-px flex-1" style={{ background: "var(--kbli-border)" }} />
+              <span className="text-xs font-medium uppercase tracking-[0.15em] text-[var(--foreground-muted)]">
+                Licensing & Requirements
+              </span>
+              <div className="h-px flex-1" style={{ background: "var(--kbli-border)" }} />
+            </div>
+
+            {/* WHAT YOU NEED */}
+            <section className="py-10">
+              <h2 className="mb-6 text-sm font-bold uppercase tracking-[0.12em] text-[var(--kbli-accent)]">
+                What You Need
               </h2>
-              <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm leading-relaxed text-slate-700 whitespace-pre-line">
-                {codeData.description}
+              <LicensingSection kbli={kbli} gold={gold} />
+
+              {/* Transition note */}
+              <div className="mt-8 flex items-start gap-3 rounded-xl p-4" style={{ background: "var(--kbli-bg-elevated)", border: "1px solid var(--kbli-border)" }}>
+                <span className="mt-0.5 shrink-0 inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold" style={{ background: "rgba(139, 156, 247, 0.1)", color: "var(--kbli-accent2)", border: "1px solid rgba(139, 156, 247, 0.2)" }}>
+                  2020 → 2025
+                </span>
+                <p className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
+                  {gold.whatChanged}
+                </p>
               </div>
             </section>
 
-            {/* 2026 Business Intelligence Section */}
-            {codeData.intel && (
-              <section className="space-y-6">
-                <h2 className="text-2xl font-semibold text-slate-800 flex items-center gap-2">
-                  <span className="p-1.5 bg-blue-100 rounded-lg text-blue-600">
-                    <Activity className="w-5 h-5" />
-                  </span>
-                  Bali Intelligence
-                </h2>
+            {/* BALI CONTEXT — centrepiece */}
+            <section className="relative -mx-4 sm:-mx-6 lg:-mx-8">
+              <div
+                className="absolute inset-0 rounded-2xl"
+                style={{
+                  background: "linear-gradient(135deg, rgba(212, 132, 90, 0.04), rgba(139, 156, 247, 0.02), transparent 60%)",
+                }}
+              />
 
-                {codeData.intel.whatItMeans && (
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 leading-relaxed text-slate-700">
-                    {codeData.intel.whatItMeans}
+              <div className="relative px-6 py-10 sm:px-8 lg:px-10">
+                <div className="mb-8 flex items-center gap-3">
+                  <div
+                    className="h-8 w-1 rounded-full"
+                    style={{
+                      background: "linear-gradient(to bottom, var(--kbli-accent), var(--kbli-accent2))",
+                    }}
+                  />
+                  <h2 className="text-sm font-bold uppercase tracking-[0.12em] text-[var(--kbli-accent)]">
+                    Bali Intelligence
+                  </h2>
+                </div>
+
+                <div className="space-y-5" style={{ maxWidth: "780px" }}>
+                  {gold.baliContext.split(/\n---\n/).map((block, idx) => {
+                    const trimmed = block.trim();
+                    if (!trimmed) return null;
+
+                    const isMistakes = trimmed.toLowerCase().includes("common client mistakes");
+                    const isNumbers = trimmed.toLowerCase().includes("governor") || trimmed.toLowerCase().includes("numbers");
+                    const isReality = trimmed.toLowerCase().includes("reality") || trimmed.toLowerCase().includes("market");
+
+                    const titleMatch = trimmed.match(/^\*\*([^*]+?):\*\*/);
+                    const cardTitle = titleMatch ? titleMatch[1] : null;
+                    const bodyText = cardTitle
+                      ? trimmed.replace(/^\*\*[^*]+?:\*\*\s*/, "")
+                      : trimmed;
+
+                    const accentColor = isMistakes
+                      ? "var(--kbli-pma-restricted)"
+                      : "var(--kbli-accent)";
+                    const blockIcon = isMistakes ? "⚠" : isNumbers ? "📊" : isReality ? "🏝" : "💡";
+                    const blockBg = isMistakes
+                      ? "rgba(232, 168, 73, 0.03)"
+                      : "rgba(212, 132, 90, 0.02)";
+
+                    return (
+                      <div
+                        key={idx}
+                        className="rounded-xl p-5"
+                        style={{
+                          background: blockBg,
+                          border: `1px solid ${isMistakes ? "rgba(232, 168, 73, 0.1)" : "var(--kbli-border)"}`,
+                        }}
+                      >
+                        {cardTitle && (
+                          <div className="mb-4 flex items-center gap-2.5">
+                            <span className="text-base">{blockIcon}</span>
+                            <span
+                              className="text-sm font-bold tracking-wide"
+                              style={{ color: accentColor }}
+                            >
+                              {cardTitle}
+                            </span>
+                          </div>
+                        )}
+                        <div className="kbli-prose">
+                          <ReactMarkdown>{bodyText}</ReactMarkdown>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </section>
+
+            {/* ARTICLE CARD */}
+            {article && (
+              <a
+                href={article.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group relative mt-10 flex overflow-hidden rounded-2xl transition-all duration-300 hover:shadow-xl"
+                style={{ border: "1px solid rgba(255,255,255,0.06)" }}
+              >
+                <div
+                  className="relative flex h-auto w-28 shrink-0 items-center justify-center overflow-hidden sm:w-36"
+                  style={{
+                    background: `linear-gradient(135deg, ${article.gradient[0]}, ${article.gradient[1]})`,
+                  }}
+                >
+                  <div
+                    className="absolute -right-4 -top-4 h-20 w-20 rounded-full opacity-20"
+                    style={{ background: article.gradient[1] }}
+                  />
+                  <div
+                    className="absolute -bottom-3 -left-3 h-14 w-14 rounded-full opacity-15"
+                    style={{ background: "white" }}
+                  />
+                  <div
+                    className="absolute right-2 bottom-2 h-8 w-8 rounded-full opacity-10"
+                    style={{ background: "white" }}
+                  />
+                  <span className="relative text-3xl drop-shadow-lg transition-transform duration-300 group-hover:scale-110 sm:text-4xl">
+                    {article.icon}
+                  </span>
+                </div>
+
+                <div
+                  className="flex flex-1 flex-col justify-center gap-2 px-5 py-4"
+                  style={{ background: "var(--kbli-bg-elevated)" }}
+                >
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--kbli-accent)]">
+                    <span>Read Full Guide on Bali Zero</span>
+                    <span className="text-sm opacity-50 transition-transform duration-300 group-hover:translate-x-0.5">↗</span>
+                  </span>
+                  <p className="line-clamp-2 text-sm font-semibold leading-snug text-[var(--kbli-text-primary)] transition-colors duration-300 group-hover:text-[var(--kbli-accent)]">
+                    {article.title}
+                  </p>
+                  <span className="text-[11px] text-[var(--kbli-text-muted)]">
+                    zantara.balizero.com
+                  </span>
+                </div>
+              </a>
+            )}
+
+            {/* TKA / FOREIGN WORKERS */}
+            {gold.tkaInfo && (
+              <>
+                <div className="flex items-center gap-4 py-2 pt-10">
+                  <div className="h-px flex-1" style={{ background: "var(--kbli-border)" }} />
+                  <span className="text-xs font-medium uppercase tracking-[0.15em] text-[var(--foreground-muted)]">
+                    Foreign Workers
+                  </span>
+                  <div className="h-px flex-1" style={{ background: "var(--kbli-border)" }} />
+                </div>
+
+                <section className="py-10">
+                  <div className="mb-6 flex items-center gap-3">
+                    <div
+                      className="h-8 w-1 rounded-full"
+                      style={{ background: "linear-gradient(to bottom, var(--kbli-accent2), var(--kbli-accent))" }}
+                    />
+                    <div>
+                      <h2 className="text-sm font-bold uppercase tracking-[0.12em] text-[var(--kbli-accent)]">
+                        TKA Eligible Positions
+                      </h2>
+                      <p className="text-xs text-[var(--foreground-muted)]">
+                        Kepmenaker 228/2019 — Category {gold.tkaInfo.categoryId}: {gold.tkaInfo.categoryName}
+                      </p>
+                    </div>
+                    <span
+                      className="ml-auto rounded-full border border-[var(--border)] px-2.5 py-0.5 text-xs text-[var(--foreground-muted)]"
+                    >
+                      {gold.tkaInfo.totalInCategory} in category
+                    </span>
+                  </div>
+
+                  {gold.tkaInfo.relevantPositions.length > 0 ? (
+                    <div className="overflow-hidden rounded-xl border border-[var(--border)]" style={{ background: "var(--kbli-bg-elevated)" }}>
+                      {gold.tkaInfo.relevantPositions.map((pos, i) => (
+                        <div
+                          key={i}
+                          className="flex items-center gap-3 border-b border-[var(--border)] px-4 py-2.5 last:border-b-0"
+                        >
+                          <span
+                            className="shrink-0 font-mono text-[11px] font-bold"
+                            style={{ color: "var(--kbli-accent2)", minWidth: "36px" }}
+                          >
+                            {pos.isco}
+                          </span>
+                          <span className="text-sm font-medium text-[var(--foreground)]">
+                            {pos.titleEn}
+                            {pos.temporary && (
+                              <span
+                                className="ml-1.5 inline-flex rounded px-1 py-0.5 text-[9px] font-bold uppercase"
+                                style={{
+                                  background: "rgba(232, 168, 73, 0.1)",
+                                  color: "var(--kbli-pma-restricted)",
+                                }}
+                              >
+                                Temp
+                              </span>
+                            )}
+                          </span>
+                          <span className="ml-auto text-xs text-[var(--foreground-muted)] hidden sm:inline">
+                            {pos.titleId}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div
+                      className="rounded-xl border border-dashed border-[var(--border)] p-6 text-center"
+                      style={{ background: "var(--kbli-bg-elevated)" }}
+                    >
+                      <p className="text-sm text-[var(--foreground-muted)]">
+                        Position data for this category is being transcribed.
+                      </p>
+                    </div>
+                  )}
+
+                  <div
+                    className="mt-5 rounded-xl p-4"
+                    style={{
+                      background: "rgba(139, 156, 247, 0.04)",
+                      border: "1px solid rgba(139, 156, 247, 0.1)",
+                    }}
+                  >
+                    <p className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
+                      {gold.tkaInfo.insight}
+                    </p>
+                  </div>
+
+                  <details className="mt-4 rounded-xl border border-[var(--border)] overflow-hidden">
+                    <summary
+                      className="cursor-pointer px-4 py-3 text-xs font-medium text-[var(--foreground-muted)] transition-colors hover:text-[var(--foreground-secondary)]"
+                      style={{ background: "var(--kbli-bg-elevated)" }}
+                    >
+                      KEDUA Provision — Directors & Commissioners Exemption
+                    </summary>
+                    <div className="px-4 py-3 text-xs leading-relaxed text-[var(--foreground-secondary)]" style={{ background: "var(--kbli-bg-surface)" }}>
+                      {gold.tkaInfo.keduaNote}
+                    </div>
+                  </details>
+                </section>
+              </>
+            )}
+
+            {/* COMPLEMENTARY CODES */}
+            <section className="mt-10 rounded-xl border border-[var(--border)] overflow-hidden" style={{ background: "var(--kbli-bg-elevated)" }}>
+              <div className="px-5 py-3.5 border-b border-[var(--border)]" style={{ background: "var(--kbli-bg-surface)" }}>
+                <span className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--kbli-accent)]">
+                  Complementary Codes
+                </span>
+              </div>
+              <div className="px-5 py-4 kbli-prose">
+                <ReactMarkdown
+                  components={{
+                    a: ({ href, children }) => {
+                      if (href?.startsWith("/kbli/")) {
+                        return (
+                          <Link
+                            href={href}
+                            className="inline-flex items-center gap-1 font-mono font-bold text-[var(--kbli-accent)] transition-colors hover:text-[var(--kbli-accent-hover)]"
+                          >
+                            {children}
+                            <span className="text-[10px] opacity-50">→</span>
+                          </Link>
+                        );
+                      }
+                      return <a href={href}>{children}</a>;
+                    },
+                  }}
+                >
+                  {gold.youllAlsoNeed}
+                </ReactMarkdown>
+              </div>
+            </section>
+          </div>
+        ) : (
+          /* NON-GOLD — enhanced standard layout */
+          <div className="space-y-0">
+            {kbli.intel_2026?.whatItMeans ? (
+              <>
+                <section className="pb-10">
+                  <p
+                    className="text-lg leading-relaxed text-[var(--foreground-secondary)] sm:text-xl sm:leading-[1.7]"
+                    style={{ maxWidth: "680px" }}
+                  >
+                    {kbli.intel_2026.whatItMeans}
+                  </p>
+                </section>
+
+                {kbli.intel_2026.whatChanged && (
+                  <div className="flex items-start gap-3 rounded-xl p-4 mb-6" style={{ background: "var(--kbli-bg-elevated)", border: "1px solid var(--kbli-border)" }}>
+                    <span className="mt-0.5 shrink-0 inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold" style={{ background: "rgba(139, 156, 247, 0.1)", color: "var(--kbli-accent2)", border: "1px solid rgba(139, 156, 247, 0.2)" }}>
+                      What Changed
+                    </span>
+                    <p className="text-sm leading-relaxed text-[var(--foreground-secondary)]">{kbli.intel_2026.whatChanged}</p>
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {codeData.intel.whatYouNeed && (
-                    <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-5">
-                      <h3 className="text-blue-900 font-bold text-sm uppercase tracking-wider mb-2">
-                        What You Need
-                      </h3>
-                      <p className="text-slate-700 text-sm leading-relaxed">
-                        {codeData.intel.whatYouNeed}
-                      </p>
-                    </div>
-                  )}
-                  {codeData.intel.baliContext && (
-                    <div className="bg-amber-50/50 border border-amber-100 rounded-xl p-5">
-                      <h3 className="text-amber-900 font-bold text-sm uppercase tracking-wider mb-2">
-                        The Bali Nuance
-                      </h3>
-                      <p className="text-slate-700 text-sm leading-relaxed">
-                        {codeData.intel.baliContext}
-                      </p>
-                    </div>
-                  )}
-                  {codeData.intel.youllAlsoNeed && (
-                    <div className="bg-green-50/50 border border-green-100 rounded-xl p-5">
-                      <h3 className="text-green-900 font-bold text-sm uppercase tracking-wider mb-2">
-                        You&apos;ll Also Need
-                      </h3>
-                      <p className="text-slate-700 text-sm leading-relaxed">
-                        {codeData.intel.youllAlsoNeed}
-                      </p>
-                    </div>
-                  )}
-                  {codeData.intel.whatChanged && (
-                    <div className="bg-purple-50/50 border border-purple-100 rounded-xl p-5">
-                      <h3 className="text-purple-900 font-bold text-sm uppercase tracking-wider mb-2">
-                        2020 → 2025
-                      </h3>
-                      <p className="text-slate-700 text-sm leading-relaxed">
-                        {codeData.intel.whatChanged}
-                      </p>
-                    </div>
-                  )}
-                </div>
+                {kbli.intel_2026.whatYouNeed && (
+                  <div className="rounded-xl p-5 mb-6" style={{ background: "var(--kbli-bg-elevated)", border: "1px solid var(--kbli-border)" }}>
+                    <h3 className="mb-3 text-xs font-bold uppercase tracking-[0.15em] text-[var(--foreground-muted)]">What You Need</h3>
+                    <div className="text-sm leading-relaxed text-[var(--foreground-secondary)] whitespace-pre-line">{kbli.intel_2026.whatYouNeed}</div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <section className="pb-10">
+                <p
+                  className="text-lg leading-relaxed text-[var(--foreground-secondary)] sm:text-xl sm:leading-[1.7]"
+                  style={{ maxWidth: "680px" }}
+                >
+                  {kbli.description}
+                </p>
               </section>
             )}
 
-            <section>
-              <h2 className="text-2xl font-semibold text-slate-800 mb-4">
-                PP28/2025 Licensing Data
-              </h2>
-              <div className="space-y-4">
-                {codeData.licensing.map((lic, idx) => (
-                  <div
-                    key={idx}
-                    className="border border-slate-200 rounded-lg p-5 bg-slate-50"
-                  >
-                    <div className="flex justify-between items-center mb-3">
-                      <h3 className="font-bold text-slate-800">
-                        {lic.scales.join(" / ")}
-                      </h3>
-                      <span className="text-xs font-bold uppercase tracking-wider bg-slate-200 px-2 py-1 rounded">
-                        Risk: {lic.riskCategory}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 text-sm mb-4">
-                      <div>
-                        <p className="text-slate-500 mb-1 uppercase text-[10px] font-bold tracking-widest">
-                          License Type
-                        </p>
-                        <p className="font-medium text-slate-800">
-                          {lic.licenseType}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-slate-500 mb-1 uppercase text-[10px] font-bold tracking-widest">
-                          Processing
-                        </p>
-                        <p className="font-medium text-slate-800">
-                          {lic.timeframe}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-slate-500 mb-1 uppercase text-[10px] font-bold tracking-widest">
-                          Foreign Ownership
-                        </p>
-                        <p className="font-medium text-slate-800">
-                          {codeData.pma.maxForeign}%{" "}
-                          {codeData.pma.status === "open"
-                            ? "Open"
-                            : codeData.pma.status === "restricted"
-                              ? "Restricted"
-                              : "Closed"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-slate-500 mb-1 uppercase text-[10px] font-bold tracking-widest">
-                          Authority
-                        </p>
-                        <p className="font-medium text-slate-800">
-                          {lic.authority || "BKPM / OSS"}
-                        </p>
-                      </div>
-                    </div>
-                    {lic.requirements.length > 0 && (
-                      <div className="mt-4">
-                        <p className="text-slate-500 mb-2 uppercase text-[10px] font-bold tracking-widest">
-                          Requirements
-                        </p>
-                        <ul className="list-disc list-inside space-y-1 text-slate-600 text-sm">
-                          {lic.requirements.map((req, ridx) => (
-                            <li key={ridx}>{req}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    {lic.obligations && lic.obligations.length > 0 && (
-                      <div className="mt-4">
-                        <p className="text-slate-500 mb-2 uppercase text-[10px] font-bold tracking-widest">
-                          Ongoing Obligations
-                        </p>
-                        <ul className="list-disc list-inside space-y-1 text-slate-600 text-sm">
-                          {lic.obligations.map((ob, oidx) => (
-                            <li key={oidx}>{ob}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {/* PMA Section */}
-            {codeData.pma.condition && (
-              <section>
-                <div className="bg-slate-800 text-white rounded-xl p-5 flex items-start gap-3">
-                  <Building2 className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-wider text-amber-400 mb-1">
-                      PMA
-                    </p>
-                    <p className="text-sm leading-relaxed">
-                      {codeData.pma.condition}
-                    </p>
-                  </div>
+            {/* Licensing quick facts */}
+            {kbli.licensing.length > 0 && (
+              <>
+                <div className="flex items-center gap-4 py-2">
+                  <div className="h-px flex-1" style={{ background: "var(--kbli-border)" }} />
+                  <span className="text-xs font-medium uppercase tracking-[0.15em] text-[var(--foreground-muted)]">
+                    Licensing Overview
+                  </span>
+                  <div className="h-px flex-1" style={{ background: "var(--kbli-border)" }} />
                 </div>
-              </section>
+
+                <section className="py-10">
+                  <div className="overflow-hidden rounded-xl border border-[var(--border)]" style={{ background: "var(--kbli-bg-elevated)" }}>
+                    <div className="grid grid-cols-2 gap-px sm:grid-cols-4" style={{ background: "var(--kbli-border)" }}>
+                      <div className="flex flex-col gap-1 p-4" style={{ background: "var(--kbli-bg-elevated)" }}>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">Risk Level</span>
+                        <span className="text-sm font-semibold text-[var(--foreground)]">{kbli.licensing[0].riskCategory}</span>
+                      </div>
+                      <div className="flex flex-col gap-1 p-4" style={{ background: "var(--kbli-bg-elevated)" }}>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">License Type</span>
+                        <span className="text-sm font-semibold text-[var(--foreground)]">{kbli.licensing[0].licenseType || "NIB"}</span>
+                      </div>
+                      <div className="flex flex-col gap-1 p-4" style={{ background: "var(--kbli-bg-elevated)" }}>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">Foreign Ownership</span>
+                        <span className="text-sm font-semibold text-[var(--foreground)]">
+                          {kbli.pma.status === "open" ? `${kbli.pma.maxForeign}% Open` : kbli.pma.status === "restricted" ? `Max ${kbli.pma.maxForeign}%` : "Closed"}
+                        </span>
+                      </div>
+                      <div className="flex flex-col gap-1 p-4" style={{ background: "var(--kbli-bg-elevated)" }}>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">Processing</span>
+                        <span className="text-sm font-semibold text-[var(--foreground)]">{kbli.licensing[0].timeframe || "Otomatis"}</span>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              </>
             )}
 
             {/* Transition note */}
-            {codeData.transition.mappingStatus && (
-              <section>
-                <div className="bg-slate-100 border border-slate-200 rounded-xl p-4 text-xs text-slate-500">
-                  <span className="inline-block bg-amber-200 text-amber-900 font-bold px-2 py-0.5 rounded text-[10px] mr-2">
-                    2020 → 2025
-                  </span>
-                  {codeData.intel?.whatChanged ||
-                    (codeData.transition.previousCodes.length > 0
-                      ? `Previously under ${codeData.transition.previousCodes.join(", ")}. ${codeData.transition.aggregationNote || codeData.transition.mappingNote || ""}`
-                      : codeData.transition.aggregationNote ||
-                        codeData.transition.mappingNote)}
+            {kbli.transition.previousCodes.length > 0 && (
+              <div className="flex items-start gap-3 rounded-xl p-4" style={{ background: "var(--kbli-bg-elevated)", border: "1px solid var(--kbli-border)" }}>
+                <span className="mt-0.5 shrink-0 inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold" style={{ background: "rgba(139, 156, 247, 0.1)", color: "var(--kbli-accent2)", border: "1px solid rgba(139, 156, 247, 0.2)" }}>
+                  2020 → 2025
+                </span>
+                <div className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
+                  <span>Previous codes: </span>
+                  {kbli.transition.previousCodes.map((c, i) => (
+                    <span key={c}>
+                      <Link href={`/kbli/${c}`} className="font-mono font-bold text-[var(--kbli-accent)] hover:text-[var(--kbli-accent-hover)]">{c}</Link>
+                      {i < kbli.transition.previousCodes.length - 1 && ", "}
+                    </span>
+                  ))}
+                  {kbli.transition.mappingNote && (
+                    <span className="ml-1 text-[var(--foreground-muted)]">— {kbli.transition.mappingNote}</span>
+                  )}
                 </div>
-              </section>
+              </div>
+            )}
+
+            {/* Article card for non-Gold pages */}
+            {article && (
+              <a
+                href={article.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group relative mt-8 flex overflow-hidden rounded-2xl transition-all duration-300 hover:shadow-xl"
+                style={{ border: "1px solid rgba(255,255,255,0.06)" }}
+              >
+                <div
+                  className="relative flex h-auto w-28 shrink-0 items-center justify-center overflow-hidden sm:w-36"
+                  style={{ background: `linear-gradient(135deg, ${article.gradient[0]}, ${article.gradient[1]})` }}
+                >
+                  <div className="absolute -right-4 -top-4 h-20 w-20 rounded-full opacity-20" style={{ background: article.gradient[1] }} />
+                  <div className="absolute -bottom-3 -left-3 h-14 w-14 rounded-full opacity-15" style={{ background: "white" }} />
+                  <span className="relative text-3xl drop-shadow-lg transition-transform duration-300 group-hover:scale-110 sm:text-4xl">{article.icon}</span>
+                </div>
+                <div className="flex flex-1 flex-col justify-center gap-2 px-5 py-4" style={{ background: "var(--kbli-bg-elevated)" }}>
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--kbli-accent)]">
+                    <span>Read Full Guide on Bali Zero</span>
+                    <span className="text-sm opacity-50 transition-transform duration-300 group-hover:translate-x-0.5">↗</span>
+                  </span>
+                  <p className="line-clamp-2 text-sm font-semibold leading-snug text-[var(--kbli-text-primary)] transition-colors duration-300 group-hover:text-[var(--kbli-accent)]">{article.title}</p>
+                  <span className="text-[11px] text-[var(--kbli-text-muted)]">zantara.balizero.com</span>
+                </div>
+              </a>
             )}
           </div>
+        )}
 
-          <aside className="space-y-8">
-            <div className="bg-slate-900 text-white rounded-2xl p-6 shadow-xl relative overflow-hidden">
-              <div className="relative z-10">
-                <h3 className="text-lg font-bold mb-2 flex items-center gap-2">
-                  <span className="text-amber-400">✨</span> Ask Zantara AI
-                </h3>
-                <p className="text-slate-400 text-sm mb-4">
-                  Get practical advice on how to use KBLI {codeData.code} for
-                  your Bali project.
-                </p>
-                {codeData.intel?.zantaraOpener && (
-                  <div className="bg-white/10 rounded-lg p-3 text-xs border border-white/10 italic text-slate-300 mb-4">
-                    &ldquo;{codeData.intel.zantaraOpener}&rdquo;
-                  </div>
-                )}
-                {!codeData.intel?.zantaraOpener && (
-                  <div className="bg-white/10 rounded-lg p-3 text-xs border border-white/10 italic text-slate-300 mb-4">
-                    &ldquo;What permits do I need for this business in
-                    Bali?&rdquo;
-                  </div>
-                )}
-                <button className="w-full bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold py-2 rounded-lg transition-colors text-sm">
-                  Open Expert Chat
-                </button>
-              </div>
-              <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-amber-500/20 blur-3xl rounded-full"></div>
+        {/* RELATED CODES */}
+        {related.length > 0 && (
+          <section className="mt-12">
+            <h2 className="mb-5 text-sm font-bold uppercase tracking-[0.12em] text-[var(--foreground-muted)]">
+              Related Codes
+            </h2>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {related.map((r) => (
+                <KBLICard key={r.code} code={r} />
+              ))}
             </div>
+          </section>
+        )}
 
-            <div className="bg-amber-50 border border-amber-100 rounded-xl p-6">
-              <h3 className="font-bold text-amber-900 mb-3">
-                Investment Summary
-              </h3>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between border-b border-amber-200/50 pb-2">
-                  <span className="text-amber-800/70">Foreign Ownership</span>
-                  <span className="font-bold text-amber-900">
-                    {codeData.pma.maxForeign}%
-                  </span>
-                </div>
-                <div className="flex justify-between border-b border-amber-200/50 pb-2">
-                  <span className="text-amber-800/70">Min. Capital</span>
-                  <span className="font-bold text-amber-900">
-                    Rp 10 Billion
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-amber-800/70">Section</span>
-                  <span className="font-bold text-amber-900">
-                    {codeData.sectionName}
-                  </span>
+        {/* ZANTARA AI CHAT */}
+        <section className="mt-12">
+          <Suspense fallback={
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--kbli-bg-secondary)] p-6 animate-pulse">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-[var(--kbli-bg-elevated)]" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-1/3 rounded bg-[var(--kbli-bg-elevated)]" />
+                  <div className="h-3 w-1/2 rounded bg-[var(--kbli-bg-elevated)]" />
                 </div>
               </div>
             </div>
-          </aside>
-        </div>
-      </div>
+          }>
+            <ZantaraChat
+              codeContext={{
+                code: kbli.code,
+                title: kbli.titleEn,
+                section: kbli.section ?? "",
+              }}
+              opener={
+                gold?.zantaraOpener ??
+                `Ask me anything about KBLI ${kbli.code} — ${kbli.titleEn}. Licensing, PMA rules, what changed in 2025, or how it works in Bali.`
+              }
+              suggestions={[
+                `What do I need to start a ${kbli.titleEn.toLowerCase()} business?`,
+                `Can foreigners own this business?`,
+                `What changed from 2020 to 2025?`,
+              ]}
+            />
+          </Suspense>
+        </section>
+      </article>
     </>
   );
 }

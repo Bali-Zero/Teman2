@@ -58,7 +58,8 @@ class InstagramChannelAdapter(BaseChannel):
                 formatted_text, self.instagram_config.max_message_length
             )
 
-        url = "https://graph.facebook.com/v18.0/me/messages"
+        account_id = self.instagram_config.instagram_account_id
+        url = f"https://graph.instagram.com/v22.0/{account_id}/messages"
         payload = {"recipient": {"id": channel_id}, "message": {"text": formatted_text}}
         headers = {"Authorization": f"Bearer {self.instagram_config.access_token}"}
 
@@ -101,11 +102,3 @@ class InstagramChannelAdapter(BaseChannel):
     @property
     def supports_markdown(self) -> bool:
         return False
-
-    @property
-    def supports_media(self) -> bool:
-        return True
-
-    @property
-    def max_message_length(self) -> int:
-        return self.instagram_config.max_message_length

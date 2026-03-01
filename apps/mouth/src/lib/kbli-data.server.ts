@@ -76,7 +76,7 @@ function loadGoldData(): Record<string, KBLIGoldContent> {
   if (_goldCache) return _goldCache;
   try {
     const raw = JSON.parse(fs.readFileSync(GOLD_PATH, "utf-8"));
-    _goldCache = raw.data;
+    _goldCache = raw.data ?? raw;
     return _goldCache!;
   } catch {
     process.stderr.write(

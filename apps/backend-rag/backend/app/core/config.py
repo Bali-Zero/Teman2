@@ -640,6 +640,25 @@ class Settings(BaseSettings):
     instagram_account_id: str | None = None  # Set via INSTAGRAM_ACCOUNT_ID env var
 
     # ========================================
+    # X/TWITTER INTEGRATION
+    # ========================================
+    x_consumer_key: str | None = None  # Set via X_CONSUMER_KEY env var
+    x_consumer_secret: str | None = None  # Set via X_CONSUMER_SECRET env var
+    x_access_token: str | None = None  # Set via X_ACCESS_TOKEN env var
+    x_access_token_secret: str | None = None  # Set via X_ACCESS_TOKEN_SECRET env var
+    x_bearer_token: str | None = None  # Set via X_BEARER_TOKEN env var
+    x_client_id: str | None = None  # Set via X_CLIENT_ID env var
+    x_client_secret: str | None = None  # Set via X_CLIENT_SECRET env var
+    x_webhook_secret: str | None = None  # Set via X_WEBHOOK_SECRET env var (CRC token)
+
+    # X/Twitter Social Listening Monitor
+    x_monitor_enabled: bool = False  # Set via X_MONITOR_ENABLED env var
+    x_monitor_interval_seconds: int = 300  # 5 minutes, set via X_MONITOR_INTERVAL_SECONDS
+    x_monitor_keywords: str = "PT PMA Bali,KITAS Bali,KITAS Indonesia,KITAP Indonesia,business in Bali,Bali visa,move to Bali,living in Bali,invest in Bali,open company Bali,company in Bali,work permit Bali,digital nomad Bali"
+    x_monitor_digest_interval_hours: int = 3  # Send Telegram digest every N hours
+    x_monitor_digest_enabled: bool = True  # Enable/disable digest on Telegram
+
+    # ========================================
     # ZOHO EMAIL INTEGRATION
     # ========================================
     zoho_client_id: str | None = None  # Set via ZOHO_CLIENT_ID env var

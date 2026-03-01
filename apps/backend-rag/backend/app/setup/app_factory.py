@@ -91,6 +91,21 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"⚠️ Failed to initialize Notification Scheduler: {e}")
 
+        # Initialize X/Twitter Social Listening Monitor
+        try:
+            if settings.x_monitor_enabled:
+                from backend.services.social.x_monitor_service import XMonitorService
+
+                db_pool = getattr(app.state, "db_pool", None)
+                x_monitor = XMonitorService(db_pool=db_pool)
+                app.state.x_monitor_service = x_monitor
+                await x_monitor.start()
+                logger.info("✅ X Monitor Service initialized")
+            else:
+                logger.info("ℹ️ X Monitor disabled (X_MONITOR_ENABLED=false)")
+        except Exception as e:
+            logger.error(f"⚠️ Failed to initialize X Monitor: {e}")
+
         logger.info("✅ ZANTARA startup complete - all services ready")
 
     # Schedule background initialization
@@ -175,6 +190,12 @@ async def lifespan(app: FastAPI):
     if ts_service:
         await ts_service.stop_auto_logout_monitor()
         logger.info("✅ Team Timesheet Service stopped")
+
+    # Shutdown X Monitor
+    x_monitor = getattr(app.state, "x_monitor_service", None)
+    if x_monitor:
+        await x_monitor.stop()
+        logger.info("✅ X Monitor stopped")
 
     # Shutdown Database Health Check Loop
     db_health_check_task = getattr(app.state, "db_health_check_task", None)

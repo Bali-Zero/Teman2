@@ -122,6 +122,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/webhook/whatsapp",  # BUSINESS: Meta WhatsApp webhook - verified by WHATSAPP_VERIFY_TOKEN
             "/api/whatsapp/webhook",  # ALIAS: Meta WhatsApp webhook (legacy URL configured in Meta Dashboard)
             "/webhook/instagram",  # BUSINESS: Meta Instagram webhook - verified by INSTAGRAM_VERIFY_TOKEN
+            "/webhook/twitter",  # BUSINESS: X/Twitter Account Activity webhook - verified by HMAC signature
             "/api/telegram/webhook",  # BUSINESS: Telegram bot webhook - verified by TELEGRAM_WEBHOOK_SECRET header
             # ========================================================================
             # OAUTH CALLBACK ENDPOINTS (Public by OAuth 2.0 specification)
@@ -132,6 +133,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/api/admin/drive/health",  # BUSINESS: Drive health check - public status for diagnostics
             "/api/admin/drive/refresh",  # BUSINESS: Drive token refresh - public for admin use
             "/api/admin/drive/service-account-status",  # BUSINESS: Service Account status - public for diagnostics
+            "/api/admin/drive/test-list-files",  # BUSINESS: SA file listing test - public for diagnostics
             "/admin/google-drive/auth-system",  # BUSINESS: Admin OAuth init for system user
             "/admin/google-drive/callback-system",  # BUSINESS: Admin OAuth callback for system user
             "/admin/zoho/auth",  # BUSINESS: Admin Zoho OAuth init

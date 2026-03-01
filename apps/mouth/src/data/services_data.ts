@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Plane, Building2, Calculator, Home } from "lucide-react";
+import { Globe, Building2, Calculator, Home } from "lucide-react";
 
 export interface ServicePackage {
   name: string;
@@ -39,7 +39,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
     tagline: "Complete visa solutions for living and working in Indonesia",
     description:
       "Navigate Indonesia's immigration system with confidence. From short-term visit visas to permanent residency, we handle all visa types with full government compliance and ongoing support.",
-    icon: Plane,
+    icon: Globe,
     bgColor: "bg-rose-500/10",
     iconColor: "text-rose-400",
     timeline: "7-10 days / 4-6 weeks (Working/Freelance)",
