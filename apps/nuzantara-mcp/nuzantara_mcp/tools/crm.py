@@ -199,7 +199,7 @@ def register(mcp, _call, _call_safe):
             List of alerts: client, practice, document, expiry_date, days_remaining, severity.
         """
         return await _call(
-            "/api/crm/enhanced/expiry-alerts",
+            "/api/crm/expiry-alerts",
             params={"days_ahead": days_ahead},
         )
 

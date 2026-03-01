@@ -28,7 +28,7 @@ def register(mcp, _call: Callable, _call_safe: Callable) -> None:
         """
         import asyncio
 
-        alerts_task = _call_safe("/api/crm/enhanced/expiry-alerts", params={"days_ahead": 30})
+        alerts_task = _call_safe("/api/crm/expiry-alerts", params={"days_ahead": 30})
         activity_task = _call_safe("/api/generals/activity", params={"hours": 24})
         health_task = _call_safe("/health/detailed")
         memory_task = _call_safe("/api/memory/lam/episodes", params={"limit": 5})
