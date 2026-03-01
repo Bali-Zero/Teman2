@@ -92,16 +92,19 @@ export function KBLISectorGrid({ sections }: { sections: KBLISection[] }) {
           <Link
             key={s.id}
             href={`/kbli/sectors/${s.id}`}
-            className={`group relative rounded-2xl border border-[#3f3f46] bg-[#27272a] p-4.5
-                       transition-all duration-500 hover:border-transparent hover:shadow-[0_8px_32px_rgba(212,132,90,0.2)] hover:-translate-y-1
-                       animate-fade-in-up holographic-card flex flex-col
+            className={`group relative rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-xl p-4.5
+                       transition-all duration-500 hover:border-[#d4845a]/40 hover:bg-white/[0.06]
+                       hover:shadow-[0_8px_40px_rgba(212,132,90,0.15),inset_0_1px_0_rgba(255,255,255,0.06)]
+                       hover:-translate-y-1
+                       shadow-[0_4px_24px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.04)]
+                       animate-fade-in-up flex flex-col
                        ${isLastOrphan ? "col-span-2 sm:col-span-1" : ""}`}
             style={{ animationDelay: `${i * 60}ms` }}
           >
 
             {/* Icon & Section Code */}
             <div className="flex items-start justify-between mb-2">
-              <div className={`inline-flex items-center justify-center rounded-xl bg-white/5 border border-white/10 shadow-[inset_0_0_20px_rgba(255,255,255,0.05)] text-zinc-400 group-hover:text-[#d4845a] group-hover:bg-[#d4845a]/20 group-hover:border-[#d4845a]/50 group-hover:shadow-[0_0_30px_rgba(212,132,90,0.3)] transition-all duration-500 ${iconSize === 'text-2xl' || iconSize === 'text-3xl' ? 'h-12 w-12' : 'h-10 w-10'}`}>
+              <div className={`inline-flex items-center justify-center rounded-xl bg-white/[0.04] backdrop-blur-md border border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_2px_8px_rgba(0,0,0,0.2)] text-zinc-400 group-hover:text-[#d4845a] group-hover:bg-[#d4845a]/15 group-hover:border-[#d4845a]/40 group-hover:shadow-[0_0_25px_rgba(212,132,90,0.2),inset_0_1px_0_rgba(212,132,90,0.1)] transition-all duration-500 ${iconSize === 'text-2xl' || iconSize === 'text-3xl' ? 'h-12 w-12' : 'h-10 w-10'}`}>
                 <div className={`drop-shadow-md group-hover:scale-110 transition-transform duration-500 flex items-center justify-center ${iconSize === 'text-2xl' || iconSize === 'text-3xl' ? 'scale-125' : 'scale-100'}`}>
                   {SECTOR_ICONS[s.id] || <HelpCircle strokeWidth={1.5} />}
                 </div>
@@ -130,7 +133,7 @@ export function KBLISectorGrid({ sections }: { sections: KBLISection[] }) {
               </div>
               
               {/* Dynamic Progress Bar */}
-              <div className="relative h-1 w-full overflow-hidden rounded-full bg-[#3f3f46] shadow-inner">
+              <div className="relative h-1 w-full overflow-hidden rounded-full bg-white/[0.06] shadow-inner">
                 {/* Glowing Track */}
                 <div 
                   className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-[#d4845a] via-[#a855f7] to-[#3b82f6] opacity-60 group-hover:opacity-100 transition-opacity"

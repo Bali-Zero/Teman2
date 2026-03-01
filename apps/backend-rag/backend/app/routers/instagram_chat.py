@@ -154,9 +154,29 @@ async def verify_instagram_webhook(request: Request):
 
 
 @webhook_router.post("")
-async def instagram_webhook(webhook: InstagramWebhook, request: Request):
+async def instagram_webhook(request: Request):
     """Handle incoming Instagram DMs via ChannelRouter."""
-    logger.info(f"IG Webhook received: {webhook.object}, {len(webhook.entry)} entries")
+    try:
+        raw_payload = await request.json()
+    except Exception:
+        return {"status": "ok"}
+
+    obj = raw_payload.get("object", "")
+    entries = raw_payload.get("entry", [])
+    logger.info(f"IG Webhook received: {obj}, {len(entries)} entries")
+
+    # Only process actual messages (skip read receipts, delivery, echoes)
+    has_message = False
+    for entry in entries:
+        for messaging in entry.get("messaging", []):
+            msg = messaging.get("message", {})
+            if "text" in msg and not msg.get("is_echo", False):
+                has_message = True
+                break
+
+    if not has_message:
+        logger.info("IG Webhook: no text message found, skipping")
+        return {"status": "ok"}
 
     for entry in webhook.entry:
         for messaging in entry.messaging:
@@ -179,9 +199,6 @@ async def instagram_webhook(webhook: InstagramWebhook, request: Request):
         from backend.app.dependencies import get_channel_router
 
         channel_router = get_channel_router(request)
-
-        # Pass the raw payload to the channel adapter
-        raw_payload = await request.json()
         await channel_router.route_message("instagram", raw_payload)
 
         return {"status": "ok"}

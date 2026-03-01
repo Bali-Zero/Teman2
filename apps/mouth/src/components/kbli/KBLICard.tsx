@@ -10,49 +10,61 @@ interface KBLICardProps {
 }
 
 export function KBLICard({ code, showTransition = false }: KBLICardProps) {
+  const isGold = code.tier === "gold";
   return (
     <Link
       href={`/kbli/${code.code}`}
-      className="group block rounded-xl border border-[var(--border)] bg-[var(--kbli-bg-card)]
-                 p-5 transition-all duration-200
-                 hover:border-[var(--kbli-accent)]/30 hover:bg-[var(--kbli-bg-card-hover)]
-                 hover:shadow-[0_0_30px_rgba(245,158,11,0.05)]"
+      className={`group block rounded-2xl border p-5 transition-all duration-300 backdrop-blur-xl
+                 hover:-translate-y-1 hover:border-[var(--kbli-accent)]/40 hover:bg-white/5
+                 hover:shadow-[0_8px_32px_rgba(220,38,38,0.15)]
+                 ${isGold
+                   ? "border-[rgba(212,132,90,0.2)] bg-[rgba(255,255,255,0.03)]"
+                   : "border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)]"}`}
+      style={isGold ? { boxShadow: "inset 0 1px 0 0 rgba(212,132,90,0.12), 0 4px 24px rgba(0,0,0,0.2)" } : { boxShadow: "0 4px 24px rgba(0,0,0,0.2)" }}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           {/* Code + Section */}
-          <div className="flex items-center gap-2 mb-1.5">
+          <div className="mb-1.5 flex items-center gap-2">
             <span className="font-mono text-sm font-bold text-[var(--kbli-accent)]">
               {code.code}
             </span>
             <span className="text-xs text-[var(--foreground-muted)]">
               Section {code.section}
             </span>
+            {isGold && (
+              <span
+                className="text-xs text-[var(--kbli-accent)]"
+                title="Curated content available"
+              >
+                ★
+              </span>
+            )}
           </div>
 
           {/* Title */}
           <h3
-            className="text-base font-semibold text-[var(--foreground)] leading-snug
-                          group-hover:text-[var(--kbli-accent)] transition-colors"
+            className="text-base font-semibold leading-snug text-[var(--foreground)]
+                        transition-colors group-hover:text-[var(--kbli-accent)]"
           >
             {code.titleEn}
           </h3>
-          <p className="text-sm text-[var(--foreground-muted)] mt-0.5 line-clamp-1">
+          <p className="mt-0.5 text-sm text-[var(--foreground-muted)] line-clamp-1">
             {code.titleId}
           </p>
         </div>
 
         {/* Arrow */}
         <span
-          className="text-[var(--foreground-muted)] group-hover:text-[var(--kbli-accent)]
-                         transition-transform group-hover:translate-x-0.5 mt-1 shrink-0"
+          className="mt-1 shrink-0 text-[var(--foreground-muted)]
+                     transition-transform group-hover:translate-x-0.5 group-hover:text-[var(--kbli-accent)]"
         >
           →
         </span>
       </div>
 
       {/* Badges */}
-      <div className="flex flex-wrap items-center gap-2 mt-3">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         <PMABadge
           status={code.pma.status}
           maxForeign={code.pma.maxForeign}

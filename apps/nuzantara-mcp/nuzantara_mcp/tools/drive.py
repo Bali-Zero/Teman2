@@ -21,7 +21,7 @@ def register(mcp, _call, _call_safe):
         params: dict = {"limit": limit}
         if folder_id:
             params["folder_id"] = folder_id
-        return await _call("/api/team-drive/files", params=params)
+        return await _call("/api/drive/files", params=params)
 
     @mcp.tool()
     async def search_drive(query: str, limit: int = 10) -> dict:
@@ -36,7 +36,7 @@ def register(mcp, _call, _call_safe):
             Matching files ranked by relevance.
         """
         return await _call(
-            "/api/team-drive/search", params={"query": query, "limit": limit}
+            "/api/drive/search", params={"query": query, "limit": limit}
         )
 
     @mcp.tool()
@@ -55,7 +55,7 @@ def register(mcp, _call, _call_safe):
         if parent_id:
             payload["parent_id"] = parent_id
         return await _call(
-            "/api/team-drive/folders", method="POST", json=payload
+            "/api/drive/folders", method="POST", json=payload
         )
 
     @mcp.tool()
@@ -66,7 +66,7 @@ def register(mcp, _call, _call_safe):
         Returns:
             Total storage used, files count, folders count, largest files, storage by type.
         """
-        return await _call("/api/team-drive/stats")
+        return await _call("/api/drive/stats")
 
     @mcp.tool()
     async def create_client_drive_folder(client_id: str) -> dict:

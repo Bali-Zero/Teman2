@@ -5,7 +5,8 @@
       "args": ["apps/nuzantara-mcp/nuzantara_mcp/server.py"],
       "cwd": "/Users/nuzantara/Desktop/nuzantara",
       "env": {
-        "PYTHONPATH": "apps/nuzantara-mcp"
+        "PYTHONPATH": "apps/nuzantara-mcp",
+        "NUZANTARA_API_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzeXN0ZW1AYmFsaXplcm8uY29tIiwiZW1haWwiOiJ6ZXJvQGJhbGl6ZXJvLmNvbSIsInJvbGUiOiJhZG1pbiIsIm5hbWUiOiJaZXJvIiwiZXhwIjoxODAzODc0MjMxLCJpYXQiOjE3NzIzMzgyMzF9.ispeiQFN1vJT6xpjU8rz6_BiK6-9o2RksK09RuFjA2Y"
       }
     },
     "nuzantara-mcp-advanced": {

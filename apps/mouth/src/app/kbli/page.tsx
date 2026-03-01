@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
 import { getSections } from "@/lib/kbli-data";
 import { KBLISearch } from "@/components/kbli/KBLISearch";
 import { KBLISectorGrid } from "@/components/kbli/KBLISectorGrid";
@@ -20,82 +22,141 @@ export default function KBLIHomePage() {
   const sections = getSections().filter((s) => s.codeCount > 0);
 
   return (
-    <div className="space-y-12 animate-fade-in-up">
-      {/* Hero — gradient impact zone with Parallax Background */}
-      <div className="relative -mx-4 overflow-hidden rounded-3xl sm:-mx-6 lg:-mx-8 shadow-2xl bg-[#1c1c1e]">
-        {/* Parallax Background Image */}
-        <div 
-          className="absolute inset-0 bg-cover bg-fixed bg-center bg-no-repeat opacity-40 mix-blend-luminosity"
-          style={{ backgroundImage: "url('/kbli-hero.jpg')" }}
-        />
-        
-        {/* Dark Vignette Overlay to ensure text readability */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#1c1c1e]/40 via-[#1c1c1e]/60 to-[#1c1c1e] z-0" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#1c1c1e]/80 via-transparent to-[#1c1c1e]/80 z-0" />
-
-        {/* Multi-color gradient (Warm pink/orange to deep teal) */}
+    <div className="space-y-16">
+      {/* ── HERO ── */}
+      <div className="relative -mx-4 overflow-hidden rounded-3xl sm:-mx-6 lg:-mx-8 bg-[#141416]">
+        {/* Balinese ornamental pattern */}
         <div
-          className="absolute inset-0 animate-aurora mix-blend-color z-0"
+          className="absolute inset-0 opacity-100"
           style={{
-            background: "linear-gradient(90deg, rgba(212,132,90,0.5) 0%, rgba(168,85,247,0.5) 25%, rgba(59,130,246,0.5) 55%, rgba(20,184,166,0.5) 100%)",
-            opacity: 0.8,
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect width='200' height='200' fill='none'/%3E%3Crect x='0' y='0' width='200' height='200' fill='none' stroke='rgba(255,255,255,0.04)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='50' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='30' fill='none' stroke='rgba(255,255,255,0.025)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='8' fill='none' stroke='rgba(255,255,255,0.04)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='2' fill='rgba(255,255,255,0.05)'/%3E%3Cpath d='M100,50 Q120,70 100,90 Q80,70 100,50Z' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='0.5'/%3E%3Cpath d='M100,150 Q120,130 100,110 Q80,130 100,150Z' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='0.5'/%3E%3Cpath d='M50,100 Q70,120 90,100 Q70,80 50,100Z' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='0.5'/%3E%3Cpath d='M150,100 Q130,120 110,100 Q130,80 150,100Z' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='0.5'/%3E%3C/svg%3E")`,
+            backgroundSize: "200px 200px",
           }}
         />
-        {/* Decorative radials to soften the fade */}
+        {/* Vignette */}
         <div
-          className="absolute inset-0 z-0"
-          style={{
-            background: "radial-gradient(ellipse at top center, rgba(255,255,255,0.05) 0%, transparent 70%), radial-gradient(ellipse at bottom center, rgba(0,0,0,0.6) 0%, transparent 100%)",
-          }}
+          className="absolute inset-0"
+          style={{ background: "radial-gradient(ellipse 80% 70% at 50% 50%, transparent 30%, rgba(20,20,22,0.9) 100%)" }}
         />
-        {/* Noise overlay for texture */}
-        <div
-          className="absolute inset-0 opacity-[0.05] z-0"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
-          }}
-        />
+        {/* Ambient orbs — subtle red and white for Indonesian flag feel */}
+        <div className="absolute top-[-15%] left-[10%] w-[500px] h-[500px] rounded-full opacity-[0.06] blur-[120px]" style={{ background: "radial-gradient(circle, #dc2626, transparent)" }} />
+        <div className="absolute top-[-10%] right-[15%] w-[400px] h-[400px] rounded-full opacity-[0.04] blur-[100px]" style={{ background: "radial-gradient(circle, #ffffff, transparent)" }} />
+        <div className="absolute bottom-[-15%] right-[-5%] w-[350px] h-[350px] rounded-full opacity-[0.05] blur-[100px]" style={{ background: "radial-gradient(circle, #dc2626, transparent)" }} />
 
-        <div className="relative z-10 px-6 py-16 text-center sm:px-8 sm:py-24 lg:px-10 flex flex-col items-center justify-center min-h-[420px] animate-float">
-          <h1 className="text-5xl font-black tracking-tight sm:text-6xl lg:text-7xl drop-shadow-lg text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-white/70">
-            KBLI 2025 Navigator
-          </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-base text-[#e2e8f0] sm:text-lg font-medium tracking-wide drop-shadow-sm">
-            Indonesia&apos;s complete business classification system — 1,563
-            codes with PMA investment rules, licensing requirements, and
-            <span className="text-white/90"> 2020→2025 transition mapping.</span>
-          </p>
-
-          {/* Stats strip - Glassmorphic Elevated */}
-          <div className="mx-auto mt-12 mb-2 flex flex-wrap items-center justify-center gap-6 sm:gap-8">
-            <div className="px-6 py-4 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.2)]">
-              <div className="text-4xl font-black text-white tracking-tight drop-shadow-sm">1,563</div>
-              <div className="mt-1 text-[11px] font-bold uppercase tracking-widest text-[#d4845a] drop-shadow-sm">Codes</div>
+        <div className="relative z-10 flex flex-col lg:flex-row items-center lg:items-start justify-between gap-12 px-8 py-16 sm:px-12 sm:py-20 lg:px-16 lg:py-24">
+          {/* Left column */}
+          <div className="flex flex-col items-center lg:items-start text-center lg:text-left max-w-xl">
+            {/* Bali Zero branding */}
+            <div className="flex items-center gap-3 mb-8">
+              <Image
+                src="/assets/logo/balizero-logo-clean.png"
+                alt="Bali Zero"
+                width={48}
+                height={48}
+                className="rounded-full"
+              />
+              <div className="text-[13px] font-semibold text-white/80 leading-tight tracking-wide">
+                <span className="block">We don&apos;t sell services.</span>
+                <span className="block text-white/50">We offer intelligence.</span>
+              </div>
             </div>
-            <div className="px-6 py-4 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.2)]">
-              <div className="text-4xl font-black text-white tracking-tight drop-shadow-sm">21</div>
-              <div className="mt-1 text-[11px] font-bold uppercase tracking-widest text-[#a855f7] drop-shadow-sm">Sectors</div>
-            </div>
-            <div className="px-6 py-4 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.2)] relative overflow-hidden group">
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-              <div className="text-4xl font-black text-white tracking-tight drop-shadow-sm relative z-10">300+</div>
-              <div className="mt-1 text-[11px] font-bold uppercase tracking-widest text-[#3b82f6] drop-shadow-sm relative z-10">Gold Intel</div>
+
+            {/* Main title — KBLI 2025 on one line, Montserrat, Indonesian flag effect */}
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-none kbli-flag-title">
+              KBLI 2025
+            </h1>
+
+            {/* Subtitle */}
+            <p className="mt-5 text-xl sm:text-2xl text-zinc-400 font-light tracking-tight">
+              Your <em className="text-white font-medium not-italic">Indonesian</em> Business Codes
+            </p>
+
+            {/* Inline stats */}
+            <p className="mt-3 text-sm text-zinc-500 tracking-wide">
+              1,563 codes&ensp;&middot;&ensp;22 sectors&ensp;&middot;&ensp;PMA rules
+            </p>
+
+            {/* CTA — glassmorphism button */}
+            <Link
+              href="#search"
+              className="mt-8 inline-flex items-center gap-2 rounded-xl bg-white/[0.06] backdrop-blur-md border border-white/[0.1] px-7 py-3.5 text-sm font-bold text-white shadow-[0_4px_20px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.06)] transition-all duration-300 hover:bg-[#dc2626]/90 hover:border-[#dc2626]/60 hover:shadow-[0_0_40px_rgba(220,38,38,0.3)] active:scale-[0.98]"
+            >
+              Explore All KBLI Sectors &rarr;
+            </Link>
+          </div>
+
+          {/* Right column — 3D tilted tablet with video (lg+ only) */}
+          <div className="hidden lg:flex flex-shrink-0 items-center justify-center flex-1 max-w-[580px] relative">
+            {/* Glow behind tablet */}
+            <div
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] h-[320px] blur-[80px] pointer-events-none"
+              style={{ background: "radial-gradient(circle, rgba(220,38,38,0.06), transparent 70%)" }}
+            />
+            <div
+              className="relative z-10 transition-transform duration-[400ms]"
+              style={{
+                transform: "perspective(1000px) rotateY(-12deg) rotateX(4deg) rotate(-3deg)",
+                transformStyle: "preserve-3d",
+                filter: "drop-shadow(0 40px 60px rgba(0,0,0,0.6)) drop-shadow(0 0 30px rgba(220,38,38,0.08))",
+              }}
+            >
+              {/* Tablet frame — glassmorphism */}
+              <div
+                className="rounded-[36px] border border-white/[0.08] bg-white/[0.03] backdrop-blur-xl p-[18px] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                style={{ width: 442 }}
+              >
+                {/* Camera */}
+                <div className="flex justify-center py-1.5 pb-2.5">
+                  <div className="w-2 h-2 rounded-full bg-white/[0.08]" />
+                </div>
+                {/* Screen with video */}
+                <div className="rounded-[18px] bg-black/60 overflow-hidden" style={{ height: 286 }}>
+                  <video
+                    src="/videos/kbli-demo.mp4"
+                    autoPlay
+                    loop
+                    playsInline
+                    controls
+                    className="w-full h-full object-cover block rounded-[18px]"
+                  />
+                </div>
+                {/* Home bar */}
+                <div className="flex justify-center pt-2.5 pb-1.5">
+                  <div className="w-[60px] h-1 rounded-sm bg-white/[0.08]" />
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Search Command Center (Sticky) */}
-      <div className="sticky top-20 z-40 -mx-4 px-4 py-4 backdrop-blur-xl bg-[#1c1c1e]/60 border-b border-white/5 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 shadow-[0_10px_30px_rgba(0,0,0,0.3)] rounded-b-3xl mb-8">
+      {/* ── TRUST BAR ── */}
+      <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 -mt-4">
+        {[
+          { num: "1,563", label: "KBLI Codes" },
+          { num: "22", label: "Industry Sectors" },
+          { num: "100%", label: "PMA Coverage" },
+          { num: "AI", label: "Powered by Zantara" },
+        ].map((t) => (
+          <div
+            key={t.label}
+            className="text-center px-6 py-4 rounded-2xl bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] shadow-[0_4px_24px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.04)] transition-all duration-300 hover:bg-white/[0.05] hover:border-white/[0.1] hover:shadow-[0_8px_32px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.06)]"
+          >
+            <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">{t.num}</div>
+            <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-500">{t.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── SEARCH ── */}
+      <div id="search" className="sticky top-20 z-40 -mx-4 px-4 py-4 backdrop-blur-2xl bg-[#141416]/80 border border-white/[0.05] sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.03)] rounded-3xl mb-8">
         <KBLISearch autoFocus />
-        
-        {/* Quick Filters */}
         <div className="mt-4 flex flex-wrap items-center gap-2 justify-center lg:justify-start">
           <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-2">Quick:</span>
           {["Restaurant", "Tech", "Real Estate", "Retail", "Manufacturing"].map((filter) => (
             <button
               key={filter}
-              className="px-3 py-1.5 rounded-full text-xs font-medium text-zinc-300 bg-white/5 border border-white/10 hover:bg-white/10 hover:text-white transition-all hover:border-[#d4845a]/50 hover:shadow-[0_0_15px_rgba(212,132,90,0.2)]"
+              className="px-3.5 py-1.5 rounded-full text-xs font-medium text-zinc-400 bg-white/[0.04] backdrop-blur-md border border-white/[0.06] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:bg-white/[0.07] hover:text-white transition-all duration-300 hover:border-red-500/30 hover:shadow-[0_0_20px_rgba(220,38,38,0.08),inset_0_1px_0_rgba(255,255,255,0.06)]"
             >
               {filter}
             </button>
@@ -103,15 +164,15 @@ export default function KBLIHomePage() {
         </div>
       </div>
 
-      {/* Sectors Grid */}
+      {/* ── SECTORS ── */}
       <section>
-        <h2 className="mb-4 text-xl font-semibold text-[var(--foreground)]">
+        <h2 className="mb-4 text-xl font-semibold text-white/90">
           Browse by Sector
         </h2>
         <KBLISectorGrid sections={sections} />
       </section>
 
-      {/* Zantara AI */}
+      {/* ── ZANTARA AI ── */}
       <section>
         <ZantaraChat
           opener="I'm Zantara, your KBLI expert. Ask me anything about Indonesian business codes — which ones you need, PMA rules, what changed in 2025, or how to set up in Bali."
