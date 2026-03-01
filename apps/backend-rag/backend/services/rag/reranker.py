@@ -32,12 +32,15 @@ except ImportError:
 
     @contextmanager
     def trace_span(name: Any, attrs: Any = None) -> Any:
+        """Trace span."""
         yield
 
     def set_span_attribute(key: Any, value: Any) -> Any:
+        """Set span attribute."""
         pass
 
     def set_span_status(status: Any, msg: Any = None) -> Any:
+        """Set span status."""
         pass
 
 

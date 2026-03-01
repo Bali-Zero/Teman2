@@ -29,14 +29,17 @@ class InstagramService:
 
     @property
     def token(self) -> str | None:
+        """Token."""
         return self._token or settings.instagram_access_token
 
     @property
     def account_id(self) -> str | None:
+        """Count items."""
         return self._account_id or settings.instagram_account_id
 
     @property
     def api_url(self) -> str:
+        """Api url."""
         return f"https://graph.instagram.com/v22.0/{self.account_id}"
 
     async def _get_client(self) -> httpx.AsyncClient:

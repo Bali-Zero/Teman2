@@ -35,6 +35,7 @@ class ZantaraResponseValidator:
         self.violations = []
 
     def validate(self, response: str, context: Any) -> ValidationResult:
+        """Validate."""
         original = response
         validated = response
         self.violations = []  # Reset violations for each validation call

@@ -355,6 +355,7 @@ async def find_semantic_links(
         import numpy as np
 
         def cosine_similarity(a: list[float], b: list[float]) -> float:
+            """Cosine similarity."""
             a_np = np.array(a)
             b_np = np.array(b)
             return float(np.dot(a_np, b_np) / (np.linalg.norm(a_np) * np.linalg.norm(b_np)))
@@ -432,6 +433,7 @@ class EnhancementStats:
     semantic_links: int = 0
 
     def to_dict(self) -> dict[str, Any]:
+        """To dict."""
         return {
             "entities_normalized": self.entities_normalized,
             "cross_references_found": self.cross_references_found,

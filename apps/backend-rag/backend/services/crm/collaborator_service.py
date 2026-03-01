@@ -63,6 +63,7 @@ class CollaboratorProfile:
         }
 
     def matches(self, query: str) -> bool:
+        """Matches."""
         query_lower = query.lower()
         haystack = " ".join(
             [
@@ -158,9 +159,11 @@ class CollaboratorService:
         return self._anonymous_profile()
 
     def get_member(self, email: str) -> CollaboratorProfile | None:
+        """Get member."""
         return self.members_by_email.get(email.lower())
 
     def list_members(self, department: str | None = None) -> list[CollaboratorProfile]:
+        """List members."""
         if not department:
             return list(self.members)
         dept = department.lower()
@@ -171,12 +174,14 @@ class CollaboratorService:
         ]
 
     def search_members(self, query: str) -> list[CollaboratorProfile]:
+        """Search members."""
         query = query.strip()
         if not query:
             return []
         return [profile for profile in self.members if profile.matches(query)]
 
     def get_team_stats(self) -> dict[str, Any]:
+        """Get team stats."""
         by_department: dict[str, int] = {}
         for profile in self.members:
             dept = profile.department

@@ -19,6 +19,7 @@ The LLM decides which collection to search based on the tool description.
 
 import json
 import logging
+from pathlib import Path
 from typing import Any
 
 from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
@@ -57,10 +58,12 @@ class VectorSearchTool(BaseTool):
 
     @property
     def name(self) -> str:
+        """Return tool name."""
         return "vector_search"
 
     @property
     def description(self) -> str:
+        """Description."""
         return (
             "Search the knowledge base for verified information.\n\n"
             "**DEFAULT: FEDERATED SEARCH** - Omit 'collection' to search ALL collections at once.\n"
@@ -81,6 +84,7 @@ class VectorSearchTool(BaseTool):
 
     @property
     def parameters_schema(self) -> dict:
+        """Parameters schema."""
         return {
             "type": "object",
             "properties": {
@@ -237,14 +241,17 @@ class CalculatorTool(BaseTool):
 
     @property
     def name(self) -> str:
+        """Name."""
         return "calculator"
 
     @property
     def description(self) -> str:
+        """Description."""
         return "Perform mathematical calculations. Use for taxes, fees, currency conversions, or any numerical computation."
 
     @property
     def parameters_schema(self) -> dict:
+        """Parameters schema."""
         return {
             "type": "object",
             "properties": {
@@ -288,14 +295,17 @@ class VisionTool(BaseTool):
 
     @property
     def name(self) -> str:
+        """Name."""
         return "vision_analysis"
 
     @property
     def description(self) -> str:
+        """Description."""
         return "Analyze visual elements in documents (PDFs, images). Extract text, tables, or analyze document structure."
 
     @property
     def parameters_schema(self) -> dict:
+        """Parameters schema."""
         return {
             "type": "object",
             "properties": {
@@ -354,10 +364,12 @@ class PricingTool(BaseTool):
 
     @property
     def name(self) -> str:
+        """Name."""
         return "get_pricing"
 
     @property
     def description(self) -> str:
+        """Description."""
         return (
             "🚨 MANDATORY for ALL Bali Zero service price questions. "
             "Get OFFICIAL pricing from Bali Zero database (NO AI generation, NO memory). "
@@ -368,6 +380,7 @@ class PricingTool(BaseTool):
 
     @property
     def parameters_schema(self) -> dict:
+        """Parameters schema."""
         return {
             "type": "object",
             "properties": {
@@ -404,7 +417,7 @@ class TeamKnowledgeTool(BaseTool):
         self._team_data = None
         self._data_file = None
 
-    def _get_data_file_path(self):
+    def _get_data_file_path(self) -> Path | None:
         if self._data_file is None:
             import os
             from pathlib import Path
@@ -446,7 +459,7 @@ class TeamKnowledgeTool(BaseTool):
 
         return self._data_file
 
-    def _load_team_data(self):
+    def _load_team_data(self) -> list[dict[str, Any]]:
         if self._team_data is None:
             data_file = self._get_data_file_path()
             if data_file and data_file.exists():
@@ -458,14 +471,17 @@ class TeamKnowledgeTool(BaseTool):
 
     @property
     def name(self) -> str:
+        """Name."""
         return "team_knowledge"
 
     @property
     def description(self) -> str:
+        """Description."""
         return "Get information about team members, their roles, departments, and contact info."
 
     @property
     def parameters_schema(self) -> dict:
+        """Parameters schema."""
         return {
             "type": "object",
             "properties": {
@@ -512,10 +528,12 @@ class ImageGenerationTool(BaseTool):
 
     @property
     def name(self) -> str:
+        """Name."""
         return "generate_image"
 
     @property
     def description(self) -> str:
+        """Description."""
         return (
             "Generate images from text descriptions. Use this when the user asks to "
             "create, generate, draw, or make an image/picture. Returns a URL to the generated image. "
@@ -524,6 +542,7 @@ class ImageGenerationTool(BaseTool):
 
     @property
     def parameters_schema(self) -> dict:
+        """Parameters schema."""
         return {
             "type": "object",
             "properties": {
@@ -659,7 +678,7 @@ class WebSearchTool(BaseTool):
         self._tavily_key = None
         self._brave_key = None
 
-    def _get_keys(self):
+    def _get_keys(self) -> tuple[str | None, str | None]:
         """Lazy load API keys from settings."""
         if self._tavily_key is None and self._brave_key is None:
             from backend.app.core.config import settings
@@ -670,10 +689,12 @@ class WebSearchTool(BaseTool):
 
     @property
     def name(self) -> str:
+        """Name."""
         return "web_search"
 
     @property
     def description(self) -> str:
+        """Description."""
         return (
             "Search the web for information NOT available in the knowledge base.\n\n"
             "**USE CASES:**\n"
@@ -688,6 +709,7 @@ class WebSearchTool(BaseTool):
 
     @property
     def parameters_schema(self) -> dict:
+        """Parameters schema."""
         return {
             "type": "object",
             "properties": {
@@ -700,7 +722,7 @@ class WebSearchTool(BaseTool):
             "required": ["query"],
         }
 
-    async def _search_tavily(self, query: str, num_results: int, api_key: str) -> dict:
+    async def _search_tavily(self, query: str, num_results: int, api_key: str) -> dict[str, Any]:
         """Search using Tavily API (AI-optimized)."""
         import httpx
 
@@ -721,7 +743,7 @@ class WebSearchTool(BaseTool):
             response.raise_for_status()
             return response.json()
 
-    async def _search_brave(self, query: str, num_results: int, api_key: str) -> dict:
+    async def _search_brave(self, query: str, num_results: int, api_key: str) -> dict[str, Any]:
         """Search using Brave Search API (fallback)."""
         import httpx
 
@@ -894,10 +916,12 @@ class TimeSheetTool(BaseTool):
 
     @property
     def name(self) -> str:
+        """Name."""
         return "timesheet"
 
     @property
     def description(self) -> str:
+        """Description."""
         return (
             "Manage work timesheet. Use this to clock in, clock out, or check work status. "
             "REQUIRED: User email address."
@@ -906,6 +930,7 @@ class TimeSheetTool(BaseTool):
 
     @property
     def parameters_schema(self) -> dict:
+        """Parameters schema."""
         return {
             "type": "object",
             "properties": {

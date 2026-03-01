@@ -71,6 +71,7 @@ class PracticeValidator(BaseModel):
     @field_validator("status")
     @classmethod
     def validate_status(cls, v: str) -> str:
+        """Validate status."""
         allowed = {
             "inquiry",
             "waiting_documents",
@@ -85,6 +86,7 @@ class PracticeValidator(BaseModel):
     @field_validator("priority")
     @classmethod
     def validate_priority(cls, v: str) -> str:
+        """Validate priority."""
         allowed = {"low", "normal", "high", "urgent"}
         if v not in allowed:
             raise ValueError(f"Priority must be one of: {allowed}")
@@ -105,6 +107,7 @@ class InteractionValidator(BaseModel):
     @field_validator("interaction_type")
     @classmethod
     def validate_type(cls, v: str) -> str:
+        """Validate type."""
         allowed = {"chat", "email", "whatsapp", "call", "meeting", "note"}
         if v not in allowed:
             raise ValueError(f"Type must be one of: {allowed}")
@@ -113,6 +116,7 @@ class InteractionValidator(BaseModel):
     @field_validator("sentiment")
     @classmethod
     def validate_sentiment(cls, v: str | None) -> str | None:
+        """Validate sentiment."""
         if not v:
             return None
         allowed = {"positive", "neutral", "negative", "urgent"}

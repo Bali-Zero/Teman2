@@ -207,30 +207,35 @@ class OracleService:
 
     @property
     def followup_service(self) -> FollowupService:
+        """Followup service."""
         if not self._followup_service:
             self._followup_service = FollowupService()
         return self._followup_service
 
     @property
     def citation_service(self) -> CitationService:
+        """Citation service."""
         if not self._citation_service:
             self._citation_service = CitationService()
         return self._citation_service
 
     @property
     def clarification_service(self) -> ClarificationService:
+        """Clarification service."""
         if not self._clarification_service:
             self._clarification_service = ClarificationService()
         return self._clarification_service
 
     @property
     def personality_service(self) -> PersonalityService:
+        """Personality service."""
         if not self._personality_service:
             self._personality_service = PersonalityService()
         return self._personality_service
 
     @property
     def golden_answer_service(self) -> GoldenAnswerService | None:
+        """Golden answer service."""
         if not self._golden_answer_service:
             try:
                 database_url = config.database_url if hasattr(config, "database_url") else None
@@ -242,6 +247,7 @@ class OracleService:
 
     @property
     def memory_service(self) -> MemoryServicePostgres | None:
+        """Memory service."""
         if not self._memory_service:
             try:
                 database_url = config.database_url if hasattr(config, "database_url") else None
@@ -253,6 +259,7 @@ class OracleService:
 
     @property
     def fact_extractor(self) -> MemoryFactExtractor:
+        """Fact extractor."""
         if not self._fact_extractor:
             self._fact_extractor = MemoryFactExtractor()
         return self._fact_extractor

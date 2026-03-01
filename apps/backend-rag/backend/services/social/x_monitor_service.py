@@ -78,6 +78,7 @@ class XMonitorService:
 
     @property
     def bearer_token(self) -> str | None:
+        """Bearer token."""
         return settings.x_bearer_token
 
     def _build_query(self) -> str:

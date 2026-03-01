@@ -144,6 +144,7 @@ class QualityStats:
     relations_inferred: int = 0
 
     def to_dict(self) -> dict[str, Any]:
+        """To dict."""
         return {
             "entities_input": self.entities_input,
             "entities_filtered": self.entities_filtered,

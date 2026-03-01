@@ -174,7 +174,7 @@ class KnowledgeGraphBuilder:
             f"✅ KnowledgeGraphBuilder initialized (Persistence: {'Enabled' if db_pool else 'Disabled'}, LLM: {'Enabled' if llm_gateway else 'Disabled'})"
         )
 
-    async def add_entity(self, entity: Entity):
+    async def add_entity(self, entity: Entity) -> None:
         """Add entity to graph (Persistent)"""
         # 1. Update In-Memory
         self.entities[entity.entity_id] = entity
@@ -212,7 +212,7 @@ class KnowledgeGraphBuilder:
             except Exception as e:
                 logger.error(f"Failed to persist entity {entity.entity_id}: {e}")
 
-    async def add_relationship(self, relationship: Relationship):
+    async def add_relationship(self, relationship: Relationship) -> None:
         """Add relationship to graph (Persistent)"""
         # 1. Update In-Memory
         self.relationships[relationship.relationship_id] = relationship
@@ -392,7 +392,7 @@ class KnowledgeGraphBuilder:
 
         return total_added
 
-    async def _refresh_from_db(self):
+    async def _refresh_from_db(self) -> None:
         """Fetch all nodes and edges from DB to memory for export"""
         if not self.db_pool:
             return
@@ -651,6 +651,7 @@ class KnowledgeGraphBuilder:
         return "\n".join(lines)
 
     def get_graph_stats(self) -> dict:
+        """Get graph stats."""
         return self.graph_stats
 
     async def query_graph(self, entity_name: str, max_depth: int = 1) -> dict:

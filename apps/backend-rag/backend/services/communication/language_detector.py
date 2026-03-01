@@ -104,6 +104,7 @@ def detect_language(text: str) -> Literal["it", "en", "id", "uk", "ru"]:
     ]
 
     def count_matches(markers: Any, text: Any, use_word_boundary: Any = True) -> Any:
+        """Count items."""
         count = 0
         for marker in markers:
             if use_word_boundary:

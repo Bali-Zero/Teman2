@@ -38,6 +38,7 @@ class CollectiveMemory:
     metadata: dict
 
     def to_dict(self) -> dict:
+        """To dict."""
         return {
             "id": self.id,
             "content": self.content,
@@ -75,7 +76,7 @@ class CollectiveMemoryService:
         self.pool = pool
         logger.info("CollectiveMemoryService initialized (PostgreSQL only)")
 
-    async def set_pool(self, pool: asyncpg.Pool):
+    async def set_pool(self, pool: asyncpg.Pool) -> None:
         """Set connection pool (for lazy initialization)"""
         self.pool = pool
 

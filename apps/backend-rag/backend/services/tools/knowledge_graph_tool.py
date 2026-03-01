@@ -17,10 +17,12 @@ class KnowledgeGraphTool(BaseTool):
 
     @property
     def name(self) -> str:
+        """Name."""
         return "knowledge_graph_search"
 
     @property
     def description(self) -> str:
+        """Description."""
         return (
             "Query the knowledge graph to find structured relationships and dependencies.\n\n"
             "**USE THIS TOOL** for questions about:\n"
@@ -34,6 +36,7 @@ class KnowledgeGraphTool(BaseTool):
 
     @property
     def parameters_schema(self) -> dict:
+        """Parameters schema."""
         return {
             "type": "object",
             "properties": {

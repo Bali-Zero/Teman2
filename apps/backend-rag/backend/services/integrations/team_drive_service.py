@@ -150,11 +150,12 @@ def drive_operation(operation_name: str) -> Any:
 
     Usage:
         @drive_operation("list_files")
-        async def list_files(self, ...):
+        async def list_files(self, ...) -> None:
             ...
     """
 
     def decorator(func: Callable) -> Any:
+        """Decorator."""
         @wraps(func)
         async def wrapper(self, *args, **kwargs):
             start_time = time.time()
