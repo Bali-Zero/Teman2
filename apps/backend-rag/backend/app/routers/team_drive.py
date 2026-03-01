@@ -376,6 +376,10 @@ async def list_files(
         )
 
     except Exception as e:
+        error_msg = str(e).lower()
+        if "not found" in error_msg or "404" in error_msg:
+            logger.warning(f"[TEAM_DRIVE] Resource not found: {e}")
+            raise HTTPException(status_code=404, detail="Folder not found") from e
         logger.error(f"[TEAM_DRIVE] Error listing files: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
