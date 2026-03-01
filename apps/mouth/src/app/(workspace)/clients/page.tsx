@@ -415,15 +415,17 @@ function ClientsListContent() {
           <div className="bg-[var(--background-secondary)] p-1 rounded-lg border border-[var(--border)] flex">
             <button
               onClick={() => setViewMode("list")}
-              className={`p-2 rounded-md transition-all ${viewMode === "list" ? "bg-[var(--background-elevated)] shadow-sm text-[var(--foreground)]" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
+              className={`p-2 rounded-md transition-all ${viewMode === "list" ? "bg-[var(--background-elevated)] shadow-sm text-[var(--foreground)]" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"}}`}
               title="List View"
+              aria-label="Switch to list view"
             >
               <List className="w-4 h-4" />
             </button>
             <button
               onClick={() => setViewMode("kanban")}
-              className={`p-2 rounded-md transition-all ${viewMode === "kanban" ? "bg-[var(--background-elevated)] shadow-sm text-[var(--foreground)]" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
+              className={`p-2 rounded-md transition-all ${viewMode === "kanban" ? "bg-[var(--background-elevated)] shadow-sm text-[var(--foreground)]" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"}}`}
               title="Kanban Board"
+              aria-label="Switch to kanban board view"
             >
               <LayoutGrid className="w-4 h-4" />
             </button>
@@ -461,6 +463,7 @@ function ClientsListContent() {
               <button
                 onClick={() => setSearchQuery("")}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                aria-label="Clear search"
               >
                 <X className="w-4 h-4" />
               </button>

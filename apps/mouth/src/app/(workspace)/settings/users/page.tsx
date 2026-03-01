@@ -245,7 +245,7 @@ export default function UserManagementPage() {
                     {user.last_action}
                   </td>
                   <td className="p-4 text-right">
-                    <Button variant="ghost" size="sm">
+                    <Button variant="ghost" size="sm" aria-label="User actions">
                       <MoreVertical className="w-4 h-4" />
                     </Button>
                   </td>

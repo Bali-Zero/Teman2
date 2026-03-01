@@ -631,7 +631,12 @@ export default function ClientDetailPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => router.back()}
+          aria-label="Go back"
+        >
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div className="flex items-center gap-4 flex-1">
@@ -954,6 +959,7 @@ function OverviewTab({
                   size="sm"
                   className="h-7 w-7 p-0"
                   onClick={onEditClick}
+                  aria-label="Edit client info"
                 >
                   <Edit2 className="w-3.5 h-3.5" />
                 </Button>
@@ -2504,7 +2510,12 @@ function Modal({
           <h2 className="text-xl font-semibold text-[var(--foreground)]">
             {title}
           </h2>
-          <Button variant="ghost" size="icon" onClick={onClose}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            aria-label="Close modal"
+          >
             <X className="w-5 h-5" />
           </Button>
         </div>
@@ -3858,7 +3869,7 @@ function TaxTab({
     title: string;
     subtitle: string;
     deadline: Date;
-    icon: any;
+    icon: React.ComponentType<{ className?: string; size?: number }>;
     color: string;
     section: TaxSection;
     onClick: () => void;
@@ -4506,7 +4517,12 @@ function AddCompanyModal({
               Create a new PT PMA and link it to this client
             </p>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            aria-label="Close modal"
+          >
             <X className="w-5 h-5" />
           </Button>
         </div>

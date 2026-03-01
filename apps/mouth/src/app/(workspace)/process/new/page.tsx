@@ -282,7 +282,11 @@ export default function NewPracticePage() {
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link href="/process">
-          <Button variant="ghost" size="icon">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Go back to process list"
+          >
             <ArrowLeft className="w-5 h-5" />
           </Button>
         </Link>

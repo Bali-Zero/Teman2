@@ -20,6 +20,7 @@ import type {
   FileItem,
   ConnectionStatus,
   FileListResponse,
+  OperationResponse,
 } from "@/lib/api/drive/drive.types";
 import { useDebounce } from "@/lib/hooks/optimized/useDebounce";
 
@@ -307,7 +308,10 @@ export function useDriveUpload() {
       files: File[],
       parentId: string | null,
       options?: {
-        onFileComplete?: (file: File, result: any) => void;
+        onFileComplete?: (
+          file: File,
+          result: { id: string; name: string },
+        ) => void;
         onFileError?: (file: File, error: Error) => void;
         parallel?: number;
       },
@@ -316,7 +320,7 @@ export function useDriveUpload() {
       const results: Array<{
         file: File;
         success: boolean;
-        result?: any;
+        result?: OperationResponse | UploadState;
         error?: Error;
       }> = [];
 
@@ -326,7 +330,13 @@ export function useDriveUpload() {
           batch.map(async (file) => {
             try {
               const result = await uploadFile(file, parentId || "root");
-              options?.onFileComplete?.(file, result);
+              if ("file" in result && result.file) {
+                const fileData = {
+                  id: result.file.id,
+                  name: result.file.name,
+                };
+                options?.onFileComplete?.(file, fileData);
+              }
               return { file, success: true, result };
             } catch (error) {
               const err =

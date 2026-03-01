@@ -425,7 +425,7 @@ export function SearchModal({
                         typeof article.coverImage === "string" && (
                           <img
                             src={article.coverImage}
-                            alt=""
+                            alt={article.title || "Article cover image"}
                             className="w-full h-full object-cover"
                           />
                         )}
