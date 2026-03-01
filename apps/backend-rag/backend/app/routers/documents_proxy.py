@@ -7,6 +7,7 @@ Used for passport and document previews in CRM.
 
 import logging
 import re
+from typing import Any
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
