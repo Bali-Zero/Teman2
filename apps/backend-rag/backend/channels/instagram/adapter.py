@@ -31,14 +31,20 @@ class InstagramChannelAdapter(BaseChannel):
             entry = raw_event.get("entry", [{}])[0]
             messaging = entry.get("messaging", [{}])[0]
             sender_id = messaging.get("sender", {}).get("id", "unknown")
-            message_text = messaging.get("message", {}).get("text", "")
+            message_data = messaging.get("message", {})
+            message_text = message_data.get("text", "")
+            message_mid = message_data.get("mid", "")
 
             return ChannelMessage(
                 user_id=f"instagram_{sender_id}",
                 session_id=f"ig_session_{sender_id}",
                 text=message_text,
                 channel="instagram",
-                metadata={"sender_id": sender_id},
+                metadata={
+                    "sender_id": sender_id,
+                    "thread_id": sender_id,
+                    "mid": message_mid,
+                },
             )
         except Exception as e:
             logger.error(f"Failed to parse Instagram webhook: {e}")
@@ -59,6 +65,17 @@ class InstagramChannelAdapter(BaseChannel):
         try:
             await self.client.post(url, json=payload, headers=headers)
             logger.info(f"✅ Sent Instagram message to {channel_id}")
+
+            # Mark message as seen to prevent read-receipt webhook loops
+            seen_url = "https://graph.facebook.com/v18.0/me/messages"
+            seen_payload = {
+                "recipient": {"id": channel_id},
+                "sender_action": "mark_seen",
+            }
+            try:
+                await self.client.post(seen_url, json=seen_payload, headers=headers)
+            except Exception:
+                pass  # Non-critical, best effort
         except Exception as e:
             logger.error(f"Instagram send failed: {e}")
 

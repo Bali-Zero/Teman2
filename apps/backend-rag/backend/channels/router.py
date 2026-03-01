@@ -12,6 +12,7 @@ import logging
 from typing import Any
 
 from backend.channels.base import BaseChannel
+from backend.channels.optimizations import message_deduplicator
 
 logger = logging.getLogger(__name__)
 
@@ -105,13 +106,23 @@ class ChannelRouter:
                 f"(user={message.user_id}, text_length={len(message.text)})"
             )
 
-            # 3. Extract channel-specific ID (chat_id, phone_number, etc.)
+            # 3. Deduplication check (prevents webhook retries, read receipts, etc.)
+            if message_deduplicator and await message_deduplicator.is_duplicate(
+                channel, message.user_id, message.text
+            ):
+                logger.warning(
+                    f"🔁 Duplicate message dropped: channel={channel}, "
+                    f"user={message.user_id}"
+                )
+                return
+
+            # 4. Extract channel-specific ID (chat_id, phone_number, etc.)
             channel_id = self._extract_channel_id(message.metadata)
 
-            # 4. Send immediate status update (typing indicator)
+            # 5. Send immediate status update (typing indicator)
             await adapter.send_status_update(channel_id, "processing")
 
-            # 5. Build channel config
+            # 6. Build channel config
             channel_config = {
                 "timeout": adapter.timeout,
                 "update_interval": adapter.update_interval,
@@ -120,12 +131,12 @@ class ChannelRouter:
                 "max_message_length": adapter.max_message_length,
             }
 
-            # 6. Process through conversation engine
+            # 7. Process through conversation engine
             response_stream = self.conversation_engine.process_message(
                 message=message, channel_config=channel_config
             )
 
-            # 7. Stream response via adapter
+            # 8. Stream response via adapter
             await adapter.stream_response(channel_id, response_stream)
 
             logger.info(f"✅ Successfully routed and processed message from {channel}")
