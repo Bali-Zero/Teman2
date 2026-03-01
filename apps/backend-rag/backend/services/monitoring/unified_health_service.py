@@ -197,14 +197,16 @@ class UnifiedHealthService:
                 timestamp=time.time(),
             )
 
-    async def check_api(self, url: str = "http://localhost:8000/health") -> HealthCheckResult:
+    async def check_api(self, url: str | None = None) -> HealthCheckResult:
         """Check API health endpoint"""
         start = time.time()
         try:
             if not self.http_client:
                 await self.initialize()
 
-            response = await self.http_client.get(url, timeout=5.0)
+            # Use settings.backend_url if no URL provided
+            check_url = url or f"{settings.backend_url}/health"
+            response = await self.http_client.get(check_url, timeout=5.0)
             latency = (time.time() - start) * 1000
 
             if response.status_code == 200:
