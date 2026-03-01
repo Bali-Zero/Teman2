@@ -143,7 +143,7 @@ class TestCheckFileExists:
 
         with patch("httpx.AsyncClient") as mock_client:
             mock_client_instance = AsyncMock()
-            mock_client_instance.get.return_value = mock_response
+            mock_client_instance.get = AsyncMock(return_value=mock_response)
             mock_client.return_value.__aenter__.return_value = mock_client_instance
 
             result = await publisher.check_file_exists("path/to/file.mdx")
@@ -157,7 +157,7 @@ class TestCheckFileExists:
 
         with patch("httpx.AsyncClient") as mock_client:
             mock_client_instance = AsyncMock()
-            mock_client_instance.get.return_value = mock_response
+            mock_client_instance.get = AsyncMock(return_value=mock_response)
             mock_client.return_value.__aenter__.return_value = mock_client_instance
 
             result = await publisher.check_file_exists("path/to/file.mdx")
@@ -184,7 +184,7 @@ class TestCheckFileExists:
 
         with patch("httpx.AsyncClient") as mock_client:
             mock_client_instance = AsyncMock()
-            mock_client_instance.get.return_value = mock_response
+            mock_client_instance.get = AsyncMock(return_value=mock_response)
             mock_client.return_value.__aenter__.return_value = mock_client_instance
 
             await publisher.check_file_exists("path/to/file.mdx", branch="develop")
@@ -211,7 +211,7 @@ class TestGetFileSha:
 
         with patch("httpx.AsyncClient") as mock_client:
             mock_client_instance = AsyncMock()
-            mock_client_instance.get.return_value = mock_response
+            mock_client_instance.get = AsyncMock(return_value=mock_response)
             mock_client.return_value.__aenter__.return_value = mock_client_instance
 
             result = await publisher.get_file_sha("path/to/file.mdx")
@@ -225,7 +225,7 @@ class TestGetFileSha:
 
         with patch("httpx.AsyncClient") as mock_client:
             mock_client_instance = AsyncMock()
-            mock_client_instance.get.return_value = mock_response
+            mock_client_instance.get = AsyncMock(return_value=mock_response)
             mock_client.return_value.__aenter__.return_value = mock_client_instance
 
             result = await publisher.get_file_sha("path/to/file.mdx")
@@ -269,8 +269,8 @@ class TestUploadFile:
 
         with patch("httpx.AsyncClient") as mock_client:
             mock_client_instance = AsyncMock()
-            mock_client_instance.get.return_value = mock_get_response
-            mock_client_instance.put.return_value = mock_put_response
+            mock_client_instance.get = AsyncMock(return_value=mock_get_response)
+            mock_client_instance.put = AsyncMock(return_value=mock_put_response)
             mock_client.return_value.__aenter__.return_value = mock_client_instance
 
             result = await publisher.upload_file(
@@ -300,8 +300,8 @@ class TestUploadFile:
 
         with patch("httpx.AsyncClient") as mock_client:
             mock_client_instance = AsyncMock()
-            mock_client_instance.get.return_value = mock_get_response
-            mock_client_instance.put.return_value = mock_put_response
+            mock_client_instance.get = AsyncMock(return_value=mock_get_response)
+            mock_client_instance.put = AsyncMock(return_value=mock_put_response)
             mock_client.return_value.__aenter__.return_value = mock_client_instance
 
             result = await publisher.upload_file(
@@ -331,8 +331,8 @@ class TestUploadFile:
 
         with patch("httpx.AsyncClient") as mock_client:
             mock_client_instance = AsyncMock()
-            mock_client_instance.get.return_value = mock_get_response
-            mock_client_instance.put.return_value = mock_put_response
+            mock_client_instance.get = AsyncMock(return_value=mock_get_response)
+            mock_client_instance.put = AsyncMock(return_value=mock_put_response)
             mock_client.return_value.__aenter__.return_value = mock_client_instance
 
             image_bytes = b"\x89PNG\r\n\x1a\n"  # PNG magic bytes
@@ -357,8 +357,8 @@ class TestUploadFile:
 
         with patch("httpx.AsyncClient") as mock_client:
             mock_client_instance = AsyncMock()
-            mock_client_instance.get.return_value = mock_get_response
-            mock_client_instance.put.return_value = mock_put_response
+            mock_client_instance.get = AsyncMock(return_value=mock_get_response)
+            mock_client_instance.put = AsyncMock(return_value=mock_put_response)
             mock_client.return_value.__aenter__.return_value = mock_client_instance
 
             with pytest.raises(GitHubPublisherError, match="Failed to upload file"):
@@ -438,17 +438,17 @@ class TestCreateCommitWithFiles:
             mock_client_instance = AsyncMock()
 
             # Configure responses for each API call
-            mock_client_instance.get.side_effect = [
+            mock_client_instance.get = AsyncMock(side_effect=[
                 mock_git_api_responses["ref"],
                 mock_git_api_responses["commit"],
-            ]
-            mock_client_instance.post.side_effect = [
+            ])
+            mock_client_instance.post = AsyncMock(side_effect=[
                 mock_git_api_responses["blob"],
                 mock_git_api_responses["blob"],  # Called twice for 2 files
                 mock_git_api_responses["tree"],
                 mock_git_api_responses["create_commit"],
-            ]
-            mock_client_instance.patch.return_value = mock_git_api_responses["update_ref"]
+            ])
+            mock_client_instance.patch = AsyncMock(return_value=mock_git_api_responses["update_ref"])
 
             mock_client.return_value.__aenter__.return_value = mock_client_instance
 
@@ -477,7 +477,7 @@ class TestCreateCommitWithFiles:
 
         with patch("httpx.AsyncClient") as mock_client:
             mock_client_instance = AsyncMock()
-            mock_client_instance.get.return_value = mock_response
+            mock_client_instance.get = AsyncMock(return_value=mock_response)
             mock_client.return_value.__aenter__.return_value = mock_client_instance
 
             with pytest.raises(GitHubPublisherError, match="Failed to get branch ref"):

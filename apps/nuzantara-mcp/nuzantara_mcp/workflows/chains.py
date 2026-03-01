@@ -872,7 +872,6 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
         """
         log: list[dict] = []
         result_data: dict = {}
-        now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
         # Step 1: Create journey
         journey = await _call_safe(
