@@ -84,6 +84,7 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
                         "/webhook/twitter",
                     )
                     or request.url.path.startswith("/api/drive/")      # Google Drive API (lenta)
+                    or request.url.path.startswith("/api/sheets/")     # Google Sheets API (lenta)
                     or request.url.path.startswith("/api/intel/")      # Intel scraper ops
                     or request.url.path.startswith("/api/canva/")      # Canva API
                 )
