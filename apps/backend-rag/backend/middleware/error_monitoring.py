@@ -16,7 +16,7 @@ from starlette.responses import JSONResponse
 logger = logging.getLogger(__name__)
 
 # Cooldown period for latency alerts (seconds) — one alert per path per period
-LATENCY_ALERT_COOLDOWN_SECONDS = 3600  # 1 hour (era 5 min — troppo rumoroso)
+LATENCY_ALERT_COOLDOWN_SECONDS = 300  # 5 min per path (digest hourly gestisce throttling)
 
 
 class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
@@ -74,19 +74,13 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
                 from backend.app.core.config import settings
 
                 # Webhook paths do AI processing (15-30s normal), skip latency alerts
-                # Paths dove latenza alta è normale/attesa → no alert
-                skip_latency = (
-                    request.url.path in (
-                        "/health",
-                        "/webhook/instagram",
-                        "/webhook/whatsapp",
-                        "/webhook/telegram",
-                        "/webhook/twitter",
-                    )
-                    or request.url.path.startswith("/api/drive/")      # Google Drive API (lenta)
-                    or request.url.path.startswith("/api/sheets/")     # Google Sheets API (lenta)
-                    or request.url.path.startswith("/api/intel/")      # Intel scraper ops
-                    or request.url.path.startswith("/api/canva/")      # Canva API
+                # Webhook paths do AI processing (15-30s normal), skip latency alerts
+                skip_latency = request.url.path in (
+                    "/health",
+                    "/webhook/instagram",
+                    "/webhook/whatsapp",
+                    "/webhook/telegram",
+                    "/webhook/twitter",
                 )
                 if (
                     duration_ms > settings.latency_alert_threshold_ms

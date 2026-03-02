@@ -6,7 +6,9 @@ Telegram is the PRIMARY alert channel (already configured for the project).
 Slack/Discord are secondary channels, enabled via webhook URLs.
 """
 
+import asyncio
 import logging
+from collections import defaultdict
 from datetime import datetime
 from enum import Enum
 from typing import Any
@@ -57,6 +59,10 @@ class AlertService:
 
         # Logging (always on)
         self.enable_logging = True
+
+        # Hourly digest buffer: list of latency event dicts
+        self._latency_buffer: list[dict[str, Any]] = []
+        self._digest_task: asyncio.Task | None = None
 
         logger.info("✅ AlertService initialized")
         logger.info(
@@ -331,22 +337,85 @@ class AlertService:
         request_id: str | None = None,
         user_agent: str | None = None,
     ) -> dict[str, bool]:
-        """Send alert for high latency. Returns send_alert results."""
-        title = f"High Latency: {duration_ms:.0f}ms"
-        message = f"{method} {path} took {duration_ms:.0f}ms (threshold: {threshold_ms:.0f}ms)"
+        """Buffer latency alert — verrà inviato nell'hourly digest. Returns stub result."""
+        self._latency_buffer.append({
+            "ts":           datetime.utcnow().strftime("%H:%M"),
+            "duration_ms":  round(duration_ms),
+            "method":       method,
+            "path":         path,
+            "threshold_ms": round(threshold_ms),
+            "request_id":   request_id or "",
+            "user_agent":   (user_agent or "")[:60],
+        })
+        logger.warning(
+            f"[WARNING] High Latency: {duration_ms:.0f}ms: "
+            f"{method} {path} took {duration_ms:.0f}ms (buffered for hourly digest)"
+        )
+        return {"telegram": False, "slack": False, "discord": False, "logging": True}
 
-        metadata = {
-            "duration_ms": duration_ms,
-            "threshold_ms": threshold_ms,
-            "method": method,
-            "path": path,
-            "request_id": request_id or "N/A",
-            "user_agent": user_agent[:100] if user_agent else "N/A",
-        }
+    async def send_hourly_digest(self) -> None:
+        """Invia un messaggio Telegram con tutti gli alert latency dell'ultima ora."""
+        if not self._latency_buffer:
+            logger.info("[digest] Nessun alert latency nell'ultima ora — digest saltato")
+            return
 
-        level = AlertLevel.WARNING
+        events = self._latency_buffer[:]
+        self._latency_buffer.clear()
 
-        return await self.send_alert(title=title, message=message, level=level, metadata=metadata)
+        # Raggruppa per path
+        by_path: dict[str, list[dict]] = defaultdict(list)
+        for e in events:
+            by_path[e["path"]].append(e)
+
+        lines = [
+            "⚠️ <b>Hourly Latency Digest</b>",
+            f"<i>{datetime.utcnow().strftime('%Y-%m-%d %H:00 UTC')} — {len(events)} eventi</i>",
+            "",
+        ]
+
+        for path, evts in sorted(by_path.items(), key=lambda x: -max(e["duration_ms"] for e in x[1])):
+            worst   = max(e["duration_ms"] for e in evts)
+            avg     = round(sum(e["duration_ms"] for e in evts) / len(evts))
+            times   = ", ".join(e["ts"] for e in evts[:5])
+            lines.append(
+                f"• <code>{evts[0]['method']} {path}</code>\n"
+                f"  {len(evts)}x — max <b>{worst}ms</b> avg {avg}ms — [{times}]"
+            )
+
+        lines.append(f"\n<i>Zantara RAG — {datetime.utcnow().strftime('%H:%M:%S UTC')}</i>")
+        text = "\n".join(lines)
+
+        if self.enable_telegram:
+            url = f"{TELEGRAM_API_BASE}{self.telegram_bot_token}/sendMessage"
+            payload = {
+                "chat_id":                  self.telegram_admin_chat_id,
+                "text":                     text,
+                "parse_mode":               "HTML",
+                "disable_web_page_preview": True,
+            }
+            async with httpx.AsyncClient() as client:
+                await client.post(url, json=payload, timeout=10.0)
+            logger.info(f"[digest] Hourly digest inviato: {len(events)} eventi, {len(by_path)} path")
+
+    async def _digest_loop(self) -> None:
+        """Background loop: flush digest ogni ora esatta (minuto 0)."""
+        while True:
+            now     = datetime.utcnow()
+            # Aspetta fino al prossimo minuto :00
+            secs_to_next_hour = (60 - now.minute) * 60 - now.second
+            if secs_to_next_hour <= 0:
+                secs_to_next_hour = 3600
+            await asyncio.sleep(secs_to_next_hour)
+            try:
+                await self.send_hourly_digest()
+            except Exception as e:
+                logger.error(f"[digest] Errore nel digest loop: {e}")
+
+    def start_digest_loop(self) -> None:
+        """Avvia il background task digest (chiamare all'avvio dell'app)."""
+        if self._digest_task is None or self._digest_task.done():
+            self._digest_task = asyncio.create_task(self._digest_loop())
+            logger.info("[digest] Hourly digest loop avviato")
 
     async def send_resource_alert(
         self,
