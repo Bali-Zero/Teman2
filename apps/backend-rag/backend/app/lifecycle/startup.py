@@ -40,6 +40,7 @@ def register_startup_handlers(app: FastAPI) -> None:
         # Initialize AlertService at startup (avoid import-time instantiation)
         try:
             app.state.alert_service = AlertService()
+            app.state.alert_service.start_digest_loop()  # Hourly latency digest
         except Exception as e:
             logger.error(f"Failed to initialize AlertService: {e}")
 
