@@ -1,6 +1,8 @@
 """
 Kaskus Forum Scraper
-Scrapes threads from Kaskus.co.id forums using httpx + BeautifulSoup.
+Scrapes threads from Kaskus.co.id forums using Playwright + BeautifulSoup.
+Kaskus is JS-rendered, so headless Chromium is required for listing pages.
+Thread content is extracted from og:description meta tags (server-rendered).
 No authentication required for public forums.
 """
 
@@ -12,8 +14,22 @@ from urllib.parse import urljoin
 import httpx
 from bs4 import BeautifulSoup
 
-USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
 POLITE_DELAY = 2  # seconds between requests
+
+
+def _render_page(url: str, wait_ms: int = 5000) -> str:
+    """Render a JS page with Playwright and return HTML."""
+    from playwright.sync_api import sync_playwright
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        try:
+            page = browser.new_page()
+            page.goto(url, wait_until='domcontentloaded', timeout=30000)
+            page.wait_for_timeout(wait_ms)
+            return page.content()
+        finally:
+            browser.close()
 
 
 def fetch_kaskus_threads(
@@ -21,18 +37,17 @@ def fetch_kaskus_threads(
     limit: int = 10,
 ) -> List[Dict]:
     """Fetch thread listings from a Kaskus forum page."""
-    headers = {'User-Agent': USER_AGENT}
     threads = []
 
+    # Step 1: Render listing page with Playwright (JS-rendered)
     try:
-        resp = httpx.get(url, headers=headers, timeout=15, follow_redirects=True)
-        resp.raise_for_status()
-    except httpx.HTTPError as e:
-        raise ValueError(f'Failed to fetch Kaskus page: {e}')
+        html = _render_page(url)
+    except Exception as e:
+        raise ValueError(f'Failed to render Kaskus page: {e}')
 
-    soup = BeautifulSoup(resp.text, 'lxml')
+    soup = BeautifulSoup(html, 'lxml')
 
-    # Kaskus thread links are typically in <a> tags with thread URLs
+    # Kaskus thread links contain /thread/ in the href
     seen_urls = set()
     candidates = []
 
@@ -40,13 +55,12 @@ def fetch_kaskus_threads(
         href = a_tag['href']
         text = a_tag.get_text(strip=True)
 
-        # Kaskus thread URLs contain /thread/
         if '/thread/' not in href:
             continue
         if len(text) < 15:
             continue
 
-        full_url = urljoin('https://www.kaskus.co.id', href)
+        full_url = urljoin('https://www.kaskus.co.id', href.split('?')[0])
         if full_url in seen_urls:
             continue
         seen_urls.add(full_url)
@@ -56,31 +70,26 @@ def fetch_kaskus_threads(
             'url': full_url,
         })
 
-        if len(candidates) >= limit * 2:
+        if len(candidates) >= limit:
             break
 
-    # Fetch each thread page for content (first post only)
-    for candidate in candidates[:limit]:
+    # Step 2: Fetch each thread page for content via httpx
+    # og:description is server-rendered, no Playwright needed
+    headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'}
+
+    for candidate in candidates:
         try:
             time.sleep(POLITE_DELAY)
-            thread_resp = httpx.get(
-                candidate['url'], headers=headers, timeout=15, follow_redirects=True
-            )
-            thread_resp.raise_for_status()
+            resp = httpx.get(candidate['url'], headers=headers, timeout=15, follow_redirects=True)
+            thread_soup = BeautifulSoup(resp.text, 'lxml')
 
-            thread_soup = BeautifulSoup(thread_resp.text, 'lxml')
-
-            # Extract first post content
+            # og:description contains the first post content (server-rendered)
             post_content = ''
-            # Try common Kaskus post selectors
-            for selector in ['div.post-content', 'div.entry', 'article', 'div.post_body']:
-                content_div = thread_soup.select_one(selector)
-                if content_div:
-                    post_content = content_div.get_text(strip=True)[:2000]
-                    break
+            og = thread_soup.find('meta', property='og:description')
+            if og:
+                post_content = og.get('content', '')
 
             if not post_content:
-                # Fallback: get meta description
                 meta = thread_soup.find('meta', attrs={'name': 'description'})
                 if meta:
                     post_content = meta.get('content', '')
@@ -88,12 +97,11 @@ def fetch_kaskus_threads(
             threads.append({
                 'title': candidate['title'],
                 'url': candidate['url'],
-                'text': post_content,
+                'text': post_content[:2000],
                 'date': datetime.now().isoformat(),
             })
 
         except Exception:
-            # Skip individual thread errors
             continue
 
     return threads
