@@ -13,6 +13,10 @@ SQLAlchemy[asyncio]==2.0.25
 redis==5.0.1
 celery==5.3.6
 
+# Social media scrapers (Phase 1)
+telethon>=1.36.0
+praw>=7.8.0
+
 # Web Scraping
 playwright==1.41.0
 beautifulsoup4==4.12.3
