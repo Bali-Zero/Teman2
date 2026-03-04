@@ -296,9 +296,13 @@ class UnifiedScraper:
         HIGH = ['kitas', 'visa', 'imigrasi', 'immigration', 'kbli', 'coretax', 'pajak', 'tax',
                 'bpjs', 'permit', 'izin', 'oss', 'investment', 'investor', 'expat', 'wna',
                 'deportasi', 'overstay', 'pt pma', 'perda', 'regulation', 'law', 'hukum',
-                'bali business', 'foreign worker', 'tenaga asing']
+                'bali business', 'foreign worker', 'tenaga asing',
+                'digital nomad visa', 'kitas renewal', 'immigration office', 'overstay fine',
+                'second home visa', 'golden visa', 'e-visa', 'telex visa', 'sponsor visa']
         MED  = ['indonesia', 'bisnis', 'business', 'economy', 'ekonomi', 'rupiah', 'bali',
-                'digital nomad', 'property', 'properti', 'foreign', 'asing', 'pemerintah']
+                'digital nomad', 'property', 'properti', 'foreign', 'asing', 'pemerintah',
+                'nomad', 'remote work', 'coworking', 'canggu', 'ubud', 'seminyak',
+                'denpasar', 'sanur', 'nusa dua']
         NEG  = ['sport', 'olahraga', 'sepak bola', 'entertainment', 'celebrity', 'musik',
                 'gossip', 'artis', 'film', 'resep', 'makanan']
 
