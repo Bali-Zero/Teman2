@@ -1,12 +1,14 @@
 """
 Reddit Scraper
-Uses PRAW (Python Reddit API Wrapper) to fetch posts from subreddits.
-Requires: REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET env vars.
+Primary: uses Reddit JSON API (no auth, rate-limited).
+Fallback: uses PRAW if REDDIT_CLIENT_ID/REDDIT_CLIENT_SECRET are set (higher limits).
 """
 
 import os
 from datetime import datetime, timezone
 from typing import List, Dict
+
+import httpx
 
 
 def fetch_subreddit(
@@ -16,14 +18,83 @@ def fetch_subreddit(
     min_score: int = 5,
     min_text_length: int = 50,
 ) -> List[Dict]:
-    """Fetch posts from a subreddit using PRAW (read-only mode)."""
-    import praw
+    """Fetch posts from a subreddit.
 
+    Uses PRAW if credentials are set, otherwise falls back to JSON API.
+    """
     client_id = os.environ.get('REDDIT_CLIENT_ID', '')
     client_secret = os.environ.get('REDDIT_CLIENT_SECRET', '')
 
-    if not client_id or not client_secret:
-        raise ValueError('REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET env vars required')
+    if client_id and client_secret:
+        return _fetch_via_praw(subreddit_name, limit, sort, min_score, min_text_length,
+                               client_id, client_secret)
+
+    return _fetch_via_json(subreddit_name, limit, sort, min_score, min_text_length)
+
+
+def _fetch_via_json(
+    subreddit_name: str,
+    limit: int,
+    sort: str,
+    min_score: int,
+    min_text_length: int,
+) -> List[Dict]:
+    """Fetch via Reddit JSON API — no auth, works without API keys."""
+    url = f'https://www.reddit.com/r/{subreddit_name}/{sort}.json'
+    params = {'limit': str(limit * 3), 'raw_json': '1'}
+    headers = {
+        'User-Agent': 'BaliZeroIntelScraper/1.0 (by /u/balizero)',
+        'Accept': 'application/json',
+    }
+
+    resp = httpx.get(url, params=params, headers=headers, timeout=15, follow_redirects=True)
+    resp.raise_for_status()
+
+    data = resp.json()
+    children = data.get('data', {}).get('children', [])
+
+    posts = []
+    for child in children:
+        post = child.get('data', {})
+
+        score = post.get('score', 0)
+        if score < min_score:
+            continue
+
+        text = post.get('selftext', '')
+        if len(text) < min_text_length and not post.get('url'):
+            continue
+
+        created = post.get('created_utc', 0)
+
+        posts.append({
+            'title': post.get('title', ''),
+            'text': text[:2000],
+            'url': f'https://www.reddit.com{post.get("permalink", "")}',
+            'score': score,
+            'num_comments': post.get('num_comments', 0),
+            'created_utc': datetime.fromtimestamp(created, tz=timezone.utc).isoformat() if created else '',
+            'author': post.get('author', '[deleted]'),
+            'subreddit': subreddit_name,
+        })
+
+        if len(posts) >= limit:
+            break
+
+    return posts
+
+
+def _fetch_via_praw(
+    subreddit_name: str,
+    limit: int,
+    sort: str,
+    min_score: int,
+    min_text_length: int,
+    client_id: str,
+    client_secret: str,
+) -> List[Dict]:
+    """Fetch via PRAW (authenticated, higher rate limits)."""
+    import praw
 
     reddit = praw.Reddit(
         client_id=client_id,
