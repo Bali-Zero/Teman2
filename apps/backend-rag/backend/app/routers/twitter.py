@@ -65,17 +65,32 @@ async def twitter_webhook(request: Request) -> dict:
     if not dm_events:
         return {"status": "ok"}
 
-    # Skip messages sent by our own account (echoes)
+    # for_user_id identifies our bot account in the webhook payload
+    bot_user_id = raw_payload.get("for_user_id", "")
+
+    # Filter out echo messages (sent by our own bot account)
+    has_inbound = False
     for dm in dm_events:
         msg_create = dm.get("message_create", {})
         sender_id = msg_create.get("sender_id", "")
-        # If sender is our bot account, skip
         target_recipient = msg_create.get("target", {}).get("recipient_id", "")
+        text_len = len(msg_create.get("message_data", {}).get("text", ""))
 
         logger.info(
             f"X DM received: sender={sender_id}, recipient={target_recipient}, "
-            f"text_len={len(msg_create.get('message_data', {}).get('text', ''))}"
+            f"text_len={text_len}, bot_id={bot_user_id}"
         )
+
+        # Skip messages sent by our own bot account
+        if sender_id and sender_id == bot_user_id:
+            logger.info("X DM: skipping echo (sent by bot)")
+            continue
+        if text_len > 0:
+            has_inbound = True
+
+    if not has_inbound:
+        logger.info("X DM: no inbound messages to process")
+        return {"status": "ok"}
 
     try:
         from backend.app.dependencies import get_channel_router
