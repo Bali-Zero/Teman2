@@ -4540,49 +4540,49 @@
       "sources": [
         {
           "name": "CNN Indonesia YouTube",
-          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCt0PZLDIQHV5hH8FxSNmrWg",
+          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCKII0Ml9S5wneKbHswmUrIQ",
           "type": "youtube_rss",
           "tier": "T2"
         },
         {
           "name": "Kompas TV YouTube",
-          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCnEzUDhXUyjGfxiGCGgFqYA",
+          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCneA4BuveCEgJql1m7lwFag",
           "type": "youtube_rss",
           "tier": "T2"
         },
         {
           "name": "Metro TV YouTube",
-          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCOaBhxBmFu2oBzFnfD7WKWQ",
+          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCzl0OrB3-ehunyotIQvK77A",
           "type": "youtube_rss",
           "tier": "T2"
         },
         {
           "name": "tvOne YouTube",
-          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC4gFo1Bp98A4_bH_bEPl5Vw",
+          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCER4rvDnRBPr_ncYW4UCZjg",
           "type": "youtube_rss",
           "tier": "T2"
         },
         {
           "name": "ANTARA News YouTube",
-          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCbYSCJMU8_MDZZuGIVYSj5A",
+          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCC-C46T69Ymv3WBeYMAFMRQ",
           "type": "youtube_rss",
           "tier": "T2"
         },
         {
           "name": "Jakarta Post YouTube",
-          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCQl8zP2OlyEXfOo33LM1nxQ",
+          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCsGqYt4nx9fQfukZNqErRlw",
           "type": "youtube_rss",
           "tier": "T2"
         },
         {
           "name": "Tempo YouTube",
-          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCz4Iqk-tP5B7loKhRtOPlOA",
+          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC3QRoNY-nYDTNSv-1dR0P-g",
           "type": "youtube_rss",
           "tier": "T2"
         },
         {
           "name": "Detik YouTube",
-          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCoxHLInMaIY9q1FMXbSMbYA",
+          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCuMAjEaSMj7q7YLf0xW1MjQ",
           "type": "youtube_rss",
           "tier": "T2"
         },
@@ -4684,7 +4684,7 @@
         },
         {
           "name": "Kaskus Hot Threads",
-          "url": "https://www.kaskus.co.id/hot",
+          "url": "https://www.kaskus.co.id/",
           "type": "kaskus",
           "tier": "T3"
         },
