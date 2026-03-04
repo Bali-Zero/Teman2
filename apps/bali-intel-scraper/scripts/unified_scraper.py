@@ -386,16 +386,69 @@ class UnifiedScraper:
 
 
     def _extract_telegram(self, source: Dict) -> List[Dict]:
-        """Stub: implemented in Task 5"""
-        return []
+        """Extract messages from a Telegram channel using Telethon."""
+        try:
+            from social_scrapers.telegram_scraper import fetch_telegram_channel_sync
+            channel = source['url'].split('t.me/')[-1]
+            messages = fetch_telegram_channel_sync(channel, limit=self.limit_per_source)
+            return [{
+                'title': msg['text'][:100],
+                'url': msg['url'],
+                'summary': msg['text'][:500],
+                'text': msg['text'],
+                'published': msg['date'],
+                'source_name': source.get('name', ''),
+                'source_url': source.get('url', ''),
+                'category': source.get('category', 'social_media'),
+                'tier': source.get('tier', 'T2'),
+                'scraped_at': datetime.now().isoformat(),
+            } for msg in messages if msg.get('text')]
+        except Exception as e:
+            self.log(f'  ⚠️ Telegram error: {e}', 'WARN')
+            return []
 
     def _extract_reddit(self, source: Dict) -> List[Dict]:
-        """Stub: implemented in Task 6"""
-        return []
+        """Extract posts from a subreddit using PRAW."""
+        try:
+            from social_scrapers.reddit_scraper import fetch_subreddit
+            subreddit = source['url'].split('/r/')[-1].strip('/')
+            posts = fetch_subreddit(subreddit, limit=self.limit_per_source)
+            return [{
+                'title': post['title'],
+                'url': post['url'],
+                'summary': post['text'][:500] if post.get('text') else post['title'],
+                'text': post.get('text', ''),
+                'published': post['created_utc'],
+                'source_name': source.get('name', ''),
+                'source_url': source.get('url', ''),
+                'category': source.get('category', 'social_media'),
+                'tier': source.get('tier', 'T3'),
+                'scraped_at': datetime.now().isoformat(),
+            } for post in posts]
+        except Exception as e:
+            self.log(f'  \u26a0\ufe0f Reddit error: {e}', 'WARN')
+            return []
 
     def _extract_kaskus(self, source: Dict) -> List[Dict]:
-        """Stub: implemented in Task 7"""
-        return []
+        """Extract threads from Kaskus forums."""
+        try:
+            from social_scrapers.kaskus_scraper import fetch_kaskus_threads
+            threads = fetch_kaskus_threads(source['url'], limit=self.limit_per_source)
+            return [{
+                'title': thread['title'],
+                'url': thread['url'],
+                'summary': thread.get('text', '')[:500],
+                'text': thread.get('text', ''),
+                'published': thread.get('date', ''),
+                'source_name': source.get('name', ''),
+                'source_url': source.get('url', ''),
+                'category': source.get('category', 'social_media'),
+                'tier': source.get('tier', 'T3'),
+                'scraped_at': datetime.now().isoformat(),
+            } for thread in threads if thread.get('title')]
+        except Exception as e:
+            self.log(f'  ⚠️ Kaskus error: {e}', 'WARN')
+            return []
 
 
 def main():
