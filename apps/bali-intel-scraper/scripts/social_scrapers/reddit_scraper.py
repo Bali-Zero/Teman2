@@ -19,7 +19,7 @@ def _build_proxy_url() -> str:
     user = os.environ.get('NORDVPN_SOCKS_USER', '')
     passwd = os.environ.get('NORDVPN_SOCKS_PASS', '')
     if user and passwd:
-        return f'socks5://{user}:{passwd}@amsterdam-nl.socks.nordhold.net:1080'
+        return f'socks5://{user}:{passwd}@nl.socks.nordhold.net:1080'
     return ''
 
 
