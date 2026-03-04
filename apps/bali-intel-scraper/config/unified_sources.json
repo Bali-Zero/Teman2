@@ -4537,8 +4537,171 @@
       "name": "Social Media & Communities",
       "type": "research",
       "priority": "medium",
-      "sources": [],
-      "source_count": 0
+      "sources": [
+        {
+          "name": "CNN Indonesia YouTube",
+          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCt0PZLDIQHV5hH8FxSNmrWg",
+          "type": "youtube_rss",
+          "tier": "T2"
+        },
+        {
+          "name": "Kompas TV YouTube",
+          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCnEzUDhXUyjGfxiGCGgFqYA",
+          "type": "youtube_rss",
+          "tier": "T2"
+        },
+        {
+          "name": "Metro TV YouTube",
+          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCOaBhxBmFu2oBzFnfD7WKWQ",
+          "type": "youtube_rss",
+          "tier": "T2"
+        },
+        {
+          "name": "tvOne YouTube",
+          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC4gFo1Bp98A4_bH_bEPl5Vw",
+          "type": "youtube_rss",
+          "tier": "T2"
+        },
+        {
+          "name": "ANTARA News YouTube",
+          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCbYSCJMU8_MDZZuGIVYSj5A",
+          "type": "youtube_rss",
+          "tier": "T2"
+        },
+        {
+          "name": "Jakarta Post YouTube",
+          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCQl8zP2OlyEXfOo33LM1nxQ",
+          "type": "youtube_rss",
+          "tier": "T2"
+        },
+        {
+          "name": "Tempo YouTube",
+          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCz4Iqk-tP5B7loKhRtOPlOA",
+          "type": "youtube_rss",
+          "tier": "T2"
+        },
+        {
+          "name": "Detik YouTube",
+          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCoxHLInMaIY9q1FMXbSMbYA",
+          "type": "youtube_rss",
+          "tier": "T2"
+        },
+        {
+          "name": "Hukumonline Telegram",
+          "url": "https://t.me/hukumonline",
+          "type": "telegram",
+          "tier": "T1"
+        },
+        {
+          "name": "DDTC News Telegram",
+          "url": "https://t.me/ddtcnews",
+          "type": "telegram",
+          "tier": "T1"
+        },
+        {
+          "name": "CNN Indonesia Telegram",
+          "url": "https://t.me/cnnindonesiacom",
+          "type": "telegram",
+          "tier": "T2"
+        },
+        {
+          "name": "Detik Telegram",
+          "url": "https://t.me/detikcom",
+          "type": "telegram",
+          "tier": "T2"
+        },
+        {
+          "name": "Kompas Telegram",
+          "url": "https://t.me/kompaborneo",
+          "type": "telegram",
+          "tier": "T2"
+        },
+        {
+          "name": "ANTARA Telegram",
+          "url": "https://t.me/antaranews",
+          "type": "telegram",
+          "tier": "T2"
+        },
+        {
+          "name": "Tempo Telegram",
+          "url": "https://t.me/tempomedia",
+          "type": "telegram",
+          "tier": "T2"
+        },
+        {
+          "name": "Jakarta Post Telegram",
+          "url": "https://t.me/thejakartapost",
+          "type": "telegram",
+          "tier": "T2"
+        },
+        {
+          "name": "Kumparan Telegram",
+          "url": "https://t.me/kumparannews",
+          "type": "telegram",
+          "tier": "T2"
+        },
+        {
+          "name": "Bali Post Telegram",
+          "url": "https://t.me/balipost_official",
+          "type": "telegram",
+          "tier": "T2"
+        },
+        {
+          "name": "Bisnis Indonesia Telegram",
+          "url": "https://t.me/biaborneo",
+          "type": "telegram",
+          "tier": "T2"
+        },
+        {
+          "name": "Kontan Telegram",
+          "url": "https://t.me/kontanid",
+          "type": "telegram",
+          "tier": "T2"
+        },
+        {
+          "name": "r/indonesia",
+          "url": "https://www.reddit.com/r/indonesia/",
+          "type": "reddit",
+          "tier": "T3"
+        },
+        {
+          "name": "r/bali",
+          "url": "https://www.reddit.com/r/bali/",
+          "type": "reddit",
+          "tier": "T3"
+        },
+        {
+          "name": "r/digitalnomad",
+          "url": "https://www.reddit.com/r/digitalnomad/",
+          "type": "reddit",
+          "tier": "T3"
+        },
+        {
+          "name": "r/expats",
+          "url": "https://www.reddit.com/r/expats/",
+          "type": "reddit",
+          "tier": "T3"
+        },
+        {
+          "name": "Kaskus Hot Threads",
+          "url": "https://www.kaskus.co.id/hot",
+          "type": "kaskus",
+          "tier": "T3"
+        },
+        {
+          "name": "Kaskus Investasi",
+          "url": "https://www.kaskus.co.id/forum/319/investasi",
+          "type": "kaskus",
+          "tier": "T3"
+        },
+        {
+          "name": "Kaskus Bisnis",
+          "url": "https://www.kaskus.co.id/forum/21/business-board",
+          "type": "kaskus",
+          "tier": "T3"
+        }
+      ],
+      "source_count": 27
     }
   }
 }
