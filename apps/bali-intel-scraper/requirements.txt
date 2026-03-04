@@ -28,7 +28,7 @@ protego==0.3.0
 
 # HTTP Client
 aiohttp>=3.11.18
-httpx==0.26.0
+httpx[socks]==0.26.0
 
 # AI/NLP
 openai==1.10.0

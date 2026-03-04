@@ -2,6 +2,9 @@
 Reddit Scraper
 Primary: uses Reddit JSON API (no auth, rate-limited).
 Fallback: uses PRAW if REDDIT_CLIENT_ID/REDDIT_CLIENT_SECRET are set (higher limits).
+
+Reddit is blocked by some ISPs (e.g. Indonesia). Set NORDVPN_SOCKS_USER and
+NORDVPN_SOCKS_PASS to route through NordVPN SOCKS5 proxy automatically.
 """
 
 import os
@@ -9,6 +12,15 @@ from datetime import datetime, timezone
 from typing import List, Dict
 
 import httpx
+
+
+def _build_proxy_url() -> str:
+    """Build SOCKS5 proxy URL from NordVPN env vars, or return empty string."""
+    user = os.environ.get('NORDVPN_SOCKS_USER', '')
+    passwd = os.environ.get('NORDVPN_SOCKS_PASS', '')
+    if user and passwd:
+        return f'socks5://{user}:{passwd}@amsterdam-nl.socks.nordhold.net:1080'
+    return ''
 
 
 def fetch_subreddit(
@@ -47,7 +59,9 @@ def _fetch_via_json(
         'Accept': 'application/json',
     }
 
-    resp = httpx.get(url, params=params, headers=headers, timeout=15, follow_redirects=True)
+    proxy = _build_proxy_url()
+    with httpx.Client(proxy=proxy, timeout=15, follow_redirects=True) if proxy else httpx.Client(timeout=15, follow_redirects=True) as client:
+        resp = client.get(url, params=params, headers=headers)
     resp.raise_for_status()
 
     data = resp.json()
