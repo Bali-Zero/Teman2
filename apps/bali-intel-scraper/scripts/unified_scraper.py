@@ -29,6 +29,39 @@ except ImportError as e:
     sys.exit(1)
 
 # Paths
+
+# Known RSS feeds for major sources (auto-resolved)
+_KNOWN_RSS = {
+    'thejakartapost.com': 'https://www.thejakartapost.com/rss/feed.xml',
+    'jakartaglobe.id': 'https://jakartaglobe.id/feed',
+    'tempo.co': 'https://en.tempo.co/rss/20',
+    'kompas.com': 'https://rss.kompas.com/aktual/xml/topheadline.xml',
+    'detik.com': 'https://rss.detik.com/index.php/detikcom',
+    'cnnindonesia.com': 'https://www.cnnindonesia.com/rss',
+    'hukumonline.com': 'https://www.hukumonline.com/rss/berita.xml',
+    'indonesiaexpat.id': 'https://indonesiaexpat.id/feed/',
+    'reddit.com': None,  # handled via URL pattern below
+    'cnbcindonesia.com': 'https://www.cnbcindonesia.com/rss',
+    'ddtc.co.id': 'https://ddtc.co.id/rss',
+}
+
+def _resolve_rss(url: str) -> str:
+    """Return best RSS URL for a given source URL."""
+    from urllib.parse import urlparse
+    parsed = urlparse(url)
+    domain = parsed.netloc.lower().replace('www.', '')
+    # YouTube RSS feeds are already valid RSS URLs
+    if 'youtube.com/feeds/videos.xml' in url:
+        return url
+    # Reddit subreddit RSS
+    if 'reddit.com/r/' in url:
+        path = parsed.path.rstrip('/')
+        return f'https://www.reddit.com{path}/.rss'
+    for key, rss in _KNOWN_RSS.items():
+        if key in domain and rss:
+            return rss
+    return url  # fallback: try original URL as-is with feedparser
+
 SCRIPT_DIR = Path(__file__).parent
 PROJECT_ROOT = SCRIPT_DIR.parent
 SOURCES_FILE = PROJECT_ROOT / 'config' / 'unified_sources.json'
@@ -87,27 +120,61 @@ class UnifiedScraper:
             return []
         
         self.log(f'Scraping: {source.get("name", url)[:50]}...')
-        
+
+        # Social media type dispatch
+        source_type = source.get('type', 'web')
+        if source_type == 'telegram':
+            return self._extract_telegram(source)
+        elif source_type == 'reddit':
+            return self._extract_reddit(source)
+        elif source_type == 'kaskus':
+            return self._extract_kaskus(source)
+        elif source_type == 'youtube_rss':
+            pass  # YouTube RSS works with existing feedparser pipeline
+
         articles = []
         
         try:
-            # Try RSS/Atom feed first (fast & reliable)
-            feed = feedparser.parse(url)
+            # 1) Risolvi RSS noto o fai discovery
+            rss_url = _resolve_rss(url)
+            feed = feedparser.parse(rss_url)
+
+            # 2) Se RSS risolto fallisce, prova discovery dalla homepage
+            if not feed.entries and rss_url != url:
+                feed = feedparser.parse(url)
+
+            if not feed.entries:
+                # Discovery: cerca <link type="application/rss+xml"> nel HTML
+                try:
+                    resp = self.session.get(url, timeout=8)
+                    from bs4 import BeautifulSoup as _BS
+                    soup = _BS(resp.text, 'lxml')
+                    rss_link = soup.find('link', type='application/rss+xml')
+                    if rss_link and rss_link.get('href'):
+                        discovered = rss_link['href']
+                        if discovered.startswith('/'):
+                            from urllib.parse import urlparse as _up
+                            p = _up(url)
+                            discovered = f"{p.scheme}://{p.netloc}{discovered}"
+                        feed = feedparser.parse(discovered)
+                        if feed.entries:
+                            self.log(f'  ✓ RSS discovered: {discovered}')
+                except Exception:
+                    pass
+
             if feed.entries:
-                self.log(f'  ✓ Found {len(feed.entries)} feed entries')
+                self.log(f'  ✓ {len(feed.entries)} feed entries')
                 for entry in feed.entries[:self.limit_per_source]:
                     article = self._extract_from_feed_entry(entry, source)
                     if article:
                         articles.append(article)
-            
-            # If no feed, try article extraction (slower, less reliable)
+
+            # 3) Nessun RSS → scraping listing (tag/search/category page)
             if not articles:
-                self.log(f'  No feed, trying article extraction...')
-                article = self._extract_from_webpage(url, source)
-                if article:
-                    articles.append(article)
-                else:
-                    self.log(f'  ⚠️  No content extracted', 'WARN')
+                articles = self._extract_from_listing(url, source)
+
+            if not articles:
+                self.log(f'  ⚠️  No content extracted', 'WARN')
         
         except Exception as e:
             self.log(f'  ❌ Error: {str(e)[:100]}', 'ERROR')
@@ -160,40 +227,88 @@ class UnifiedScraper:
             self.log(f'  Webpage extraction error: {e}', 'WARN')
             return None
     
-    def score_article(self, article: Dict) -> Optional[int]:
-        """Score article quality using Ollama (local, free)"""
+
+    def _extract_from_listing(self, url, source):
+        """FIX3: scrape tag/search/category listing, extract and fetch article links."""
+        articles = []
         try:
-            prompt = f"""Score this article's value for Bali business/visa/immigration consulting (0-100):
-
-Title: {article.get('title', '')}
-Summary: {article.get('summary', '')[:300]}
-Source: {article.get('source_name', '')}
-
-Respond with ONLY a number 0-100."""
-
-            result = subprocess.run(
-                ['ollama', 'run', 'deepseek-r1:1.5b', prompt],
-                capture_output=True,
-                text=True,
-                timeout=15
-            )
-            
-            if result.returncode == 0:
-                score_text = result.stdout.strip()
-                # Extract first number found
-                import re
-                match = re.search(r'\d+', score_text)
-                if match:
-                    score = int(match.group())
-                    return max(0, min(100, score))  # Clamp 0-100
-        
-        except subprocess.TimeoutExpired:
-            self.log('  Ollama timeout', 'WARN')
+            resp = self.session.get(url, timeout=10)
+            if resp.status_code != 200:
+                return []
+            from bs4 import BeautifulSoup as _BS
+            from urllib.parse import urljoin, urlparse as _up
+            soup = _BS(resp.text, 'lxml')
+            base = _up(url).scheme + '://' + _up(url).netloc
+            seen, candidates = set(), []
+            for a in soup.find_all('a', href=True):
+                href = urljoin(base, a['href'])
+                text = a.get_text(strip=True)
+                if (len(text) > 30 and href not in seen
+                        and href.startswith('http')
+                        and _up(href).netloc == _up(url).netloc
+                        and href != url
+                        and '#' not in href
+                        and 'mailto:' not in href):
+                    seen.add(href)
+                    candidates.append((href, text))
+                if len(candidates) >= self.limit_per_source * 3:
+                    break
+            from newspaper import Article as _Art
+            import datetime as _dt
+            for href, anchor_text in candidates[:self.limit_per_source]:
+                try:
+                    art = _Art(href)
+                    art.config.request_timeout = 8
+                    art.download()
+                    art.parse()
+                    title = art.title or anchor_text
+                    if title and len(art.text) >= 150:
+                        articles.append({
+                            'title': title, 'url': href,
+                            'summary': getattr(art, 'meta_description', '') or art.text[:250],
+                            'text': art.text[:2000],
+                            'published': art.publish_date.isoformat() if art.publish_date else '',
+                            'source_name': source.get('name',''), 'source_url': source.get('url',''),
+                            'category': source.get('category',''), 'tier': source.get('tier','T3'),
+                            'scraped_at': _dt.datetime.now().isoformat(),
+                        })
+                except Exception:
+                    pass
+            if articles:
+                self.log('  + Listing: ' + str(len(articles)) + ' articles')
         except Exception as e:
-            self.log(f'  Scoring error: {e}', 'WARN')
-        
-        return None
-    
+            self.log('  Listing error: ' + str(e), 'WARN')
+        return articles
+
+    def score_article(self, article: Dict) -> Optional[int]:
+        """FIX: keyword scoring istantaneo. AI scoring avviene in step 2.5 della pipeline."""
+        title   = (article.get('title', '') or '').lower()
+        summary = (article.get('summary', '') or article.get('text', '') or '').lower()
+        source  = (article.get('source_name', '') or '').lower()
+        text    = title + ' ' + summary
+
+        # Sorgenti T1 autopass
+        t1_sources = ['imigrasi', 'kemenkumham', 'bkpm', 'pajak', 'bps.go.id', 'hukumonline',
+                      'ddtc', 'kemlu', 'jakarta post', 'tempo', 'kompas', 'jakartaglobe',
+                      'indonesia expat', 'cnnindonesia', 'detik']
+        base = 70 if any(s in source for s in t1_sources) else 45
+
+        HIGH = ['kitas', 'visa', 'imigrasi', 'immigration', 'kbli', 'coretax', 'pajak', 'tax',
+                'bpjs', 'permit', 'izin', 'oss', 'investment', 'investor', 'expat', 'wna',
+                'deportasi', 'overstay', 'pt pma', 'perda', 'regulation', 'law', 'hukum',
+                'bali business', 'foreign worker', 'tenaga asing']
+        MED  = ['indonesia', 'bisnis', 'business', 'economy', 'ekonomi', 'rupiah', 'bali',
+                'digital nomad', 'property', 'properti', 'foreign', 'asing', 'pemerintah']
+        NEG  = ['sport', 'olahraga', 'sepak bola', 'entertainment', 'celebrity', 'musik',
+                'gossip', 'artis', 'film', 'resep', 'makanan']
+
+        score = base
+        score += sum(8 for kw in HIGH if kw in text)
+        score += sum(3 for kw in MED  if kw in text)
+        score -= sum(20 for kw in NEG if kw in text)
+
+        return max(0, min(100, score))
+
     def generate_article_id(self, article: Dict) -> str:
         """Generate unique ID for article"""
         content = f"{article.get('url', '')}{article.get('title', '')}"
@@ -234,7 +349,7 @@ Respond with ONLY a number 0-100."""
                     self.log(f'  ⚠️  Could not score')
             
             # Rate limiting
-            time.sleep(2)
+            time.sleep(0.5)  # FIX3: reduced from 2s
         
         return all_articles
     
@@ -268,6 +383,19 @@ Respond with ONLY a number 0-100."""
    Passed threshold:  {self.stats['articles_passed']} (>={MIN_SCORE} score)
    Errors:            {self.stats['errors']}
 """)
+
+
+    def _extract_telegram(self, source: Dict) -> List[Dict]:
+        """Stub: implemented in Task 5"""
+        return []
+
+    def _extract_reddit(self, source: Dict) -> List[Dict]:
+        """Stub: implemented in Task 6"""
+        return []
+
+    def _extract_kaskus(self, source: Dict) -> List[Dict]:
+        """Stub: implemented in Task 7"""
+        return []
 
 
 def main():
