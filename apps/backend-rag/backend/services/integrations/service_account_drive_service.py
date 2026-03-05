@@ -270,3 +270,47 @@ class ServiceAccountDriveService:
             "root_folder_url": root_folder.get("webViewLink", ""),
             "subfolders": subfolders,
         }
+
+    async def get_start_page_token(self) -> str:
+        """Get the current start page token for changes tracking."""
+        request = self.service.changes().getStartPageToken(
+            supportsAllDrives=True,
+        )
+        result = await asyncio.to_thread(request.execute)
+        return result["startPageToken"]
+
+    async def list_changes_since(self, page_token: str) -> dict[str, Any]:
+        """
+        List file changes since the given page token.
+
+        Returns:
+            {
+                "changes": [{"fileId": "...", "file": {...}, "removed": bool}],
+                "new_page_token": "...",
+            }
+        """
+        all_changes: list[dict] = []
+        current_token = page_token
+
+        while True:
+            request = self.service.changes().list(
+                pageToken=current_token,
+                fields="nextPageToken, newStartPageToken, changes(fileId, file(id, name, mimeType, parents, trashed), removed)",
+                supportsAllDrives=True,
+                includeItemsFromAllDrives=True,
+                pageSize=100,
+            )
+            result = await asyncio.to_thread(request.execute)
+
+            changes = result.get("changes", [])
+            all_changes.extend(changes)
+
+            if "nextPageToken" in result:
+                current_token = result["nextPageToken"]
+            else:
+                break
+
+        return {
+            "changes": all_changes,
+            "new_page_token": result.get("newStartPageToken", page_token),
+        }

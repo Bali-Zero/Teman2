@@ -725,6 +725,33 @@ async def create_and_start_scheduler(
     except Exception as e:
         logger.error(f"❌ Failed to register Daily Ops Autopilot: {e}")
 
+    # ═══════════════════════════════════════════════════════════════════════════
+    # TASK 12: DRIVE CHANGES POLLING (every 5 minutes)
+    # Detects files added directly to Google Drive client folders
+    # and dispatches OCR extraction automatically
+    # ═══════════════════════════════════════════════════════════════════════════
+    try:
+        from backend.services.crm.drive_poll_service import poll_drive_changes
+
+        async def run_drive_poll() -> None:
+            try:
+                result = await poll_drive_changes()
+                processed = result.get("processed", 0)
+                if processed > 0:
+                    logger.info(f"📂 Drive Poll: {processed} new files processed for OCR")
+            except Exception as e:
+                logger.error(f"Drive Poll error: {e}", exc_info=True)
+
+        scheduler.register_task(
+            name="drive_changes_poll",
+            task_func=run_drive_poll,
+            interval_seconds=300,  # 5 minutes
+            enabled=True,
+        )
+        logger.info("Drive Changes Polling registered (5min interval)")
+    except Exception as e:
+        logger.error(f"Failed to register Drive Changes Polling: {e}")
+
     # Start the scheduler
     await scheduler.start()
 

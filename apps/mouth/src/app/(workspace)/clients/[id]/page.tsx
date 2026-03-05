@@ -1123,6 +1123,8 @@ function OverviewTab({
             client={client}
             documents={documents}
             formatDate={formatDate}
+            onRefresh={refreshProfile}
+            clientId={clientId}
           />
         </div>
 
@@ -1134,6 +1136,8 @@ function OverviewTab({
             activePractices={activePractices}
             formatDate={formatDate}
             formatCurrency={formatCurrency}
+            onRefresh={refreshProfile}
+            clientId={clientId}
           />
         </div>
       </div>
@@ -1148,15 +1152,45 @@ function PassportCard({
   client,
   documents,
   formatDate,
+  onRefresh,
+  clientId,
 }: {
   client: ClientProfile["client"];
   documents: ClientDocument[];
   formatDate: (d: string) => string;
+  onRefresh: () => Promise<void>;
+  clientId: number;
 }) {
   const [isExtracting, setIsExtracting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [ocrPolling, setOcrPolling] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Poll OCR status after upload/extract
+  const pollOcrStatus = useCallback(async () => {
+    setOcrPolling(true);
+    let attempts = 0;
+    const maxAttempts = 10; // 3s * 10 = 30s max
+    const poll = async () => {
+      try {
+        const status = (await api.request(
+          `/api/crm/clients/${clientId}/ocr-status`,
+        )) as { pending_ocr: number };
+        if (status.pending_ocr === 0 || attempts >= maxAttempts) {
+          setOcrPolling(false);
+          await onRefresh();
+          return;
+        }
+        attempts++;
+        setTimeout(poll, 3000);
+      } catch {
+        setOcrPolling(false);
+        await onRefresh();
+      }
+    };
+    setTimeout(poll, 2000); // Initial delay for OCR to start
+  }, [clientId, onRefresh]);
 
   // Find passport document from documents
   const passportDoc = documents.find(
@@ -1238,7 +1272,7 @@ function PassportCard({
         toast.success("Passport data extracted!", {
           description: details.join(" | "),
         });
-        window.location.reload();
+        await onRefresh();
       } else {
         toast.warning("OCR failed", {
           description: response.message || "Could not extract passport data",
@@ -1297,8 +1331,8 @@ function PassportCard({
       };
 
       if (response.success) {
-        toast.success("Passport uploaded successfully");
-        window.location.reload();
+        toast.success("Passport uploaded — OCR in corso...");
+        pollOcrStatus();
       } else {
         toast.error("Upload failed", { description: response.message });
       }
@@ -1325,7 +1359,7 @@ function PassportCard({
         method: "DELETE",
       });
       toast.success("Passport deleted");
-      window.location.reload();
+      await onRefresh();
     } catch (err) {
       toast.error("Delete failed", { description: (err as Error).message });
     } finally {
@@ -1335,6 +1369,13 @@ function PassportCard({
 
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden flex flex-col h-full">
+      {/* OCR Processing Indicator */}
+      {ocrPolling && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 border-b border-blue-500/20 text-blue-400 text-xs">
+          <Loader2 className="w-3 h-3 animate-spin" />
+          OCR in corso...
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
         <h3 className="text-base font-semibold text-[var(--foreground)] flex items-center gap-2">
@@ -1564,16 +1605,46 @@ function VisaCard({
   activePractices,
   formatDate,
   formatCurrency,
+  onRefresh,
+  clientId,
 }: {
   client: ClientProfile["client"];
   documents: ClientDocument[];
   activePractices: ClientProfile["practices"];
   formatDate: (d: string) => string;
   formatCurrency: (n: number) => string;
+  onRefresh: () => Promise<void>;
+  clientId: number;
 }) {
   const [isUploading, setIsUploading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [ocrPolling, setOcrPolling] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Poll OCR status after upload
+  const pollOcrStatus = useCallback(async () => {
+    setOcrPolling(true);
+    let attempts = 0;
+    const maxAttempts = 10;
+    const poll = async () => {
+      try {
+        const status = (await api.request(
+          `/api/crm/clients/${clientId}/ocr-status`,
+        )) as { pending_ocr: number };
+        if (status.pending_ocr === 0 || attempts >= maxAttempts) {
+          setOcrPolling(false);
+          await onRefresh();
+          return;
+        }
+        attempts++;
+        setTimeout(poll, 3000);
+      } catch {
+        setOcrPolling(false);
+        await onRefresh();
+      }
+    };
+    setTimeout(poll, 2000);
+  }, [clientId, onRefresh]);
   // Find latest visa/KITAS document
   const visaDocs = documents.filter(
     (doc) =>
@@ -1666,8 +1737,8 @@ function VisaCard({
       };
 
       if (response.success) {
-        toast.success("Visa uploaded successfully");
-        window.location.reload();
+        toast.success("Visa uploaded — OCR in corso...");
+        pollOcrStatus();
       } else {
         toast.error("Upload failed", { description: response.message });
       }
@@ -1694,7 +1765,7 @@ function VisaCard({
         method: "DELETE",
       });
       toast.success("Visa deleted");
-      window.location.reload();
+      await onRefresh();
     } catch (err) {
       toast.error("Delete failed", { description: (err as Error).message });
     } finally {
@@ -1704,6 +1775,13 @@ function VisaCard({
 
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden flex flex-col h-full">
+      {/* OCR Processing Indicator */}
+      {ocrPolling && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 border-b border-blue-500/20 text-blue-400 text-xs">
+          <Loader2 className="w-3 h-3 animate-spin" />
+          OCR in corso...
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
         <h3 className="text-base font-semibold text-[var(--foreground)] flex items-center gap-2">

@@ -237,6 +237,442 @@ async def _auto_ocr_passport(client_id: int, file_id: str) -> dict:
             await db_pool.close()
 
 
+async def _auto_ocr_visa(client_id: int, file_id: str, doc_id: int | None = None) -> dict:
+    """
+    OCR on visa/KITAS/KITAP document → extract visa_type, expiry, number.
+    Updates documents.expiry_date and documents.ocr_extracted_data.
+    """
+    import os
+
+    import asyncpg
+    import httpx
+
+    db_pool = None
+    try:
+        from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
+        from backend.services.integrations.service_account_drive_service import (
+            ServiceAccountDriveService,
+        )
+
+        if not GENAI_AVAILABLE:
+            return {"success": False, "error": "GenAI not available"}
+
+        genai_client = GenAIClient()
+        if not genai_client.is_available:
+            return {"success": False, "error": "Gemini not configured"}
+
+        db_pool = await asyncpg.create_pool(os.environ["DATABASE_URL"], min_size=1, max_size=2)
+
+        drive_service = ServiceAccountDriveService()
+        access_token = drive_service.credentials.token
+        if not access_token:
+            return {"success": False, "error": "Drive not connected"}
+
+        # Download file
+        async with httpx.AsyncClient(timeout=30.0) as http_client:
+            meta_response = await http_client.get(
+                f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                params={"fields": "mimeType,name"},
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            if meta_response.status_code != 200:
+                return {"success": False, "error": f"Metadata fetch failed: {meta_response.status_code}"}
+
+            metadata = meta_response.json()
+            mime_type = metadata.get("mimeType", "image/jpeg")
+
+            download_response = await http_client.get(
+                f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                params={"alt": "media"},
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            if download_response.status_code != 200:
+                return {"success": False, "error": f"Download failed: {download_response.status_code}"}
+
+            image_data = download_response.content
+
+        ocr_prompt = """Extract from this visa/immigration document: visa_type (KITAS/KITAP/B211/C31/etc), visa_number, expiry_date (YYYY-MM-DD), issue_date (YYYY-MM-DD), full_name, sponsor, telex_number, confidence (0-1). Return JSON only, null for missing fields."""
+
+        contents = [
+            ocr_prompt,
+            {"inline_data": {"mime_type": mime_type, "data": base64.b64encode(image_data).decode()}},
+        ]
+
+        result = await genai_client.generate_content(
+            contents=contents, model="gemini-2.0-flash-001", max_output_tokens=1000,
+        )
+
+        response_text = result.get("text", "")
+        logger.info(f"Auto OCR visa response for client {client_id}: {response_text[:200]}...")
+
+        extracted = extract_json_from_llm_response(response_text)
+        if not extracted:
+            logger.error(f"Auto OCR visa JSON parsing failed for client {client_id}")
+            return {"success": False, "error": "Could not parse OCR response"}
+
+        # Normalize date
+        for date_field in ["expiry_date", "issue_date"]:
+            if extracted.get(date_field):
+                date_str = extracted[date_field]
+                if regex.match(r"\d{2}-\d{2}-\d{4}", date_str):
+                    parts = date_str.split("-")
+                    extracted[date_field] = f"{parts[2]}-{parts[1]}-{parts[0]}"
+
+        ocr_data = {
+            "extracted_at": datetime.utcnow().isoformat(),
+            "auto_triggered": True,
+            "raw_response": extracted,
+            "file_id": file_id,
+            "document_type": "visa",
+        }
+
+        async with db_pool.acquire() as conn:
+            # Update document with OCR data and expiry
+            update_parts = [
+                "ocr_status = 'completed'",
+                "ocr_completed_at = NOW()",
+                "ocr_extracted_data = $1",
+            ]
+            params: list[Any] = [to_jsonb(ocr_data)]
+            param_idx = 2
+
+            if extracted.get("expiry_date"):
+                try:
+                    expiry = datetime.strptime(extracted["expiry_date"], "%Y-%m-%d").date()
+                    update_parts.append(f"expiry_date = ${param_idx}")
+                    params.append(expiry)
+                    param_idx += 1
+                except ValueError:
+                    pass
+
+            if doc_id:
+                params.append(doc_id)
+                await conn.execute(
+                    f"UPDATE documents SET {', '.join(update_parts)}, updated_at = NOW() WHERE id = ${param_idx}",
+                    *params,
+                )
+
+        logger.info(f"Auto OCR visa completed for client {client_id}: {extracted.get('visa_type', 'N/A')}")
+        return {"success": True, "extracted": extracted}
+
+    except Exception as e:
+        logger.error(f"Auto OCR visa failed for client {client_id}: {e}")
+        return {"success": False, "error": str(e)}
+    finally:
+        if db_pool:
+            await db_pool.close()
+
+
+async def _auto_ocr_nib(client_id: int, file_id: str, doc_id: int | None = None) -> dict:
+    """
+    OCR on NIB (Nomor Induk Berusaha) document → extract NIB number, company_name, KBLI codes.
+    Updates companies table if client has a linked company.
+    """
+    import os
+
+    import asyncpg
+    import httpx
+
+    db_pool = None
+    try:
+        from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
+        from backend.services.integrations.service_account_drive_service import (
+            ServiceAccountDriveService,
+        )
+
+        if not GENAI_AVAILABLE:
+            return {"success": False, "error": "GenAI not available"}
+
+        genai_client = GenAIClient()
+        if not genai_client.is_available:
+            return {"success": False, "error": "Gemini not configured"}
+
+        db_pool = await asyncpg.create_pool(os.environ["DATABASE_URL"], min_size=1, max_size=2)
+
+        drive_service = ServiceAccountDriveService()
+        access_token = drive_service.credentials.token
+        if not access_token:
+            return {"success": False, "error": "Drive not connected"}
+
+        async with httpx.AsyncClient(timeout=30.0) as http_client:
+            meta_response = await http_client.get(
+                f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                params={"fields": "mimeType,name"},
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            if meta_response.status_code != 200:
+                return {"success": False, "error": f"Metadata fetch failed: {meta_response.status_code}"}
+
+            metadata = meta_response.json()
+            mime_type = metadata.get("mimeType", "image/jpeg")
+
+            download_response = await http_client.get(
+                f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                params={"alt": "media"},
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            if download_response.status_code != 200:
+                return {"success": False, "error": f"Download failed: {download_response.status_code}"}
+
+            image_data = download_response.content
+
+        ocr_prompt = """Extract from this NIB (Nomor Induk Berusaha) document: nib_number, company_name, kbli_codes (array of strings), address, issue_date (YYYY-MM-DD), capital_amount, confidence (0-1). Return JSON only, null for missing fields."""
+
+        contents = [
+            ocr_prompt,
+            {"inline_data": {"mime_type": mime_type, "data": base64.b64encode(image_data).decode()}},
+        ]
+
+        result = await genai_client.generate_content(
+            contents=contents, model="gemini-2.0-flash-001", max_output_tokens=1000,
+        )
+
+        response_text = result.get("text", "")
+        logger.info(f"Auto OCR NIB response for client {client_id}: {response_text[:200]}...")
+
+        extracted = extract_json_from_llm_response(response_text)
+        if not extracted:
+            logger.error(f"Auto OCR NIB JSON parsing failed for client {client_id}")
+            return {"success": False, "error": "Could not parse OCR response"}
+
+        ocr_data = {
+            "extracted_at": datetime.utcnow().isoformat(),
+            "auto_triggered": True,
+            "raw_response": extracted,
+            "file_id": file_id,
+            "document_type": "nib",
+        }
+
+        async with db_pool.acquire() as conn:
+            # Update document with OCR data
+            if doc_id:
+                await conn.execute(
+                    """UPDATE documents
+                    SET ocr_status = 'completed', ocr_completed_at = NOW(),
+                        ocr_extracted_data = $1, updated_at = NOW()
+                    WHERE id = $2""",
+                    to_jsonb(ocr_data),
+                    doc_id,
+                )
+
+            # Try to update linked company
+            if extracted.get("nib_number") or extracted.get("company_name"):
+                company = await conn.fetchrow(
+                    """SELECT c.id FROM companies c
+                    JOIN client_company_links ccl ON ccl.company_id = c.id
+                    WHERE ccl.client_id = $1 LIMIT 1""",
+                    client_id,
+                )
+                if company:
+                    update_parts = []
+                    params: list[Any] = []
+                    param_idx = 1
+                    if extracted.get("nib_number"):
+                        update_parts.append(f"nib = ${param_idx}")
+                        params.append(extracted["nib_number"])
+                        param_idx += 1
+                    if extracted.get("company_name"):
+                        update_parts.append(f"company_name = ${param_idx}")
+                        params.append(extracted["company_name"])
+                        param_idx += 1
+                    if update_parts:
+                        params.append(company["id"])
+                        await conn.execute(
+                            f"UPDATE companies SET {', '.join(update_parts)}, updated_at = NOW() WHERE id = ${param_idx}",
+                            *params,
+                        )
+
+        logger.info(f"Auto OCR NIB completed for client {client_id}: {extracted.get('nib_number', 'N/A')}")
+        return {"success": True, "extracted": extracted}
+
+    except Exception as e:
+        logger.error(f"Auto OCR NIB failed for client {client_id}: {e}")
+        return {"success": False, "error": str(e)}
+    finally:
+        if db_pool:
+            await db_pool.close()
+
+
+async def _auto_ocr_npwp(client_id: int, file_id: str, doc_id: int | None = None) -> dict:
+    """
+    OCR on NPWP (tax ID) document → extract NPWP number, address, KPP.
+    Updates clients or companies table.
+    """
+    import os
+
+    import asyncpg
+    import httpx
+
+    db_pool = None
+    try:
+        from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
+        from backend.services.integrations.service_account_drive_service import (
+            ServiceAccountDriveService,
+        )
+
+        if not GENAI_AVAILABLE:
+            return {"success": False, "error": "GenAI not available"}
+
+        genai_client = GenAIClient()
+        if not genai_client.is_available:
+            return {"success": False, "error": "Gemini not configured"}
+
+        db_pool = await asyncpg.create_pool(os.environ["DATABASE_URL"], min_size=1, max_size=2)
+
+        drive_service = ServiceAccountDriveService()
+        access_token = drive_service.credentials.token
+        if not access_token:
+            return {"success": False, "error": "Drive not connected"}
+
+        async with httpx.AsyncClient(timeout=30.0) as http_client:
+            meta_response = await http_client.get(
+                f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                params={"fields": "mimeType,name"},
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            if meta_response.status_code != 200:
+                return {"success": False, "error": f"Metadata fetch failed: {meta_response.status_code}"}
+
+            metadata = meta_response.json()
+            mime_type = metadata.get("mimeType", "image/jpeg")
+
+            download_response = await http_client.get(
+                f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                params={"alt": "media"},
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            if download_response.status_code != 200:
+                return {"success": False, "error": f"Download failed: {download_response.status_code}"}
+
+            image_data = download_response.content
+
+        ocr_prompt = """Extract from this NPWP (Indonesian Tax ID) document: npwp_number, full_name, address, kpp_name (Kantor Pelayanan Pajak), registration_date (YYYY-MM-DD), confidence (0-1). Return JSON only, null for missing fields."""
+
+        contents = [
+            ocr_prompt,
+            {"inline_data": {"mime_type": mime_type, "data": base64.b64encode(image_data).decode()}},
+        ]
+
+        result = await genai_client.generate_content(
+            contents=contents, model="gemini-2.0-flash-001", max_output_tokens=1000,
+        )
+
+        response_text = result.get("text", "")
+        logger.info(f"Auto OCR NPWP response for client {client_id}: {response_text[:200]}...")
+
+        extracted = extract_json_from_llm_response(response_text)
+        if not extracted:
+            logger.error(f"Auto OCR NPWP JSON parsing failed for client {client_id}")
+            return {"success": False, "error": "Could not parse OCR response"}
+
+        ocr_data = {
+            "extracted_at": datetime.utcnow().isoformat(),
+            "auto_triggered": True,
+            "raw_response": extracted,
+            "file_id": file_id,
+            "document_type": "npwp",
+        }
+
+        async with db_pool.acquire() as conn:
+            # Update document with OCR data
+            if doc_id:
+                await conn.execute(
+                    """UPDATE documents
+                    SET ocr_status = 'completed', ocr_completed_at = NOW(),
+                        ocr_extracted_data = $1, updated_at = NOW()
+                    WHERE id = $2""",
+                    to_jsonb(ocr_data),
+                    doc_id,
+                )
+
+            # Update client NPWP fields
+            if extracted.get("npwp_number"):
+                # Check if this is a company NPWP (linked company exists)
+                company = await conn.fetchrow(
+                    """SELECT c.id FROM companies c
+                    JOIN client_company_links ccl ON ccl.company_id = c.id
+                    WHERE ccl.client_id = $1 LIMIT 1""",
+                    client_id,
+                )
+                if company:
+                    update_parts = [f"npwp = $1"]
+                    params: list[Any] = [extracted["npwp_number"]]
+                    param_idx = 2
+                    if extracted.get("kpp_name"):
+                        update_parts.append(f"kpp = ${param_idx}")
+                        params.append(extracted["kpp_name"])
+                        param_idx += 1
+                    params.append(company["id"])
+                    await conn.execute(
+                        f"UPDATE companies SET {', '.join(update_parts)}, updated_at = NOW() WHERE id = ${param_idx}",
+                        *params,
+                    )
+                else:
+                    # Personal NPWP → update clients custom_fields
+                    await conn.execute(
+                        """UPDATE clients
+                        SET custom_fields = COALESCE(custom_fields, '{}'::jsonb) || $1::jsonb,
+                            updated_at = NOW()
+                        WHERE id = $2""",
+                        to_jsonb({"npwp": extracted["npwp_number"], "kpp": extracted.get("kpp_name")}),
+                        client_id,
+                    )
+
+        logger.info(f"Auto OCR NPWP completed for client {client_id}: {extracted.get('npwp_number', 'N/A')}")
+        return {"success": True, "extracted": extracted}
+
+    except Exception as e:
+        logger.error(f"Auto OCR NPWP failed for client {client_id}: {e}")
+        return {"success": False, "error": str(e)}
+    finally:
+        if db_pool:
+            await db_pool.close()
+
+
+async def _dispatch_ocr_by_folder(
+    client_id: int,
+    file_id: str,
+    folder_name: str,
+    filename: str,
+    doc_id: int | None = None,
+) -> dict:
+    """
+    Central OCR dispatcher. Routes to the correct OCR handler based on
+    subfolder name and filename keywords.
+
+    Returns:
+        {"dispatched": True, "handler": "passport"} or {"dispatched": False}
+    """
+    fn_lower = filename.lower()
+    folder_lower = folder_name.lower() if folder_name else ""
+
+    # Passport detection
+    if "passport" in fn_lower or (folder_lower.startswith("00_") and "passport" in fn_lower):
+        logger.info(f"OCR dispatch: passport detected for client {client_id}, file {filename}")
+        return {"dispatched": True, "handler": "passport", "result": await _auto_ocr_passport(client_id, file_id)}
+
+    # Visa / KITAS / KITAP detection
+    visa_keywords = ["kitas", "kitap", "visa", "voa", "b211", "c31", "itas", "itap", "telex", "evisa"]
+    if any(kw in fn_lower for kw in visa_keywords) or folder_lower.startswith("01_"):
+        # Only auto-OCR if filename suggests a visa document (not random immigration files)
+        if any(kw in fn_lower for kw in visa_keywords) or "permit" in fn_lower or "stay" in fn_lower:
+            logger.info(f"OCR dispatch: visa detected for client {client_id}, file {filename}")
+            return {"dispatched": True, "handler": "visa", "result": await _auto_ocr_visa(client_id, file_id, doc_id)}
+
+    # NIB detection
+    if "nib" in fn_lower or "berusaha" in fn_lower or "oss" in fn_lower:
+        logger.info(f"OCR dispatch: NIB detected for client {client_id}, file {filename}")
+        return {"dispatched": True, "handler": "nib", "result": await _auto_ocr_nib(client_id, file_id, doc_id)}
+
+    # NPWP detection
+    if "npwp" in fn_lower or "tax" in fn_lower and "id" in fn_lower:
+        logger.info(f"OCR dispatch: NPWP detected for client {client_id}, file {filename}")
+        return {"dispatched": True, "handler": "npwp", "result": await _auto_ocr_npwp(client_id, file_id, doc_id)}
+
+    logger.debug(f"OCR dispatch: no handler matched for file {filename} in {folder_name}")
+    return {"dispatched": False}
+
+
 router = APIRouter(prefix="/api/crm", tags=["crm-enhanced"])
 
 
@@ -816,17 +1252,37 @@ async def create_document(
             data.practice_id,
         )
 
-        # Auto-trigger OCR for passport documents
-        if data.file_id and data.document_type and "passport" in data.document_type.lower():
-            logger.info(
-                f"Auto-triggering OCR for passport upload: client={client_id}, file={data.file_id}"
+        # Auto-trigger OCR via dispatcher
+        ocr_triggered = False
+        if data.file_id and data.document_type:
+            # Determine folder from category
+            folder_hint = ""
+            cat = (data.document_category or "").lower()
+            if cat == "immigration":
+                folder_hint = "01_Immigration"
+            elif cat == "tax":
+                folder_hint = "03_Tax"
+            elif cat == "company":
+                folder_hint = "02_Company"
+            background_tasks.add_task(
+                _dispatch_ocr_by_folder,
+                client_id,
+                data.file_id,
+                folder_hint,
+                data.file_name or data.document_type,
+                doc_id,
             )
-            background_tasks.add_task(_auto_ocr_passport, client_id, data.file_id)
+            # Mark document as pending OCR
+            await conn.execute(
+                "UPDATE documents SET ocr_status = 'pending' WHERE id = $1",
+                doc_id,
+            )
+            ocr_triggered = True
 
         return {
             "id": doc_id,
             "success": True,
-            "ocr_triggered": "passport" in (data.document_type or "").lower(),
+            "ocr_triggered": ocr_triggered,
         }
 
 
@@ -932,12 +1388,27 @@ async def create_documents_bulk(
                     inserted_ids.append(doc_id)
 
                     # Queue OCR for passport documents
-                    if (
-                        doc.file_id
-                        and doc.document_type
-                        and "passport" in doc.document_type.lower()
-                    ):
-                        background_tasks.add_task(_auto_ocr_passport, client_id, doc.file_id)
+                    if doc.file_id and doc.document_type:
+                        folder_hint = ""
+                        cat = (doc.document_category or "").lower()
+                        if cat == "immigration":
+                            folder_hint = "01_Immigration"
+                        elif cat == "tax":
+                            folder_hint = "03_Tax"
+                        elif cat == "company":
+                            folder_hint = "02_Company"
+                        background_tasks.add_task(
+                            _dispatch_ocr_by_folder,
+                            client_id,
+                            doc.file_id,
+                            folder_hint,
+                            doc.file_name or doc.document_type,
+                            doc_id,
+                        )
+                        await conn.execute(
+                            "UPDATE documents SET ocr_status = 'pending' WHERE id = $1",
+                            doc_id,
+                        )
                         ocr_count += 1
 
                 except Exception as e:
@@ -1071,6 +1542,46 @@ async def get_document_categories(pool=Depends(get_database_pool)) -> list[Any]:
             """
         )
         return [dict(c) for c in categories]
+
+
+# ============================================
+# OCR STATUS ENDPOINT
+# ============================================
+
+
+@router.get("/clients/{client_id}/ocr-status")
+async def get_client_ocr_status(
+    client_id: int,
+    pool=Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """
+    Get OCR processing status for a client's documents.
+    Frontend polls this to know when OCR completes.
+    """
+    async with pool.acquire() as conn:
+        docs = await conn.fetch(
+            """
+            SELECT id, document_type, file_name, ocr_status, ocr_completed_at,
+                   ocr_extracted_data
+            FROM documents
+            WHERE client_id = $1
+              AND ocr_status IS NOT NULL
+            ORDER BY updated_at DESC
+            LIMIT 10
+            """,
+            client_id,
+        )
+
+        pending = sum(1 for d in docs if d["ocr_status"] in ("pending", "processing"))
+        completed = sum(1 for d in docs if d["ocr_status"] == "completed")
+
+        return {
+            "client_id": client_id,
+            "pending_ocr": pending,
+            "completed_ocr": completed,
+            "documents": [dict(d) for d in docs],
+        }
 
 
 # ============================================
@@ -1311,14 +1822,25 @@ async def upload_document_base64(
                 data.notes,
             )
 
-            # Trigger OCR if passport
-            if "passport" in data.document_type.lower():
-                background_tasks.add_task(_auto_ocr_passport, client_id, upload_result["id"])
+            # Trigger OCR via dispatcher
+            background_tasks.add_task(
+                _dispatch_ocr_by_folder,
+                client_id,
+                upload_result["id"],
+                folder_name,
+                data.file_name,
+                doc_id,
+            )
+            await conn.execute(
+                "UPDATE documents SET ocr_status = 'pending' WHERE id = $1",
+                doc_id,
+            )
 
             return {
                 "success": True,
                 "document_id": doc_id,
                 "file_url": upload_result.get("webViewLink"),
+                "ocr_triggered": True,
             }
 
     except HTTPException:
