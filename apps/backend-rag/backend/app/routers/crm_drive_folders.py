@@ -7,7 +7,7 @@ Handles automatic creation of standardized folder structures for clients.
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile
 
 from backend.app.core.config import settings
 from backend.app.dependencies import get_current_user, get_database_pool
@@ -474,8 +474,7 @@ async def upload_file_to_folder(
     client_id: int,
     folder_name: str,
     file: UploadFile = File(...),
-
-
+    background_tasks: BackgroundTasks = BackgroundTasks(),
     pool=Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
@@ -556,10 +555,22 @@ async def upload_file_to_folder(
             f"[CRM] Uploaded file '{file_name}' to folder {folder_name} for client {client_id}"
         )
 
+        # Dispatch OCR in background
+        from backend.app.routers.crm_enhanced import _dispatch_ocr_by_folder
+
+        background_tasks.add_task(
+            _dispatch_ocr_by_folder,
+            client_id,
+            upload_result["id"],
+            folder_name,
+            file_name,
+        )
+
         return {
             "success": True,
             "folder_name": folder_name,
             "folder_id": subfolder["id"],
+            "ocr_triggered": True,
             **upload_result,
         }
     except Exception as e:
