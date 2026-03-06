@@ -581,7 +581,7 @@ def generate_slug(headline: str) -> str:
     slug = re.sub(r"-+", "-", slug)
     # Remove leading/trailing hyphens
     slug = slug.strip("-")
-    return slug[:60]  # Limit slug length
+    return slug[:120]  # Limit slug length
 
 
 def generate_mdx_content(article: EnrichedArticle, slug: str, cover_image_path: str | None) -> str:
