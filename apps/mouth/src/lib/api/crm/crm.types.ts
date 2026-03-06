@@ -244,14 +244,17 @@ export interface ClientProfile {
     start_date?: string;
     completion_date?: string;
     estimated_completion?: string;
+    title?: string;
     practice_type_code: string;
     practice_type_name: string;
     alert_color?: string;
   }>;
+  company_links?: ClientCompanyLink[];
   stats: {
     family_count: number;
     documents_count: number;
     practices_count: number;
+    company_count?: number;
     expired_count: number;
     red_alerts: number;
     yellow_alerts: number;

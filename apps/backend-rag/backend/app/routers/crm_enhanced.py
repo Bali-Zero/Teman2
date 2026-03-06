@@ -70,7 +70,11 @@ async def _auto_ocr_passport(client_id: int, file_id: str) -> dict:
             existing_name = client["full_name"]
 
         # Get Drive access token using Service Account
+        import google.auth.transport.requests as google_auth_requests
+
         drive_service = ServiceAccountDriveService()
+        if not drive_service.credentials.token:
+            drive_service.credentials.refresh(google_auth_requests.Request())
         access_token = drive_service.credentials.token
         if not access_token:
             logger.warning("Auto OCR: Google Drive not connected")
@@ -121,8 +125,8 @@ async def _auto_ocr_passport(client_id: int, file_id: str) -> dict:
 
         result = await genai_client.generate_content(
             contents=contents,
-            model="gemini-2.0-flash-001",
-            max_output_tokens=1000,
+            model="gemini-2.5-flash",
+            max_output_tokens=4096,
         )
 
         response_text = result.get("text", "")
@@ -263,7 +267,11 @@ async def _auto_ocr_visa(client_id: int, file_id: str, doc_id: int | None = None
 
         db_pool = await asyncpg.create_pool(os.environ["DATABASE_URL"], min_size=1, max_size=2)
 
+        import google.auth.transport.requests as google_auth_requests
+
         drive_service = ServiceAccountDriveService()
+        if not drive_service.credentials.token:
+            drive_service.credentials.refresh(google_auth_requests.Request())
         access_token = drive_service.credentials.token
         if not access_token:
             return {"success": False, "error": "Drive not connected"}
@@ -299,7 +307,7 @@ async def _auto_ocr_visa(client_id: int, file_id: str, doc_id: int | None = None
         ]
 
         result = await genai_client.generate_content(
-            contents=contents, model="gemini-2.0-flash-001", max_output_tokens=1000,
+            contents=contents, model="gemini-2.5-flash", max_output_tokens=4096,
         )
 
         response_text = result.get("text", "")
@@ -341,6 +349,15 @@ async def _auto_ocr_visa(client_id: int, file_id: str, doc_id: int | None = None
                     expiry = datetime.strptime(extracted["expiry_date"], "%Y-%m-%d").date()
                     update_parts.append(f"expiry_date = ${param_idx}")
                     params.append(expiry)
+                    param_idx += 1
+                except ValueError:
+                    pass
+
+            if extracted.get("issue_date"):
+                try:
+                    issue = datetime.strptime(extracted["issue_date"], "%Y-%m-%d").date()
+                    update_parts.append(f"issue_date = ${param_idx}")
+                    params.append(issue)
                     param_idx += 1
                 except ValueError:
                     pass
@@ -389,7 +406,11 @@ async def _auto_ocr_nib(client_id: int, file_id: str, doc_id: int | None = None)
 
         db_pool = await asyncpg.create_pool(os.environ["DATABASE_URL"], min_size=1, max_size=2)
 
+        import google.auth.transport.requests as google_auth_requests
+
         drive_service = ServiceAccountDriveService()
+        if not drive_service.credentials.token:
+            drive_service.credentials.refresh(google_auth_requests.Request())
         access_token = drive_service.credentials.token
         if not access_token:
             return {"success": False, "error": "Drive not connected"}
@@ -424,7 +445,7 @@ async def _auto_ocr_nib(client_id: int, file_id: str, doc_id: int | None = None)
         ]
 
         result = await genai_client.generate_content(
-            contents=contents, model="gemini-2.0-flash-001", max_output_tokens=1000,
+            contents=contents, model="gemini-2.5-flash", max_output_tokens=4096,
         )
 
         response_text = result.get("text", "")
@@ -519,7 +540,11 @@ async def _auto_ocr_npwp(client_id: int, file_id: str, doc_id: int | None = None
 
         db_pool = await asyncpg.create_pool(os.environ["DATABASE_URL"], min_size=1, max_size=2)
 
+        import google.auth.transport.requests as google_auth_requests
+
         drive_service = ServiceAccountDriveService()
+        if not drive_service.credentials.token:
+            drive_service.credentials.refresh(google_auth_requests.Request())
         access_token = drive_service.credentials.token
         if not access_token:
             return {"success": False, "error": "Drive not connected"}
@@ -554,7 +579,7 @@ async def _auto_ocr_npwp(client_id: int, file_id: str, doc_id: int | None = None
         ]
 
         result = await genai_client.generate_content(
-            contents=contents, model="gemini-2.0-flash-001", max_output_tokens=1000,
+            contents=contents, model="gemini-2.5-flash", max_output_tokens=4096,
         )
 
         response_text = result.get("text", "")
@@ -765,7 +790,7 @@ async def get_client_profile(
             SELECT
                 id, uuid, full_name, email, phone, whatsapp,
                 nationality, passport_number, passport_expiry,
-                date_of_birth, avatar_url, company_name,
+                date_of_birth, gender, avatar_url, company_name,
                 google_drive_folder_id, status, client_type,
                 assigned_to, address, notes, tags, custom_fields,
                 first_contact_date, last_interaction_date,
@@ -848,9 +873,9 @@ async def get_client_profile(
         practices = await conn.fetch(
             """
             SELECT
-                p.id, p.status, p.expiry_date,
-                pt.code as practice_type_code,
-                pt.name as practice_type_name,
+                p.id, p.status, p.expiry_date, p.title,
+                COALESCE(pt.code, p.practice_type_code) as practice_type_code,
+                COALESCE(pt.name, p.title) as practice_type_name,
                 CASE
                     WHEN p.expiry_date <= CURRENT_DATE THEN 'expired'
                     WHEN p.expiry_date <= CURRENT_DATE + INTERVAL '8 months' THEN 'red'
@@ -858,7 +883,7 @@ async def get_client_profile(
                     ELSE 'green'
                 END as alert_color
             FROM practices p
-            JOIN practice_types pt ON p.practice_type_id = pt.id
+            LEFT JOIN practice_types pt ON p.practice_type_id = pt.id
             WHERE p.client_id = $1
             ORDER BY
                 CASE p.status
@@ -872,16 +897,34 @@ async def get_client_profile(
             client_id,
         )
 
+        # Get company links
+        company_links = await conn.fetch(
+            """
+            SELECT
+                ccl.id, ccl.company_id, ccl.role, ccl.is_primary,
+                ccl.ownership_percentage, ccl.status, ccl.notes,
+                c.company_name, c.company_type, c.kbli_code,
+                c.nib, c.registered_address, c.google_drive_folder_id as company_drive_folder_id
+            FROM client_company_links ccl
+            JOIN companies c ON ccl.company_id = c.id
+            WHERE ccl.client_id = $1
+            ORDER BY ccl.is_primary DESC, c.company_name
+            """,
+            client_id,
+        )
+
         return {
             "client": dict(client),
             "family_members": [dict(fm) for fm in family_members],
             "documents": [dict(d) for d in documents],
             "expiry_alerts": [dict(a) for a in expiry_alerts],
             "practices": [dict(p) for p in practices],
+            "company_links": [dict(cl) for cl in company_links],
             "stats": {
                 "family_count": len(family_members),
                 "documents_count": len(documents),
                 "practices_count": len(practices),
+                "company_count": len(company_links),
                 "expired_count": sum(1 for a in expiry_alerts if a["alert_color"] == "expired"),
                 "red_alerts": sum(1 for a in expiry_alerts if a["alert_color"] == "red"),
                 "yellow_alerts": sum(1 for a in expiry_alerts if a["alert_color"] == "yellow"),
@@ -947,6 +990,38 @@ async def update_client_profile(
         )
 
     return {"success": True, "message": "Client profile updated"}
+
+
+# ============================================
+# COMPANY LINKS ENDPOINTS
+# ============================================
+
+
+@router.get("/companies/by-client/{client_id}")
+async def get_client_companies(
+    client_id: int,
+    pool=Depends(get_database_pool),
+    _current_user: dict = Depends(get_current_user),
+) -> list[dict[str, Any]]:
+    """Get all companies linked to a client."""
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT
+                ccl.id as link_id, ccl.company_id, ccl.role, ccl.is_primary,
+                ccl.ownership_percentage, ccl.shares_count, ccl.start_date,
+                ccl.status, ccl.notes,
+                c.company_name, c.company_type, c.kbli_code,
+                c.nib, c.npwp_company, c.registered_address,
+                c.google_drive_folder_id
+            FROM client_company_links ccl
+            JOIN companies c ON ccl.company_id = c.id
+            WHERE ccl.client_id = $1
+            ORDER BY ccl.is_primary DESC, c.company_name
+            """,
+            client_id,
+        )
+        return [dict(r) for r in rows]
 
 
 # ============================================
@@ -1582,6 +1657,28 @@ async def get_client_ocr_status(
             "completed_ocr": completed,
             "documents": [dict(d) for d in docs],
         }
+
+
+@router.post("/clients/{client_id}/extract-visa")
+async def extract_visa_data(
+    client_id: int,
+    body: dict = Body(...),
+    pool=Depends(get_database_pool),
+    _current_user: dict = Depends(get_current_user),
+) -> dict:
+    """
+    Extract visa/KITAS data from a document using Gemini Vision OCR.
+    Updates the document's issue_date and expiry_date.
+
+    Body: {"file_id": "...", "doc_id": 123}
+    """
+    file_id = body.get("file_id")
+    doc_id = body.get("doc_id")
+    if not file_id:
+        raise HTTPException(status_code=400, detail="file_id required")
+
+    result = await _auto_ocr_visa(client_id, file_id, doc_id)
+    return result
 
 
 # ============================================
