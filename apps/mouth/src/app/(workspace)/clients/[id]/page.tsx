@@ -817,6 +817,8 @@ export default function ClientDetailPage() {
           formatCurrency={formatCurrency}
           router={router}
           onEditClick={() => setActiveModal("edit_client")}
+          onRefresh={refreshProfile}
+          clientId={clientId}
         />
       )}
 
@@ -928,6 +930,8 @@ function OverviewTab({
   formatCurrency,
   router,
   onEditClick,
+  onRefresh,
+  clientId,
 }: {
   client: ClientProfile["client"];
   stats: ClientProfile["stats"];
@@ -938,6 +942,8 @@ function OverviewTab({
   formatCurrency: (n: number) => string;
   router: ReturnType<typeof useRouter>;
   onEditClick: () => void;
+  onRefresh: () => Promise<void>;
+  clientId: number;
 }) {
   const isClientBirthday = isBirthdayToday(client.date_of_birth);
 
@@ -1123,7 +1129,7 @@ function OverviewTab({
             client={client}
             documents={documents}
             formatDate={formatDate}
-            onRefresh={refreshProfile}
+            onRefresh={onRefresh}
             clientId={clientId}
           />
         </div>
@@ -1136,7 +1142,7 @@ function OverviewTab({
             activePractices={activePractices}
             formatDate={formatDate}
             formatCurrency={formatCurrency}
-            onRefresh={refreshProfile}
+            onRefresh={onRefresh}
             clientId={clientId}
           />
         </div>
@@ -1230,7 +1236,7 @@ function PassportCard({
   };
 
   // Enhanced OCR extraction with Gemini Vision
-  const handleExtractData = async () => {
+  const handleExtractData = useCallback(async () => {
     if (!passportImageUrl || isExtracting) return;
     const fileId = extractDriveFileId(passportImageUrl);
     if (!fileId) {
@@ -1283,7 +1289,21 @@ function PassportCard({
     } finally {
       setIsExtracting(false);
     }
-  };
+  }, [passportImageUrl, isExtracting, client.id, onRefresh]);
+
+  // Auto-trigger OCR when passport image exists but no extracted data
+  const hasTriggeredOcr = useRef(false);
+  useEffect(() => {
+    if (
+      passportImageUrl &&
+      !client.passport_number &&
+      !isExtracting &&
+      !hasTriggeredOcr.current
+    ) {
+      hasTriggeredOcr.current = true;
+      handleExtractData();
+    }
+  }, [passportImageUrl, client.passport_number, isExtracting, handleExtractData]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1618,8 +1638,10 @@ function VisaCard({
 }) {
   const [isUploading, setIsUploading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
   const [ocrPolling, setOcrPolling] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const hasTriggeredVisaOcr = useRef(false);
 
   // Poll OCR status after upload
   const pollOcrStatus = useCallback(async () => {
@@ -1690,6 +1712,47 @@ function VisaCard({
   // Get visa dates from document metadata or practice
   const visaStartDate = latestVisa?.issue_date || visaProcess?.start_date;
   const visaExpiryDate = latestVisa?.expiry_date;
+
+  // Auto-extract visa dates via OCR when visa doc exists but no dates
+  const handleExtractVisa = useCallback(async () => {
+    if (!latestVisa?.google_drive_file_url || isExtracting) return;
+    const fileId = extractDriveFileId(latestVisa.google_drive_file_url);
+    if (!fileId) return;
+    setIsExtracting(true);
+    try {
+      const response = (await api.post(
+        `/api/crm/clients/${clientId}/extract-visa`,
+        { file_id: fileId, doc_id: latestVisa.id },
+      )) as { success: boolean; extracted?: { expiry_date?: string; issue_date?: string; visa_type?: string } };
+      if (response.success && response.extracted) {
+        const details = [];
+        if (response.extracted.visa_type) details.push(`Type: ${response.extracted.visa_type}`);
+        if (response.extracted.issue_date) details.push(`Issue: ${response.extracted.issue_date}`);
+        if (response.extracted.expiry_date) details.push(`Expiry: ${response.extracted.expiry_date}`);
+        if (details.length > 0) {
+          toast.success("Visa data extracted!", { description: details.join(" | ") });
+        }
+        await onRefresh();
+      }
+    } catch {
+      // Silent fail for auto-extract
+    } finally {
+      setIsExtracting(false);
+    }
+  }, [latestVisa, isExtracting, clientId, onRefresh]);
+
+  // Auto-trigger visa OCR when visa doc exists but no expiry date
+  useEffect(() => {
+    if (
+      latestVisa?.google_drive_file_url &&
+      !latestVisa?.expiry_date &&
+      !isExtracting &&
+      !hasTriggeredVisaOcr.current
+    ) {
+      hasTriggeredVisaOcr.current = true;
+      handleExtractVisa();
+    }
+  }, [latestVisa, isExtracting, handleExtractVisa]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1929,21 +1992,36 @@ function VisaCard({
               )}
             </div>
 
-            {/* Delete Button */}
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 mt-auto"
-              onClick={handleDelete}
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Trash2 className="w-4 h-4 mr-2" />
-              )}
-              {isDeleting ? "..." : "Del"}
-            </Button>
+            {/* Action Buttons */}
+            <div className="grid grid-cols-2 gap-2 pt-2 mt-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExtractVisa}
+                disabled={isExtracting}
+              >
+                {isExtracting ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <FileText className="w-4 h-4 mr-2" />
+                )}
+                {isExtracting ? "Extracting..." : "Extract"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+              >
+                {isDeleting ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4 mr-2" />
+                )}
+                {isDeleting ? "..." : "Del"}
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="flex-1 flex flex-col">

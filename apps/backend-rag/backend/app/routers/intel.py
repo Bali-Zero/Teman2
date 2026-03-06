@@ -5,7 +5,6 @@ Refactored router using service layer architecture.
 """
 
 import base64
-from typing import Any
 import json
 import logging
 import os
@@ -14,9 +13,10 @@ import sys
 import time
 from datetime import datetime, timedelta
 from pathlib import Path as PathLib
+from typing import Any
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from backend.app.core.config import settings
@@ -329,7 +329,7 @@ def convert_staging_to_enriched_article(staging_data: dict) -> dict:
 @router.post("/api/intel/scraper/submit")
 async def submit_from_scraper(
     submission: ScraperSubmission,
-    api_key_verified=Depends(verify_internal_api_key),
+    _api_key_verified=Depends(verify_internal_api_key),
 
 
 ) -> dict[str, Any]:
@@ -437,7 +437,7 @@ async def submit_from_scraper(
 
     except Exception as e:
         logger.exception(f"Failed to submit article from scraper: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # --- STAGING ENDPOINTS ---
@@ -569,7 +569,7 @@ async def approve_staging_item(
     type: str,
     item_id: str,
     request: ApprovalRequest | None = None,
-    api_key_verified=Depends(verify_internal_api_key),
+    _api_key_verified=Depends(verify_internal_api_key),
 
 
 ) -> dict[str, Any]:
@@ -731,7 +731,7 @@ async def upload_cover_image(type: str, item_id: str, request: CoverImageUploadR
             f"Invalid base64 image: {e}",
             extra={"type": type, "item_id": item_id},
         )
-        raise HTTPException(status_code=400, detail=f"Invalid base64 image: {e}")
+        raise HTTPException(status_code=400, detail=f"Invalid base64 image: {e}") from e
 
     # Determine file extension
     filename = request.cover_image_filename or f"{item_id}.jpg"
@@ -803,11 +803,90 @@ async def reject_staging_item(type: str, item_id: str) -> dict[str, Any]:
         logger.error(
             f"Rejection failed: {e}", exc_info=True, extra={"type": type, "item_id": item_id}
         )
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+async def ingest_intel_to_qdrant(item_id: str, intel_type: str) -> bool:
+    """
+    Ingest a staging item into the appropriate Qdrant collection.
+
+    Args:
+        item_id: Unique item identifier
+        intel_type: "news", "visa", etc.
+
+    Returns:
+        True if ingestion succeeded
+    """
+    try:
+        data = staging_service.load_staging_item(intel_type, item_id)
+        if not data:
+            logger.error(
+                "Qdrant ingestion failed - item not found",
+                extra={"item_id": item_id, "intel_type": intel_type},
+            )
+            return False
+
+        collection_name = INTEL_COLLECTIONS.get(intel_type)
+        if not collection_name:
+            logger.error(
+                f"No Qdrant collection mapped for intel_type={intel_type}",
+                extra={"item_id": item_id, "intel_type": intel_type},
+            )
+            return False
+
+        title = data.get("title", "Untitled")
+        content = data.get("content", "")
+        source_url = data.get("source_url", data.get("url", ""))
+        category = data.get("category", intel_type)
+
+        # Build text for embedding
+        embed_text = f"{title}\n\n{content}"
+
+        # Generate embedding using text-embedding-3-small
+        embedding = await embedder.generate_single_embedding(embed_text)
+
+        # Build metadata
+        metadata = {
+            "title": title,
+            "source_url": source_url,
+            "category": category,
+            "intel_type": intel_type,
+            "published_at": datetime.utcnow().isoformat(),
+            "source_name": data.get("source_name", ""),
+            "relevance_score": data.get("relevance_score", 0),
+        }
+
+        # Upsert to Qdrant
+        client = QdrantClient(collection_name=collection_name)
+        await client.upsert_documents(
+            chunks=[embed_text],
+            embeddings=[embedding],
+            metadatas=[metadata],
+            ids=[item_id],
+        )
+
+        logger.info(
+            "Article ingested to Qdrant",
+            extra={
+                "item_id": item_id,
+                "intel_type": intel_type,
+                "collection": collection_name,
+                "title": title,
+            },
+        )
+        return True
+
+    except Exception as e:
+        logger.error(
+            f"Qdrant ingestion failed: {e}",
+            exc_info=True,
+            extra={"item_id": item_id, "intel_type": intel_type},
+        )
+        return False
 
 
 @router.post("/api/intel/staging/publish/{type}/{item_id}")
-async def publish_staging_item(type: str, item_id: str) -> dict[str, Any]:
+async def publish_staging_item(type: str, item_id: str, request: Request = None) -> dict[str, Any]:
     """
     Publish approved item to Qdrant knowledge base and register in anti-duplicate system.
 
@@ -841,8 +920,6 @@ async def publish_staging_item(type: str, item_id: str) -> dict[str, Any]:
         logger.info("Publishing article", extra={"type": type, "item_id": item_id, "title": title})
 
         # Step 1: Ingest to Qdrant (knowledge base)
-        from backend.app.routers.telegram import ingest_intel_to_qdrant
-
         ingestion_success = await ingest_intel_to_qdrant(item_id, type)
 
         if not ingestion_success:
@@ -1017,7 +1094,60 @@ async def publish_staging_item(type: str, item_id: str) -> dict[str, Any]:
             # Don't block publication if GitHub fails
             # Article is already in Qdrant
 
-        # Step 4: Update staging file with publish timestamp
+        # Step 4: Write to news_items table (serves /api/news for balizero.com frontend)
+        try:
+            pool = getattr(request.app.state, "db_pool", None) if request else None
+            if pool:
+                slug = item_id  # item_id is already a slug-friendly identifier
+                summary = (data.get("content") or "")[:500]
+                content_full = data.get("content") or ""
+                ai_summary = data.get("brief", {}).get("what", "") if isinstance(data.get("brief"), dict) else ""
+                ai_tags = data.get("tags") or []
+                image_url = data.get("image_url") or data.get("cover_image")
+                priority_val = data.get("priority", "medium")
+                if priority_val not in ("high", "medium", "low"):
+                    priority_val = "medium"
+
+                # Map category to valid news_items constraint values
+                valid_categories = {"immigration", "business", "tax", "property", "lifestyle", "tech", "legal"}
+                news_category = category if category in valid_categories else "business"
+
+                async with pool.acquire() as conn:
+                    await conn.execute(
+                        """
+                        INSERT INTO news_items (
+                            title, slug, summary, content, source, source_url,
+                            category, priority, status, image_url, published_at,
+                            ai_summary, ai_tags, external_id
+                        )
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'approved', $9, NOW(), $10, $11, $12)
+                        ON CONFLICT (slug) DO NOTHING
+                        """,
+                        title,
+                        slug,
+                        summary,
+                        content_full,
+                        data.get("source_name", ""),
+                        data.get("source_url", data.get("url", "")),
+                        news_category,
+                        priority_val,
+                        image_url,
+                        ai_summary,
+                        ai_tags,
+                        item_id,
+                    )
+
+                logger.info(
+                    "Article written to news_items table",
+                    extra={"type": type, "item_id": item_id, "slug": slug},
+                )
+        except Exception as e:
+            logger.warning(
+                f"Failed to write to news_items (non-blocking): {e}",
+                extra={"type": type, "item_id": item_id},
+            )
+
+        # Step 5: Update staging file with publish timestamp
         data["published_at"] = datetime.utcnow().isoformat()
         data["published_url"] = published_url
         data["status"] = "published"
@@ -1058,7 +1188,7 @@ async def publish_staging_item(type: str, item_id: str) -> dict[str, Any]:
         logger.error(
             f"Publish failed: {e}", exc_info=True, extra={"type": type, "item_id": item_id}
         )
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/api/intel/metrics")
@@ -1193,7 +1323,7 @@ async def get_system_metrics() -> Any:
 
     except Exception as e:
         logger.error(f"Failed to calculate system metrics: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Metrics calculation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Metrics calculation failed: {str(e)}") from e
 
 
 @router.post("/api/intel/search")
@@ -1467,7 +1597,7 @@ async def get_intelligence_analytics(days: int = IntelConstants.TRENDS_ANALYSIS_
 
     except Exception as e:
         logger.error(f"Failed to calculate analytics: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Analytics calculation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Analytics calculation failed: {str(e)}") from e
 
 
 @router.get("/api/intel/stats/{collection}")
