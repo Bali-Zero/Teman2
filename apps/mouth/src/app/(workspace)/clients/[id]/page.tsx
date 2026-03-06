@@ -3616,80 +3616,116 @@ function CompanyTab({
                 </span>
               </div>
 
-              <div className="mt-4 space-y-2 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-[var(--foreground-muted)]">Role</span>
-                  <span className="font-medium capitalize">{company.role}</span>
+              {/* Client Role */}
+              <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Role</p>
+                  <p className="font-medium capitalize">{company.role}</p>
                 </div>
-                {company.ownership_percentage !== undefined &&
-                  company.ownership_percentage > 0 && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-[var(--foreground-muted)]">Ownership</span>
-                      <span className="font-medium">{company.ownership_percentage}%</span>
-                    </div>
-                  )}
-                {company.nib && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-[var(--foreground-muted)]">NIB</span>
-                    <span className="font-mono text-xs">{company.nib}</span>
+                {company.ownership_percentage !== undefined && company.ownership_percentage > 0 && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Ownership</p>
+                    <p className="font-medium">{company.ownership_percentage}%</p>
                   </div>
                 )}
-                {company.npwp_company && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-[var(--foreground-muted)]">NPWP</span>
-                    <span className="font-mono text-xs">{company.npwp_company}</span>
-                  </div>
-                )}
-                {company.kbli_code && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-[var(--foreground-muted)]">KBLI</span>
-                    <span className="text-xs">{company.kbli_code}</span>
-                  </div>
-                )}
-                {company.registered_address && (
-                  <div className="pt-1">
-                    <span className="text-[var(--foreground-muted)] text-xs">Address</span>
-                    <p className="text-xs mt-0.5">{company.registered_address}</p>
-                  </div>
-                )}
-                {company.notes && (
-                  <p className="text-xs text-[var(--foreground-muted)] italic pt-1">{company.notes}</p>
-                )}
-                {company.setup_progress &&
-                  company.setup_progress > 0 &&
-                  company.setup_progress < 100 && (
-                    <div className="pt-2">
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="text-[var(--foreground-muted)]">Setup Progress</span>
-                        <span>{company.setup_progress}%</span>
-                      </div>
-                      <div className="h-1.5 bg-[var(--border)] rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-full"
-                          style={{ width: `${company.setup_progress}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
               </div>
 
-              <div className="mt-4 pt-4 border-t border-[var(--border)] flex gap-2">
-                {company.company_drive_folder_id && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 text-xs"
-                    onClick={() => window.open(`https://drive.google.com/drive/folders/${company.company_drive_folder_id}`, "_blank")}
-                  >
-                    Open Drive
-                  </Button>
+              {/* Legal Documents */}
+              <div className="mt-3 pt-3 border-t border-[var(--border)] space-y-2 text-sm">
+                {company.sk_menhumkam_no && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">SK Menkumham</p>
+                    <p className="font-mono text-xs">{company.sk_menhumkam_no}</p>
+                  </div>
                 )}
-                {company.is_primary && (
-                  <span className="px-2 py-1 rounded bg-[var(--accent)]/20 text-[var(--accent)] text-xs">
-                    Primary
-                  </span>
+                {company.akta_pendirian_no && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Akta Pendirian</p>
+                    <p className="font-mono text-xs">{company.akta_pendirian_no}{company.akta_pendirian_date ? ` (${formatDate(company.akta_pendirian_date)})` : ""}</p>
+                  </div>
+                )}
+                {company.akta_perubahan_no && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Akta Perubahan</p>
+                    <p className="font-mono text-xs">{company.akta_perubahan_no}{company.akta_perubahan_date ? ` (${formatDate(company.akta_perubahan_date)})` : ""}</p>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                  {company.nib && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">NIB</p>
+                      <p className="font-mono text-xs">{company.nib}</p>
+                    </div>
+                  )}
+                  {company.npwp_company && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">NPWP</p>
+                      <p className="font-mono text-xs">{company.npwp_company}</p>
+                    </div>
+                  )}
+                </div>
+                {company.kbli_code && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">KBLI</p>
+                    <p className="text-xs">{company.kbli_code}</p>
+                    {company.kbli_description && <p className="text-xs text-[var(--foreground-muted)]">{company.kbli_description}</p>}
+                  </div>
                 )}
               </div>
+
+              {/* Contact & Address */}
+              {(company.registered_address || company.office_address || company.company_phone || company.company_email) && (
+                <div className="mt-3 pt-3 border-t border-[var(--border)] space-y-2 text-sm">
+                  {company.registered_address && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Registered Address</p>
+                      <p className="text-xs">{company.registered_address}</p>
+                    </div>
+                  )}
+                  {company.office_address && company.office_address !== company.registered_address && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Office Address</p>
+                      <p className="text-xs">{company.office_address}</p>
+                    </div>
+                  )}
+                  {(company.city || company.province) && (
+                    <p className="text-xs text-[var(--foreground-muted)]">{[company.city, company.province].filter(Boolean).join(", ")}</p>
+                  )}
+                  <div className="grid grid-cols-2 gap-x-4">
+                    {company.company_phone && (
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Phone</p>
+                        <p className="text-xs">{company.company_phone}</p>
+                      </div>
+                    )}
+                    {company.company_email && (
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Email</p>
+                        <p className="text-xs truncate">{company.company_email}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* People from custom_fields */}
+              {company.custom_fields && Array.isArray((company.custom_fields as Record<string, unknown>).people) && ((company.custom_fields as Record<string, unknown>).people as string[]).length > 0 && (
+                <div className="mt-3 pt-3 border-t border-[var(--border)]">
+                  <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)] mb-1">People</p>
+                  <div className="flex flex-wrap gap-1">
+                    {((company.custom_fields as Record<string, unknown>).people as string[]).map((p, i) => (
+                      <span key={i} className="px-2 py-0.5 rounded-full bg-[var(--accent)]/10 text-[var(--accent)] text-xs">{p}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Footer */}
+              {company.is_primary && (
+                <div className="mt-3 pt-3 border-t border-[var(--border)] flex justify-end">
+                  <span className="px-2 py-1 rounded bg-[var(--accent)]/20 text-[var(--accent)] text-xs">Primary</span>
+                </div>
+              )}
             </div>
           ))}
         </div>
