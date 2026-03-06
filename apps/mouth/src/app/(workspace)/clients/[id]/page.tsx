@@ -987,116 +987,65 @@ function OverviewTab({
 
               <div className="border-t border-[var(--border)]" />
 
-              {/* Email - Always visible */}
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
-                  <Mail className="w-4 h-4 text-blue-500" />
+              {/* Contact Info */}
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Email</p>
+                  <p className="text-sm font-medium truncate">{client.email || <span className="text-[var(--foreground-muted)] italic text-xs">—</span>}</p>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs text-[var(--foreground-muted)]">
-                    Email
-                  </p>
-                  <p className="text-sm font-medium truncate">
-                    {client.email || (
-                      <span className="text-[var(--foreground-muted)] italic">
-                        Not provided
-                      </span>
-                    )}
-                  </p>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Phone</p>
+                  <p className="text-sm font-medium">{client.phone ? formatPhoneNumber(client.phone) : <span className="text-[var(--foreground-muted)] italic text-xs">—</span>}</p>
                 </div>
-              </div>
-
-              {/* Phone - Always visible */}
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center">
-                  <Phone className="w-4 h-4 text-green-500" />
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Nationality</p>
+                  <p className="text-sm font-medium">{client.nationality || <span className="text-[var(--foreground-muted)] italic text-xs">—</span>}</p>
                 </div>
-                <div className="flex-1">
-                  <p className="text-xs text-[var(--foreground-muted)]">
-                    Phone
-                  </p>
-                  <p className="text-sm font-medium">
-                    {client.phone ? (
-                      formatPhoneNumber(client.phone)
-                    ) : (
-                      <span className="text-[var(--foreground-muted)] italic">
-                        Not provided
-                      </span>
-                    )}
-                  </p>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Gender</p>
+                  <p className="text-sm font-medium">{client.gender === "M" ? "Male" : client.gender === "F" ? "Female" : <span className="text-[var(--foreground-muted)] italic text-xs">—</span>}</p>
                 </div>
               </div>
 
-              {/* Nationality - Always visible */}
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center">
-                  <Globe className="w-4 h-4 text-purple-500" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs text-[var(--foreground-muted)]">
-                    Nationality
-                  </p>
-                  <p className="text-sm font-medium">
-                    {client.nationality || (
-                      <span className="text-[var(--foreground-muted)] italic">
-                        Not provided
-                      </span>
+              {/* Passport & DOB - from OCR extraction */}
+              {(client.passport_number || client.date_of_birth) && (
+                <>
+                  <div className="border-t border-[var(--border)]" />
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                    {client.passport_number && (
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Passport</p>
+                        <p className="text-sm font-semibold font-mono">{client.passport_number}</p>
+                      </div>
                     )}
-                  </p>
-                </div>
-              </div>
+                    {client.passport_expiry && (
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Passport Expiry</p>
+                        <p className={`text-sm font-medium ${new Date(client.passport_expiry) < new Date() ? "text-red-500" : new Date(client.passport_expiry) < new Date(Date.now() + 365 * 86400000) ? "text-yellow-500" : "text-green-500"}`}>
+                          {formatDate(client.passport_expiry)}
+                        </p>
+                      </div>
+                    )}
+                    {client.date_of_birth && (
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Date of Birth</p>
+                        <p className="text-sm font-medium">{formatDate(client.date_of_birth)}</p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
 
-              {/* Address - Always visible */}
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center">
-                  <MapPin className="w-4 h-4 text-orange-500" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs text-[var(--foreground-muted)]">
-                    Address
-                  </p>
-                  <p className="text-sm font-medium">
-                    {client.address || (
-                      <span className="text-[var(--foreground-muted)] italic">
-                        Not provided
-                      </span>
-                    )}
-                  </p>
-                </div>
-              </div>
-
-              {/* Gender - Always visible */}
-              <div className="flex items-start gap-3">
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center ${client.gender === "M" ? "bg-blue-500/10" : client.gender === "F" ? "bg-pink-500/10" : "bg-gray-500/10"}`}
-                >
-                  <span
-                    className={`text-sm font-bold ${client.gender === "M" ? "text-blue-500" : client.gender === "F" ? "text-pink-500" : "text-gray-500"}`}
-                  >
-                    {client.gender === "M"
-                      ? "♂"
-                      : client.gender === "F"
-                        ? "♀"
-                        : "—"}
-                  </span>
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs text-[var(--foreground-muted)]">
-                    Gender
-                  </p>
-                  <p className="text-sm font-medium">
-                    {client.gender === "M" ? (
-                      "Male"
-                    ) : client.gender === "F" ? (
-                      "Female"
-                    ) : (
-                      <span className="text-[var(--foreground-muted)] italic">
-                        Not provided
-                      </span>
-                    )}
-                  </p>
-                </div>
-              </div>
+              {/* Address */}
+              {client.address && (
+                <>
+                  <div className="border-t border-[var(--border)]" />
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Address</p>
+                    <p className="text-sm font-medium">{client.address}</p>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -2152,6 +2101,12 @@ function FamilyTab({
               </div>
 
               <div className="space-y-2 text-sm">
+                {member.date_of_birth && (
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-[var(--foreground-muted)]" />
+                    <span>DOB: {formatDate(member.date_of_birth)}</span>
+                  </div>
+                )}
                 {member.nationality && (
                   <div className="flex items-center gap-2">
                     <Globe className="w-4 h-4 text-[var(--foreground-muted)]" />
@@ -2161,7 +2116,7 @@ function FamilyTab({
                 {member.passport_number && (
                   <div className="flex items-center gap-2">
                     <CreditCard className="w-4 h-4 text-[var(--foreground-muted)]" />
-                    <span>
+                    <span className="font-mono">
                       {member.passport_number}
                       {member.passport_expiry && (
                         <span
@@ -2191,6 +2146,21 @@ function FamilyTab({
                       )}
                     </span>
                   </div>
+                )}
+                {member.email && (
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-[var(--foreground-muted)]" />
+                    <span className="truncate">{member.email}</span>
+                  </div>
+                )}
+                {member.phone && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-[var(--foreground-muted)]" />
+                    <span>{member.phone}</span>
+                  </div>
+                )}
+                {member.notes && (
+                  <p className="text-xs text-[var(--foreground-muted)] italic mt-1">{member.notes}</p>
                 )}
               </div>
             </div>
@@ -3649,17 +3619,13 @@ function CompanyTab({
               <div className="mt-4 space-y-2 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-[var(--foreground-muted)]">Role</span>
-                  <span className="font-medium">{company.role}</span>
+                  <span className="font-medium capitalize">{company.role}</span>
                 </div>
                 {company.ownership_percentage !== undefined &&
                   company.ownership_percentage > 0 && (
                     <div className="flex items-center justify-between">
-                      <span className="text-[var(--foreground-muted)]">
-                        Ownership
-                      </span>
-                      <span className="font-medium">
-                        {company.ownership_percentage}%
-                      </span>
+                      <span className="text-[var(--foreground-muted)]">Ownership</span>
+                      <span className="font-medium">{company.ownership_percentage}%</span>
                     </div>
                   )}
                 {company.nib && (
@@ -3668,20 +3634,33 @@ function CompanyTab({
                     <span className="font-mono text-xs">{company.nib}</span>
                   </div>
                 )}
+                {company.npwp_company && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[var(--foreground-muted)]">NPWP</span>
+                    <span className="font-mono text-xs">{company.npwp_company}</span>
+                  </div>
+                )}
                 {company.kbli_code && (
                   <div className="flex items-center justify-between">
                     <span className="text-[var(--foreground-muted)]">KBLI</span>
                     <span className="text-xs">{company.kbli_code}</span>
                   </div>
                 )}
+                {company.registered_address && (
+                  <div className="pt-1">
+                    <span className="text-[var(--foreground-muted)] text-xs">Address</span>
+                    <p className="text-xs mt-0.5">{company.registered_address}</p>
+                  </div>
+                )}
+                {company.notes && (
+                  <p className="text-xs text-[var(--foreground-muted)] italic pt-1">{company.notes}</p>
+                )}
                 {company.setup_progress &&
                   company.setup_progress > 0 &&
                   company.setup_progress < 100 && (
                     <div className="pt-2">
                       <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="text-[var(--foreground-muted)]">
-                          Setup Progress
-                        </span>
+                        <span className="text-[var(--foreground-muted)]">Setup Progress</span>
                         <span>{company.setup_progress}%</span>
                       </div>
                       <div className="h-1.5 bg-[var(--border)] rounded-full overflow-hidden">
@@ -3695,18 +3674,16 @@ function CompanyTab({
               </div>
 
               <div className="mt-4 pt-4 border-t border-[var(--border)] flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 text-xs"
-                  onClick={() => {
-                    toast.info("Company details", {
-                      description: "Full company management coming soon",
-                    });
-                  }}
-                >
-                  View Details
-                </Button>
+                {company.company_drive_folder_id && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-xs"
+                    onClick={() => window.open(`https://drive.google.com/drive/folders/${company.company_drive_folder_id}`, "_blank")}
+                  >
+                    Open Drive
+                  </Button>
+                )}
                 {company.is_primary && (
                   <span className="px-2 py-1 rounded bg-[var(--accent)]/20 text-[var(--accent)] text-xs">
                     Primary
