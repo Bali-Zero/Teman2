@@ -58,9 +58,15 @@ export default function NewsPageClient({
   const mainNews5 = articles.find((a) => a.slug === homepageLayout.hero_5);
 
   // Get insight articles from layout config
-  const kbliInsight1 = articles.find((a) => a.slug === homepageLayout.insight_1);
-  const kbliInsight2 = articles.find((a) => a.slug === homepageLayout.insight_2);
-  const kbliInsight3 = articles.find((a) => a.slug === homepageLayout.insight_3);
+  const kbliInsight1 = articles.find(
+    (a) => a.slug === homepageLayout.insight_1,
+  );
+  const kbliInsight2 = articles.find(
+    (a) => a.slug === homepageLayout.insight_2,
+  );
+  const kbliInsight3 = articles.find(
+    (a) => a.slug === homepageLayout.insight_3,
+  );
   const kbliInsights = [kbliInsight1, kbliInsight2, kbliInsight3].filter(
     Boolean,
   ) as ArticleListItem[];
