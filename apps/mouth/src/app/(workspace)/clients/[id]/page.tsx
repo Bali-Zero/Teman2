@@ -462,14 +462,7 @@ const INTERACTION_ICONS: Record<string, React.ReactNode> = {
   note: <FileText className="w-4 h-4" />,
 };
 
-type TabType =
-  | "overview"
-  | "family"
-  | "documents"
-  | "process"
-  | "timeline"
-  | "company"
-  | "tax";
+type TabType = "overview" | "family" | "immigration" | "company" | "tax";
 type ModalType =
   | "none"
   | "edit_client"
@@ -543,9 +536,7 @@ export default function ClientDetailPage() {
     const tabParam = searchParams.get("tab");
     if (
       tabParam &&
-      ["overview", "family", "documents", "process", "timeline"].includes(
-        tabParam,
-      )
+      ["overview", "family", "immigration", "company", "tax"].includes(tabParam)
     ) {
       setActiveTab(tabParam as TabType);
     }
@@ -602,8 +593,15 @@ export default function ClientDetailPage() {
     );
   }
 
-  const { client, family_members, documents, expiry_alerts, practices, company_links, stats } =
-    profile;
+  const {
+    client,
+    family_members,
+    documents,
+    expiry_alerts,
+    practices,
+    company_links,
+    stats,
+  } = profile;
 
   // Group documents by category
   const documentsByCategory = documents.reduce(
@@ -779,16 +777,10 @@ export default function ClientDetailPage() {
             icon: Users,
           },
           {
-            key: "documents",
-            label: `Documents (${stats.documents_count})`,
-            icon: FileText,
+            key: "immigration",
+            label: "Immigration",
+            icon: Globe,
           },
-          {
-            key: "process",
-            label: `Process (${stats.practices_count})`,
-            icon: FolderOpen,
-          },
-          { key: "timeline", label: "Timeline", icon: Clock },
           { key: "company", label: "Company", icon: Building2 },
           { key: "tax", label: "Tax", icon: DollarSign },
         ].map(({ key, label, icon: Icon }) => (
@@ -826,16 +818,17 @@ export default function ClientDetailPage() {
         <FamilyTab
           clientId={clientId}
           familyMembers={family_members}
+          documents={documents}
           formatDate={formatDate}
           onAddClick={() => setActiveModal("add_family")}
           onRefresh={refreshProfile}
         />
       )}
 
-      {activeTab === "documents" && (
-        <DocumentsTab
+      {activeTab === "immigration" && (
+        <ImmigrationTab
           clientId={clientId}
-          documentsByCategory={documentsByCategory}
+          documents={documents}
           formatDate={formatDate}
           onAddClick={() => setActiveModal("add_document")}
           onEditClick={(doc) => {
@@ -843,24 +836,6 @@ export default function ClientDetailPage() {
             setActiveModal("edit_document");
           }}
           onRefresh={refreshProfile}
-        />
-      )}
-
-      {activeTab === "process" && (
-        <ProcessTab
-          clientId={clientId}
-          practices={practices}
-          formatDate={formatDate}
-          formatCurrency={formatCurrency}
-          router={router}
-        />
-      )}
-
-      {activeTab === "timeline" && (
-        <TimelineTab
-          interactions={interactions}
-          formatDate={formatDate}
-          formatTime={formatTime}
         />
       )}
 
@@ -990,20 +965,58 @@ function OverviewTab({
               {/* Contact Info */}
               <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Email</p>
-                  <p className="text-sm font-medium truncate">{client.email || <span className="text-[var(--foreground-muted)] italic text-xs">—</span>}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                    Email
+                  </p>
+                  <p className="text-sm font-medium truncate">
+                    {client.email || (
+                      <span className="text-[var(--foreground-muted)] italic text-xs">
+                        —
+                      </span>
+                    )}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Phone</p>
-                  <p className="text-sm font-medium">{client.phone ? formatPhoneNumber(client.phone) : <span className="text-[var(--foreground-muted)] italic text-xs">—</span>}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                    Phone
+                  </p>
+                  <p className="text-sm font-medium">
+                    {client.phone ? (
+                      formatPhoneNumber(client.phone)
+                    ) : (
+                      <span className="text-[var(--foreground-muted)] italic text-xs">
+                        —
+                      </span>
+                    )}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Nationality</p>
-                  <p className="text-sm font-medium">{client.nationality || <span className="text-[var(--foreground-muted)] italic text-xs">—</span>}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                    Nationality
+                  </p>
+                  <p className="text-sm font-medium">
+                    {client.nationality || (
+                      <span className="text-[var(--foreground-muted)] italic text-xs">
+                        —
+                      </span>
+                    )}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Gender</p>
-                  <p className="text-sm font-medium">{client.gender === "M" ? "Male" : client.gender === "F" ? "Female" : <span className="text-[var(--foreground-muted)] italic text-xs">—</span>}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                    Gender
+                  </p>
+                  <p className="text-sm font-medium">
+                    {client.gender === "M" ? (
+                      "Male"
+                    ) : client.gender === "F" ? (
+                      "Female"
+                    ) : (
+                      <span className="text-[var(--foreground-muted)] italic text-xs">
+                        —
+                      </span>
+                    )}
+                  </p>
                 </div>
               </div>
 
@@ -1014,22 +1027,34 @@ function OverviewTab({
                   <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                     {client.passport_number && (
                       <div>
-                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Passport</p>
-                        <p className="text-sm font-semibold font-mono">{client.passport_number}</p>
+                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                          Passport
+                        </p>
+                        <p className="text-sm font-semibold font-mono">
+                          {client.passport_number}
+                        </p>
                       </div>
                     )}
                     {client.passport_expiry && (
                       <div>
-                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Passport Expiry</p>
-                        <p className={`text-sm font-medium ${new Date(client.passport_expiry) < new Date() ? "text-red-500" : new Date(client.passport_expiry) < new Date(Date.now() + 365 * 86400000) ? "text-yellow-500" : "text-green-500"}`}>
+                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                          Passport Expiry
+                        </p>
+                        <p
+                          className={`text-sm font-medium ${new Date(client.passport_expiry) < new Date() ? "text-red-500" : new Date(client.passport_expiry) < new Date(Date.now() + 365 * 86400000) ? "text-yellow-500" : "text-green-500"}`}
+                        >
                           {formatDate(client.passport_expiry)}
                         </p>
                       </div>
                     )}
                     {client.date_of_birth && (
                       <div>
-                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Date of Birth</p>
-                        <p className="text-sm font-medium">{formatDate(client.date_of_birth)}</p>
+                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                          Date of Birth
+                        </p>
+                        <p className="text-sm font-medium">
+                          {formatDate(client.date_of_birth)}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -1041,7 +1066,9 @@ function OverviewTab({
                 <>
                   <div className="border-t border-[var(--border)]" />
                   <div>
-                    <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Address</p>
+                    <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                      Address
+                    </p>
                     <p className="text-sm font-medium">{client.address}</p>
                   </div>
                 </>
@@ -1252,7 +1279,12 @@ function PassportCard({
       hasTriggeredOcr.current = true;
       handleExtractData();
     }
-  }, [passportImageUrl, client.passport_number, isExtracting, handleExtractData]);
+  }, [
+    passportImageUrl,
+    client.passport_number,
+    isExtracting,
+    handleExtractData,
+  ]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1672,14 +1704,26 @@ function VisaCard({
       const response = (await api.post(
         `/api/crm/clients/${clientId}/extract-visa`,
         { file_id: fileId, doc_id: latestVisa.id },
-      )) as { success: boolean; extracted?: { expiry_date?: string; issue_date?: string; visa_type?: string } };
+      )) as {
+        success: boolean;
+        extracted?: {
+          expiry_date?: string;
+          issue_date?: string;
+          visa_type?: string;
+        };
+      };
       if (response.success && response.extracted) {
         const details = [];
-        if (response.extracted.visa_type) details.push(`Type: ${response.extracted.visa_type}`);
-        if (response.extracted.issue_date) details.push(`Issue: ${response.extracted.issue_date}`);
-        if (response.extracted.expiry_date) details.push(`Expiry: ${response.extracted.expiry_date}`);
+        if (response.extracted.visa_type)
+          details.push(`Type: ${response.extracted.visa_type}`);
+        if (response.extracted.issue_date)
+          details.push(`Issue: ${response.extracted.issue_date}`);
+        if (response.extracted.expiry_date)
+          details.push(`Expiry: ${response.extracted.expiry_date}`);
         if (details.length > 0) {
-          toast.success("Visa data extracted!", { description: details.join(" | ") });
+          toast.success("Visa data extracted!", {
+            description: details.join(" | "),
+          });
         }
         await onRefresh();
       }
@@ -2023,12 +2067,14 @@ function VisaCard({
 function FamilyTab({
   clientId,
   familyMembers,
+  documents,
   formatDate,
   onAddClick,
   onRefresh,
 }: {
   clientId: number;
   familyMembers: FamilyMember[];
+  documents: ClientDocument[];
   formatDate: (d: string) => string;
   onAddClick: () => void;
   onRefresh: () => void;
@@ -2044,6 +2090,10 @@ function FamilyTab({
       }
     }
   };
+
+  // Find documents linked to a family member
+  const getMemberDocuments = (memberId: number) =>
+    documents.filter((d) => d.family_member_id === memberId);
 
   return (
     <div className="space-y-4">
@@ -2068,103 +2118,277 @@ function FamilyTab({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {familyMembers.map((member) => (
-            <div
-              key={member.id}
-              className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-4 relative group"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[var(--accent)]/20 flex items-center justify-center">
-                    <User className="w-5 h-5 text-[var(--accent)]" />
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-[var(--foreground)]">
-                      {member.full_name}
-                    </h4>
-                    <p className="text-xs text-[var(--foreground-muted)] capitalize">
-                      {member.relationship}
-                    </p>
-                  </div>
-                </div>
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-red-400 hover:text-red-500 hover:bg-red-500/10"
-                    onClick={() => handleDelete(member.id, member.full_name)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
+        <div className="space-y-6">
+          {familyMembers.map((member) => {
+            const memberDocs = getMemberDocuments(member.id);
+            const memberPassportDoc = memberDocs.find((d) =>
+              d.document_type?.toLowerCase().includes("passport"),
+            );
+            const memberVisaDoc = memberDocs.find(
+              (d) =>
+                d.document_type?.toLowerCase().includes("kitas") ||
+                d.document_type?.toLowerCase().includes("visa"),
+            );
 
-              <div className="space-y-2 text-sm">
-                {member.date_of_birth && (
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-[var(--foreground-muted)]" />
-                    <span>DOB: {formatDate(member.date_of_birth)}</span>
+            return (
+              <div
+                key={member.id}
+                className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden group"
+              >
+                {/* Header with relationship badge */}
+                <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border)] bg-[var(--background-secondary)]">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[var(--accent)]/20 flex items-center justify-center">
+                      <User className="w-5 h-5 text-[var(--accent)]" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-[var(--foreground)]">
+                        {member.full_name}
+                      </h4>
+                      <span className="inline-block px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-xs capitalize">
+                        {member.relationship}
+                      </span>
+                    </div>
                   </div>
-                )}
-                {member.nationality && (
-                  <div className="flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-[var(--foreground-muted)]" />
-                    <span>{member.nationality}</span>
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-red-400 hover:text-red-500 hover:bg-red-500/10"
+                      onClick={() => handleDelete(member.id, member.full_name)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
-                )}
-                {member.passport_number && (
-                  <div className="flex items-center gap-2">
-                    <CreditCard className="w-4 h-4 text-[var(--foreground-muted)]" />
-                    <span className="font-mono">
-                      {member.passport_number}
-                      {member.passport_expiry && (
-                        <span
-                          className={`ml-2 px-1.5 py-0.5 rounded text-xs ${
-                            ALERT_COLORS[member.passport_alert || "green"]
-                          }`}
-                        >
-                          {formatDate(member.passport_expiry)}
-                        </span>
+                </div>
+
+                {/* Full overview — 3 columns like main overview */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 p-5">
+                  {/* COL 1: Personal Info */}
+                  <div className="space-y-3">
+                    <h5 className="text-xs uppercase tracking-wider text-[var(--foreground-muted)] font-medium">
+                      Personal Info
+                    </h5>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                      {member.nationality && (
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                            Nationality
+                          </p>
+                          <p className="text-sm font-medium">
+                            {member.nationality}
+                          </p>
+                        </div>
                       )}
-                    </span>
-                  </div>
-                )}
-                {member.current_visa_type && (
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-[var(--foreground-muted)]" />
-                    <span>
-                      {member.current_visa_type}
-                      {member.visa_expiry && (
-                        <span
-                          className={`ml-2 px-1.5 py-0.5 rounded text-xs ${
-                            ALERT_COLORS[member.visa_alert || "green"]
-                          }`}
-                        >
-                          {formatDate(member.visa_expiry)}
-                        </span>
+                      {member.date_of_birth && (
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                            Date of Birth
+                          </p>
+                          <p className="text-sm font-medium">
+                            {formatDate(member.date_of_birth)}
+                          </p>
+                        </div>
                       )}
-                    </span>
+                      {member.email && (
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                            Email
+                          </p>
+                          <p className="text-sm font-medium truncate">
+                            {member.email}
+                          </p>
+                        </div>
+                      )}
+                      {member.phone && (
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                            Phone
+                          </p>
+                          <p className="text-sm font-medium">{member.phone}</p>
+                        </div>
+                      )}
+                    </div>
+                    {member.notes && (
+                      <div className="mt-2 p-2 rounded-lg bg-[var(--background)]/50 border border-[var(--border)]">
+                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)] mb-1">
+                          Notes
+                        </p>
+                        <p className="text-xs text-[var(--foreground-muted)]">
+                          {member.notes}
+                        </p>
+                      </div>
+                    )}
                   </div>
-                )}
-                {member.email && (
-                  <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-[var(--foreground-muted)]" />
-                    <span className="truncate">{member.email}</span>
+
+                  {/* COL 2: Passport */}
+                  <div className="space-y-3">
+                    <h5 className="text-xs uppercase tracking-wider text-[var(--foreground-muted)] font-medium">
+                      Passport
+                    </h5>
+                    {member.passport_number ? (
+                      <div className="rounded-lg border border-[var(--border)] bg-[var(--background)] p-3 space-y-2">
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                          <div>
+                            <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                              Number
+                            </p>
+                            <p className="text-sm font-semibold font-mono">
+                              {member.passport_number}
+                            </p>
+                          </div>
+                          {member.passport_expiry && (
+                            <div>
+                              <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                                Expiry
+                              </p>
+                              <p
+                                className={`text-sm font-medium ${
+                                  new Date(member.passport_expiry) < new Date()
+                                    ? "text-red-500"
+                                    : new Date(member.passport_expiry) <
+                                        new Date(Date.now() + 365 * 86400000)
+                                      ? "text-yellow-500"
+                                      : "text-green-500"
+                                }`}
+                              >
+                                {formatDate(member.passport_expiry)}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        {member.passport_alert &&
+                          member.passport_alert !== "green" && (
+                            <div
+                              className={`text-xs px-2 py-1 rounded inline-flex items-center gap-1 ${ALERT_COLORS[member.passport_alert]}`}
+                            >
+                              <AlertTriangle className="w-3 h-3" />
+                              {member.passport_alert === "expired"
+                                ? "Expired"
+                                : member.passport_alert === "red"
+                                  ? "Expiring soon"
+                                  : "Renewal recommended"}
+                            </div>
+                          )}
+                        {memberPassportDoc?.google_drive_file_url && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-2 text-xs w-full justify-start"
+                            onClick={() => {
+                              const fileId = extractDriveFileId(
+                                memberPassportDoc.google_drive_file_url!,
+                              );
+                              if (fileId) {
+                                const link = document.createElement("a");
+                                link.href = `https://drive.google.com/uc?export=download&id=${fileId}`;
+                                link.download = `passport_${member.full_name.replace(/\s+/g, "_")}.pdf`;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }
+                            }}
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            Download Passport
+                          </Button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--background)]/30 p-4 text-center">
+                        <CreditCard className="w-6 h-6 mx-auto text-[var(--foreground-muted)] opacity-30 mb-1" />
+                        <p className="text-xs text-[var(--foreground-muted)]">
+                          No passport data
+                        </p>
+                      </div>
+                    )}
                   </div>
-                )}
-                {member.phone && (
-                  <div className="flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-[var(--foreground-muted)]" />
-                    <span>{member.phone}</span>
+
+                  {/* COL 3: Visa */}
+                  <div className="space-y-3">
+                    <h5 className="text-xs uppercase tracking-wider text-[var(--foreground-muted)] font-medium">
+                      Actual Visa
+                    </h5>
+                    {member.current_visa_type ? (
+                      <div className="rounded-lg border border-[var(--border)] bg-[var(--background)] p-3 space-y-2">
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                          <div>
+                            <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                              Type
+                            </p>
+                            <p className="text-sm font-semibold uppercase">
+                              {member.current_visa_type}
+                            </p>
+                          </div>
+                          {member.visa_expiry && (
+                            <div>
+                              <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                                Expiry
+                              </p>
+                              <p
+                                className={`text-sm font-medium ${
+                                  new Date(member.visa_expiry) < new Date()
+                                    ? "text-red-500"
+                                    : new Date(member.visa_expiry) <
+                                        new Date(Date.now() + 90 * 86400000)
+                                      ? "text-yellow-500"
+                                      : "text-green-500"
+                                }`}
+                              >
+                                {formatDate(member.visa_expiry)}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        {member.visa_alert && member.visa_alert !== "green" && (
+                          <div
+                            className={`text-xs px-2 py-1 rounded inline-flex items-center gap-1 ${ALERT_COLORS[member.visa_alert]}`}
+                          >
+                            <AlertTriangle className="w-3 h-3" />
+                            {member.visa_alert === "expired"
+                              ? "Expired"
+                              : member.visa_alert === "red"
+                                ? "Expiring soon"
+                                : "Renewal recommended"}
+                          </div>
+                        )}
+                        {memberVisaDoc?.google_drive_file_url && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-2 text-xs w-full justify-start"
+                            onClick={() => {
+                              const fileId = extractDriveFileId(
+                                memberVisaDoc.google_drive_file_url!,
+                              );
+                              if (fileId) {
+                                const link = document.createElement("a");
+                                link.href = `https://drive.google.com/uc?export=download&id=${fileId}`;
+                                link.download = `visa_${member.full_name.replace(/\s+/g, "_")}.pdf`;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }
+                            }}
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            Download Visa
+                          </Button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--background)]/30 p-4 text-center">
+                        <Globe className="w-6 h-6 mx-auto text-[var(--foreground-muted)] opacity-30 mb-1" />
+                        <p className="text-xs text-[var(--foreground-muted)]">
+                          No visa data
+                        </p>
+                      </div>
+                    )}
                   </div>
-                )}
-                {member.notes && (
-                  <p className="text-xs text-[var(--foreground-muted)] italic mt-1">{member.notes}</p>
-                )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -2172,33 +2396,23 @@ function FamilyTab({
 }
 
 // ============================================
-// DOCUMENTS TAB
+// IMMIGRATION TAB — Actual Visa, Previous Visas, Working Permit, Other
 // ============================================
-function DocumentsTab({
+function ImmigrationTab({
   clientId,
-  documentsByCategory,
+  documents,
   formatDate,
   onAddClick,
   onEditClick,
   onRefresh,
 }: {
   clientId: number;
-  documentsByCategory: Record<string, ClientDocument[]>;
+  documents: ClientDocument[];
   formatDate: (d: string) => string;
   onAddClick: () => void;
   onEditClick: (doc: ClientDocument) => void;
   onRefresh: () => void;
 }) {
-  const categoryNames: Record<string, string> = {
-    immigration: "Immigration Documents",
-    pma: "PT PMA Documents",
-    tax: "Tax Documents",
-    personal: "Personal Documents",
-    other: "Other Documents",
-  };
-
-  const categoryOrder = ["immigration", "pma", "tax", "personal", "other"];
-
   const handleDelete = async (docId: number, fileName: string) => {
     if (confirm(`Archive document "${fileName || "Document"}"?`)) {
       try {
@@ -2211,11 +2425,204 @@ function DocumentsTab({
     }
   };
 
+  // Categorize immigration documents
+  const immigrationDocs = documents.filter(
+    (d) =>
+      d.document_category === "immigration" ||
+      d.document_type?.toLowerCase().includes("kitas") ||
+      d.document_type?.toLowerCase().includes("kitap") ||
+      d.document_type?.toLowerCase().includes("visa") ||
+      d.document_type?.toLowerCase().includes("permit") ||
+      d.document_type?.toLowerCase().includes("imta") ||
+      d.document_type?.toLowerCase().includes("rptka") ||
+      d.document_type?.toLowerCase().includes("evisa") ||
+      d.document_type?.toLowerCase().includes("voa"),
+  );
+
+  // Sort: most recent expiry first, then by type
+  const sortedDocs = [...immigrationDocs].sort((a, b) => {
+    if (a.expiry_date && b.expiry_date)
+      return (
+        new Date(b.expiry_date).getTime() - new Date(a.expiry_date).getTime()
+      );
+    if (a.expiry_date) return -1;
+    return 1;
+  });
+
+  // Actual visa = most recent non-expired kitas/kitap/visa
+  const now = new Date();
+  const actualVisa = sortedDocs.find(
+    (d) =>
+      (d.document_type?.toLowerCase().includes("kitas") ||
+        d.document_type?.toLowerCase().includes("kitap") ||
+        d.document_type?.toLowerCase().includes("visa") ||
+        d.document_type?.toLowerCase().includes("evisa")) &&
+      (!d.expiry_date ||
+        new Date(d.expiry_date) > new Date(now.getTime() - 30 * 86400000)), // allow 30 days grace
+  );
+
+  // Previous visas = expired kitas/kitap/visa (not the actual one)
+  const previousVisas = sortedDocs.filter(
+    (d) =>
+      d !== actualVisa &&
+      (d.document_type?.toLowerCase().includes("kitas") ||
+        d.document_type?.toLowerCase().includes("kitap") ||
+        d.document_type?.toLowerCase().includes("visa") ||
+        d.document_type?.toLowerCase().includes("evisa") ||
+        d.document_type?.toLowerCase().includes("voa")),
+  );
+
+  // Working permits
+  const workingPermits = sortedDocs.filter(
+    (d) =>
+      d.document_type?.toLowerCase().includes("permit") ||
+      d.document_type?.toLowerCase().includes("imta") ||
+      d.document_type?.toLowerCase().includes("rptka"),
+  );
+
+  // Other immigration docs (not in above categories)
+  const otherDocs = sortedDocs.filter(
+    (d) =>
+      d !== actualVisa &&
+      !previousVisas.includes(d) &&
+      !workingPermits.includes(d),
+  );
+
+  const renderDocCard = (doc: ClientDocument) => (
+    <div
+      key={doc.id}
+      className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden group"
+    >
+      {doc.google_drive_file_url && (
+        <div className="relative">
+          <div
+            className={`aspect-[3/2] overflow-hidden border-b bg-[var(--background)] ${
+              doc.alert_color === "expired" || doc.alert_color === "red"
+                ? "border-red-500/50"
+                : doc.alert_color === "yellow"
+                  ? "border-yellow-500/50"
+                  : "border-[var(--border)]"
+            }`}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={
+                getDriveProxyUrl(doc.google_drive_file_url) ||
+                doc.google_drive_file_url
+              }
+              alt={doc.document_type}
+              className="w-full h-full object-contain"
+              onError={(e) => {
+                if (doc.google_drive_file_url) {
+                  (e.target as HTMLImageElement).src =
+                    doc.google_drive_file_url.replace("/view", "/preview");
+                }
+              }}
+            />
+          </div>
+        </div>
+      )}
+      <div className="p-3">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium text-[var(--foreground)] capitalize">
+            {doc.document_type.replace(/_/g, " ")}
+          </span>
+          <div className="flex items-center gap-1">
+            {doc.google_drive_file_url && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => {
+                  const fileId = extractDriveFileId(doc.google_drive_file_url!);
+                  if (fileId) {
+                    const link = document.createElement("a");
+                    link.href = `https://drive.google.com/uc?export=download&id=${fileId}`;
+                    link.download = doc.file_name || `${doc.document_type}.pdf`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }
+                }}
+              >
+                <Download className="w-3 h-3" />
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={() => onEditClick(doc)}
+            >
+              <Edit2 className="w-3 h-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-red-400 hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={() =>
+                handleDelete(doc.id, doc.file_name || doc.document_type)
+              }
+            >
+              <Trash2 className="w-3 h-3" />
+            </Button>
+          </div>
+        </div>
+        {doc.file_name && (
+          <p
+            className="text-xs text-[var(--foreground-muted)] truncate mb-1"
+            title={doc.file_name}
+          >
+            {doc.file_name}
+          </p>
+        )}
+        {doc.expiry_date && (
+          <div
+            className={`text-xs px-2 py-1 rounded inline-flex items-center gap-1 ${ALERT_COLORS[doc.alert_color || "green"]}`}
+          >
+            <Calendar className="w-3 h-3" />
+            {doc.alert_color === "expired"
+              ? "Expired"
+              : `Expires: ${formatDate(doc.expiry_date)}`}
+          </div>
+        )}
+        {doc.family_member_name && (
+          <p className="text-xs text-[var(--foreground-muted)] mt-1">
+            {doc.family_member_name}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+
+  const sections = [
+    {
+      title: "Actual Visa",
+      docs: actualVisa ? [actualVisa] : [],
+      color: "bg-blue-500/20 text-blue-400",
+    },
+    {
+      title: "Previous Visas",
+      docs: previousVisas,
+      color: "bg-gray-500/20 text-gray-400",
+    },
+    {
+      title: "Working Permit",
+      docs: workingPermits,
+      color: "bg-purple-500/20 text-purple-400",
+    },
+    {
+      title: "Other",
+      docs: otherDocs,
+      color: "bg-orange-500/20 text-orange-400",
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-[var(--foreground)]">
-          Documents
+          Immigration
         </h3>
         <Button size="sm" className="gap-2" onClick={onAddClick}>
           <Plus className="w-4 h-4" />
@@ -2223,158 +2630,31 @@ function DocumentsTab({
         </Button>
       </div>
 
-      {Object.keys(documentsByCategory).length === 0 ? (
+      {immigrationDocs.length === 0 ? (
         <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background-secondary)]/50 p-12 text-center">
-          <FileText className="w-12 h-12 mx-auto text-[var(--foreground-muted)] mb-3 opacity-50" />
+          <Globe className="w-12 h-12 mx-auto text-[var(--foreground-muted)] mb-3 opacity-50" />
           <p className="text-[var(--foreground-muted)]">
-            No documents uploaded yet
+            No immigration documents yet
           </p>
           <p className="text-sm text-[var(--foreground-muted)] mt-1">
-            Upload passport, KITAS, PT PMA documents, and more
+            Upload KITAS, visa, or working permit documents
           </p>
         </div>
       ) : (
-        categoryOrder.map((category) => {
-          const docs = documentsByCategory[category];
-          if (!docs || docs.length === 0) return null;
-
+        sections.map(({ title, docs: sectionDocs, color }) => {
+          if (sectionDocs.length === 0) return null;
           return (
-            <div key={category} className="space-y-3">
+            <div key={title} className="space-y-3">
               <h4 className="font-medium text-[var(--foreground)] flex items-center gap-2">
-                <span
-                  className={`px-2 py-0.5 rounded text-xs ${CATEGORY_COLORS[category]}`}
-                >
-                  {categoryNames[category] || category}
+                <span className={`px-2 py-0.5 rounded text-xs ${color}`}>
+                  {title}
                 </span>
                 <span className="text-[var(--foreground-muted)]">
-                  ({docs.length})
+                  ({sectionDocs.length})
                 </span>
               </h4>
-
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {docs.map((doc) => (
-                  <div
-                    key={doc.id}
-                    className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden group"
-                  >
-                    {/* Document Preview - 3:2 aspect ratio like passport */}
-                    {doc.google_drive_file_url && (
-                      <a
-                        href={doc.google_drive_file_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block relative"
-                      >
-                        <div
-                          className={`aspect-[3/2] overflow-hidden border-b bg-[var(--background)] ${
-                            doc.alert_color === "expired" ||
-                            doc.alert_color === "red"
-                              ? "border-red-500/50"
-                              : doc.alert_color === "yellow"
-                                ? "border-yellow-500/50"
-                                : "border-[var(--border)]"
-                          }`}
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={
-                              getDriveProxyUrl(doc.google_drive_file_url) ||
-                              doc.google_drive_file_url
-                            }
-                            alt={doc.document_type}
-                            className="w-full h-full object-contain"
-                            onError={(e) => {
-                              if (doc.google_drive_file_url) {
-                                (e.target as HTMLImageElement).src =
-                                  doc.google_drive_file_url.replace(
-                                    "/view",
-                                    "/preview",
-                                  );
-                              }
-                            }}
-                          />
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-                            <ExternalLink className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                          </div>
-                        </div>
-                      </a>
-                    )}
-
-                    <div className="p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-[var(--foreground)]">
-                          {doc.document_type.replace(/_/g, " ")}
-                        </span>
-                        <div className="flex items-center gap-1">
-                          {doc.google_drive_file_url && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              onClick={() =>
-                                window.open(
-                                  doc.google_drive_file_url!,
-                                  "_blank",
-                                )
-                              }
-                            >
-                              <ExternalLink className="w-3 h-3" />
-                            </Button>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={() => onEditClick(doc)}
-                          >
-                            <Edit2 className="w-3 h-3" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-red-400 hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={() =>
-                              handleDelete(
-                                doc.id,
-                                doc.file_name || doc.document_type,
-                              )
-                            }
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      {doc.file_name && (
-                        <p
-                          className="text-xs text-[var(--foreground-muted)] truncate mb-1"
-                          title={doc.file_name}
-                        >
-                          {doc.file_name}
-                        </p>
-                      )}
-
-                      {doc.expiry_date && (
-                        <div
-                          className={`text-xs px-2 py-1 rounded inline-flex items-center gap-1 ${
-                            ALERT_COLORS[doc.alert_color || "green"]
-                          }`}
-                        >
-                          <Calendar className="w-3 h-3" />
-                          {doc.alert_color === "expired"
-                            ? "Expired"
-                            : `Expires: ${formatDate(doc.expiry_date)}`}
-                        </div>
-                      )}
-
-                      {doc.family_member_name && (
-                        <p className="text-xs text-[var(--foreground-muted)] mt-1">
-                          → {doc.family_member_name}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                {sectionDocs.map(renderDocCard)}
               </div>
             </div>
           );
@@ -3535,6 +3815,39 @@ function CompanyTab({
     setShowAddModal(false);
   };
 
+  // Generate intelligent company summary
+  const getCompanySummary = (c: ClientCompanyLink) => {
+    const parts: string[] = [];
+    parts.push(`${c.company_name} is a ${c.company_type || "company"} entity`);
+    if (c.company_status === "active")
+      parts[0] += " currently active in Indonesia";
+    else if (c.company_status === "in_setup")
+      parts[0] += " currently being established";
+    if (c.kbli_code) {
+      const codes = c.kbli_code.split(",").map((s) => s.trim());
+      parts.push(
+        `Licensed under KBLI ${codes.join(" & ")}${c.kbli_description ? ` (${c.kbli_description})` : ""}`,
+      );
+    }
+    if (c.sk_menhumkam_no)
+      parts.push(
+        `Incorporated via SK Kemenkumham ${c.sk_menhumkam_no}${c.sk_menhumkam_date ? ` dated ${formatDate(c.sk_menhumkam_date)}` : ""}`,
+      );
+    const people =
+      c.custom_fields &&
+      Array.isArray((c.custom_fields as Record<string, unknown>).people)
+        ? (
+            (c.custom_fields as Record<string, unknown>).people as string[]
+          ).filter((p) => p !== "AKTA PENDIRIAN")
+        : [];
+    if (people.length > 0) parts.push(`Key people: ${people.join(", ")}`);
+    if (c.registered_address || c.city) {
+      const loc = [c.city, c.province].filter(Boolean).join(", ");
+      if (loc) parts.push(`Based in ${loc}`);
+    }
+    return parts.join(". ") + ".";
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -3551,7 +3864,7 @@ function CompanyTab({
             Companies
           </h3>
           <p className="text-sm text-[var(--foreground-muted)]">
-            PT PMA, companies, and business entities
+            Profile Perseroan
           </p>
         </div>
         <Button
@@ -3583,151 +3896,361 @@ function CompanyTab({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {companies.map((company) => (
-            <div
-              key={company.company_id}
-              className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-5"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center">
-                    <Building2 className="w-6 h-6 text-purple-400" />
+        <div className="space-y-8">
+          {companies.map((company) => {
+            const cf = company.custom_fields as
+              | Record<string, unknown>
+              | undefined;
+            const people =
+              cf && Array.isArray(cf.people) ? (cf.people as string[]) : [];
+            const docsFound =
+              cf && Array.isArray(cf.docs_found)
+                ? (cf.docs_found as string[])
+                : [];
+
+            return (
+              <div
+                key={company.company_id}
+                className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden"
+              >
+                {/* Company Header */}
+                <div className="px-6 py-4 border-b border-[var(--border)] bg-gradient-to-r from-purple-500/5 to-blue-500/5">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center">
+                        <Building2 className="w-7 h-7 text-purple-400" />
+                      </div>
+                      <div>
+                        <h4 className="text-lg font-bold text-[var(--foreground)]">
+                          {company.company_name}
+                        </h4>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="px-2 py-0.5 rounded text-xs bg-purple-500/20 text-purple-400 font-medium">
+                            {company.company_type}
+                          </span>
+                          {company.brand_name && (
+                            <span className="text-xs text-[var(--foreground-muted)]">
+                              d/b/a {company.brand_name}
+                            </span>
+                          )}
+                          <span
+                            className={`px-2 py-0.5 rounded text-xs font-medium ${
+                              company.company_status === "active"
+                                ? "bg-green-500/20 text-green-400"
+                                : company.company_status === "in_setup"
+                                  ? "bg-yellow-500/20 text-yellow-400"
+                                  : company.company_status === "dormant"
+                                    ? "bg-gray-500/20 text-gray-400"
+                                    : "bg-red-500/20 text-red-400"
+                            }`}
+                          >
+                            {(
+                              company.company_status ||
+                              company.status ||
+                              "active"
+                            ).replace(/_/g, " ")}
+                          </span>
+                          {company.is_primary && (
+                            <span className="px-2 py-0.5 rounded bg-[var(--accent)]/20 text-[var(--accent)] text-xs">
+                              Primary
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-semibold text-[var(--foreground)]">
-                      {company.company_name}
-                    </h4>
-                    <p className="text-xs text-[var(--foreground-muted)]">
-                      {company.company_type}
+
+                  {/* Intelligent Summary */}
+                  <div className="mt-4 p-3 rounded-lg bg-[var(--background)]/60 border border-[var(--border)]">
+                    <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+                      {getCompanySummary(company)}
                     </p>
                   </div>
                 </div>
-                <span
-                  className={`px-2 py-1 rounded text-xs font-medium ${
-                    company.status === "active"
-                      ? "bg-green-500/20 text-green-400"
-                      : company.status === "pending"
-                        ? "bg-yellow-500/20 text-yellow-400"
-                        : "bg-gray-500/20 text-gray-400"
-                  }`}
-                >
-                  {company.status}
-                </span>
-              </div>
 
-              {/* Client Role */}
-              <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Role</p>
-                  <p className="font-medium capitalize">{company.role}</p>
-                </div>
-                {company.ownership_percentage !== undefined && company.ownership_percentage > 0 && (
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Ownership</p>
-                    <p className="font-medium">{company.ownership_percentage}%</p>
-                  </div>
-                )}
-              </div>
+                {/* Body — 2 column layout */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 divide-y lg:divide-y-0 lg:divide-x divide-[var(--border)]">
+                  {/* Left Column: Legal & Registration */}
+                  <div className="p-6 space-y-5">
+                    <h5 className="text-xs uppercase tracking-wider text-[var(--foreground-muted)] font-semibold">
+                      Legal & Registration
+                    </h5>
 
-              {/* Legal Documents */}
-              <div className="mt-3 pt-3 border-t border-[var(--border)] space-y-2 text-sm">
-                {company.sk_menhumkam_no && (
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">SK Menkumham</p>
-                    <p className="font-mono text-xs">{company.sk_menhumkam_no}</p>
-                  </div>
-                )}
-                {company.akta_pendirian_no && (
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Akta Pendirian</p>
-                    <p className="font-mono text-xs">{company.akta_pendirian_no}{company.akta_pendirian_date ? ` (${formatDate(company.akta_pendirian_date)})` : ""}</p>
-                  </div>
-                )}
-                {company.akta_perubahan_no && (
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Akta Perubahan</p>
-                    <p className="font-mono text-xs">{company.akta_perubahan_no}{company.akta_perubahan_date ? ` (${formatDate(company.akta_perubahan_date)})` : ""}</p>
-                  </div>
-                )}
-                <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                  {company.nib && (
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">NIB</p>
-                      <p className="font-mono text-xs">{company.nib}</p>
+                    {/* Client's Role in Company */}
+                    <div className="p-3 rounded-lg bg-[var(--accent)]/5 border border-[var(--accent)]/20">
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                            Client Role
+                          </p>
+                          <p className="text-sm font-semibold capitalize">
+                            {company.role}
+                          </p>
+                        </div>
+                        {company.ownership_percentage !== undefined &&
+                          company.ownership_percentage > 0 && (
+                            <div>
+                              <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                                Ownership
+                              </p>
+                              <p className="text-sm font-semibold">
+                                {company.ownership_percentage}%
+                              </p>
+                            </div>
+                          )}
+                        {company.shares_count !== undefined &&
+                          company.shares_count > 0 && (
+                            <div>
+                              <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                                Shares
+                              </p>
+                              <p className="text-sm font-semibold">
+                                {company.shares_count.toLocaleString()}
+                              </p>
+                            </div>
+                          )}
+                      </div>
                     </div>
-                  )}
-                  {company.npwp_company && (
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">NPWP</p>
-                      <p className="font-mono text-xs">{company.npwp_company}</p>
-                    </div>
-                  )}
-                </div>
-                {company.kbli_code && (
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">KBLI</p>
-                    <p className="text-xs">{company.kbli_code}</p>
-                    {company.kbli_description && <p className="text-xs text-[var(--foreground-muted)]">{company.kbli_description}</p>}
-                  </div>
-                )}
-              </div>
 
-              {/* Contact & Address */}
-              {(company.registered_address || company.office_address || company.company_phone || company.company_email) && (
-                <div className="mt-3 pt-3 border-t border-[var(--border)] space-y-2 text-sm">
-                  {company.registered_address && (
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Registered Address</p>
-                      <p className="text-xs">{company.registered_address}</p>
-                    </div>
-                  )}
-                  {company.office_address && company.office_address !== company.registered_address && (
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Office Address</p>
-                      <p className="text-xs">{company.office_address}</p>
-                    </div>
-                  )}
-                  {(company.city || company.province) && (
-                    <p className="text-xs text-[var(--foreground-muted)]">{[company.city, company.province].filter(Boolean).join(", ")}</p>
-                  )}
-                  <div className="grid grid-cols-2 gap-x-4">
-                    {company.company_phone && (
+                    {/* SK Kemenkumham */}
+                    {company.sk_menhumkam_no && (
                       <div>
-                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Phone</p>
-                        <p className="text-xs">{company.company_phone}</p>
+                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                          SK Kemenkumham
+                        </p>
+                        <p className="text-sm font-mono font-medium">
+                          {company.sk_menhumkam_no}
+                        </p>
+                        {company.sk_menhumkam_date && (
+                          <p className="text-xs text-[var(--foreground-muted)]">
+                            Dated: {formatDate(company.sk_menhumkam_date)}
+                          </p>
+                        )}
                       </div>
                     )}
-                    {company.company_email && (
+
+                    {/* Akta */}
+                    <div className="grid grid-cols-1 gap-4">
+                      {company.akta_pendirian_no && (
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                            Akta Pendirian
+                          </p>
+                          <p className="text-sm font-mono">
+                            {company.akta_pendirian_no}
+                          </p>
+                          {company.akta_pendirian_date && (
+                            <p className="text-xs text-[var(--foreground-muted)]">
+                              Date: {formatDate(company.akta_pendirian_date)}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      {company.akta_perubahan_no && (
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                            Akta Perubahan (Latest Amendment)
+                          </p>
+                          <p className="text-sm font-mono">
+                            {company.akta_perubahan_no}
+                          </p>
+                          {company.akta_perubahan_date && (
+                            <p className="text-xs text-[var(--foreground-muted)]">
+                              Date: {formatDate(company.akta_perubahan_date)}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* NIB, NPWP, KBLI */}
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                      {company.nib && (
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                            NIB
+                          </p>
+                          <p className="text-sm font-mono">{company.nib}</p>
+                        </div>
+                      )}
+                      {company.npwp_company && (
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                            NPWP
+                          </p>
+                          <p className="text-sm font-mono">
+                            {company.npwp_company}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {company.kbli_code && (
                       <div>
-                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">Email</p>
-                        <p className="text-xs truncate">{company.company_email}</p>
+                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                          KBLI Classification
+                        </p>
+                        <div className="mt-1 space-y-1">
+                          {company.kbli_code.split(",").map((code, i) => (
+                            <div key={i} className="flex items-center gap-2">
+                              <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 font-mono text-xs font-medium">
+                                {code.trim()}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        {company.kbli_description && (
+                          <p className="text-xs text-[var(--foreground-muted)] mt-1">
+                            {company.kbli_description}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Setup Progress */}
+                    {company.setup_progress !== undefined &&
+                      company.setup_progress < 100 && (
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                            Setup Progress
+                          </p>
+                          <div className="mt-1 w-full bg-[var(--background)] rounded-full h-2">
+                            <div
+                              className="bg-[var(--accent)] h-2 rounded-full transition-all"
+                              style={{ width: `${company.setup_progress}%` }}
+                            />
+                          </div>
+                          <p className="text-xs text-[var(--foreground-muted)] mt-1">
+                            {company.setup_progress}% complete
+                          </p>
+                        </div>
+                      )}
+                  </div>
+
+                  {/* Right Column: Contact, Address, People */}
+                  <div className="p-6 space-y-5">
+                    <h5 className="text-xs uppercase tracking-wider text-[var(--foreground-muted)] font-semibold">
+                      Contact & Location
+                    </h5>
+
+                    {/* Registered Address */}
+                    {company.registered_address && (
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                          Registered Address
+                        </p>
+                        <p className="text-sm">{company.registered_address}</p>
+                      </div>
+                    )}
+
+                    {/* Office Address */}
+                    {company.office_address &&
+                      company.office_address !== company.registered_address && (
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                            Office Address
+                          </p>
+                          <p className="text-sm">{company.office_address}</p>
+                        </div>
+                      )}
+
+                    {(company.city || company.province) && (
+                      <div className="grid grid-cols-2 gap-x-4">
+                        {company.city && (
+                          <div>
+                            <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                              City
+                            </p>
+                            <p className="text-sm">{company.city}</p>
+                          </div>
+                        )}
+                        {company.province && (
+                          <div>
+                            <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                              Province
+                            </p>
+                            <p className="text-sm">{company.province}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Contact */}
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                      {company.company_phone && (
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                            Phone
+                          </p>
+                          <p className="text-sm">{company.company_phone}</p>
+                        </div>
+                      )}
+                      {company.company_email && (
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                            Email
+                          </p>
+                          <p className="text-sm truncate">
+                            {company.company_email}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* People */}
+                    {people.length > 0 && (
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)] mb-2">
+                          People & Stakeholders
+                        </p>
+                        <div className="space-y-2">
+                          {people.map((p, i) => (
+                            <div key={i} className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-full bg-[var(--accent)]/10 flex items-center justify-center">
+                                <User className="w-3.5 h-3.5 text-[var(--accent)]" />
+                              </div>
+                              <span className="text-sm">{p}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Documents Found in Drive */}
+                    {docsFound.length > 0 && (
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)] mb-1">
+                          Documents on File
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {docsFound.map((d, i) => (
+                            <span
+                              key={i}
+                              className="px-2 py-0.5 rounded bg-[var(--background)] border border-[var(--border)] text-xs text-[var(--foreground-muted)]"
+                            >
+                              {d}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Notes */}
+                    {company.notes && (
+                      <div className="p-3 rounded-lg bg-[var(--background)]/50 border border-[var(--border)]">
+                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)] mb-1">
+                          Notes
+                        </p>
+                        <p className="text-xs text-[var(--foreground-muted)]">
+                          {company.notes}
+                        </p>
                       </div>
                     )}
                   </div>
                 </div>
-              )}
-
-              {/* People from custom_fields */}
-              {company.custom_fields && Array.isArray((company.custom_fields as Record<string, unknown>).people) && ((company.custom_fields as Record<string, unknown>).people as string[]).length > 0 && (
-                <div className="mt-3 pt-3 border-t border-[var(--border)]">
-                  <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)] mb-1">People</p>
-                  <div className="flex flex-wrap gap-1">
-                    {((company.custom_fields as Record<string, unknown>).people as string[]).map((p, i) => (
-                      <span key={i} className="px-2 py-0.5 rounded-full bg-[var(--accent)]/10 text-[var(--accent)] text-xs">{p}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Footer */}
-              {company.is_primary && (
-                <div className="mt-3 pt-3 border-t border-[var(--border)] flex justify-end">
-                  <span className="px-2 py-1 rounded bg-[var(--accent)]/20 text-[var(--accent)] text-xs">Primary</span>
-                </div>
-              )}
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

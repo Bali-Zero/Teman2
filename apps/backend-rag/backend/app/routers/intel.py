@@ -125,6 +125,74 @@ class CoverImageUploadRequest(BaseModel):
     cover_image_filename: str | None = Field(None, description="Image filename (optional)")
 
 
+class PublishToSiteRequest(BaseModel):
+    """Optional request body for publish with homepage position."""
+
+    position: str = Field(
+        default="latest",
+        description="Homepage position: hero_main, hero_2-5, insight_1-3, or latest",
+    )
+
+
+VALID_HOMEPAGE_POSITIONS = {
+    "hero_main", "hero_2", "hero_3", "hero_4", "hero_5",
+    "insight_1", "insight_2", "insight_3",
+}
+
+
+async def update_homepage_layout(slug: str, position: str) -> None:
+    """
+    Update homepage-layout.json in the GitHub repo.
+    Reads current file, updates the position, commits the change.
+    """
+    github_token = os.getenv("GITHUB_TOKEN")
+    github_owner = os.getenv("GITHUB_OWNER", "Balizero1987")
+    github_repo = os.getenv("GITHUB_REPO", "Teman2")
+    file_path = "apps/mouth/src/content/homepage-layout.json"
+
+    if not github_token:
+        raise ValueError("GITHUB_TOKEN not configured")
+
+    if position not in VALID_HOMEPAGE_POSITIONS:
+        raise ValueError(f"Invalid position: {position}")
+
+    headers = {
+        "Authorization": f"token {github_token}",
+        "Accept": "application/vnd.github.v3+json",
+    }
+
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        # Get current file content + SHA
+        url = f"https://api.github.com/repos/{github_owner}/{github_repo}/contents/{file_path}"
+        resp = await client.get(url, headers=headers)
+        resp.raise_for_status()
+        file_data = resp.json()
+        current_sha = file_data["sha"]
+
+        # Decode and parse current layout
+        current_content = base64.b64decode(file_data["content"]).decode("utf-8")
+        layout = json.loads(current_content)
+
+        # Update the position
+        layout[position] = slug
+
+        # Commit the updated layout
+        new_content = json.dumps(layout, indent=2) + "\n"
+        encoded = base64.b64encode(new_content.encode("utf-8")).decode("utf-8")
+
+        update_resp = await client.put(
+            url,
+            headers=headers,
+            json={
+                "message": f"feat(layout): set {position} to {slug}",
+                "content": encoded,
+                "sha": current_sha,
+                "branch": "main",
+            },
+        )
+        update_resp.raise_for_status()
+
+
 # --- CONVERSION FUNCTIONS ---
 
 
@@ -886,9 +954,16 @@ async def ingest_intel_to_qdrant(item_id: str, intel_type: str) -> bool:
 
 
 @router.post("/api/intel/staging/publish/{type}/{item_id}")
-async def publish_staging_item(type: str, item_id: str, request: Request = None) -> dict[str, Any]:
+async def publish_staging_item(
+    type: str,
+    item_id: str,
+    body: PublishToSiteRequest | None = None,
+    request: Request = None,
+) -> dict[str, Any]:
     """
     Publish approved item to Qdrant knowledge base and register in anti-duplicate system.
+
+    Optional body: {"position": "hero_main"} to set homepage position.
 
     This endpoint:
     1. Ingests article to Qdrant (knowledge base)
@@ -1045,7 +1120,7 @@ async def publish_staging_item(type: str, item_id: str, request: Request = None)
                 article=enriched_article,
                 cover_image_base64=cover_image_base64,
                 cover_image_filename=cover_image_filename,
-                position="normal",
+                position=body.position if body else "latest",
             )
 
             # Import publish_article function
@@ -1072,6 +1147,28 @@ async def publish_staging_item(type: str, item_id: str, request: Request = None)
                         "commit_sha": github_commit_sha,
                     },
                 )
+
+                # Update homepage-layout.json if a position was specified
+                publish_position = body.position if body else "latest"
+                if publish_position != "latest" and publish_position in VALID_HOMEPAGE_POSITIONS:
+                    try:
+                        article_slug = publish_result.slug or item_id
+                        await update_homepage_layout(
+                            slug=article_slug,
+                            position=publish_position,
+                        )
+                        logger.info(
+                            "✅ Homepage layout updated",
+                            extra={
+                                "position": publish_position,
+                                "slug": article_slug,
+                            },
+                        )
+                    except Exception as layout_err:
+                        logger.warning(
+                            f"⚠️ Failed to update homepage layout: {layout_err}",
+                            extra={"position": publish_position},
+                        )
             else:
                 logger.error(
                     f"⚠️ Failed to publish to GitHub/Vercel: {publish_result.error}",

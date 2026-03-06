@@ -18,6 +18,7 @@ import {
 import type { ArticleListItem } from "@/lib/blog/types";
 import { HomepageSEOSchemas } from "@/components/seo/HomepageFAQ";
 import { useTranslation } from "@/i18n";
+import homepageLayout from "@/content/homepage-layout.json";
 
 // Lazy load non-critical sections
 const KBLINavigatorSection = lazy(
@@ -49,31 +50,17 @@ export default function NewsPageClient({
   // Fallback a MOCK_ARTICLES se il server non fornisce articoli
   const articles = serverArticles?.length > 0 ? serverArticles : MOCK_ARTICLES;
 
-  // Get specific articles for the asymmetric collage - SLOW PARALYSIS FEATURED
-  const mainNews1 = articles.find((a) => a.slug === "slow-paralysis-kbli-2025"); // RIGHT - large - MAIN FEATURE
-  const mainNews2 = articles.find(
-    (a) => a.slug === "constitutional-clash-bank-statements",
-  ); // LEFT top
-  const mainNews3 = articles.find(
-    (a) => a.slug === "kbli-2025-bali-transformation",
-  ); // MIDDLE top - KBLI Bali
-  const mainNews4 = articles.find(
-    (a) => a.slug === "art-of-strategic-patience",
-  ); // MIDDLE bottom - Strategic Patience
-  const mainNews5 = articles.find(
-    (a) => a.slug === "ota-data-crackdown-bali-2026",
-  ); // LEFT bottom - OTA TAX CRACKDOWN
+  // Get articles for hero collage from homepage-layout.json config
+  const mainNews1 = articles.find((a) => a.slug === homepageLayout.hero_main);
+  const mainNews2 = articles.find((a) => a.slug === homepageLayout.hero_2);
+  const mainNews3 = articles.find((a) => a.slug === homepageLayout.hero_3);
+  const mainNews4 = articles.find((a) => a.slug === homepageLayout.hero_4);
+  const mainNews5 = articles.find((a) => a.slug === homepageLayout.hero_5);
 
-  // Get KBLI Navigator articles for Latest Insights section
-  const kbliInsight1 = articles.find(
-    (a) => a.slug === "capital-evolution-bkpm-5-2025",
-  );
-  const kbliInsight2 = articles.find(
-    (a) => a.slug === "ota-delisting-bali-2026",
-  );
-  const kbliInsight3 = articles.find(
-    (a) => a.slug === "glamping-trap-kbli-55209",
-  );
+  // Get insight articles from layout config
+  const kbliInsight1 = articles.find((a) => a.slug === homepageLayout.insight_1);
+  const kbliInsight2 = articles.find((a) => a.slug === homepageLayout.insight_2);
+  const kbliInsight3 = articles.find((a) => a.slug === homepageLayout.insight_3);
   const kbliInsights = [kbliInsight1, kbliInsight2, kbliInsight3].filter(
     Boolean,
   ) as ArticleListItem[];
