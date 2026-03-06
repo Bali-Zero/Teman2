@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getAllArticles } from "@/lib/blog/articles";
-import { getAllCodes } from "@/lib/kbli-data.server";
+import { getAllCodes, getSections } from "@/lib/kbli-data.server";
 import { logger } from "@/lib/logger";
 
 /**
@@ -12,11 +12,12 @@ import { logger } from "@/lib/logger";
  * - News categories (8 categories)
  * - Blog articles (all published articles)
  * - KBLI 2025 codes (1,563 pages)
+ * - KBLI sectors index + individual sector pages (~22)
  * Priority scale:
  * - 1.0: Homepage
  * - 0.9: Main service pages
  * - 0.8: Blog articles, KBLI explorer, KBLI codes
- * - 0.7: Service detail pages, news categories
+ * - 0.7: Service detail pages, news categories, KBLI sectors
  *
  * Change frequency:
  * - daily: News, blog
@@ -162,6 +163,31 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   } catch (error) {
     logger.error(
       "[SITEMAP] Failed to load KBLI codes",
+      {},
+      error instanceof Error ? error : new Error(String(error)),
+    );
+  }
+
+  // 6. KBLI Sector pages (/kbli/sectors + /kbli/sectors/[id])
+  try {
+    routes.push({
+      url: `${baseUrl}/kbli/sectors`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
+    });
+
+    const sections = getSections().filter((s) => s.codeCount > 0);
+    const sectorPages = sections.map((s) => ({
+      url: `${baseUrl}/kbli/sectors/${s.id}`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+    }));
+    routes.push(...sectorPages);
+  } catch (error) {
+    logger.error(
+      "[SITEMAP] Failed to load KBLI sectors",
       {},
       error instanceof Error ? error : new Error(String(error)),
     );
