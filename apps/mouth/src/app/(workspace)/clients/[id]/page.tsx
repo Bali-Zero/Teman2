@@ -2350,37 +2350,46 @@ function FamilyTab({
                     <h5 className="text-xs uppercase tracking-wider text-[var(--foreground-muted)] font-medium">
                       Passport
                     </h5>
-                    {member.passport_number ? (
+                    {member.passport_number || memberPassportDoc ? (
                       <div className="rounded-lg border border-[var(--border)] bg-[var(--background)] p-3 space-y-2">
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                          <div>
-                            <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
-                              Number
-                            </p>
-                            <p className="text-sm font-semibold font-mono">
-                              {member.passport_number}
-                            </p>
-                          </div>
-                          {member.passport_expiry && (
+                        {member.passport_number && (
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                             <div>
                               <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
-                                Expiry
+                                Number
                               </p>
-                              <p
-                                className={`text-sm font-medium ${
-                                  new Date(member.passport_expiry) < new Date()
-                                    ? "text-red-500"
-                                    : new Date(member.passport_expiry) <
-                                        new Date(Date.now() + 365 * 86400000)
-                                      ? "text-yellow-500"
-                                      : "text-green-500"
-                                }`}
-                              >
-                                {formatDate(member.passport_expiry)}
+                              <p className="text-sm font-semibold font-mono">
+                                {member.passport_number}
                               </p>
                             </div>
-                          )}
-                        </div>
+                            {member.passport_expiry && (
+                              <div>
+                                <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                                  Expiry
+                                </p>
+                                <p
+                                  className={`text-sm font-medium ${
+                                    new Date(member.passport_expiry) <
+                                    new Date()
+                                      ? "text-red-500"
+                                      : new Date(member.passport_expiry) <
+                                          new Date(Date.now() + 365 * 86400000)
+                                        ? "text-yellow-500"
+                                        : "text-green-500"
+                                  }`}
+                                >
+                                  {formatDate(member.passport_expiry)}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {!member.passport_number && memberPassportDoc && (
+                          <p className="text-xs text-yellow-400 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            Document on file — upload to extract data via OCR
+                          </p>
+                        )}
                         {member.passport_alert &&
                           member.passport_alert !== "green" && (
                             <div
@@ -2395,27 +2404,47 @@ function FamilyTab({
                             </div>
                           )}
                         {memberPassportDoc?.google_drive_file_url && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="gap-2 text-xs w-full justify-start"
-                            onClick={() => {
-                              const fileId = extractDriveFileId(
-                                memberPassportDoc.google_drive_file_url!,
-                              );
-                              if (fileId) {
-                                const link = document.createElement("a");
-                                link.href = `https://drive.google.com/uc?export=download&id=${fileId}`;
-                                link.download = `passport_${member.full_name.replace(/\s+/g, "_")}.pdf`;
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                              }
-                            }}
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                            Download Passport
-                          </Button>
+                          <div className="flex gap-1.5">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="gap-1.5 text-xs h-7 px-2"
+                              onClick={() => {
+                                const fileId = extractDriveFileId(
+                                  memberPassportDoc.google_drive_file_url!,
+                                );
+                                if (fileId)
+                                  window.open(
+                                    `https://drive.google.com/file/d/${fileId}/view`,
+                                    "_blank",
+                                  );
+                              }}
+                            >
+                              <Eye className="w-3 h-3" />
+                              View
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="gap-1.5 text-xs h-7 px-2"
+                              onClick={() => {
+                                const fileId = extractDriveFileId(
+                                  memberPassportDoc.google_drive_file_url!,
+                                );
+                                if (fileId) {
+                                  const link = document.createElement("a");
+                                  link.href = `https://drive.google.com/uc?export=download&id=${fileId}`;
+                                  link.download = `passport_${member.full_name.replace(/\s+/g, "_")}.jpg`;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                }
+                              }}
+                            >
+                              <Download className="w-3 h-3" />
+                              Download
+                            </Button>
+                          </div>
                         )}
                         <FamilyMemberUploadButton
                           clientId={clientId}
@@ -2447,37 +2476,45 @@ function FamilyTab({
                     <h5 className="text-xs uppercase tracking-wider text-[var(--foreground-muted)] font-medium">
                       Actual Visa
                     </h5>
-                    {member.current_visa_type ? (
+                    {member.current_visa_type || memberVisaDoc ? (
                       <div className="rounded-lg border border-[var(--border)] bg-[var(--background)] p-3 space-y-2">
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                          <div>
-                            <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
-                              Type
-                            </p>
-                            <p className="text-sm font-semibold uppercase">
-                              {member.current_visa_type}
-                            </p>
-                          </div>
-                          {member.visa_expiry && (
+                        {member.current_visa_type && (
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                             <div>
                               <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
-                                Expiry
+                                Type
                               </p>
-                              <p
-                                className={`text-sm font-medium ${
-                                  new Date(member.visa_expiry) < new Date()
-                                    ? "text-red-500"
-                                    : new Date(member.visa_expiry) <
-                                        new Date(Date.now() + 90 * 86400000)
-                                      ? "text-yellow-500"
-                                      : "text-green-500"
-                                }`}
-                              >
-                                {formatDate(member.visa_expiry)}
+                              <p className="text-sm font-semibold uppercase">
+                                {member.current_visa_type}
                               </p>
                             </div>
-                          )}
-                        </div>
+                            {member.visa_expiry && (
+                              <div>
+                                <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                                  Expiry
+                                </p>
+                                <p
+                                  className={`text-sm font-medium ${
+                                    new Date(member.visa_expiry) < new Date()
+                                      ? "text-red-500"
+                                      : new Date(member.visa_expiry) <
+                                          new Date(Date.now() + 90 * 86400000)
+                                        ? "text-yellow-500"
+                                        : "text-green-500"
+                                  }`}
+                                >
+                                  {formatDate(member.visa_expiry)}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {!member.current_visa_type && memberVisaDoc && (
+                          <p className="text-xs text-yellow-400 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            Document on file — upload to extract data via OCR
+                          </p>
+                        )}
                         {member.visa_alert && member.visa_alert !== "green" && (
                           <div
                             className={`text-xs px-2 py-1 rounded inline-flex items-center gap-1 ${ALERT_COLORS[member.visa_alert]}`}
@@ -2491,27 +2528,47 @@ function FamilyTab({
                           </div>
                         )}
                         {memberVisaDoc?.google_drive_file_url && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="gap-2 text-xs w-full justify-start"
-                            onClick={() => {
-                              const fileId = extractDriveFileId(
-                                memberVisaDoc.google_drive_file_url!,
-                              );
-                              if (fileId) {
-                                const link = document.createElement("a");
-                                link.href = `https://drive.google.com/uc?export=download&id=${fileId}`;
-                                link.download = `visa_${member.full_name.replace(/\s+/g, "_")}.pdf`;
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                              }
-                            }}
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                            Download Visa
-                          </Button>
+                          <div className="flex gap-1.5">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="gap-1.5 text-xs h-7 px-2"
+                              onClick={() => {
+                                const fileId = extractDriveFileId(
+                                  memberVisaDoc.google_drive_file_url!,
+                                );
+                                if (fileId)
+                                  window.open(
+                                    `https://drive.google.com/file/d/${fileId}/view`,
+                                    "_blank",
+                                  );
+                              }}
+                            >
+                              <Eye className="w-3 h-3" />
+                              View
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="gap-1.5 text-xs h-7 px-2"
+                              onClick={() => {
+                                const fileId = extractDriveFileId(
+                                  memberVisaDoc.google_drive_file_url!,
+                                );
+                                if (fileId) {
+                                  const link = document.createElement("a");
+                                  link.href = `https://drive.google.com/uc?export=download&id=${fileId}`;
+                                  link.download = `visa_${member.full_name.replace(/\s+/g, "_")}.jpg`;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                }
+                              }}
+                            >
+                              <Download className="w-3 h-3" />
+                              Download
+                            </Button>
+                          </div>
                         )}
                         <FamilyMemberUploadButton
                           clientId={clientId}
@@ -4598,40 +4655,43 @@ function CompanyTab({
                     {(companyDocs[company.company_id] || []).length > 0 && (
                       <div>
                         <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)] mb-2">
-                          Documents on File ({(companyDocs[company.company_id] || []).length})
+                          Documents on File (
+                          {(companyDocs[company.company_id] || []).length})
                         </p>
                         <div className="space-y-1.5">
-                          {(companyDocs[company.company_id] || []).map((doc) => (
-                            <div
-                              key={doc.id}
-                              className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-[var(--background)] border border-[var(--border)]"
-                            >
-                              <div className="flex items-center gap-2 min-w-0">
-                                <FileText className="w-3.5 h-3.5 text-[var(--accent)] flex-shrink-0" />
-                                <span className="text-xs truncate">
-                                  {doc.file_name || doc.document_type}
-                                </span>
-                                {doc.is_verified && (
-                                  <CheckCircle2 className="w-3 h-3 text-green-400 flex-shrink-0" />
+                          {(companyDocs[company.company_id] || []).map(
+                            (doc) => (
+                              <div
+                                key={doc.id}
+                                className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-[var(--background)] border border-[var(--border)]"
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <FileText className="w-3.5 h-3.5 text-[var(--accent)] flex-shrink-0" />
+                                  <span className="text-xs truncate">
+                                    {doc.file_name || doc.document_type}
+                                  </span>
+                                  {doc.is_verified && (
+                                    <CheckCircle2 className="w-3 h-3 text-green-400 flex-shrink-0" />
+                                  )}
+                                </div>
+                                {doc.google_drive_file_id && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-1.5 text-[10px]"
+                                    onClick={() =>
+                                      window.open(
+                                        `https://drive.google.com/file/d/${doc.google_drive_file_id}/view`,
+                                        "_blank",
+                                      )
+                                    }
+                                  >
+                                    <ExternalLink className="w-3 h-3" />
+                                  </Button>
                                 )}
                               </div>
-                              {doc.google_drive_file_id && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 px-1.5 text-[10px]"
-                                  onClick={() =>
-                                    window.open(
-                                      `https://drive.google.com/file/d/${doc.google_drive_file_id}/view`,
-                                      "_blank",
-                                    )
-                                  }
-                                >
-                                  <ExternalLink className="w-3 h-3" />
-                                </Button>
-                              )}
-                            </div>
-                          ))}
+                            ),
+                          )}
                         </div>
                       </div>
                     )}
@@ -4663,7 +4723,10 @@ function CompanyTab({
                       docType="akta_pendirian"
                       label="Akta + SK"
                       hint="Deed & Kemenkumham"
-                      existingDoc={getDocByType(company.company_id, "akta_pendirian") || getDocByType(company.company_id, "sk_decree")}
+                      existingDoc={
+                        getDocByType(company.company_id, "akta_pendirian") ||
+                        getDocByType(company.company_id, "sk_decree")
+                      }
                       onUploaded={loadCompanies}
                     />
                     <CompanyDocUpload
@@ -4693,7 +4756,10 @@ function CompanyTab({
                       docType="company_profile"
                       label="Profile Perseroan"
                       hint="Company Profile"
-                      existingDoc={getDocByType(company.company_id, "company_profile")}
+                      existingDoc={getDocByType(
+                        company.company_id,
+                        "company_profile",
+                      )}
                       onUploaded={loadCompanies}
                     />
                   </div>
