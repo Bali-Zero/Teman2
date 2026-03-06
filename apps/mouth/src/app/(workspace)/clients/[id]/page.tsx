@@ -1195,7 +1195,7 @@ function PassportCard({
   const getDownloadUrl = (url: string) => {
     const fileId = extractDriveFileId(url);
     if (fileId) {
-      return `https://drive.google.com/uc?export=download&id=${fileId}`;
+      return `/api/documents/proxy/${fileId}`;
     }
     return url;
   };
@@ -2415,7 +2415,7 @@ function FamilyTab({
                                 );
                                 if (fileId)
                                   window.open(
-                                    `https://drive.google.com/file/d/${fileId}/view`,
+                                    `/api/documents/proxy/${fileId}`,
                                     "_blank",
                                   );
                               }}
@@ -2433,7 +2433,7 @@ function FamilyTab({
                                 );
                                 if (fileId) {
                                   const link = document.createElement("a");
-                                  link.href = `https://drive.google.com/uc?export=download&id=${fileId}`;
+                                  link.href = `/api/documents/proxy/${fileId}`;
                                   link.download = `passport_${member.full_name.replace(/\s+/g, "_")}.jpg`;
                                   document.body.appendChild(link);
                                   link.click();
@@ -2539,7 +2539,7 @@ function FamilyTab({
                                 );
                                 if (fileId)
                                   window.open(
-                                    `https://drive.google.com/file/d/${fileId}/view`,
+                                    `/api/documents/proxy/${fileId}`,
                                     "_blank",
                                   );
                               }}
@@ -2557,7 +2557,7 @@ function FamilyTab({
                                 );
                                 if (fileId) {
                                   const link = document.createElement("a");
-                                  link.href = `https://drive.google.com/uc?export=download&id=${fileId}`;
+                                  link.href = `/api/documents/proxy/${fileId}`;
                                   link.download = `visa_${member.full_name.replace(/\s+/g, "_")}.jpg`;
                                   document.body.appendChild(link);
                                   link.click();
@@ -2746,7 +2746,7 @@ function ImmigrationTab({
                   const fileId = extractDriveFileId(doc.google_drive_file_url!);
                   if (fileId) {
                     const link = document.createElement("a");
-                    link.href = `https://drive.google.com/uc?export=download&id=${fileId}`;
+                    link.href = `/api/documents/proxy/${fileId}`;
                     link.download = doc.file_name || `${doc.document_type}.pdf`;
                     document.body.appendChild(link);
                     link.click();
@@ -4126,7 +4126,7 @@ function CompanyDocUpload({
                 className="gap-1.5 text-xs h-7 px-2"
                 onClick={() => {
                   window.open(
-                    `https://drive.google.com/file/d/${existingDoc.google_drive_file_id}/view`,
+                    `/api/documents/proxy/${existingDoc.google_drive_file_id}`,
                     "_blank",
                   );
                 }}
@@ -4139,12 +4139,10 @@ function CompanyDocUpload({
                 size="sm"
                 className="gap-1.5 text-xs h-7 px-2"
                 onClick={() => {
-                  const link = document.createElement("a");
-                  link.href = `https://drive.google.com/uc?export=download&id=${existingDoc.google_drive_file_id}`;
-                  link.download = existingDoc.file_name || label;
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
+                  window.open(
+                    `/api/documents/proxy/${existingDoc.google_drive_file_id}`,
+                    "_blank",
+                  );
                 }}
               >
                 <Download className="w-3 h-3" />
@@ -4253,34 +4251,17 @@ function CompanyTab({
   // Generate intelligent company summary
   const getCompanySummary = (c: ClientCompanyLink) => {
     const parts: string[] = [];
-    parts.push(`${c.company_name} is a ${c.company_type || "company"} entity`);
-    if (c.company_status === "active")
-      parts[0] += " currently active in Indonesia";
-    else if (c.company_status === "in_setup")
-      parts[0] += " currently being established";
-    if (c.kbli_code) {
-      const codes = c.kbli_code.split(",").map((s) => s.trim());
-      parts.push(
-        `Licensed under KBLI ${codes.join(" & ")}${c.kbli_description ? ` (${c.kbli_description})` : ""}`,
-      );
+    // Concise one-liner: "PT PMA | KBLI 68110, 70209 | Badung, Bali | Est. 2021"
+    if (c.company_type) parts.push(c.company_type);
+    if (c.kbli_code) parts.push(`KBLI ${c.kbli_code}`);
+    const loc = [c.city, c.province].filter(Boolean).join(", ");
+    if (loc) parts.push(loc);
+    if (c.nib) parts.push(`NIB ${c.nib}`);
+    if (c.sk_menhumkam_date) {
+      const year = new Date(c.sk_menhumkam_date).getFullYear();
+      if (!isNaN(year)) parts.push(`Est. ${year}`);
     }
-    if (c.sk_menhumkam_no)
-      parts.push(
-        `Incorporated via SK Kemenkumham ${c.sk_menhumkam_no}${c.sk_menhumkam_date ? ` dated ${formatDate(c.sk_menhumkam_date)}` : ""}`,
-      );
-    const people =
-      c.custom_fields &&
-      Array.isArray((c.custom_fields as Record<string, unknown>).people)
-        ? (
-            (c.custom_fields as Record<string, unknown>).people as string[]
-          ).filter((p) => p !== "AKTA PENDIRIAN")
-        : [];
-    if (people.length > 0) parts.push(`Key people: ${people.join(", ")}`);
-    if (c.registered_address || c.city) {
-      const loc = [c.city, c.province].filter(Boolean).join(", ");
-      if (loc) parts.push(`Based in ${loc}`);
-    }
-    return parts.join(". ") + ".";
+    return parts.join(" · ");
   };
 
   if (isLoading) {
@@ -4395,12 +4376,10 @@ function CompanyTab({
                     </div>
                   </div>
 
-                  {/* Intelligent Summary */}
-                  <div className="mt-4 p-3 rounded-lg bg-[var(--background)]/60 border border-[var(--border)]">
-                    <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
-                      {getCompanySummary(company)}
-                    </p>
-                  </div>
+                  {/* Quick Reference */}
+                  <p className="mt-3 text-xs text-[var(--foreground-muted)] tracking-wide">
+                    {getCompanySummary(company)}
+                  </p>
                 </div>
 
                 {/* Body — 2 column layout */}
@@ -4651,48 +4630,35 @@ function CompanyTab({
                       </div>
                     )}
 
-                    {/* Documents on File */}
-                    {(companyDocs[company.company_id] || []).length > 0 && (
+                    {/* Key Identifiers */}
+                    {(company.nib || company.npwp_company) && (
                       <div>
                         <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)] mb-2">
-                          Documents on File (
-                          {(companyDocs[company.company_id] || []).length})
+                          Key Identifiers
                         </p>
-                        <div className="space-y-1.5">
-                          {(companyDocs[company.company_id] || []).map(
-                            (doc) => (
-                              <div
-                                key={doc.id}
-                                className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-[var(--background)] border border-[var(--border)]"
-                              >
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <FileText className="w-3.5 h-3.5 text-[var(--accent)] flex-shrink-0" />
-                                  <span className="text-xs truncate">
-                                    {doc.file_name || doc.document_type}
-                                  </span>
-                                  {doc.is_verified && (
-                                    <CheckCircle2 className="w-3 h-3 text-green-400 flex-shrink-0" />
-                                  )}
-                                </div>
-                                {doc.google_drive_file_id && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 px-1.5 text-[10px]"
-                                    onClick={() =>
-                                      window.open(
-                                        `https://drive.google.com/file/d/${doc.google_drive_file_id}/view`,
-                                        "_blank",
-                                      )
-                                    }
-                                  >
-                                    <ExternalLink className="w-3 h-3" />
-                                  </Button>
-                                )}
+                        <div className="grid grid-cols-1 gap-1.5">
+                          {company.nib && (
+                            <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-[var(--background)] border border-[var(--border)]">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)] w-12">NIB</span>
+                                <span className="text-xs font-mono">{company.nib}</span>
                               </div>
-                            ),
+                              <CheckCircle2 className="w-3 h-3 text-green-400 flex-shrink-0" />
+                            </div>
+                          )}
+                          {company.npwp_company && (
+                            <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-[var(--background)] border border-[var(--border)]">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)] w-12">NPWP</span>
+                                <span className="text-xs font-mono">{company.npwp_company}</span>
+                              </div>
+                              <CheckCircle2 className="w-3 h-3 text-green-400 flex-shrink-0" />
+                            </div>
                           )}
                         </div>
+                        <p className="text-[10px] text-[var(--foreground-muted)] mt-1.5">
+                          {(companyDocs[company.company_id] || []).length} documents on file
+                        </p>
                       </div>
                     )}
 
