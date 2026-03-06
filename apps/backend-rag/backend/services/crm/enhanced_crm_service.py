@@ -41,11 +41,22 @@ class EnhancedCRMService:
     """
 
     # Allowed columns for dynamic UPDATE to prevent SQL injection
-    ALLOWED_CLIENT_COLUMNS = frozenset({
-        "full_name", "email", "phone", "whatsapp", "nationality",
-        "passport_number", "status", "client_type", "assigned_to",
-        "custom_fields", "tags", "notes",
-    })
+    ALLOWED_CLIENT_COLUMNS = frozenset(
+        {
+            "full_name",
+            "email",
+            "phone",
+            "whatsapp",
+            "nationality",
+            "passport_number",
+            "status",
+            "client_type",
+            "assigned_to",
+            "custom_fields",
+            "tags",
+            "notes",
+        }
+    )
 
     def __init__(self, db_pool: asyncpg.Pool):
         self.db_pool = db_pool

@@ -66,9 +66,7 @@ class TwitterChannelAdapter(BaseChannel):
         import base64
 
         signature = base64.b64encode(
-            hmac.new(
-                signing_key.encode(), base_string.encode(), hashlib.sha256
-            ).digest()
+            hmac.new(signing_key.encode(), base_string.encode(), hashlib.sha256).digest()
         ).decode()
 
         oauth_params["oauth_signature"] = signature
@@ -91,9 +89,7 @@ class TwitterChannelAdapter(BaseChannel):
 
             dm = dm_events[0]
             sender_id = dm.get("message_create", {}).get("sender_id", "unknown")
-            text = (
-                dm.get("message_create", {}).get("message_data", {}).get("text", "")
-            )
+            text = dm.get("message_create", {}).get("message_data", {}).get("text", "")
 
             return ChannelMessage(
                 user_id=f"twitter_{sender_id}",
@@ -109,9 +105,7 @@ class TwitterChannelAdapter(BaseChannel):
             logger.error(f"Failed to parse X webhook: {e}")
             raise
 
-    async def send_response(
-        self, channel_id: str, response: ChannelResponse
-    ) -> None:
+    async def send_response(self, channel_id: str, response: ChannelResponse) -> None:
         """Send DM via X API v2 with OAuth 1.0a."""
         formatted_text = self.formatter.format_response(response)
         if len(formatted_text) > self.twitter_config.max_message_length:
@@ -134,8 +128,7 @@ class TwitterChannelAdapter(BaseChannel):
                 logger.info(f"✅ Sent X DM to {channel_id}")
             else:
                 logger.error(
-                    f"X API error {resp.status_code}: {resp.text} "
-                    f"(channel_id={channel_id})"
+                    f"X API error {resp.status_code}: {resp.text} (channel_id={channel_id})"
                 )
         except Exception as e:
             logger.error(f"X DM send failed: {e}")
@@ -153,9 +146,7 @@ class TwitterChannelAdapter(BaseChannel):
             if r.text:
                 text += r.text
         if text:
-            await self.send_response(
-                channel_id, ChannelResponse(text=text, metadata={})
-            )
+            await self.send_response(channel_id, ChannelResponse(text=text, metadata={}))
 
     @property
     def channel_name(self) -> str:

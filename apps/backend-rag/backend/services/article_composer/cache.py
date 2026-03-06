@@ -107,7 +107,9 @@ class CacheService:
         cache_key = self._generate_cache_key("compose", title, content[:1000], category)
         return await self.get(cache_key)
 
-    async def set_compose_cache(self, title: str, content: str, category: str, result: dict) -> None:
+    async def set_compose_cache(
+        self, title: str, content: str, category: str, result: dict
+    ) -> None:
         """Cache compose result"""
         cache_key = self._generate_cache_key("compose", title, content[:1000], category)
         await self.set(cache_key, result, ttl=CACHE_TTL_COMPOSE)

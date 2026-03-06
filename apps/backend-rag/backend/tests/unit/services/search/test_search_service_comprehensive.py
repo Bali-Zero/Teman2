@@ -457,14 +457,18 @@ class TestSearchService:
     @pytest.mark.asyncio
     async def test_prepare_search_context(self, search_service):
         """Test _prepare_search_context"""
-        embedding, collection, vector_db, chroma_filter, tier_values = (
-            await search_service._prepare_search_context(
-                query="test",
-                user_level=1,
-                tier_filter=None,
-                collection_override=None,
-                apply_filters=None,
-            )
+        (
+            embedding,
+            collection,
+            vector_db,
+            chroma_filter,
+            tier_values,
+        ) = await search_service._prepare_search_context(
+            query="test",
+            user_level=1,
+            tier_filter=None,
+            collection_override=None,
+            apply_filters=None,
         )
         assert embedding is not None
         assert collection is not None
@@ -477,28 +481,36 @@ class TestSearchService:
             return_value={"collection_name": "zantara_books"}
         )
 
-        embedding, collection, vector_db, chroma_filter, tier_values = (
-            await search_service._prepare_search_context(
-                query="test",
-                user_level=2,
-                tier_filter=None,
-                collection_override="zantara_books",
-                apply_filters=True,
-            )
+        (
+            embedding,
+            collection,
+            vector_db,
+            chroma_filter,
+            tier_values,
+        ) = await search_service._prepare_search_context(
+            query="test",
+            user_level=2,
+            tier_filter=None,
+            collection_override="zantara_books",
+            apply_filters=True,
         )
         assert collection == "zantara_books"
 
     @pytest.mark.asyncio
     async def test_prepare_search_context_apply_filters_false(self, search_service):
         """Test _prepare_search_context with apply_filters=False"""
-        embedding, collection, vector_db, chroma_filter, tier_values = (
-            await search_service._prepare_search_context(
-                query="test query",
-                user_level=1,
-                tier_filter=None,
-                collection_override=None,
-                apply_filters=False,
-            )
+        (
+            embedding,
+            collection,
+            vector_db,
+            chroma_filter,
+            tier_values,
+        ) = await search_service._prepare_search_context(
+            query="test query",
+            user_level=1,
+            tier_filter=None,
+            collection_override=None,
+            apply_filters=False,
         )
         # When apply_filters=False, chroma_filter should be None
         assert chroma_filter is None
@@ -522,14 +534,18 @@ class TestSearchService:
 
         search_service.collection_manager.get_collection.side_effect = [None, mock_client]
 
-        embedding, collection, vector_db, chroma_filter, tier_values = (
-            await search_service._prepare_search_context(
-                query="test query",
-                user_level=1,
-                tier_filter=None,
-                collection_override=None,
-                apply_filters=None,
-            )
+        (
+            embedding,
+            collection,
+            vector_db,
+            chroma_filter,
+            tier_values,
+        ) = await search_service._prepare_search_context(
+            query="test query",
+            user_level=1,
+            tier_filter=None,
+            collection_override=None,
+            apply_filters=None,
         )
         # Should fallback to legal_unified
         assert collection == "legal_unified"
@@ -983,9 +999,7 @@ class TestSearchService:
 
         # Mock conflict resolver to return proper structure
         search_service.conflict_resolver.detect_conflicts = MagicMock(return_value=[])
-        search_service.conflict_resolver.resolve_conflicts = MagicMock(
-            return_value=([], [])
-        )
+        search_service.conflict_resolver.resolve_conflicts = MagicMock(return_value=([], []))
 
         result = await search_service.search_with_conflict_resolution(
             query="test", user_level=1, limit=5

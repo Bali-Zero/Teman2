@@ -35,8 +35,6 @@ def save_upload_file_sync(path: Path, content: bytes) -> Any:
 @router.post("/upload", response_model=BookIngestionResponse)
 async def upload_and_ingest(
     file: UploadFile = File(...),
-
-
     title: str | None = None,
     author: str | None = None,
     tier_override: TierLevel | None = None,
@@ -118,7 +116,9 @@ async def ingest_local_file(request: BookIngestionRequest) -> BookIngestionRespo
 
 
 @router.post("/batch", response_model=BatchIngestionResponse)
-async def batch_ingest(request: BatchIngestionRequest, _background_tasks: BackgroundTasks) -> BatchIngestionResponse:
+async def batch_ingest(
+    request: BatchIngestionRequest, _background_tasks: BackgroundTasks
+) -> BatchIngestionResponse:
     """
     Process all books in a directory.
 

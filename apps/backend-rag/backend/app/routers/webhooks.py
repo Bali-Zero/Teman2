@@ -51,8 +51,6 @@ class OpenClawWebhookPayload(BaseModel):
 async def openclaw_crm_logging(
     payload: OpenClawWebhookPayload,
     db: AsyncSession = Depends(get_db),
-
-
     _: None = Depends(verify_openclaw_signature),
 ) -> dict[str, Any]:
     """

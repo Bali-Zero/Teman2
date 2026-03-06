@@ -603,9 +603,7 @@ async def metrics_summary(request: Request) -> dict[str, Any]:
                 "size": db_pool.get_size(),
                 "max_size": db_pool.get_max_size(),
                 "idle": db_pool.get_idle_size(),
-                "saturation_pct": round(
-                    (db_pool.get_size() / db_pool.get_max_size()) * 100, 1
-                )
+                "saturation_pct": round((db_pool.get_size() / db_pool.get_max_size()) * 100, 1)
                 if db_pool.get_max_size() > 0
                 else 0,
             }

@@ -3,8 +3,8 @@ Telegram Conversations API - Ultra-Safe Version
 """
 
 import json
-from typing import Any
 import logging
+from typing import Any
 
 from asyncpg import Pool
 from fastapi import APIRouter, Depends
@@ -18,8 +18,6 @@ router = APIRouter(prefix="/api/telegram", tags=["telegram"])
 @router.get("/conversations")
 async def get_telegram_conversations(
     limit: int = 50, offset: int = 0, db: Pool = Depends(get_database)
-
-
 ) -> Any:
     try:
         async with db.acquire() as conn:
@@ -75,7 +73,9 @@ async def get_telegram_conversations(
 
 
 @router.get("/messages/{chat_id}")
-async def get_telegram_messages(chat_id: str, limit: int = 100, db: Pool = Depends(get_database)) -> Any:
+async def get_telegram_messages(
+    chat_id: str, limit: int = 100, db: Pool = Depends(get_database)
+) -> Any:
 
     try:
         async with db.acquire() as conn:

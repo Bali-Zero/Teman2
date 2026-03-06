@@ -23,7 +23,7 @@ import os
 import time
 import uuid
 from collections.abc import AsyncGenerator
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from backend.services.memory.orchestrator import MemoryOrchestrator
@@ -81,7 +81,9 @@ _wrap_query_with_language_instruction = wrap_query_with_language_instruction
 
 # Re-export for backward compatibility (tests mock this path)
 from backend.services.rag.agentic.context_manager import get_user_context  # noqa: F401, E402
+
 _is_conversation_recall_query = is_conversation_recall_query
+
 
 class AgenticRAGOrchestrator:
     """
@@ -420,7 +422,9 @@ class AgenticRAGOrchestrator:
         # Security: Validate user_id format
         if user_id is None:
             raise ValueError("user_id cannot be None")
-        if user_id == "" or (user_id != "anonymous" and (not isinstance(user_id, str) or len(user_id) < 1)):
+        if user_id == "" or (
+            user_id != "anonymous" and (not isinstance(user_id, str) or len(user_id) < 1)
+        ):
             raise ValueError("Invalid user_id format")
 
         # Initialize tool execution counter for rate limiting

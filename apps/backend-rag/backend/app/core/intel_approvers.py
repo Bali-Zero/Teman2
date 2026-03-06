@@ -23,25 +23,21 @@ class IntelTeamConfig(TypedDict):
     approvers: list[ApproverConfig]
 
 
-# News Room Team - 2/3 Majority Voting
+# News Room Team - Solo owner approval
 NEWS_TEAM: IntelTeamConfig = {
     "type": "news",
-    "required_votes": 2,
+    "required_votes": 1,
     "approvers": [
-        {"name": "Zero", "chat_id": 8290313965, "email": "zero@balizero.com"},
-        {"name": "Dea", "chat_id": 6217157548, "email": "dea@balizero.com"},
-        {"name": "Damar", "chat_id": 1813875994, "email": "damar@balizero.com"},
+        {"name": "Zero", "chat_id": 8032150393, "email": "zero@balizero.com"},
     ],
 }
 
-# Visa Oracle Team - Same approvers as News (Zero, Dea, Damar)
+# Visa Oracle Team - Solo owner approval
 VISA_TEAM: IntelTeamConfig = {
     "type": "visa",
-    "required_votes": 2,  # 2/3 majority
+    "required_votes": 1,
     "approvers": [
-        {"name": "Zero", "chat_id": 8290313965, "email": "zero@balizero.com"},
-        {"name": "Dea", "chat_id": 6217157548, "email": "dea@balizero.com"},
-        {"name": "Damar", "chat_id": 1813875994, "email": "damar@balizero.com"},
+        {"name": "Zero", "chat_id": 8032150393, "email": "zero@balizero.com"},
     ],
 }
 

@@ -11,8 +11,9 @@ Endpoints:
 - POST /api/analytics/query-insights/feedback  - Record user feedback
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from backend.app.dependencies import get_current_user, get_database_pool
@@ -22,7 +23,6 @@ router = APIRouter(prefix="/api/analytics/query-insights", tags=["query-analytic
 
 
 def _verify_founder_access(current_user=Depends(get_current_user)) -> Any:
-
     """Verify that the user has founder or admin level access."""
     if current_user.get("role") not in ["Founder", "admin"]:
         raise HTTPException(
@@ -42,8 +42,6 @@ def _get_repo(db_pool=Depends(get_database_pool)) -> QueryAnalyticsRepository:
 @router.get("")
 async def get_query_insights_dashboard(
     days: int = Query(7, ge=1, le=90, description="Lookback period in days"),
-
-
     repo: QueryAnalyticsRepository = Depends(_get_repo),
     current_user=Depends(_verify_founder_access),
 ) -> Any:
@@ -60,8 +58,6 @@ async def get_query_insights_dashboard(
 @router.get("/failed")
 async def get_failed_queries(
     limit: int = Query(10, ge=1, le=50),
-
-
     days: int = Query(7, ge=1, le=90),
     repo: QueryAnalyticsRepository = Depends(_get_repo),
     current_user=Depends(_verify_founder_access),
@@ -76,8 +72,6 @@ async def get_failed_queries(
 @router.get("/collections")
 async def get_collection_hit_rates(
     days: int = Query(7, ge=1, le=90),
-
-
     repo: QueryAnalyticsRepository = Depends(_get_repo),
     current_user=Depends(_verify_founder_access),
 ) -> Any:
@@ -91,8 +85,6 @@ async def get_collection_hit_rates(
 @router.get("/volume")
 async def get_query_volume(
     granularity: str = Query("hour", regex="^(hour|day)$"),
-
-
     days: int = Query(7, ge=1, le=90),
     repo: QueryAnalyticsRepository = Depends(_get_repo),
     current_user=Depends(_verify_founder_access),
@@ -107,8 +99,6 @@ async def get_query_volume(
 @router.get("/satisfaction")
 async def get_satisfaction_score(
     days: int = Query(7, ge=1, le=90),
-
-
     repo: QueryAnalyticsRepository = Depends(_get_repo),
     current_user=Depends(_verify_founder_access),
 ) -> Any:
@@ -132,8 +122,6 @@ class FeedbackRequest(BaseModel):
 async def submit_feedback(
     body: FeedbackRequest,
     repo: QueryAnalyticsRepository = Depends(_get_repo),
-
-
     current_user=Depends(get_current_user),
 ) -> dict[str, Any]:
     """

@@ -100,9 +100,7 @@ def auth_headers():
 
 
 def test_get_request_trace(mock_settings, auth_headers):
-    with patch(
-        "backend.middleware.request_tracing.RequestTracingMiddleware.get_trace"
-    ) as mock_get:
+    with patch("backend.middleware.request_tracing.RequestTracingMiddleware.get_trace") as mock_get:
         mock_get.return_value = {"id": "123"}
         response = client.get("/api/debug/request/123", headers=auth_headers)
         assert response.status_code == 200
@@ -110,9 +108,7 @@ def test_get_request_trace(mock_settings, auth_headers):
 
 
 def test_get_request_trace_not_found(mock_settings, auth_headers):
-    with patch(
-        "backend.middleware.request_tracing.RequestTracingMiddleware.get_trace"
-    ) as mock_get:
+    with patch("backend.middleware.request_tracing.RequestTracingMiddleware.get_trace") as mock_get:
         mock_get.return_value = None
         response = client.get("/api/debug/request/123", headers=auth_headers)
         assert response.status_code == 404

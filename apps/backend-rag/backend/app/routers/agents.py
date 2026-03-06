@@ -59,7 +59,6 @@ auto_ingestion = AutoIngestionOrchestrator()
 @router.get("/status")
 @cached(ttl=300, prefix="agents_status")  # Cache for 5 minutes
 async def get_agents_status(current_user: dict = Depends(get_current_user)) -> dict[str, Any]:
-
     """
     Get status of all 10 agentic functions
 
@@ -128,8 +127,6 @@ class CreateJourneyRequest(BaseModel):
 @router.post("/journey/create")
 async def create_client_journey(
     request: CreateJourneyRequest, current_user: dict = Depends(get_current_user)
-
-
 ) -> dict[str, Any]:
     """
     🎯 AGENT 1: Client Journey Orchestrator
@@ -159,8 +156,9 @@ async def create_client_journey(
 
 
 @router.get("/journey/{journey_id}")
-async def get_journey(journey_id: str, current_user: dict = Depends(get_current_user)) -> dict[str, Any]:
-
+async def get_journey(
+    journey_id: str, current_user: dict = Depends(get_current_user)
+) -> dict[str, Any]:
     """Get journey details and progress"""
     journey = journey_orchestrator.get_journey(journey_id)
     if not journey:
@@ -179,8 +177,6 @@ async def complete_journey_step(
     step_id: str,
     notes: str | None = None,
     current_user: dict = Depends(get_current_user),
-
-
 ) -> dict[str, Any]:
     """Mark a journey step as completed"""
     try:
@@ -195,8 +191,9 @@ async def complete_journey_step(
 
 
 @router.get("/journey/{journey_id}/next-steps")
-async def get_next_steps(journey_id: str, current_user: dict = Depends(get_current_user)) -> dict[str, Any]:
-
+async def get_next_steps(
+    journey_id: str, current_user: dict = Depends(get_current_user)
+) -> dict[str, Any]:
     """Get next available steps in the journey"""
     next_steps = journey_orchestrator.get_next_steps(journey_id)
     return {
@@ -224,8 +221,6 @@ class AddComplianceItemRequest(BaseModel):
 @router.post("/compliance/track")
 async def add_compliance_tracking(
     request: AddComplianceItemRequest, current_user: dict = Depends(get_current_user)
-
-
 ) -> dict[str, Any]:
     """
     ⚠️ AGENT 2: Proactive Compliance Monitor
@@ -269,8 +264,6 @@ async def get_compliance_alerts(
     severity: str | None = None,
     auto_notify: bool = False,
     current_user: dict = Depends(get_current_user),
-
-
 ) -> dict[str, Any]:
     """
     Get upcoming compliance alerts
@@ -349,8 +342,9 @@ async def get_compliance_alerts(
 
 
 @router.get("/compliance/client/{client_id}")
-async def get_client_compliance(client_id: str, current_user: dict = Depends(get_current_user)) -> dict[str, Any]:
-
+async def get_client_compliance(
+    client_id: str, current_user: dict = Depends(get_current_user)
+) -> dict[str, Any]:
     """Get all compliance items for a client"""
     items = compliance_monitor.get_client_items(client_id)
     return {
@@ -370,8 +364,6 @@ async def get_client_compliance(client_id: str, current_user: dict = Depends(get
 async def extract_knowledge_graph(
     request: Request,
     text: str = Query(..., description="Text to extract entities and relationships from"),
-
-
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
@@ -440,8 +432,6 @@ async def extract_knowledge_graph(
 @router.get("/knowledge-graph/export")
 async def export_knowledge_graph(
     format: str = "neo4j", current_user: dict = Depends(get_current_user)
-
-
 ) -> dict[str, Any]:
     """
     Export knowledge graph in Neo4j-ready format
@@ -484,8 +474,6 @@ async def run_auto_ingestion(
     sources: list[str] | None = None,
     force: bool = False,
     current_user: dict = Depends(get_current_user),
-
-
 ) -> dict[str, Any]:
     """
     🤖 AGENT 4: Auto Ingestion Orchestrator
@@ -513,7 +501,6 @@ async def run_auto_ingestion(
 
 @router.get("/ingestion/status")
 async def get_ingestion_status(current_user: dict = Depends(get_current_user)) -> dict[str, Any]:
-
     """Get status of automatic ingestion service"""
     return {
         "success": True,
@@ -541,8 +528,6 @@ async def cross_oracle_synthesis(
         default=["tax", "legal", "property", "visa", "kbli"],
         description="Domains to search: tax, legal, property, visa, kbli",
     ),
-
-
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
@@ -612,8 +597,6 @@ async def calculate_dynamic_pricing(
     complexity: str = "standard",
     urgency: str = "normal",
     current_user: dict = Depends(get_current_user),
-
-
 ) -> dict[str, Any]:
     """
     💰 AGENT 6: Dynamic Pricing Service
@@ -637,8 +620,6 @@ async def run_autonomous_research(
     depth: str = "standard",
     sources: list[str] | None = None,
     current_user: dict = Depends(get_current_user),
-
-
 ) -> dict[str, Any]:
     """
     🔬 AGENT 7: Autonomous Research Service
@@ -729,7 +710,6 @@ async def run_autonomous_research(
 @router.get("/analytics/summary")
 @cached(ttl=180, prefix="agents_analytics")  # Cache for 3 minutes
 async def get_analytics_summary(current_user: dict = Depends(get_current_user)) -> dict[str, Any]:
-
     """
     Get comprehensive analytics for all agentic functions
 

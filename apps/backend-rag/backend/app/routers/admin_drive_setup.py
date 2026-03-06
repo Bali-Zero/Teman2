@@ -2,8 +2,8 @@
 Setup Service Account for Drive uploads (fallback when OAuth fails)
 """
 
-from typing import Any
 import os
+from typing import Any
 
 from fastapi import APIRouter, Request
 
@@ -89,8 +89,7 @@ async def test_list_files(request: Request) -> dict[str, Any]:
             "mode": "service_account",
             "file_count": len(files),
             "files": [
-                {"name": f.get("name"), "type": f.get("mimeType"), "id": f.get("id")}
-                for f in files
+                {"name": f.get("name"), "type": f.get("mimeType"), "id": f.get("id")} for f in files
             ],
         }
     except Exception as e:

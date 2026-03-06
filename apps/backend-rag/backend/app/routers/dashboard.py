@@ -67,11 +67,21 @@ class AnalyzeInvestmentRequest(BaseModel):
 # BA=Bandara, BJ=Jalan, SS=Sungai, SP=Sumber Air, LS=Laut
 # P-1=Perlindungan, PL-*=Perairan, RTH-*=Ruang Terbuka Hijau
 NON_BUILDABLE_ZONES: set[str] = {
-    "BA", "BJ", "SS", "SP", "LS",
-    "P-1", "P-2",
-    "RTH-1", "RTH-2", "RTH-4", "RTH-7",
+    "BA",
+    "BJ",
+    "SS",
+    "SP",
+    "LS",
+    "P-1",
+    "P-2",
+    "RTH-1",
+    "RTH-2",
+    "RTH-4",
+    "RTH-7",
     "RTNH",
-    "PL-1", "PL-3", "PL-4",
+    "PL-1",
+    "PL-3",
+    "PL-4",
 }
 
 # Zone-KBLI compatibility — maps KBLI prefix/category to ideal zone families
@@ -112,19 +122,19 @@ _ZONE_KBLI_IDEAL: dict[str, set[str]] = {
 # Score: 8/20 (tra acceptable e poor). Segnala al cliente che serve attenzione.
 # Esempio: villa (55) in R-3 a Canggu — migliaia di casi ma non è "ideale".
 _ZONE_KBLI_TOLERATED: dict[str, set[str]] = {
-    "55": {"R-"},       # Villa/hotel in zona residenziale (gray zone Canggu)
-    "56": {"W-"},       # Restaurant in tourism zone (common but needs permit)
-    "47": {"R-"},       # Retail in residential (warung/minimarket)
+    "55": {"R-"},  # Villa/hotel in zona residenziale (gray zone Canggu)
+    "56": {"W-"},  # Restaurant in tourism zone (common but needs permit)
+    "47": {"R-"},  # Retail in residential (warung/minimarket)
 }
 
 # ACCEPTABLE = non ideale ma legalmente fattibile con permessi extra.
 # Score: 12/20
 _ZONE_KBLI_ACCEPTABLE: dict[str, set[str]] = {
-    "55": {"K-"},       # Accommodation in commercial = acceptable
-    "56": {"R-"},       # Restaurant in residential = acceptable with permit
-    "68": {"W-"},       # Real estate in tourism = acceptable
-    "77": {"W-"},       # Rental in tourism = acceptable
-    "79": {"R-"},       # Travel agency in residential = acceptable
+    "55": {"K-"},  # Accommodation in commercial = acceptable
+    "56": {"R-"},  # Restaurant in residential = acceptable with permit
+    "68": {"W-"},  # Real estate in tourism = acceptable
+    "77": {"W-"},  # Rental in tourism = acceptable
+    "79": {"R-"},  # Travel agency in residential = acceptable
 }
 
 
@@ -142,7 +152,8 @@ _NIGHTLIFE_PENALTY_ZONES: set[str] = {"R-"}  # Residential = poor fit for nightl
 
 
 def _calculate_zone_kbli_fit(
-    zone_code: str | None, kbli_code: str | None,
+    zone_code: str | None,
+    kbli_code: str | None,
 ) -> tuple[int, str]:
     """
     Zone-KBLI compatibility score (0-20) + tier label.
@@ -237,9 +248,7 @@ def calculate_investment_score(
         with contextlib.suppress(ValueError, TypeError, IndexError):
             tb_meters = float(str(tb_raw).split()[0].replace(",", "."))
         if tb_meters is not None and tb_meters <= 4.0:
-            hard_blocks.append(
-                f"KKOP + TB {tb_raw} — altezza edificio troppo limitata"
-            )
+            hard_blocks.append(f"KKOP + TB {tb_raw} — altezza edificio troppo limitata")
 
     if hard_blocks:
         return {
@@ -280,7 +289,9 @@ def calculate_investment_score(
     # Scale from 0-20 internal to 0-15 display
     zone_kbli_score: int | None = round(zone_kbli_raw * 15 / 20)
     breakdown["zone_kbli_fit"] = {
-        "score": zone_kbli_score, "max": 15, "tier": zone_kbli_tier,
+        "score": zone_kbli_score,
+        "max": 15,
+        "tier": zone_kbli_tier,
     }
 
     # 2c. Building Capacity — KLB factor (10 points)
@@ -289,15 +300,15 @@ def calculate_investment_score(
     # Only available from BATARA (not GISTARU).
     if klb_val is not None:
         if klb_val >= 2.0:
-            klb_score: int | None = 10   # High density (K-1, K-3)
+            klb_score: int | None = 10  # High density (K-1, K-3)
         elif klb_val >= 1.2:
-            klb_score = 8                # Good density (R-3, W-2)
+            klb_score = 8  # Good density (R-3, W-2)
         elif klb_val >= 0.6:
-            klb_score = 5                # Low density (R-4, some W-)
+            klb_score = 5  # Low density (R-4, some W-)
         elif klb_val >= 0.2:
-            klb_score = 2                # Very limited
+            klb_score = 2  # Very limited
         else:
-            klb_score = 0                # Near-zero (hard block catches < 0.05)
+            klb_score = 0  # Near-zero (hard block catches < 0.05)
     else:
         klb_score = None  # No KLB data (GISTARU) = exclude from scoring
     breakdown["building_capacity"] = {"score": klb_score, "max": 10, "klb": klb_val}
@@ -338,9 +349,9 @@ def calculate_investment_score(
         if 30 <= density_1km <= 70:
             market_score = 10  # Active sweet spot
         elif density_1km < 30:
-            market_score = 6   # Low competition
+            market_score = 6  # Low competition
         else:
-            market_score = 3   # Saturated
+            market_score = 3  # Saturated
     else:
         market_score = 5  # Unknown
     breakdown["market"] = {"score": market_score, "max": 10, "value": density_1km}
@@ -369,8 +380,10 @@ def calculate_investment_score(
 
     reg_score = max(0, reg_base - oss_penalty)
     breakdown["regulatory"] = {
-        "score": reg_score, "max": 10,
-        "state": kbli_state, "oss_risk": oss_risk,
+        "score": reg_score,
+        "max": 10,
+        "state": kbli_state,
+        "oss_risk": oss_risk,
     }
 
     # 2g. Amenity Access — Walk Score (5 points)
@@ -390,8 +403,14 @@ def calculate_investment_score(
     # 8 factors: ROI(30) + Zone-KBLI(15) + KLB(10) + BEY(15) + Flood(10) +
     #            Market(10) + Regulatory(10) + Amenity(5) = 105 max
     _all_scores = [
-        roi_score, zone_kbli_score, klb_score, bey_score, flood_score,
-        market_score, reg_score, ws_score,
+        roi_score,
+        zone_kbli_score,
+        klb_score,
+        bey_score,
+        flood_score,
+        market_score,
+        reg_score,
+        ws_score,
     ]
     _all_maxes = [30, 15, 10, 15, 10, 10, 10, 5]
 
@@ -452,8 +471,7 @@ def calculate_investment_score(
     if zone_code and zone_code.startswith("W-2") and kbli_code and kbli_code.startswith("55"):
         tb_raw = zone_data.get("tb", "N/A") if zone_data else "N/A"
         modifiers.append(
-            f"⚠️ W-2: villa limitata a 8m/2 piani (hotel fino a 15m/4 piani). "
-            f"TB zona: {tb_raw}"
+            f"⚠️ W-2: villa limitata a 8m/2 piani (hotel fino a 15m/4 piani). TB zona: {tb_raw}"
         )
         score -= 3  # Minor penalty for height limitation
 
@@ -508,19 +526,14 @@ ROI_CALCULATOR_URL = "http://localhost:8001/calculator"
 GISTARU_PROXY = "https://gistaru-proxy.atrbpn.go.id/proxy.ashx?"
 GISTARU_RDTR_API = "https://gistaru.atrbpn.go.id/rdtrinteraktif/api/interactive"
 # MapServer services per kabupaten (discovered Feb 2026)
-GISTARU_MAPSERVER_BASE = (
-    "https://gistaru.atrbpn.go.id/arcgis/rest/services"
-    "/060_RDTR_PROVINSI_BALI"
-)
+GISTARU_MAPSERVER_BASE = "https://gistaru.atrbpn.go.id/arcgis/rest/services/060_RDTR_PROVINSI_BALI"
 GISTARU_HEADERS = {"User-Agent": "Mozilla/5.0", "Referer": "https://gistaru.atrbpn.go.id/"}
 
 
 # ── GISTARU fallback: spatial query via ArcGIS proxy ─────────────────
 
 
-async def _gistaru_rdtr_lookup(
-    lat: float, lon: float
-) -> dict[str, Any] | None:
+async def _gistaru_rdtr_lookup(lat: float, lon: float) -> dict[str, Any] | None:
     """
     Query GISTARU RDTR Interaktif ArcGIS MapServer for zone at given point.
 
@@ -538,8 +551,14 @@ async def _gistaru_rdtr_lookup(
             cities_resp.raise_for_status()
             # API wraps response in {status, message, data}
             cities_body = cities_resp.json()
-            cities = cities_body.get("data", cities_body) if isinstance(cities_body, dict) else cities_body
-            logger.info("GISTARU: %d kabupaten found", len(cities) if isinstance(cities, list) else 0)
+            cities = (
+                cities_body.get("data", cities_body)
+                if isinstance(cities_body, dict)
+                else cities_body
+            )
+            logger.info(
+                "GISTARU: %d kabupaten found", len(cities) if isinstance(cities, list) else 0
+            )
 
             # For each kabupaten, get RDTR list and try spatial query
             for city in cities:
@@ -553,12 +572,18 @@ async def _gistaru_rdtr_lookup(
                     headers=GISTARU_HEADERS,
                 )
                 if rdtr_resp.status_code != 200:
-                    logger.debug("GISTARU: rdtr list failed for %s (HTTP %d)", city_name, rdtr_resp.status_code)
+                    logger.debug(
+                        "GISTARU: rdtr list failed for %s (HTTP %d)",
+                        city_name,
+                        rdtr_resp.status_code,
+                    )
                     continue
 
                 # API wraps response in {status, message, data}
                 rdtr_body = rdtr_resp.json()
-                rdtr_list = rdtr_body.get("data", rdtr_body) if isinstance(rdtr_body, dict) else rdtr_body
+                rdtr_list = (
+                    rdtr_body.get("data", rdtr_body) if isinstance(rdtr_body, dict) else rdtr_body
+                )
                 if not isinstance(rdtr_list, list):
                     continue
 
@@ -574,26 +599,33 @@ async def _gistaru_rdtr_lookup(
                     arcgis_base = "https://gistaru.atrbpn.go.id/arcgis/rest/services"
                     # Params MUST be embedded in inner URL before proxy prefix
                     # (proxy.ashx? uses everything after ? as the target URL)
-                    qs = urlencode({
-                        "geometry": f"{lon},{lat}",
-                        "geometryType": "esriGeometryPoint",
-                        "spatialRel": "esriSpatialRelIntersects",
-                        "outFields": "*",
-                        "returnGeometry": "false",
-                        "f": "json",
-                    })
+                    qs = urlencode(
+                        {
+                            "geometry": f"{lon},{lat}",
+                            "geometryType": "esriGeometryPoint",
+                            "spatialRel": "esriSpatialRelIntersects",
+                            "outFields": "*",
+                            "returnGeometry": "false",
+                            "f": "json",
+                        }
+                    )
                     inner_url = f"{arcgis_base}/{mapserver_path}/0/query?{qs}"
                     proxied = f"{GISTARU_PROXY}{inner_url}"
                     try:
                         qr = await client.get(
-                            proxied, headers=GISTARU_HEADERS,
+                            proxied,
+                            headers=GISTARU_HEADERS,
                             timeout=10,
                         )
                     except httpx.TimeoutException:
                         logger.debug("GISTARU: timeout querying %s", rdtr.get("rtr", ""))
                         continue
                     if qr.status_code != 200:
-                        logger.debug("GISTARU: query %s returned HTTP %d", rdtr.get("rtr", ""), qr.status_code)
+                        logger.debug(
+                            "GISTARU: query %s returned HTTP %d",
+                            rdtr.get("rtr", ""),
+                            qr.status_code,
+                        )
                         continue
 
                     qdata = qr.json()
@@ -621,8 +653,14 @@ async def _gistaru_rdtr_lookup(
                         "overlays": {
                             k: attrs.get(k)
                             for k in (
-                                "KKOP_1", "LP2B_2", "KRB_03", "TEB_05",
-                                "CAGBUD", "RESAIR", "SEMPDN", "HANKAM",
+                                "KKOP_1",
+                                "LP2B_2",
+                                "KRB_03",
+                                "TEB_05",
+                                "CAGBUD",
+                                "RESAIR",
+                                "SEMPDN",
+                                "HANKAM",
                             )
                             if attrs.get(k) and attrs.get(k) != "Tidak Ada"
                         },
@@ -641,22 +679,23 @@ async def _gistaru_rdtr_direct_query(
     Direct spatial query to a known GISTARU MapServer service.
     Faster than _gistaru_rdtr_lookup since it skips service discovery.
     """
-    qs = urlencode({
-        "geometry": f"{lon},{lat}",
-        "geometryType": "esriGeometryPoint",
-        "spatialRel": "esriSpatialRelIntersects",
-        "outFields": "*",
-        "returnGeometry": "false",
-        "f": "json",
-    })
-    inner_url = (
-        f"{GISTARU_MAPSERVER_BASE}/{service_path}/MapServer/0/query?{qs}"
+    qs = urlencode(
+        {
+            "geometry": f"{lon},{lat}",
+            "geometryType": "esriGeometryPoint",
+            "spatialRel": "esriSpatialRelIntersects",
+            "outFields": "*",
+            "returnGeometry": "false",
+            "f": "json",
+        }
     )
+    inner_url = f"{GISTARU_MAPSERVER_BASE}/{service_path}/MapServer/0/query?{qs}"
     proxied = f"{GISTARU_PROXY}{inner_url}"
     try:
         async with httpx.AsyncClient(timeout=12) as client:
             resp = await client.get(
-                proxied, headers=GISTARU_HEADERS,
+                proxied,
+                headers=GISTARU_HEADERS,
             )
             resp.raise_for_status()
             features = resp.json().get("features", [])
@@ -681,8 +720,14 @@ async def _gistaru_rdtr_direct_query(
                 "overlays": {
                     k: attrs.get(k)
                     for k in (
-                        "KKOP_1", "LP2B_2", "KRB_03", "TEB_05",
-                        "CAGBUD", "RESAIR", "SEMPDN", "HANKAM",
+                        "KKOP_1",
+                        "LP2B_2",
+                        "KRB_03",
+                        "TEB_05",
+                        "CAGBUD",
+                        "RESAIR",
+                        "SEMPDN",
+                        "HANKAM",
                     )
                     if attrs.get(k) and attrs.get(k) != "Tidak Ada"
                 },
@@ -710,7 +755,10 @@ async def validate_property(req: ValidatePropertyRequest) -> dict[str, Any]:
     state = result.get("audit", {}).get("state", result.get("state", "UNKNOWN"))
     logger.info(
         "KBLI validation: code=%s is_pma=%s location=%s -> %s",
-        req.kbli_code, req.is_pma, req.location, state,
+        req.kbli_code,
+        req.is_pma,
+        req.location,
+        state,
     )
     return result
 
@@ -734,8 +782,10 @@ async def gistaru_zone_lookup(req: GistaruLookupRequest) -> dict[str, Any]:
     if result:
         logger.info(
             "GISTARU zone lookup: %s (%s) at %s, %s",
-            result.get("code"), result.get("name"),
-            result.get("desa"), result.get("kabupaten"),
+            result.get("code"),
+            result.get("name"),
+            result.get("desa"),
+            result.get("kabupaten"),
         )
         return {"found": True, **result}
 
@@ -865,7 +915,8 @@ async def log_lookup(req: LogLookupRequest, request: Request) -> dict[str, Any]:
             )
             logger.info(
                 "Dashboard analytics logged: user=%s kbli=%s",
-                req.user_email, req.kbli_code,
+                req.user_email,
+                req.kbli_code,
             )
             return {"logged": True}
     except Exception as e:
@@ -891,26 +942,32 @@ async def get_stats(request: Request) -> dict[str, Any]:
 
     try:
         async with pool.acquire() as conn:
-            total_clients: int = await conn.fetchval(
-                "SELECT COUNT(*) FROM clients WHERE status = 'active'"
-            ) or 0
+            total_clients: int = (
+                await conn.fetchval("SELECT COUNT(*) FROM clients WHERE status = 'active'") or 0
+            )
 
-            total_practices: int = await conn.fetchval(
-                """
+            total_practices: int = (
+                await conn.fetchval(
+                    """
                 SELECT COUNT(*) FROM practices
                 WHERE status NOT IN ('cancelled', 'archived')
                 """
-            ) or 0
+                )
+                or 0
+            )
 
             # Map lookups in last 24h (graceful if table doesn't exist yet)
             map_lookups_24h: int = 0
             with contextlib.suppress(Exception):
-                map_lookups_24h = await conn.fetchval(
-                    """
+                map_lookups_24h = (
+                    await conn.fetchval(
+                        """
                     SELECT COUNT(*) FROM analytics_map_lookups
                     WHERE created_at > NOW() - INTERVAL '24 hours'
                     """
-                ) or 0
+                    )
+                    or 0
+                )
 
             return {
                 "total_clients": total_clients,
@@ -982,7 +1039,9 @@ async def analyze_investment(req: AnalyzeInvestmentRequest) -> dict[str, Any]:
                 batara_success = True
                 logger.info(
                     "Investment analysis: BATARA returned zone %s (%s) at %s",
-                    zone_code, zone_data["name"], zone_data["desa"],
+                    zone_code,
+                    zone_data["name"],
+                    zone_data["desa"],
                 )
     except Exception as e:
         logger.warning("Investment analysis: BATARA failed: %s", e)
@@ -991,7 +1050,8 @@ async def analyze_investment(req: AnalyzeInvestmentRequest) -> dict[str, Any]:
     if not batara_success:
         logger.info(
             "Investment analysis: trying GISTARU RDTR fallback for %s,%s",
-            req.lat, req.lon,
+            req.lat,
+            req.lon,
         )
         gistaru_result = await _gistaru_rdtr_lookup(req.lat, req.lon)
         if gistaru_result:
@@ -1008,7 +1068,8 @@ async def analyze_investment(req: AnalyzeInvestmentRequest) -> dict[str, Any]:
             result["zone"] = {"source": "unavailable", "code": "NO_DATA"}
             logger.warning(
                 "Investment analysis: no zone data from BATARA or GISTARU for %s,%s",
-                req.lat, req.lon,
+                req.lat,
+                req.lon,
             )
 
     # ── B) KBLIEye → Compliance PMA ───────────────────────────────────
@@ -1018,7 +1079,9 @@ async def analyze_investment(req: AnalyzeInvestmentRequest) -> dict[str, Any]:
         try:
             eye = _get_kbli_eye()
             kd = eye.get_decision(
-                code=req.kbli_code, is_pma=req.is_pma, location="Bali",
+                code=req.kbli_code,
+                is_pma=req.is_pma,
+                location="Bali",
             )
             audit = kd.get("audit", kd)
             kbli_state = audit.get("state", kd.get("state", "UNKNOWN"))
@@ -1034,7 +1097,9 @@ async def analyze_investment(req: AnalyzeInvestmentRequest) -> dict[str, Any]:
                 "max_foreign_ownership": pma_logic.get("max_foreign_ownership", 0),
             }
             logger.info(
-                "Investment analysis: KBLI %s → %s", req.kbli_code, kbli_state,
+                "Investment analysis: KBLI %s → %s",
+                req.kbli_code,
+                kbli_state,
             )
         except Exception as e:
             result["kbli"] = {
@@ -1064,7 +1129,8 @@ async def analyze_investment(req: AnalyzeInvestmentRequest) -> dict[str, Any]:
                     "total_investment_idr": roi_data.get("total_investment_idr"),
                 }
                 logger.info(
-                    "Investment analysis: ROI calculated for zone %s", zone_code,
+                    "Investment analysis: ROI calculated for zone %s",
+                    zone_code,
                 )
         except Exception as e:
             result["roi"] = {"error": str(e)}
@@ -1109,9 +1175,7 @@ async def analyze_investment(req: AnalyzeInvestmentRequest) -> dict[str, Any]:
         )
     roi_gs = result.get("roi", {}).get("golden_strategy", {})
     if roi_gs.get("roi"):
-        parts.append(
-            f"ROI stimato {roi_gs['roi']:.1f}%, break-even {roi_gs.get('bey', '?')} anni"
-        )
+        parts.append(f"ROI stimato {roi_gs['roi']:.1f}%, break-even {roi_gs.get('bey', '?')} anni")
 
     result["verdict"] = {
         "can_invest": can_invest,
@@ -1125,6 +1189,9 @@ async def analyze_investment(req: AnalyzeInvestmentRequest) -> dict[str, Any]:
 
     logger.info(
         "Investment analysis: verdict=%s score=%d risk=%s hard_blocks=%d",
-        verdict_label, inv_score, risk_level, len(scoring["hard_blocks"]),
+        verdict_label,
+        inv_score,
+        risk_level,
+        len(scoring["hard_blocks"]),
     )
     return result

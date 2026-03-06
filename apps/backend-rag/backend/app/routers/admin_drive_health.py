@@ -3,6 +3,7 @@ Admin endpoint per verificare stato Google Drive.
 """
 
 from typing import Any
+
 from fastapi import APIRouter, Request
 
 router = APIRouter(prefix="/api/admin/drive", tags=["admin"])

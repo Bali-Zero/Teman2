@@ -2,8 +2,8 @@
 Endpoint per refresh manuale del token Google Drive.
 """
 
-
 from typing import Any
+
 from fastapi import APIRouter, Request
 
 router = APIRouter(prefix="/api/admin/drive", tags=["admin"])

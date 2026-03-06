@@ -496,7 +496,9 @@ class TestStatusOperations:
     async def test_delete_emails(self, zoho_email_service):
         """Test deleting emails (move to trash)"""
         with (
-            patch.object(zoho_email_service, "list_folders", new_callable=AsyncMock) as mock_folders,
+            patch.object(
+                zoho_email_service, "list_folders", new_callable=AsyncMock
+            ) as mock_folders,
             patch.object(zoho_email_service, "move_to_folder", new_callable=AsyncMock) as mock_move,
         ):
             mock_folders.return_value = [

@@ -238,9 +238,7 @@ class TaxDocument(SQLModel, table=True):
 
     # Document Classification
     document_type: str = Field(max_length=100, nullable=False, index=True)
-    tax_type: str | None = Field(
-        default=None, max_length=50, index=True
-    )  # PPh21, PPh23, PPN, etc.
+    tax_type: str | None = Field(default=None, max_length=50, index=True)  # PPh21, PPh23, PPN, etc.
     tax_year: int | None = None
     tax_period: str | None = Field(default=None, max_length=20)
 

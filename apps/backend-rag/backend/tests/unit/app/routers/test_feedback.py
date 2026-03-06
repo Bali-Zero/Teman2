@@ -49,7 +49,10 @@ def app(mock_db_pool):
     app = FastAPI()
     app.include_router(router)
     app.dependency_overrides[get_database_pool] = lambda: mock_db_pool
-    app.dependency_overrides[get_current_user] = lambda: {"email": "admin@example.com", "role": "admin"}
+    app.dependency_overrides[get_current_user] = lambda: {
+        "email": "admin@example.com",
+        "role": "admin",
+    }
     return app
 
 

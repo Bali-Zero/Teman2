@@ -5,9 +5,9 @@ Replaces Node.js websocket.ts
 """
 
 import asyncio
-from typing import Any
 import json
 import logging
+from typing import Any
 
 import redis.asyncio as redis
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -30,7 +30,9 @@ class ConnectionManager:
         self.active_connections: dict[str, list[WebSocket]] = {}
         self.lock = asyncio.Lock()
 
-    async def connect(self, websocket: WebSocket, user_id: str, subprotocol: str | None = None) -> None:
+    async def connect(
+        self, websocket: WebSocket, user_id: str, subprotocol: str | None = None
+    ) -> None:
         await websocket.accept(subprotocol=subprotocol)
         async with self.lock:
             if user_id not in self.active_connections:

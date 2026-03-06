@@ -182,8 +182,6 @@ async def create_practice(
     request: Request,
     practice: PracticeCreate,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-
-
     current_user: dict = Depends(get_current_user),
 ) -> PracticeResponse:
     """
@@ -314,8 +312,6 @@ async def create_practice(
 async def list_practices(
     request: Any = None,
     client_id: int | None = Query(None, description="Filter by client ID"),
-
-
     status: str | None = Query(None, description="Filter by status"),
     assigned_to: str | None = Query(None, description="Filter by assigned team member"),
     practice_type: str | None = Query(None, description="Filter by practice type code"),
@@ -428,8 +424,6 @@ async def list_practices(
 async def get_active_practices(
     request: Request,
     assigned_to: str | None = Query(None),
-
-
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> list[Any]:
     """
@@ -466,8 +460,6 @@ async def get_upcoming_renewals(
         le=MAX_EXPIRY_LOOKAHEAD_DAYS,
         description="Days to look ahead",
     ),
-
-
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> list[Any]:
     """
@@ -495,8 +487,6 @@ async def get_upcoming_renewals(
 async def get_practice(
     request: Request,
     practice_id: int = Path(..., gt=0, description="Practice ID"),
-
-
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ) -> Any:
@@ -542,8 +532,6 @@ async def get_practice(
 async def update_practice(
     request: Request,
     practice_id: int = Path(..., gt=0, description="Practice ID"),
-
-
     updates: PracticeUpdate = Body(...),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
@@ -830,8 +818,6 @@ async def update_practice(
 async def delete_practice(
     request: Request,
     practice_id: int = Path(..., gt=0, description="Practice ID"),
-
-
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
@@ -919,8 +905,6 @@ async def delete_practice(
 async def add_document_to_practice(
     request: Request,
     practice_id: int = Path(..., gt=0, description="Practice ID"),
-
-
     document_name: str = Query(...),
     drive_file_id: str = Query(...),
     uploaded_by: str = Query(...),
@@ -985,8 +969,6 @@ async def add_document_to_practice(
 async def get_practices_stats(
     request: Any = None,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-
-
     current_user: dict = Depends(get_current_user),
     # Support for direct calls from dashboard_summary.py
     user_id: str | None = None,
@@ -1082,8 +1064,6 @@ async def get_practices_stats(
 async def regenerate_invoice(
     request: Request,
     practice_id: int = Path(..., gt=0, description="Practice ID"),
-
-
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
@@ -1203,8 +1183,6 @@ class ClientDocumentUploadRequest(BaseModel):
 @router.get("/{practice_id}/required-documents", response_model=list[RequiredDocumentResponse])
 async def get_required_documents(
     practice_id: int = Path(..., gt=0),
-
-
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> list[Any]:
@@ -1251,8 +1229,6 @@ async def get_required_documents(
 @router.post("/{practice_id}/required-documents", response_model=RequiredDocumentResponse)
 async def add_required_document(
     practice_id: int = Path(..., gt=0),
-
-
     doc: RequiredDocumentCreate = Body(...),
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
@@ -1334,8 +1310,6 @@ async def add_required_document(
 @router.delete("/{practice_id}/required-documents/{doc_id}")
 async def delete_required_document(
     practice_id: int = Path(..., gt=0),
-
-
     doc_id: int = Path(..., gt=0),
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
@@ -1372,8 +1346,6 @@ async def delete_required_document(
 @router.patch("/{practice_id}/required-documents/{doc_id}", response_model=RequiredDocumentResponse)
 async def update_required_document(
     practice_id: int = Path(..., gt=0),
-
-
     doc_id: int = Path(..., gt=0),
     update: RequiredDocumentUpdate = Body(...),
     current_user: dict = Depends(get_current_user),
@@ -1451,8 +1423,6 @@ async def update_required_document(
 @router.post("/{practice_id}/upload-client-document")
 async def upload_client_document(
     practice_id: int = Path(..., gt=0),
-
-
     request: ClientDocumentUploadRequest = Body(...),
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),

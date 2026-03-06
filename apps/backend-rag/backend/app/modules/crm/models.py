@@ -56,9 +56,9 @@ class Client(SQLModel, table=True):
     created_by: str | None = Field(default=None, max_length=255)
 
     # Relationships
-    practices: list["Practice"] = Relationship(back_populates="client")
-    interactions: list["Interaction"] = Relationship(back_populates="client")
-    company_links: list["ClientCompanyLink"] = Relationship(
+    practices: list[Practice] = Relationship(back_populates="client")
+    interactions: list[Interaction] = Relationship(back_populates="client")
+    company_links: list[ClientCompanyLink] = Relationship(
         back_populates="client", sa_relationship_kwargs={"lazy": "selectin"}
     )
 
@@ -87,7 +87,7 @@ class PracticeType(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Relationships
-    practices: list["Practice"] = Relationship(back_populates="practice_type")
+    practices: list[Practice] = Relationship(back_populates="practice_type")
 
 
 class Practice(SQLModel, table=True):
@@ -152,7 +152,7 @@ class Practice(SQLModel, table=True):
     # Relationships
     client: Client | None = Relationship(back_populates="practices")
     practice_type: PracticeType | None = Relationship(back_populates="practices")
-    interactions: list["Interaction"] = Relationship(back_populates="practice")
+    interactions: list[Interaction] = Relationship(back_populates="practice")
 
 
 class Interaction(SQLModel, table=True):

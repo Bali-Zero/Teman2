@@ -10,22 +10,21 @@ Falls back to in-memory LRU when Redis is unavailable.
 """
 
 import hashlib
-import json
 import logging
-import time
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 # TTL constants (seconds)
-TTL_ENTITY_RESOLUTION = 600    # 10 min — entities don't change often
-TTL_TRAVERSAL = 300            # 5 min — graph structure is stable
-TTL_STATS = 120                # 2 min — aggregate counts
-TTL_SUBGRAPH = 300             # 5 min — domain subgraph results
+TTL_ENTITY_RESOLUTION = 600  # 10 min — entities don't change often
+TTL_TRAVERSAL = 300  # 5 min — graph structure is stable
+TTL_STATS = 120  # 2 min — aggregate counts
+TTL_SUBGRAPH = 300  # 5 min — domain subgraph results
 
 # Prometheus metrics
 try:
     from prometheus_client import Counter
+
     kg_cache_ops = Counter(
         "kg_cache_operations_total",
         "KG cache operations",
@@ -57,6 +56,7 @@ class KGCache:
         if not self._initialized:
             try:
                 from backend.core.cache import get_cache_service
+
                 self._cache = get_cache_service()
             except Exception as e:
                 logger.warning(f"KG cache init failed, caching disabled: {e}")
@@ -100,9 +100,7 @@ class KGCache:
     # Traversal Cache
     # ------------------------------------------------------------------
 
-    async def get_traversal(
-        self, entity_ids: list[str], max_depth: int
-    ) -> list[list[dict]] | None:
+    async def get_traversal(self, entity_ids: list[str], max_depth: int) -> list[list[dict]] | None:
         """Get cached BFS traversal result."""
         cache = self._get_cache()
         if cache is None:

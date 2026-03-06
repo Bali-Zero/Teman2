@@ -59,7 +59,9 @@ class TestGoldenRouterService:
         assert service.search_service == mock_search
 
     @pytest.mark.asyncio
-    @patch("backend.services.routing.golden_router_service.asyncpg.create_pool", new_callable=AsyncMock)
+    @patch(
+        "backend.services.routing.golden_router_service.asyncpg.create_pool", new_callable=AsyncMock
+    )
     @patch("backend.app.core.config.settings")
     async def test_get_db_pool(self, mock_settings, mock_create_pool):
         """Test getting database pool"""
@@ -78,7 +80,9 @@ class TestGoldenRouterService:
         mock_create_pool.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("backend.services.routing.golden_router_service.asyncpg.create_pool", new_callable=AsyncMock)
+    @patch(
+        "backend.services.routing.golden_router_service.asyncpg.create_pool", new_callable=AsyncMock
+    )
     @patch("backend.app.core.config.settings")
     async def test_get_db_pool_cached(self, mock_settings, mock_create_pool):
         """Test getting database pool uses cache"""

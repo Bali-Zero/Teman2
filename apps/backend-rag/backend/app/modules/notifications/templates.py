@@ -496,9 +496,7 @@ def get_template(language: str, alert_type: AlertType) -> dict[str, str]:
         )
         return en_template
     # Last resort: generic fallback
-    logger.warning(
-        "No template found for alert_type=%s language=%s", alert_type, language
-    )
+    logger.warning("No template found for alert_type=%s language=%s", alert_type, language)
     return {
         "subject": f"Notification: {alert_type.value}",
         "body": f"<p>Alert: {alert_type.value}</p>",

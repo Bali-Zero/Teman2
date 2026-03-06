@@ -41,9 +41,7 @@ class SheetsService:
     # ------------------------------------------------------------------
 
     def _get_credentials_path(self) -> str | None:
-        env_creds = os.environ.get(CREDENTIALS_ENV_VAR) or os.environ.get(
-            "GOOGLE_SERVICE_ACCOUNT"
-        )
+        env_creds = os.environ.get(CREDENTIALS_ENV_VAR) or os.environ.get("GOOGLE_SERVICE_ACCOUNT")
         if not env_creds:
             return None
 
@@ -68,9 +66,7 @@ class SheetsService:
                 pass
 
         if creds_json:
-            temp_file = tempfile.NamedTemporaryFile(
-                mode="w", suffix=".json", delete=False
-            )
+            temp_file = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
             temp_file.write(creds_json)
             temp_file.close()
             return temp_file.name
@@ -103,16 +99,11 @@ class SheetsService:
     # Public API
     # ------------------------------------------------------------------
 
-    async def read_range(
-        self, spreadsheet_id: str, range_: str
-    ) -> list[list[str]]:
+    async def read_range(self, spreadsheet_id: str, range_: str) -> list[list[str]]:
         """Read a range from a spreadsheet. Returns list of rows."""
         svc = self._get_service()
         result = (
-            svc.spreadsheets()
-            .values()
-            .get(spreadsheetId=spreadsheet_id, range=range_)
-            .execute()
+            svc.spreadsheets().values().get(spreadsheetId=spreadsheet_id, range=range_).execute()
         )
         return result.get("values", [])
 
@@ -137,9 +128,7 @@ class SheetsService:
             )
             .execute()
         )
-        logger.info(
-            f"[SHEETS] ✅ Updated {result.get('updatedCells', 0)} cells in {range_}"
-        )
+        logger.info(f"[SHEETS] ✅ Updated {result.get('updatedCells', 0)} cells in {range_}")
         return result
 
     async def append_row(
@@ -163,9 +152,7 @@ class SheetsService:
             )
             .execute()
         )
-        logger.info(
-            f"[SHEETS] ✅ Appended {len(values)} row(s) to {range_}"
-        )
+        logger.info(f"[SHEETS] ✅ Appended {len(values)} row(s) to {range_}")
         return result
 
     async def find_row_by_value(

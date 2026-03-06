@@ -23,7 +23,6 @@ class CollectiveMemoryEmitter:
         members: list,
         importance: float,
     ) -> None:
-
         """Emette evento memoria memorizzata"""
         try:
             event_data = {
@@ -49,7 +48,6 @@ class CollectiveMemoryEmitter:
         category: str,
         context: str | None = None,
     ) -> None:
-
         """Emette evento preferenza rilevata"""
         try:
             event_data = {
@@ -75,7 +73,6 @@ class CollectiveMemoryEmitter:
         message: str,
         recurring: bool = False,
     ) -> None:
-
         """Emette evento milestone rilevata"""
         try:
             event_data = {
@@ -102,7 +99,6 @@ class CollectiveMemoryEmitter:
         strength: float,
         context: str | None = None,
     ) -> None:
-
         """Emette evento relazione aggiornata"""
         try:
             event_data = {
@@ -123,7 +119,6 @@ class CollectiveMemoryEmitter:
     async def emit_memory_consolidated(
         self, event_source: Any, action: str, original_memories: list, new_memory: str, reason: str
     ) -> None:
-
         """Emette evento memoria consolidata"""
         try:
             event_data = {

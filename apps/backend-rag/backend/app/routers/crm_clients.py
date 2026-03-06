@@ -228,8 +228,6 @@ class ClientResponse(BaseModel):
 async def create_client(
     client: ClientCreate,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-
-
     current_user: dict = Depends(get_current_user),
 ) -> ClientResponse:
     """
@@ -372,7 +370,9 @@ async def create_client(
                             # TODO: Call MCP chain_new_client_onboarding here
                             # await mcp_client.call_tool("chain_new_client_onboarding", onboarding_payload)
                         except Exception as onboarding_error:
-                            logger.warning(f"Failed to trigger onboarding chain: {onboarding_error}")
+                            logger.warning(
+                                f"Failed to trigger onboarding chain: {onboarding_error}"
+                            )
                             # Don't fail client creation if onboarding trigger fails
 
                     await invalidate_cache("zantara:crm_clients_stats:*")
@@ -401,8 +401,6 @@ async def list_clients(
         None,
         description="Filter by status: active, inactive, prospect",
         pattern="^(active|inactive|prospect)$",
-
-
     ),
     assigned_to: str | None = Query(None, description="Filter by assigned team member email"),
     search: str | None = Query(None, description="Search by name, email, or phone"),
@@ -503,8 +501,6 @@ async def list_clients(
 @router.get("/{client_id}", response_model=ClientResponse)
 async def get_client(
     client_id: int = Path(..., gt=0),
-
-
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ) -> ClientResponse:
@@ -541,8 +537,6 @@ async def get_client(
 @router.get("/by-email/{email}", response_model=ClientResponse)
 async def get_client_by_email(
     email: EmailStr = Path(..., description="Client email address"),
-
-
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),  # noqa: ARG001  # Used for auth
 ) -> ClientResponse:
@@ -575,8 +569,6 @@ async def get_client_by_email(
 @audit_change(entity_type="client", change_type="update")
 async def update_client(
     updates: ClientUpdate = Body(...),
-
-
     client_id: int = Path(..., gt=0, description="Client ID"),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
@@ -702,8 +694,6 @@ async def update_client(
 @audit_change(entity_type="client", change_type="delete")
 async def delete_client(
     client_id: int = Path(..., gt=0, description="Client ID"),
-
-
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
@@ -771,8 +761,6 @@ async def delete_client(
 @router.get("/{client_id}/summary")
 async def get_client_summary(
     client_id: int = Path(..., gt=0, description="Client ID"),
-
-
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),  # noqa: ARG001  # Used for auth
 ) -> dict[str, Any]:
@@ -868,8 +856,6 @@ async def get_client_summary(
 async def get_clients_stats(
     _request: Request,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-
-
     _current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
@@ -932,8 +918,6 @@ async def get_clients_stats(
 async def get_client_audit_trail(
     _request: Request,
     client_id: int = Path(..., gt=0, description="Client ID"),
-
-
     limit: int = Query(50, ge=1, le=200, description="Max audit entries to return"),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),  # noqa: ARG001  # Used for auth
@@ -976,8 +960,6 @@ async def get_client_audit_trail(
 @router.get("/metrics/summary")
 async def get_crm_metrics_summary(
     current_user: dict = Depends(get_current_user),
-
-
     _db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> Any:
     """
@@ -1000,8 +982,6 @@ async def get_crm_metrics_summary(
 @router.post("/metrics/refresh")
 async def refresh_crm_metrics(
     current_user: dict = Depends(get_current_user),
-
-
     _db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
     """
@@ -1051,8 +1031,6 @@ class PassportExtractResponse(BaseModel):
 async def extract_passport_data(
     request: PassportExtractRequest,
     _current_user: dict = Depends(get_current_user),
-
-
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> PassportExtractResponse:
     """
@@ -1222,8 +1200,6 @@ class PassportEnhancedResponse(BaseModel):
 async def extract_passport_enhanced(
     request: PassportEnhancedRequest,
     _current_user: dict = Depends(get_current_user),
-
-
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> PassportEnhancedResponse:
     """
@@ -1461,8 +1437,6 @@ Use null for unclear fields. Return ONLY JSON."""
 @router.delete("/documents/{document_id}")
 async def delete_client_document(
     document_id: int = Path(..., gt=0, description="Document ID"),
-
-
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
@@ -1548,8 +1522,6 @@ class NpwpExtractResponse(BaseModel):
 async def extract_npwp(
     request: NpwpExtractRequest,
     _current_user: dict = Depends(get_current_user),
-
-
 ) -> NpwpExtractResponse:
     """
     Extract NPWP data from uploaded NPWP card image using Gemini Vision.
@@ -1681,8 +1653,6 @@ class NibExtractResponse(BaseModel):
 async def extract_nib(
     request: NibExtractRequest,
     _current_user: dict = Depends(get_current_user),
-
-
 ) -> NibExtractResponse:
     """
     Extract NIB (Nomor Induk Berusaha) data from uploaded NIB document using Gemini Vision.
@@ -1797,8 +1767,6 @@ Rules:
 async def get_client_required_documents(
     client_id: int,
     current_user: dict = Depends(get_current_user),
-
-
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> list[Any]:
     """Get all required documents for a client across all their practices (for Portal)."""

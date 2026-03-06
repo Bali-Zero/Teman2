@@ -104,6 +104,66 @@ class TelegramBotService:
             logger.error(f"Failed to send Telegram message: {e}")
             raise
 
+    async def send_photo(
+        self,
+        chat_id: int | str,
+        photo: Any,
+        caption: str | None = None,
+        parse_mode: str | None = "HTML",
+        reply_markup: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """
+        Send a photo to a Telegram chat using multipart upload.
+
+        Args:
+            chat_id: Target chat ID
+            photo: File-like object (opened in 'rb' mode)
+            caption: Optional photo caption
+            parse_mode: HTML, Markdown, or None
+            reply_markup: Optional inline keyboard
+
+        Returns:
+            Telegram API response
+        """
+        if not self.token:
+            raise ValueError("Telegram bot token not configured")
+
+        client = await self._get_client()
+
+        data = {"chat_id": str(chat_id)}
+        if caption:
+            data["caption"] = caption
+        if parse_mode:
+            data["parse_mode"] = parse_mode
+        if reply_markup:
+            import json
+
+            data["reply_markup"] = json.dumps(reply_markup)
+
+        files = {"photo": ("photo.jpg", photo, "image/jpeg")}
+
+        try:
+            response = await client.post(
+                f"{self.api_url}/sendPhoto",
+                data=data,
+                files=files,
+            )
+
+            result = response.json()
+
+            if not result.get("ok"):
+                error_code = result.get("error_code", "unknown")
+                description = result.get("description", "Unknown error")
+                logger.error(f"Telegram API error [{error_code}]: {description}")
+                raise ValueError(f"Telegram API error [{error_code}]: {description}")
+
+            logger.info(f"Photo sent to chat {chat_id}")
+            return result
+
+        except httpx.HTTPError as e:
+            logger.error(f"Failed to send Telegram photo: {e}")
+            raise
+
     async def send_chat_action(
         self,
         chat_id: int | str,

@@ -216,8 +216,6 @@ async def _calculate_revenue_growth(db_pool: asyncpg.Pool) -> float:
 @router.get("/summary")
 async def get_dashboard_summary(
     current_user: dict = Depends(get_current_user),
-
-
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
     """
@@ -433,8 +431,6 @@ async def get_dashboard_summary(
 @router.get("/neural-pulse")
 async def get_neural_pulse(
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-
-
 ) -> dict[str, Any]:
     """
     Get real-time AI status metrics (Neural Pulse).

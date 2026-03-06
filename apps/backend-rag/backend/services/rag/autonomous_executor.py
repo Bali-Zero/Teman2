@@ -16,7 +16,7 @@ Author: Nuzantara Team
 import asyncio
 import logging
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, TypedDict
 
@@ -243,7 +243,7 @@ def _backoff_delay(attempt: int, base_delay_s: int = 2) -> float:
     """Calculate exponential backoff delay with jitter."""
     import random
 
-    delay = base_delay_s * (2 ** attempt)
+    delay = base_delay_s * (2**attempt)
     jitter = random.uniform(0, delay * 0.3)  # noqa: S311
     return min(delay + jitter, 300)  # Cap at 5 minutes
 
@@ -390,7 +390,11 @@ class AutonomousExecutor:
 
     async def execute_plan(self, plan_id: str) -> ExecutionPlan:
         """Execute a plan step-by-step with retry and approval flow."""
-        plan = await self.get_plan_status(plan_id) if self._persistent else self._memory_plans.get(plan_id)
+        plan = (
+            await self.get_plan_status(plan_id)
+            if self._persistent
+            else self._memory_plans.get(plan_id)
+        )
         if not plan:
             raise KeyError(f"Plan {plan_id} not found")
 
@@ -495,20 +499,26 @@ class AutonomousExecutor:
             logger.info(f"Verified client data for {user_email}")
 
         elif action in (
-            "check_npwp_eligibility", "check_kitas_eligibility",
-            "check_kbli_codes", "verify_shareholders",
+            "check_npwp_eligibility",
+            "check_kitas_eligibility",
+            "check_kbli_codes",
+            "verify_shareholders",
         ):
             logger.info(f"Eligibility check passed for {action}")
 
         elif action in (
-            "prepare_npwp_documents", "prepare_kitas_documents",
+            "prepare_npwp_documents",
+            "prepare_kitas_documents",
             "prepare_incorporation_docs",
         ):
             logger.info(f"Documents prepared for {action}")
 
         elif action in (
-            "submit_to_djp", "submit_to_immigration", "submit_to_ahu",
-            "register_oss", "schedule_biometrics",
+            "submit_to_djp",
+            "submit_to_immigration",
+            "submit_to_ahu",
+            "register_oss",
+            "schedule_biometrics",
         ):
             logger.info(f"CRITICAL action executed (simulated): {action} for {user_email}")
 
@@ -557,7 +567,10 @@ class AutonomousExecutor:
         logger.info(f"Approval requested for {approval_key}")
 
     async def _wait_for_approval(
-        self, plan_id: str, step_id: str, timeout: int = 3600,
+        self,
+        plan_id: str,
+        step_id: str,
+        timeout: int = 3600,
     ) -> bool:
         """Wait for human approval, polling DB or in-memory store."""
         approval_key = f"{plan_id}_{step_id}"
@@ -573,13 +586,19 @@ class AutonomousExecutor:
 
             if approved is not None:
                 if approved:
-                    plan = await self.get_plan_status(plan_id) if self._persistent else self._memory_plans.get(plan_id)
+                    plan = (
+                        await self.get_plan_status(plan_id)
+                        if self._persistent
+                        else self._memory_plans.get(plan_id)
+                    )
                     if plan:
-                        plan["human_approvals"].append({
-                            "step_id": step_id,
-                            "approved": True,
-                            "approved_at": datetime.now(UTC).isoformat(),
-                        })
+                        plan["human_approvals"].append(
+                            {
+                                "step_id": step_id,
+                                "approved": True,
+                                "approved_at": datetime.now(UTC).isoformat(),
+                            }
+                        )
                 return approved
 
             await asyncio.sleep(poll_interval)
@@ -662,34 +681,42 @@ class AutonomousExecutor:
         if not self._persistent:
             return
 
-        async with self.db_pool.acquire() as conn:
-            async with conn.transaction():
-                await conn.execute(
-                    """
+        async with self.db_pool.acquire() as conn, conn.transaction():
+            await conn.execute(
+                """
                     INSERT INTO execution_plans
                         (plan_id, user_query, user_email, task_type, priority,
                          overall_status, current_step, total_steps)
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                     """,
-                    plan["plan_id"], plan["user_query"], plan["user_email"],
-                    plan["task_type"], plan.get("priority", 0),
-                    plan["overall_status"], plan["current_step"],
-                    len(plan["steps"]),
-                )
+                plan["plan_id"],
+                plan["user_query"],
+                plan["user_email"],
+                plan["task_type"],
+                plan.get("priority", 0),
+                plan["overall_status"],
+                plan["current_step"],
+                len(plan["steps"]),
+            )
 
-                for i, step in enumerate(plan["steps"]):
-                    await conn.execute(
-                        """
+            for i, step in enumerate(plan["steps"]):
+                await conn.execute(
+                    """
                         INSERT INTO execution_steps
                             (plan_id, step_index, step_id, action, description,
                              safety_level, status, rollback_action, max_retries)
                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                         """,
-                        plan["plan_id"], i, step["step_id"], step["action"],
-                        step["description"], step["safety_level"],
-                        step["status"], step.get("rollback_action"),
-                        step.get("max_retries", 1),
-                    )
+                    plan["plan_id"],
+                    i,
+                    step["step_id"],
+                    step["action"],
+                    step["description"],
+                    step["safety_level"],
+                    step["status"],
+                    step.get("rollback_action"),
+                    step.get("max_retries", 1),
+                )
 
     async def _load_plan(self, plan_id: str) -> ExecutionPlan | None:
         """Load a plan + steps from PostgreSQL."""
@@ -698,7 +725,8 @@ class AutonomousExecutor:
 
         async with self.db_pool.acquire() as conn:
             plan_row = await conn.fetchrow(
-                "SELECT * FROM execution_plans WHERE plan_id = $1", plan_id,
+                "SELECT * FROM execution_plans WHERE plan_id = $1",
+                plan_id,
             )
             if not plan_row:
                 return None
@@ -718,19 +746,21 @@ class AutonomousExecutor:
 
             steps: list[ExecutionStep] = []
             for sr in step_rows:
-                steps.append(ExecutionStep(
-                    step_id=sr["step_id"],
-                    action=sr["action"],
-                    description=sr["description"],
-                    safety_level=sr["safety_level"],
-                    status=sr["status"],
-                    started_at=sr["started_at"].isoformat() if sr["started_at"] else None,
-                    completed_at=sr["completed_at"].isoformat() if sr["completed_at"] else None,
-                    error=sr["last_error"],
-                    rollback_action=sr["rollback_action"],
-                    retry_count=sr["retry_count"],
-                    max_retries=sr["max_retries"],
-                ))
+                steps.append(
+                    ExecutionStep(
+                        step_id=sr["step_id"],
+                        action=sr["action"],
+                        description=sr["description"],
+                        safety_level=sr["safety_level"],
+                        status=sr["status"],
+                        started_at=sr["started_at"].isoformat() if sr["started_at"] else None,
+                        completed_at=sr["completed_at"].isoformat() if sr["completed_at"] else None,
+                        error=sr["last_error"],
+                        rollback_action=sr["rollback_action"],
+                        retry_count=sr["retry_count"],
+                        max_retries=sr["max_retries"],
+                    )
+                )
 
             approvals = [
                 {
@@ -752,7 +782,9 @@ class AutonomousExecutor:
                 current_step=plan_row["current_step"],
                 overall_status=plan_row["overall_status"],
                 created_at=plan_row["created_at"].isoformat(),
-                completed_at=plan_row["completed_at"].isoformat() if plan_row["completed_at"] else None,
+                completed_at=plan_row["completed_at"].isoformat()
+                if plan_row["completed_at"]
+                else None,
                 human_approvals=approvals,
             )
 
@@ -797,7 +829,9 @@ class AutonomousExecutor:
         return plans
 
     async def _update_plan_status(
-        self, plan: ExecutionPlan, status: ExecutionStatus,
+        self,
+        plan: ExecutionPlan,
+        status: ExecutionStatus,
     ) -> None:
         """Update plan overall_status in both memory and DB."""
         plan["overall_status"] = status
@@ -808,7 +842,9 @@ class AutonomousExecutor:
                     """UPDATE execution_plans
                        SET overall_status = $2, current_step = $3, updated_at = NOW()
                        WHERE plan_id = $1""",
-                    plan["plan_id"], status.value, plan["current_step"],
+                    plan["plan_id"],
+                    status.value,
+                    plan["current_step"],
                 )
 
     async def _persist_step_update(self, plan: ExecutionPlan, step: ExecutionStep) -> None:
@@ -825,10 +861,13 @@ class AutonomousExecutor:
                        completed_at = CASE WHEN $7::text IS NOT NULL
                            THEN $7::timestamptz ELSE completed_at END
                    WHERE plan_id = $1 AND step_id = $2""",
-                plan["plan_id"], step["step_id"],
-                step["status"], step.get("retry_count", 0),
+                plan["plan_id"],
+                step["step_id"],
+                step["status"],
+                step.get("retry_count", 0),
                 step.get("error"),
-                step.get("started_at"), step.get("completed_at"),
+                step.get("started_at"),
+                step.get("completed_at"),
             )
 
     async def _persist_plan_completion(self, plan: ExecutionPlan) -> None:
@@ -841,7 +880,8 @@ class AutonomousExecutor:
                 """UPDATE execution_plans
                    SET overall_status = $2, completed_at = NOW(), updated_at = NOW()
                    WHERE plan_id = $1""",
-                plan["plan_id"], plan["overall_status"],
+                plan["plan_id"],
+                plan["overall_status"],
             )
 
     async def _persist_approval(
@@ -861,7 +901,11 @@ class AutonomousExecutor:
                 """INSERT INTO execution_approvals
                        (plan_id, step_id, approved, approver_email, reason)
                    VALUES ($1, $2, $3, $4, $5)""",
-                plan_id, step_id, approved, approver_email, reason,
+                plan_id,
+                step_id,
+                approved,
+                approver_email,
+                reason,
             )
 
     async def _check_approval_db(self, plan_id: str, step_id: str) -> bool | None:
@@ -874,6 +918,7 @@ class AutonomousExecutor:
                 """SELECT approved FROM execution_approvals
                    WHERE plan_id = $1 AND step_id = $2
                    ORDER BY decided_at DESC LIMIT 1""",
-                plan_id, step_id,
+                plan_id,
+                step_id,
             )
             return row["approved"] if row else None

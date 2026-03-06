@@ -13,8 +13,7 @@ Files are filtered based on user's department:
 """
 
 import logging
-from typing import Any
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import Response
@@ -120,8 +119,6 @@ class OperationResponse(BaseModel):
 # Dependency to get drive service (with OAuth support)
 async def get_drive(
     pool: Annotated[any, Depends(get_database_pool)],
-
-
 ) -> TeamDriveService:
     """
     Get TeamDriveService with OAuth support.
@@ -284,8 +281,6 @@ def folder_matches_allowed(folder_name: str, allowed_folders: list[str]) -> bool
 @router.get("/status")
 async def drive_status(
     current_user: Annotated[dict, Depends(get_current_user)],
-
-
     drive: Annotated[TeamDriveService, Depends(get_drive)],
 ) -> dict[str, Any]:
     """
@@ -318,8 +313,6 @@ async def drive_status(
 @router.get("/files", response_model=FileListResponse)
 async def list_files(
     current_user: Annotated[dict, Depends(get_current_user)],
-
-
     drive: Annotated[TeamDriveService, Depends(get_drive)],
     pool: Annotated[any, Depends(get_database_pool)],
     folder_id: str | None = Query(None, description="Folder ID to list contents of"),
@@ -396,8 +389,6 @@ async def list_files(
 async def get_file(
     file_id: str,
     current_user: Annotated[dict, Depends(get_current_user)],
-
-
     drive: Annotated[TeamDriveService, Depends(get_drive)],
 ) -> FileItem:
     """
@@ -416,8 +407,6 @@ async def get_file(
 async def download_file(
     file_id: str,
     current_user: Annotated[dict, Depends(get_current_user)],
-
-
     drive: Annotated[TeamDriveService, Depends(get_drive)],
 ) -> Response:
     """
@@ -451,8 +440,6 @@ async def download_file(
 async def get_folder_path(
     folder_id: str,
     current_user: Annotated[dict, Depends(get_current_user)],
-
-
     drive: Annotated[TeamDriveService, Depends(get_drive)],
 ) -> list[Any]:
     """
@@ -471,8 +458,6 @@ async def get_folder_path(
 async def search_files(
     q: str,
     current_user: Annotated[dict, Depends(get_current_user)],
-
-
     drive: Annotated[TeamDriveService, Depends(get_drive)],
     file_type: str | None = Query(
         None, description="Filter by type: folder, document, spreadsheet, pdf"
@@ -536,8 +521,6 @@ async def check_write_permission(
 @router.post("/files/upload", response_model=OperationResponse)
 async def upload_file(
     current_user: Annotated[dict, Depends(get_current_user)],
-
-
     drive: Annotated[TeamDriveService, Depends(get_drive)],
     pool: Annotated[any, Depends(get_database_pool)],
     file: UploadFile = File(...),
@@ -580,8 +563,6 @@ async def upload_file(
 async def create_folder(
     request: CreateFolderRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
-
-
     drive: Annotated[TeamDriveService, Depends(get_drive)],
     pool: Annotated[any, Depends(get_database_pool)],
 ) -> OperationResponse:
@@ -615,8 +596,6 @@ async def create_folder(
 async def create_doc(
     request: CreateDocRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
-
-
     drive: Annotated[TeamDriveService, Depends(get_drive)],
     pool: Annotated[any, Depends(get_database_pool)],
 ) -> OperationResponse:
@@ -662,8 +641,6 @@ async def rename_file(
     file_id: str,
     request: RenameRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
-
-
     drive: Annotated[TeamDriveService, Depends(get_drive)],
 ) -> OperationResponse:
     """
@@ -692,8 +669,6 @@ async def rename_file(
 async def delete_file(
     file_id: str,
     current_user: Annotated[dict, Depends(get_current_user)],
-
-
     drive: Annotated[TeamDriveService, Depends(get_drive)],
     permanent: bool = Query(False, description="Permanently delete instead of trashing"),
 ) -> dict[str, Any]:
@@ -723,8 +698,6 @@ async def move_file(
     file_id: str,
     request: MoveRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
-
-
     drive: Annotated[TeamDriveService, Depends(get_drive)],
     pool: Annotated[any, Depends(get_database_pool)],
 ) -> OperationResponse:
@@ -760,8 +733,6 @@ async def copy_file(
     file_id: str,
     request: CopyRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
-
-
     drive: Annotated[TeamDriveService, Depends(get_drive)],
     pool: Annotated[any, Depends(get_database_pool)],
 ) -> OperationResponse:
@@ -844,8 +815,6 @@ async def check_is_board(user_email: str, pool) -> bool:
 async def list_permissions(
     file_id: str,
     current_user: Annotated[dict, Depends(get_current_user)],
-
-
     drive: Annotated[TeamDriveService, Depends(get_drive)],
 ) -> list[Any]:
     """
@@ -876,8 +845,6 @@ async def add_permission(
     file_id: str,
     request: AddPermissionRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
-
-
     drive: Annotated[TeamDriveService, Depends(get_drive)],
 ) -> PermissionItem:
     """
@@ -910,8 +877,6 @@ async def update_permission(
     permission_id: str,
     request: UpdatePermissionRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
-
-
     drive: Annotated[TeamDriveService, Depends(get_drive)],
 ) -> PermissionItem:
     """
@@ -942,8 +907,6 @@ async def remove_permission(
     file_id: str,
     permission_id: str,
     current_user: Annotated[dict, Depends(get_current_user)],
-
-
     drive: Annotated[TeamDriveService, Depends(get_drive)],
 ) -> dict[str, Any]:
     """

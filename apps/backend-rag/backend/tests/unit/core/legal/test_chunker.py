@@ -2,8 +2,9 @@
 Tests for LegalChunker
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from backend.core.legal.chunker import LegalChunker, SemanticSplitter
 
@@ -43,11 +44,13 @@ class TestSemanticSplitter:
     async def test_split_text_multiple_sentences(self):
         """Test splitting text with multiple sentences"""
         mock_embedder = MagicMock()
-        mock_embedder.generate_embeddings = AsyncMock(return_value=[
-            [1.0, 0.0, 0.0],
-            [0.9, 0.1, 0.0],
-            [0.0, 0.0, 1.0],
-        ])
+        mock_embedder.generate_embeddings = AsyncMock(
+            return_value=[
+                [1.0, 0.0, 0.0],
+                [0.9, 0.1, 0.0],
+                [0.0, 0.0, 1.0],
+            ]
+        )
         splitter = SemanticSplitter(mock_embedder, similarity_threshold=0.7)
         text = "First sentence. Second sentence. Third sentence."
         result = await splitter.split_text(text, max_tokens=100)

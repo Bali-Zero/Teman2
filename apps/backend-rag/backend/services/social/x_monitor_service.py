@@ -19,14 +19,42 @@ logger = logging.getLogger(__name__)
 
 # Intent classification keywords
 LEAD_KEYWORDS = {
-    "help", "need", "looking for", "recommend", "how to", "want to",
-    "set up", "setup", "register", "open", "start", "apply",
-    "cost", "price", "how much", "berapa", "butuh", "cari",
-    "anyone know", "any tips", "advice", "experience with",
+    "help",
+    "need",
+    "looking for",
+    "recommend",
+    "how to",
+    "want to",
+    "set up",
+    "setup",
+    "register",
+    "open",
+    "start",
+    "apply",
+    "cost",
+    "price",
+    "how much",
+    "berapa",
+    "butuh",
+    "cari",
+    "anyone know",
+    "any tips",
+    "advice",
+    "experience with",
 }
 SPAM_KEYWORDS = {
-    "giveaway", "airdrop", "crypto", "nft", "free money", "dm me",
-    "pump", "signal", "#crypto", "token", "whitelist", "presale",
+    "giveaway",
+    "airdrop",
+    "crypto",
+    "nft",
+    "free money",
+    "dm me",
+    "pump",
+    "signal",
+    "#crypto",
+    "token",
+    "whitelist",
+    "presale",
 }
 
 # Languages we care about — tweets in other languages are likely false positives
@@ -70,11 +98,7 @@ class XMonitorService:
         self._since_id: str | None = None
         self._client: httpx.AsyncClient | None = None
         self._credits_warned: bool = False
-        self._keywords = [
-            kw.strip()
-            for kw in settings.x_monitor_keywords.split(",")
-            if kw.strip()
-        ]
+        self._keywords = [kw.strip() for kw in settings.x_monitor_keywords.split(",") if kw.strip()]
 
     @property
     def bearer_token(self) -> str | None:
@@ -127,7 +151,14 @@ class XMonitorService:
         self._credits_warned = False
         return resp.json()
 
-    async def _save_tweet(self, tweet: dict[str, Any], author: dict[str, Any] | None, matched: list[str], intent: str, lead_score: float) -> int | None:
+    async def _save_tweet(
+        self,
+        tweet: dict[str, Any],
+        author: dict[str, Any] | None,
+        matched: list[str],
+        intent: str,
+        lead_score: float,
+    ) -> int | None:
         """Save tweet to x_monitored_tweets table."""
         if not self._db_pool:
             return None
@@ -160,7 +191,9 @@ class XMonitorService:
             logger.error(f"Failed to save tweet {tweet.get('id')}: {e}")
             return None
 
-    async def _create_lead(self, tweet: dict[str, Any], author: dict[str, Any] | None, tweet_row_id: int) -> int | None:
+    async def _create_lead(
+        self, tweet: dict[str, Any], author: dict[str, Any] | None, tweet_row_id: int
+    ) -> int | None:
         """Create CRM client record for high-intent leads."""
         if not self._db_pool or not author:
             return None
@@ -207,18 +240,21 @@ class XMonitorService:
             logger.error(f"Failed to create lead for @{handle}: {e}")
             return None
 
-    async def _notify_telegram(self, tweet: dict[str, Any], author: dict[str, Any] | None, matched: list[str], intent: str, lead_score: float) -> None:
+    async def _notify_telegram(
+        self,
+        tweet: dict[str, Any],
+        author: dict[str, Any] | None,
+        matched: list[str],
+        intent: str,
+        lead_score: float,
+    ) -> None:
         """Send Telegram notification for lead tweets."""
         if not settings.admin_telegram_chat_id:
             return
 
         handle = author.get("username", "unknown") if author else "unknown"
         name = author.get("name", handle) if author else handle
-        followers = (
-            author.get("public_metrics", {}).get("followers_count", 0)
-            if author
-            else 0
-        )
+        followers = author.get("public_metrics", {}).get("followers_count", 0) if author else 0
         text_preview = tweet.get("text", "")[:280]
         tweet_url = f"https://x.com/{handle}/status/{tweet['id']}"
 
@@ -409,8 +445,7 @@ class XMonitorService:
         """Main polling loop."""
         interval = settings.x_monitor_interval_seconds
         logger.info(
-            f"🐦 X Monitor started: polling every {interval}s with "
-            f"{len(self._keywords)} keywords"
+            f"🐦 X Monitor started: polling every {interval}s with {len(self._keywords)} keywords"
         )
         while self._running:
             try:
@@ -469,7 +504,9 @@ class XMonitorService:
                 FROM x_monitored_tweets
                 """
             )
-            return dict(row) if row else {"total": 0, "leads": 0, "responded": 0, "linked_clients": 0}
+            return (
+                dict(row) if row else {"total": 0, "leads": 0, "responded": 0, "linked_clients": 0}
+            )
 
     async def get_recent(self, limit: int = 20) -> list[dict[str, Any]]:
         """Get recent monitored tweets."""

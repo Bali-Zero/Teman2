@@ -743,11 +743,15 @@ class TestProcessQueryBranches:
             # (which uses the mocked CWM) to trigger summarization.
             context_manager = orch.core.context_manager
 
-            async def mock_get_full_context(user_id, query, conversation_history=None, session_id=None):
+            async def mock_get_full_context(
+                user_id, query, conversation_history=None, session_id=None
+            ):
                 # Trigger real apply_context_window_management with the history_to_summarize.
                 # This calls mock_cwm_instance.trim_conversation_history → needs_summarization=True
                 # → calls mock_cwm_instance.generate_summary → mock_cwm_instance.inject_summary_into_history
-                optimized = await context_manager.apply_context_window_management(history_to_summarize)
+                optimized = await context_manager.apply_context_window_management(
+                    history_to_summarize
+                )
                 return {"profile": None, "facts": [], "history": history_to_summarize}, optimized
 
             orch.core.context_manager.get_full_context = mock_get_full_context

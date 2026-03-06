@@ -256,9 +256,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
         if path in ("/", ""):
             return True
 
-        is_public = any(
-            path.startswith(ep) for ep in self.public_endpoints if ep not in ("/", "")
-        )
+        is_public = any(path.startswith(ep) for ep in self.public_endpoints if ep not in ("/", ""))
 
         # Debug log for KBLI endpoints
         if "kbli" in path.lower():

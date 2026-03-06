@@ -130,7 +130,6 @@ class TestOllamaProvider:
     @pytest.mark.asyncio
     async def test_generate_stream(self, ollama_provider):
         """Test streaming generation"""
-        from contextlib import asynccontextmanager
 
         mock_chunks = [
             '{"response": "chunk1"}',

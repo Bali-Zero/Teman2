@@ -65,7 +65,9 @@ class KBLIEnricher:
         # Filter localmente per semplicità in questa fase di prototipazione
         return [p.payload for p in points if not p.payload.get("is_enriched")]
 
-    async def enrich_single_code(self, kbli_payload: dict, external_research: str | None = None) -> bool:
+    async def enrich_single_code(
+        self, kbli_payload: dict, external_research: str | None = None
+    ) -> bool:
         """Process a single KBLI code with retry logic."""
         code = kbli_payload.get("kode_kbli")
         attempt = 0

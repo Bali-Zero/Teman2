@@ -9,7 +9,7 @@ Date: 2026-02-10
 """
 
 import logging
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from backend.conversation.engine import ConversationEngine
@@ -114,8 +114,7 @@ class ChannelRouter:
                 channel, message.user_id, message.text
             ):
                 logger.warning(
-                    f"🔁 Duplicate message dropped: channel={channel}, "
-                    f"user={message.user_id}"
+                    f"🔁 Duplicate message dropped: channel={channel}, user={message.user_id}"
                 )
                 return
 

@@ -155,9 +155,7 @@ def orchestrator(mock_llm_gateway, mock_reasoning_engine):
         orch.core.context_manager.get_basic_context = AsyncMock(
             return_value=({"profile": None, "facts": []}, [])
         )
-        orch.core.extract_entities_and_kg_context = AsyncMock(
-            return_value=({}, "", None)
-        )
+        orch.core.extract_entities_and_kg_context = AsyncMock(return_value=({}, "", None))
 
         # Mock followup_service.get_followups (async) for stream_query
         orch.followup_service.get_followups = AsyncMock(return_value=[])

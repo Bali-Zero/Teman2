@@ -1,7 +1,8 @@
 import json
-from pathlib import Path
-from typing import Any, Dict, List, Optional
 from datetime import datetime
+from pathlib import Path
+from typing import Any
+
 
 class KBLIEye:
     """
@@ -26,13 +27,16 @@ class KBLIEye:
 
     # 4 codici KBLI sotto moratorium INGUB 6/2025 (toko modern berjejaring)
     BALI_MORATORIUM_RETAIL: set = {
-        "47111", "47112", "47113", "47191",
+        "47111",
+        "47112",
+        "47113",
+        "47191",
     }
 
     def __init__(self, db_path: str = "source_documents/KBLI_2025_FINAL_CLEAN.json"):
         # Risolviamo il path rispetto alla root del progetto
         self.db_path = Path(db_path)
-        self.data: List = []
+        self.data: list = []
         self._load_database()
 
     def _load_database(self) -> Any:
@@ -42,16 +46,16 @@ class KBLIEye:
             if alt_path.exists():
                 self.db_path = alt_path
             else:
-                return # Database non caricato, get_decision darà errore
+                return  # Database non caricato, get_decision darà errore
 
-        with open(self.db_path, "r") as f:
+        with open(self.db_path) as f:
             content = json.load(f)
             if isinstance(content, dict) and "data" in content:
                 self.data = content["data"]
             else:
-                self.data = content # Backup se fosse già una lista
+                self.data = content  # Backup se fosse già una lista
 
-    def get_decision(self, code: str, is_pma: bool = True, location: str = "Bali") -> Dict:
+    def get_decision(self, code: str, is_pma: bool = True, location: str = "Bali") -> dict:
         """
         Esegue l'audit deterministico. Restituisce uno STATO, non solo testo.
         """
@@ -100,31 +104,36 @@ class KBLIEye:
             "kbli_2020_ref": kbli.get("kbli_2020_source"),
             "title": kbli["judul"],
             "audit": {
-                "state": state,         # APPROVED | WARNING | REJECTED
+                "state": state,  # APPROVED | WARNING | REJECTED
                 "reason_code": reason,  # Codice univoco per la logica
                 "oss_risk": oss_risk,
-                "authority": primary_skala.get("kewenangan", "Unknown")
+                "authority": primary_skala.get("kewenangan", "Unknown"),
             },
             "compliance_stack": primary_skala.get("kewajiban", []),
             "pma_logic": {
                 "max_foreign_ownership": 100 if is_open_pma else 0,
-                "is_umkm_reserved": not is_open_pma
+                "is_umkm_reserved": not is_open_pma,
             },
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
-    def _resolve_kbli(self, code: str) -> Optional[Dict]:
+    def _resolve_kbli(self, code: str) -> dict | None:
         """Cerca il codice 2025 anche se viene fornito un codice 2020."""
         # Sanitizzazione input
         clean_code = str(code).strip()
         for item in self.data:
-            if item.get("kode_kbli_2025") == clean_code or item.get("kbli_2020_source") == clean_code:
+            if (
+                item.get("kode_kbli_2025") == clean_code
+                or item.get("kbli_2020_source") == clean_code
+            ):
                 return item
         return None
+
 
 if __name__ == "__main__":
     # Test rapido
     import logging
+
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 

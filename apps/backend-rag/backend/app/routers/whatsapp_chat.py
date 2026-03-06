@@ -82,7 +82,6 @@ async def notify_zero_conversation_log(
     bot_response: str,
     language: str | None = None,
 ) -> Any:
-
     """
     Log EVERY bot conversation to Zero via Telegram.
 
@@ -136,7 +135,6 @@ async def notify_human_telegram(
     client_profile: dict | None = None,
     conversation_history: list[dict] | None = None,
 ) -> Any:
-
     """
     Send Telegram notification to admin with FULL context.
 
@@ -230,7 +228,6 @@ async def process_whatsapp_message(
     message_id: str,
     request: Request,
 ) -> Any:
-
     """
     Background task to process WhatsApp message.
 
@@ -506,7 +503,6 @@ async def _save_conversation(
     sender_name: str | None,
     phone: str,
 ) -> Any:
-
     """Save conversation messages and updated profile to PostgreSQL."""
     if not db_pool:
         return
@@ -584,7 +580,6 @@ async def whatsapp_webhook(
     background_tasks: BackgroundTasks,
     request: Request,
 ) -> dict[str, Any]:
-
     """
     Handle incoming WhatsApp messages.
 
@@ -676,6 +671,5 @@ async def whatsapp_webhook_alias(
     background_tasks: BackgroundTasks,
     request: Request,
 ) -> Any:
-
     """Alias for /webhook/whatsapp (POST) — Meta webhook messages."""
     return await whatsapp_webhook(webhook, background_tasks, request)

@@ -404,6 +404,7 @@ async def resolve_entities_node(
         return state
 
     from backend.services.rag.kg_cache import get_kg_cache
+
     cache = get_kg_cache()
 
     entity_ids: list[str] = []
@@ -413,9 +414,7 @@ async def resolve_entities_node(
     # Phase 1: Filter non-KBLI entities, check cache for the rest
     for entity_str in state["extracted_entities"]:
         if _is_non_kbli_entity(entity_str):
-            logger.info(
-                f"🛂 [Resolve] Non-KBLI entity detected, skipping KG lookup: {entity_str}"
-            )
+            logger.info(f"🛂 [Resolve] Non-KBLI entity detected, skipping KG lookup: {entity_str}")
             continue
 
         # Check cache first
@@ -550,6 +549,7 @@ async def traverse_graph_node(
 
     # Check traversal cache
     from backend.services.rag.kg_cache import get_kg_cache
+
     cache = get_kg_cache()
 
     cached_chains = await cache.get_traversal(state["current_entities"], max_depth)
@@ -563,9 +563,7 @@ async def traverse_graph_node(
                 visited.add(el["target_entity_id"])
         state["visited_entities"] = visited
         kg_relationship_chains_found.observe(len(cached_chains))
-        logger.info(
-            f"⚡ [Traverse Graph] Cache hit: {len(cached_chains)} chains"
-        )
+        logger.info(f"⚡ [Traverse Graph] Cache hit: {len(cached_chains)} chains")
         return state
 
     frontier = state["current_entities"]

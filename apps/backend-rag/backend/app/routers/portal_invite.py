@@ -147,8 +147,6 @@ def build_invite_email_html(client_name: str, invite_url: str) -> str:
 async def send_invitation(
     request: SendInviteRequest,
     current_user: dict = Depends(get_current_user),
-
-
     invite_service: InviteService = Depends(get_invite_service),
     email_service: ZohoEmailService = Depends(get_email_service),
 ) -> dict[str, Any]:
@@ -228,8 +226,6 @@ async def send_invitation(
 async def get_client_invitations(
     client_id: int,
     current_user: dict = Depends(get_current_user),
-
-
     invite_service: InviteService = Depends(get_invite_service),
 ) -> dict[str, Any]:
     """
@@ -261,8 +257,6 @@ async def get_client_invitations(
 async def resend_invitation(
     client_id: int,
     current_user: dict = Depends(get_current_user),
-
-
     invite_service: InviteService = Depends(get_invite_service),
 ) -> dict[str, Any]:
     """
@@ -307,8 +301,6 @@ async def resend_invitation(
 async def validate_token(
     token: str,
     invite_service: InviteService = Depends(get_invite_service),
-
-
 ) -> ValidateTokenResponse:
     """
     Validate invitation token (public endpoint).
@@ -353,8 +345,6 @@ async def validate_token(
 async def complete_registration(
     request: CompleteRegistrationRequest,
     invite_service: InviteService = Depends(get_invite_service),
-
-
 ) -> RegistrationResponse:
     """
     Complete client registration by setting PIN (public endpoint).

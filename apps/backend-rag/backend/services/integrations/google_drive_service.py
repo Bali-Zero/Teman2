@@ -147,7 +147,6 @@ class GoogleDriveService:
         refresh_token: str | None,
         expires_at: datetime,
     ) -> None:
-
         """Store OAuth tokens in database."""
         async with self.db_pool.acquire() as conn:
             # Upsert tokens
@@ -576,7 +575,15 @@ class GoogleDriveService:
             "00_Profile",
             "01_Immigration",
             "02_Company",
+            "02_Company/AKTA",
+            "02_Company/NIB",
+            "02_Company/NPWP",
+            "02_Company/Profile Perseroan",
             "03_Tax",
+            "03_Tax/SPT company",
+            "03_Tax/SPT personal",
+            "03_Tax/LKPM reports",
+            "03_Tax/NPWP personal",
             "04_Family",
             "99_Misc",
         ]
@@ -604,21 +611,33 @@ class GoogleDriveService:
 
             root_folder_id = root_folder["id"]
 
-            # Create subfolders
+            # Create subfolders (supports nested paths like "02_Company/AKTA")
             subfolders = {}
-            for subfolder_name in STANDARD_SUBFOLDERS:
+            folder_id_cache = {"": root_folder_id}
+            for subfolder_path in STANDARD_SUBFOLDERS:
                 try:
+                    parts = subfolder_path.split("/")
+                    if len(parts) == 1:
+                        parent_id = root_folder_id
+                        name = parts[0]
+                    else:
+                        parent_path = parts[0]
+                        name = parts[1]
+                        parent_id = folder_id_cache.get(parent_path, root_folder_id)
+
                     subfolder = await self.create_folder(
                         user_id=GoogleDriveService.SYSTEM_USER_ID,
-                        name=subfolder_name,
-                        parent_id=root_folder_id,
+                        name=name,
+                        parent_id=parent_id,
                     )
-                    subfolders[subfolder_name] = {
+                    subfolders[subfolder_path] = {
                         "id": subfolder["id"],
                         "url": subfolder.get("webViewLink", ""),
                     }
+                    if len(parts) == 1:
+                        folder_id_cache[name] = subfolder["id"]
                 except Exception as e:
-                    logger.error(f"[GDRIVE] Failed to create subfolder {subfolder_name}: {e}")
+                    logger.error(f"[GDRIVE] Failed to create subfolder {subfolder_path}: {e}")
                     continue
 
             logger.info(

@@ -79,6 +79,7 @@ def async_timed(component: str = "request") -> Any:
 
     def decorator(func: Any) -> Any:
         """Decorator."""
+
         @wraps(func)
         async def wrapper(*args, **kwargs) -> Any:
             start_time = time.time()
@@ -100,6 +101,7 @@ def timed(component: str = "request") -> Any:
 
     def decorator(func: Any) -> Any:
         """Decorator."""
+
         @wraps(func)
         def wrapper(*args, **kwargs) -> Any:
             """Wrapper."""

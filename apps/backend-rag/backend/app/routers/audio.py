@@ -1,5 +1,4 @@
 import io
-from typing import Any
 import logging
 from typing import Any
 
@@ -23,8 +22,6 @@ class SpeechRequest(BaseModel):
 @router.post("/transcribe")
 async def transcribe_audio(
     file: UploadFile = File(...),
-
-
     language: str | None = None,
     audio_service: AudioService = Depends(get_audio_service),
     api_key_verified=Depends(verify_internal_api_key),
@@ -49,8 +46,6 @@ async def transcribe_audio(
 async def generate_speech(
     request: SpeechRequest,
     audio_service: AudioService = Depends(get_audio_service),
-
-
     api_key_verified=Depends(verify_internal_api_key),
 ) -> StreamingResponse:
     """

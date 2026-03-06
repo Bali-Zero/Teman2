@@ -3,8 +3,8 @@ WhatsApp Conversations API - Final Stabilized Version
 """
 
 import json
-from typing import Any
 import logging
+from typing import Any
 
 from asyncpg import Pool
 from fastapi import APIRouter, Depends, Request
@@ -21,8 +21,6 @@ async def get_whatsapp_conversations(
     limit: int = 50,
     offset: int = 0,
     db: Pool | None = Depends(get_optional_database_pool),
-
-
 ) -> Any:
     if not db:
         logger.warning("Database unavailable")
@@ -116,8 +114,6 @@ async def get_whatsapp_messages(
     phone: str,
     limit: int = 100,
     db: Pool | None = Depends(get_optional_database_pool),
-
-
     current_user: dict = Depends(get_current_user),
 ) -> Any:
     if not db:

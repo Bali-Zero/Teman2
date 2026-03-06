@@ -59,7 +59,7 @@ CHANNEL_CONFIGS: dict[str, ChannelConfig] = {
         progressive=True,
         extra_instructions=(
             'After 3 questions, inject CTA: "Per un consulto personalizzato: '
-            "📧 zero@balizero.com | 📱 WhatsApp: +62 812 3456 7890\""
+            '📧 zero@balizero.com | 📱 WhatsApp: +62 812 3456 7890"'
         ),
     ),
 }

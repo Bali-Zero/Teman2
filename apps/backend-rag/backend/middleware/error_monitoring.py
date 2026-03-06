@@ -82,10 +82,7 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
                     "/webhook/telegram",
                     "/webhook/twitter",
                 )
-                if (
-                    duration_ms > settings.latency_alert_threshold_ms
-                    and not skip_latency
-                ):
+                if duration_ms > settings.latency_alert_threshold_ms and not skip_latency:
                     # Cooldown: only send one alert per path per 5 minutes
                     now = time.time()
                     path_key = request.url.path
@@ -158,15 +155,10 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
             401: ("/api/dashboard/",),  # Browser tabs with expired JWT
             404: ("/api/drive/",),  # Deleted Drive folders
         }
-        is_suppressed = any(
-            path.startswith(p)
-            for p in _suppressed_patterns.get(status_code, ())
-        )
+        is_suppressed = any(path.startswith(p) for p in _suppressed_patterns.get(status_code, ()))
 
         if is_suppressed:
-            logger.debug(
-                f"[{request_id}] {method} {path} → {status_code} (suppressed)"
-            )
+            logger.debug(f"[{request_id}] {method} {path} → {status_code} (suppressed)")
             return
 
         # Log error

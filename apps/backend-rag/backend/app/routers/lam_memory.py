@@ -7,7 +7,7 @@ Uses Qdrant collection 'lam_episodes' with text-embedding-3-small (FROZEN, 1536 
 import logging
 import time
 import uuid
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -20,7 +20,7 @@ router = APIRouter(prefix="/api/memory/lam", tags=["lam-memory"])
 
 COLLECTION = "lam_episodes"
 
-_qdrant: Optional[QdrantClient] = None
+_qdrant: QdrantClient | None = None
 _embedder = None
 
 
@@ -33,7 +33,9 @@ async def _get_qdrant() -> QdrantClient:
             logger.info(f"✅ LAM memory: connected to '{COLLECTION}'")
         except Exception:
             # Collection may not exist yet — create it on first save
-            logger.info(f"LAM memory: collection '{COLLECTION}' not found, will create on first write")
+            logger.info(
+                f"LAM memory: collection '{COLLECTION}' not found, will create on first write"
+            )
     return _qdrant
 
 
@@ -41,11 +43,13 @@ def _get_embedder() -> Any:
     global _embedder
     if _embedder is None:
         from backend.core.embeddings import create_embeddings_generator
+
         _embedder = create_embeddings_generator()
     return _embedder
 
 
 # --- Models ---
+
 
 class SaveEpisodeRequest(BaseModel):
     content: str
@@ -63,7 +67,7 @@ class SaveEpisodeResponse(BaseModel):
 class RecallRequest(BaseModel):
     query: str
     limit: int = 5
-    agent: Optional[str] = None
+    agent: str | None = None
 
 
 class EpisodeResult(BaseModel):
@@ -89,6 +93,7 @@ class ListEpisodesResponse(BaseModel):
 
 
 # --- Endpoints ---
+
 
 @router.post("/episodes", response_model=SaveEpisodeResponse)
 async def save_episode(request: SaveEpisodeRequest) -> SaveEpisodeResponse:
@@ -147,17 +152,22 @@ async def recall_similar(request: RecallRequest) -> RecallResponse:
         results = []
         for item in raw:
             payload = item.get("metadata", {}) or item.get("payload", {})
-            results.append(EpisodeResult(
-                id=item.get("id", ""),
-                content=payload.get("content", item.get("document", "")),
-                agent=payload.get("agent", ""),
-                tags=payload.get("tags", []),
-                outcome=payload.get("outcome", ""),
-                timestamp=payload.get("timestamp", ""),
-                score=item.get("score", 0.0),
-                metadata={k: v for k, v in payload.items()
-                          if k not in ("content", "agent", "tags", "outcome", "timestamp")},
-            ))
+            results.append(
+                EpisodeResult(
+                    id=item.get("id", ""),
+                    content=payload.get("content", item.get("document", "")),
+                    agent=payload.get("agent", ""),
+                    tags=payload.get("tags", []),
+                    outcome=payload.get("outcome", ""),
+                    timestamp=payload.get("timestamp", ""),
+                    score=item.get("score", 0.0),
+                    metadata={
+                        k: v
+                        for k, v in payload.items()
+                        if k not in ("content", "agent", "tags", "outcome", "timestamp")
+                    },
+                )
+            )
 
         elapsed_ms = (time.time() - start) * 1000
         return RecallResponse(results=results, query=request.query, execution_time_ms=elapsed_ms)
@@ -168,7 +178,7 @@ async def recall_similar(request: RecallRequest) -> RecallResponse:
 
 
 @router.get("/episodes", response_model=ListEpisodesResponse)
-async def list_recent_episodes(limit: int = 10, agent: Optional[str] = None) -> ListEpisodesResponse:
+async def list_recent_episodes(limit: int = 10, agent: str | None = None) -> ListEpisodesResponse:
     """List the most recent LAM episodes, optionally filtered by agent."""
     try:
         db = await _get_qdrant()
@@ -180,17 +190,22 @@ async def list_recent_episodes(limit: int = 10, agent: Optional[str] = None) -> 
         episodes = []
         for item in raw:
             payload = item.get("payload", {})
-            episodes.append(EpisodeResult(
-                id=item.get("id", ""),
-                content=payload.get("content", ""),
-                agent=payload.get("agent", ""),
-                tags=payload.get("tags", []),
-                outcome=payload.get("outcome", ""),
-                timestamp=payload.get("timestamp", ""),
-                score=1.0,
-                metadata={k: v for k, v in payload.items()
-                          if k not in ("content", "agent", "tags", "outcome", "timestamp")},
-            ))
+            episodes.append(
+                EpisodeResult(
+                    id=item.get("id", ""),
+                    content=payload.get("content", ""),
+                    agent=payload.get("agent", ""),
+                    tags=payload.get("tags", []),
+                    outcome=payload.get("outcome", ""),
+                    timestamp=payload.get("timestamp", ""),
+                    score=1.0,
+                    metadata={
+                        k: v
+                        for k, v in payload.items()
+                        if k not in ("content", "agent", "tags", "outcome", "timestamp")
+                    },
+                )
+            )
 
         return ListEpisodesResponse(episodes=episodes, total=len(episodes))
 

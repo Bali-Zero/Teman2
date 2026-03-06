@@ -167,8 +167,6 @@ async def get_retrieval_quality(
     time_range: str = Query(
         default="24h",
         pattern="^(1h|24h|1d|7d|30d)$",
-
-
         description="Time range for metrics aggregation",
     ),
     monitor: RetrievalQualityMonitor = Depends(get_retrieval_quality_monitor),
@@ -208,8 +206,6 @@ async def get_retrieval_quality(
 )
 async def get_scores_trend(
     days: int = Query(default=7, ge=1, le=30, description="Number of days to retrieve (1-30)"),
-
-
     monitor: RetrievalQualityMonitor = Depends(get_retrieval_quality_monitor),
     current_user: dict[str, Any] = Depends(verify_admin_access),
 ) -> dict[str, Any]:
@@ -250,8 +246,6 @@ async def get_scores_trend(
 )
 async def get_abstain_statistics(
     days: int = Query(default=7, ge=1, le=30, description="Number of days to analyze (1-30)"),
-
-
     monitor: RetrievalQualityMonitor = Depends(get_retrieval_quality_monitor),
     current_user: dict[str, Any] = Depends(verify_admin_access),
 ) -> dict[str, Any]:
@@ -289,8 +283,6 @@ async def get_abstain_statistics(
 )
 async def get_latency_percentiles(
     days: int = Query(default=7, ge=1, le=30, description="Number of days to analyze (1-30)"),
-
-
     monitor: RetrievalQualityMonitor = Depends(get_retrieval_quality_monitor),
     current_user: dict[str, Any] = Depends(verify_admin_access),
 ) -> dict[str, Any]:
@@ -329,8 +321,6 @@ async def get_latency_percentiles(
 async def set_alert_thresholds(
     thresholds: AlertThresholdsRequest,
     monitor: RetrievalQualityMonitor = Depends(get_retrieval_quality_monitor),
-
-
     current_user: dict[str, Any] = Depends(verify_admin_access),
 ) -> dict[str, Any]:
     """
@@ -387,8 +377,6 @@ async def set_alert_thresholds(
 )
 async def get_alert_thresholds(
     monitor: RetrievalQualityMonitor = Depends(get_retrieval_quality_monitor),
-
-
     current_user: dict[str, Any] = Depends(verify_admin_access),
 ) -> dict[str, Any]:
     """
@@ -422,8 +410,6 @@ async def get_alert_thresholds(
 )
 async def health_check(
     monitor: RetrievalQualityMonitor = Depends(get_retrieval_quality_monitor),
-
-
 ) -> dict[str, Any]:
     """
     Health check endpoint for the monitoring service.

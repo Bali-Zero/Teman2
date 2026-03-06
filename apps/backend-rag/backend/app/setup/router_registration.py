@@ -60,9 +60,9 @@ def include_routers(api: FastAPI) -> None:
         intel,
         kbli_notebook,
         kg_agentic,
-        lam_memory,  # [LAM] Episodic memory for agent layer
         knowledge_activity,
         knowledge_visa,
+        lam_memory,  # [LAM] Episodic memory for agent layer
         legal_ingest,
         media,
         messaging_identity,
@@ -88,12 +88,12 @@ def include_routers(api: FastAPI) -> None:
         telegram_webhook,
         twitter,
         voice,
-        x_monitor,
         webhooks,
         websocket,
         whatsapp_chat,
         whatsapp_conversations,
         workflow_analytics,
+        x_monitor,
         zoho_email,
     )
 

@@ -207,8 +207,6 @@ class AgenticQueryResponse(BaseModel):
 async def query_agentic_rag(
     request: AgenticQueryRequest,
     current_user: dict | None = Depends(get_current_user_optional),
-
-
     orchestrator: AgenticRAGOrchestrator = Depends(get_orchestrator),
     db_pool: Any | None = Depends(get_optional_database_pool),
 ) -> AgenticQueryResponse:
@@ -479,8 +477,6 @@ async def stream_agentic_rag(
     request_body: AgenticQueryRequest,
     http_request: Request,
     current_user: dict | None = Depends(get_current_user_optional),
-
-
     orchestrator: AgenticRAGOrchestrator = Depends(get_orchestrator),
     db_pool: Any | None = Depends(get_optional_database_pool),
 ) -> Any:
@@ -896,8 +892,6 @@ async def trigger_proactivity(
     request_body: ProactiveTriggerRequest,
     http_request: Request,
     current_user: dict = Depends(get_current_user),
-
-
     orchestrator: AgenticRAGOrchestrator = Depends(get_orchestrator),
 ) -> StreamingResponse:
     """
@@ -971,8 +965,6 @@ class ABTestFeedbackRequest(BaseModel):
 async def record_ab_test_feedback(
     request: ABTestFeedbackRequest,
     current_user: dict | None = Depends(get_current_user_optional),
-
-
 ) -> dict[str, Any]:
     """
     Record user feedback for A/B testing metrics.
@@ -1021,8 +1013,6 @@ async def record_ab_test_feedback(
 async def get_ab_test_results(
     experiment: str,
     current_user: dict = Depends(get_current_user),
-
-
 ) -> Any:
     """
     Get A/B test results for a specific experiment.
@@ -1043,8 +1033,6 @@ async def get_ab_test_results(
 @router.get("/ab-test/dashboard")
 async def get_ab_test_dashboard(
     current_user: dict = Depends(get_current_user),
-
-
 ) -> Any:
     """
     Get A/B testing dashboard data.
@@ -1062,8 +1050,6 @@ async def get_ab_test_dashboard(
 @router.get("/ab-test/experiments")
 async def list_ab_test_experiments(
     current_user: dict = Depends(get_current_user),
-
-
 ) -> dict[str, Any]:
     """
     List all available A/B test experiments.
@@ -1088,8 +1074,6 @@ async def control_ab_test_experiment(
     experiment: str,
     request: ABTestControlRequest,
     current_user: dict = Depends(get_current_user),
-
-
 ) -> dict[str, Any]:
     """
     Enable or disable an A/B test experiment.
@@ -1124,8 +1108,6 @@ async def control_ab_test_experiment(
 async def get_user_exposure(
     user_id: str,
     current_user: dict = Depends(get_current_user),
-
-
 ) -> dict[str, Any]:
     """
     Get experiment exposure history for a specific user.

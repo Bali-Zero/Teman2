@@ -195,14 +195,17 @@ class SendGridProvider(EmailProvider):
             payload["personalizations"][0]["bcc"] = [{"email": e} for e in bcc]
 
         try:
-            async with aiohttp.ClientSession() as session, session.post(
-                f"{self.base_url}/mail/send",
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json",
-                },
-                json=payload,
-            ) as response:
+            async with (
+                aiohttp.ClientSession() as session,
+                session.post(
+                    f"{self.base_url}/mail/send",
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json=payload,
+                ) as response,
+            ):
                 if response.status == 202:
                     logger.info(
                         "Email sent via SendGrid",

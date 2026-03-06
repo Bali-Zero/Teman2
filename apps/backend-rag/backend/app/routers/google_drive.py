@@ -75,8 +75,6 @@ class FileListResponse(BaseModel):
 @router.get("/status")
 async def get_connection_status(
     current_user: dict = Depends(get_current_user),
-
-
     db_pool=Depends(get_database_pool),
 ) -> ConnectionStatus:
     """
@@ -95,8 +93,6 @@ async def get_connection_status(
 async def get_auth_url(
     request: Request,
     current_user: dict = Depends(get_current_user),
-
-
     db_pool=Depends(get_database_pool),
 ) -> dict[str, str]:
     """
@@ -124,8 +120,6 @@ async def get_auth_url(
 @router.get("/callback")
 async def oauth_callback(
     code: str = Query(...),
-
-
     state: str = Query(...),
     error: str | None = Query(None),
     db_pool=Depends(get_database_pool),
@@ -176,8 +170,6 @@ async def oauth_callback(
 @router.post("/disconnect")
 async def disconnect(
     current_user: dict = Depends(get_current_user),
-
-
     db_pool=Depends(get_database_pool),
 ) -> dict[str, bool]:
     """
@@ -237,8 +229,6 @@ async def get_system_status(
 @router.get("/system/authorize")
 async def get_system_auth_url(
     current_user: dict = Depends(get_current_user),
-
-
     db_pool=Depends(get_database_pool),
 ) -> dict[str, str]:
     """
@@ -275,8 +265,6 @@ async def get_system_auth_url(
 @router.post("/system/disconnect")
 async def disconnect_system(
     current_user: dict = Depends(get_current_user),
-
-
     db_pool=Depends(get_database_pool),
 ) -> dict[str, Any]:
     """
@@ -308,8 +296,6 @@ async def disconnect_system(
 @router.get("/files")
 async def list_files(
     folder_id: str | None = Query(None, description="Folder ID (default: root)"),
-
-
     page_token: str | None = Query(None, description="Pagination token"),
     page_size: int = Query(50, ge=1, le=100),
     current_user: dict = Depends(get_current_user),
@@ -371,8 +357,6 @@ async def list_files(
 async def get_file(
     file_id: str,
     current_user: dict = Depends(get_current_user),
-
-
     db_pool=Depends(get_database_pool),
 ) -> FileItem:
     """
@@ -405,8 +389,6 @@ async def get_file(
 @router.get("/search")
 async def search_files(
     q: str = Query(..., min_length=2, description="Search query"),
-
-
     page_size: int = Query(20, ge=1, le=50),
     current_user: dict = Depends(get_current_user),
     db_pool=Depends(get_database_pool),
@@ -443,8 +425,6 @@ async def search_files(
 @router.get("/my-folder")
 async def get_my_folder(
     current_user: dict = Depends(get_current_user),
-
-
     db_pool=Depends(get_database_pool),
 ) -> dict[str, Any] | None:
     """
