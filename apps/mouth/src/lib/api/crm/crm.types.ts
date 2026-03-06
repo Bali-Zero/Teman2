@@ -406,23 +406,19 @@ export interface ClientCompanyLink {
   company_id: number;
   company_name: string;
   company_type: string;
-  role:
-    | "Director"
-    | "Commissioner"
-    | "Shareholder"
-    | "Employee"
-    | "Agent"
-    | "Beneficial_Owner"
-    | "Authorized_Signatory";
+  role: string;
   is_primary: boolean;
   ownership_percentage?: number;
   shares_count?: number;
   start_date?: string;
-  status: "active" | "resigned" | "terminated" | "pending";
+  status: string;
+  notes?: string;
   // Company details (included in API response)
   nib?: string;
   npwp_company?: string;
   kbli_code?: string;
+  registered_address?: string;
+  company_drive_folder_id?: string;
   setup_progress?: number;
 }
 
