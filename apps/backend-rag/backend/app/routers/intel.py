@@ -1152,7 +1152,12 @@ async def publish_staging_item(
                 publish_position = body.position if body else "latest"
                 if publish_position != "latest" and publish_position in VALID_HOMEPAGE_POSITIONS:
                     try:
-                        article_slug = publish_result.slug or item_id
+                        # Derive slug from mdx_path (e.g. "src/content/articles/business/my-slug.mdx" -> "my-slug")
+                        article_slug = item_id
+                        if publish_result.mdx_path:
+                            article_slug = publish_result.mdx_path.rsplit("/", 1)[-1].replace(".mdx", "")
+                        elif publish_result.article_url:
+                            article_slug = publish_result.article_url.rstrip("/").rsplit("/", 1)[-1]
                         await update_homepage_layout(
                             slug=article_slug,
                             position=publish_position,
