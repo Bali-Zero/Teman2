@@ -385,7 +385,7 @@ function BlogLayoutInner({ children }: { children: React.ReactNode }) {
                 >
                   <Image
                     src="/assets/logo/zantara-lotus.png"
-                    alt=""
+                    alt="Zantara AI Assistant"
                     width={24}
                     height={24}
                     className="w-6 h-6"
@@ -557,7 +557,7 @@ function BlogLayoutInner({ children }: { children: React.ReactNode }) {
                 >
                   <Image
                     src="/assets/logo/zantara-lotus.png"
-                    alt=""
+                    alt="Zantara AI Assistant"
                     width={24}
                     height={24}
                     className="w-6 h-6"
