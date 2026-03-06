@@ -903,8 +903,15 @@ async def get_client_profile(
             SELECT
                 ccl.id, ccl.company_id, ccl.role, ccl.is_primary,
                 ccl.ownership_percentage, ccl.status, ccl.notes,
-                c.company_name, c.company_type, c.kbli_code,
-                c.nib, c.registered_address, c.google_drive_folder_id as company_drive_folder_id
+                c.company_name, c.company_type, c.brand_name, c.kbli_code,
+                c.kbli_description, c.nib, c.npwp_company,
+                c.akta_pendirian_no, c.akta_pendirian_date,
+                c.akta_perubahan_no, c.akta_perubahan_date,
+                c.sk_menhumkam_no, c.sk_menhumkam_date,
+                c.registered_address, c.office_address, c.city, c.province,
+                c.company_phone, c.company_email,
+                c.status as company_status, c.setup_progress,
+                c.custom_fields
             FROM client_company_links ccl
             JOIN companies c ON ccl.company_id = c.id
             WHERE ccl.client_id = $1
@@ -1011,9 +1018,15 @@ async def get_client_companies(
                 ccl.id as link_id, ccl.company_id, ccl.role, ccl.is_primary,
                 ccl.ownership_percentage, ccl.shares_count, ccl.start_date,
                 ccl.status, ccl.notes,
-                c.company_name, c.company_type, c.kbli_code,
-                c.nib, c.npwp_company, c.registered_address,
-                c.google_drive_folder_id
+                c.company_name, c.company_type, c.brand_name, c.kbli_code,
+                c.kbli_description, c.nib, c.npwp_company,
+                c.akta_pendirian_no, c.akta_pendirian_date,
+                c.akta_perubahan_no, c.akta_perubahan_date,
+                c.sk_menhumkam_no, c.sk_menhumkam_date,
+                c.registered_address, c.office_address, c.city, c.province,
+                c.company_phone, c.company_email,
+                c.status as company_status, c.setup_progress,
+                c.custom_fields
             FROM client_company_links ccl
             JOIN companies c ON ccl.company_id = c.id
             WHERE ccl.client_id = $1

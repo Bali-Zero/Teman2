@@ -406,6 +406,7 @@ export interface ClientCompanyLink {
   company_id: number;
   company_name: string;
   company_type: string;
+  brand_name?: string;
   role: string;
   is_primary: boolean;
   ownership_percentage?: number;
@@ -413,13 +414,26 @@ export interface ClientCompanyLink {
   start_date?: string;
   status: string;
   notes?: string;
-  // Company details (included in API response)
+  // Company details
+  kbli_code?: string;
+  kbli_description?: string;
   nib?: string;
   npwp_company?: string;
-  kbli_code?: string;
+  akta_pendirian_no?: string;
+  akta_pendirian_date?: string;
+  akta_perubahan_no?: string;
+  akta_perubahan_date?: string;
+  sk_menhumkam_no?: string;
+  sk_menhumkam_date?: string;
   registered_address?: string;
-  company_drive_folder_id?: string;
+  office_address?: string;
+  city?: string;
+  province?: string;
+  company_phone?: string;
+  company_email?: string;
+  company_status?: string;
   setup_progress?: number;
+  custom_fields?: Record<string, unknown>;
 }
 
 export interface CompanyDocument {
