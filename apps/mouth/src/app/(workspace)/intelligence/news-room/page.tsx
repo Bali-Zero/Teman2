@@ -569,7 +569,7 @@ export default function NewsRoomPage() {
                       <MapPin className="w-3 h-3 mr-1 shrink-0" />
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-zinc-800 border-zinc-600 text-zinc-100">
+                    <SelectContent className="!bg-zinc-800 !border-zinc-600 !text-zinc-100">
                       <SelectItem value="latest">Latest</SelectItem>
                       <SelectItem value="hero_main">Hero Main</SelectItem>
                       <SelectItem value="hero_2">Hero 2</SelectItem>
@@ -715,7 +715,7 @@ export default function NewsRoomPage() {
                 <MapPin className="w-3 h-3 mr-1 shrink-0" />
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-zinc-800 border-zinc-600 text-zinc-100">
+              <SelectContent className="!bg-zinc-800 !border-zinc-600 !text-zinc-100">
                 <SelectItem value="latest">Latest</SelectItem>
                 <SelectItem value="hero_main">Hero Main</SelectItem>
                 <SelectItem value="hero_2">Hero 2</SelectItem>
