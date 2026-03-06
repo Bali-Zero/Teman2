@@ -3,7 +3,6 @@ Unit tests for Claude Client with Retry Logic and Circuit Breaker
 """
 
 from unittest.mock import MagicMock, patch
-from typing import Any
 
 import anthropic
 import pytest

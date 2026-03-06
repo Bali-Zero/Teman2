@@ -139,7 +139,9 @@ class TestPDFVisionService:
             patch(
                 "backend.services.multimodal.pdf_vision_service.download_pdf_from_drive"
             ) as mock_download,
-            patch.object(pdf_vision_service, "analyze_page", new_callable=AsyncMock) as mock_analyze,
+            patch.object(
+                pdf_vision_service, "analyze_page", new_callable=AsyncMock
+            ) as mock_analyze,
             patch("os.path.exists") as mock_exists,
             patch("os.remove") as mock_remove,
         ):

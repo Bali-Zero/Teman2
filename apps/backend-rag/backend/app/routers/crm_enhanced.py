@@ -284,7 +284,10 @@ async def _auto_ocr_visa(client_id: int, file_id: str, doc_id: int | None = None
                 headers={"Authorization": f"Bearer {access_token}"},
             )
             if meta_response.status_code != 200:
-                return {"success": False, "error": f"Metadata fetch failed: {meta_response.status_code}"}
+                return {
+                    "success": False,
+                    "error": f"Metadata fetch failed: {meta_response.status_code}",
+                }
 
             metadata = meta_response.json()
             mime_type = metadata.get("mimeType", "image/jpeg")
@@ -295,7 +298,10 @@ async def _auto_ocr_visa(client_id: int, file_id: str, doc_id: int | None = None
                 headers={"Authorization": f"Bearer {access_token}"},
             )
             if download_response.status_code != 200:
-                return {"success": False, "error": f"Download failed: {download_response.status_code}"}
+                return {
+                    "success": False,
+                    "error": f"Download failed: {download_response.status_code}",
+                }
 
             image_data = download_response.content
 
@@ -303,11 +309,18 @@ async def _auto_ocr_visa(client_id: int, file_id: str, doc_id: int | None = None
 
         contents = [
             ocr_prompt,
-            {"inline_data": {"mime_type": mime_type, "data": base64.b64encode(image_data).decode()}},
+            {
+                "inline_data": {
+                    "mime_type": mime_type,
+                    "data": base64.b64encode(image_data).decode(),
+                }
+            },
         ]
 
         result = await genai_client.generate_content(
-            contents=contents, model="gemini-2.5-flash", max_output_tokens=4096,
+            contents=contents,
+            model="gemini-2.5-flash",
+            max_output_tokens=4096,
         )
 
         response_text = result.get("text", "")
@@ -369,7 +382,9 @@ async def _auto_ocr_visa(client_id: int, file_id: str, doc_id: int | None = None
                     *params,
                 )
 
-        logger.info(f"Auto OCR visa completed for client {client_id}: {extracted.get('visa_type', 'N/A')}")
+        logger.info(
+            f"Auto OCR visa completed for client {client_id}: {extracted.get('visa_type', 'N/A')}"
+        )
         return {"success": True, "extracted": extracted}
 
     except Exception as e:
@@ -422,7 +437,10 @@ async def _auto_ocr_nib(client_id: int, file_id: str, doc_id: int | None = None)
                 headers={"Authorization": f"Bearer {access_token}"},
             )
             if meta_response.status_code != 200:
-                return {"success": False, "error": f"Metadata fetch failed: {meta_response.status_code}"}
+                return {
+                    "success": False,
+                    "error": f"Metadata fetch failed: {meta_response.status_code}",
+                }
 
             metadata = meta_response.json()
             mime_type = metadata.get("mimeType", "image/jpeg")
@@ -433,7 +451,10 @@ async def _auto_ocr_nib(client_id: int, file_id: str, doc_id: int | None = None)
                 headers={"Authorization": f"Bearer {access_token}"},
             )
             if download_response.status_code != 200:
-                return {"success": False, "error": f"Download failed: {download_response.status_code}"}
+                return {
+                    "success": False,
+                    "error": f"Download failed: {download_response.status_code}",
+                }
 
             image_data = download_response.content
 
@@ -441,11 +462,18 @@ async def _auto_ocr_nib(client_id: int, file_id: str, doc_id: int | None = None)
 
         contents = [
             ocr_prompt,
-            {"inline_data": {"mime_type": mime_type, "data": base64.b64encode(image_data).decode()}},
+            {
+                "inline_data": {
+                    "mime_type": mime_type,
+                    "data": base64.b64encode(image_data).decode(),
+                }
+            },
         ]
 
         result = await genai_client.generate_content(
-            contents=contents, model="gemini-2.5-flash", max_output_tokens=4096,
+            contents=contents,
+            model="gemini-2.5-flash",
+            max_output_tokens=4096,
         )
 
         response_text = result.get("text", "")
@@ -503,7 +531,9 @@ async def _auto_ocr_nib(client_id: int, file_id: str, doc_id: int | None = None)
                             *params,
                         )
 
-        logger.info(f"Auto OCR NIB completed for client {client_id}: {extracted.get('nib_number', 'N/A')}")
+        logger.info(
+            f"Auto OCR NIB completed for client {client_id}: {extracted.get('nib_number', 'N/A')}"
+        )
         return {"success": True, "extracted": extracted}
 
     except Exception as e:
@@ -556,7 +586,10 @@ async def _auto_ocr_npwp(client_id: int, file_id: str, doc_id: int | None = None
                 headers={"Authorization": f"Bearer {access_token}"},
             )
             if meta_response.status_code != 200:
-                return {"success": False, "error": f"Metadata fetch failed: {meta_response.status_code}"}
+                return {
+                    "success": False,
+                    "error": f"Metadata fetch failed: {meta_response.status_code}",
+                }
 
             metadata = meta_response.json()
             mime_type = metadata.get("mimeType", "image/jpeg")
@@ -567,7 +600,10 @@ async def _auto_ocr_npwp(client_id: int, file_id: str, doc_id: int | None = None
                 headers={"Authorization": f"Bearer {access_token}"},
             )
             if download_response.status_code != 200:
-                return {"success": False, "error": f"Download failed: {download_response.status_code}"}
+                return {
+                    "success": False,
+                    "error": f"Download failed: {download_response.status_code}",
+                }
 
             image_data = download_response.content
 
@@ -575,11 +611,18 @@ async def _auto_ocr_npwp(client_id: int, file_id: str, doc_id: int | None = None
 
         contents = [
             ocr_prompt,
-            {"inline_data": {"mime_type": mime_type, "data": base64.b64encode(image_data).decode()}},
+            {
+                "inline_data": {
+                    "mime_type": mime_type,
+                    "data": base64.b64encode(image_data).decode(),
+                }
+            },
         ]
 
         result = await genai_client.generate_content(
-            contents=contents, model="gemini-2.5-flash", max_output_tokens=4096,
+            contents=contents,
+            model="gemini-2.5-flash",
+            max_output_tokens=4096,
         )
 
         response_text = result.get("text", "")
@@ -620,7 +663,7 @@ async def _auto_ocr_npwp(client_id: int, file_id: str, doc_id: int | None = None
                     client_id,
                 )
                 if company:
-                    update_parts = [f"npwp = $1"]
+                    update_parts = ["npwp = $1"]
                     params: list[Any] = [extracted["npwp_number"]]
                     param_idx = 2
                     if extracted.get("kpp_name"):
@@ -639,11 +682,15 @@ async def _auto_ocr_npwp(client_id: int, file_id: str, doc_id: int | None = None
                         SET custom_fields = COALESCE(custom_fields, '{}'::jsonb) || $1::jsonb,
                             updated_at = NOW()
                         WHERE id = $2""",
-                        to_jsonb({"npwp": extracted["npwp_number"], "kpp": extracted.get("kpp_name")}),
+                        to_jsonb(
+                            {"npwp": extracted["npwp_number"], "kpp": extracted.get("kpp_name")}
+                        ),
                         client_id,
                     )
 
-        logger.info(f"Auto OCR NPWP completed for client {client_id}: {extracted.get('npwp_number', 'N/A')}")
+        logger.info(
+            f"Auto OCR NPWP completed for client {client_id}: {extracted.get('npwp_number', 'N/A')}"
+        )
         return {"success": True, "extracted": extracted}
 
     except Exception as e:
@@ -674,25 +721,56 @@ async def _dispatch_ocr_by_folder(
     # Passport detection
     if "passport" in fn_lower or (folder_lower.startswith("00_") and "passport" in fn_lower):
         logger.info(f"OCR dispatch: passport detected for client {client_id}, file {filename}")
-        return {"dispatched": True, "handler": "passport", "result": await _auto_ocr_passport(client_id, file_id)}
+        return {
+            "dispatched": True,
+            "handler": "passport",
+            "result": await _auto_ocr_passport(client_id, file_id),
+        }
 
     # Visa / KITAS / KITAP detection
-    visa_keywords = ["kitas", "kitap", "visa", "voa", "b211", "c31", "itas", "itap", "telex", "evisa"]
+    visa_keywords = [
+        "kitas",
+        "kitap",
+        "visa",
+        "voa",
+        "b211",
+        "c31",
+        "itas",
+        "itap",
+        "telex",
+        "evisa",
+    ]
     if any(kw in fn_lower for kw in visa_keywords) or folder_lower.startswith("01_"):
         # Only auto-OCR if filename suggests a visa document (not random immigration files)
-        if any(kw in fn_lower for kw in visa_keywords) or "permit" in fn_lower or "stay" in fn_lower:
+        if (
+            any(kw in fn_lower for kw in visa_keywords)
+            or "permit" in fn_lower
+            or "stay" in fn_lower
+        ):
             logger.info(f"OCR dispatch: visa detected for client {client_id}, file {filename}")
-            return {"dispatched": True, "handler": "visa", "result": await _auto_ocr_visa(client_id, file_id, doc_id)}
+            return {
+                "dispatched": True,
+                "handler": "visa",
+                "result": await _auto_ocr_visa(client_id, file_id, doc_id),
+            }
 
     # NIB detection
     if "nib" in fn_lower or "berusaha" in fn_lower or "oss" in fn_lower:
         logger.info(f"OCR dispatch: NIB detected for client {client_id}, file {filename}")
-        return {"dispatched": True, "handler": "nib", "result": await _auto_ocr_nib(client_id, file_id, doc_id)}
+        return {
+            "dispatched": True,
+            "handler": "nib",
+            "result": await _auto_ocr_nib(client_id, file_id, doc_id),
+        }
 
     # NPWP detection
     if "npwp" in fn_lower or "tax" in fn_lower and "id" in fn_lower:
         logger.info(f"OCR dispatch: NPWP detected for client {client_id}, file {filename}")
-        return {"dispatched": True, "handler": "npwp", "result": await _auto_ocr_npwp(client_id, file_id, doc_id)}
+        return {
+            "dispatched": True,
+            "handler": "npwp",
+            "result": await _auto_ocr_npwp(client_id, file_id, doc_id),
+        }
 
     logger.debug(f"OCR dispatch: no handler matched for file {filename} in {folder_name}")
     return {"dispatched": False}
@@ -776,8 +854,6 @@ class ClientProfileUpdate(BaseModel):
 @router.get("/clients/{client_id}/profile")
 async def get_client_profile(
     client_id: int, pool=Depends(get_database_pool), current_user: dict = Depends(get_current_user)
-
-
 ) -> dict[str, Any]:
     """
     Get enhanced client profile with family members, documents, and expiry alerts.
@@ -944,8 +1020,6 @@ async def update_client_profile(
     client_id: int,
     data: ClientProfileUpdate,
     pool=Depends(get_database_pool),
-
-
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
@@ -1045,8 +1119,6 @@ async def get_client_companies(
 @router.get("/clients/{client_id}/family")
 async def get_family_members(
     client_id: int, pool=Depends(get_database_pool), current_user: dict = Depends(get_current_user)
-
-
 ) -> list[Any]:
     """
     Get all family members for a client.
@@ -1092,8 +1164,6 @@ async def create_family_member(
     client_id: int,
     data: FamilyMemberCreate,
     pool=Depends(get_database_pool),
-
-
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
@@ -1160,8 +1230,6 @@ async def update_family_member(
     member_id: int,
     data: FamilyMemberUpdate,
     pool=Depends(get_database_pool),
-
-
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
@@ -1217,8 +1285,6 @@ async def delete_family_member(
     client_id: int,
     member_id: int,
     pool=Depends(get_database_pool),
-
-
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
@@ -1248,8 +1314,6 @@ async def get_client_documents(
     category: str | None = Query(
         None, description="Filter by category: immigration, pma, tax, personal"
     ),
-
-
     include_archived: bool = Query(False, description="Include archived documents"),
     pool=Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
@@ -1300,8 +1364,6 @@ async def create_document(
     data: DocumentCreate,
     background_tasks: BackgroundTasks,
     pool=Depends(get_database_pool),
-
-
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
@@ -1380,8 +1442,6 @@ async def create_documents_bulk(
     documents: list[DocumentCreate],
     background_tasks: BackgroundTasks,
     pool=Depends(get_database_pool),
-
-
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
@@ -1525,8 +1585,6 @@ async def update_document(
     doc_id: int,
     data: DocumentUpdate,
     pool=Depends(get_database_pool),
-
-
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
@@ -1582,8 +1640,6 @@ async def archive_document(
     client_id: int,
     doc_id: int,
     permanent: bool = Query(False, description="Permanently delete instead of archive"),
-
-
     pool=Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
@@ -1618,7 +1674,6 @@ async def archive_document(
 
 @router.get("/document-categories")
 async def get_document_categories(pool=Depends(get_database_pool)) -> list[Any]:
-
     """Get all document categories for dropdowns."""
     async with pool.acquire() as conn:
         categories = await conn.fetch(
@@ -1702,8 +1757,6 @@ async def extract_visa_data(
 @router.get("/expiry-alerts")
 async def get_all_expiry_alerts(
     alert_color: str | None = Query(None, description="Filter by color: expired, red, yellow"),
-
-
     assigned_to: str | None = Query(None, description="Filter by team member email"),
     limit: int = Query(100, le=500),
     pool=Depends(get_database_pool),
@@ -1749,7 +1802,6 @@ async def get_all_expiry_alerts(
 
 @router.get("/expiry-alerts/summary")
 async def get_expiry_alerts_summary(pool=Depends(get_database_pool)) -> dict[str, Any]:
-
     """Get summary counts of expiry alerts for dashboard."""
     async with pool.acquire() as conn:
         summary = await conn.fetchrow(
@@ -1796,8 +1848,6 @@ class DocumentUploadBase64(BaseModel):
 async def upload_document_base64(
     client_id: int,
     data: DocumentUploadBase64 = Body(...),
-
-
     pool=Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
     background_tasks: BackgroundTasks = BackgroundTasks(),
@@ -1965,8 +2015,6 @@ async def delete_document(
     doc_id: int,
     permanent: bool = False,
     pool=Depends(get_database_pool),
-
-
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """

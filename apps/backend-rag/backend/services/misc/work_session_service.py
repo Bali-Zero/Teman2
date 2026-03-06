@@ -459,7 +459,6 @@ Session ID: {session["id"]}
         conversations: int,
         notes: str | None,
     ) -> None:
-
         """Send notification to ZERO about session end"""
 
         hours = duration_minutes // 60

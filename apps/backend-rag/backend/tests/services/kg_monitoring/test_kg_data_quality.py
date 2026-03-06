@@ -7,7 +7,6 @@ Author: Windsurf (QA Engineer)
 Created: 2026-02-09
 """
 
-
 import pytest
 
 

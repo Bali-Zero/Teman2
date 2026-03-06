@@ -14,11 +14,9 @@ Usage:
 """
 
 import asyncio
-import json
 import os
 import statistics
 import time
-from typing import Any
 
 import asyncpg
 
@@ -35,9 +33,7 @@ async def benchmark_exact_resolution(pool: asyncpg.Pool, n: int = 50) -> dict:
     """Benchmark exact entity_id lookup."""
     async with pool.acquire() as conn:
         # Get some real entity_ids to test with
-        rows = await conn.fetch(
-            "SELECT entity_id FROM kg_nodes ORDER BY RANDOM() LIMIT $1", n
-        )
+        rows = await conn.fetch("SELECT entity_id FROM kg_nodes ORDER BY RANDOM() LIMIT $1", n)
         entity_ids = [r["entity_id"] for r in rows]
 
     timings = []
@@ -62,10 +58,26 @@ async def benchmark_exact_resolution(pool: asyncpg.Pool, n: int = 50) -> dict:
 async def benchmark_fuzzy_resolution(pool: asyncpg.Pool, n: int = 20) -> dict:
     """Benchmark similarity() fuzzy search."""
     test_terms = [
-        "KITAS", "NPWP", "PT PMA", "Hak Pakai", "restoran",
-        "visa kerja", "pajak", "izin", "notaris", "akta",
-        "perizinan", "pendaftaran", "sertifikat", "impor", "ekspor",
-        "tenaga kerja", "investasi", "perusahaan", "lahan", "bangunan",
+        "KITAS",
+        "NPWP",
+        "PT PMA",
+        "Hak Pakai",
+        "restoran",
+        "visa kerja",
+        "pajak",
+        "izin",
+        "notaris",
+        "akta",
+        "perizinan",
+        "pendaftaran",
+        "sertifikat",
+        "impor",
+        "ekspor",
+        "tenaga kerja",
+        "investasi",
+        "perusahaan",
+        "lahan",
+        "bangunan",
     ]
 
     timings = []
@@ -133,9 +145,7 @@ async def benchmark_bfs_traversal(pool: asyncpg.Pool, n: int = 10) -> dict:
                 )
                 total_chains += len(edges)
                 frontier = [
-                    e["target_entity_id"]
-                    for e in edges
-                    if e["target_entity_id"] not in visited
+                    e["target_entity_id"] for e in edges if e["target_entity_id"] not in visited
                 ]
 
             elapsed = (time.perf_counter() - t0) * 1000
@@ -203,7 +213,9 @@ def _summarize(name: str, timings: list[float]) -> dict:
         "name": name,
         "n": len(timings),
         "p50_ms": round(statistics.median(timings), 2),
-        "p95_ms": round(sorted(timings)[int(len(timings) * 0.95)], 2) if len(timings) >= 2 else round(timings[0], 2),
+        "p95_ms": round(sorted(timings)[int(len(timings) * 0.95)], 2)
+        if len(timings) >= 2
+        else round(timings[0], 2),
         "avg_ms": round(statistics.mean(timings), 2),
         "min_ms": round(min(timings), 2),
         "max_ms": round(max(timings), 2),

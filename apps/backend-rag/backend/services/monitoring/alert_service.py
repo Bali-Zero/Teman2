@@ -338,15 +338,17 @@ class AlertService:
         user_agent: str | None = None,
     ) -> dict[str, bool]:
         """Buffer latency alert — verrà inviato nell'hourly digest. Returns stub result."""
-        self._latency_buffer.append({
-            "ts":           datetime.utcnow().strftime("%H:%M"),
-            "duration_ms":  round(duration_ms),
-            "method":       method,
-            "path":         path,
-            "threshold_ms": round(threshold_ms),
-            "request_id":   request_id or "",
-            "user_agent":   (user_agent or "")[:60],
-        })
+        self._latency_buffer.append(
+            {
+                "ts": datetime.utcnow().strftime("%H:%M"),
+                "duration_ms": round(duration_ms),
+                "method": method,
+                "path": path,
+                "threshold_ms": round(threshold_ms),
+                "request_id": request_id or "",
+                "user_agent": (user_agent or "")[:60],
+            }
+        )
         logger.warning(
             f"[WARNING] High Latency: {duration_ms:.0f}ms: "
             f"{method} {path} took {duration_ms:.0f}ms (buffered for hourly digest)"
@@ -373,10 +375,12 @@ class AlertService:
             "",
         ]
 
-        for path, evts in sorted(by_path.items(), key=lambda x: -max(e["duration_ms"] for e in x[1])):
-            worst   = max(e["duration_ms"] for e in evts)
-            avg     = round(sum(e["duration_ms"] for e in evts) / len(evts))
-            times   = ", ".join(e["ts"] for e in evts[:5])
+        for path, evts in sorted(
+            by_path.items(), key=lambda x: -max(e["duration_ms"] for e in x[1])
+        ):
+            worst = max(e["duration_ms"] for e in evts)
+            avg = round(sum(e["duration_ms"] for e in evts) / len(evts))
+            times = ", ".join(e["ts"] for e in evts[:5])
             lines.append(
                 f"• <code>{evts[0]['method']} {path}</code>\n"
                 f"  {len(evts)}x — max <b>{worst}ms</b> avg {avg}ms — [{times}]"
@@ -388,19 +392,21 @@ class AlertService:
         if self.enable_telegram:
             url = f"{TELEGRAM_API_BASE}{self.telegram_bot_token}/sendMessage"
             payload = {
-                "chat_id":                  self.telegram_admin_chat_id,
-                "text":                     text,
-                "parse_mode":               "HTML",
+                "chat_id": self.telegram_admin_chat_id,
+                "text": text,
+                "parse_mode": "HTML",
                 "disable_web_page_preview": True,
             }
             async with httpx.AsyncClient() as client:
                 await client.post(url, json=payload, timeout=10.0)
-            logger.info(f"[digest] Hourly digest inviato: {len(events)} eventi, {len(by_path)} path")
+            logger.info(
+                f"[digest] Hourly digest inviato: {len(events)} eventi, {len(by_path)} path"
+            )
 
     async def _digest_loop(self) -> None:
         """Background loop: flush digest ogni ora esatta (minuto 0)."""
         while True:
-            now     = datetime.utcnow()
+            now = datetime.utcnow()
             # Aspetta fino al prossimo minuto :00
             secs_to_next_hour = (60 - now.minute) * 60 - now.second
             if secs_to_next_hour <= 0:

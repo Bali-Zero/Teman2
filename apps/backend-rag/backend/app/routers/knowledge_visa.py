@@ -81,8 +81,9 @@ class VisaTypeCreate(VisaTypeBase):
 
 
 @router.get("/", response_model=VisaTypeListResponse)
-async def list_visa_types(category: str | None = None, pool=Depends(get_db_pool)) -> VisaTypeListResponse:
-
+async def list_visa_types(
+    category: str | None = None, pool=Depends(get_db_pool)
+) -> VisaTypeListResponse:
     """
     List all visa types, optionally filtered by category.
 
@@ -162,7 +163,6 @@ async def list_visa_types(category: str | None = None, pool=Depends(get_db_pool)
 
 @router.get("/{visa_id}", response_model=VisaTypeResponse)
 async def get_visa_type(visa_id: int, pool=Depends(get_db_pool)) -> VisaTypeResponse:
-
     """Get a specific visa type by ID"""
     async with pool.acquire() as conn:
         row = await conn.fetchrow("SELECT * FROM visa_types WHERE id = $1", visa_id)
@@ -202,7 +202,6 @@ async def get_visa_type(visa_id: int, pool=Depends(get_db_pool)) -> VisaTypeResp
 
 @router.get("/code/{code}", response_model=VisaTypeResponse)
 async def get_visa_by_code(code: str, pool=Depends(get_db_pool)) -> VisaTypeResponse:
-
     """Get a specific visa type by code (e.g., 'C316', 'KITAS-INVESTOR')"""
     async with pool.acquire() as conn:
         row = await conn.fetchrow("SELECT * FROM visa_types WHERE UPPER(code) = UPPER($1)", code)
@@ -266,8 +265,9 @@ class VisaTypeUpdate(BaseModel):
 
 
 @router.put("/{visa_id}", response_model=VisaTypeResponse)
-async def update_visa_type(visa_id: int, visa: VisaTypeUpdate, pool=Depends(get_db_pool)) -> VisaTypeResponse:
-
+async def update_visa_type(
+    visa_id: int, visa: VisaTypeUpdate, pool=Depends(get_db_pool)
+) -> VisaTypeResponse:
     """Update a visa type by ID"""
     async with pool.acquire() as conn:
         # Check if exists
@@ -349,7 +349,6 @@ async def update_visa_type(visa_id: int, visa: VisaTypeUpdate, pool=Depends(get_
 
 @router.post("/", response_model=VisaTypeResponse)
 async def create_visa_type(visa: VisaTypeCreate, pool=Depends(get_db_pool)) -> VisaTypeResponse:
-
     """Create a new visa type (admin only)"""
     async with pool.acquire() as conn:
         # Check if code already exists

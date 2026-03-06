@@ -2,48 +2,182 @@
 Telegram Webhook Router - Multi-Channel Architecture.
 
 Handles incoming Telegram Bot API updates using ChannelRouter.
+Intercepts callback_query updates for intel approval voting.
 
 Author: Claude Sonnet 4.5
 Date: 2026-02-10
 """
 
+import json
 import logging
-from typing import Any
 import os
+from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, Depends, Request
 
+from backend.app.core.config import settings
+from backend.app.core.intel_approvers import get_required_votes
 from backend.app.dependencies import get_channel_router
 from backend.channels.router import ChannelRouter
+from backend.services.integrations.telegram_bot_service import telegram_bot
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/webhook", tags=["telegram"])
 
 
+async def handle_intel_callback(callback_query: dict[str, Any]) -> bool:
+    """
+    Handle intel approval/rejection callback queries from Telegram inline keyboards.
+
+    Callback data format: intel:{action}:{intel_type}:{item_id}
+    Example: intel:approve:news:abc123
+
+    Returns:
+        True if handled successfully
+    """
+    callback_id = callback_query.get("id")
+    callback_data = callback_query.get("data", "")
+    voter = callback_query.get("from", {})
+    voter_id = voter.get("id")
+    voter_name = voter.get("first_name", "Unknown")
+    message = callback_query.get("message", {})
+    chat_id = message.get("chat", {}).get("id")
+    message_id = message.get("message_id")
+
+    # Parse callback data
+    parts = callback_data.split(":")
+    if len(parts) != 4 or parts[0] != "intel":
+        return False
+
+    _, action, intel_type, item_id = parts
+
+    if action not in ("approve", "reject"):
+        logger.warning(f"Unknown intel callback action: {action}")
+        return False
+
+    logger.info(
+        f"Intel callback: {action} from {voter_name} ({voter_id})",
+        extra={"intel_type": intel_type, "item_id": item_id, "action": action},
+    )
+
+    # Load voting status from pending path
+    pending_path = Path(settings.get_intel_pending_path)
+    status_file = pending_path / f"{item_id}.json"
+
+    if not status_file.exists():
+        await telegram_bot.answer_callback_query(
+            callback_id, text="Item not found or already processed.", show_alert=True
+        )
+        return True
+
+    voting_data = json.loads(status_file.read_text())
+
+    # Check if already voted
+    all_voters = [v["id"] for v in voting_data.get("votes", {}).get("approve", [])] + [
+        v["id"] for v in voting_data.get("votes", {}).get("reject", [])
+    ]
+
+    if voter_id in all_voters:
+        await telegram_bot.answer_callback_query(
+            callback_id, text="You already voted!", show_alert=True
+        )
+        return True
+
+    # Record vote
+    vote_entry = {"id": voter_id, "name": voter_name}
+    votes = voting_data.setdefault("votes", {"approve": [], "reject": []})
+    votes[action].append(vote_entry)
+    status_file.write_text(json.dumps(voting_data, indent=2))
+
+    # Acknowledge the vote
+    await telegram_bot.answer_callback_query(callback_id, text=f"Vote recorded: {action.upper()}")
+
+    # Check quorum
+    required = get_required_votes(intel_type)
+    approve_count = len(votes["approve"])
+    reject_count = len(votes["reject"])
+
+    if approve_count >= required:
+        # Quorum reached — publish
+        logger.info(
+            f"Approval quorum reached ({approve_count}/{required})",
+            extra={"intel_type": intel_type, "item_id": item_id},
+        )
+
+        try:
+            from backend.app.routers.intel import publish_staging_item
+
+            await publish_staging_item(intel_type, item_id)
+
+            result_text = (
+                f"APPROVED and published\nVotes: {approve_count} approve, {reject_count} reject"
+            )
+        except Exception as e:
+            logger.error(
+                f"Auto-publish failed after approval: {e}",
+                exc_info=True,
+                extra={"intel_type": intel_type, "item_id": item_id},
+            )
+            result_text = (
+                f"APPROVED but publish failed: {e}\n"
+                f"Votes: {approve_count} approve, {reject_count} reject"
+            )
+
+        # Update Telegram message to show result
+        if chat_id and message_id:
+            await telegram_bot.edit_message_text(
+                chat_id=chat_id,
+                message_id=message_id,
+                text=f"✅ {result_text}",
+                parse_mode=None,
+            )
+
+    elif reject_count >= required:
+        # Rejection quorum reached — archive
+        logger.info(
+            f"Rejection quorum reached ({reject_count}/{required})",
+            extra={"intel_type": intel_type, "item_id": item_id},
+        )
+
+        try:
+            from backend.services.intel import IntelStagingService
+
+            staging_service = IntelStagingService()
+            staging_service.archive_item(intel_type, item_id, "rejected")
+        except Exception as e:
+            logger.error(
+                f"Archive after rejection failed: {e}",
+                exc_info=True,
+                extra={"intel_type": intel_type, "item_id": item_id},
+            )
+
+        result_text = (
+            f"REJECTED and archived\nVotes: {approve_count} approve, {reject_count} reject"
+        )
+
+        if chat_id and message_id:
+            await telegram_bot.edit_message_text(
+                chat_id=chat_id,
+                message_id=message_id,
+                text=f"❌ {result_text}",
+                parse_mode=None,
+            )
+
+    return True
+
+
 @router.post("/telegram")
 async def telegram_webhook(
     request: Request,
     channel_router: ChannelRouter = Depends(get_channel_router),
-
-
 ) -> dict[str, Any]:
     """
     Telegram Bot API webhook endpoint.
 
     Receives updates from Telegram and routes them through the multi-channel architecture.
-
-    Expected update structure:
-    {
-        "update_id": 12345,
-        "message": {
-            "message_id": 789,
-            "from": {"id": 123, "first_name": "John", "username": "john_doe"},
-            "chat": {"id": 123, "type": "private"},
-            "date": 1234567890,
-            "text": "Hello bot!"
-        }
-    }
+    Intercepts callback_query updates for intel approval voting.
 
     Returns:
         Success confirmation (Telegram expects 200 OK)
@@ -58,7 +192,21 @@ async def telegram_webhook(
             logger.warning("Received Telegram update without update_id")
             return {"ok": False, "error": "Missing update_id"}
 
-        # Log incoming update
+        # Handle callback_query (inline keyboard button presses) before ChannelRouter
+        callback_query = update.get("callback_query")
+        if callback_query:
+            callback_data = callback_query.get("data", "")
+            logger.info(f"📨 Telegram callback_query {update_id}: data={callback_data}")
+
+            if callback_data.startswith("intel:"):
+                handled = await handle_intel_callback(callback_query)
+                if handled:
+                    return {"ok": True, "update_id": update_id, "type": "callback_query"}
+
+            # Non-intel callbacks fall through to ChannelRouter
+            return {"ok": True, "update_id": update_id}
+
+        # Log incoming message update
         message = update.get("message", {})
         chat = message.get("chat", {})
         chat_id = chat.get("id")

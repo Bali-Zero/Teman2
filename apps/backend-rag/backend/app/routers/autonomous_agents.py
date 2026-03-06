@@ -104,8 +104,6 @@ async def _run_conversation_trainer_task(execution_id: str, days_back: int) -> A
 async def run_conversation_trainer(
     background_tasks: BackgroundTasks,
     days_back: int = Query(default=7, ge=1, le=365, description="Days to look back (1-365)"),
-
-
 ) -> AgentExecutionResponse:
     """
     🤖 Run Conversation Quality Trainer Agent
@@ -219,7 +217,9 @@ async def run_client_value_predictor(background_tasks: BackgroundTasks) -> Agent
 # ============================================================================
 
 
-async def _run_knowledge_graph_builder_task(execution_id: str, days_back: int, init_schema: bool) -> None:
+async def _run_knowledge_graph_builder_task(
+    execution_id: str, days_back: int, init_schema: bool
+) -> None:
     """Background task for knowledge graph builder execution"""
     try:
         logger.info(f"🕸️ Starting Knowledge Graph Builder (execution_id: {execution_id})")
@@ -272,8 +272,6 @@ async def _run_knowledge_graph_builder_task(execution_id: str, days_back: int, i
 async def run_knowledge_graph_builder(
     background_tasks: BackgroundTasks,
     days_back: int = Query(default=30, ge=1, le=365, description="Days to look back (1-365)"),
-
-
     init_schema: bool = Query(default=False, description="Initialize database schema"),
 ) -> AgentExecutionResponse:
     """
@@ -319,8 +317,6 @@ async def run_knowledge_graph_builder(
 @router.get("/knowledge-graph/extract-sample")
 async def extract_kg_sample(
     collection: str = Query(default="legal_unified_hybrid", description="Qdrant collection name"),
-
-
     sample_size: int = Query(default=50, ge=10, le=200, description="Number of chunks to sample"),
 ) -> dict[str, Any]:
     """
@@ -457,8 +453,6 @@ async def extract_kg_sample(
 @router.post("/knowledge-graph/persist-sample")
 async def persist_kg_sample(
     collection: str = Query(default="legal_unified_hybrid"),
-
-
     sample_size: int = Query(default=50, ge=10, le=200),
 ) -> dict[str, Any]:
     """

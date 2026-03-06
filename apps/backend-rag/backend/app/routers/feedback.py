@@ -28,8 +28,6 @@ async def submit_feedback(
     request: RateConversationRequest,
     req: Request,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-
-
 ) -> FeedbackResponse:
     """
     Submit conversation rating and feedback
@@ -158,8 +156,6 @@ async def submit_feedback(
 async def get_conversation_rating(
     session_id: str,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-
-
 ) -> ConversationRatingResponse:
     """
     Get rating for a specific conversation session
@@ -213,8 +209,6 @@ async def get_conversation_rating(
 @router.get("/stats", response_model=ReviewQueueStatsResponse)
 async def get_feedback_stats(
     current_user: dict = Depends(get_current_user),
-
-
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> ReviewQueueStatsResponse:
     """

@@ -182,7 +182,6 @@ class CulturalRAGService:
 
 # Test function
 async def test_cultural_rag() -> None:  # pragma: no cover
-
     """Test CulturalRAGService"""
     from backend.services.search import SearchService
 

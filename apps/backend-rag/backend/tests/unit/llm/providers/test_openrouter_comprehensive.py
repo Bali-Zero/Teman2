@@ -104,6 +104,7 @@ class TestOpenRouterProvider:
     @pytest.mark.asyncio
     async def test_generate_stream(self, openrouter_provider, mock_openrouter_client):
         """Test streaming generation via stream()"""
+
         async def mock_stream(*args, **kwargs):
             yield "chunk1"
             yield "chunk2"

@@ -31,8 +31,6 @@ class KnowledgeActivityLog(BaseModel):
 async def log_knowledge_activity(
     activity: KnowledgeActivityLog,
     current_user: dict = Depends(get_current_user),
-
-
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict:
     """Log a knowledge base view or download activity"""

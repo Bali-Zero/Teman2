@@ -35,8 +35,6 @@ class RefuteRequest(BaseModel):
 async def contribute_fact(
     request: ContributeRequest,
     current_user: dict = Depends(get_current_user),
-
-
     db_pool=Depends(get_db_pool),
 ) -> dict[str, Any]:
     """
@@ -63,8 +61,6 @@ async def contribute_fact(
 async def refute_fact(
     request: RefuteRequest,
     current_user: dict = Depends(get_current_user),
-
-
     db_pool=Depends(get_db_pool),
 ) -> dict[str, Any]:
     """
@@ -89,8 +85,6 @@ async def refute_fact(
 async def get_collective_facts(
     category: str | None = None,
     db_pool=Depends(get_db_pool),
-
-
 ) -> dict[str, Any]:
     """
     Get all promoted collective facts.

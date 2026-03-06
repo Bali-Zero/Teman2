@@ -9,7 +9,6 @@ Created: 2026-02-09
 Updated: 2026-02-16 - Fixed to use correct reasoning_utils API
 """
 
-
 import pytest
 
 from backend.app.core.constants import EvidenceScoreConstants

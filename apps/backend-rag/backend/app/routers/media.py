@@ -1,9 +1,8 @@
 import logging
-from typing import Any
 import shutil
-from typing import Any
 import uuid
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel
@@ -75,7 +74,6 @@ async def generate_image(request: ImagePrompt) -> Any:
 
 @router.post("/upload")
 async def upload_file(file: UploadFile = File(...)) -> dict[str, Any]:
-
     """
     Upload a file (image, audio, doc) to the server.
     Returns the URL/path to the file.

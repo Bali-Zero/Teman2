@@ -379,10 +379,7 @@ class RetrievalQualityMonitor:
             return
 
         elapsed = (datetime.utcnow() - self._last_flush_time).total_seconds()
-        if (
-            self._unflushed_count >= self.FLUSH_BATCH_SIZE
-            or elapsed >= self.FLUSH_INTERVAL_SECONDS
-        ):
+        if self._unflushed_count >= self.FLUSH_BATCH_SIZE or elapsed >= self.FLUSH_INTERVAL_SECONDS:
             await self.flush_to_db()
 
     def record_query_metrics(

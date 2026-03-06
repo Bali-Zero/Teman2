@@ -1115,7 +1115,6 @@ Do not invent information. If the context is insufficient, admit it.
         tool_execution_counter: dict,
         images: list[dict] | None = None,  # Vision images: [{"base64": ..., "name": ...}]
     ) -> None:
-
         """
         Execute the ReAct reasoning loop with streaming output.
 

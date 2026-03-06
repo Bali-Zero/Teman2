@@ -56,7 +56,6 @@ class AuditService:
         failure_reason: str | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> Any:
-
         """
         Log an authentication event (login, logout, failed attempt).
 
@@ -106,7 +105,6 @@ class AuditService:
         ip_address: str | None = None,
         user_agent: str | None = None,
     ) -> Any:
-
         """
         Log a general system event for audit trail.
 

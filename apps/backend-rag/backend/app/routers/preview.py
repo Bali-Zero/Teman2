@@ -32,8 +32,6 @@ class PreviewUpload(BaseModel):
 async def upload_preview(
     payload: PreviewUpload,
     api_key_verified=Depends(verify_internal_api_key),
-
-
 ) -> JSONResponse:
     """
     Upload HTML preview from scraper (running locally on Mac).

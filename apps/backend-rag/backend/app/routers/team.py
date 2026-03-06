@@ -3,8 +3,9 @@ Team Management Router
 Handles team member listing with visibility rules
 """
 
-import asyncpg
 from typing import Any
+
+import asyncpg
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
@@ -28,8 +29,6 @@ class TeamMember(BaseModel):
 @router.get("/members", response_model=list[TeamMember])
 async def get_team_members(
     current_user: dict = Depends(get_current_user),
-
-
     pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> list[Any]:
     """

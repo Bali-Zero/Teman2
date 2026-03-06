@@ -705,7 +705,9 @@ async def create_and_start_scheduler(
                     response.raise_for_status()
                     result = response.json()
 
-                    reminders = result.get("report", {}).get("expiry_alerts", {}).get("reminders_sent", 0)
+                    reminders = (
+                        result.get("report", {}).get("expiry_alerts", {}).get("reminders_sent", 0)
+                    )
                     articles = result.get("report", {}).get("intel", {}).get("articles_composed", 0)
 
                     logger.info(

@@ -23,13 +23,28 @@ class OnboardingIntentDetector:
     # Keywords that indicate new client onboarding intent
     NEW_CLIENT_KEYWORDS = [
         # English
-        "new client", "onboard", "sign up", "register", "start business",
-        "open company", "need visa", "moving to bali", "relocating",
+        "new client",
+        "onboard",
+        "sign up",
+        "register",
+        "start business",
+        "open company",
+        "need visa",
+        "moving to bali",
+        "relocating",
         # Italian
-        "nuovo cliente", "nuova cliente", "registrare", "aprire azienda",
-        "trasferirmi", "trasferimento", "voglio aprire",
+        "nuovo cliente",
+        "nuova cliente",
+        "registrare",
+        "aprire azienda",
+        "trasferirmi",
+        "trasferimento",
+        "voglio aprire",
         # Indonesian
-        "klien baru", "daftar", "buka perusahaan", "butuh visa",
+        "klien baru",
+        "daftar",
+        "buka perusahaan",
+        "butuh visa",
     ]
 
     # Patterns that suggest business description

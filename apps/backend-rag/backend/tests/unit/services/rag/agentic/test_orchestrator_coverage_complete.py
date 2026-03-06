@@ -414,7 +414,9 @@ class TestStreamQueryRouting:
                 return_value=True,
             ),
             patch.object(orchestrator.llm_gateway, "create_chat_with_history") as mock_chat,
-            patch.object(orchestrator.llm_gateway, "send_message", new_callable=AsyncMock) as mock_send,
+            patch.object(
+                orchestrator.llm_gateway, "send_message", new_callable=AsyncMock
+            ) as mock_send,
         ):
             mock_send.return_value = ("Risposta dal recall", "gemini-2.0-flash", None, None)
 
@@ -485,10 +487,7 @@ class TestStreamQueryRouting:
 
         # Should yield cached result (tokens with "Cached answer" or done)
         assert any(e.get("type") == "done" for e in events)
-        assert any(
-            e.get("type") == "token" and "Cached" in str(e.get("data", ""))
-            for e in events
-        )
+        assert any(e.get("type") == "token" and "Cached" in str(e.get("data", "")) for e in events)
 
     @pytest.mark.asyncio
     async def test_stream_query_event_validation_error(self, orchestrator):
@@ -502,8 +501,12 @@ class TestStreamQueryRouting:
             yield {"type": "done", "data": None}
 
         with (
-            patch.object(orchestrator.intent_classifier, "classify_intent", new_callable=AsyncMock) as mock_intent,
-            patch.object(orchestrator.entity_extractor, "extract_entities", new_callable=AsyncMock) as mock_entity,
+            patch.object(
+                orchestrator.intent_classifier, "classify_intent", new_callable=AsyncMock
+            ) as mock_intent,
+            patch.object(
+                orchestrator.entity_extractor, "extract_entities", new_callable=AsyncMock
+            ) as mock_entity,
             patch.object(
                 orchestrator.core.reasoning_engine,
                 "execute_react_loop_stream",

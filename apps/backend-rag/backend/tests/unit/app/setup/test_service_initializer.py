@@ -305,8 +305,13 @@ class TestInitializeDatabaseServices:
     @patch("backend.app.setup.service_initializer.settings")
     @patch("backend.app.setup.service_initializer.asyncpg.create_pool", new_callable=AsyncMock)
     async def test_initialize_database_services_success(
-        self, mock_create_pool, mock_settings, mock_timesheet, mock_daily_notifier,
-        mock_weekly_reporter, mock_create_task
+        self,
+        mock_create_pool,
+        mock_settings,
+        mock_timesheet,
+        mock_daily_notifier,
+        mock_weekly_reporter,
+        mock_create_task,
     ):
         """Test successful database initialization"""
         app = FastAPI()
@@ -325,6 +330,7 @@ class TestInitializeDatabaseServices:
         class _AsyncCtx:
             async def __aenter__(self):
                 return mock_conn
+
             async def __aexit__(self, *args):
                 return None
 

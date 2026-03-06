@@ -4,7 +4,7 @@ Notification Models
 Data models for the notification system.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 from enum import Enum
 
 from pydantic import BaseModel

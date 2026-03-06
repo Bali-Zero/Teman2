@@ -135,8 +135,14 @@ class PublishToSiteRequest(BaseModel):
 
 
 VALID_HOMEPAGE_POSITIONS = {
-    "hero_main", "hero_2", "hero_3", "hero_4", "hero_5",
-    "insight_1", "insight_2", "insight_3",
+    "hero_main",
+    "hero_2",
+    "hero_3",
+    "hero_4",
+    "hero_5",
+    "insight_1",
+    "insight_2",
+    "insight_3",
 }
 
 
@@ -398,8 +404,6 @@ def convert_staging_to_enriched_article(staging_data: dict) -> dict:
 async def submit_from_scraper(
     submission: ScraperSubmission,
     _api_key_verified=Depends(verify_internal_api_key),
-
-
 ) -> dict[str, Any]:
     """
     Receive article from bali-intel-scraper and save to staging.
@@ -518,7 +522,6 @@ async def list_pending_items(
     sort_type: str | None = None,
     search: str | None = None,
 ) -> Any:
-
     """List items pending approval in staging area with filtering and sorting"""
     logger.info(
         "Listing pending items",
@@ -638,8 +641,6 @@ async def approve_staging_item(
     item_id: str,
     request: ApprovalRequest | None = None,
     _api_key_verified=Depends(verify_internal_api_key),
-
-
 ) -> dict[str, Any]:
     """
     Initiate approval process by sending Telegram notification to team.
@@ -713,7 +714,9 @@ async def approve_staging_item(
 
 
 @router.put("/api/intel/staging/{type}/{item_id}")
-async def edit_staging_item(type: str, item_id: str, request: EditStagingItemRequest) -> dict[str, Any]:
+async def edit_staging_item(
+    type: str, item_id: str, request: EditStagingItemRequest
+) -> dict[str, Any]:
     """
     Edit staging item (title, content, category).
 
@@ -768,7 +771,9 @@ async def edit_staging_item(type: str, item_id: str, request: EditStagingItemReq
 
 
 @router.post("/api/intel/staging/{type}/{item_id}/cover")
-async def upload_cover_image(type: str, item_id: str, request: CoverImageUploadRequest) -> dict[str, Any]:
+async def upload_cover_image(
+    type: str, item_id: str, request: CoverImageUploadRequest
+) -> dict[str, Any]:
     """
     Upload cover image for staging item.
 
@@ -1155,7 +1160,9 @@ async def publish_staging_item(
                         # Derive slug from mdx_path (e.g. "src/content/articles/business/my-slug.mdx" -> "my-slug")
                         article_slug = item_id
                         if publish_result.mdx_path:
-                            article_slug = publish_result.mdx_path.rsplit("/", 1)[-1].replace(".mdx", "")
+                            article_slug = publish_result.mdx_path.rsplit("/", 1)[-1].replace(
+                                ".mdx", ""
+                            )
                         elif publish_result.article_url:
                             article_slug = publish_result.article_url.rstrip("/").rsplit("/", 1)[-1]
                         await update_homepage_layout(
@@ -1203,7 +1210,11 @@ async def publish_staging_item(
                 slug = item_id  # item_id is already a slug-friendly identifier
                 summary = (data.get("content") or "")[:500]
                 content_full = data.get("content") or ""
-                ai_summary = data.get("brief", {}).get("what", "") if isinstance(data.get("brief"), dict) else ""
+                ai_summary = (
+                    data.get("brief", {}).get("what", "")
+                    if isinstance(data.get("brief"), dict)
+                    else ""
+                )
                 ai_tags = data.get("tags") or []
                 image_url = data.get("image_url") or data.get("cover_image")
                 priority_val = data.get("priority", "medium")
@@ -1211,7 +1222,15 @@ async def publish_staging_item(
                     priority_val = "medium"
 
                 # Map category to valid news_items constraint values
-                valid_categories = {"immigration", "business", "tax", "property", "lifestyle", "tech", "legal"}
+                valid_categories = {
+                    "immigration",
+                    "business",
+                    "tax",
+                    "property",
+                    "lifestyle",
+                    "tech",
+                    "legal",
+                }
                 news_category = category if category in valid_categories else "business"
 
                 async with pool.acquire() as conn:
@@ -1547,7 +1566,6 @@ async def store_intel(request: IntelStoreRequest) -> dict[str, Any]:
 async def get_critical_items(
     category: str | None = None, days: int = IntelConstants.DUPLICATE_CHECK_DAYS
 ) -> dict[str, Any]:
-
     """Get critical impact items"""
     try:
         if category:
@@ -1650,7 +1668,9 @@ async def get_critical_items(
 
 
 @router.get("/api/intel/trends")
-async def get_trends(category: str | None = None, _days: int = IntelConstants.TRENDS_ANALYSIS_DAYS) -> dict[str, Any]:
+async def get_trends(
+    category: str | None = None, _days: int = IntelConstants.TRENDS_ANALYSIS_DAYS
+) -> dict[str, Any]:
     """Get trending topics and keywords"""
     try:
         if category:
@@ -1699,7 +1719,9 @@ async def get_intelligence_analytics(days: int = IntelConstants.TRENDS_ANALYSIS_
 
     except Exception as e:
         logger.error(f"Failed to calculate analytics: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Analytics calculation failed: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Analytics calculation failed: {str(e)}"
+        ) from e
 
 
 @router.get("/api/intel/stats/{collection}")

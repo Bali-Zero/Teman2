@@ -620,8 +620,7 @@ class KGLangGraphOrchestrator:
             self.app = await compile_kg_workflow(self.db_pool, self._compiled_subgraphs)
 
             logger.info(
-                "✅ [Orchestrator] KG LangGraph workflow initialized "
-                "(4 subgraphs pre-compiled)"
+                "✅ [Orchestrator] KG LangGraph workflow initialized (4 subgraphs pre-compiled)"
             )
 
     async def query(

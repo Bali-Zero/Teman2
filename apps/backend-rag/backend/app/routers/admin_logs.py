@@ -86,8 +86,6 @@ class TeamActivitySummary(BaseModel):
 @router.get("/activity")
 async def get_activity_logs(
     user_email: str | None = Query(None, description="Filter by user email"),
-
-
     action_type: str | None = Query(None, description="Filter by action type"),
     resource_type: str | None = Query(None, description="Filter by resource type"),
     date_from: datetime | None = Query(None, description="Start date (UTC)"),
@@ -176,8 +174,6 @@ async def get_activity_logs(
 @router.get("/interactions")
 async def get_team_interactions(
     user_email: str | None = Query(None, description="Filter by team member"),
-
-
     client_email: str | None = Query(None, description="Filter by client"),
     interaction_type: str | None = Query(None, description="Filter by type"),
     direction: Literal["inbound", "outbound"] | None = Query(
@@ -272,8 +268,6 @@ async def get_team_interactions(
 @router.get("/api-audit")
 async def get_api_audit_trail(
     user_email: str | None = Query(None, description="Filter by user"),
-
-
     endpoint: str | None = Query(None, description="Filter by endpoint (contains)"),
     method: str | None = Query(None, description="Filter by HTTP method"),
     min_status: int = Query(0, ge=0, description="Min status code (e.g., 400 for errors)"),
@@ -365,8 +359,6 @@ async def get_api_audit_trail(
 @router.get("/summary/today")
 async def get_today_summary(
     _: bool = Depends(verify_debug_access),
-
-
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
     """
@@ -398,8 +390,6 @@ async def get_today_summary(
 @router.get("/summary/interactions")
 async def get_interactions_summary(
     days: int = Query(7, ge=1, le=90, description="Number of days to analyze"),
-
-
     _: bool = Depends(verify_debug_access),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:

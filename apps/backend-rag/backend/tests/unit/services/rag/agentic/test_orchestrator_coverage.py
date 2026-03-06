@@ -95,9 +95,7 @@ def orchestrator_setup(mock_tools, mock_db_pool, mock_retriever, mock_semantic_c
         patch("backend.services.rag.agentic.orchestrator.ReasoningEngine") as mock_reasoning,
         patch("backend.services.rag.agentic.orchestrator.EntityExtractionService") as mock_entity,
         patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
-        patch(
-            "backend.services.rag.agentic.orchestrator.FollowupService"
-        ) as mock_followup_class,
+        patch("backend.services.rag.agentic.orchestrator.FollowupService") as mock_followup_class,
         patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
         patch(
             "backend.services.rag.agentic.orchestrator.ContextWindowManager"
@@ -202,14 +200,20 @@ def orchestrator_setup(mock_tools, mock_db_pool, mock_retriever, mock_semantic_c
             )
             # Mock entity extractor on core
             orchestrator.core.entity_extractor = MagicMock()
-            orchestrator.core.entity_extractor.extract_entities = AsyncMock(
-                return_value={}
-            )
+            orchestrator.core.entity_extractor.extract_entities = AsyncMock(return_value={})
             # Mock other core dependencies
             orchestrator.core.check_faq_cache = AsyncMock(return_value=None)
             mock_metrics_mgr = MagicMock()
             mock_metrics_mgr.extract_timings_from_state = MagicMock(
-                return_value={"total": 0.1, "embedding": 0.0, "search": 0.0, "rerank": 0.0, "llm": 0.1, "reasoning": 0.1, "tools": 0.0}
+                return_value={
+                    "total": 0.1,
+                    "embedding": 0.0,
+                    "search": 0.0,
+                    "rerank": 0.0,
+                    "llm": 0.1,
+                    "reasoning": 0.1,
+                    "tools": 0.0,
+                }
             )
             mock_metrics_mgr.extract_collections_from_state = MagicMock(return_value=set())
             mock_metrics_mgr.extract_sources_from_state = MagicMock(return_value=[])
@@ -362,7 +366,8 @@ class TestProcessQueryGates:
         )
 
         result = await orch.process_query(
-            "Quanto costa?", "user@test.com",
+            "Quanto costa?",
+            "user@test.com",
             conversation_history=conv_history,
         )
 
@@ -413,9 +418,7 @@ class TestProcessQueryGates:
         """Test out-of-domain detection gate"""
         orch = orchestrator_setup["orchestrator"]
 
-        with patch(
-            "backend.services.rag.agentic.query_gates.is_out_of_domain"
-        ) as mock_ood:
+        with patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood:
             mock_ood.return_value = (True, "medical")
 
             result = await orch.process_query("Come curare il mal di testa?", "user@test.com")
@@ -676,7 +679,17 @@ class TestProcessQueryGates:
             # Mock response_builder to return CoreResult from state
             from backend.services.rag.agentic.schema import CoreResult
 
-            def build_result(state, sources, extracted_entities, model_used, token_usage, timings, start_time, workflow=None, reasoning=None):
+            def build_result(
+                state,
+                sources,
+                extracted_entities,
+                model_used,
+                token_usage,
+                timings,
+                start_time,
+                workflow=None,
+                reasoning=None,
+            ):
                 return CoreResult(
                     answer=state.final_answer,
                     sources=sources or state.sources or [],
@@ -1025,8 +1038,7 @@ class TestStreamQueryGates:
 
             # Cache hit yields metadata with status "success" and route "cache"
             assert any(
-                e.get("type") == "metadata"
-                and e.get("data", {}).get("route") == "cache"
+                e.get("type") == "metadata" and e.get("data", {}).get("route") == "cache"
                 for e in events
             )
 
@@ -1388,7 +1400,9 @@ class TestStreamEventValidation:
         async def mock_stream_gen():
             raise RuntimeError("Fatal error")
 
-        orch.core.reasoning_engine.execute_react_loop_stream = lambda *args, **kwargs: mock_stream_gen()
+        orch.core.reasoning_engine.execute_react_loop_stream = lambda *args, **kwargs: (
+            mock_stream_gen()
+        )
 
         with (
             patch("backend.services.rag.agentic.orchestrator.get_user_context") as mock_get_context,

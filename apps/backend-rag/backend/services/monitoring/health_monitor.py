@@ -439,9 +439,7 @@ class HealthMonitor:
         try:
             from backend.app.metrics import safe_register_counter
 
-            counter = safe_register_counter(
-                "zantara_restarts_total", "Total process restarts"
-            )
+            counter = safe_register_counter("zantara_restarts_total", "Total process restarts")
             counter.inc()
             return 1  # Prometheus handles accumulation
         except Exception:

@@ -287,7 +287,6 @@ class PerformanceMonitor:
     async def _create_alert(
         self, metric_name: str, current_value: float, threshold: float, severity: AlertSeverity
     ) -> Any:
-
         """Create a performance alert"""
         alert_id = f"{metric_name}_{int(time.time())}"
 
@@ -322,7 +321,6 @@ class PerformanceMonitor:
     async def _create_anomaly_alert(
         self, metric_name: str, avg_value: float, anomalies: list[float]
     ) -> None:
-
         """Create anomaly detection alert"""
         alert_id = f"anomaly_{metric_name}_{int(time.time())}"
 

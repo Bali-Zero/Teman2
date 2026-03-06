@@ -71,12 +71,24 @@ class CRMQueryOptimizer:
             return ids
 
     # Allowed columns for dynamic UPDATE to prevent SQL injection
-    ALLOWED_PRACTICE_COLUMNS = frozenset({
-        "status", "priority", "assigned_to", "notes",
-        "quoted_price", "actual_price", "paid_amount", "currency",
-        "start_date", "completion_date", "expiry_date", "next_renewal_date",
-        "practice_type_id", "client_id",
-    })
+    ALLOWED_PRACTICE_COLUMNS = frozenset(
+        {
+            "status",
+            "priority",
+            "assigned_to",
+            "notes",
+            "quoted_price",
+            "actual_price",
+            "paid_amount",
+            "currency",
+            "start_date",
+            "completion_date",
+            "expiry_date",
+            "next_renewal_date",
+            "practice_type_id",
+            "client_id",
+        }
+    )
 
     async def batch_update_practices(self, updates: list[dict[str, Any]]) -> int:
         """

@@ -25,8 +25,6 @@ router = APIRouter(prefix="/api/documents", tags=["Documents Proxy"])
 async def proxy_drive_file(
     file_id: str,
     current_user: dict = Depends(get_current_user),
-
-
     db_pool=Depends(get_database_pool),
 ) -> Response:
     """
@@ -102,8 +100,6 @@ async def proxy_drive_file(
 async def get_drive_thumbnail(
     file_id: str,
     width: int = Query(400, ge=100, le=1600, description="Thumbnail width in pixels"),
-
-
     current_user: dict = Depends(get_current_user),
     db_pool=Depends(get_database_pool),
 ) -> Any:

@@ -35,7 +35,9 @@ async def poll_drive_changes() -> dict[str, Any]:
         )
 
         db_pool = await asyncpg.create_pool(
-            os.environ["DATABASE_URL"], min_size=1, max_size=2,
+            os.environ["DATABASE_URL"],
+            min_size=1,
+            max_size=2,
         )
 
         drive_service = ServiceAccountDriveService()
@@ -140,7 +142,11 @@ async def poll_drive_changes() -> dict[str, Any]:
                 # Dispatch OCR
                 try:
                     await _dispatch_ocr_by_folder(
-                        client_id, file_id, folder_name, file_name, doc_id,
+                        client_id,
+                        file_id,
+                        folder_name,
+                        file_name,
+                        doc_id,
                     )
                     processed += 1
                 except Exception as e:

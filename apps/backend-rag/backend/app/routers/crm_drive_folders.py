@@ -22,7 +22,15 @@ STANDARD_SUBFOLDERS = [
     "00_Profile",
     "01_Immigration",
     "02_Company",
+    "02_Company/AKTA",
+    "02_Company/NIB",
+    "02_Company/NPWP",
+    "02_Company/Profile Perseroan",
     "03_Tax",
+    "03_Tax/SPT company",
+    "03_Tax/SPT personal",
+    "03_Tax/LKPM reports",
+    "03_Tax/NPWP personal",
     "04_Family",
     "99_Misc",
 ]
@@ -32,8 +40,6 @@ STANDARD_SUBFOLDERS = [
 async def create_client_drive_folder(
     client_id: int,
     pool=Depends(get_database_pool),
-
-
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
@@ -138,23 +144,35 @@ async def create_client_drive_folder(
 
     logger.info(f"[CRM] Created root folder: {root_folder['id']} for client {client_id}")
 
-    # 5. Create standardized subfolders
+    # 5. Create standardized subfolders (supports nested paths like "02_Company/AKTA")
     subfolders = {}
+    folder_id_cache = {"": root_folder["id"]}
 
-    for subfolder_name in STANDARD_SUBFOLDERS:
+    for subfolder_path in STANDARD_SUBFOLDERS:
         try:
+            parts = subfolder_path.split("/")
+            if len(parts) == 1:
+                parent_id = root_folder["id"]
+                name = parts[0]
+            else:
+                parent_path = parts[0]
+                name = parts[1]
+                parent_id = folder_id_cache.get(parent_path, root_folder["id"])
+
             subfolder = await drive_service.create_folder(
                 user_id=GoogleDriveService.SYSTEM_USER_ID,
-                name=subfolder_name,
-                parent_id=root_folder["id"],
+                name=name,
+                parent_id=parent_id,
             )
-            subfolders[subfolder_name] = {
+            subfolders[subfolder_path] = {
                 "id": subfolder["id"],
                 "url": subfolder.get("webViewLink", ""),
             }
-            logger.info(f"[CRM] Created subfolder: {subfolder_name} ({subfolder['id']})")
+            if len(parts) == 1:
+                folder_id_cache[name] = subfolder["id"]
+            logger.info(f"[CRM] Created subfolder: {subfolder_path} ({subfolder['id']})")
         except Exception as e:
-            logger.error(f"[CRM] Failed to create subfolder {subfolder_name}: {e}")
+            logger.error(f"[CRM] Failed to create subfolder {subfolder_path}: {e}")
             # Continue creating other folders even if one fails
 
     # 6. Update client record with root folder ID
@@ -189,8 +207,6 @@ async def create_client_drive_folder(
 async def get_client_drive_folder(
     client_id: int,
     pool=Depends(get_database_pool),
-
-
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
@@ -260,8 +276,6 @@ async def get_client_drive_folder(
 async def unlink_client_drive_folder(
     client_id: int,
     pool=Depends(get_database_pool),
-
-
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
@@ -313,8 +327,6 @@ async def unlink_client_drive_folder(
 async def get_client_drive_folder_structure(
     client_id: int,
     pool=Depends(get_database_pool),
-
-
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
@@ -377,8 +389,6 @@ async def list_folder_files(
     client_id: int,
     folder_name: str,
     limit: int = Query(50, ge=1, le=200),
-
-
     offset: int = Query(0, ge=0),
     search: str | None = Query(None),
     pool=Depends(get_database_pool),
@@ -585,8 +595,6 @@ async def upload_file_to_folder(
 async def get_client_drive_folder_stats(
     client_id: int,
     pool=Depends(get_database_pool),
-
-
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """

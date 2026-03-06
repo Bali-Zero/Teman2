@@ -9,8 +9,8 @@ Pipeline: Query → Vector Search → Fast LLM → Response (~5-8s instead of 40
 
 import logging
 import os
-from typing import Any
 import time
+from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel
@@ -139,8 +139,6 @@ Answer briefly (2-3 sentences):"""
 async def voice_query(
     request: VoiceQueryRequest,
     search_service=Depends(get_search_service),
-
-
     _auth: dict = Depends(verify_api_key),
 ) -> VoiceQueryResponse:
     """
@@ -204,27 +202,31 @@ async def voice_query(
         raise HTTPException(status_code=500, detail="Voice query failed")
 
 
-from backend.services.kbli_eye import KBLIEye
 import re
+
+from backend.services.kbli_eye import KBLIEye
 
 kbli_eye = KBLIEye("source_documents/KBLI_2025_FINAL_CLEAN.json")
 
+
 class ElevenLabsRequest(BaseModel):
     """ElevenLabs Conversational AI request."""
+
     query: str | None = None
     conversation: list[dict] | None = None
 
-import hmac
+
 import hashlib
+import hmac
+
 from fastapi import Header
+
 
 @router.post("/elevenlabs/kbli-audit")
 async def elevenlabs_kbli_audit(
     request: ElevenLabsRequest,
     x_elevenlabs_signature: str | None = Header(None),
-
-
-    http_raw_request: Request = None
+    http_raw_request: Request = None,
 ) -> dict[str, Any]:
     """
     ElevenLabs Tool Endpoint for KBLI Audit with Signature Verification.
@@ -233,12 +235,8 @@ async def elevenlabs_kbli_audit(
     webhook_secret = os.getenv("ELEVENLABS_WEBHOOK_SECRET")
     if webhook_secret and x_elevenlabs_signature:
         body = await http_raw_request.body()
-        expected_signature = hmac.new(
-            webhook_secret.encode(),
-            body,
-            hashlib.sha256
-        ).hexdigest()
-        
+        expected_signature = hmac.new(webhook_secret.encode(), body, hashlib.sha256).hexdigest()
+
         if not hmac.compare_digest(expected_signature, x_elevenlabs_signature):
             logger.warning("❌ Tentativo di accesso non autorizzato al Webhook ElevenLabs")
             raise HTTPException(status_code=401, detail="Invalid signature")
@@ -246,21 +244,25 @@ async def elevenlabs_kbli_audit(
     # 2. Logica di Audit (come prima)
     query = request.query or ""
     # Cerca un codice a 5 cifre nella query
-    match = re.search(r'\b(\d{5})\b', query)
-    
+    match = re.search(r"\b(\d{5})\b", query)
+
     if not match:
-        return {"result": "Non ho trovato un codice KBLI a 5 cifre nella tua domanda. Puoi ripetere il codice?"}
-    
+        return {
+            "result": "Non ho trovato un codice KBLI a 5 cifre nella tua domanda. Puoi ripetere il codice?"
+        }
+
     code = match.group(1)
     decision = kbli_eye.get_decision(code, is_pma=True, location="Bali")
-    
+
     if decision["state"] == "ERROR":
-        return {"result": f"Mi dispiace, non ho trovato informazioni sul codice {code} nel database 2025."}
-    
+        return {
+            "result": f"Mi dispiace, non ho trovato informazioni sul codice {code} nel database 2025."
+        }
+
     state = decision["audit"]["state"]
     reason = decision["audit"]["reason_code"]
     title = decision["title"]
-    
+
     if state == "APPROVED":
         response = f"Il codice {code} per {title} è approvato per la PMA a Bali. Non ci sono restrizioni particolari."
     elif state == "WARNING":

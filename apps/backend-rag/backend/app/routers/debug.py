@@ -31,8 +31,6 @@ security = HTTPBearer(auto_error=False)
 
 def verify_debug_access(
     credentials: HTTPAuthorizationCredentials | None = Depends(security),
-
-
     request: Request = None,
 ) -> bool:
     """
@@ -86,8 +84,6 @@ def verify_debug_access(
 async def get_request_trace(
     request_id: str,
     _: bool = Depends(verify_debug_access),
-
-
 ) -> dict[str, Any]:
     """
     Get trace for a specific request.
@@ -113,8 +109,6 @@ async def get_request_trace(
 @router.get("/logs")
 async def get_logs(
     module: str | None = Query(None, description="Filter logs by module name"),
-
-
     level: str | None = Query(
         None, description="Filter by log level (DEBUG, INFO, WARNING, ERROR)"
     ),
@@ -152,8 +146,6 @@ async def get_logs(
 async def get_app_state(
     request: Request,
     _: bool = Depends(verify_debug_access),
-
-
 ) -> dict[str, Any]:
     """
     Get internal application state.
@@ -200,8 +192,6 @@ async def get_app_state(
 async def get_services_status(
     request: Request,
     _: bool = Depends(verify_debug_access),
-
-
 ) -> dict[str, Any]:
     """
     Get status of all services.
@@ -266,8 +256,6 @@ async def get_services_status(
 @router.get("/traces/recent")
 async def get_recent_traces_endpoint(
     limit: int = Query(50, ge=1, le=500, description="Maximum number of traces"),
-
-
     _: bool = Depends(verify_debug_access),
 ) -> dict[str, Any]:
     """
@@ -292,8 +280,6 @@ async def get_recent_traces_endpoint(
 @router.delete("/traces")
 async def clear_traces(
     _: bool = Depends(verify_debug_access),
-
-
 ) -> dict[str, Any]:
     """
     Clear all stored traces.
@@ -340,8 +326,6 @@ def get_rag_trace(correlation_id: str) -> dict[str, Any] | None:
 async def get_rag_pipeline_trace(
     correlation_id: str,
     _: bool = Depends(verify_debug_access),
-
-
 ) -> dict[str, Any]:
     """
     Get RAG pipeline trace for a correlation ID.
@@ -377,8 +361,6 @@ async def get_rag_pipeline_trace(
 @router.get("/db/queries/slow")
 async def get_slow_queries(
     limit: int = Query(50, ge=1, le=500),
-
-
     _: bool = Depends(verify_debug_access),
 ) -> dict[str, Any]:
     """
@@ -405,8 +387,6 @@ async def get_slow_queries(
 @router.get("/db/queries/recent")
 async def get_recent_queries(
     limit: int = Query(100, ge=1, le=1000),
-
-
     _: bool = Depends(verify_debug_access),
 ) -> dict[str, Any]:
     """
@@ -433,8 +413,6 @@ async def get_recent_queries(
 @router.get("/db/queries/analyze")
 async def analyze_query_patterns(
     _: bool = Depends(verify_debug_access),
-
-
 ) -> dict[str, Any]:
     """
     Analyze database query patterns.
@@ -456,8 +434,6 @@ async def analyze_query_patterns(
 @router.get("/qdrant/collections/health")
 async def get_qdrant_collections_health(
     _: bool = Depends(verify_debug_access),
-
-
 ) -> dict[str, Any]:
     """
     Get health status of all Qdrant collections.
@@ -492,8 +468,6 @@ async def get_qdrant_collections_health(
 async def get_collection_stats(
     collection_name: str,
     _: bool = Depends(verify_debug_access),
-
-
 ) -> dict[str, Any]:
     """
     Get detailed statistics for a Qdrant collection.
@@ -520,8 +494,6 @@ async def get_collection_stats(
 async def get_parent_documents(
     document_id: str,
     current_user: dict = Depends(require_team_member),
-
-
 ) -> dict[str, Any]:
     """
     Get parent documents (BAB) from PostgreSQL for a legal document.
@@ -593,8 +565,6 @@ async def get_bab_full_text(
     document_id: str,
     bab_id: str,
     _: bool = Depends(verify_debug_access),
-
-
 ) -> dict[str, Any]:
     """
     Get full text of a specific BAB from PostgreSQL.
@@ -654,8 +624,6 @@ async def get_bab_full_text(
 async def run_performance_profiling(
     request: Request,
     _: bool = Depends(verify_debug_access),
-
-
 ) -> dict[str, Any]:
     """
     Run performance profiling analysis.
@@ -733,8 +701,6 @@ class QueryRequest(BaseModel):
 async def get_postgres_connection(
     request: Request,
     _: bool = Depends(verify_debug_access),
-
-
 ) -> dict[str, Any]:
     """
     Test PostgreSQL connection and get connection info.
@@ -785,8 +751,6 @@ async def get_postgres_connection(
 @router.get("/postgres/schema/tables")
 async def get_postgres_tables(
     schema: str = Query("public", description="Schema name"),
-
-
     _: bool = Depends(verify_debug_access),
 ) -> dict[str, Any]:
     """
@@ -820,8 +784,6 @@ async def get_postgres_tables(
 async def get_postgres_table_details(
     table_name: str,
     schema: str = Query("public", description="Schema name"),
-
-
     _: bool = Depends(verify_debug_access),
 ) -> dict[str, Any]:
     """
@@ -860,8 +822,6 @@ async def get_postgres_table_details(
 @router.get("/postgres/schema/indexes")
 async def get_postgres_indexes(
     table_name: str | None = Query(None, description="Optional table name filter"),
-
-
     _: bool = Depends(verify_debug_access),
 ) -> dict[str, Any]:
     """
@@ -893,8 +853,6 @@ async def get_postgres_indexes(
 @router.get("/postgres/stats/tables")
 async def get_postgres_table_stats(
     table_name: str | None = Query(None, description="Optional table name filter"),
-
-
     _: bool = Depends(verify_debug_access),
 ) -> dict[str, Any]:
     """
@@ -926,8 +884,6 @@ async def get_postgres_table_stats(
 @router.get("/postgres/stats/database")
 async def get_postgres_database_stats(
     _: bool = Depends(verify_debug_access),
-
-
 ) -> dict[str, Any]:
     """
     Get global database statistics.
@@ -954,8 +910,6 @@ async def get_postgres_database_stats(
 @router.post("/postgres/query")
 async def execute_postgres_query(
     query_request: QueryRequest = Body(...),
-
-
     request: Request = None,
     _: bool = Depends(verify_debug_access),
 ) -> dict[str, Any]:
@@ -1003,8 +957,6 @@ async def execute_postgres_query(
 @router.get("/postgres/performance/slow-queries")
 async def get_postgres_slow_queries(
     limit: int = Query(20, ge=1, le=100, description="Maximum number of queries"),
-
-
     _: bool = Depends(verify_debug_access),
 ) -> dict[str, Any]:
     """
@@ -1038,8 +990,6 @@ async def get_postgres_slow_queries(
 @router.get("/postgres/performance/locks")
 async def get_postgres_locks(
     _: bool = Depends(verify_debug_access),
-
-
 ) -> dict[str, Any]:
     """
     Get active locks in the database.
@@ -1067,8 +1017,6 @@ async def get_postgres_locks(
 @router.get("/postgres/performance/connections")
 async def get_postgres_connection_stats(
     _: bool = Depends(verify_debug_access),
-
-
 ) -> dict[str, Any]:
     """
     Get connection statistics.
@@ -1096,8 +1044,6 @@ async def get_postgres_connection_stats(
 @v1_router.get("/sentry-test")
 async def sentry_test_error(
     _current_user: dict = Depends(get_current_user),
-
-
 ) -> None:
     """
     Trigger a test error for Sentry monitoring verification.

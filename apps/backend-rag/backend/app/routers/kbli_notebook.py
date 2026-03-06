@@ -9,10 +9,10 @@ Date: 2026-02-05
 """
 
 import json
-from typing import Any
 import logging
 import re
 import time
+from typing import Any
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -193,8 +193,9 @@ def get_kbli_ttl(code: str) -> int:
 
 
 @router.get("/search", response_model=list[KBLISearchResult])
-async def search_kbli(query: str, limit: int = 10, search_service=Depends(get_search_service)) -> Any:
-
+async def search_kbli(
+    query: str, limit: int = 10, search_service=Depends(get_search_service)
+) -> Any:
     """Search for KBLI codes using semantic search (Qdrant)."""
     start_time = time.time()
     logger.info(f"🔍 KBLI Search Request: '{query}' (limit: {limit})")
@@ -235,9 +236,10 @@ async def search_kbli(query: str, limit: int = 10, search_service=Depends(get_se
 
 @router.get("/inspect/{code}", response_model=KBLIDetail)
 async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> Any:
-
     """Retrieve deep KG metadata with dynamic TTL based on sector volatility."""
-    from backend.core.cache import get_cache_service as cache_manager  # Assume we have access to the manager
+    from backend.core.cache import (
+        get_cache_service as cache_manager,  # Assume we have access to the manager
+    )
 
     cache_key = f"kbli_inspect_v2_{code}"
     ttl = get_kbli_ttl(code)
@@ -953,8 +955,6 @@ async def chat_kbli(
     http_request: Request,  # Iniezione corretta dell'oggetto Request di FastAPI
     kbli_request: KBLINotebookChatRequest,  # Il body della richiesta
     search_service=Depends(get_search_service),
-
-
     pool=Depends(get_optional_database_pool),
 ) -> KBLINotebookChatResponse:
     """Specialized chat for KBLI Notebook with BPS 2025 focus."""

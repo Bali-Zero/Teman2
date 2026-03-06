@@ -955,7 +955,9 @@ async def initialize_channel_router(
         x_consumer_key = settings.x_consumer_key or os.getenv("TWITTER_CONSUMER_KEY")
         x_consumer_secret = settings.x_consumer_secret or os.getenv("TWITTER_CONSUMER_SECRET")
         x_access_token = settings.x_access_token or os.getenv("TWITTER_ACCESS_TOKEN")
-        x_access_token_secret = settings.x_access_token_secret or os.getenv("TWITTER_ACCESS_TOKEN_SECRET")
+        x_access_token_secret = settings.x_access_token_secret or os.getenv(
+            "TWITTER_ACCESS_TOKEN_SECRET"
+        )
         x_bearer_token = settings.x_bearer_token or os.getenv("TWITTER_BEARER_TOKEN")
         if x_consumer_key and x_consumer_secret and x_access_token and x_access_token_secret:
             from backend.channels.twitter.adapter import TwitterChannelAdapter

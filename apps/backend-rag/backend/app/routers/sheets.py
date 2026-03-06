@@ -10,7 +10,6 @@ Endpoints:
 
 import logging
 from typing import Any
-from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -21,6 +20,7 @@ router = APIRouter(prefix="/api/sheets", tags=["sheets"])
 
 
 # ---- Request / Response models ----
+
 
 class ReadRequest(BaseModel):
     spreadsheet_id: str
@@ -42,6 +42,7 @@ class FindRequest(BaseModel):
 
 class UpdateRowRequest(BaseModel):
     """Write specific columns to a known row in a spreadsheet."""
+
     spreadsheet_id: str
     sheet_name: str
     row_number: int
@@ -51,12 +52,15 @@ class UpdateRowRequest(BaseModel):
 
 # ---- Helpers ----
 
+
 def _get_sheets_service() -> Any:
     from backend.services.integrations.sheets_service import SheetsService
+
     return SheetsService()
 
 
 # ---- Endpoints ----
+
 
 @router.get("/read")
 async def read_range(spreadsheet_id: str, range: str) -> dict[str, Any]:
@@ -70,6 +74,7 @@ async def read_range(spreadsheet_id: str, range: str) -> dict[str, Any]:
     except Exception as e:
         logger.error(f"[SHEETS] Read failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.post("/read")
 async def read_range_post(req: ReadRequest) -> dict[str, Any]:
@@ -141,9 +146,7 @@ async def update_row(req: UpdateRowRequest) -> dict[str, Any]:
         end_col = chr(ord("A") + end_col_idx)
         range_ = f"{req.sheet_name}!{req.column_start}{req.row_number}:{end_col}{req.row_number}"
 
-        result = await svc.write_range(
-            req.spreadsheet_id, range_, [req.values]
-        )
+        result = await svc.write_range(req.spreadsheet_id, range_, [req.values])
         return {
             "status": "success",
             "range": range_,

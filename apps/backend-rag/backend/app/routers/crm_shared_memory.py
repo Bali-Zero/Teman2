@@ -6,8 +6,9 @@ Enables queries like "clients with upcoming renewals", "active practices for Joh
 Refactored: Migrated to asyncpg with connection pooling (2025-12-07)
 """
 
-import asyncpg
 from typing import Any
+
+import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
 from backend.app.dependencies import get_current_user, get_database_pool
@@ -59,8 +60,6 @@ async def _get_practice_codes(conn: asyncpg.Connection) -> list[str]:
 @router.get("/search")
 async def search_shared_memory(
     q: str = Query(..., description="Natural language query"),
-
-
     limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
@@ -330,8 +329,6 @@ async def get_upcoming_renewals(
         le=MAX_RENEWAL_LOOKAHEAD_DAYS,
         description="Look ahead days",
     ),
-
-
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
@@ -385,8 +382,6 @@ async def get_upcoming_renewals(
 @router.get("/client/{client_id}/full-context")
 async def get_client_full_context(
     client_id: int = Path(..., gt=0, description="Client ID"),
-
-
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
@@ -513,8 +508,6 @@ async def get_client_full_context(
 @cached(ttl=CACHE_TTL_STATS_SECONDS, prefix="crm_team_overview")
 async def get_team_overview(
     current_user: dict = Depends(get_current_user),
-
-
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> Any:
     """

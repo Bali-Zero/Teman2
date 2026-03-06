@@ -156,6 +156,7 @@ def drive_operation(operation_name: str) -> Any:
 
     def decorator(func: Callable) -> Any:
         """Decorator."""
+
         @wraps(func)
         async def wrapper(self, *args, **kwargs) -> Any:
             start_time = time.time()

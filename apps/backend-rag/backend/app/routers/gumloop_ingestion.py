@@ -10,7 +10,6 @@ router = APIRouter(prefix="/api/v1/integrations/gumloop", tags=["Integrations"])
 
 
 async def verify_gumloop_key(x_gumloop_key: str = Header(None)) -> bool:
-
     """Verifica che la chiamata arrivi da Gumloop usando una chiave statica."""
     expected_key = settings.admin_api_key
     if not expected_key:

@@ -143,8 +143,6 @@ router = APIRouter(prefix="/api/oracle", tags=["Oracle v5.3 - Ultra Hybrid"])
 async def hybrid_oracle_query(
     request: OracleQueryRequest,
     service: SearchService = Depends(get_search_service),
-
-
     current_user: dict = Depends(get_current_user),
 ) -> OracleQueryResponse:
     """

@@ -280,7 +280,6 @@ class KGPipeline:
         results: list[ExtractionResult],
         source_collection: str = "legal_unified_hybrid",
     ) -> None:
-
         """
         Persist extraction results to PostgreSQL
 
@@ -377,8 +376,6 @@ class KGPipeline:
     async def process_batch(
         self,
         chunks: list[tuple[str, str]],  # List of (chunk_id, text)
-
-
     ) -> list[ExtractionResult]:
         """
         Process a batch of chunks with concurrency control

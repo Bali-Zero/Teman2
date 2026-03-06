@@ -21,8 +21,6 @@ tax_latency = Histogram("portal_tax_latency_seconds", "Tax endpoint latency")
 async def get_taxes(
     include_completed: bool = False,
     current_client=Depends(get_current_portal_client),
-
-
     db_pool=Depends(get_database_pool),
 ) -> dict[str, Any]:
     """

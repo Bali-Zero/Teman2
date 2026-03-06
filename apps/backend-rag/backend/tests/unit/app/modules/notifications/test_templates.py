@@ -207,15 +207,23 @@ class TestIndonesianBlessings:
     def test_blessings_are_indonesian(self):
         """Blessings should contain Indonesian text."""
         indonesian_words = [
-            "selamat", "semoga", "tahun", "panjang", "umur",
-            "dirgahayu", "semangat", "ultah", "menyerah", "harapan",
+            "selamat",
+            "semoga",
+            "tahun",
+            "panjang",
+            "umur",
+            "dirgahayu",
+            "semangat",
+            "ultah",
+            "menyerah",
+            "harapan",
         ]
         for blessing in INDONESIAN_BLESSINGS:
             assert len(blessing) > 0
             # Should contain common Indonesian words
-            assert any(
-                word in blessing.lower() for word in indonesian_words
-            ), f"Blessing does not contain Indonesian words: {blessing}"
+            assert any(word in blessing.lower() for word in indonesian_words), (
+                f"Blessing does not contain Indonesian words: {blessing}"
+            )
 
 
 class TestTemplateContent:

@@ -96,13 +96,17 @@ class TestAgenticRAGStreamAuthenticated:
         """Test stream endpoint with authenticated user uses email"""
         mock_user = {"email": "stream@example.com", "user_id": "456", "role": "admin"}
 
-        with patch(
-            "backend.app.routers.agentic_rag.get_current_user_optional", return_value=mock_user
-        ), patch(
-            "backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator
-        ), patch(
-            "backend.app.routers.agentic_rag.get_optional_database_pool",
-            return_value=mock_db_pool,
+        with (
+            patch(
+                "backend.app.routers.agentic_rag.get_current_user_optional", return_value=mock_user
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_optional_database_pool",
+                return_value=mock_db_pool,
+            ),
         ):
             client = TestClient(test_app)
             response = client.post(

@@ -73,6 +73,7 @@ class TestAgenticRagRouter:
         with patch("backend.services.rag.agentic.create_agentic_rag") as mock_create:
             mock_create.return_value = MagicMock()
             import backend.app.dependencies as deps
+
             original = deps._agentic_rag_orchestrator
             deps._agentic_rag_orchestrator = None
             try:
@@ -86,6 +87,7 @@ class TestAgenticRagRouter:
         """Test orchestrator reuse"""
         existing = MagicMock()
         import backend.app.dependencies as deps
+
         original = deps._agentic_rag_orchestrator
         deps._agentic_rag_orchestrator = existing
         try:
@@ -135,7 +137,9 @@ class TestAgenticRagRouter:
                 "backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator
             ),
             patch("backend.app.routers.agentic_rag.get_optional_database_pool", return_value=None),
-            patch("backend.app.routers.agentic_rag.get_ab_test_manager", return_value=mock_ab_manager),
+            patch(
+                "backend.app.routers.agentic_rag.get_ab_test_manager", return_value=mock_ab_manager
+            ),
         ):
             from backend.app.routers.agentic_rag import query_agentic_rag
 
@@ -177,7 +181,9 @@ class TestAgenticRagRouter:
                 "backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator
             ),
             patch("backend.app.routers.agentic_rag.get_optional_database_pool", return_value=None),
-            patch("backend.app.routers.agentic_rag.get_ab_test_manager", return_value=mock_ab_manager),
+            patch(
+                "backend.app.routers.agentic_rag.get_ab_test_manager", return_value=mock_ab_manager
+            ),
         ):
             from backend.app.routers.agentic_rag import query_agentic_rag
 
@@ -459,7 +465,9 @@ class TestAgenticQueryResponse:
             patch(
                 "backend.app.routers.agentic_rag.get_optional_database_pool", return_value=mock_db
             ),
-            patch("backend.app.routers.agentic_rag.get_ab_test_manager", return_value=mock_ab_manager),
+            patch(
+                "backend.app.routers.agentic_rag.get_ab_test_manager", return_value=mock_ab_manager
+            ),
         ):
             from backend.app.routers.agentic_rag import query_agentic_rag
 

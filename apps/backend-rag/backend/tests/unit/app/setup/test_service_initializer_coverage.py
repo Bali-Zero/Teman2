@@ -237,6 +237,7 @@ async def test_initialize_database_services_retry_then_success(mock_app):
         class _AsyncCtx:
             async def __aenter__(self):
                 return mock_conn
+
             async def __aexit__(self, *args):
                 return None
 
@@ -267,6 +268,7 @@ async def test_database_health_check_loop_exception_recovery():
     class _AsyncCtx:
         async def __aenter__(self):
             return mock_conn
+
         async def __aexit__(self, *args):
             return None
 
@@ -277,9 +279,7 @@ async def test_database_health_check_loop_exception_recovery():
         return _AsyncCtx()
 
     mock_pool = MagicMock()
-    mock_pool.acquire = MagicMock(
-        side_effect=[_acquire_raise(), _acquire_ok(), _acquire_ok()]
-    )
+    mock_pool.acquire = MagicMock(side_effect=[_acquire_raise(), _acquire_ok(), _acquire_ok()])
 
     with (
         patch(
