@@ -33,6 +33,7 @@ import {
   Save,
   Upload,
   Download,
+  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -50,6 +51,7 @@ import type {
   DocumentCategory,
   DocumentCategoryType,
   ClientCompanyLink,
+  CompanyDocument,
 } from "@/lib/api/crm/crm.types";
 import { COMMON_NATIONALITIES, CLIENT_STATUSES } from "@/lib/api/crm/crm.types";
 import { cropToSquare } from "@/lib/utils/imageResize";
@@ -3940,6 +3942,8 @@ function CompanyDocUpload({
   docType,
   label,
   hint,
+  existingDoc,
+  onUploaded,
 }: {
   clientId: number;
   companyId: number;
@@ -3947,6 +3951,8 @@ function CompanyDocUpload({
   docType: string;
   label: string;
   hint: string;
+  existingDoc?: CompanyDocument | null;
+  onUploaded?: () => void;
 }) {
   const [isUploading, setIsUploading] = useState(false);
   const [ocrPolling, setOcrPolling] = useState(false);
@@ -3963,6 +3969,7 @@ function CompanyDocUpload({
         )) as { pending_ocr: number };
         if (status.pending_ocr === 0 || attempts >= 10) {
           setOcrPolling(false);
+          onUploaded?.();
           return;
         }
         attempts++;
@@ -3972,7 +3979,7 @@ function CompanyDocUpload({
       }
     };
     setTimeout(poll, 2000);
-  }, [clientId]);
+  }, [clientId, onUploaded]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -4022,22 +4029,83 @@ function CompanyDocUpload({
     }
   };
 
+  const hasDoc = existingDoc?.google_drive_file_id || uploadedFile;
+
   return (
-    <div className="border border-dashed border-[var(--border)] rounded-lg p-3 hover:border-[var(--accent)]/50 transition-colors">
+    <div
+      className={`rounded-lg p-3 transition-colors ${
+        hasDoc
+          ? "border border-[var(--border)] bg-[var(--background)]"
+          : "border border-dashed border-[var(--border)] hover:border-[var(--accent)]/50"
+      }`}
+    >
       <div className="flex items-center justify-between mb-1">
         <span className="text-sm font-medium text-[var(--foreground)]">
           {label}
         </span>
-        <span className="text-[10px] text-[var(--foreground-muted)]">
-          {hint}
-        </span>
+        {hasDoc ? (
+          <span className="flex items-center gap-1 text-[10px] text-green-400 font-medium">
+            <CheckCircle2 className="w-3 h-3" />
+            On file
+          </span>
+        ) : (
+          <span className="text-[10px] text-[var(--foreground-muted)]">
+            {hint}
+          </span>
+        )}
       </div>
+
+      {/* Show existing document */}
+      {existingDoc?.file_name && !uploadedFile && (
+        <div className="mb-2">
+          <p className="text-xs text-[var(--foreground-muted)] truncate mb-1.5">
+            {existingDoc.file_name}
+          </p>
+          {existingDoc.google_drive_file_id && (
+            <div className="flex gap-1.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5 text-xs h-7 px-2"
+                onClick={() => {
+                  window.open(
+                    `https://drive.google.com/file/d/${existingDoc.google_drive_file_id}/view`,
+                    "_blank",
+                  );
+                }}
+              >
+                <Eye className="w-3 h-3" />
+                View
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5 text-xs h-7 px-2"
+                onClick={() => {
+                  const link = document.createElement("a");
+                  link.href = `https://drive.google.com/uc?export=download&id=${existingDoc.google_drive_file_id}`;
+                  link.download = existingDoc.file_name || label;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }}
+              >
+                <Download className="w-3 h-3" />
+                Download
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Show just-uploaded file */}
       {uploadedFile && (
         <p className="text-xs text-green-400 mb-2 flex items-center gap-1">
           <CheckCircle2 className="w-3 h-3" />
           {uploadedFile}
         </p>
       )}
+
       <input
         ref={fileInputRef}
         type="file"
@@ -4064,7 +4132,9 @@ function CompanyDocUpload({
           ? "Uploading..."
           : ocrPolling
             ? "OCR in corso..."
-            : `Upload ${label}`}
+            : hasDoc
+              ? `Replace ${label}`
+              : `Upload ${label}`}
       </Button>
     </div>
   );
@@ -4078,6 +4148,9 @@ function CompanyTab({
   formatDate: (d: string) => string;
 }) {
   const [companies, setCompanies] = useState<ClientCompanyLink[]>([]);
+  const [companyDocs, setCompanyDocs] = useState<
+    Record<number, CompanyDocument[]>
+  >({});
   const [isLoading, setIsLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
 
@@ -4090,6 +4163,19 @@ function CompanyTab({
       setIsLoading(true);
       const data = await api.crm.getClientCompanies(clientId);
       setCompanies(data);
+      // Fetch documents for each company
+      const docsMap: Record<number, CompanyDocument[]> = {};
+      await Promise.all(
+        data.map(async (c) => {
+          try {
+            const docs = await api.crm.getCompanyDocuments(c.company_id);
+            docsMap[c.company_id] = docs;
+          } catch {
+            docsMap[c.company_id] = [];
+          }
+        }),
+      );
+      setCompanyDocs(docsMap);
     } catch (err) {
       logger.error("Failed to load companies:", {}, err as Error);
     } finally {
@@ -4100,6 +4186,11 @@ function CompanyTab({
   const handleCompanyCreated = () => {
     loadCompanies();
     setShowAddModal(false);
+  };
+
+  const getDocByType = (companyId: number, docType: string) => {
+    const docs = companyDocs[companyId] || [];
+    return docs.find((d) => d.document_type === docType) || null;
   };
 
   // Generate intelligent company summary
@@ -4503,20 +4594,43 @@ function CompanyTab({
                       </div>
                     )}
 
-                    {/* Documents Found in Drive */}
-                    {docsFound.length > 0 && (
+                    {/* Documents on File */}
+                    {(companyDocs[company.company_id] || []).length > 0 && (
                       <div>
-                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)] mb-1">
-                          Documents on File
+                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)] mb-2">
+                          Documents on File ({(companyDocs[company.company_id] || []).length})
                         </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {docsFound.map((d, i) => (
-                            <span
-                              key={i}
-                              className="px-2 py-0.5 rounded bg-[var(--background)] border border-[var(--border)] text-xs text-[var(--foreground-muted)]"
+                        <div className="space-y-1.5">
+                          {(companyDocs[company.company_id] || []).map((doc) => (
+                            <div
+                              key={doc.id}
+                              className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-[var(--background)] border border-[var(--border)]"
                             >
-                              {d}
-                            </span>
+                              <div className="flex items-center gap-2 min-w-0">
+                                <FileText className="w-3.5 h-3.5 text-[var(--accent)] flex-shrink-0" />
+                                <span className="text-xs truncate">
+                                  {doc.file_name || doc.document_type}
+                                </span>
+                                {doc.is_verified && (
+                                  <CheckCircle2 className="w-3 h-3 text-green-400 flex-shrink-0" />
+                                )}
+                              </div>
+                              {doc.google_drive_file_id && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-1.5 text-[10px]"
+                                  onClick={() =>
+                                    window.open(
+                                      `https://drive.google.com/file/d/${doc.google_drive_file_id}/view`,
+                                      "_blank",
+                                    )
+                                  }
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                </Button>
+                              )}
+                            </div>
                           ))}
                         </div>
                       </div>
@@ -4546,17 +4660,21 @@ function CompanyTab({
                       clientId={clientId}
                       companyId={company.company_id}
                       companyName={company.company_name}
-                      docType="akta_sk"
+                      docType="akta_pendirian"
                       label="Akta + SK"
                       hint="Deed & Kemenkumham"
+                      existingDoc={getDocByType(company.company_id, "akta_pendirian") || getDocByType(company.company_id, "sk_decree")}
+                      onUploaded={loadCompanies}
                     />
                     <CompanyDocUpload
                       clientId={clientId}
                       companyId={company.company_id}
                       companyName={company.company_name}
-                      docType="npwp_company"
+                      docType="npwp"
                       label="NPWP"
                       hint="Tax ID"
+                      existingDoc={getDocByType(company.company_id, "npwp")}
+                      onUploaded={loadCompanies}
                     />
                     <CompanyDocUpload
                       clientId={clientId}
@@ -4565,14 +4683,18 @@ function CompanyTab({
                       docType="nib"
                       label="NIB"
                       hint="Business License"
+                      existingDoc={getDocByType(company.company_id, "nib")}
+                      onUploaded={loadCompanies}
                     />
                     <CompanyDocUpload
                       clientId={clientId}
                       companyId={company.company_id}
                       companyName={company.company_name}
-                      docType="profile_perseroan"
+                      docType="company_profile"
                       label="Profile Perseroan"
                       hint="Company Profile"
+                      existingDoc={getDocByType(company.company_id, "company_profile")}
+                      onUploaded={loadCompanies}
                     />
                   </div>
                 </div>
