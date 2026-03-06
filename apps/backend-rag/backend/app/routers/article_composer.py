@@ -28,7 +28,7 @@ from typing import Any
 
 import anthropic
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
-from prometheus_client import Counter, Histogram
+from prometheus_client import REGISTRY, Counter, Histogram
 from pydantic import BaseModel, Field
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -52,8 +52,6 @@ logger = logging.getLogger(__name__)
 limiter = Limiter(key_func=get_remote_address)
 
 # --- PROMETHEUS METRICS ---
-
-from prometheus_client import REGISTRY
 
 
 def get_or_create_metric(
@@ -297,7 +295,7 @@ async def shutdown_event() -> None:
 @limiter.limit("10/minute")  # Rate limiting: 10 requests per minute per IP
 async def compose_article(
     payload: ComposeRequest,  # Body
-    request: Request = None,  # type: ignore
+    request: Request = None,  # type: ignore  # noqa: ARG001 - required by @limiter
     background_tasks: BackgroundTasks = None,  # type: ignore
     request_id: str = Depends(get_request_id),
 ) -> ComposeResponse:
@@ -496,7 +494,7 @@ async def compose_article(
                 "category": payload.category,
             },
         )
-        raise error
+        raise error from e
 
     except Exception as e:
         error = APIError.create(
