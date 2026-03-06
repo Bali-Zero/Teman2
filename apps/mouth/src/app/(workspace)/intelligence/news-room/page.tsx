@@ -563,13 +563,13 @@ export default function NewsRoomPage() {
                     }
                   >
                     <SelectTrigger
-                      className="w-[130px]"
+                      className="w-[130px] bg-zinc-800 border-zinc-600 text-zinc-100"
                       title="Homepage position"
                     >
                       <MapPin className="w-3 h-3 mr-1 shrink-0" />
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-zinc-800 border-zinc-600 text-zinc-100">
                       <SelectItem value="latest">Latest</SelectItem>
                       <SelectItem value="hero_main">Hero Main</SelectItem>
                       <SelectItem value="hero_2">Hero 2</SelectItem>
@@ -711,11 +711,11 @@ export default function NewsRoomPage() {
                 }))
               }
             >
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-[160px] bg-zinc-800 border-zinc-600 text-zinc-100">
                 <MapPin className="w-3 h-3 mr-1 shrink-0" />
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-zinc-800 border-zinc-600 text-zinc-100">
                 <SelectItem value="latest">Latest</SelectItem>
                 <SelectItem value="hero_main">Hero Main</SelectItem>
                 <SelectItem value="hero_2">Hero 2</SelectItem>
