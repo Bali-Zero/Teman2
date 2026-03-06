@@ -431,12 +431,18 @@ describe("intelligence.api", () => {
         "/api/intel/staging/publish/visa/visa-123",
         {
           method: "POST",
+          body: JSON.stringify({ position: "latest" }),
         },
       );
       expect(logger.apiCall).toHaveBeenCalledWith(
         "/api/intel/staging/publish/visa/visa-123",
         "POST",
-        { itemType: "visa", itemId: "visa-123", action: "publish" },
+        {
+          itemType: "visa",
+          itemId: "visa-123",
+          action: "publish",
+          metadata: { position: "latest" },
+        },
       );
       expect(logger.userAction).toHaveBeenCalledWith(
         "publish_item",
@@ -465,6 +471,7 @@ describe("intelligence.api", () => {
         "/api/intel/staging/publish/news/news-456",
         {
           method: "POST",
+          body: JSON.stringify({ position: "latest" }),
         },
       );
       expect(logger.userAction).toHaveBeenCalledWith(
