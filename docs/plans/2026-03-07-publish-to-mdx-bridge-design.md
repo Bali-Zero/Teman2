@@ -49,14 +49,16 @@ Add a position dropdown to the newsroom publish flow. When an article is approve
 **`POST /api/news/publish-to-site`**
 
 Request:
+
 ```json
 {
   "item_id": "abc123",
-  "position": "hero_main"  // optional, default: "latest"
+  "position": "hero_main" // optional, default: "latest"
 }
 ```
 
 Actions:
+
 1. Read enriched content from staging JSON
 2. Generate `.mdx` file with proper frontmatter (title, slug, category, tags, excerpt, etc.)
 3. Write to `apps/mouth/src/content/articles/{category}/{slug}.mdx`
@@ -65,6 +67,7 @@ Actions:
 6. Commit + push to GitHub (triggers Vercel deploy)
 
 Response:
+
 ```json
 {
   "success": true,
@@ -82,8 +85,8 @@ Response:
 ```typescript
 import layout from "@/content/homepage-layout.json";
 
-const mainNews1 = articles.find(a => a.slug === layout.hero_main);
-const mainNews2 = articles.find(a => a.slug === layout.hero_2);
+const mainNews1 = articles.find((a) => a.slug === layout.hero_main);
+const mainNews2 = articles.find((a) => a.slug === layout.hero_2);
 // ... etc
 ```
 
@@ -94,23 +97,24 @@ Fallback: if a slug from layout.json doesn't match any article, skip that positi
 **File:** `apps/mouth/src/app/(workspace)/intelligence/news-room/` (existing)
 
 Add a dropdown when publishing:
+
 - **Position options:** Hero Main, Hero 2–5, Insight 1–3, Latest (chronological)
 - Shows current occupant of each position (so user knows what gets demoted)
 - Default: "Latest"
 
 ## Positions
 
-| Position | UI Label | Homepage Location |
-|----------|----------|-------------------|
-| `hero_main` | Hero Main (Large) | Main collage card, top-left |
-| `hero_2` | Hero 2 | Collage card, top-right |
-| `hero_3` | Hero 3 | Collage card, bottom-left |
-| `hero_4` | Hero 4 | Collage card, bottom-center |
-| `hero_5` | Hero 5 | Collage card, bottom-right |
-| `insight_1` | Featured Insight 1 | Below hero, left |
-| `insight_2` | Featured Insight 2 | Below hero, center |
-| `insight_3` | Featured Insight 3 | Below hero, right |
-| `latest` | Latest (default) | Chronological feed |
+| Position    | UI Label           | Homepage Location           |
+| ----------- | ------------------ | --------------------------- |
+| `hero_main` | Hero Main (Large)  | Main collage card, top-left |
+| `hero_2`    | Hero 2             | Collage card, top-right     |
+| `hero_3`    | Hero 3             | Collage card, bottom-left   |
+| `hero_4`    | Hero 4             | Collage card, bottom-center |
+| `hero_5`    | Hero 5             | Collage card, bottom-right  |
+| `insight_1` | Featured Insight 1 | Below hero, left            |
+| `insight_2` | Featured Insight 2 | Below hero, center          |
+| `insight_3` | Featured Insight 3 | Below hero, right           |
+| `latest`    | Latest (default)   | Chronological feed          |
 
 ## MDX Generation Template
 
@@ -123,8 +127,8 @@ excerpt: "{summary or ai_summary}"
 coverImage: "/static/insights/{category}/{slug}.jpg"
 coverImageAlt: "{title}"
 publishedAt: "{ISO date}"
-tags: [{ai_tags}]
-featured: {true if hero position}
+tags: [{ ai_tags }]
+featured: { true if hero position }
 trending: false
 aiGenerated: true
 author:
@@ -132,7 +136,7 @@ author:
   avatar: "/static/zantara-avatar.png"
   role: "AI Research Assistant"
   isAI: true
-readingTime: {calculated}
+readingTime: { calculated }
 ---
 
 {content body}

@@ -13,6 +13,7 @@
 ### Task 1: Create homepage-layout.json with current hardcoded slugs
 
 **Files:**
+
 - Create: `apps/mouth/src/content/homepage-layout.json`
 
 **Step 1: Create the config file with current hardcoded values**
@@ -44,6 +45,7 @@ git commit -m "feat(mouth): add homepage-layout.json config for article position
 ### Task 2: Wire NewsPageClient.tsx to read from homepage-layout.json
 
 **Files:**
+
 - Modify: `apps/mouth/src/app/(blog)/NewsPageClient.tsx:52-79`
 
 **Step 1: Replace hardcoded slugs with layout import**
@@ -57,17 +59,17 @@ import homepageLayout from "@/content/homepage-layout.json";
 Then replace lines 52-79 (the hardcoded slug lookups) with:
 
 ```typescript
-  // Get articles for hero collage from layout config
-  const mainNews1 = articles.find((a) => a.slug === homepageLayout.hero_main);
-  const mainNews2 = articles.find((a) => a.slug === homepageLayout.hero_2);
-  const mainNews3 = articles.find((a) => a.slug === homepageLayout.hero_3);
-  const mainNews4 = articles.find((a) => a.slug === homepageLayout.hero_4);
-  const mainNews5 = articles.find((a) => a.slug === homepageLayout.hero_5);
+// Get articles for hero collage from layout config
+const mainNews1 = articles.find((a) => a.slug === homepageLayout.hero_main);
+const mainNews2 = articles.find((a) => a.slug === homepageLayout.hero_2);
+const mainNews3 = articles.find((a) => a.slug === homepageLayout.hero_3);
+const mainNews4 = articles.find((a) => a.slug === homepageLayout.hero_4);
+const mainNews5 = articles.find((a) => a.slug === homepageLayout.hero_5);
 
-  // Get insight articles from layout config
-  const kbliInsight1 = articles.find((a) => a.slug === homepageLayout.insight_1);
-  const kbliInsight2 = articles.find((a) => a.slug === homepageLayout.insight_2);
-  const kbliInsight3 = articles.find((a) => a.slug === homepageLayout.insight_3);
+// Get insight articles from layout config
+const kbliInsight1 = articles.find((a) => a.slug === homepageLayout.insight_1);
+const kbliInsight2 = articles.find((a) => a.slug === homepageLayout.insight_2);
+const kbliInsight3 = articles.find((a) => a.slug === homepageLayout.insight_3);
 ```
 
 **Step 2: Verify build**
@@ -90,6 +92,7 @@ git commit -m "feat(mouth): read homepage article positions from layout JSON con
 ### Task 3: Add position parameter to backend publish endpoint
 
 **Files:**
+
 - Modify: `apps/backend-rag/backend/app/routers/intel.py:888-1048`
 
 **Step 1: Add position parameter to publish_staging_item**
@@ -113,11 +116,13 @@ async def publish_staging_item(
 **Step 2: Pass position to publish_article call**
 
 At line 1048, replace:
+
 ```python
 position="normal",
 ```
 
 with:
+
 ```python
 position=body.position if body else "latest",
 ```
@@ -227,6 +232,7 @@ git commit -m "feat(intel): add homepage position control to publish endpoint"
 ### Task 4: Add position dropdown to newsroom UI
 
 **Files:**
+
 - Modify: `apps/mouth/src/app/(workspace)/intelligence/news-room/page.tsx`
 - Modify: `apps/mouth/src/lib/api/intelligence.api.ts`
 
@@ -262,66 +268,75 @@ In `apps/mouth/src/lib/api/intelligence.api.ts`, change `publishItem` (line 241)
 In `apps/mouth/src/app/(workspace)/intelligence/news-room/page.tsx`:
 
 Add import at top:
+
 ```typescript
 import { MapPin } from "lucide-react";
 ```
 
 Add state after line 62 (after `const toast = useToast();`):
+
 ```typescript
-  const [publishPosition, setPublishPosition] = useState<Record<string, string>>({});
+const [publishPosition, setPublishPosition] = useState<Record<string, string>>(
+  {},
+);
 ```
 
 Add a helper to get the position for an item:
+
 ```typescript
-  const getPosition = (id: string) => publishPosition[id] || "latest";
+const getPosition = (id: string) => publishPosition[id] || "latest";
 ```
 
 Replace the `handlePublish` function (lines 253-301) to pass position:
 
 ```typescript
-  const handlePublish = async (item: StagingItem) => {
-    const position = getPosition(item.id);
+const handlePublish = async (item: StagingItem) => {
+  const position = getPosition(item.id);
 
-    logger.info("Publishing item", {
+  logger.info("Publishing item", {
+    component: "NewsRoomPage",
+    action: "publish_item",
+    itemId: item.id,
+    metadata: { title: item.title, position },
+  });
+
+  setPublishingIds((prev) => new Set(prev).add(item.id));
+
+  try {
+    const response = await intelligenceApi.publishItem(
+      item.type,
+      item.id,
+      position,
+    );
+
+    logger.info("Item published successfully", {
       component: "NewsRoomPage",
-      action: "publish_item",
+      action: "publish_success",
       itemId: item.id,
-      metadata: { title: item.title, position },
+      metadata: { published_url: response.published_url, position },
     });
 
-    setPublishingIds((prev) => new Set(prev).add(item.id));
+    toast.success(
+      "Published!",
+      `"${response.title}" published${position !== "latest" ? ` to ${position.replace("_", " ")}` : ""}`,
+    );
 
-    try {
-      const response = await intelligenceApi.publishItem(item.type, item.id, position);
-
-      logger.info("Item published successfully", {
-        component: "NewsRoomPage",
-        action: "publish_success",
-        itemId: item.id,
-        metadata: { published_url: response.published_url, position },
-      });
-
-      toast.success(
-        "Published!",
-        `"${response.title}" published${position !== "latest" ? ` to ${position.replace("_", " ")}` : ""}`,
-      );
-
-      loadNews();
-    } catch (error) {
-      logger.error(
-        "Failed to publish item",
-        { component: "NewsRoomPage", action: "publish_error", itemId: item.id },
-        error as Error,
-      );
-      toast.error("Error", "Failed to publish article");
-    } finally {
-      setPublishingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(item.id);
-        return next;
-      });
-    }
-  };
+    loadNews();
+  } catch (error) {
+    logger.error(
+      "Failed to publish item",
+      { component: "NewsRoomPage", action: "publish_error", itemId: item.id },
+      error as Error,
+    );
+    toast.error("Error", "Failed to publish article");
+  } finally {
+    setPublishingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(item.id);
+      return next;
+    });
+  }
+};
 ```
 
 **Step 3: Add position selector in card footer**
@@ -415,6 +430,7 @@ git commit -m "feat(newsroom): add homepage position dropdown to publish flow"
 ### Task 5: Add position to bulk publish
 
 **Files:**
+
 - Modify: `apps/mouth/src/app/(workspace)/intelligence/news-room/page.tsx:173-230`
 
 **Step 1: Update bulk publish to use "latest" position**
@@ -422,7 +438,7 @@ git commit -m "feat(newsroom): add homepage position dropdown to publish flow"
 In `handleBulkPublish`, change line 194:
 
 ```typescript
-        await intelligenceApi.publishItem(item.type, id, getPosition(id));
+await intelligenceApi.publishItem(item.type, id, getPosition(id));
 ```
 
 This allows each selected item to have its own position if set, defaulting to "latest".
@@ -472,13 +488,13 @@ This triggers Vercel auto-deploy for frontend.
 
 ## Summary of Changes
 
-| File | Action | Description |
-|------|--------|-------------|
-| `apps/mouth/src/content/homepage-layout.json` | Create | JSON config mapping 8 positions to article slugs |
-| `apps/mouth/src/app/(blog)/NewsPageClient.tsx` | Modify | Import layout config instead of hardcoded slugs |
-| `apps/backend-rag/backend/app/routers/intel.py` | Modify | Add position param + `update_homepage_layout()` |
-| `apps/mouth/src/lib/api/intelligence.api.ts` | Modify | Pass position in `publishItem()` |
-| `apps/mouth/src/app/(workspace)/intelligence/news-room/page.tsx` | Modify | Add position dropdown to card footer + preview |
+| File                                                             | Action | Description                                      |
+| ---------------------------------------------------------------- | ------ | ------------------------------------------------ |
+| `apps/mouth/src/content/homepage-layout.json`                    | Create | JSON config mapping 8 positions to article slugs |
+| `apps/mouth/src/app/(blog)/NewsPageClient.tsx`                   | Modify | Import layout config instead of hardcoded slugs  |
+| `apps/backend-rag/backend/app/routers/intel.py`                  | Modify | Add position param + `update_homepage_layout()`  |
+| `apps/mouth/src/lib/api/intelligence.api.ts`                     | Modify | Pass position in `publishItem()`                 |
+| `apps/mouth/src/app/(workspace)/intelligence/news-room/page.tsx` | Modify | Add position dropdown to card footer + preview   |
 
 ## Dependencies
 
