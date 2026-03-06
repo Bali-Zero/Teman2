@@ -32,6 +32,152 @@ logger = logging.getLogger(__name__)
 # ============================================
 
 
+async def _download_drive_file(file_id: str) -> tuple[bytes, str]:
+    """
+    Download a file from Google Drive using Service Account credentials.
+    Returns (file_content, mime_type).
+    Raises RuntimeError on failure.
+    """
+    import google.auth.transport.requests as google_auth_requests
+    import httpx
+
+    drive_service = ServiceAccountDriveService()
+    if not drive_service.credentials.token:
+        drive_service.credentials.refresh(google_auth_requests.Request())
+    access_token = drive_service.credentials.token
+    if not access_token:
+        raise RuntimeError("Drive not connected")
+
+    async with httpx.AsyncClient(timeout=30.0) as http_client:
+        meta_response = await http_client.get(
+            f"https://www.googleapis.com/drive/v3/files/{file_id}",
+            params={"fields": "mimeType,name"},
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        if meta_response.status_code != 200:
+            raise RuntimeError(f"Metadata fetch failed: {meta_response.status_code}")
+
+        mime_type = meta_response.json().get("mimeType", "image/jpeg")
+
+        download_response = await http_client.get(
+            f"https://www.googleapis.com/drive/v3/files/{file_id}",
+            params={"alt": "media"},
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        if download_response.status_code != 200:
+            raise RuntimeError(f"Download failed: {download_response.status_code}")
+
+        return download_response.content, mime_type
+
+
+async def _gemini_ocr(image_data: bytes, mime_type: str, prompt: str) -> str:
+    """
+    Run OCR on image data using Gemini.
+    Strategy: try Gemini CLI first (free, ~25s), fallback to API (paid, ~3s).
+    Returns raw text response from the model.
+    """
+    import asyncio
+    import shutil
+    import tempfile
+
+    # --- Attempt 1: Gemini CLI (free via Ultra subscription) ---
+    gemini_path = shutil.which("gemini")
+    if gemini_path:
+        try:
+            # Determine file extension from mime type
+            ext_map = {
+                "image/jpeg": ".jpg",
+                "image/png": ".png",
+                "image/webp": ".webp",
+                "application/pdf": ".pdf",
+            }
+            ext = ext_map.get(mime_type, ".jpg")
+
+            with tempfile.NamedTemporaryFile(suffix=ext, delete=False, dir="/tmp") as f:
+                f.write(image_data)
+                tmp_path = f.name
+
+            try:
+                cli_prompt = (
+                    f"Use read_file to read the image at {tmp_path}. "
+                    f"{prompt} Return JSON only, null for missing fields."
+                )
+                process = await asyncio.create_subprocess_exec(
+                    gemini_path,
+                    "-p",
+                    cli_prompt,
+                    "-o",
+                    "text",
+                    "--yolo",
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    cwd="/tmp",
+                )
+                stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=90)
+
+                if process.returncode == 0 and stdout:
+                    response_text = stdout.decode("utf-8", errors="replace").strip()
+                    # Remove the "Shell cwd was reset" line if present
+                    lines = [
+                        line
+                        for line in response_text.split("\n")
+                        if not line.startswith("Shell cwd was reset")
+                    ]
+                    response_text = "\n".join(lines).strip()
+                    if response_text:
+                        logger.info(f"OCR via Gemini CLI (free): {len(response_text)} chars")
+                        return response_text
+                    logger.warning("Gemini CLI returned empty response, falling back to API")
+                else:
+                    stderr_text = stderr.decode("utf-8", errors="replace")[:200] if stderr else ""
+                    logger.warning(f"Gemini CLI failed (rc={process.returncode}): {stderr_text}")
+            finally:
+                import os
+
+                os.unlink(tmp_path)
+
+        except asyncio.TimeoutError:
+            logger.warning("Gemini CLI timed out (90s), falling back to API")
+            try:
+                import os
+
+                os.unlink(tmp_path)
+            except Exception:
+                pass
+        except Exception as e:
+            logger.warning(f"Gemini CLI error: {e}, falling back to API")
+
+    # --- Attempt 2: Gemini API (paid, fast) ---
+    from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
+
+    if not GENAI_AVAILABLE:
+        raise RuntimeError("Neither Gemini CLI nor Gemini API available")
+
+    genai_client = GenAIClient()
+    if not genai_client.is_available:
+        raise RuntimeError("Gemini not configured")
+
+    contents = [
+        prompt,
+        {
+            "inline_data": {
+                "mime_type": mime_type,
+                "data": base64.b64encode(image_data).decode(),
+            }
+        },
+    ]
+
+    result = await genai_client.generate_content(
+        contents=contents,
+        model="gemini-2.5-flash",
+        max_output_tokens=4096,
+    )
+
+    response_text = result.get("text", "")
+    logger.info(f"OCR via Gemini API (paid): {len(response_text)} chars")
+    return response_text
+
+
 async def _auto_ocr_passport(client_id: int, file_id: str) -> dict:
     """
     Automatically run OCR on passport image and update client record.
@@ -41,24 +187,9 @@ async def _auto_ocr_passport(client_id: int, file_id: str) -> dict:
     import os
 
     import asyncpg
-    import httpx
 
     db_pool = None
     try:
-        from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
-        from backend.services.integrations.service_account_drive_service import (
-            ServiceAccountDriveService,
-        )
-
-        if not GENAI_AVAILABLE:
-            logger.warning("Auto OCR: GenAI not available")
-            return {"success": False, "error": "GenAI not available"}
-
-        genai_client = GenAIClient()
-        if not genai_client.is_available:
-            logger.warning("Auto OCR: Gemini not configured")
-            return {"success": False, "error": "Gemini not configured"}
-
         # Create own pool for background task
         db_pool = await asyncpg.create_pool(os.environ["DATABASE_URL"], min_size=1, max_size=2)
 
@@ -69,67 +200,12 @@ async def _auto_ocr_passport(client_id: int, file_id: str) -> dict:
                 return {"success": False, "error": "Client not found"}
             existing_name = client["full_name"]
 
-        # Get Drive access token using Service Account
-        import google.auth.transport.requests as google_auth_requests
+        # Download from Drive + OCR (CLI free → API fallback)
+        image_data, mime_type = await _download_drive_file(file_id)
 
-        drive_service = ServiceAccountDriveService()
-        if not drive_service.credentials.token:
-            drive_service.credentials.refresh(google_auth_requests.Request())
-        access_token = drive_service.credentials.token
-        if not access_token:
-            logger.warning("Auto OCR: Google Drive not connected")
-            return {"success": False, "error": "Drive not connected"}
+        ocr_prompt = "Extract from this passport: passport_number, expiry_date (YYYY-MM-DD), full_name, gender (M/F), date_of_birth (YYYY-MM-DD), birthplace, nationality, confidence (0-1)."
 
-        # Download passport image
-        async with httpx.AsyncClient(timeout=30.0) as http_client:
-            meta_response = await http_client.get(
-                f"https://www.googleapis.com/drive/v3/files/{file_id}",
-                params={"fields": "mimeType,name"},
-                headers={"Authorization": f"Bearer {access_token}"},
-            )
-            if meta_response.status_code != 200:
-                return {
-                    "success": False,
-                    "error": f"Metadata fetch failed: {meta_response.status_code}",
-                }
-
-            metadata = meta_response.json()
-            mime_type = metadata.get("mimeType", "image/jpeg")
-
-            download_response = await http_client.get(
-                f"https://www.googleapis.com/drive/v3/files/{file_id}",
-                params={"alt": "media"},
-                headers={"Authorization": f"Bearer {access_token}"},
-            )
-            if download_response.status_code != 200:
-                return {
-                    "success": False,
-                    "error": f"Download failed: {download_response.status_code}",
-                }
-
-            image_data = download_response.content
-
-        # OCR prompt - keep short to avoid truncation with large PDFs
-        ocr_prompt = """Extract from this passport: passport_number, expiry_date (YYYY-MM-DD), full_name, gender (M/F), date_of_birth (YYYY-MM-DD), birthplace, nationality, confidence (0-1). Return JSON only, null for missing fields."""
-
-        # Call Gemini Vision
-        contents = [
-            ocr_prompt,
-            {
-                "inline_data": {
-                    "mime_type": mime_type,
-                    "data": base64.b64encode(image_data).decode(),
-                }
-            },
-        ]
-
-        result = await genai_client.generate_content(
-            contents=contents,
-            model="gemini-2.5-flash",
-            max_output_tokens=4096,
-        )
-
-        response_text = result.get("text", "")
+        response_text = await _gemini_ocr(image_data, mime_type, ocr_prompt)
         logger.info(f"Auto OCR response for client {client_id}: {response_text[:200]}...")
 
         # Parse JSON (handles code fences and chain-of-thought)
@@ -249,81 +325,17 @@ async def _auto_ocr_visa(client_id: int, file_id: str, doc_id: int | None = None
     import os
 
     import asyncpg
-    import httpx
 
     db_pool = None
     try:
-        from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
-        from backend.services.integrations.service_account_drive_service import (
-            ServiceAccountDriveService,
-        )
-
-        if not GENAI_AVAILABLE:
-            return {"success": False, "error": "GenAI not available"}
-
-        genai_client = GenAIClient()
-        if not genai_client.is_available:
-            return {"success": False, "error": "Gemini not configured"}
-
         db_pool = await asyncpg.create_pool(os.environ["DATABASE_URL"], min_size=1, max_size=2)
 
-        import google.auth.transport.requests as google_auth_requests
+        # Download from Drive + OCR (CLI free → API fallback)
+        image_data, mime_type = await _download_drive_file(file_id)
 
-        drive_service = ServiceAccountDriveService()
-        if not drive_service.credentials.token:
-            drive_service.credentials.refresh(google_auth_requests.Request())
-        access_token = drive_service.credentials.token
-        if not access_token:
-            return {"success": False, "error": "Drive not connected"}
+        ocr_prompt = "Extract from this visa/immigration document: visa_type (KITAS/KITAP/B211/C31/etc), visa_number, expiry_date (YYYY-MM-DD), issue_date (YYYY-MM-DD), full_name, sponsor, telex_number, confidence (0-1)."
 
-        # Download file
-        async with httpx.AsyncClient(timeout=30.0) as http_client:
-            meta_response = await http_client.get(
-                f"https://www.googleapis.com/drive/v3/files/{file_id}",
-                params={"fields": "mimeType,name"},
-                headers={"Authorization": f"Bearer {access_token}"},
-            )
-            if meta_response.status_code != 200:
-                return {
-                    "success": False,
-                    "error": f"Metadata fetch failed: {meta_response.status_code}",
-                }
-
-            metadata = meta_response.json()
-            mime_type = metadata.get("mimeType", "image/jpeg")
-
-            download_response = await http_client.get(
-                f"https://www.googleapis.com/drive/v3/files/{file_id}",
-                params={"alt": "media"},
-                headers={"Authorization": f"Bearer {access_token}"},
-            )
-            if download_response.status_code != 200:
-                return {
-                    "success": False,
-                    "error": f"Download failed: {download_response.status_code}",
-                }
-
-            image_data = download_response.content
-
-        ocr_prompt = """Extract from this visa/immigration document: visa_type (KITAS/KITAP/B211/C31/etc), visa_number, expiry_date (YYYY-MM-DD), issue_date (YYYY-MM-DD), full_name, sponsor, telex_number, confidence (0-1). Return JSON only, null for missing fields."""
-
-        contents = [
-            ocr_prompt,
-            {
-                "inline_data": {
-                    "mime_type": mime_type,
-                    "data": base64.b64encode(image_data).decode(),
-                }
-            },
-        ]
-
-        result = await genai_client.generate_content(
-            contents=contents,
-            model="gemini-2.5-flash",
-            max_output_tokens=4096,
-        )
-
-        response_text = result.get("text", "")
+        response_text = await _gemini_ocr(image_data, mime_type, ocr_prompt)
         logger.info(f"Auto OCR visa response for client {client_id}: {response_text[:200]}...")
 
         extracted = extract_json_from_llm_response(response_text)
@@ -403,80 +415,17 @@ async def _auto_ocr_nib(client_id: int, file_id: str, doc_id: int | None = None)
     import os
 
     import asyncpg
-    import httpx
 
     db_pool = None
     try:
-        from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
-        from backend.services.integrations.service_account_drive_service import (
-            ServiceAccountDriveService,
-        )
-
-        if not GENAI_AVAILABLE:
-            return {"success": False, "error": "GenAI not available"}
-
-        genai_client = GenAIClient()
-        if not genai_client.is_available:
-            return {"success": False, "error": "Gemini not configured"}
-
         db_pool = await asyncpg.create_pool(os.environ["DATABASE_URL"], min_size=1, max_size=2)
 
-        import google.auth.transport.requests as google_auth_requests
+        # Download from Drive + OCR (CLI free → API fallback)
+        image_data, mime_type = await _download_drive_file(file_id)
 
-        drive_service = ServiceAccountDriveService()
-        if not drive_service.credentials.token:
-            drive_service.credentials.refresh(google_auth_requests.Request())
-        access_token = drive_service.credentials.token
-        if not access_token:
-            return {"success": False, "error": "Drive not connected"}
+        ocr_prompt = "Extract from this NIB (Nomor Induk Berusaha) document: nib_number, company_name, kbli_codes (array of strings), address, issue_date (YYYY-MM-DD), capital_amount, confidence (0-1)."
 
-        async with httpx.AsyncClient(timeout=30.0) as http_client:
-            meta_response = await http_client.get(
-                f"https://www.googleapis.com/drive/v3/files/{file_id}",
-                params={"fields": "mimeType,name"},
-                headers={"Authorization": f"Bearer {access_token}"},
-            )
-            if meta_response.status_code != 200:
-                return {
-                    "success": False,
-                    "error": f"Metadata fetch failed: {meta_response.status_code}",
-                }
-
-            metadata = meta_response.json()
-            mime_type = metadata.get("mimeType", "image/jpeg")
-
-            download_response = await http_client.get(
-                f"https://www.googleapis.com/drive/v3/files/{file_id}",
-                params={"alt": "media"},
-                headers={"Authorization": f"Bearer {access_token}"},
-            )
-            if download_response.status_code != 200:
-                return {
-                    "success": False,
-                    "error": f"Download failed: {download_response.status_code}",
-                }
-
-            image_data = download_response.content
-
-        ocr_prompt = """Extract from this NIB (Nomor Induk Berusaha) document: nib_number, company_name, kbli_codes (array of strings), address, issue_date (YYYY-MM-DD), capital_amount, confidence (0-1). Return JSON only, null for missing fields."""
-
-        contents = [
-            ocr_prompt,
-            {
-                "inline_data": {
-                    "mime_type": mime_type,
-                    "data": base64.b64encode(image_data).decode(),
-                }
-            },
-        ]
-
-        result = await genai_client.generate_content(
-            contents=contents,
-            model="gemini-2.5-flash",
-            max_output_tokens=4096,
-        )
-
-        response_text = result.get("text", "")
+        response_text = await _gemini_ocr(image_data, mime_type, ocr_prompt)
         logger.info(f"Auto OCR NIB response for client {client_id}: {response_text[:200]}...")
 
         extracted = extract_json_from_llm_response(response_text)
@@ -552,80 +501,17 @@ async def _auto_ocr_npwp(client_id: int, file_id: str, doc_id: int | None = None
     import os
 
     import asyncpg
-    import httpx
 
     db_pool = None
     try:
-        from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
-        from backend.services.integrations.service_account_drive_service import (
-            ServiceAccountDriveService,
-        )
-
-        if not GENAI_AVAILABLE:
-            return {"success": False, "error": "GenAI not available"}
-
-        genai_client = GenAIClient()
-        if not genai_client.is_available:
-            return {"success": False, "error": "Gemini not configured"}
-
         db_pool = await asyncpg.create_pool(os.environ["DATABASE_URL"], min_size=1, max_size=2)
 
-        import google.auth.transport.requests as google_auth_requests
+        # Download from Drive + OCR (CLI free → API fallback)
+        image_data, mime_type = await _download_drive_file(file_id)
 
-        drive_service = ServiceAccountDriveService()
-        if not drive_service.credentials.token:
-            drive_service.credentials.refresh(google_auth_requests.Request())
-        access_token = drive_service.credentials.token
-        if not access_token:
-            return {"success": False, "error": "Drive not connected"}
+        ocr_prompt = "Extract from this NPWP (Indonesian Tax ID) document: npwp_number, full_name, address, kpp_name (Kantor Pelayanan Pajak), registration_date (YYYY-MM-DD), confidence (0-1)."
 
-        async with httpx.AsyncClient(timeout=30.0) as http_client:
-            meta_response = await http_client.get(
-                f"https://www.googleapis.com/drive/v3/files/{file_id}",
-                params={"fields": "mimeType,name"},
-                headers={"Authorization": f"Bearer {access_token}"},
-            )
-            if meta_response.status_code != 200:
-                return {
-                    "success": False,
-                    "error": f"Metadata fetch failed: {meta_response.status_code}",
-                }
-
-            metadata = meta_response.json()
-            mime_type = metadata.get("mimeType", "image/jpeg")
-
-            download_response = await http_client.get(
-                f"https://www.googleapis.com/drive/v3/files/{file_id}",
-                params={"alt": "media"},
-                headers={"Authorization": f"Bearer {access_token}"},
-            )
-            if download_response.status_code != 200:
-                return {
-                    "success": False,
-                    "error": f"Download failed: {download_response.status_code}",
-                }
-
-            image_data = download_response.content
-
-        ocr_prompt = """Extract from this NPWP (Indonesian Tax ID) document: npwp_number, full_name, address, kpp_name (Kantor Pelayanan Pajak), registration_date (YYYY-MM-DD), confidence (0-1). Return JSON only, null for missing fields."""
-
-        contents = [
-            ocr_prompt,
-            {
-                "inline_data": {
-                    "mime_type": mime_type,
-                    "data": base64.b64encode(image_data).decode(),
-                }
-            },
-        ]
-
-        result = await genai_client.generate_content(
-            contents=contents,
-            model="gemini-2.5-flash",
-            max_output_tokens=4096,
-        )
-
-        response_text = result.get("text", "")
+        response_text = await _gemini_ocr(image_data, mime_type, ocr_prompt)
         logger.info(f"Auto OCR NPWP response for client {client_id}: {response_text[:200]}...")
 
         extracted = extract_json_from_llm_response(response_text)
@@ -1108,6 +994,51 @@ async def get_client_companies(
             """,
             client_id,
         )
+        return [dict(r) for r in rows]
+
+
+@router.get("/companies/{company_id}/documents")
+async def get_company_documents(
+    company_id: int,
+    doc_type: str | None = Query(None),
+    pool=Depends(get_database_pool),
+    _current_user: dict = Depends(get_current_user),
+) -> list[dict[str, Any]]:
+    """Get all documents for a company."""
+    async with pool.acquire() as conn:
+        if doc_type:
+            rows = await conn.fetch(
+                """
+                SELECT id, uuid, company_id, document_type, document_subtype,
+                       document_number, document_title, description,
+                       issue_date, expiry_date, status,
+                       google_drive_file_id, google_drive_file_url,
+                       file_name, file_size_kb, mime_type,
+                       is_verified, verified_by, verified_at,
+                       created_at, updated_at
+                FROM company_documents
+                WHERE company_id = $1 AND document_type = $2
+                ORDER BY created_at DESC
+                """,
+                company_id,
+                doc_type,
+            )
+        else:
+            rows = await conn.fetch(
+                """
+                SELECT id, uuid, company_id, document_type, document_subtype,
+                       document_number, document_title, description,
+                       issue_date, expiry_date, status,
+                       google_drive_file_id, google_drive_file_url,
+                       file_name, file_size_kb, mime_type,
+                       is_verified, verified_by, verified_at,
+                       created_at, updated_at
+                FROM company_documents
+                WHERE company_id = $1
+                ORDER BY created_at DESC
+                """,
+                company_id,
+            )
         return [dict(r) for r in rows]
 
 

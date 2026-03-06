@@ -28,7 +28,10 @@ def register(mcp, _call, _call_safe):
             params["status"] = status
         if search:
             params["search"] = search
-        return await _call("/api/crm/clients", params=params)
+        result = await _call("/api/crm/clients/", params=params)
+        if isinstance(result, list):
+            return {"clients": result, "count": len(result)}
+        return result
 
     @mcp.tool()
     async def get_client(client_id: str) -> dict:
@@ -69,7 +72,7 @@ def register(mcp, _call, _call_safe):
             payload["phone"] = phone
         if notes:
             payload["notes"] = notes
-        return await _call("/api/crm/clients", method="POST", json=payload)
+        return await _call("/api/crm/clients/", method="POST", json=payload)
 
     @mcp.tool()
     async def update_client(client_id: str, updates: dict) -> dict:
@@ -94,7 +97,7 @@ def register(mcp, _call, _call_safe):
             Total clients, active/inactive/prospect counts, nationality distribution,
             practices per status, revenue metrics.
         """
-        return await _call("/api/crm/clients/stats")
+        return await _call("/api/crm/clients/stats/overview")
 
     @mcp.tool()
     async def list_practices(
@@ -124,7 +127,10 @@ def register(mcp, _call, _call_safe):
             params["status"] = status
         if practice_type:
             params["type"] = practice_type
-        return await _call("/api/crm/practices", params=params)
+        result = await _call("/api/crm/practices/", params=params)
+        if isinstance(result, list):
+            return {"practices": result, "count": len(result)}
+        return result
 
     @mcp.tool()
     async def get_practice(practice_id: str) -> dict:
@@ -159,7 +165,7 @@ def register(mcp, _call, _call_safe):
         payload: dict = {"client_id": client_id, "type": practice_type}
         if notes:
             payload["notes"] = notes
-        return await _call("/api/crm/practices", method="POST", json=payload)
+        return await _call("/api/crm/practices/", method="POST", json=payload)
 
     @mcp.tool()
     async def update_practice_status(
@@ -198,10 +204,14 @@ def register(mcp, _call, _call_safe):
         Returns:
             List of alerts: client, practice, document, expiry_date, days_remaining, severity.
         """
-        return await _call(
+        result = await _call(
             "/api/crm/expiry-alerts",
             params={"days_ahead": days_ahead},
         )
+        # Backend returns list directly — wrap for MCP compatibility
+        if isinstance(result, list):
+            return {"alerts": result, "count": len(result)}
+        return result
 
     @mcp.tool()
     async def get_client_timeline(client_id: str, limit: int = 50) -> dict:
