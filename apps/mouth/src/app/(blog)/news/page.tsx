@@ -17,6 +17,7 @@ import {
 import type { ArticleListItem } from "@/lib/blog/types";
 import { HomepageSEOSchemas } from "@/components/seo/HomepageFAQ";
 import { useTranslation } from "@/i18n";
+import homepageLayout from "@/content/homepage-layout.json";
 
 // App domain for internal routes
 const APP_DOMAIN =
@@ -30,32 +31,32 @@ export default function NewsPage() {
   const { t } = useTranslation();
   const [articles] = React.useState<ArticleListItem[]>(MOCK_ARTICLES);
 
-  // Get specific articles for the asymmetric collage - CONSTITUTIONAL CLASH FEATURED
+  // Get articles for hero collage from layout config
   const mainNews1 = articles.find(
-    (a) => a.slug === "constitutional-clash-bank-statements",
-  ); // RIGHT - large - MAIN FEATURE
+    (a) => a.slug === homepageLayout.hero_main,
+  );
   const mainNews2 = articles.find(
-    (a) => a.slug === "kbli-2025-bali-transformation",
-  ); // LEFT top - KBLI Bali
+    (a) => a.slug === homepageLayout.hero_2,
+  );
   const mainNews3 = articles.find(
-    (a) => a.slug === "art-of-strategic-patience",
-  ); // MIDDLE top - Strategic Patience
+    (a) => a.slug === homepageLayout.hero_3,
+  );
   const mainNews4 = articles.find(
-    (a) => a.slug === "ota-data-crackdown-bali-2026",
-  ); // MIDDLE bottom - OTA TAX CRACKDOWN
+    (a) => a.slug === homepageLayout.hero_4,
+  );
   const mainNews5 = articles.find(
-    (a) => a.slug === "property-green-zone-alert",
-  ); // LEFT bottom - Property Alert
+    (a) => a.slug === homepageLayout.hero_5,
+  );
 
-  // Get KBLI Navigator articles for Latest Insights section
+  // Get insight articles from layout config
   const kbliInsight1 = articles.find(
-    (a) => a.slug === "kbli-2025-changes-foreign-investors",
+    (a) => a.slug === homepageLayout.insight_1,
   );
   const kbliInsight2 = articles.find(
-    (a) => a.slug === "kbli-risk-levels-explained",
+    (a) => a.slug === homepageLayout.insight_2,
   );
   const kbliInsight3 = articles.find(
-    (a) => a.slug === "finding-kbli-code-fast",
+    (a) => a.slug === homepageLayout.insight_3,
   );
   const kbliInsights = [kbliInsight1, kbliInsight2, kbliInsight3].filter(
     Boolean,
