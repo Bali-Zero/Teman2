@@ -1,9 +1,9 @@
 """CRM Tools - 12 tools for client and practice management."""
 
-from typing import Optional
+from typing import Any, Optional
 
 
-def register(mcp, _call, _call_safe):
+def register(mcp: Any, _call: Any, _call_safe: Any) -> None:
     @mcp.tool()
     async def list_clients(
         status: Optional[str] = None,
