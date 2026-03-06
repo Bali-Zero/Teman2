@@ -2064,6 +2064,128 @@ function VisaCard({
 // ============================================
 // FAMILY TAB
 // ============================================
+function FamilyMemberUploadButton({
+  clientId,
+  memberId,
+  memberName,
+  documentType,
+  onRefresh,
+}: {
+  clientId: number;
+  memberId: number;
+  memberName: string;
+  documentType: "passport" | "visa";
+  onRefresh: () => void;
+}) {
+  const [isUploading, setIsUploading] = useState(false);
+  const [ocrPolling, setOcrPolling] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const pollOcrStatus = useCallback(async () => {
+    setOcrPolling(true);
+    let attempts = 0;
+    const poll = async () => {
+      try {
+        const status = (await api.request(
+          `/api/crm/clients/${clientId}/ocr-status`,
+        )) as { pending_ocr: number };
+        if (status.pending_ocr === 0 || attempts >= 10) {
+          setOcrPolling(false);
+          onRefresh();
+          return;
+        }
+        attempts++;
+        setTimeout(poll, 3000);
+      } catch {
+        setOcrPolling(false);
+        onRefresh();
+      }
+    };
+    setTimeout(poll, 2000);
+  }, [clientId, onRefresh]);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const allowedTypes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "application/pdf",
+    ];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Invalid file type", {
+        description: "Please upload JPG, PNG, or PDF",
+      });
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File too large", { description: "Maximum 10MB" });
+      return;
+    }
+    setIsUploading(true);
+    try {
+      const base64 = await fileToBase64(file);
+      const response = (await api.post(
+        `/api/crm/clients/${clientId}/documents/upload`,
+        {
+          file: base64,
+          file_name: file.name,
+          document_type: documentType,
+          mime_type: file.type,
+          family_member_id: memberId,
+        },
+      )) as { success: boolean; message?: string };
+      if (response.success) {
+        toast.success(
+          `${documentType === "passport" ? "Passport" : "Visa"} uploaded for ${memberName} — OCR in corso...`,
+        );
+        pollOcrStatus();
+      } else {
+        toast.error("Upload failed", { description: response.message });
+      }
+    } catch (err) {
+      toast.error("Upload failed", { description: (err as Error).message });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  return (
+    <>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".jpg,.jpeg,.png,.pdf"
+        className="hidden"
+        onChange={handleUpload}
+        disabled={isUploading}
+      />
+      <Button
+        variant="outline"
+        size="sm"
+        className="gap-2 text-xs w-full"
+        onClick={() => fileInputRef.current?.click()}
+        disabled={isUploading || ocrPolling}
+      >
+        {isUploading ? (
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+        ) : ocrPolling ? (
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+        ) : (
+          <Upload className="w-3.5 h-3.5" />
+        )}
+        {isUploading
+          ? "Uploading..."
+          : ocrPolling
+            ? "OCR in corso..."
+            : `Upload ${documentType === "passport" ? "Passport" : "Visa"}`}
+      </Button>
+    </>
+  );
+}
+
 function FamilyTab({
   clientId,
   familyMembers,
@@ -2293,13 +2415,27 @@ function FamilyTab({
                             Download Passport
                           </Button>
                         )}
+                        <FamilyMemberUploadButton
+                          clientId={clientId}
+                          memberId={member.id}
+                          memberName={member.full_name}
+                          documentType="passport"
+                          onRefresh={onRefresh}
+                        />
                       </div>
                     ) : (
-                      <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--background)]/30 p-4 text-center">
+                      <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--background)]/30 p-4 text-center space-y-3">
                         <CreditCard className="w-6 h-6 mx-auto text-[var(--foreground-muted)] opacity-30 mb-1" />
                         <p className="text-xs text-[var(--foreground-muted)]">
                           No passport data
                         </p>
+                        <FamilyMemberUploadButton
+                          clientId={clientId}
+                          memberId={member.id}
+                          memberName={member.full_name}
+                          documentType="passport"
+                          onRefresh={onRefresh}
+                        />
                       </div>
                     )}
                   </div>
@@ -2375,13 +2511,27 @@ function FamilyTab({
                             Download Visa
                           </Button>
                         )}
+                        <FamilyMemberUploadButton
+                          clientId={clientId}
+                          memberId={member.id}
+                          memberName={member.full_name}
+                          documentType="visa"
+                          onRefresh={onRefresh}
+                        />
                       </div>
                     ) : (
-                      <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--background)]/30 p-4 text-center">
+                      <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--background)]/30 p-4 text-center space-y-3">
                         <Globe className="w-6 h-6 mx-auto text-[var(--foreground-muted)] opacity-30 mb-1" />
                         <p className="text-xs text-[var(--foreground-muted)]">
                           No visa data
                         </p>
+                        <FamilyMemberUploadButton
+                          clientId={clientId}
+                          memberId={member.id}
+                          memberName={member.full_name}
+                          documentType="visa"
+                          onRefresh={onRefresh}
+                        />
                       </div>
                     )}
                   </div>
@@ -3783,6 +3933,143 @@ function EditDocumentModal({
 // ============================================
 // COMPANY TAB (Company-Centric CRM)
 // ============================================
+function CompanyDocUpload({
+  clientId,
+  companyId,
+  companyName,
+  docType,
+  label,
+  hint,
+}: {
+  clientId: number;
+  companyId: number;
+  companyName: string;
+  docType: string;
+  label: string;
+  hint: string;
+}) {
+  const [isUploading, setIsUploading] = useState(false);
+  const [ocrPolling, setOcrPolling] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const pollOcrStatus = useCallback(async () => {
+    setOcrPolling(true);
+    let attempts = 0;
+    const poll = async () => {
+      try {
+        const status = (await api.request(
+          `/api/crm/clients/${clientId}/ocr-status`,
+        )) as { pending_ocr: number };
+        if (status.pending_ocr === 0 || attempts >= 10) {
+          setOcrPolling(false);
+          return;
+        }
+        attempts++;
+        setTimeout(poll, 3000);
+      } catch {
+        setOcrPolling(false);
+      }
+    };
+    setTimeout(poll, 2000);
+  }, [clientId]);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const allowedTypes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "application/pdf",
+    ];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Invalid file type", {
+        description: "Please upload JPG, PNG, or PDF",
+      });
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File too large", { description: "Maximum 10MB" });
+      return;
+    }
+    setIsUploading(true);
+    try {
+      const base64 = await fileToBase64(file);
+      const response = (await api.post(
+        `/api/crm/clients/${clientId}/documents/upload`,
+        {
+          file: base64,
+          file_name: file.name,
+          document_type: docType,
+          document_category: "pma",
+          mime_type: file.type,
+          company_id: companyId,
+        },
+      )) as { success: boolean; message?: string };
+      if (response.success) {
+        setUploadedFile(file.name);
+        toast.success(`${label} uploaded for ${companyName} — OCR in corso...`);
+        pollOcrStatus();
+      } else {
+        toast.error("Upload failed", { description: response.message });
+      }
+    } catch (err) {
+      toast.error("Upload failed", { description: (err as Error).message });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  return (
+    <div className="border border-dashed border-[var(--border)] rounded-lg p-3 hover:border-[var(--accent)]/50 transition-colors">
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-sm font-medium text-[var(--foreground)]">
+          {label}
+        </span>
+        <span className="text-[10px] text-[var(--foreground-muted)]">
+          {hint}
+        </span>
+      </div>
+      {uploadedFile && (
+        <p className="text-xs text-green-400 mb-2 flex items-center gap-1">
+          <CheckCircle2 className="w-3 h-3" />
+          {uploadedFile}
+        </p>
+      )}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".jpg,.jpeg,.png,.pdf"
+        className="hidden"
+        onChange={handleUpload}
+        disabled={isUploading}
+      />
+      <Button
+        variant="outline"
+        size="sm"
+        className="gap-2 text-xs w-full"
+        onClick={() => fileInputRef.current?.click()}
+        disabled={isUploading || ocrPolling}
+      >
+        {isUploading ? (
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+        ) : ocrPolling ? (
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+        ) : (
+          <Upload className="w-3.5 h-3.5" />
+        )}
+        {isUploading
+          ? "Uploading..."
+          : ocrPolling
+            ? "OCR in corso..."
+            : `Upload ${label}`}
+      </Button>
+    </div>
+  );
+}
+
 function CompanyTab({
   clientId,
   formatDate,
@@ -4246,6 +4533,47 @@ function CompanyTab({
                         </p>
                       </div>
                     )}
+                  </div>
+                </div>
+
+                {/* Company Documents — Upload Section */}
+                <div className="px-6 py-5 border-t border-[var(--border)]">
+                  <h5 className="text-xs uppercase tracking-wider text-[var(--foreground-muted)] font-semibold mb-4">
+                    Company Documents
+                  </h5>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <CompanyDocUpload
+                      clientId={clientId}
+                      companyId={company.company_id}
+                      companyName={company.company_name}
+                      docType="akta_sk"
+                      label="Akta + SK"
+                      hint="Deed & Kemenkumham"
+                    />
+                    <CompanyDocUpload
+                      clientId={clientId}
+                      companyId={company.company_id}
+                      companyName={company.company_name}
+                      docType="npwp_company"
+                      label="NPWP"
+                      hint="Tax ID"
+                    />
+                    <CompanyDocUpload
+                      clientId={clientId}
+                      companyId={company.company_id}
+                      companyName={company.company_name}
+                      docType="nib"
+                      label="NIB"
+                      hint="Business License"
+                    />
+                    <CompanyDocUpload
+                      clientId={clientId}
+                      companyId={company.company_id}
+                      companyName={company.company_name}
+                      docType="profile_perseroan"
+                      label="Profile Perseroan"
+                      hint="Company Profile"
+                    />
                   </div>
                 </div>
               </div>
