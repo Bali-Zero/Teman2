@@ -1,6 +1,10 @@
 /**
- * Blog Article Reader - Reads MDX articles from filesystem
+ * Blog Article Reader - Hybrid: Backend API + Local MDX fallback
  * For Nuzantara/Bali Zero Insights Blog
+ *
+ * Priority: Backend API (news_items table) > Local MDX files
+ * Backend articles come from the intel pipeline (scraper → staging → approval → publish)
+ * MDX articles are legacy static content
  */
 
 import fs from "fs";
@@ -10,6 +14,11 @@ import { unstable_cache } from "next/cache";
 import type { Article, ArticleListItem, ArticleCategory } from "./types";
 
 const ARTICLES_PATH = path.join(process.cwd(), "src/content/articles");
+
+const BACKEND_URL =
+  process.env.BACKEND_RAG_URL ||
+  process.env.NEXT_PUBLIC_BACKEND_URL ||
+  "https://nuzantara-rag.fly.dev";
 
 /**
  * Map folder/frontmatter categories to valid ArticleCategory
@@ -24,17 +33,174 @@ const CATEGORY_MAP: Record<string, ArticleCategory> = {
   lifestyle: "lifestyle",
   "digital-nomad": "lifestyle", // Map digital-nomad to lifestyle
   tech: "tech",
+  general: "business", // Backend may use "general"
+  legal: "tax-legal", // news_items table uses "legal"
 };
 
 function normalizeCategory(rawCategory: string): ArticleCategory {
   return CATEGORY_MAP[rawCategory] || "lifestyle";
 }
 
+// ============================================================================
+// Backend API Functions
+// ============================================================================
+
+interface BackendNewsItem {
+  id: string;
+  title: string;
+  slug: string;
+  summary: string | null;
+  content: string | null;
+  source: string;
+  source_url: string | null;
+  category: string;
+  priority: string;
+  status: string;
+  image_url: string | null;
+  view_count: number;
+  published_at: string | null;
+  created_at: string;
+  ai_summary: string | null;
+  ai_tags: string[] | null;
+}
+
+function backendToArticleListItem(item: BackendNewsItem): ArticleListItem {
+  return {
+    id: item.id,
+    slug: item.slug,
+    title: item.title,
+    excerpt: item.summary || item.ai_summary || "",
+    coverImage:
+      item.image_url || `/static/blog/${item.category}/${item.slug}.jpg`,
+    category: normalizeCategory(item.category),
+    author: {
+      id: "zantara-ai",
+      name: "Zantara AI",
+      avatar: "/static/zantara-avatar.png",
+      role: "AI Research Assistant",
+      isAI: true,
+    },
+    publishedAt: item.published_at
+      ? new Date(item.published_at)
+      : new Date(item.created_at),
+    readingTime: item.content
+      ? Math.ceil(item.content.split(/\s+/).length / 200)
+      : 5,
+    viewCount: item.view_count || 0,
+    featured: item.priority === "high",
+    trending: false,
+    aiGenerated: true,
+  };
+}
+
+function backendToArticle(item: BackendNewsItem): Article {
+  return {
+    id: item.id,
+    slug: item.slug,
+    title: item.title,
+    excerpt: item.summary || item.ai_summary || "",
+    content: item.content || "",
+    coverImage:
+      item.image_url || `/static/blog/${item.category}/${item.slug}.jpg`,
+    coverImageAlt: item.title,
+    category: normalizeCategory(item.category),
+    tags: item.ai_tags || [],
+    author: {
+      id: "zantara-ai",
+      name: "Zantara AI",
+      avatar: "/static/zantara-avatar.png",
+      role: "AI Research Assistant",
+      isAI: true,
+    },
+    createdAt: new Date(item.created_at),
+    updatedAt: new Date(item.created_at),
+    publishedAt: item.published_at ? new Date(item.published_at) : undefined,
+    status: "published",
+    featured: item.priority === "high",
+    trending: false,
+    readingTime: item.content
+      ? Math.ceil(item.content.split(/\s+/).length / 200)
+      : 5,
+    viewCount: item.view_count || 0,
+    shareCount: 0,
+    likeCount: 0,
+    commentCount: 0,
+    aiGenerated: true,
+    relatedArticleIds: [],
+    locale: "en",
+  };
+}
+
+async function fetchBackendArticles(options?: {
+  category?: string;
+  limit?: number;
+  page?: number;
+  search?: string;
+}): Promise<{ items: BackendNewsItem[]; total: number } | null> {
+  try {
+    const params = new URLSearchParams();
+    if (options?.category) params.set("category", options.category);
+    if (options?.limit) params.set("limit", String(options.limit));
+    if (options?.page) params.set("page", String(options.page));
+    if (options?.search) params.set("search", options.search);
+    params.set("status", "approved");
+
+    const url = `${BACKEND_URL}/api/news?${params.toString()}`;
+    const res = await fetch(url, {
+      next: { revalidate: 60 },
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    if (!data.success) return null;
+
+    return { items: data.data || [], total: data.total || 0 };
+  } catch {
+    // Backend unavailable — silent fallback to MDX
+    return null;
+  }
+}
+
+async function fetchBackendArticleBySlug(
+  slug: string,
+): Promise<BackendNewsItem | null> {
+  try {
+    const url = `${BACKEND_URL}/api/news/${slug}`;
+    const res = await fetch(url, {
+      next: { revalidate: 60 },
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    if (!data.success) return null;
+
+    return data.data || null;
+  } catch {
+    return null;
+  }
+}
+
+// ============================================================================
+// Local MDX Functions (fallback)
+// ============================================================================
+
 /**
- * Get all article slugs grouped by category
- * Returns both the folder category (for file path) and normalized category (for filtering)
+ * Reverse mapping: normalized category to possible folder names
  */
-export async function getAllArticleSlugs(): Promise<
+const CATEGORY_FOLDERS: Record<ArticleCategory, string[]> = {
+  immigration: ["immigration"],
+  business: ["business"],
+  "tax-legal": ["tax-legal", "tax"],
+  property: ["property"],
+  lifestyle: ["lifestyle", "digital-nomad"],
+  tech: ["tech"],
+};
+
+async function getAllMdxSlugs(): Promise<
   { folderCategory: string; category: ArticleCategory; slug: string }[]
 > {
   const slugs: {
@@ -42,6 +208,8 @@ export async function getAllArticleSlugs(): Promise<
     category: ArticleCategory;
     slug: string;
   }[] = [];
+
+  if (!fs.existsSync(ARTICLES_PATH)) return slugs;
 
   const categories = fs.readdirSync(ARTICLES_PATH).filter((item) => {
     const itemPath = path.join(ARTICLES_PATH, item);
@@ -68,35 +236,16 @@ export async function getAllArticleSlugs(): Promise<
   return slugs;
 }
 
-/**
- * Reverse mapping: normalized category to possible folder names
- * Some articles might be stored in legacy folder names
- */
-const CATEGORY_FOLDERS: Record<ArticleCategory, string[]> = {
-  immigration: ["immigration"],
-  business: ["business"],
-  "tax-legal": ["tax-legal", "tax"], // Try tax-legal first, then tax
-  property: ["property"],
-  lifestyle: ["lifestyle", "digital-nomad"], // Try lifestyle first, then digital-nomad
-  tech: ["tech"],
-};
-
-/**
- * Get a single article by category and slug
- * Handles both normalized categories (from URLs) and folder categories (for file lookup)
- */
-export async function getArticleBySlug(
+async function getMdxArticleBySlug(
   category: string,
   slug: string,
 ): Promise<Article | null> {
-  // Get possible folder paths for this category
   const normalizedCategory = normalizeCategory(category);
   const possibleFolders = CATEGORY_FOLDERS[normalizedCategory] || [category];
 
   let filePath = "";
   let actualFolderCategory = category;
 
-  // Try each possible folder
   for (const folder of possibleFolders) {
     const tryPath = path.join(ARTICLES_PATH, folder, `${slug}.mdx`);
     if (fs.existsSync(tryPath)) {
@@ -106,7 +255,6 @@ export async function getArticleBySlug(
     }
   }
 
-  // Also try the exact category path (for direct folder access)
   if (!filePath) {
     const directPath = path.join(ARTICLES_PATH, category, `${slug}.mdx`);
     if (fs.existsSync(directPath)) {
@@ -115,14 +263,11 @@ export async function getArticleBySlug(
     }
   }
 
-  if (!filePath) {
-    return null;
-  }
+  if (!filePath) return null;
 
   const fileContents = fs.readFileSync(filePath, "utf8");
   const { data: frontmatter, content } = matter(fileContents);
 
-  // Parse author from frontmatter
   const author =
     typeof frontmatter.author === "object"
       ? frontmatter.author
@@ -134,7 +279,7 @@ export async function getArticleBySlug(
           isAI: true,
         };
 
-  const article: Article = {
+  return {
     id: frontmatter.id || slug,
     slug: frontmatter.slug || slug,
     title: frontmatter.title || "Untitled",
@@ -176,13 +321,43 @@ export async function getArticleBySlug(
     relatedArticleIds: frontmatter.relatedArticles || [],
     locale: frontmatter.locale || "en",
   };
+}
 
-  return article;
+// ============================================================================
+// Public API (Hybrid: Backend + MDX)
+// ============================================================================
+
+/**
+ * Get all article slugs grouped by category (MDX only, for sitemap/feed)
+ */
+export async function getAllArticleSlugs(): Promise<
+  { folderCategory: string; category: ArticleCategory; slug: string }[]
+> {
+  return getAllMdxSlugs();
+}
+
+/**
+ * Get a single article by category and slug
+ * Tries backend first, then MDX fallback
+ */
+export async function getArticleBySlug(
+  category: string,
+  slug: string,
+): Promise<Article | null> {
+  // Try backend API first
+  const backendItem = await fetchBackendArticleBySlug(slug);
+  if (backendItem) {
+    return backendToArticle(backendItem);
+  }
+
+  // Fallback to local MDX
+  return getMdxArticleBySlug(category, slug);
 }
 
 /**
  * Get all articles with optional filtering
- * Cached with ISR - cache key includes relevant options
+ * Merges backend API articles + local MDX articles, deduped by slug
+ * Cached with ISR - revalidates every 60 seconds
  */
 export const getAllArticles = unstable_cache(
   async (options?: {
@@ -191,70 +366,89 @@ export const getAllArticles = unstable_cache(
     limit?: number;
     offset?: number;
   }): Promise<{ articles: ArticleListItem[]; total: number }> => {
-    const allSlugs = await getAllArticleSlugs();
+    const allArticles: ArticleListItem[] = [];
+    const seenSlugs = new Set<string>();
 
-    // Filter by category if specified (uses normalized category)
+    // 1. Fetch from backend API (priority)
+    const backendResult = await fetchBackendArticles({
+      category: options?.category,
+      limit: 100, // fetch more, we'll merge with MDX
+    });
+
+    if (backendResult) {
+      for (const item of backendResult.items) {
+        const listItem = backendToArticleListItem(item);
+        if (
+          options?.featured !== undefined &&
+          listItem.featured !== options.featured
+        ) {
+          continue;
+        }
+        allArticles.push(listItem);
+        seenSlugs.add(item.slug);
+      }
+    }
+
+    // 2. Add MDX articles not already in backend (dedup by slug)
+    const allSlugs = await getAllMdxSlugs();
     let filteredSlugs = options?.category
       ? allSlugs.filter((s) => s.category === options.category)
       : allSlugs;
 
-    const total = filteredSlugs.length;
-
-    // Apply pagination
-    if (options?.offset) {
-      filteredSlugs = filteredSlugs.slice(options.offset);
-    }
-    if (options?.limit) {
-      filteredSlugs = filteredSlugs.slice(0, options.limit);
-    }
-
-    const articles: ArticleListItem[] = [];
-
     for (const { folderCategory, slug } of filteredSlugs) {
-      // Use folderCategory for file path lookup
-      const article = await getArticleBySlug(folderCategory, slug);
-      if (article) {
-        // Filter by featured if specified
-        if (
-          options?.featured !== undefined &&
-          article.featured !== options.featured
-        ) {
-          continue;
-        }
+      if (seenSlugs.has(slug)) continue;
 
-        articles.push({
-          id: article.id,
-          slug: article.slug,
-          title: article.title,
-          excerpt: article.excerpt,
-          coverImage: article.coverImage,
-          category: article.category, // Already normalized in getArticleBySlug
-          author: article.author,
-          publishedAt: article.publishedAt || article.createdAt,
-          readingTime: article.readingTime,
-          viewCount: article.viewCount,
-          featured: article.featured,
-          trending: article.trending,
-          aiGenerated: article.aiGenerated,
-        });
+      const article = await getMdxArticleBySlug(folderCategory, slug);
+      if (!article) continue;
+
+      if (
+        options?.featured !== undefined &&
+        article.featured !== options.featured
+      ) {
+        continue;
       }
+
+      allArticles.push({
+        id: article.id,
+        slug: article.slug,
+        title: article.title,
+        excerpt: article.excerpt,
+        coverImage: article.coverImage,
+        category: article.category,
+        author: article.author,
+        publishedAt: article.publishedAt || article.createdAt,
+        readingTime: article.readingTime,
+        viewCount: article.viewCount,
+        featured: article.featured,
+        trending: article.trending,
+        aiGenerated: article.aiGenerated,
+      });
+      seenSlugs.add(slug);
     }
 
     // Sort by publishedAt descending
-    articles.sort((a, b) => {
+    allArticles.sort((a, b) => {
       const dateA = new Date(a.publishedAt).getTime();
       const dateB = new Date(b.publishedAt).getTime();
       return dateB - dateA;
     });
 
-    return { articles, total };
+    const total = allArticles.length;
+
+    // Apply pagination
+    let result = allArticles;
+    if (options?.offset) {
+      result = result.slice(options.offset);
+    }
+    if (options?.limit) {
+      result = result.slice(0, options.limit);
+    }
+
+    return { articles: result, total };
   },
-  // Cache key parts for invalidation
   ["articles"],
   {
-    // Tags for programmatic invalidation
     tags: ["articles"],
-    // Revalidate every 60 seconds (matches page revalidate)
     revalidate: 60,
   },
 );
@@ -286,12 +480,11 @@ export async function getArticlesByCategory(
 export async function getCategoryCounts(): Promise<
   Record<ArticleCategory, number>
 > {
-  const allSlugs = await getAllArticleSlugs();
+  const { articles } = await getAllArticles({ limit: 500 });
   const counts: Record<string, number> = {};
 
-  for (const { category } of allSlugs) {
-    // category is already normalized in getAllArticleSlugs
-    counts[category] = (counts[category] || 0) + 1;
+  for (const article of articles) {
+    counts[article.category] = (counts[article.category] || 0) + 1;
   }
 
   return counts as Record<ArticleCategory, number>;
@@ -299,12 +492,24 @@ export async function getCategoryCounts(): Promise<
 
 /**
  * Search articles by query
+ * Tries backend search first, then falls back to in-memory filtering
  */
 export async function searchArticles(
   query: string,
   limit = 20,
 ): Promise<ArticleListItem[]> {
-  const { articles } = await getAllArticles({ limit: 200 }); // Get more for search
+  // Try backend search
+  const backendResult = await fetchBackendArticles({
+    search: query,
+    limit,
+  });
+
+  if (backendResult && backendResult.items.length > 0) {
+    return backendResult.items.map(backendToArticleListItem);
+  }
+
+  // Fallback to in-memory MDX search
+  const { articles } = await getAllArticles({ limit: 200 });
   const lowerQuery = query.toLowerCase();
 
   const results = articles.filter((article) => {
