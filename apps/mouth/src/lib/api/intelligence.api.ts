@@ -241,6 +241,7 @@ export const intelligenceApi = {
   publishItem: async (
     type: "visa" | "news",
     id: string,
+    position: string = "latest",
   ): Promise<PublishResponse> => {
     const endpoint = `/api/intel/staging/publish/${type}/${id}`;
     const startTime = performance.now();
@@ -249,11 +250,13 @@ export const intelligenceApi = {
       itemType: type,
       itemId: id,
       action: "publish",
+      metadata: { position },
     });
 
     try {
       const response = await api.request<PublishResponse>(endpoint, {
         method: "POST",
+        body: JSON.stringify({ position }),
       });
       const responseTime = performance.now() - startTime;
 

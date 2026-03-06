@@ -39,6 +39,7 @@ import {
   Eye,
   Edit,
   Image as ImageIcon,
+  MapPin,
 } from "lucide-react";
 import { ArticleEditor } from "./components/ArticleEditor";
 import { CoverImageUploader } from "./components/CoverImageUploader";
@@ -61,6 +62,10 @@ export default function NewsRoomPage() {
     null,
   );
   const toast = useToast();
+  const [publishPosition, setPublishPosition] = useState<
+    Record<string, string>
+  >({});
+  const getPosition = (id: string) => publishPosition[id] || "latest";
 
   // Filtered and sorted items
   const filteredAndSortedItems = useMemo(() => {
@@ -191,7 +196,7 @@ export default function NewsRoomPage() {
       if (!item) continue;
 
       try {
-        await intelligenceApi.publishItem(item.type, id);
+        await intelligenceApi.publishItem(item.type, id, getPosition(id));
         results.success++;
         setItems((prev) => prev.filter((i) => i.id !== id));
       } catch (error) {
@@ -251,29 +256,35 @@ export default function NewsRoomPage() {
   };
 
   const handlePublish = async (item: StagingItem) => {
+    const position = getPosition(item.id);
+
     logger.info("Publishing item", {
       component: "NewsRoomPage",
       action: "publish_item",
       itemId: item.id,
-      metadata: { title: item.title },
+      metadata: { title: item.title, position },
     });
 
     // Add to publishing set
     setPublishingIds((prev) => new Set(prev).add(item.id));
 
     try {
-      const response = await intelligenceApi.publishItem(item.type, item.id);
+      const response = await intelligenceApi.publishItem(
+        item.type,
+        item.id,
+        position,
+      );
 
       logger.info("Item published successfully", {
         component: "NewsRoomPage",
         action: "publish_success",
         itemId: item.id,
-        metadata: { published_url: response.published_url },
+        metadata: { published_url: response.published_url, position },
       });
 
       toast.success(
         "Published!",
-        `"${response.title}" has been published to the knowledge base`,
+        `"${response.title}" published${position !== "latest" ? ` to ${position.replace("_", " ")}` : ""}`,
       );
 
       // Reload news list to remove published item
@@ -542,6 +553,34 @@ export default function NewsRoomPage() {
 
               <CardFooter className="p-5 pt-0 mt-auto">
                 <div className="flex flex-wrap gap-2 w-full">
+                  <Select
+                    value={getPosition(item.id)}
+                    onValueChange={(value) =>
+                      setPublishPosition((prev) => ({
+                        ...prev,
+                        [item.id]: value,
+                      }))
+                    }
+                  >
+                    <SelectTrigger
+                      className="w-[130px]"
+                      title="Homepage position"
+                    >
+                      <MapPin className="w-3 h-3 mr-1 shrink-0" />
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="latest">Latest</SelectItem>
+                      <SelectItem value="hero_main">Hero Main</SelectItem>
+                      <SelectItem value="hero_2">Hero 2</SelectItem>
+                      <SelectItem value="hero_3">Hero 3</SelectItem>
+                      <SelectItem value="hero_4">Hero 4</SelectItem>
+                      <SelectItem value="hero_5">Hero 5</SelectItem>
+                      <SelectItem value="insight_1">Insight 1</SelectItem>
+                      <SelectItem value="insight_2">Insight 2</SelectItem>
+                      <SelectItem value="insight_3">Insight 3</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Button
                     className="flex-1 gap-2 bg-[var(--accent)] hover:bg-[var(--accent)]/90 text-white min-w-[100px]"
                     size="sm"
@@ -662,6 +701,32 @@ export default function NewsRoomPage() {
             </div>
           )}
           <div className="flex gap-2 mt-6">
+            <Select
+              value={previewItem ? getPosition(previewItem.id) : "latest"}
+              onValueChange={(value) =>
+                previewItem &&
+                setPublishPosition((prev) => ({
+                  ...prev,
+                  [previewItem.id]: value,
+                }))
+              }
+            >
+              <SelectTrigger className="w-[160px]">
+                <MapPin className="w-3 h-3 mr-1 shrink-0" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="latest">Latest</SelectItem>
+                <SelectItem value="hero_main">Hero Main</SelectItem>
+                <SelectItem value="hero_2">Hero 2</SelectItem>
+                <SelectItem value="hero_3">Hero 3</SelectItem>
+                <SelectItem value="hero_4">Hero 4</SelectItem>
+                <SelectItem value="hero_5">Hero 5</SelectItem>
+                <SelectItem value="insight_1">Insight 1</SelectItem>
+                <SelectItem value="insight_2">Insight 2</SelectItem>
+                <SelectItem value="insight_3">Insight 3</SelectItem>
+              </SelectContent>
+            </Select>
             <Button
               className="flex-1 gap-2 bg-[var(--accent)] hover:bg-[var(--accent)]/90 text-white"
               onClick={() => previewItem && handlePublish(previewItem)}
