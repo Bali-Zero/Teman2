@@ -221,7 +221,10 @@ async function getAllMdxSlugs(): Promise<
     const files = fs
       .readdirSync(categoryPath)
       .filter(
-        (file) => file.endsWith(".mdx") && !file.includes(".sync-conflict-"),
+        (file) =>
+          file.endsWith(".mdx") &&
+          !file.endsWith(".id.mdx") &&
+          !file.includes(".sync-conflict-"),
       );
 
     for (const file of files) {
