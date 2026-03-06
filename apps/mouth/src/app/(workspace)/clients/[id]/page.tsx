@@ -602,7 +602,7 @@ export default function ClientDetailPage() {
     );
   }
 
-  const { client, family_members, documents, expiry_alerts, practices, stats } =
+  const { client, family_members, documents, expiry_alerts, practices, company_links, stats } =
     profile;
 
   // Group documents by category
