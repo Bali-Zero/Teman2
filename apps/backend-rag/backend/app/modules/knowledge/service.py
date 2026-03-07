@@ -79,9 +79,7 @@ class KnowledgeService:
             "legal_architect": QdrantClient(qdrant_url=qdrant_url, collection_name="legal_unified"),
             "legal_unified": QdrantClient(qdrant_url=qdrant_url, collection_name="legal_unified"),
             "kb_indonesian": QdrantClient(qdrant_url=qdrant_url, collection_name="knowledge_base"),
-            "kbli_comprehensive": QdrantClient(
-                qdrant_url=qdrant_url, collection_name="kbli_2025_final"
-            ),
+            "balizero_news": QdrantClient(qdrant_url=qdrant_url, collection_name="balizero_news"),
             "zantara_books": QdrantClient(qdrant_url=qdrant_url, collection_name="knowledge_base"),
             "cultural_insights": QdrantClient(
                 qdrant_url=qdrant_url, collection_name="knowledge_base"
@@ -199,8 +197,9 @@ class KnowledgeService:
             logger.debug(f"Final collection: {collection_name}")
 
             # Search (async)
-            # CRITICAL: Hybrid collections require named vector "dense"
-            use_vector_name = "dense" if collection_name.endswith("_hybrid") else None
+            from backend.services.search.search_service import _uses_named_vectors
+
+            use_vector_name = "dense" if _uses_named_vectors(collection_name) else None
             raw_results = await vector_db.search(
                 query_embedding=query_embedding,
                 filter=chroma_filter,

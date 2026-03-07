@@ -61,6 +61,22 @@ from backend.services.search.search_filters import build_search_filter
 
 # from backend.services.routing.query_router_integration import QueryRouterIntegration
 
+# Collections that use named vectors ("dense" + "bm25") instead of unnamed vectors.
+# When doing dense-only fallback, these require vector_name="dense".
+NAMED_VECTOR_COLLECTIONS = {
+    "tax_genius_hybrid",
+    "training_conversations_hybrid",
+    "legal_unified_hybrid",
+    "kbli_2025_final",
+    "kbli_unified",
+    "visa_oracle",
+}
+
+
+def _uses_named_vectors(collection_name: str) -> bool:
+    """Check if a collection uses named vectors (requires vector_name='dense')."""
+    return collection_name in NAMED_VECTOR_COLLECTIONS or collection_name.endswith("_hybrid")
+
 
 class SearchService:
     """
@@ -496,9 +512,7 @@ class SearchService:
                     if metrics_collector:
                         metrics_collector.search_hybrid_failed_total.inc()
                     # Fall through to dense-only search
-                    # CRITICAL: Hybrid collections require named vector "dense"
-                    # Note: kbli_2025_final is NOT a hybrid collection (single unnamed vector)
-                    use_vector_name = "dense" if collection_name.endswith("_hybrid") else None
+                    use_vector_name = "dense" if _uses_named_vectors(collection_name) else None
                     raw_results = await vector_db.search(
                         query_embedding=query_embedding,
                         filter=chroma_filter,
@@ -509,9 +523,7 @@ class SearchService:
                         metrics_collector.search_dense_only_total.inc()
             else:
                 # Fallback: Dense-only search
-                # CRITICAL: Hybrid collections require named vector "dense"
-                # Note: kbli_2025_final is NOT a hybrid collection (single unnamed vector)
-                use_vector_name = "dense" if collection_name.endswith("_hybrid") else None
+                use_vector_name = "dense" if _uses_named_vectors(collection_name) else None
                 raw_results = await vector_db.search(
                     query_embedding=query_embedding,
                     filter=chroma_filter,
@@ -717,8 +729,7 @@ class SearchService:
                 search_type = raw_results.get("search_type", "hybrid_rrf")
             else:
                 # Fallback to dense-only search
-                # CRITICAL: Hybrid collections require named vector "dense"
-                use_vector_name = "dense" if collection_name.endswith("_hybrid") else None
+                use_vector_name = "dense" if _uses_named_vectors(collection_name) else None
                 raw_results = await vector_db.search(
                     query_embedding=query_embedding,
                     filter=chroma_filter,
@@ -962,8 +973,7 @@ class SearchService:
                 )
 
                 # Search this collection (async) - track duration
-                # CRITICAL: Hybrid collections require named vector "dense"
-                use_vector_name = "dense" if collection_name.endswith("_hybrid") else None
+                use_vector_name = "dense" if _uses_named_vectors(collection_name) else None
                 search_start = time.time() if METRICS_AVAILABLE else None
                 raw_results = await vector_db.search(
                     query_embedding=query_embedding,

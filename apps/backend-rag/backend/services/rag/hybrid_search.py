@@ -431,8 +431,10 @@ class HybridSearchService:
         embedder = create_embeddings_generator()
         query_embedding = await embedder.generate_query_embedding(query)
 
-        # Determine vector name for hybrid collections
-        use_vector_name = "dense" if collection.endswith("_hybrid") else None
+        # Determine vector name for collections with named vectors
+        from backend.services.search.search_service import _uses_named_vectors
+
+        use_vector_name = "dense" if _uses_named_vectors(collection) else None
 
         # Run dense search
         dense_results = await vector_db.search(
@@ -549,7 +551,9 @@ class HybridSearchService:
                 )
 
             # Search
-            use_vector_name = "dense" if collection.endswith("_hybrid") else None
+            from backend.services.search.search_service import _uses_named_vectors
+
+            use_vector_name = "dense" if _uses_named_vectors(collection) else None
             raw_results = await vector_db.search(
                 query_embedding=query_embedding,
                 filter=filters,
