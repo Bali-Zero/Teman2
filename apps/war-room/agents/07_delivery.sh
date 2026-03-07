@@ -44,7 +44,7 @@ MSG="🚨 *Bali Zero War Room conclusa.*
 | In attesa di review per la pubblicazione."
 
 # Notifica: Telegram Bot API diretta (affidabile, no middleware)
-BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-8295471667:AAHglwz8p8LxFnDgctmXuCs5aZa6lY78QO8}"
+BOT_TOKEN="${TELEGRAM_BOT_TOKEN:?Set TELEGRAM_BOT_TOKEN env var}"
 CHAT_ID="${TELEGRAM_GROUP_ID:--1003826235564}"
 python3 -c "
 import urllib.request, urllib.parse, json, sys
