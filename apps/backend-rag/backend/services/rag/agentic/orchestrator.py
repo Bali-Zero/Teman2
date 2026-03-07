@@ -781,7 +781,6 @@ Respond in the SAME language the user is using."""
             Stream events.
         """
         correlation_id = str(uuid.uuid4())
-        start_time = time.time()
 
         if not user_id or user_id == "anonymous":
             logger.warning("⚠️ [Proactive] Cannot trigger for anonymous user")
