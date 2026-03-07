@@ -4,6 +4,7 @@ Intel News API - Search and manage Bali intelligence news
 Refactored router using service layer architecture.
 """
 
+import asyncio
 import base64
 import json
 import logging
@@ -79,6 +80,9 @@ class ScraperSubmission(BaseModel):
     tier: str = IntelConstants.DEFAULT_TIER  # T1, T2, T3
     cover_image: str | None = Field(
         None, description="Cover image URL/path (optional, generated later by enricher)"
+    )
+    cover_image_base64: str | None = Field(
+        None, description="Cover image as base64 string (uploaded to Drive on submit)"
     )
 
 
@@ -474,6 +478,44 @@ async def submit_from_scraper(
 
         if submission.cover_image:
             staging_data["cover_image"] = submission.cover_image
+
+        # Upload cover image to Google Drive if base64 provided
+        if submission.cover_image_base64:
+            try:
+                from backend.services.integrations.service_account_drive_service import (
+                    ServiceAccountDriveService,
+                )
+
+                drive_svc = ServiceAccountDriveService()
+                if drive_svc.service:
+                    image_bytes = base64.b64decode(submission.cover_image_base64)
+                    # Use Intel_Images folder on Drive (create if needed)
+                    intel_images_folder_id = os.getenv(
+                        "INTEL_IMAGES_DRIVE_FOLDER_ID", "root"
+                    )
+                    file_ext = "png" if len(image_bytes) > 0 and image_bytes[:4] == b"\x89PNG" else "jpg"
+                    drive_result = await drive_svc.upload_file_to_folder(
+                        folder_id=intel_images_folder_id,
+                        file_content=image_bytes,
+                        file_name=f"{item_id}.{file_ext}",
+                        mime_type=f"image/{file_ext}",
+                    )
+                    staging_data["image_drive_file_id"] = drive_result.get("id")
+                    staging_data["image_drive_url"] = drive_result.get("webViewLink")
+                    logger.info(
+                        "Cover image uploaded to Drive",
+                        extra={
+                            "item_id": item_id,
+                            "drive_file_id": drive_result.get("id"),
+                        },
+                    )
+                else:
+                    logger.warning("Drive service not configured, skipping image upload")
+            except Exception as e:
+                logger.warning(
+                    f"Failed to upload cover image to Drive: {e}",
+                    extra={"item_id": item_id},
+                )
 
         # Save to staging using service
         staging_file = staging_service.save_staging_item(intel_type, item_id, staging_data)
@@ -1086,12 +1128,47 @@ async def publish_staging_item(
             # Prepare cover image if available
             cover_image_base64 = None
             cover_image_filename = None
-            if data.get("cover_image"):
+
+            # Priority 1: Download from Google Drive (uploaded by scraper)
+            if data.get("image_drive_file_id"):
                 try:
-                    # Try to read cover image file
+                    from backend.services.integrations.service_account_drive_service import (
+                        ServiceAccountDriveService,
+                    )
+
+                    drive_svc = ServiceAccountDriveService()
+                    if drive_svc.service:
+                        file_id = data["image_drive_file_id"]
+                        # Download file content from Drive
+                        request = drive_svc.service.files().get_media(fileId=file_id)
+                        image_bytes = await asyncio.to_thread(request.execute)
+                        cover_image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+                        file_ext = "png" if image_bytes[:4] == b"\x89PNG" else "jpg"
+                        cover_image_filename = f"{item_id}.{file_ext}"
+                        logger.info(
+                            "Cover image downloaded from Drive",
+                            extra={
+                                "type": type,
+                                "item_id": item_id,
+                                "drive_file_id": file_id,
+                                "size_bytes": len(image_bytes),
+                            },
+                        )
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to download cover image from Drive: {e}",
+                        extra={
+                            "type": type,
+                            "item_id": item_id,
+                            "drive_file_id": data.get("image_drive_file_id"),
+                        },
+                    )
+
+            # Priority 2: Try local filesystem (legacy path)
+            if not cover_image_base64 and data.get("cover_image"):
+                try:
                     cover_image_path = data["cover_image"]
                     if not os.path.isabs(cover_image_path):
-                        # Relative path - resolve from staging directory
                         staging_dir = staging_service.get_staging_dir(type)
                         cover_image_path = staging_dir / cover_image_path
                     else:
@@ -1103,7 +1180,7 @@ async def publish_staging_item(
                         )
                         cover_image_filename = cover_image_path.name
                         logger.info(
-                            "Cover image found and prepared for upload",
+                            "Cover image found on local filesystem",
                             extra={
                                 "type": type,
                                 "item_id": item_id,
@@ -1112,7 +1189,7 @@ async def publish_staging_item(
                         )
                 except Exception as e:
                     logger.warning(
-                        f"Failed to read cover image: {e}",
+                        f"Failed to read cover image from filesystem: {e}",
                         extra={
                             "type": type,
                             "item_id": item_id,
