@@ -164,7 +164,7 @@ export function ZantaraWidget() {
           try {
             const parsed = JSON.parse(data);
             if (parsed.type === "token" && typeof parsed.data === "string") {
-              accumulated = parsed.data;
+              accumulated += parsed.data;
               setMessages((prev) => {
                 const last = prev[prev.length - 1];
                 if (last?.role !== "assistant") return prev;
