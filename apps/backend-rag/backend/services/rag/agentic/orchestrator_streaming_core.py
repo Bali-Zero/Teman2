@@ -260,12 +260,7 @@ class OrchestratorStreamingCore:
                     },
                     "timestamp": time.time(),
                 }
-                # Then stream workflow text as tokens for display
-                workflow_text = self.core._format_workflow_for_prompt(langgraph_workflow)
-                for token in workflow_text.split():
-                    yield {"type": "token", "data": token + " "}
-                    await asyncio.sleep(0.005)
-                logger.info(f"🔗 [Stream] Workflow streamed: {langgraph_workflow.get('type')}")
+                logger.info(f"🔗 [Stream] Workflow metadata sent: {langgraph_workflow.get('type')}")
 
             # 6. Yield done event with metrics
             execution_time = time.time() - start_time
