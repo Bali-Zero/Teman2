@@ -565,7 +565,6 @@ async def stream_agentic_rag(
         max_errors = 5
 
         full_answer = ""
-        sources: list[dict] = []
         conversation_id: int | None = None
         persisted = False
 
@@ -725,11 +724,9 @@ async def stream_agentic_rag(
                         else:
                             tokens_sent += 1
 
-                    # Collect sources
+                    # Collect sources (logged for diagnostics)
                     elif event_type == "sources":
-                        sources_data = event.get("data", [])
-                        if isinstance(sources_data, list):
-                            sources = sources_data
+                        pass
 
                     # Check if final answer was received
                     if event_type == "done" or (
@@ -1014,7 +1011,7 @@ async def record_ab_test_feedback(
 @router.get("/ab-test/results/{experiment}")
 async def get_ab_test_results(
     experiment: str,
-    current_user: dict = Depends(get_current_user),
+    _current_user: dict = Depends(get_current_user),
 ) -> Any:
     """
     Get A/B test results for a specific experiment.
@@ -1034,7 +1031,7 @@ async def get_ab_test_results(
 
 @router.get("/ab-test/dashboard")
 async def get_ab_test_dashboard(
-    current_user: dict = Depends(get_current_user),
+    _current_user: dict = Depends(get_current_user),
 ) -> Any:
     """
     Get A/B testing dashboard data.
@@ -1051,7 +1048,7 @@ async def get_ab_test_dashboard(
 
 @router.get("/ab-test/experiments")
 async def list_ab_test_experiments(
-    current_user: dict = Depends(get_current_user),
+    _current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
     List all available A/B test experiments.

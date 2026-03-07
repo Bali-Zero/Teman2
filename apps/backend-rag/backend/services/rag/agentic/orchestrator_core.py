@@ -962,7 +962,7 @@ class OrchestratorCore:
         query: str,
         user_context: dict[str, Any],
         history: list[dict],
-        extracted_entities: dict[str, Any],  # Not explicitly used but kept for signature
+        extracted_entities: dict[str, Any],  # noqa: ARG002 — kept for signature compatibility
         deep_think_mode: bool = False,
         kg_context_str: str = "",  # New argument to pass pre-fetched KG context
         channel: str | None = None,  # Channel overlay for response formatting
