@@ -469,6 +469,7 @@ type ModalType =
   | "none"
   | "edit_client"
   | "add_family"
+  | "edit_family"
   | "add_document"
   | "edit_document";
 
@@ -488,6 +489,8 @@ export default function ClientDetailPage() {
   const [editingDocument, setEditingDocument] = useState<ClientDocument | null>(
     null,
   );
+  const [editingFamilyMember, setEditingFamilyMember] =
+    useState<FamilyMember | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
   const loadData = async () => {
@@ -823,6 +826,10 @@ export default function ClientDetailPage() {
           documents={documents}
           formatDate={formatDate}
           onAddClick={() => setActiveModal("add_family")}
+          onEditClick={(member) => {
+            setEditingFamilyMember(member);
+            setActiveModal("edit_family");
+          }}
           onRefresh={refreshProfile}
         />
       )}
@@ -862,6 +869,18 @@ export default function ClientDetailPage() {
         <AddFamilyMemberModal
           clientId={clientId}
           onClose={() => setActiveModal("none")}
+          onSave={refreshProfile}
+        />
+      )}
+
+      {activeModal === "edit_family" && editingFamilyMember && (
+        <EditFamilyMemberModal
+          clientId={clientId}
+          member={editingFamilyMember}
+          onClose={() => {
+            setActiveModal("none");
+            setEditingFamilyMember(null);
+          }}
           onSave={refreshProfile}
         />
       )}
@@ -2194,6 +2213,7 @@ function FamilyTab({
   documents,
   formatDate,
   onAddClick,
+  onEditClick,
   onRefresh,
 }: {
   clientId: number;
@@ -2201,6 +2221,7 @@ function FamilyTab({
   documents: ClientDocument[];
   formatDate: (d: string) => string;
   onAddClick: () => void;
+  onEditClick: (member: FamilyMember) => void;
   onRefresh: () => void;
 }) {
   const handleDelete = async (id: number, name: string) => {
@@ -2274,7 +2295,15 @@ function FamilyTab({
                       </span>
                     </div>
                   </div>
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-[var(--foreground-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10"
+                      onClick={() => onEditClick(member)}
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -3653,6 +3682,217 @@ function AddFamilyMemberModal({
   );
 }
 
+function EditFamilyMemberModal({
+  clientId,
+  member,
+  onClose,
+  onSave,
+}: {
+  clientId: number;
+  member: FamilyMember;
+  onClose: () => void;
+  onSave: () => void;
+}) {
+  const [isSaving, setIsSaving] = useState(false);
+  const [formData, setFormData] = useState<{
+    full_name: string;
+    relationship: string;
+    nationality: string;
+    date_of_birth: string;
+    passport_number: string;
+    passport_expiry: string;
+    current_visa_type: string;
+    visa_expiry: string;
+    email: string;
+    phone: string;
+  }>({
+    full_name: member.full_name || "",
+    relationship: member.relationship || "spouse",
+    nationality: member.nationality || "",
+    date_of_birth: member.date_of_birth || "",
+    passport_number: member.passport_number || "",
+    passport_expiry: member.passport_expiry || "",
+    current_visa_type: member.current_visa_type || "",
+    visa_expiry: member.visa_expiry || "",
+    email: member.email || "",
+    phone: member.phone || "",
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.full_name) return;
+    setIsSaving(true);
+    try {
+      await api.crm.updateFamilyMember(clientId, member.id, formData);
+      toast.success("Family member updated");
+      onSave();
+      onClose();
+    } catch (err) {
+      toast.error("Failed to update", {
+        description: (err as Error).message,
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const inputClass =
+    "w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50";
+
+  return (
+    <Modal
+      title={`Edit ${member.full_name}`}
+      onClose={onClose}
+      isSaving={isSaving}
+      onSave={handleSubmit}
+    >
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium mb-1.5">
+            Full Name *
+          </label>
+          <input
+            type="text"
+            value={formData.full_name}
+            onChange={(e) =>
+              setFormData({ ...formData, full_name: e.target.value })
+            }
+            className={inputClass}
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">
+            Relationship
+          </label>
+          <select
+            value={formData.relationship}
+            onChange={(e) =>
+              setFormData({ ...formData, relationship: e.target.value })
+            }
+            className={inputClass}
+          >
+            <option value="spouse">Spouse</option>
+            <option value="child">Child</option>
+            <option value="parent">Parent</option>
+            <option value="dependent">Dependent</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">
+            Nationality
+          </label>
+          <select
+            value={formData.nationality}
+            onChange={(e) =>
+              setFormData({ ...formData, nationality: e.target.value })
+            }
+            className={inputClass}
+          >
+            <option value="">Select...</option>
+            {COMMON_NATIONALITIES.map((nat) => (
+              <option key={nat} value={nat}>
+                {nat}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">
+            Date of Birth
+          </label>
+          <input
+            type="date"
+            value={formData.date_of_birth}
+            onChange={(e) =>
+              setFormData({ ...formData, date_of_birth: e.target.value })
+            }
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Email</label>
+          <input
+            type="email"
+            value={formData.email}
+            onChange={(e) =>
+              setFormData({ ...formData, email: e.target.value })
+            }
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Phone</label>
+          <input
+            type="tel"
+            value={formData.phone}
+            onChange={(e) =>
+              setFormData({ ...formData, phone: e.target.value })
+            }
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">
+            Passport Number
+          </label>
+          <input
+            type="text"
+            value={formData.passport_number}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                passport_number: e.target.value.toUpperCase(),
+              })
+            }
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">
+            Passport Expiry
+          </label>
+          <input
+            type="date"
+            value={formData.passport_expiry}
+            onChange={(e) =>
+              setFormData({ ...formData, passport_expiry: e.target.value })
+            }
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">
+            Visa Type
+          </label>
+          <input
+            type="text"
+            value={formData.current_visa_type}
+            onChange={(e) =>
+              setFormData({ ...formData, current_visa_type: e.target.value })
+            }
+            className={inputClass}
+            placeholder="e.g. KITAS, KITAP, B211A"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">
+            Visa Expiry
+          </label>
+          <input
+            type="date"
+            value={formData.visa_expiry}
+            onChange={(e) =>
+              setFormData({ ...formData, visa_expiry: e.target.value })
+            }
+            className={inputClass}
+          />
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 function AddDocumentModal({
   clientId,
   categories,
@@ -4088,42 +4328,74 @@ function CompanyDocUpload({
 
   const hasDoc = existingDoc?.google_drive_file_id || uploadedFile;
 
+  const docIcon: Record<string, string> = {
+    akta_pendirian: "📜",
+    npwp: "🏛️",
+    nib: "📋",
+    company_profile: "🏢",
+    sk_decree: "⚖️",
+  };
+
   return (
     <div
-      className={`rounded-lg p-3 transition-colors ${
+      className={`rounded-xl overflow-hidden transition-all ${
         hasDoc
-          ? "border border-[var(--border)] bg-[var(--background)]"
-          : "border border-dashed border-[var(--border)] hover:border-[var(--accent)]/50"
+          ? "bg-gradient-to-br from-[var(--background)] to-[var(--background-secondary)] border border-[var(--border)] shadow-sm"
+          : "border border-dashed border-[var(--border)] hover:border-[var(--accent)]/40 bg-[var(--background)]/50"
       }`}
     >
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-sm font-medium text-[var(--foreground)]">
-          {label}
-        </span>
-        {hasDoc ? (
-          <span className="flex items-center gap-1 text-[10px] text-green-400 font-medium">
-            <CheckCircle2 className="w-3 h-3" />
-            On file
-          </span>
-        ) : (
-          <span className="text-[10px] text-[var(--foreground-muted)]">
-            {hint}
-          </span>
-        )}
-      </div>
+      {/* Top accent bar */}
+      {hasDoc && (
+        <div className="h-1 bg-gradient-to-r from-green-500/60 to-emerald-500/30" />
+      )}
 
-      {/* Show existing document */}
-      {existingDoc?.file_name && !uploadedFile && (
-        <div className="mb-2">
-          <p className="text-xs text-[var(--foreground-muted)] truncate mb-1.5">
-            {existingDoc.file_name}
-          </p>
-          {existingDoc.google_drive_file_id && (
-            <div className="flex gap-1.5">
+      <div className="p-3.5">
+        <div className="flex items-start gap-3">
+          <div
+            className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg flex-shrink-0 ${
+              hasDoc
+                ? "bg-green-500/10"
+                : "bg-[var(--foreground-muted)]/5"
+            }`}
+          >
+            {docIcon[docType] || "📄"}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-[var(--foreground)]">
+                {label}
+              </span>
+              {hasDoc ? (
+                <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
+              ) : (
+                <span className="text-[10px] text-[var(--foreground-muted)]">
+                  {hint}
+                </span>
+              )}
+            </div>
+
+            {/* Existing doc filename */}
+            {existingDoc?.file_name && !uploadedFile && (
+              <p className="text-[11px] text-[var(--foreground-muted)] truncate mt-0.5">
+                {existingDoc.file_name}
+              </p>
+            )}
+            {uploadedFile && (
+              <p className="text-[11px] text-green-400 mt-0.5 truncate">
+                {uploadedFile}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex gap-1.5 mt-3">
+          {existingDoc?.google_drive_file_id && !uploadedFile && (
+            <>
               <Button
                 variant="ghost"
                 size="sm"
-                className="gap-1.5 text-xs h-7 px-2"
+                className="gap-1.5 text-xs h-7 px-2.5 flex-1 hover:bg-[var(--accent)]/10 hover:text-[var(--accent)]"
                 onClick={() => {
                   window.open(
                     `/api/documents/proxy/${existingDoc.google_drive_file_id}`,
@@ -4137,7 +4409,7 @@ function CompanyDocUpload({
               <Button
                 variant="ghost"
                 size="sm"
-                className="gap-1.5 text-xs h-7 px-2"
+                className="gap-1.5 text-xs h-7 px-2.5 flex-1 hover:bg-blue-500/10 hover:text-blue-400"
                 onClick={() => {
                   window.open(
                     `/api/documents/proxy/${existingDoc.google_drive_file_id}`,
@@ -4148,49 +4420,41 @@ function CompanyDocUpload({
                 <Download className="w-3 h-3" />
                 Download
               </Button>
-            </div>
+            </>
           )}
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".jpg,.jpeg,.png,.pdf"
+            className="hidden"
+            onChange={handleUpload}
+            disabled={isUploading}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            className={`gap-1.5 text-xs h-7 ${
+              hasDoc ? "px-2.5" : "w-full px-3"
+            }`}
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading || ocrPolling}
+          >
+            {isUploading || ocrPolling ? (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            ) : (
+              <Upload className="w-3 h-3" />
+            )}
+            {isUploading
+              ? "..."
+              : ocrPolling
+                ? "OCR..."
+                : hasDoc
+                  ? ""
+                  : `Upload`}
+          </Button>
         </div>
-      )}
-
-      {/* Show just-uploaded file */}
-      {uploadedFile && (
-        <p className="text-xs text-green-400 mb-2 flex items-center gap-1">
-          <CheckCircle2 className="w-3 h-3" />
-          {uploadedFile}
-        </p>
-      )}
-
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".jpg,.jpeg,.png,.pdf"
-        className="hidden"
-        onChange={handleUpload}
-        disabled={isUploading}
-      />
-      <Button
-        variant="outline"
-        size="sm"
-        className="gap-2 text-xs w-full"
-        onClick={() => fileInputRef.current?.click()}
-        disabled={isUploading || ocrPolling}
-      >
-        {isUploading ? (
-          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-        ) : ocrPolling ? (
-          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-        ) : (
-          <Upload className="w-3.5 h-3.5" />
-        )}
-        {isUploading
-          ? "Uploading..."
-          : ocrPolling
-            ? "OCR in corso..."
-            : hasDoc
-              ? `Replace ${label}`
-              : `Upload ${label}`}
-      </Button>
+      </div>
     </div>
   );
 }
@@ -4318,7 +4582,12 @@ function CompanyTab({
               | Record<string, unknown>
               | undefined;
             const people =
-              cf && Array.isArray(cf.people) ? (cf.people as string[]) : [];
+              cf && Array.isArray(cf.people)
+                ? (cf.people as string[]).filter(
+                    (p) =>
+                      !/^(akta|sk |surat|profil|nib |npwp)/i.test(p.trim()),
+                  )
+                : [];
             const docsFound =
               cf && Array.isArray(cf.docs_found)
                 ? (cf.docs_found as string[])
@@ -4416,10 +4685,22 @@ function CompanyTab({
                           company.shares_count > 0 && (
                             <div>
                               <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
-                                Shares
+                                Capital
                               </p>
                               <p className="text-sm font-semibold">
-                                {company.shares_count.toLocaleString()}
+                                {(() => {
+                                  const nominal =
+                                    company.share_nominal_value || 1000000;
+                                  const total =
+                                    company.shares_count * nominal;
+                                  if (total >= 1e12)
+                                    return `Rp ${(total / 1e12).toFixed(total % 1e12 === 0 ? 0 : 1)}T`;
+                                  if (total >= 1e9)
+                                    return `Rp ${(total / 1e9).toFixed(total % 1e9 === 0 ? 0 : 1)}B`;
+                                  if (total >= 1e6)
+                                    return `Rp ${(total / 1e6).toFixed(0)}M`;
+                                  return `Rp ${total.toLocaleString()}`;
+                                })()}
                               </p>
                             </div>
                           )}
@@ -4521,24 +4802,6 @@ function CompanyTab({
                       </div>
                     )}
 
-                    {/* Setup Progress */}
-                    {company.setup_progress !== undefined &&
-                      company.setup_progress < 100 && (
-                        <div>
-                          <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
-                            Setup Progress
-                          </p>
-                          <div className="mt-1 w-full bg-[var(--background)] rounded-full h-2">
-                            <div
-                              className="bg-[var(--accent)] h-2 rounded-full transition-all"
-                              style={{ width: `${company.setup_progress}%` }}
-                            />
-                          </div>
-                          <p className="text-xs text-[var(--foreground-muted)] mt-1">
-                            {company.setup_progress}% complete
-                          </p>
-                        </div>
-                      )}
                   </div>
 
                   {/* Right Column: Contact, Address, People */}

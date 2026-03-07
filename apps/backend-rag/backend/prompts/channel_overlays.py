@@ -53,13 +53,16 @@ CHANNEL_CONFIGS: dict[str, ChannelConfig] = {
     ),
     "website": ChannelConfig(
         name="website",
-        max_words=800,
+        max_words=400,
         markdown=True,
         emoji=True,
         progressive=True,
         extra_instructions=(
-            'After 3 questions, inject CTA: "Per un consulto personalizzato: '
-            '📧 zero@balizero.com | 📱 WhatsApp: +62 812 3456 7890"'
+            "You are embedded as a widget on balizero.com. "
+            "Keep answers concise and helpful — this is a lead generation context. "
+            "After the user's 3rd question, naturally suggest a personal consultation: "
+            '"For a personalized consultation, reach us at '
+            "info@balizero.com or WhatsApp +62 859 0436 9574.\""
         ),
     ),
 }

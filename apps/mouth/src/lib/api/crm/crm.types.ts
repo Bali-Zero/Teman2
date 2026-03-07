@@ -411,6 +411,7 @@ export interface ClientCompanyLink {
   is_primary: boolean;
   ownership_percentage?: number;
   shares_count?: number;
+  share_nominal_value?: number;
   start_date?: string;
   status: string;
   notes?: string;

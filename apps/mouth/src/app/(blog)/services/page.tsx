@@ -104,18 +104,6 @@ export default function ServicesPage() {
                 <Phone className="w-4 h-4" />
                 {t("common.cta.whatsappUs")}
               </Link>
-              <Link
-                href="/chat"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg border border-white/20 text-white font-medium hover:bg-white/10 transition-colors"
-              >
-                <Image
-                  src="/assets/logo/zantara-lotus.png"
-                  alt="Zantara Lotus Logo"
-                  width={60}
-                  height={60}
-                />
-                {t("common.cta.askZantaraAi")}
-              </Link>
             </div>
           </div>
         </div>
@@ -414,12 +402,6 @@ export default function ServicesPage() {
                 {t("home.zantaraAi.shortDescription")}
               </p>
             </div>
-            <Link
-              href="/chat"
-              className="ml-auto px-4 py-2 rounded-lg bg-[#2251ff] text-white text-sm font-medium hover:bg-[#1a41cc] transition-colors"
-            >
-              {t("common.cta.askNow")}
-            </Link>
           </div>
 
           {/* View Full Team Link */}

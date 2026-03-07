@@ -233,13 +233,6 @@ export default function TeamPage() {
                 {t("team.ai.role")}
               </p>
               <p className="text-white/60">{t("team.ai.description")}</p>
-              <Link
-                href="/chat"
-                className="inline-flex items-center gap-2 mt-6 px-6 py-3 rounded-lg bg-[#2251ff] text-white font-medium hover:bg-[#1a41cc] transition-colors"
-              >
-                <Sparkles className="w-4 h-4" />
-                {t("common.cta.askZantaraAi")}
-              </Link>
             </div>
           </div>
         </div>

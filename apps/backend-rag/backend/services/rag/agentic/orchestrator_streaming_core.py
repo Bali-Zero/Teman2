@@ -60,6 +60,7 @@ class OrchestratorStreamingCore:
         tool_execution_counter: dict[str, int],
         correlation_id: str,
         initial_user_context: dict[str, Any] | None = None,
+        channel: str | None = None,
     ) -> AsyncGenerator[dict, None]:
         """
         Core streaming query processing logic.
@@ -186,6 +187,7 @@ class OrchestratorStreamingCore:
             extracted_entities=extracted_entities,
             deep_think_mode=False,  # Will be determined by routing
             kg_context_str=kg_context_str,  # Pass pre-fetched KG context
+            channel=channel,
         )
 
         # 4. Create chat session

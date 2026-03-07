@@ -207,18 +207,6 @@ export default async function ServiceDetailPage({
                     <Phone className="w-4 h-4" />
                     WhatsApp Us
                   </Link>
-                  <Link
-                    href="/chat"
-                    className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg border border-white/40 text-white font-medium hover:bg-white/10 transition-colors"
-                  >
-                    <Image
-                      src="/assets/logo/zantara-lotus.png"
-                      alt="Zantara Lotus Logo"
-                      width={60}
-                      height={60}
-                    />
-                    Ask Zantara AI
-                  </Link>
                 </div>
               </div>
             </div>

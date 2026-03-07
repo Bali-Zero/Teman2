@@ -415,6 +415,7 @@ class AgenticRAGOrchestrator:
         conversation_history: list[dict] | None = None,
         session_id: str | None = None,
         images: list[dict] | None = None,  # Vision images: [{"base64": ..., "name": ...}]
+        channel: str | None = None,  # Channel overlay: "website", "webapp", etc.
     ) -> AsyncGenerator[dict, None]:
         """Stream query with comprehensive error handling. Supports vision with images."""
         correlation_id = str(uuid.uuid4())
@@ -699,6 +700,7 @@ Respond in the SAME language the user is using."""
                 tool_execution_counter=tool_execution_counter,
                 correlation_id=correlation_id,
                 initial_user_context=user_context,  # NEW: Pass basic context for late binding
+                channel=channel,
             ):
                 # Accumulate tokens for memory saving
                 if event.get("type") == "token":

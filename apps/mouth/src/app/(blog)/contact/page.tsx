@@ -402,32 +402,6 @@ export default function ContactPage() {
       </section>
 
       {/* Zantara AI CTA */}
-      <section className="bg-gradient-to-br from-[#0a2540] to-[#051C2C]">
-        <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
-          <div className="flex flex-col md:flex-row items-center gap-8 justify-center">
-            <Image
-              src="/assets/logo/zantara-lotus.png"
-              alt="Zantara AI"
-              width={120}
-              height={120}
-            />
-            <div className="text-center md:text-left max-w-xl">
-              <h3 className="font-serif text-2xl text-white mb-2">
-                {t("contact.aiCta.title")}
-              </h3>
-              <p className="text-white/60 mb-4">
-                {t("contact.aiCta.description")}
-              </p>
-              <Link
-                href="/chat"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-[#2251ff] text-white font-medium hover:bg-[#1a41cc] transition-colors"
-              >
-                {t("contact.aiCta.button")}
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
     </div>
   );
 }
