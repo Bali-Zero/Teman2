@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Background */
+  --background: #141416;
+  --background-secondary: #1a1a1e;
+  --background-elevated: #222228;
+
+  /* Foreground */
+  --foreground: #ececec;
+  --foreground-muted: #888896;
+
+  /* Accent (Bali Zero orange) */
+  --accent: #d4845a;
+  --accent-hover: #c47249;
+
+  /* Borders */
+  --border: #2a2a32;
+
+  /* Semantic colors */
+  --error: #e55353;
+  --warning: #f5a623;
+  --success: #4caf86;
+
+  /* Font */
+  --font-geist-sans: "Geist", system-ui, -apple-system, sans-serif;
+  --font-geist-mono: "Geist Mono", ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--foreground-muted);
+}
