@@ -56,7 +56,15 @@ class IntelPipeline:
         self.project_root = self.script_dir.parent
         self.data_dir = self.project_root / 'data'
         self.pipeline_dir = self.data_dir / 'pipeline'
-        self.pipeline_dir.mkdir(exist_ok=True)
+        try:
+            self.pipeline_dir.mkdir(exist_ok=True)
+            # Test write permission (macOS LaunchAgent may lack Full Disk Access)
+            test_file = self.pipeline_dir / '.write_test'
+            test_file.write_text('ok')
+            test_file.unlink()
+        except (PermissionError, OSError):
+            self.pipeline_dir = Path('/tmp/intel_pipeline_runs')
+            self.pipeline_dir.mkdir(exist_ok=True)
         
         # State tracking
         self.run_id = datetime.now().strftime('%Y%m%d_%H%M%S')
