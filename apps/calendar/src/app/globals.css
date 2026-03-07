@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+:root {
+  --bg-primary: #141416;
+  --bg-secondary: #1a1d24;
+  --bg-surface: #242424;
+  --text-primary: #ececec;
+  --text-muted: #9aa0ae;
+  --accent: #d4845a;
+  --border: rgba(255, 255, 255, 0.05);
+}
+
+html,
+body {
+  height: 100%;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) opacity(0.4);
+}
