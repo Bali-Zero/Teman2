@@ -1,7 +1,7 @@
 # Intel Router API Documentation
 
-**Version:** 1.0  
-**Last Updated:** 2026-01-24  
+**Version:** 2.0
+**Last Updated:** 2026-03-07
 **Base URL:** `https://nuzantara-rag.fly.dev/api/intel`
 
 ---
@@ -20,15 +20,17 @@ The Intel Router API provides endpoints for managing intelligence articles from 
 ```
 Intel Scraper Pipeline
     ↓
-POST /api/intel/scraper/submit
+POST /api/intel/scraper/submit (+ cover_image_base64 → Google Drive)
     ↓
-Staging Area (data/staging/{type}/{item_id}.json)
+Staging Area (data/staging/{type}/{item_id}.json) [image_drive_file_id stored]
     ↓
-Team Approval (Telegram + News Room UI)
+Team Approval (Telegram + News Room UI + Position Select)
     ↓
 POST /api/intel/staging/publish/{type}/{item_id}
     ↓
-Qdrant Knowledge Base
+Download image from Drive → Generate MDX → Git commit+push → Vercel deploy
+    ↓
+Qdrant Knowledge Base + Live on balizero.com
 ```
 
 ---
@@ -85,18 +87,26 @@ Authorization: Bearer <jwt-token>
 
 **Parameters:**
 
-| Field               | Type   | Required | Description                                     |
-| ------------------- | ------ | -------- | ----------------------------------------------- |
-| `title`             | string | Yes      | Article title (min 1 char)                      |
-| `content`           | string | Yes      | Article content (min 1 char)                    |
-| `source_url`        | string | Yes      | Original article URL                            |
-| `source_name`       | string | Yes      | Source name (e.g., "Jakarta Post")              |
-| `category`          | string | Yes      | Category: `immigration`, `business`, `tax`, etc |
-| `relevance_score`   | int    | Yes      | Score 0-100 from LLAMA scorer                   |
-| `published_at`      | string | No       | ISO timestamp                                   |
-| `extraction_method` | string | No       | Default: `intel_pipeline`                       |
-| `tier`              | string | No       | Tier: `T1`, `T2`, `T3` (default: `T2`)          |
-| `cover_image`       | string | No       | Cover image URL/path                            |
+| Field                | Type   | Required | Description                                      |
+| -------------------- | ------ | -------- | ------------------------------------------------ |
+| `title`              | string | Yes      | Article title (min 1 char)                       |
+| `content`            | string | Yes      | Article content (min 1 char)                     |
+| `source_url`         | string | Yes      | Original article URL                             |
+| `source_name`        | string | Yes      | Source name (e.g., "Jakarta Post")               |
+| `category`           | string | Yes      | Category: `immigration`, `business`, `tax`, etc  |
+| `relevance_score`    | int    | Yes      | Score 0-100 from LLAMA scorer                    |
+| `published_at`       | string | No       | ISO timestamp                                    |
+| `extraction_method`  | string | No       | Default: `intel_pipeline`                        |
+| `tier`               | string | No       | Tier: `T1`, `T2`, `T3` (default: `T2`)           |
+| `cover_image`        | string | No       | Cover image URL/path (legacy)                    |
+| `cover_image_base64` | string | No       | Cover image as base64 (uploaded to Google Drive) |
+
+**New fields in staging JSON when `cover_image_base64` is provided:**
+
+| Field                 | Description                                       |
+| --------------------- | ------------------------------------------------- |
+| `image_drive_file_id` | Google Drive file ID for the uploaded cover image |
+| `image_drive_url`     | Google Drive view URL for the cover image         |
 
 **Response (Success):**
 
@@ -325,9 +335,14 @@ The backend automatically classifies articles as `visa` or `news` based on:
 
 **What happens:**
 
-1. Ingests article to Qdrant (knowledge base)
-2. Registers article in anti-duplicate system (for future deduplication)
-3. Archives to `data/staging/{type}/archived/approved/`
+1. If `image_drive_file_id` exists: downloads cover image from Google Drive
+2. Generates MDX file from enriched content
+3. If `position` specified: updates `homepage-layout.json` (hero_main, hero_2-5, insight_1-3)
+4. Atomic Git commit: MDX + cover image + homepage-layout.json
+5. Pushes to GitHub (triggers Vercel auto-deploy)
+6. Ingests article to Qdrant (knowledge base)
+7. Registers article in anti-duplicate system
+8. Archives to `data/staging/{type}/archived/approved/`
 
 **Collections:**
 
@@ -915,6 +930,19 @@ fly secrets set NUZANTARA_API_KEY="..." -a nuzantara-rag
 
 ## Changelog
 
+### v2.0 (2026-03-07)
+
+**Added:**
+
+- `cover_image_base64` field on submit endpoint (Google Drive upload)
+- `image_drive_file_id` and `image_drive_url` in staging data
+- Publish endpoint now generates MDX, commits to GitHub, triggers Vercel deploy
+- Homepage position control (`homepage-layout.json`) with 8 named positions
+- Cover image download from Drive at publish time
+- Conditional MDX sections (empty Bali Zero Take/Next Steps omitted)
+
+**See also:** `docs/INTEL_PIPELINE_COMPLETE.md` for full system documentation.
+
 ### v1.0 (2026-01-24)
 
 **Added:**
@@ -927,6 +955,6 @@ fly secrets set NUZANTARA_API_KEY="..." -a nuzantara-rag
 
 ---
 
-**Last Updated:** 2026-01-24  
-**Maintained by:** Backend Team  
-**API Version:** 1.0
+**Last Updated:** 2026-03-07
+**Maintained by:** Bali Zero AI Team
+**API Version:** 2.0

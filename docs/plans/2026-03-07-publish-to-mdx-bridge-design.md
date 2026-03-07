@@ -1,7 +1,7 @@
 # Publish-to-MDX Bridge with Homepage Position Control
 
 **Date:** 2026-03-07
-**Status:** Approved
+**Status:** Implemented and Deployed (2026-03-07)
 **Author:** Bali Zero AI Team
 
 ## Problem
@@ -162,9 +162,25 @@ Newsroom UI → POST /api/news/publish-to-site
 - If position already taken → auto-demote previous, proceed
 - If MDX generation fails (missing fields) → return validation errors
 
+## Implementation Notes (2026-03-07)
+
+**Cover image pipeline added** (not in original design):
+
+- Scraper sends `cover_image_base64` in submit payload
+- Backend uploads to Google Drive `Intel_Images` folder
+- At publish time, downloads from Drive and commits alongside MDX
+- Drive folder ID: `12UhfVLsNJgHSqXQP3vFbWk3THpDeU-2-`
+
+**Commits:**
+
+- `341cb41d7` - fix: copy-paste bug in our_advice extraction
+- `e7e5b03` - feat: publish-to-MDX bridge with homepage position control
+- `742bd28e1` - feat: cover image pipeline via Google Drive
+
+**Full documentation:** `docs/INTEL_PIPELINE_COMPLETE.md`
+
 ## Out of Scope
 
 - Drag-and-drop position reordering (future)
 - Scheduled publishing (future)
 - Multi-language MDX generation (`.id.mdx` translations handled separately)
-- Image generation/upload (uses existing image_url or placeholder)
