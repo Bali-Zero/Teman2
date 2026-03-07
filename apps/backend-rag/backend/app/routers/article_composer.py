@@ -613,6 +613,39 @@ def generate_mdx_content(article: EnrichedArticle, slug: str, cover_image_path: 
     # Cover image path
     cover_img = cover_image_path or f"/static/news/{slug}.jpg"
 
+    # Build conditional sections - skip empty Bali Zero Take and Next Steps
+    bali_zero_take_section = ""
+    has_bzt = (
+        article.bali_zero_take.hidden_insight.strip()
+        or article.bali_zero_take.our_analysis.strip()
+        or article.bali_zero_take.our_advice.strip()
+    )
+    if has_bzt:
+        bali_zero_take_section = "\n---\n\n## Bali Zero Take\n"
+        if article.bali_zero_take.hidden_insight.strip():
+            bali_zero_take_section += f"\n### The Hidden Insight\n\n{article.bali_zero_take.hidden_insight}\n"
+        if article.bali_zero_take.our_analysis.strip():
+            bali_zero_take_section += f"\n### Our Analysis\n\n{article.bali_zero_take.our_analysis}\n"
+        if article.bali_zero_take.our_advice.strip():
+            bali_zero_take_section += f"\n### Our Advice\n\n{article.bali_zero_take.our_advice}\n"
+
+    next_steps_section = ""
+    has_steps = article.next_steps.expat or article.next_steps.investor
+    if has_steps:
+        next_steps_section = f"""
+---
+
+## Next Steps
+
+<Checklist
+  title="Action Items"
+  items={{[
+    {{ text: "For Expats", subItems: {expat_steps_json} }},
+    {{ text: "For Investors", subItems: {investor_steps_json} }},
+  ]}}
+/>
+"""
+
     mdx_content = f'''---
 title: "{article.headline}"
 slug: "{slug}"
@@ -650,42 +683,13 @@ seoDescription: "{article.ai_summary}"
 ## The Facts
 
 {article.facts}
-
----
-
-## Bali Zero Take
-
-### The Hidden Insight
-
-{article.bali_zero_take.hidden_insight}
-
-### Our Analysis
-
-{article.bali_zero_take.our_analysis}
-
-### Our Advice
-
-{article.bali_zero_take.our_advice}
-
----
-
-## Next Steps
-
-<Checklist
-  title="Action Items"
-  items={{[
-    {{ text: "For Expats", subItems: {expat_steps_json} }},
-    {{ text: "For Investors", subItems: {investor_steps_json} }},
-  ]}}
-/>
-
+{bali_zero_take_section}{next_steps_section}
 ---
 
 <AskZantara
   question="Have questions about this topic?"
   placeholder="Ask Zantara AI for personalized advice..."
-/>
-'''
+/>'''
     return mdx_content
 
 

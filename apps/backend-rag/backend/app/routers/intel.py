@@ -266,7 +266,7 @@ def convert_staging_to_enriched_article(staging_data: dict) -> dict:
         re.DOTALL | re.IGNORECASE,
     )
     our_advice = (
-        our_analysis_match.group(1).strip() if our_advice_match else bali_zero_take_text[400:]
+        our_advice_match.group(1).strip() if our_advice_match else bali_zero_take_text[400:]
     )
 
     # Extract Next Steps section
