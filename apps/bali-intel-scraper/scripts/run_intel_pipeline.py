@@ -1347,6 +1347,16 @@ IMPORTANT:
                 payload["seo"] = art["seo"]
             if art.get("image_url"):
                 payload["image_url"] = art["image_url"]
+            # Send cover image as base64 for Drive upload on backend
+            if art.get("image_path"):
+                try:
+                    import base64 as _b64
+                    from pathlib import Path as _P
+                    img_p = _P(art["image_path"])
+                    if img_p.exists() and img_p.stat().st_size > 5000:
+                        payload["cover_image_base64"] = _b64.b64encode(img_p.read_bytes()).decode("utf-8")
+                except Exception as _img_err:
+                    self.log(f'Warning: could not read image for upload: {_img_err}', 'WARN')
             # Include enrichment metadata
             if enr.get("thirty_second_brief"):
                 payload["brief"] = enr["thirty_second_brief"]
@@ -1358,7 +1368,7 @@ IMPORTANT:
             if enr_meta.get("tags"):
                 payload["tags"] = enr_meta["tags"]
             payload["featured"] = art.get("featured", False)
-            async with _httpx.AsyncClient(timeout=30) as c:
+            async with _httpx.AsyncClient(timeout=60) as c:
                 r = await c.post(
                     f"{BACKEND_URL}/api/intel/scraper/submit",
                     json=payload,
