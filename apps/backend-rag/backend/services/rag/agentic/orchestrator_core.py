@@ -22,6 +22,7 @@ from typing import Any
 from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
 from backend.db.repositories.query_analytics_repository import QueryAnalyticsRepository
 from backend.db.repositories.workflow_analytics_repository import WorkflowAnalyticsRepository
+from backend.prompts.channel_overlays import build_channel_context
 from backend.services.llm_clients.pricing import TokenUsage
 from backend.services.rag.agentic.entity_extractor import EntityExtractionService
 from backend.services.rag.agentic.llm_gateway import LLMGateway
@@ -964,6 +965,7 @@ class OrchestratorCore:
         extracted_entities: dict[str, Any],  # Not explicitly used but kept for signature
         deep_think_mode: bool = False,
         kg_context_str: str = "",  # New argument to pass pre-fetched KG context
+        channel: str | None = None,  # Channel overlay for response formatting
     ) -> tuple[str, bool, AgentState, str]:
         """
         Common ReAct loop preparation.
@@ -996,6 +998,11 @@ class OrchestratorCore:
             conversation_history=history,
         )
 
+        # Inject channel overlay (website, webapp, whatsapp, etc.)
+        channel_context = build_channel_context(channel or "webapp")
+        if channel_context:
+            system_prompt += f"\n\n{channel_context}"
+
         # 🔍 DEBUG: Log full context breakdown
         logger.debug("🔍 [ORCHESTRATOR DEBUG] ===== CONTEXT BREAKDOWN =====")
         logger.debug(f"🔍 Query: {query}")
@@ -1017,6 +1024,7 @@ class OrchestratorCore:
         extracted_entities: dict[str, Any],
         deep_think_mode: bool = False,
         kg_context_str: str = "",
+        channel: str | None = None,
     ) -> tuple[str, bool, AgentState, str]:
         """
         Prepare ReAct execution (alias for _prepare_react_loop for streaming compatibility).
@@ -1031,4 +1039,5 @@ class OrchestratorCore:
             extracted_entities=extracted_entities,
             deep_think_mode=deep_think_mode,
             kg_context_str=kg_context_str,
+            channel=channel,
         )

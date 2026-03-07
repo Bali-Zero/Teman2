@@ -181,6 +181,7 @@ class AgenticQueryRequest(BaseModel):
     conversation_history: list[ConversationMessageInput] | None = (
         None  # Direct history from frontend
     )
+    channel: str | None = None  # Channel overlay: "website", "webapp", "whatsapp", etc.
 
 
 class AgenticQueryResponse(BaseModel):
@@ -654,6 +655,7 @@ async def stream_agentic_rag(
                 conversation_history=conversation_history if conversation_history else None,
                 session_id=request_body.session_id,
                 images=images_for_vision,
+                channel=request_body.channel,
             ):
                 try:
                     # Validate event

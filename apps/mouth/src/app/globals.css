@@ -37,6 +37,18 @@ body {
   position: relative;
 }
 
+/* Zantara widget fade-in animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Subtle ambient gradients — matches existing navigator */
 body::before {
   content: "";

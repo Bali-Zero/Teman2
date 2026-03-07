@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Search, Menu, ChevronDown, X, Globe } from "lucide-react";
 import { SearchModal } from "@/components/blog/SearchBar";
 import { ErrorBoundary } from "@/components/optimization";
+import { ZantaraWidget } from "@/components/ZantaraWidget";
 import { I18nProvider, useTranslation } from "@/i18n";
 import { LocaleHead } from "@/i18n/LocaleHead";
 import type { Locale } from "@/i18n/types";
@@ -268,21 +269,6 @@ function BlogLayoutInner({ children }: { children: React.ReactNode }) {
                 )}
               </div>
 
-              {/* Zantara AI Button */}
-              <a
-                href={`${APP_DOMAIN}/chat`}
-                className="hidden md:inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#2251ff] text-white text-sm font-medium hover:bg-[#1a41cc] transition-colors"
-              >
-                <Image
-                  src="/assets/logo/zantara-lotus.png"
-                  alt="Zantara Lotus Logo"
-                  width={24}
-                  height={24}
-                  className="w-6 h-6"
-                />
-                Zantara
-              </a>
-
               {/* Mobile menu button */}
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -377,22 +363,6 @@ function BlogLayoutInner({ children }: { children: React.ReactNode }) {
                 </div>
               </div>
 
-              <div className="pt-4">
-                <a
-                  href={`${APP_DOMAIN}/chat`}
-                  className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg bg-[#2251ff] text-white text-sm font-medium hover:bg-[#1a41cc] transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <Image
-                    src="/assets/logo/zantara-lotus.png"
-                    alt="Zantara AI Assistant"
-                    width={24}
-                    height={24}
-                    className="w-6 h-6"
-                  />
-                  Zantara
-                </a>
-              </div>
             </nav>
           </div>
         )}
@@ -550,21 +520,6 @@ function BlogLayoutInner({ children }: { children: React.ReactNode }) {
                 </li>
               </ul>
 
-              <div className="mt-6">
-                <a
-                  href={`${APP_DOMAIN}/chat`}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#2251ff] text-white text-sm font-medium hover:bg-[#1a41cc] transition-colors"
-                >
-                  <Image
-                    src="/assets/logo/zantara-lotus.png"
-                    alt="Zantara AI Assistant"
-                    width={24}
-                    height={24}
-                    className="w-6 h-6"
-                  />
-                  Zantara
-                </a>
-              </div>
             </div>
           </div>
 
@@ -576,6 +531,9 @@ function BlogLayoutInner({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </footer>
+
+      {/* Floating Zantara chat widget */}
+      <ZantaraWidget />
     </div>
   );
 }
