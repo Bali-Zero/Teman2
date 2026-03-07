@@ -93,6 +93,14 @@ class UnifiedScraper:
         timestamp = datetime.now().strftime('%H:%M:%S')
         print(f'[{timestamp}] [{level}] {message}')
         sys.stdout.flush()
+
+    def _get(self, url: str, **kwargs) -> requests.Response:
+        """GET with SSL fallback — retries with verify=False on cert errors (e.g. bkpm.go.id)."""
+        try:
+            return self.session.get(url, **kwargs)
+        except requests.exceptions.SSLError:
+            self.log(f'  SSL error for {url}, retrying without verify', 'WARN')
+            return self.session.get(url, verify=False, **kwargs)
     
     def load_sources(self) -> List[Dict]:
         """Load sources from unified_sources.json"""
@@ -146,7 +154,7 @@ class UnifiedScraper:
             if not feed.entries:
                 # Discovery: cerca <link type="application/rss+xml"> nel HTML
                 try:
-                    resp = self.session.get(url, timeout=8)
+                    resp = self._get(url, timeout=8)
                     from bs4 import BeautifulSoup as _BS
                     soup = _BS(resp.text, 'lxml')
                     rss_link = soup.find('link', type='application/rss+xml')
@@ -232,7 +240,7 @@ class UnifiedScraper:
         """FIX3: scrape tag/search/category listing, extract and fetch article links."""
         articles = []
         try:
-            resp = self.session.get(url, timeout=10)
+            resp = self._get(url, timeout=10)
             if resp.status_code != 200:
                 return []
             from bs4 import BeautifulSoup as _BS
