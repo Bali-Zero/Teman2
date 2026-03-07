@@ -392,3 +392,44 @@ openclaw
 .claude/
 .serena/
 OPENCLAW_MASTER_GUIDE_2026.md
+
+# ========================================
+# CLEANUP 2026-03-07
+# ========================================
+
+# Scraper temp data & chrome profile
+apps/bali-intel-scraper/data/.chrome-profile/
+apps/bali-intel-scraper/data/intel_output_latest.json
+apps/bali-intel-scraper/data/pipeline/
+apps/bali-intel-scraper/data/enriched/
+apps/bali-intel-scraper/data/review_*.txt
+
+# Dead scraper Dockerfiles (removed)
+apps/bali-intel-scraper/Dockerfile.fetcher
+apps/bali-intel-scraper/Dockerfile.optimized
+
+# Client dossiers (one-off, local only)
+DOSSIER_*.md
+
+# CRM utility script outputs (data in Fly.io DB)
+scripts/*_report.json
+scripts/*_log.json
+
+# Fly.io staging config (local only)
+apps/backend-rag/fly.staging.toml
+
+# CRM utility scripts (local one-off operations, not part of product)
+scripts/clients_cleanup.py
+scripts/company_crm_extract.py
+scripts/drive_reorganize.py
+scripts/gap1_dedup_individual_crm.py
+scripts/gap2_link_drive_to_crm.py
+scripts/gap3_populate_portal_data.py
+scripts/import_companies_from_report.py
+scripts/ocr_batch_pipeline.py
+scripts/populate_client_company_links.py
+scripts/reextract_companies.py
+scripts/drive_reorganize_report.json
+
+# Translate script (runs via LaunchAgent, not part of main pipeline)
+apps/bali-intel-scraper/scripts/translate_articles.py
