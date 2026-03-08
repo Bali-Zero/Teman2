@@ -1142,13 +1142,13 @@ If still unresolved after 2 attempts → Escalate. Loops frustrate users and dam
 
 ### Active Channels
 
-| Channel  | Endpoint                  | Status    |
-| -------- | ------------------------- | --------- |
-| WhatsApp | WhatsApp Business API     | ✅ Active |
-| Telegram | @Balizerobot              | ✅ Active |
-| Webapp   | zantara.balizero.com/chat | ✅ Active |
-| Website  | balizero.com              | ✅ Active |
-| Voice    | Voice endpoint            | ⚠️ Beta   |
+| Channel  | Endpoint               | Status    |
+| -------- | ---------------------- | --------- |
+| WhatsApp | WhatsApp Business API  | ✅ Active |
+| Telegram | @Balizerobot           | ✅ Active |
+| Webapp   | kita.balizero.com/chat | ✅ Active |
+| Website  | balizero.com           | ✅ Active |
+| Voice    | Voice endpoint         | ⚠️ Beta   |
 
 ---
 

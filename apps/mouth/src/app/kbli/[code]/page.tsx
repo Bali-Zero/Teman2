@@ -56,11 +56,12 @@ export async function generateMetadata({
         : "Closed to Foreign Investment";
 
   const title = `KBLI ${kbli.code} — ${kbli.titleEn} | KBLI 2025 Navigator`;
-  const description = `Complete guide for KBLI ${kbli.code} (${kbli.titleId}). ${pmaLabel}. Check licensing requirements, risk level, and PMA rules for this Indonesian business activity.`;
+  const description = `KBLI 2025: ${kbli.code} — ${kbli.titleEn} (${kbli.titleId}). ${pmaLabel}. Full licensing requirements, PMA rules, and risk level under Indonesian business classification 2025. Expert setup via Bali Zero.`;
 
   return {
     title,
     description,
+    keywords: `KBLI ${kbli.code}, ${kbli.titleId}, ${kbli.titleEn}, KBLI 2025, Indonesian business classification, PT PMA Bali, company registration Indonesia`,
     openGraph: {
       title,
       description,
@@ -432,7 +433,7 @@ export default async function KBLICodePage({
                     {article.title}
                   </p>
                   <span className="text-[11px] text-[var(--kbli-text-muted)]">
-                    zantara.balizero.com
+                    kita.balizero.com
                   </span>
                 </div>
               </a>
@@ -849,8 +850,10 @@ export default async function KBLICodePage({
                       style={{ background: "var(--kbli-bg-surface)" }}
                     >
                       KBLI {kbli.code} was mapped from previous code
-                      {kbli.transition.previousCodes.length > 1 ? "s" : ""}:{" "}
-                      {kbli.transition.previousCodes.join(", ")} (KBLI 2020).
+                      {kbli.transition.previousCodes.length > 1
+                        ? "s"
+                        : ""}: {kbli.transition.previousCodes.join(", ")} (KBLI
+                      2020).
                       {kbli.transition.mappingNote
                         ? ` ${kbli.transition.mappingNote}`
                         : ""}
@@ -911,7 +914,7 @@ export default async function KBLICodePage({
                     {article.title}
                   </p>
                   <span className="text-[11px] text-[var(--kbli-text-muted)]">
-                    zantara.balizero.com
+                    kita.balizero.com
                   </span>
                 </div>
               </a>

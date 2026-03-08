@@ -2,7 +2,7 @@
 
 ## Issue Summary
 
-**Problem:** Backend workers crashing in loop, causing login timeouts on zantara.balizero.com
+**Problem:** Backend workers crashing in loop, causing login timeouts on kita.balizero.com
 
 **Root Cause:** Two import errors introduced during Phase 2 Portal refactoring
 
@@ -36,17 +36,17 @@
 
 ### Endpoints Tested
 
-| Endpoint                              | Status         | Response Time |
-| ------------------------------------- | -------------- | ------------- |
-| `nuzantara-rag.fly.dev/health`        | 200 OK         | 0.8s          |
-| `zantara.balizero.com/api/auth/login` | 401 (expected) | 1.4s          |
+| Endpoint                           | Status         | Response Time |
+| ---------------------------------- | -------------- | ------------- |
+| `nuzantara-rag.fly.dev/health`     | 200 OK         | 0.8s          |
+| `kita.balizero.com/api/auth/login` | 401 (expected) | 1.4s          |
 
 ### SSL Certificates
 
-| Domain               | Status    | Expiry     |
-| -------------------- | --------- | ---------- |
-| admin.balizero.com   | ✅ Ready  | 2 months   |
-| zantara.balizero.com | ✅ Active | Auto-renew |
+| Domain             | Status    | Expiry     |
+| ------------------ | --------- | ---------- |
+| admin.balizero.com | ✅ Ready  | 2 months   |
+| kita.balizero.com  | ✅ Active | Auto-renew |
 
 ## Deployment Timeline
 

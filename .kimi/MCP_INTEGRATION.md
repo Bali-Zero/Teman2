@@ -24,7 +24,7 @@
 
 | Tool                      | Descrizione        | Uso Tipico                      |
 | ------------------------- | ------------------ | ------------------------------- |
-| `browser_navigate`        | Naviga a un URL    | Andare su zantara.balizero.com  |
+| `browser_navigate`        | Naviga a un URL    | Andare su kita.balizero.com     |
 | `browser_click`           | Clicca un elemento | Cliccare bottoni, link          |
 | `browser_type`            | Scrive in input    | Compilare form                  |
 | `browser_take_screenshot` | Fa screenshot      | Documentazione, verifica UI     |
@@ -38,7 +38,7 @@
 
 ```javascript
 // Naviga e fai screenshot
-await browser_navigate({ url: "https://zantara.balizero.com" });
+await browser_navigate({ url: "https://kita.balizero.com" });
 await browser_take_screenshot({ path: "homepage.png" });
 
 // Compila form

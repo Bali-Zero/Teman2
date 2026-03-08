@@ -33,7 +33,7 @@ nuzantara/                         # Root workspace (solo config)
 
 | Workspace          | Platform | Project Name  | URL                        |
 | ------------------ | -------- | ------------- | -------------------------- |
-| `apps/mouth`       | Vercel   | `mouth`       | zantara.balizero.com       |
+| `apps/mouth`       | Vercel   | `mouth`       | kita.balizero.com          |
 | `apps/backend-rag` | Fly.io   | `backend-rag` | backend-rag.fly.dev        |
 | Root (nuzantara)   | Vercel   | `nuzantara`   | ⚠️ Non usato (solo config) |
 

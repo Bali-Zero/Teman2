@@ -18,12 +18,12 @@ Request → Try Ollama (local, free) → Success? → Return
 
 ## Local Model Roster
 
-| Model | Ollama Tag | Size | Role |
-|-------|-----------|------|------|
-| Qwen 3.5 27B | `qwen3.5:27b` | 17GB | Heavy reasoning, KG extraction, Vision/OCR |
-| Qwen 3.5 9B | `qwen3.5:9b` | 6.6GB | Fast classification, titles, short tasks |
-| Gemma 3 12B | `gemma3:12b` | 8.1GB | Reliable JSON output, quality scoring |
-| DeepSeek R1 1.5B | `deepseek-r1:1.5b` | 1.1GB | Health check, micro-tasks |
+| Model            | Ollama Tag         | Size  | Role                                       |
+| ---------------- | ------------------ | ----- | ------------------------------------------ |
+| Qwen 3.5 27B     | `qwen3.5:27b`      | 17GB  | Heavy reasoning, KG extraction, Vision/OCR |
+| Qwen 3.5 9B      | `qwen3.5:9b`       | 6.6GB | Fast classification, titles, short tasks   |
+| Gemma 3 12B      | `gemma3:12b`       | 8.1GB | Reliable JSON output, quality scoring      |
+| DeepSeek R1 1.5B | `deepseek-r1:1.5b` | 1.1GB | Health check, micro-tasks                  |
 
 **Total:** ~31GB on 48GB M4 Pro (leaves ~17GB for system + apps).
 
@@ -52,26 +52,26 @@ reasoning. The `ollama_client.py` handles this automatically.
 
 ### 1. Conversation Title Generator
 
-| Property | Value |
-|----------|-------|
-| **File** | `backend/services/crm/conversation_title_generator.py` |
-| **Model** | qwen3.5:9b (local) → Gemini Flash (fallback) |
-| **Trigger** | First user message in new conversation |
-| **Latency** | 772ms avg (local), ~300ms (Gemini) |
-| **Cost** | $0.00 local, ~$0.000003 Gemini |
+| Property    | Value                                                  |
+| ----------- | ------------------------------------------------------ |
+| **File**    | `backend/services/crm/conversation_title_generator.py` |
+| **Model**   | qwen3.5:9b (local) → Gemini Flash (fallback)           |
+| **Trigger** | First user message in new conversation                 |
+| **Latency** | 772ms avg (local), ~300ms (Gemini)                     |
+| **Cost**    | $0.00 local, ~$0.000003 Gemini                         |
 
 Generates concise professional titles (max 50 chars) for chat conversations.
 Supports Italian, English, Indonesian language detection.
 
 ### 2. PDF Vision / Document OCR
 
-| Property | Value |
-|----------|-------|
-| **File** | `backend/services/multimodal/pdf_vision_service.py` |
-| **Model** | qwen3.5:27b vision (local) → Gemini Vision (fallback) |
+| Property    | Value                                                     |
+| ----------- | --------------------------------------------------------- |
+| **File**    | `backend/services/multimodal/pdf_vision_service.py`       |
+| **Model**   | qwen3.5:27b vision (local) → Gemini Vision (fallback)     |
 | **Trigger** | PDF upload for analysis (passports, invoices, legal docs) |
-| **Latency** | 13.2s warm / 63s cold (local), ~3s (Gemini) |
-| **Cost** | $0.00 local |
+| **Latency** | 13.2s warm / 63s cold (local), ~3s (Gemini)               |
+| **Cost**    | $0.00 local                                               |
 
 Analyzes PDF pages using vision models. Extracts tables, text, and structured
 data from business documents, passports, and KBLI tables.
@@ -81,12 +81,12 @@ never leave the local machine.
 
 ### 3. Vision RAG (Multi-Modal Document Search)
 
-| Property | Value |
-|----------|-------|
-| **File** | `backend/services/rag/vision_rag.py` |
-| **Model** | qwen3.5:27b vision (local) → Gemini Vision (fallback) |
-| **Trigger** | RAG queries that involve visual document elements |
-| **Cost** | $0.00 local |
+| Property    | Value                                                 |
+| ----------- | ----------------------------------------------------- |
+| **File**    | `backend/services/rag/vision_rag.py`                  |
+| **Model**   | qwen3.5:27b vision (local) → Gemini Vision (fallback) |
+| **Trigger** | RAG queries that involve visual document elements     |
+| **Cost**    | $0.00 local                                           |
 
 Processes PDFs extracting both text and visual elements (tables, charts,
 diagrams, forms). Each visual element is classified and described by the
@@ -94,13 +94,13 @@ vision model, then made searchable alongside text content.
 
 ### 4. Birthplace Enrichment (CRM)
 
-| Property | Value |
-|----------|-------|
-| **File** | `backend/services/crm/birthplace_enrichment_service.py` |
-| **Model** | qwen3.5:9b (local only, no fallback) |
-| **Trigger** | Cron job at 22:00 WITA (Bali time) |
-| **Batch** | 10 clients per run |
-| **Cost** | $0.00 |
+| Property    | Value                                                   |
+| ----------- | ------------------------------------------------------- |
+| **File**    | `backend/services/crm/birthplace_enrichment_service.py` |
+| **Model**   | qwen3.5:9b (local only, no fallback)                    |
+| **Trigger** | Cron job at 22:00 WITA (Bali time)                      |
+| **Batch**   | 10 clients per run                                      |
+| **Cost**    | $0.00                                                   |
 
 Enriches client birthplace data with cultural context: famous people,
 historical events, local specialties, conversation starters for Zantara.
@@ -108,33 +108,35 @@ Runs only when Ollama is available (skips gracefully on Fly.io).
 
 ## Services NOT Changed (by design)
 
-| Service | Current Provider | Why Not Changed |
-|---------|-----------------|-----------------|
-| Article Composer | Claude CLI Opus 4.6 | User excluded ("Intoccabile") |
-| Intent Classifier | Pattern-based (regex) | Already zero API cost |
-| Personality Service | Oracle Cloud self-hosted | Already optimized |
-| KG Extraction | Gemini free tier | Future optimization candidate |
+| Service             | Current Provider         | Why Not Changed               |
+| ------------------- | ------------------------ | ----------------------------- |
+| Article Composer    | Claude CLI Opus 4.6      | User excluded ("Intoccabile") |
+| Intent Classifier   | Pattern-based (regex)    | Already zero API cost         |
+| Personality Service | Oracle Cloud self-hosted | Already optimized             |
+| KG Extraction       | Gemini free tier         | Future optimization candidate |
 
 ## OpenRouter Models (Cloud Fallback)
 
 For services that need cloud LLM (when both Ollama and Gemini unavailable):
 
-| Tier | Model ID | Use Case |
-|------|----------|----------|
-| Powerful | `qwen/qwen3.5-27b` | Complex reasoning |
-| Fast | `qwen/qwen3.5-35b-a3b` | Quick responses |
-| Context | 262,144 tokens | Up from 40,960 (Qwen 3) |
+| Tier     | Model ID               | Use Case                |
+| -------- | ---------------------- | ----------------------- |
+| Powerful | `qwen/qwen3.5-27b`     | Complex reasoning       |
+| Fast     | `qwen/qwen3.5-35b-a3b` | Quick responses         |
+| Context  | 262,144 tokens         | Up from 40,960 (Qwen 3) |
 
 **File:** `backend/services/llm_clients/openrouter_client.py`
 
 ## Monitoring
 
 ### Check Ollama Status (local dev)
+
 ```bash
 curl http://localhost:11434/api/tags | python3 -m json.tool
 ```
 
 ### Check Service Behavior in Production
+
 ```bash
 fly logs --app nuzantara-rag | grep -i "ollama\|vision\|title"
 ```
@@ -142,6 +144,7 @@ fly logs --app nuzantara-rag | grep -i "ollama\|vision\|title"
 Expected production behavior: Ollama unavailable → Gemini fallback used.
 
 ### Live Test Script
+
 ```bash
 cd apps/backend-rag
 PYTHONPATH=. python backend/scripts/test_ollama_vs_gemini.py
@@ -152,12 +155,12 @@ side-by-side with timing and quality comparison.
 
 ## Cost Impact
 
-| Service | Before (monthly est.) | After (monthly est.) |
-|---------|----------------------|---------------------|
-| Title generation | ~$0.50 (Gemini) | $0.00 (local) |
-| PDF Vision OCR | ~$2.00 (Gemini) | $0.00 (local) |
-| Birthplace enrichment | ~$0.30 (Gemini) | $0.00 (local) |
-| **Total saved** | | **~$2.80/month** |
+| Service               | Before (monthly est.) | After (monthly est.) |
+| --------------------- | --------------------- | -------------------- |
+| Title generation      | ~$0.50 (Gemini)       | $0.00 (local)        |
+| PDF Vision OCR        | ~$2.00 (Gemini)       | $0.00 (local)        |
+| Birthplace enrichment | ~$0.30 (Gemini)       | $0.00 (local)        |
+| **Total saved**       |                       | **~$2.80/month**     |
 
 Note: Cost savings are modest because usage is low. The primary benefit is
 **privacy** (documents stay local) and **independence** from API availability.
