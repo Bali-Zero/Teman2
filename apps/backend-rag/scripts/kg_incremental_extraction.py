@@ -57,10 +57,10 @@ def retry_qdrant(max_retries=3, delay=2):
     return decorator
 
 
-import asyncpg
-import httpx
+import asyncpg  # noqa: E402
+import httpx  # noqa: E402
 
-from backend.llm.genai_client import get_genai_client
+from backend.llm.genai_client import get_genai_client  # noqa: E402
 
 try:
     from openai import AsyncOpenAI
@@ -192,7 +192,7 @@ class KGIncrementalExtractor:
         """Get all chunk IDs already in KG."""
         query = "SELECT DISTINCT unnest(source_chunk_ids) as chunk_id FROM kg_nodes WHERE source_chunk_ids IS NOT NULL"
         rows = await self.db_pool.fetch(query)
-        return set(r["chunk_id"] for r in rows if r["chunk_id"])
+        return {r["chunk_id"] for r in rows if r["chunk_id"]}
 
     def get_qdrant_collections(self) -> list:
         """Get list of Qdrant collections."""
@@ -200,7 +200,7 @@ class KGIncrementalExtractor:
         return [c["name"] for c in result.get("result", {}).get("collections", [])]
 
     def get_collection_chunks(
-        self, collection_name: str, limit: int = None, offset: int = 0
+        self, collection_name: str, limit: int = None, offset: int = 0  # noqa: ARG002
     ) -> list:
         """Get chunks from a Qdrant collection using scroll API with pagination."""
         chunks = []
@@ -281,7 +281,7 @@ class KGIncrementalExtractor:
             }
             if next_offset is not None:
                 scroll_data["offset"] = next_offset
-            
+
             if filter_data:
                 scroll_data["filter"] = filter_data
 
@@ -496,7 +496,7 @@ class KGIncrementalExtractor:
         )
 
     async def save_relationship(
-        self, rel: dict, chunk_id: str, collection: str, new_entity_ids: set = None
+        self, rel: dict, chunk_id: str, collection: str, new_entity_ids: set = None  # noqa: ARG002
     ):
         """Save relationship to PostgreSQL."""
         source_id = rel.get("source", "").lower().replace(" ", "_")
