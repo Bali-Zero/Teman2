@@ -1,95 +1,32 @@
-# Exclude EVERYTHING except backend folder
+# Exclude everything first
+*
+
+# Include what we need
 !backend/
 !training-data/
 !scripts/
-*.md
-!*.txt
+!requirements-prod.txt
 !requirements.txt
 !Dockerfile
 !fly.toml
-!.dockerignore
-# EXCLUDE .env files from Docker image (use Fly secrets instead)
-.env*
+
+# Exclude from included directories
 backend/.env*
-
-# Git
-.git
-.gitignore
-
-# Documentation
-docs/
-README*
-
-# Dependencies
-node_modules/
+backend/tests/
 **/__pycache__/
 **/*.pyc
 **/*.pyo
 **/*.pyd
-.Python
-env/
-venv/
-.venv/
-.env.env
-.env.local
-.env.*.local
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
-logs/
-
-# Cache
-.cache/
-cache/
-.pytest_cache/
-
-# Development
-tests/
-.pytest_cache/
-coverage/
-.coverage
-.tox/
-
-# Data files
-*.db
-*.sqlite
-*.sqlite3
-
-# Exclude all other directories
-../mouth
-../memory-service
-../bali-intel-scraper
-../packages
-# ../scripts  # ← COMMENTED OUT - We need scripts/agents/ for KBLI KG expansion
-!README.md
-!*.json
-!*.yml
-!*.yaml
+**/.DS_Store
+**/*.log
 
 # Secrets (never include in images)
-google_credentials.json
-*credentials*.json
-*.pem
-*.key
+**/google_credentials.json
+**/*credentials*.json
+**/*.pem
+**/*.key
 
-# Exclude unnecessary files
-media/
-uploads/
-static/
-temp/
-
-# Exclude large file patterns
+# Large files
 **/*.pdf
 **/*.docx
 **/*.xlsx
