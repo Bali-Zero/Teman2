@@ -623,9 +623,13 @@ def generate_mdx_content(article: EnrichedArticle, slug: str, cover_image_path: 
     if has_bzt:
         bali_zero_take_section = "\n---\n\n## Bali Zero Take\n"
         if article.bali_zero_take.hidden_insight.strip():
-            bali_zero_take_section += f"\n### The Hidden Insight\n\n{article.bali_zero_take.hidden_insight}\n"
+            bali_zero_take_section += (
+                f"\n### The Hidden Insight\n\n{article.bali_zero_take.hidden_insight}\n"
+            )
         if article.bali_zero_take.our_analysis.strip():
-            bali_zero_take_section += f"\n### Our Analysis\n\n{article.bali_zero_take.our_analysis}\n"
+            bali_zero_take_section += (
+                f"\n### Our Analysis\n\n{article.bali_zero_take.our_analysis}\n"
+            )
         if article.bali_zero_take.our_advice.strip():
             bali_zero_take_section += f"\n### Our Advice\n\n{article.bali_zero_take.our_advice}\n"
 

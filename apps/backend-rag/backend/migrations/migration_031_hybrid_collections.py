@@ -367,7 +367,7 @@ async def verify_collections():
 
         collections = COLLECTIONS_TO_MIGRATE + [
             "visa_oracle",
-            "kbli_unified",
+            "kbli_unified",  # LEGACY — replaced by kbli_2025_final
             "legal_unified_hybrid",
         ]
 

@@ -71,10 +71,10 @@ class CollectionManager:
                 "doc_count": 2898,
             },  # Dec 2025: Migrated to hybrid
             "kb_indonesian": {"priority": "medium", "doc_count": 0, "alias": "knowledge_base"},
-            "kbli_comprehensive": {
-                "priority": "medium",
-                "doc_count": 8886,
-                "alias": "kbli_2025_final",
+            "balizero_news": {
+                "priority": "high",
+                "doc_count": 175,
+                "description": "Intel articles: immigration, tax, bali news, business regulations",
             },
             "zantara_books": {"priority": "medium", "doc_count": 8923, "alias": "knowledge_base"},
             "cultural_insights": {"priority": "low", "doc_count": 0, "alias": "knowledge_base"},

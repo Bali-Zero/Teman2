@@ -100,7 +100,16 @@ TOOL_USAGE_POLICY: str = """\
 1. User: "Quanto costa PT PMA?" → CALL get_pricing("business_setup") → Answer with exact price
 2. User: "E se devo cambiare i codici KBLI dopo?" → **DO NOT INVENT A PRICE** → Say "Il costo per modifiche successive è da verificare con il team"
 
-**🚨 CRITICAL: KBLI - ABSOLUTE RULES**
+**🚨 CRITICAL: KBLI 2025 - ABSOLUTE RULES**
+
+**CONTEXT: KBLI 2025 Transition (BPS Regulation No. 7/2025)**
+- Indonesia has updated its business classification system from KBLI 2020 to KBLI 2025
+- **Deadline: 18 June 2026** — all businesses must migrate to KBLI 2025 codes
+- Companies with existing NIB/OSS registrations using KBLI 2020 codes must update before the deadline
+- The transition affects: code numbering, PMA status, risk categories, and permitted activities
+- Bali Zero offers a dedicated **KBLI Navigator** tool at https://balizero.com/kbli for clients to explore codes, check PMA status, and understand the 2020→2025 changes
+- When clients ask about KBLI, proactively mention the June 2026 deadline and the KBLI Navigator tool
+
 **RULE 1: ALWAYS USE vector_search FOR KBLI QUESTIONS**
 - For ANY question about KBLI codes, business classification, permitted activities, or what business types are allowed → CALL vector_search(query="...", collection="kbli_2025_final")
 - The collection has 9,612 official KBLI 2025 documents with codes, descriptions, PMA status, and risk categories
@@ -113,15 +122,28 @@ TOOL_USAGE_POLICY: str = """\
 **RULE 3: IF NOT FOUND IN COLLECTION, SAY "DA VERIFICARE"**
 - If vector_search returns no results for a specific KBLI query → Say "Questo codice KBLI è da verificare con il team"
 
+**RULE 4: MENTION THE KBLI NAVIGATOR FOR DETAILED EXPLORATION**
+- When clients need to explore multiple codes or compare options → Suggest: "You can explore all KBLI 2025 codes interactively at https://balizero.com/kbli"
+- The Navigator has: full-text search, PMA status filters, risk category info, and detailed descriptions for all 9,612 codes
+
 **Keywords that trigger vector_search(collection="kbli_2025_final"):**
 "kbli", "codice kbli", "kode kbli", "classificazione", "classification", "klasifikasi",
 "attività permesse", "permitted activities", "kegiatan usaha", "business activity",
-"pma status", "terbuka", "tertutup", "diperbolehkan", "oss", "nib"
+"pma status", "terbuka", "tertutup", "diperbolehkan", "oss", "nib",
+"kbli 2025", "kbli 2020", "transition", "transizione", "deadline", "scadenza"
 
 **Example Flow:**
-1. User: "Qual è il codice KBLI per ristorante?" → CALL vector_search(query="ristorante restaurant", collection="kbli_2025_final") → Answer with exact code and details
+1. User: "Qual è il codice KBLI per ristorante?" → CALL vector_search(query="ristorante restaurant", collection="kbli_2025_final") → Answer with exact code and details + mention Navigator
 2. User: "Is restaurant business open for foreign investment?" → CALL vector_search(query="restaurant PMA foreign investment", collection="kbli_2025_final") → Answer with exact PMA status
-3. User: "What are KBLI 2025?" → CALL vector_search(query="KBLI 2025 business classification", collection="kbli_2025_final") → Explain using real data from collection
+3. User: "What are KBLI 2025?" → Explain the BPS Reg. 7/2025 transition, the June 2026 deadline, and suggest exploring https://balizero.com/kbli
+4. User: "My company still uses KBLI 2020 codes, what should I do?" → Explain the mandatory transition by June 2026, offer to check their specific codes, and suggest the Navigator
+
+**NEWS & INTEL (BaliZero Articles):**
+For questions about recent regulation changes, news updates, or intel briefings:
+→ CALL vector_search(query="...", collection="balizero_news")
+→ The collection has 175+ curated intel articles covering: immigration updates, tax changes, bali news, business regulations, property market, events
+→ Example: "Ci sono novità sulle regole di immigrazione?" → CALL vector_search(query="immigration regulation update", collection="balizero_news")
+→ Example: "What changed recently for property investors?" → CALL vector_search(query="property investment regulation changes", collection="balizero_news")
 
 **GENERAL QUERIES (Web Search):** Tourism, restaurants, weather, lifestyle, current events, general knowledge
 → Use: web_search tool to find real-time information
@@ -129,7 +151,7 @@ TOOL_USAGE_POLICY: str = """\
 → Example: "Best restaurants in Canggu?" → Call web_search("best restaurants Canggu Bali")
 
 **WHEN TO USE WEB SEARCH:**
-1. Weather, current events, news
+1. Weather, current events, tourism
 2. Tourism info: restaurants, attractions, lifestyle
 3. General knowledge NOT in the Knowledge Base
 4. Local context for business (competitors, market research)

@@ -153,6 +153,7 @@ class QueryRouterIntegration:
                     "business": "training_conversations_hybrid",
                     "circular": "immigration_circulars",
                     "books": "zantara_books",
+                    "news": "balizero_news",
                 }
                 for domain in active_domains:
                     target_collection = domain_to_collection.get(domain)

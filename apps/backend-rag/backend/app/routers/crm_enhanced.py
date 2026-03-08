@@ -739,7 +739,9 @@ class ClientProfileUpdate(BaseModel):
 
 @router.get("/clients/{client_id}/profile")
 async def get_client_profile(
-    client_id: int, pool: Any = Depends(get_database_pool), current_user: dict = Depends(get_current_user)
+    client_id: int,
+    pool: Any = Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
     Get enhanced client profile with family members, documents, and expiry alerts.
@@ -1049,7 +1051,9 @@ async def get_company_documents(
 
 @router.get("/clients/{client_id}/family")
 async def get_family_members(
-    client_id: int, pool: Any = Depends(get_database_pool), current_user: dict = Depends(get_current_user)
+    client_id: int,
+    pool: Any = Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
 ) -> list[Any]:
     """
     Get all family members for a client.
