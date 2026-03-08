@@ -19,8 +19,10 @@ fi
 # Golden Rule #6: No Hardcoding Secrets
 echo "🔑 [Golden Rule #6] Checking for hardcoded secrets..."
 if [ -n "$PY_FILES" ]; then
+    # Exclude tests/ and scripts/ (they use test fixtures with dummy keys)
+    BACKEND_SRC_FILES=$(echo "$PY_FILES" | grep -v '/tests/' | grep -v '/scripts/' || true)
     # Check for API key patterns (excluding env vars and comments)
-    SECRET_CHECK=$(echo "$PY_FILES" | xargs grep -E '(api[_-]?key|secret[_-]?key|password)\s*=\s*["\x27][a-zA-Z0-9_-]{16,}' 2>/dev/null | grep -v 'os\.getenv\|settings\.' | grep -v '^\s*#' || true)
+    SECRET_CHECK=$(echo "$BACKEND_SRC_FILES" | xargs grep -E '(api[_-]?key|secret[_-]?key|password)\s*=\s*["\x27][a-zA-Z0-9_-]{16,}' 2>/dev/null | grep -v 'os\.getenv\|settings\.' | grep -v '^\s*#' || true)
     if [ -n "$SECRET_CHECK" ]; then
         echo "❌ ERROR: Potential hardcoded secret found."
         echo "   Golden Rule #6: Use os.getenv() or settings.* for secrets"
