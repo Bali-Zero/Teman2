@@ -74,6 +74,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         { component: "WorkspaceLayout", action: "loadProfile" },
         error instanceof Error ? error : new Error(String(error)),
       );
+      throw error; // Re-throw so caller can redirect to login
     }
   }, []);
 
@@ -82,18 +83,12 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
     // Add a small delay to ensure token is available after login redirect
     // This prevents redirect loops when coming from login page
     const checkAuth = () => {
-      // Force re-read from localStorage to ensure we have the latest token
-      const token = api.getToken();
-
-      if (!token) {
-        router.push("/login");
-        return;
-      }
-
       const loadData = async () => {
         setIsLoading(true);
         try {
           // Load profile first (critical), clock status can fail gracefully
+          // This call uses httpOnly cookies — works across all *.balizero.com subdomains
+          // even when localStorage is empty (e.g. first visit on calendar.balizero.com)
           await loadUserProfile();
 
           // Check if user is a client - redirect to portal
@@ -119,11 +114,15 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
             );
           });
         } catch (error) {
-          // If profile load fails, might be auth issue - redirect to login
-          if (error instanceof Error && error.message.includes("401")) {
-            router.push("/login");
-            return;
-          }
+          // Profile load failed = not authenticated → redirect to login
+          // Always use kita.balizero.com for login (auth hub), preserving return URL
+          const currentUrl = typeof window !== "undefined" ? window.location.href : "";
+          const loginBase = "https://kita.balizero.com/login";
+          const loginUrl = currentUrl
+            ? `${loginBase}?redirect=${encodeURIComponent(currentUrl)}`
+            : loginBase;
+          window.location.href = loginUrl;
+          return;
         } finally {
           setIsLoading(false);
         }
