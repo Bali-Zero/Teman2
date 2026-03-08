@@ -2,8 +2,9 @@
 Vision RAG Service
 RAG multi-modale per documenti con immagini, tabelle, grafici.
 
-UPDATED 2025-12-23:
-- Migrated to new google-genai SDK via GenAIClient wrapper
+UPDATED 2026-03-08:
+- Ollama-first (qwen3.5:27b vision) with Gemini fallback
+- Added _analyze_visual_via_ollama for local vision analysis
 """
 
 import io
@@ -16,6 +17,7 @@ from PIL import Image
 
 from backend.app.core.config import settings
 from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
+from backend.llm.ollama_client import MODEL_HEAVY, is_ollama_available
 
 logger = logging.getLogger(__name__)
 
@@ -124,61 +126,44 @@ class VisionRAGService:
         self, image_bytes: bytes, page_num: int, element_id: str
     ) -> VisualElement | None:
         """
-        Analizza un elemento visivo con Gemini Vision.
+        Analizza un elemento visivo. Ollama-first, Gemini fallback.
         """
+        import base64
+        import json
+
+        image = Image.open(io.BytesIO(image_bytes))
+        buffered = io.BytesIO()
+        image.save(buffered, format="PNG")
+        image_base64 = base64.b64encode(buffered.getvalue()).decode()
+
+        prompt = """Analyze this image from a legal/business document.
+
+1. Classify the type: TABLE, CHART, DIAGRAM, FORM, PHOTO, or OTHER
+2. Extract any text visible in the image
+3. Describe what the image shows in 2-3 sentences
+4. If it's a table, extract the data in markdown format
+
+Output JSON:
+{
+    "type": "TABLE|CHART|DIAGRAM|FORM|PHOTO|OTHER",
+    "extracted_text": "Any text found...",
+    "description": "What the image shows...",
+    "table_markdown": "| Col1 | Col2 |..." (only for tables)
+}"""
+
         try:
-            # Converti in formato Gemini
-            image = Image.open(io.BytesIO(image_bytes))
+            # Try Ollama first (local, free)
+            raw_response = await self._vision_via_ollama(prompt, image_base64)
 
-            # Prompt per classificazione e estrazione
-            prompt = """
-            Analyze this image from a legal/business document.
+            # Fallback to Gemini
+            if not raw_response:
+                raw_response = await self._vision_via_gemini(prompt, image_base64)
 
-            1. Classify the type: TABLE, CHART, DIAGRAM, FORM, PHOTO, or OTHER
-            2. Extract any text visible in the image
-            3. Describe what the image shows in 2-3 sentences
-            4. If it's a table, extract the data in markdown format
-
-            Output JSON:
-            {
-                "type": "TABLE|CHART|DIAGRAM|FORM|PHOTO|OTHER",
-                "extracted_text": "Any text found...",
-                "description": "What the image shows...",
-                "table_markdown": "| Col1 | Col2 |..." (only for tables)
-            }
-            """
-
-            # Use GenAI client for vision analysis
-            client = self._get_genai_client()
-            if not client or not client.is_available:
-                logger.warning("GenAI client not available for vision analysis")
+            if not raw_response:
+                logger.warning(f"Visual analysis failed for {element_id}: no provider available")
                 return None
 
-            # For multimodal content, we need to format properly for new SDK
-            # The new SDK expects contents as a list with parts
-            import base64
-            import json
-
-            # Convert image to base64 for the API
-            buffered = io.BytesIO()
-            image.save(buffered, format="PNG")
-            image_base64 = base64.b64encode(buffered.getvalue()).decode()
-
-            # Build multimodal content
-            contents = [
-                {"text": prompt},
-                {"inline_data": {"mime_type": "image/png", "data": image_base64}},
-            ]
-
-            result_response = await client.generate_content(
-                contents=contents,
-                model=self.vision_model_name,
-                max_output_tokens=8192,
-            )
-
-            clean_json = (
-                result_response.get("text", "{}").replace("```json", "").replace("```", "").strip()
-            )
+            clean_json = raw_response.replace("```json", "").replace("```", "").strip()
             result = json.loads(clean_json)
 
             return VisualElement(
@@ -192,8 +177,63 @@ class VisionRAGService:
                 description=result.get("description", ""),
             )
 
-        except Exception:
-            logger.warning("Visual analysis failed for {element_id}: {e}")
+        except Exception as e:
+            logger.warning(f"Visual analysis failed for {element_id}: {e}")
+            return None
+
+    async def _vision_via_ollama(self, prompt: str, image_base64: str) -> str | None:
+        """Analyze image using local Ollama qwen3.5:27b vision."""
+        import httpx
+
+        try:
+            if not await is_ollama_available(MODEL_HEAVY):
+                return None
+
+            payload = {
+                "model": MODEL_HEAVY,
+                "messages": [
+                    {"role": "user", "content": prompt, "images": [image_base64]}
+                ],
+                "stream": False,
+                "think": False,
+                "options": {"temperature": 0.1, "num_predict": 8192},
+            }
+
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                response = await client.post(
+                    f"{settings.ollama_url}/api/chat",
+                    json=payload,
+                )
+                response.raise_for_status()
+                content = response.json().get("message", {}).get("content", "").strip()
+                if content:
+                    logger.info(f"👁️ VisionRAG: Ollama ({MODEL_HEAVY}) responded")
+                    return content
+                return None
+        except Exception as e:
+            logger.debug(f"VisionRAG Ollama fallback: {e}")
+            return None
+
+    async def _vision_via_gemini(self, prompt: str, image_base64: str) -> str | None:
+        """Fallback: Analyze image using Gemini Vision API."""
+        try:
+            client = self._get_genai_client()
+            if not client or not client.is_available:
+                return None
+
+            contents = [
+                {"text": prompt},
+                {"inline_data": {"mime_type": "image/png", "data": image_base64}},
+            ]
+
+            result = await client.generate_content(
+                contents=contents,
+                model=self.vision_model_name,
+                max_output_tokens=8192,
+            )
+            return result.get("text") if result else None
+        except Exception as e:
+            logger.warning(f"VisionRAG Gemini error: {e}")
             return None
 
     async def _extract_tables(self, page, page_num: int) -> list[VisualElement]:

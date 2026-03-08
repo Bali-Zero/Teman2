@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 # Ollama configuration
 OLLAMA_BASE_URL = settings.ollama_url
-OLLAMA_MODEL = "qwen2.5:7b"  # or "llama3.1:8b"
+OLLAMA_MODEL = "qwen3.5:9b"  # Fast local model for cultural enrichment
 OLLAMA_TIMEOUT = 120.0  # 2 minutes for generation
 
 # Batch settings

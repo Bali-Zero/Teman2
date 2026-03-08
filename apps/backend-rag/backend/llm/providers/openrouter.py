@@ -19,7 +19,7 @@ class OpenRouterProvider(LLMProvider):
     Supports automatic fallback across free models:
     - google/gemini-2.0-flash-exp:free
     - meta-llama/llama-3.3-70b-instruct:free
-    - qwen/qwen3-235b-a22b:free
+    - qwen/qwen3.5-27b
     """
 
     def __init__(self, tier: str = "rag"):

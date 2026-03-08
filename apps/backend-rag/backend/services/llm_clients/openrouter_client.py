@@ -4,12 +4,12 @@ OpenRouter Smart AI Client - Native Fallback System
 Uses OpenRouter's native 'models' array for server-side fallback (more efficient).
 With $10+ credits: 1000 req/day on free models.
 
-Free Models Available (as of 2025):
+Free Models Available (as of 2026):
 - google/gemini-2.0-flash-exp:free (1M context, best for RAG)
 - meta-llama/llama-3.3-70b-instruct:free (131K context, best reasoning)
-- qwen/qwen3-235b-a22b:free (40K context, powerful)
+- qwen/qwen3.5-27b (262K context, powerful hybrid DeltaNet+MoE)
 - mistralai/mistral-small-3.1-24b-instruct:free (32K context, fast)
-- meta-llama/llama-3.2-3b-instruct:free (131K context, fastest)
+- qwen/qwen3.5-35b-a3b (262K context, fast MoE)
 
 Best Practice: Use 'models' array for automatic server-side fallback.
 OpenRouter tries models in order until one succeeds.
@@ -44,11 +44,11 @@ FALLBACK_CHAINS = {
     ModelTier.RAG: [
         "google/gemini-2.0-flash-exp:free",  # 1M context - best for RAG
         "meta-llama/llama-3.3-70b-instruct:free",  # 131K context - fallback 1
-        "qwen/qwen3-235b-a22b:free",  # 40K context - fallback 2
+        "qwen/qwen3.5-27b",  # 262K context - fallback 2
     ],
     ModelTier.POWERFUL: [
         "meta-llama/llama-3.3-70b-instruct:free",  # Best reasoning (70B params)
-        "qwen/qwen3-235b-a22b:free",  # 235B params
+        "qwen/qwen3.5-27b",  # 27B dense, hybrid DeltaNet+MoE
         "google/gemini-2.0-flash-exp:free",  # Large context fallback
     ],
     ModelTier.BALANCED: [
@@ -58,7 +58,7 @@ FALLBACK_CHAINS = {
     ],
     ModelTier.FAST: [
         "meta-llama/llama-3.2-3b-instruct:free",  # Fastest (3B)
-        "qwen/qwen3-4b:free",  # Small & fast (4B)
+        "qwen/qwen3.5-35b-a3b",  # Fast MoE (3B active of 35B)
         "mistralai/mistral-small-3.1-24b-instruct:free",  # Fallback
     ],
 }
@@ -67,14 +67,14 @@ FALLBACK_CHAINS = {
 MODEL_INFO = {
     "google/gemini-2.0-flash-exp:free": {"name": "Gemini 2.0 Flash", "context": 1_000_000},
     "meta-llama/llama-3.3-70b-instruct:free": {"name": "Llama 3.3 70B", "context": 131_072},
-    "qwen/qwen3-235b-a22b:free": {"name": "Qwen3 235B", "context": 40_960},
+    "qwen/qwen3.5-27b": {"name": "Qwen3.5 27B", "context": 262_144},
     "mistralai/mistral-small-3.1-24b-instruct:free": {
         "name": "Mistral Small 3.1",
         "context": 32_768,
     },
     "microsoft/phi-4:free": {"name": "Phi-4", "context": 16_384},
     "meta-llama/llama-3.2-3b-instruct:free": {"name": "Llama 3.2 3B", "context": 131_072},
-    "qwen/qwen3-4b:free": {"name": "Qwen3 4B", "context": 40_960},
+    "qwen/qwen3.5-35b-a3b": {"name": "Qwen3.5 35B-A3B", "context": 262_144},
 }
 
 

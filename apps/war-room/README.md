@@ -9,7 +9,7 @@ _Giornalismo investigativo multi-agente → carousel Instagram in 5-10 minuti_
 
 ```
 T+00:00 → FASE 1:   Grok 4 (X/Twitter 72h) + Manus AI (gov/fiscal sources) — parallelo
-T+01:30 → FASE 1.5: Qwen3-32B pre-processor (locale, gratuito) — dedup + classify
+T+01:30 → FASE 1.5: Qwen3.5-27B pre-processor (locale, gratuito) — dedup + classify
 T+02:00 → FASE 2:   Gemini 3.1 Pro Deep Think → 3 concept asimmetrici
 T+03:00 → FASE 2:   Claude Opus 4.6 → pick best → validate → JSON slides + image prompts
 T+05:00 → FASE 3:   browser-use → gemini.google.com (zero@balizero.com Ultra) → immagini
@@ -41,7 +41,7 @@ war_room/
 ├── agents/
 │   ├── 01_grok_scraper.py   # X/Twitter 72h via browser-use
 │   ├── 02_manus_launcher.py # Manus AI (⚠️ conferma richiesta)
-│   ├── 015_qwen_preprocessor.py  # Qwen3-32B locale (gratis)
+│   ├── 015_qwen_preprocessor.py  # Qwen3.5-27B locale (gratis)
 │   ├── 03_gemini_strategist.py   # Gemini 3.1 Pro → 3 concept
 │   ├── 04_claude_director.py     # Claude Opus → copy + JSON
 │   ├── 05_gemini_images.py       # Gemini Ultra → immagini
@@ -64,7 +64,7 @@ war_room/
 | ---- | --------------- | ------------- | -------------------- |
 | 1    | Grok 4          | $0 (Premium+) | Sentiment X/Twitter  |
 | 1    | Manus AI        | ⚠️ crediti    | Ricerca gov/fiscale  |
-| 1.5  | Qwen3-32B       | $0 (locale)   | Pre-processing       |
+| 1.5  | Qwen3.5-27B     | $0 (locale)   | Pre-processing       |
 | 2a   | Gemini 3.1 Pro  | $0 (Ultra)    | Strategia            |
 | 2b   | Claude Opus 4.6 | $0 (MAX)      | Copy + validazione   |
 | 3    | Gemini Ultra    | $0 (Ultra)    | Generazione immagini |
@@ -87,4 +87,4 @@ war_room/
 2. **Logo**: copia `bz_logo_clear.png` in `~/war_room/assets/`
 3. **Chrome profile**: Gemini images usa il profilo loggato come zero@balizero.com
 4. **Claude proxy**: richiede Claude Desktop aperto su localhost:3456
-5. **Qwen3**: `ollama pull qwen3:32b` se non già scaricato
+5. **Qwen3.5**: `ollama pull qwen3.5:27b` se non già scaricato

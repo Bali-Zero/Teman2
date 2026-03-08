@@ -590,7 +590,7 @@ def check_intel_scraper_data() -> str:
 
 @tool
 def run_qwen_preprocessor(grok_path: str, manus_path: str) -> str:
-    """Pre-process scraped data with Qwen3-32B (local, free).
+    """Pre-process scraped data with Qwen3.5-27B (local, free).
 
     Deduplicates and classifies raw intelligence data.
     """

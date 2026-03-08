@@ -1,12 +1,17 @@
 """
 PDF Vision Service
-Usa Gemini Vision per "vedere" e interpretare tabelle complesse nei PDF (es: KBLI).
+Analisi multimodale di PDF — OCR, tabelle, passaporti, documenti CRM.
 Integrato con Google Drive per scaricare i file on-demand.
 
-UPDATED 2025-12-23:
-- Migrated to new google-genai SDK via GenAIClient wrapper
+Primary: Local Ollama qwen3.5:27b vision (free, ~20s per page)
+Fallback: Google Gemini 2.0 Flash Vision (API)
+
+UPDATED 2026-03-08:
+- Ollama-first with Gemini fallback
+- qwen3.5:27b has native vision (27 vision blocks)
 """
 
+import base64
 import io
 import logging
 import os
@@ -17,6 +22,7 @@ from PIL import Image
 
 from backend.app.core.config import settings
 from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
+from backend.llm.ollama_client import MODEL_HEAVY, is_ollama_available
 from backend.services.oracle.smart_oracle import download_pdf_from_drive
 
 logger = logging.getLogger(__name__)
@@ -25,25 +31,16 @@ logger = logging.getLogger(__name__)
 class PDFVisionService:
     """
     Servizio per analisi multimodale di PDF.
-    Estrae immagini delle pagine e le invia a Gemini Pro Vision.
+    Ollama-first (qwen3.5:27b vision) con Gemini Flash fallback.
     Supporta download da Google Drive.
     """
 
     def __init__(self, api_key: str = None, ai_client=None):
-        """
-        Initialize PDFVisionService.
-
-        Args:
-            api_key: Google API key (optional, uses settings if not provided)
-            ai_client: Optional AI client (for test compatibility)
-        """
         self.ai_client = ai_client
         self.api_key = api_key or settings.google_api_key
         self._genai_client: GenAIClient | None = None
         self.model_name = "gemini-2.0-flash-001"
-
-        if not self.api_key:
-            logger.warning("⚠️ No Gemini API key found for Vision Service")
+        self.ollama_model = MODEL_HEAVY  # qwen3.5:27b (has vision)
 
     def _get_genai_client(self) -> GenAIClient | None:
         """Lazy load GenAI client."""
@@ -70,15 +67,14 @@ class PDFVisionService:
         is_drive_file: bool = False,
     ) -> str:
         """
-        Analizza una specifica pagina PDF con Gemini Vision.
-        Se is_drive_file è True, pdf_path è interpretato come nome file o ID Drive.
+        Analizza una specifica pagina PDF con vision.
+        Tries Ollama first (local, free), falls back to Gemini Vision.
         """
         local_path = pdf_path
 
         try:
             # 1. Download da Drive se necessario
             if is_drive_file:
-                # Usa la logica di smart_oracle per scaricare
                 downloaded_path = download_pdf_from_drive(pdf_path)
                 if not downloaded_path:
                     return f"Error: Could not download file '{pdf_path}' from Drive."
@@ -87,19 +83,92 @@ class PDFVisionService:
             # 2. Renderizza pagina PDF come immagine
             image = self._render_page_to_image(local_path, page_number)
 
-            # 3. Check if GenAI client is available
-            client = self._get_genai_client()
-            if not client or not client.is_available:
-                return "Vision service not available. Please check configuration."
-
-            # 4. Convert image to base64 and send to Gemini Vision
-            import base64
-
+            # 3. Convert image to base64
             buffered = io.BytesIO()
             image.save(buffered, format="PNG")
             image_base64 = base64.b64encode(buffered.getvalue()).decode()
 
-            # Build multimodal content for new SDK
+            # 4. Try Ollama first (local, free)
+            result = await self._analyze_via_ollama(prompt, image_base64)
+            if result:
+                logger.info(
+                    f"👁️ Vision analysis complete via Ollama for {local_path} p.{page_number}"
+                )
+                if is_drive_file and os.path.exists(local_path):
+                    os.remove(local_path)
+                return result
+
+            # 5. Fallback to Gemini Vision
+            result = await self._analyze_via_gemini(prompt, image_base64)
+            if result:
+                logger.info(
+                    f"👁️ Vision analysis complete via Gemini for {local_path} p.{page_number}"
+                )
+                if is_drive_file and os.path.exists(local_path):
+                    os.remove(local_path)
+                return result
+
+            return "Vision service not available (both Ollama and Gemini failed)."
+
+        except Exception as e:
+            logger.error(f"❌ Vision analysis failed: {e}")
+            return f"Error analyzing page: {str(e)}"
+
+    async def _analyze_via_ollama(self, prompt: str, image_base64: str) -> str | None:
+        """Analyze image using local Ollama qwen3.5:27b vision."""
+        import httpx
+
+        try:
+            if not await is_ollama_available(self.ollama_model):
+                return None
+
+            payload = {
+                "model": self.ollama_model,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt,
+                        "images": [image_base64],
+                    }
+                ],
+                "stream": False,
+                "think": False,
+                "options": {
+                    "temperature": 0.1,
+                    "num_predict": 8192,
+                },
+            }
+
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                response = await client.post(
+                    f"{settings.ollama_url}/api/chat",
+                    json=payload,
+                )
+                response.raise_for_status()
+                data = response.json()
+                content = data.get("message", {}).get("content", "").strip()
+                if content:
+                    logger.info(f"👁️ Ollama vision ({self.ollama_model}) responded")
+                    return content
+                return None
+
+        except httpx.ConnectError:
+            logger.debug("Ollama not available for vision")
+            return None
+        except httpx.TimeoutException:
+            logger.warning("Ollama vision timeout (120s)")
+            return None
+        except Exception as e:
+            logger.warning(f"Ollama vision error: {e}")
+            return None
+
+    async def _analyze_via_gemini(self, prompt: str, image_base64: str) -> str | None:
+        """Fallback: Analyze image using Gemini Vision API."""
+        try:
+            client = self._get_genai_client()
+            if not client or not client.is_available:
+                return None
+
             contents = [
                 {"text": prompt},
                 {"inline_data": {"mime_type": "image/png", "data": image_base64}},
@@ -111,17 +180,11 @@ class PDFVisionService:
                 max_output_tokens=8192,
             )
 
-            logger.info(f"👁️ Vision analysis complete for {local_path} p.{page_number}")
-
-            # Cleanup temp file if downloaded
-            if is_drive_file and os.path.exists(local_path):
-                os.remove(local_path)
-
-            return result.get("text", "No response generated.")
+            return result.get("text") if result else None
 
         except Exception as e:
-            logger.error(f"❌ Vision analysis failed: {e}")
-            return f"Error analyzing page: {str(e)}"
+            logger.warning(f"Gemini vision error: {e}")
+            return None
 
     def _render_page_to_image(self, pdf_path: str, page_number: int) -> Image.Image:
         """Converte pagina PDF in PIL Image"""
@@ -150,7 +213,6 @@ class PDFVisionService:
         If no table is visible, return empty list [].
         """
 
-        # Se è un file Drive, lo scarichiamo UNA volta sola per efficienza
         local_path = pdf_identifier
         if is_drive_file:
             local_path = download_pdf_from_drive(pdf_identifier)
@@ -159,33 +221,20 @@ class PDFVisionService:
 
         try:
             for page_num in range(page_range[0], page_range[1] + 1):
-                # Passiamo is_drive_file=False perché ora è locale
                 result = await self.analyze_page(local_path, page_num, prompt, is_drive_file=False)
                 full_extraction.append(f"--- Page {page_num} ---\n{result}")
         finally:
-            # Cleanup
             if is_drive_file and local_path and os.path.exists(local_path):
                 os.remove(local_path)
 
         return "\n".join(full_extraction)
 
     async def extract_text(self, pdf_data: bytes) -> str:
-        """
-        Extract text from PDF data (for test compatibility).
-
-        Args:
-            pdf_data: PDF file bytes
-
-        Returns:
-            Extracted text content
-        """
+        """Extract text from PDF data (for test compatibility)."""
         if self.ai_client and hasattr(self.ai_client, "extract_pdf_text"):
             return await self.ai_client.extract_pdf_text(pdf_data)
 
-        # Fallback: try to extract using PyMuPDF
         try:
-            import fitz
-
             doc = fitz.open(stream=pdf_data, filetype="pdf")
             text = "\n".join([page.get_text() for page in doc])
             doc.close()
@@ -195,19 +244,10 @@ class PDFVisionService:
             return f"Error extracting PDF: {str(e)}"
 
     async def analyze_vision(self, pdf_data: bytes) -> dict[str, Any]:
-        """
-        Analyze PDF using vision model (for test compatibility).
-
-        Args:
-            pdf_data: PDF file bytes
-
-        Returns:
-            Analysis result with text and structure
-        """
+        """Analyze PDF using vision model (for test compatibility)."""
         if self.ai_client and hasattr(self.ai_client, "analyze_pdf_vision"):
             return await self.ai_client.analyze_pdf_vision(pdf_data)
 
-        # Fallback: basic extraction
         text = await self.extract_text(pdf_data)
         return {
             "text": text,
