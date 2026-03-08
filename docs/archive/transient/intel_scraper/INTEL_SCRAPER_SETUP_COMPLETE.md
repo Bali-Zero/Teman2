@@ -163,7 +163,7 @@ grep -i "imagen\|API generator.*success" logs/intel_scraper.log | tail -5
 Telegram API error for 8290313965: {"ok":false,"error_code":403,"description":"Forbidden: user is deactivated"}
 ```
 
-**Impatto:** Basso - gli articoli vengono comunque salvati in staging e possono essere approvati via News Room UI (`zantara.balizero.com/intelligence`).
+**Impatto:** Basso - gli articoli vengono comunque salvati in staging e possono essere approvati via News Room UI (`kita.balizero.com/intelligence`).
 
 **Fix opzionale:**
 

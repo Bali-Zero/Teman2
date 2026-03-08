@@ -488,7 +488,7 @@ dba82171  fix: restore original QueryProvider with React Query client
 
 - Deployment ID: Latest from `dba82171`
 - Status: ✅ Ready
-- URL: zantara.balizero.com
+- URL: kita.balizero.com
 - Build time: ~1m 30s
 - Pages: 62/62 generated
 

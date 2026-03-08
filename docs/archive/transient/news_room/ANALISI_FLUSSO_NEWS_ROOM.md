@@ -10,7 +10,7 @@
 
 Integrare gli articoli completi dell'Intel Scraper nella dashboard News Room:
 
-- **URL:** https://zantara.balizero.com/intelligence/news-room
+- **URL:** https://kita.balizero.com/intelligence/news-room
 - **Funzionalità:** Approvazione, Editing, Aggiunta Cover Image
 
 ---
@@ -67,7 +67,7 @@ Integrare gli articoli completi dell'Intel Scraper nella dashboard News Room:
 
 ### 1.4 Frontend Dashboard
 
-**URL Target:** `https://zantara.balizero.com/intelligence/news-room`
+**URL Target:** `https://kita.balizero.com/intelligence/news-room`
 
 **Da verificare:**
 

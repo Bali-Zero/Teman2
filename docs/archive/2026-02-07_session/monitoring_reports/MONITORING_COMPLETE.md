@@ -42,7 +42,7 @@
 ### Deployment:
 
 - **Status:** ✅ READY
-- **URL:** https://zantara.balizero.com
+- **URL:** https://kita.balizero.com
 - **Build:** Successful
 - **Errors:** 0
 - **Performance:** Excellent (186ms)

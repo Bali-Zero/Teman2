@@ -10,7 +10,7 @@
 
 ### CRM System (Zantara)
 
-- **URL:** https://zantara.balizero.com/clients
+- **URL:** https://kita.balizero.com/clients
 - **Stato:** ✅ **10,163 clienti nel database** (verificato 2026-01-20)
   - **Distribuzione per status:**
     - `lead`: 10,136 clienti (99.7%)

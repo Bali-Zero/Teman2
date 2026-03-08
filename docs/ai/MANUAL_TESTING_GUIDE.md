@@ -9,7 +9,7 @@
 
 ### Prerequisiti:
 
-1. Accesso a produzione: https://zantara.balizero.com
+1. Accesso a produzione: https://kita.balizero.com
 2. Account utente valido
 3. Browser con DevTools aperto
 
@@ -23,7 +23,7 @@
 - [ ] Aprire DevTools (F12)
 - [ ] Andare su tab "Console"
 - [ ] Andare su tab "Network"
-- [ ] Navigare a: https://zantara.balizero.com/chat
+- [ ] Navigare a: https://kita.balizero.com/chat
 
 ### 2. Login:
 

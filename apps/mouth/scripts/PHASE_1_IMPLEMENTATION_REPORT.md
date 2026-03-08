@@ -180,7 +180,7 @@ Estimated coverage by KBLI section (based on 86.5% overall):
 2. **Vercel auto-deployment** will occur automatically
 
 3. **Test production:**
-   - Visit: https://zantara.balizero.com/kbli-navigator
+   - Visit: https://kita.balizero.com/kbli-navigator
    - Search: "restaurant", "software", "hotel", "construction"
    - Verify: Results appear correctly
 

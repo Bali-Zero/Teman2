@@ -132,7 +132,7 @@ apps/bali-intel-scraper/
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
 │  6. TELEGRAM APPROVAL (Parallel)                               │
-│     6a. News Room UI → zantara.balizero.com/intelligence       │
+│     6a. News Room UI → kita.balizero.com/intelligence       │
 │         (Frontend deployed on Vercel, custom domain)            │
 │     6b. Telegram → voting via bot (2/3 majority)               │
 │     - HTML preview generation (article-style)                  │
@@ -584,7 +584,7 @@ POST /api/intel/scraper/submit
 
 - Il **backend** resta su **Fly.io** (`https://nuzantara-rag.fly.dev`)
 - Il **frontend** è deployato su **Vercel** (`https://nuzantara-mouth.vercel.app`)
-- I domini custom (`zantara.balizero.com`, `balizero.com`) puntano al frontend Vercel tramite DNS
+- I domini custom (`kita.balizero.com`, `balizero.com`) puntano al frontend Vercel tramite DNS
 
 **Payload:**
 

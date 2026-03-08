@@ -176,17 +176,17 @@ class KBLIRetriever:
 
 ```bash
 # 1. Direct code lookup
-curl -X POST https://zantara.balizero.com/api/v1/kbli-notebook/chat \
+curl -X POST https://kita.balizero.com/api/v1/kbli-notebook/chat \
   -d '{"query":"56101 sanksi mikro kecil"}'
 # Expected: Detailed sanksi (Peringatan, Denda, Penghentian, Pencabutan)
 
 # 2. Semantic search
-curl -X POST https://zantara.balizero.com/api/v1/kbli-notebook/chat \
+curl -X POST https://kita.balizero.com/api/v1/kbli-notebook/chat \
   -d '{"query":"restaurant licensing requirements bali"}'
 # Expected: KBLI 56101 with persyaratan + kewajiban details
 
 # 3. Multiple codes
-curl -X POST https://zantara.balizero.com/api/v1/kbli-notebook/chat \
+curl -X POST https://kita.balizero.com/api/v1/kbli-notebook/chat \
   -d '{"query":"compare hotel 55101 and restaurant 56101 licensing"}'
 # Expected: Both codes with full per_skala comparison
 ```

@@ -11,7 +11,7 @@
 ### Frontend (Vercel)
 
 - **Status:** ✅ Deploy automatico attivato
-- **URL:** https://zantara.balizero.com/dashboard
+- **URL:** https://kita.balizero.com/dashboard
 - **Build:** In corso (triggered da push a main)
 
 ### Backend (Fly.io)
@@ -44,7 +44,7 @@
 ### 3. Dashboard Frontend
 
 - **Status:** ✅ Caricamento OK
-- **URL:** https://zantara.balizero.com/dashboard
+- **URL:** https://kita.balizero.com/dashboard
 - **Response:** HTTP 200 OK
 
 ---

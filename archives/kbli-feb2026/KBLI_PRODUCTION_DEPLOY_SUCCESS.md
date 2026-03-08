@@ -151,13 +151,13 @@ WHERE kode_kbli = '56101';
 
 ```bash
 # Test 1: Restaurant
-curl -X POST https://zantara.balizero.com/api/v1/kbli-notebook/chat \
+curl -X POST https://kita.balizero.com/api/v1/kbli-notebook/chat \
   -H "Content-Type: application/json" \
   -d '{"query":"restaurant in Bali"}'
 # Response: KBLI 56101, PMA TERBUKA, 10B min capital
 
 # Test 2: Hotel 5-star
-curl -X POST https://zantara.balizero.com/api/v1/kbli-notebook/chat \
+curl -X POST https://kita.balizero.com/api/v1/kbli-notebook/chat \
   -H "Content-Type: application/json" \
   -d '{"query":"hotel 5 star in Bali"}'
 # Response: KBLI 55101, PMA TERBUKA, 10B min capital
@@ -225,8 +225,8 @@ curl -X POST https://zantara.balizero.com/api/v1/kbli-notebook/chat \
 
 - **Qdrant Cloud Dashboard**: https://cloud.qdrant.io/clusters/5575d2b7-d895-4697-86e5-5c7ceae3ca74
 - **Fly.io App**: https://fly.io/apps/nuzantara-rag
-- **Frontend**: https://zantara.balizero.com/kbli-navigator
-- **API Health**: https://zantara.balizero.com/health
+- **Frontend**: https://kita.balizero.com/kbli-navigator
+- **API Health**: https://kita.balizero.com/health
 
 ---
 

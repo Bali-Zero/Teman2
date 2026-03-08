@@ -1,8 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 // Configuration for the mission
-const BASE_URL =
-  process.env.PLAYWRIGHT_BASE_URL || "https://zantara.balizero.com";
+const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || "https://kita.balizero.com";
 const USER_EMAIL = "zero@balizero.com";
 const USER_PIN = "010719";
 

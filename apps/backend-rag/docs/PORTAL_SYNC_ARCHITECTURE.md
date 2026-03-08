@@ -11,14 +11,14 @@
 
 ## Overview
 
-This document describes the architecture for synchronizing data between the internal CRM system (zantara.balizero.com) and the client-facing Portal (my.balizero.com).
+This document describes the architecture for synchronizing data between the internal CRM system (kita.balizero.com) and the client-facing Portal (my.balizero.com).
 
 ### System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        INTERNAL TEAM                             │
-│                   zantara.balizero.com                          │
+│                   kita.balizero.com                          │
 ├─────────────────────────────────────────────────────────────────┤
 │  CRM Dashboard  │  Practices  │  Documents  │  Tax Management   │
 └────────┬────────┴──────┬──────┴──────┬──────┴────────┬──────────┘

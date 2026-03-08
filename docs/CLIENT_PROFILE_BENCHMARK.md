@@ -3,7 +3,7 @@
 > **Version:** 1.0
 > **Date:** 2026-03-07
 > **Pilot:** Michele Porinelli (#146) / PT FRA Real Estate Consulting
-> **Purpose:** Definitive reference for populating every section of a client profile on `zantara.balizero.com/clients/{id}`. This document is the single source of truth for AI agents, human operators, and automated pipelines.
+> **Purpose:** Definitive reference for populating every section of a client profile on `kita.balizero.com/clients/{id}`. This document is the single source of truth for AI agents, human operators, and automated pipelines.
 
 ---
 
@@ -40,7 +40,7 @@ PostgreSQL (structured data)
 FastAPI Backend (/api/crm/clients/{id}/profile)
         |
         v
-Next.js Frontend (zantara.balizero.com/clients/{id})
+Next.js Frontend (kita.balizero.com/clients/{id})
 ```
 
 ### Database Tables

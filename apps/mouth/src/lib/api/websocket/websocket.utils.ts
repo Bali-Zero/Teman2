@@ -15,7 +15,7 @@ export class WebSocketUtils {
     const envBase = process.env.NEXT_PUBLIC_API_URL;
     const clientBase = this.client.getBaseUrl();
     const appUrl =
-      process.env.NEXT_PUBLIC_APP_URL || "https://zantara.balizero.com";
+      process.env.NEXT_PUBLIC_APP_URL || "https://kita.balizero.com";
 
     // Determine the base URL
     const base =
@@ -32,7 +32,7 @@ export class WebSocketUtils {
     if (
       base === "/api" ||
       (typeof window !== "undefined" &&
-        window.location.hostname === "zantara.balizero.com")
+        window.location.hostname === "kita.balizero.com")
     ) {
       wsUrl = "wss://nuzantara-rag.fly.dev";
     } else {

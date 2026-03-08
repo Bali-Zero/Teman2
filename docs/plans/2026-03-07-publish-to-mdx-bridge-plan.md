@@ -470,7 +470,7 @@ python -c "import json; json.load(open('apps/mouth/src/content/homepage-layout.j
 
 **Step 2: Manual test flow**
 
-1. Open `zantara.balizero.com/intelligence/news-room`
+1. Open `kita.balizero.com/intelligence/news-room`
 2. Select a position from the dropdown on any article card
 3. Click "Publish"
 4. Verify article appears at balizero.com/news in the chosen position

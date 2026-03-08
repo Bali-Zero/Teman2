@@ -11,7 +11,7 @@
 ### Frontend (Vercel)
 
 - **Status:** ✅ Deployato
-- **URL:** https://zantara.balizero.com/dashboard
+- **URL:** https://kita.balizero.com/dashboard
 - **Build:** Completato
 - **Verifica:** Dashboard caricato correttamente
 

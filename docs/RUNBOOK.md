@@ -3,7 +3,7 @@
 **Last Updated:** 2026-02-26
 **On-call:** Bali Zero AI Team
 **Production URL:** https://nuzantara-rag.fly.dev
-**Frontend URL:** https://zantara.balizero.com
+**Frontend URL:** https://kita.balizero.com
 
 ---
 

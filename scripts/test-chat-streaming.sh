@@ -4,7 +4,7 @@
 
 set -e
 
-FRONTEND_URL="https://zantara.balizero.com"
+FRONTEND_URL="https://kita.balizero.com"
 CHAT_URL="$FRONTEND_URL/chat"
 
 # Colors

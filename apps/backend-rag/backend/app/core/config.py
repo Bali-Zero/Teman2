@@ -670,7 +670,7 @@ class Settings(BaseSettings):
         description="Zoho OAuth redirect URI (set via ZOHO_REDIRECT_URI env var)",
     )
     frontend_url: str = Field(
-        default="https://zantara.balizero.com",
+        default="https://kita.balizero.com",
         description="Frontend URL for OAuth redirects (set via FRONTEND_URL env var)",
     )
     zoho_api_domain: str = Field(

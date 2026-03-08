@@ -8,7 +8,7 @@
 ## 1. Identità del Progetto
 
 **Nuzantara (Zantara) v5.2.0** — Piattaforma AI per servizi legali e business in Indonesia.
-**Brand client:** Bali Zero | **URL:** https://zantara.balizero.com
+**Brand client:** Bali Zero | **URL:** https://kita.balizero.com
 **Owner codename:** Zero (nome reale PRIVATO — mai rivelare)
 **Lingua con Zero:** Italiano | **Con clienti:** lingua del cliente
 

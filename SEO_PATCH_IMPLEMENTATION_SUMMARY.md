@@ -89,7 +89,7 @@ npm run build
 
 ## ✅ PHASE 2 - Additional Codebase Fixes (COMPLETED)
 
-### 2.1 Noindex for zantara.balizero.com ✅
+### 2.1 Noindex for kita.balizero.com ✅
 
 **File:** `apps/mouth/src/middleware.ts` (Modified)
 
@@ -109,13 +109,13 @@ npm run build
 
 **Rationale:**
 
-- `zantara.balizero.com` is internal app (login, dashboard, CRM)
+- `kita.balizero.com` is internal app (login, dashboard, CRM)
 - Must NOT be indexed by Google
 - Prevents duplicate content issues
 
 **Verification:**
 
-- Test after deploy: `curl https://zantara.balizero.com/robots.txt`
+- Test after deploy: `curl https://kita.balizero.com/robots.txt`
 - Expected: `Disallow: /`
 
 ---
@@ -399,7 +399,7 @@ vercel --prod --yes
 curl https://balizero.com/sitemap.xml
 curl https://balizero.com/kbli/56101
 curl https://balizero.com/api/og?title=Test&category=Test
-curl https://zantara.balizero.com/robots.txt
+curl https://kita.balizero.com/robots.txt
 ```
 
 ### Post-Deploy

@@ -13,7 +13,7 @@
 ```
 ✅ balizero.com              → Sito pubblico principale
 ✅ www.balizero.com          → Sito pubblico (redirect)
-✅ zantara.balizero.com      → Dashboard admin/intelligence
+✅ kita.balizero.com      → Dashboard admin/intelligence
 ⏳ my.balizero.com           → Portal clienti (DA CREARE)
 ```
 
@@ -21,7 +21,7 @@
 
 Le pagine portal sono attualmente accessibili su:
 
-- `https://zantara.balizero.com/portal/*` ✅ Funziona
+- `https://kita.balizero.com/portal/*` ✅ Funziona
 - `https://www.balizero.com/portal/*` → Redirect a zantara (via middleware)
 
 ---
@@ -35,13 +35,13 @@ Le pagine portal sono attualmente accessibili su:
 - `PORTAL_DOMAIN = 'my.balizero.com'`
 - Logica per riconoscere `my.balizero.com`
 - Redirect automatico da `balizero.com/portal/*` → `my.balizero.com/portal/*`
-- Redirect automatico da `zantara.balizero.com/portal/*` → `my.balizero.com/portal/*`
+- Redirect automatico da `kita.balizero.com/portal/*` → `my.balizero.com/portal/*`
 
 **Comportamento:**
 
 - ✅ `my.balizero.com/portal/*` → Permesso (dominio dedicato)
 - ✅ `balizero.com/portal/*` → Redirect 301 a `my.balizero.com/portal/*`
-- ✅ `zantara.balizero.com/portal/*` → Redirect 301 a `my.balizero.com/portal/*`
+- ✅ `kita.balizero.com/portal/*` → Redirect 301 a `my.balizero.com/portal/*`
 - ✅ `my.balizero.com/*` (non portal) → Redirect a `balizero.com/*`
 
 ### 2. CORS Backend Aggiornato (`apps/backend-rag/backend/app/setup/cors_config.py`)
@@ -54,7 +54,7 @@ Le pagine portal sono attualmente accessibili su:
 **Nota:** Dopo il deploy, aggiornare anche il secret Fly.io:
 
 ```bash
-fly secrets set ZANTARA_ALLOWED_ORIGINS="https://balizero.com,https://www.balizero.com,https://zantara.balizero.com,https://www.zantara.balizero.com,https://my.balizero.com,https://www.my.balizero.com,https://nuzantara-mouth.vercel.app" -a nuzantara-rag
+fly secrets set ZANTARA_ALLOWED_ORIGINS="https://balizero.com,https://www.balizero.com,https://kita.balizero.com,https://www.kita.balizero.com,https://my.balizero.com,https://www.my.balizero.com,https://nuzantara-mouth.vercel.app" -a nuzantara-rag
 ```
 
 ---
@@ -105,7 +105,7 @@ TTL: Auto
 **Dopo che il dominio è attivo, aggiornare Fly.io secrets:**
 
 ```bash
-fly secrets set ZANTARA_ALLOWED_ORIGINS="https://balizero.com,https://www.balizero.com,https://zantara.balizero.com,https://www.zantara.balizero.com,https://my.balizero.com,https://www.my.balizero.com,https://nuzantara-mouth.vercel.app" -a nuzantara-rag
+fly secrets set ZANTARA_ALLOWED_ORIGINS="https://balizero.com,https://www.balizero.com,https://kita.balizero.com,https://www.kita.balizero.com,https://my.balizero.com,https://www.my.balizero.com,https://nuzantara-mouth.vercel.app" -a nuzantara-rag
 ```
 
 **Verifica:**
@@ -136,8 +136,8 @@ curl -I https://my.balizero.com/portal/taxes
 curl -I https://www.balizero.com/portal/vault
 # Expected: Location: https://my.balizero.com/portal/vault
 
-# 5. Test redirect da zantara.balizero.com
-curl -I https://zantara.balizero.com/portal/vault
+# 5. Test redirect da kita.balizero.com
+curl -I https://kita.balizero.com/portal/vault
 # Expected: Location: https://my.balizero.com/portal/vault
 ```
 
@@ -150,7 +150,7 @@ curl -I https://zantara.balizero.com/portal/vault
 ```
 ✅ balizero.com              → Sito pubblico
 ✅ www.balizero.com          → Sito pubblico
-✅ zantara.balizero.com      → Dashboard admin/intelligence
+✅ kita.balizero.com      → Dashboard admin/intelligence
 ✅ my.balizero.com           → Portal clienti dedicato
 ```
 
@@ -158,7 +158,7 @@ curl -I https://zantara.balizero.com/portal/vault
 
 ```
 ✅ balizero.com/portal/*     → Redirect 301 → my.balizero.com/portal/*
-✅ zantara.balizero.com/portal/* → Redirect 301 → my.balizero.com/portal/*
+✅ kita.balizero.com/portal/* → Redirect 301 → my.balizero.com/portal/*
 ✅ my.balizero.com/portal/* → ✅ Accessibile direttamente
 ✅ my.balizero.com/*         → Redirect → balizero.com/*
 ```

@@ -208,7 +208,7 @@ class BackendReporter:
             if duplicate_count > 0:
                 logger.info(f"   ({duplicate_count} duplicates skipped)")
             logger.info(
-                "👁️ Review at: https://zantara.balizero.com/intelligence/visa-oracle"
+                "👁️ Review at: https://kita.balizero.com/intelligence/visa-oracle"
             )
         else:
             if duplicate_count > 0:

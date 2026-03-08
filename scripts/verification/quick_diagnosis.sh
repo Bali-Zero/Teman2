@@ -17,7 +17,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 BACKEND_URL="https://nuzantara-rag.fly.dev"
-FRONTEND_URL="https://zantara.balizero.com"
+FRONTEND_URL="https://kita.balizero.com"
 
 # Test 1: Backend Health
 echo "======================================================================"

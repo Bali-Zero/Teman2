@@ -168,7 +168,7 @@ describe("Middleware - Multi-domain Routing", () => {
 
       expect(response.status).toBe(301);
       expect(response.headers.get("location")).toBe(
-        "https://zantara.balizero.com/login",
+        "https://kita.balizero.com/login",
       );
     });
 
@@ -178,7 +178,7 @@ describe("Middleware - Multi-domain Routing", () => {
 
       expect(response.status).toBe(301);
       expect(response.headers.get("location")).toBe(
-        "https://zantara.balizero.com/dashboard",
+        "https://kita.balizero.com/dashboard",
       );
     });
 
@@ -188,7 +188,7 @@ describe("Middleware - Multi-domain Routing", () => {
 
       expect(response.status).toBe(301);
       expect(response.headers.get("location")).toBe(
-        "https://zantara.balizero.com/clients",
+        "https://kita.balizero.com/clients",
       );
     });
 
@@ -198,7 +198,7 @@ describe("Middleware - Multi-domain Routing", () => {
 
       expect(response.status).toBe(301);
       expect(response.headers.get("location")).toBe(
-        "https://zantara.balizero.com/chat",
+        "https://kita.balizero.com/chat",
       );
     });
 
@@ -208,7 +208,7 @@ describe("Middleware - Multi-domain Routing", () => {
 
       expect(response.status).toBe(301);
       expect(response.headers.get("location")).toBe(
-        "https://zantara.balizero.com/admin",
+        "https://kita.balizero.com/admin",
       );
     });
 
@@ -259,15 +259,15 @@ describe("Middleware - Multi-domain Routing", () => {
 
       expect(response.status).toBe(301);
       expect(response.headers.get("location")).toBe(
-        "https://zantara.balizero.com/dashboard?tab=analytics",
+        "https://kita.balizero.com/dashboard?tab=analytics",
       );
     });
   });
 
-  describe("App Domain (zantara.balizero.com)", () => {
+  describe("App Domain (kita.balizero.com)", () => {
     it("should redirect /portal routes to portal domain with 301", () => {
       const request = createRequest(
-        "https://zantara.balizero.com/portal/documents",
+        "https://kita.balizero.com/portal/documents",
       );
       const response = middleware(request);
 
@@ -278,7 +278,7 @@ describe("Middleware - Multi-domain Routing", () => {
     });
 
     it("should redirect root to /login on app domain", () => {
-      const request = createRequest("https://zantara.balizero.com/");
+      const request = createRequest("https://kita.balizero.com/");
       const response = middleware(request);
 
       expect(response.status).toBe(307);
@@ -287,7 +287,7 @@ describe("Middleware - Multi-domain Routing", () => {
 
     it("should redirect public category pages to public domain", () => {
       const request = createRequest(
-        "https://zantara.balizero.com/immigration/kitas",
+        "https://kita.balizero.com/immigration/kitas",
       );
       const response = middleware(request);
 
@@ -298,7 +298,7 @@ describe("Middleware - Multi-domain Routing", () => {
     });
 
     it("should redirect /services to public domain", () => {
-      const request = createRequest("https://zantara.balizero.com/services");
+      const request = createRequest("https://kita.balizero.com/services");
       const response = middleware(request);
 
       expect(response.status).toBe(301);
@@ -309,7 +309,7 @@ describe("Middleware - Multi-domain Routing", () => {
 
     it("should allow /services/api routes on app domain", () => {
       const request = createRequest(
-        "https://zantara.balizero.com/services/api/endpoint",
+        "https://kita.balizero.com/services/api/endpoint",
       );
       const response = middleware(request);
 
@@ -318,7 +318,7 @@ describe("Middleware - Multi-domain Routing", () => {
     });
 
     it("should redirect /contact to public domain", () => {
-      const request = createRequest("https://zantara.balizero.com/contact");
+      const request = createRequest("https://kita.balizero.com/contact");
       const response = middleware(request);
 
       expect(response.status).toBe(301);
@@ -328,7 +328,7 @@ describe("Middleware - Multi-domain Routing", () => {
     });
 
     it("should redirect /team to public domain", () => {
-      const request = createRequest("https://zantara.balizero.com/team");
+      const request = createRequest("https://kita.balizero.com/team");
       const response = middleware(request);
 
       expect(response.status).toBe(301);
@@ -339,7 +339,7 @@ describe("Middleware - Multi-domain Routing", () => {
 
     it("should allow /team-management on app domain", () => {
       const request = createRequest(
-        "https://zantara.balizero.com/team-management",
+        "https://kita.balizero.com/team-management",
       );
       const response = middleware(request);
 
@@ -348,7 +348,7 @@ describe("Middleware - Multi-domain Routing", () => {
     });
 
     it("should allow internal app routes", () => {
-      const request = createRequest("https://zantara.balizero.com/dashboard");
+      const request = createRequest("https://kita.balizero.com/dashboard");
       const response = middleware(request);
 
       expect(response.status).not.toBe(301);
@@ -357,7 +357,7 @@ describe("Middleware - Multi-domain Routing", () => {
     });
 
     it("should allow /clients route", () => {
-      const request = createRequest("https://zantara.balizero.com/clients");
+      const request = createRequest("https://kita.balizero.com/clients");
       const response = middleware(request);
 
       expect(response.status).not.toBe(307);
@@ -365,7 +365,7 @@ describe("Middleware - Multi-domain Routing", () => {
     });
 
     it("should allow /whatsapp route", () => {
-      const request = createRequest("https://zantara.balizero.com/whatsapp");
+      const request = createRequest("https://kita.balizero.com/whatsapp");
       const response = middleware(request);
 
       expect(response.status).not.toBe(307);
@@ -374,7 +374,7 @@ describe("Middleware - Multi-domain Routing", () => {
 
     it("should preserve query params when redirecting to public domain", () => {
       const request = createRequest(
-        "https://zantara.balizero.com/immigration?lang=en",
+        "https://kita.balizero.com/immigration?lang=en",
       );
       const response = middleware(request);
 
@@ -418,7 +418,7 @@ describe("Middleware - Multi-domain Routing", () => {
 
       expect(response.status).toBe(301);
       expect(response.headers.get("location")).toBe(
-        "https://zantara.balizero.com/dashboard/analytics/reports",
+        "https://kita.balizero.com/dashboard/analytics/reports",
       );
     });
 
@@ -430,7 +430,7 @@ describe("Middleware - Multi-domain Routing", () => {
 
       expect(response.status).toBe(301);
       expect(response.headers.get("location")).toBe(
-        "https://zantara.balizero.com/chat/conversation/123",
+        "https://kita.balizero.com/chat/conversation/123",
       );
     });
 

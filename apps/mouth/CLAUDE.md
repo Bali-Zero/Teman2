@@ -4,7 +4,7 @@
 
 ### Task Overview
 
-Final cleanup of all production console errors on `zantara.balizero.com`. Fixed CORS errors from `/team` and `/contact` prefetch redirects.
+Final cleanup of all production console errors on `kita.balizero.com`. Fixed CORS errors from `/team` and `/contact` prefetch redirects.
 
 ---
 
@@ -84,7 +84,7 @@ logger.info("WhatsApp conversations fetched", {
 
 - **Commit:** `71cb1a6`
 - **Vercel:** ✅ Deployed to production
-- **Tested:** https://zantara.balizero.com/omnichannel
+- **Tested:** https://kita.balizero.com/omnichannel
 - **Result:** ✅ Console clean, only 3 messages showing
 
 ---

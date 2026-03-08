@@ -63,7 +63,7 @@ Set in Vercel dashboard:
 `ZANTARA_ALLOWED_ORIGINS` includes all active frontend origins:
 
 ```bash
-fly secrets set ZANTARA_ALLOWED_ORIGINS="https://balizero.com,https://www.balizero.com,https://zantara.balizero.com,https://www.zantara.balizero.com,https://nuzantara-mouth.vercel.app" -a nuzantara-rag
+fly secrets set ZANTARA_ALLOWED_ORIGINS="https://balizero.com,https://www.balizero.com,https://kita.balizero.com,https://www.kita.balizero.com,https://nuzantara-mouth.vercel.app" -a nuzantara-rag
 ```
 
 ## Benefits

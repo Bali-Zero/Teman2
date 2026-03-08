@@ -12,7 +12,7 @@
 
 - **Status:** ✅ **READY** (4 deployments successful)
 - **Latest Deployment:** `https://mouth-7vikc2wf4-nuzantara-2026.vercel.app`
-- **Production URL:** `https://zantara.balizero.com`
+- **Production URL:** `https://kita.balizero.com`
 - **Build Time:** ~1 minuto
 - **Environment:** Production
 

@@ -31,7 +31,7 @@
 
 ```bash
 # Frontend
-curl -I https://zantara.balizero.com
+curl -I https://kita.balizero.com
 # Expected: 200 OK
 
 # Backend API

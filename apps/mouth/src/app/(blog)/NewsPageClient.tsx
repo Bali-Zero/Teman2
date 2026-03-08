@@ -32,7 +32,7 @@ const SectionSkeleton = () => (
 
 // App domain for internal routes
 const APP_DOMAIN =
-  process.env.NEXT_PUBLIC_APP_DOMAIN || "https://zantara.balizero.com";
+  process.env.NEXT_PUBLIC_APP_DOMAIN || "https://kita.balizero.com";
 
 interface NewsPageClientProps {
   articles: ArticleListItem[];

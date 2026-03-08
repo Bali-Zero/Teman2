@@ -122,7 +122,7 @@ Dopo la registrazione, puoi accedere con:
 
 ### Come Invitare un Cliente
 
-1. **Dashboard Admin** → `zantara.balizero.com`
+1. **Dashboard Admin** → `kita.balizero.com`
 2. Vai su **Clients** → Seleziona cliente
 3. Clicca **"Send Portal Invite"**
 4. Il sistema:

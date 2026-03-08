@@ -6,7 +6,7 @@ import type { NextRequest } from "next/server";
  *
  * Handles routing between:
  * - balizero.com (public website)
- * - zantara.balizero.com (internal app)
+ * - kita.balizero.com (internal app)
  */
 
 // Internal app routes that should only be on zantara subdomain
@@ -43,7 +43,7 @@ const PUBLIC_CATEGORIES = [
 
 // Domains
 const PUBLIC_DOMAIN = "balizero.com";
-const APP_DOMAIN = "zantara.balizero.com";
+const APP_DOMAIN = "kita.balizero.com";
 const PORTAL_DOMAIN = "my.balizero.com";
 const MOBILE_DOMAIN = "mo.balizero.com";
 
@@ -125,11 +125,11 @@ export function middleware(request: NextRequest) {
   // Determine if we're on the public domain
   const isPublicDomain =
     hostname.includes(PUBLIC_DOMAIN) &&
-    !hostname.includes("zantara") &&
+    !hostname.includes("kita") &&
     !hostname.includes("my");
   const isAppDomain =
     hostname.includes(APP_DOMAIN) ||
-    (hostname.includes("zantara") && !hostname.includes("my"));
+    (hostname.includes("kita") && !hostname.includes("my"));
   const isPortalDomain =
     hostname.includes(PORTAL_DOMAIN) || hostname.includes("my.balizero.com");
 
@@ -215,7 +215,7 @@ export function middleware(request: NextRequest) {
     return response;
   }
 
-  // === APP DOMAIN (zantara.balizero.com) ===
+  // === APP DOMAIN (kita.balizero.com) ===
   if (isAppDomain) {
     // SEO: Block indexing for zantara subdomain (internal app)
     // robots.txt override

@@ -1,6 +1,6 @@
 # KBLI Navigator - Quick Test Checklist
 
-**URL:** https://zantara.balizero.com/kbli-navigator
+**URL:** https://kita.balizero.com/kbli-navigator
 **Date:** 2026-02-16
 **Tester:** **\*\***\_\_\_\_**\*\***
 **Browser:** **\*\***\_\_\_\_**\*\***

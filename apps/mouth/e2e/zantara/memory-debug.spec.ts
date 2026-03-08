@@ -8,7 +8,7 @@ import { test, expect, Page } from "@playwright/test";
 const TEST_CONFIG = {
   email: process.env.E2E_TEST_EMAIL || "zero@balizero.com",
   pin: process.env.E2E_TEST_PIN || "010719",
-  baseUrl: process.env.PLAYWRIGHT_BASE_URL || "https://zantara.balizero.com",
+  baseUrl: process.env.PLAYWRIGHT_BASE_URL || "https://kita.balizero.com",
   responseTimeout: 60000,
   waitBetweenMessages: 3000, // Wait 3 seconds between messages to ensure save completes
 };

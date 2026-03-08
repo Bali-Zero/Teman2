@@ -30,7 +30,7 @@
 - Results ranked by relevance (most accurate first)
 - Typo tolerance (resturant → suggests restaurant)
 - "Did You Mean?" suggestions for failed searches
-- **Deployed to:** https://zantara.balizero.com/kbli-navigator
+- **Deployed to:** https://kita.balizero.com/kbli-navigator
 
 ---
 

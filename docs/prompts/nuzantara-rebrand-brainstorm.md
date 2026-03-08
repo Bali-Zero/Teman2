@@ -8,7 +8,7 @@ You are a senior product strategist and brand architect. I need your help planni
 
 ## Current Situation
 
-**Bali Zero** is a professional services company in Bali, Indonesia — visa, immigration, company setup, tax compliance for foreign entrepreneurs. We built an internal AI platform called **Zantara** (at zantara.balizero.com) that powers our operations:
+**Bali Zero** is a professional services company in Bali, Indonesia — visa, immigration, company setup, tax compliance for foreign entrepreneurs. We built an internal AI platform called **Zantara** (at kita.balizero.com) that powers our operations:
 
 - AI chat assistant (RAG-based, knows Indonesian law, KBLI codes, visa rules)
 - CRM (client management, process tracking)
@@ -25,8 +25,8 @@ You are a senior product strategist and brand architect. I need your help planni
 **Current URLs:**
 
 - `balizero.com` → Corporate site + blog + KBLI Navigator
-- `zantara.balizero.com` → Internal AI workspace (login required)
-- `zantara.balizero.com/portal` → Client self-service portal
+- `kita.balizero.com` → Internal AI workspace (login required)
+- `kita.balizero.com/portal` → Client self-service portal
 
 ## The Evolution
 

@@ -53,7 +53,7 @@ python backend/scripts/create_portal_test_user.py \
 
 ### Step 1: Login su Dashboard Admin
 
-1. Vai su: `https://zantara.balizero.com/login`
+1. Vai su: `https://kita.balizero.com/login`
 2. Login con credenziali admin
 
 ### Step 2: Crea Cliente (se non esiste)

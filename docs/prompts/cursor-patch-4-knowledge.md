@@ -142,7 +142,7 @@ All pages use `router.push("/knowledge/...")` for internal navigation. In the ne
    - `href: "/knowledge/company-licenses"` → `href: "/company-licenses"`
    - etc.
 5. The "Back to Knowledge Base" links on sub-pages should point to `/` instead of `/knowledge`
-6. The "Ask Zantara AI" button on the kitas page currently points to `/chat` — change this to `https://zantara.balizero.com/chat` (or `https://kita.balizero.com/chat` depending on where chat lives)
+6. The "Ask Zantara AI" button on the kitas page currently points to `/chat` — change this to `https://kita.balizero.com/chat` (or `https://kita.balizero.com/chat` depending on where chat lives)
 
 ### Step 4: Handle the API Client
 

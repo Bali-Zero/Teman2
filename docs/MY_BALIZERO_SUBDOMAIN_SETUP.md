@@ -83,7 +83,7 @@ Aggiornare `ZANTARA_ALLOWED_ORIGINS` su Fly.io per includere il nuovo dominio:
 
 ```bash
 # Aggiungere my.balizero.com agli allowed origins
-fly secrets set ZANTARA_ALLOWED_ORIGINS="https://balizero.com,https://www.balizero.com,https://zantara.balizero.com,https://www.zantara.balizero.com,https://my.balizero.com,https://www.my.balizero.com,https://nuzantara-mouth.vercel.app" -a nuzantara-rag
+fly secrets set ZANTARA_ALLOWED_ORIGINS="https://balizero.com,https://www.balizero.com,https://kita.balizero.com,https://www.kita.balizero.com,https://my.balizero.com,https://www.my.balizero.com,https://nuzantara-mouth.vercel.app" -a nuzantara-rag
 ```
 
 **Verifica:**
@@ -214,7 +214,7 @@ curl -I https://my.balizero.com/portal/taxes
 ```
 ✅ balizero.com              → Sito principale
 ✅ www.balizero.com          → Sito principale (redirect)
-✅ zantara.balizero.com      → Dashboard admin/intelligence
+✅ kita.balizero.com      → Dashboard admin/intelligence
 ⏳ my.balizero.com           → Portal clienti (DA CREARE)
 ```
 
@@ -223,7 +223,7 @@ curl -I https://my.balizero.com/portal/taxes
 ```
 ✅ balizero.com              → Sito pubblico principale
 ✅ www.balizero.com          → Sito pubblico principale
-✅ zantara.balizero.com      → Dashboard admin/intelligence
+✅ kita.balizero.com      → Dashboard admin/intelligence
 ✅ my.balizero.com           → Portal clienti dedicato
 ```
 

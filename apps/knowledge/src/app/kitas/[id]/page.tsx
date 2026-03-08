@@ -373,7 +373,7 @@ export default function VisaDetailPage() {
           <div className="flex items-center gap-3 mt-6 pt-6 border-t border-[var(--border)]">
             <Button
               onClick={() =>
-                window.open("https://zantara.balizero.com/chat", "_blank")
+                window.open("https://kita.balizero.com/chat", "_blank")
               }
               className="gap-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white"
             >

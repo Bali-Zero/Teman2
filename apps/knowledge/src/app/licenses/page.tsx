@@ -357,7 +357,7 @@ export default function LicensesPage() {
 
   const handleCardClick = (license: License) => {
     window.open(
-      `https://zantara.balizero.com/chat?q=${encodeURIComponent(`Tell me about ${license.title} (${license.code}) license in Indonesia`)}`,
+      `https://kita.balizero.com/chat?q=${encodeURIComponent(`Tell me about ${license.title} (${license.code}) license in Indonesia`)}`,
       "_blank",
     );
   };
@@ -572,7 +572,7 @@ export default function LicensesPage() {
           </div>
           <Button
             onClick={() =>
-              window.open("https://zantara.balizero.com/chat", "_blank")
+              window.open("https://kita.balizero.com/chat", "_blank")
             }
             className="gap-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white whitespace-nowrap"
           >

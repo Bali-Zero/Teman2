@@ -32,6 +32,6 @@ echo "   flyctl logs -a nuzantara-rag --limit 100 | grep -E 'Re-ranking|reranked
 echo ""
 
 echo "🌐 URL DA TESTARE:"
-echo "   Chat: https://zantara.balizero.com/chat"
-echo "   Omnichannel: https://zantara.balizero.com/omnichannel"
+echo "   Chat: https://kita.balizero.com/chat"
+echo "   Omnichannel: https://kita.balizero.com/omnichannel"
 echo ""

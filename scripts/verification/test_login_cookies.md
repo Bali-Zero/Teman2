@@ -8,7 +8,7 @@ Verificare che il login funzioni correttamente e che i cookie di autenticazione 
 
 ### 1. Test Login
 
-1. Apri `https://zantara.balizero.com/login` nel browser
+1. Apri `https://kita.balizero.com/login` nel browser
 2. Inserisci credenziali:
    - Email: `zero@balizero.com` (o altro utente valido)
    - PIN: `010719` (o PIN corretto)
@@ -17,13 +17,13 @@ Verificare che il login funzioni correttamente e che i cookie di autenticazione 
 ### 2. Verifica Cookie (DevTools)
 
 1. Apri DevTools (F12)
-2. Vai su **Application** → **Cookies** → `https://zantara.balizero.com`
+2. Vai su **Application** → **Cookies** → `https://kita.balizero.com`
 3. Verifica presenza di:
 
    **Cookie Richiesti:**
    - ✅ `nz_access_token`
      - **Valore**: JWT token (lungo, inizia con `eyJ...`)
-     - **Domain**: `.balizero.com` o `zantara.balizero.com`
+     - **Domain**: `.balizero.com` o `kita.balizero.com`
      - **Path**: `/`
      - **HttpOnly**: ✅ (dovrebbe essere true)
      - **Secure**: ✅ (dovrebbe essere true per HTTPS)
@@ -31,7 +31,7 @@ Verificare che il login funzioni correttamente e che i cookie di autenticazione 
 
    - ✅ `nz_csrf_token`
      - **Valore**: Token CSRF (stringa alfanumerica)
-     - **Domain**: `.balizero.com` o `zantara.balizero.com`
+     - **Domain**: `.balizero.com` o `kita.balizero.com`
      - **Path**: `/`
      - **HttpOnly**: ✅ (dovrebbe essere true)
      - **Secure**: ✅ (dovrebbe essere true per HTTPS)
@@ -158,7 +158,7 @@ Se il redirect non avviene o va in loop, c'è un problema con la logica di routi
 
 ```bash
 # Test login endpoint
-curl -X POST https://zantara.balizero.com/api/auth/login \
+curl -X POST https://kita.balizero.com/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"zero@balizero.com","pin":"010719"}' \
   -v \
@@ -172,7 +172,7 @@ cat cookies.txt
 
 ```bash
 # Usa cookie salvati per chiamare API
-curl https://zantara.balizero.com/api/crm/clients \
+curl https://kita.balizero.com/api/crm/clients \
   -b cookies.txt \
   -v
 ```

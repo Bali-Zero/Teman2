@@ -62,7 +62,7 @@ These servers are configured with `alwaysAllow` for critical tools:
     "browser_click",
     "browser_take_screenshot"
   ],
-  "instructions": "Use for controlling Chrome browser, web automation, interacting with web pages (zantara.balizero.com, my.balizero.com), taking screenshots, filling forms, and scraping web content. Essential for exploring client portals and web interfaces."
+  "instructions": "Use for controlling Chrome browser, web automation, interacting with web pages (kita.balizero.com, my.balizero.com), taking screenshots, filling forms, and scraping web content. Essential for exploring client portals and web interfaces."
 }
 ```
 

@@ -127,7 +127,7 @@
 - ✅ Location: `https://my.balizero.com/portal/vault`
 - ✅ Redirect permanente configurato
 
-#### From `zantara.balizero.com/portal/vault`
+#### From `kita.balizero.com/portal/vault`
 
 - ✅ HTTP 301 Redirect
 - ✅ Location: `https://my.balizero.com/portal/vault`

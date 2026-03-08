@@ -18,7 +18,7 @@
 
 ### Domain Status:
 
-- ✅ `zantara.balizero.com` → Redirect a `/login` (normale)
+- ✅ `kita.balizero.com` → Redirect a `/login` (normale)
 - ✅ `balizero.com` → Attivo
 - ✅ `www.balizero.com` → Attivo
 
@@ -59,7 +59,7 @@
 ### Step 1: Accesso
 
 1. Apri browser
-2. Vai a: https://zantara.balizero.com
+2. Vai a: https://kita.balizero.com
 3. Verifica redirect a `/login`
 4. Login con credenziali
 

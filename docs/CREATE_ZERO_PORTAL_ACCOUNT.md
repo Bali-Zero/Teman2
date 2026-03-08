@@ -9,7 +9,7 @@
 
 ### Step 1: Login Dashboard Admin
 
-1. Vai su: `https://zantara.balizero.com/login`
+1. Vai su: `https://kita.balizero.com/login`
 2. Login con: `zero@balizero.com` + [il tuo PIN admin]
 
 ### Step 2: Crea Invito Portal
@@ -39,7 +39,7 @@
 
 ### Step 1: Ottieni Token Admin
 
-1. Login su: `https://zantara.balizero.com/login`
+1. Login su: `https://kita.balizero.com/login`
 2. Apri DevTools (F12) → Application → Cookies
 3. Copia valore di `access_token`
 

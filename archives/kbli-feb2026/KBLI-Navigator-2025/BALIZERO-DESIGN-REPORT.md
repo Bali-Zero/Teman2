@@ -342,7 +342,7 @@ transition: 200ms
 **Nota Importante**: Balizero.com ha già **Zantara AI** integrato!
 
 - Pulsante blu prominente "Zantara" in header
-- Link: https://zantara.balizero.com/chat
+- Link: https://kita.balizero.com/chat
 - **Il nostro KBLI Navigator ha anche "Zantara"!**
 
 **Opportunità**:
