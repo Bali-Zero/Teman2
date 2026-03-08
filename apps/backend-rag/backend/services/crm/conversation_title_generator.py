@@ -75,9 +75,7 @@ async def generate_conversation_title(
     return None
 
 
-async def _generate_via_ollama(
-    conversation_id: str, prompt: str, max_length: int
-) -> str | None:
+async def _generate_via_ollama(conversation_id: str, prompt: str, max_length: int) -> str | None:
     """Generate title using local Ollama qwen3.5:9b."""
     try:
         logger.info(f"Generating title for conv {conversation_id} via Ollama ({MODEL_FAST})...")
@@ -103,9 +101,7 @@ async def _generate_via_ollama(
         return None
 
 
-async def _generate_via_gemini(
-    conversation_id: str, prompt: str, max_length: int
-) -> str | None:
+async def _generate_via_gemini(conversation_id: str, prompt: str, max_length: int) -> str | None:
     """Fallback: Generate title using Gemini Flash API."""
     try:
         from backend.llm.genai_client import get_genai_client

@@ -20,7 +20,6 @@ import re
 import subprocess
 import sys
 
-
 READONLY_FILES = [
     "backend/main.py",
     "backend/main_cloud.py",
@@ -106,7 +105,8 @@ def check_safety(staged: bool = False, commit: str | None = None) -> list[str]:
 
     # Check 3: No banned patterns in added lines
     added_lines = [
-        line[1:] for line in diff.splitlines()
+        line[1:]
+        for line in diff.splitlines()
         if line.startswith("+") and not line.startswith("+++")
     ]
     for line in added_lines:
@@ -116,17 +116,15 @@ def check_safety(staged: bool = False, commit: str | None = None) -> list[str]:
 
     # Check 4: Diff size limits
     if len(changed_files) > MAX_FILES_CHANGED:
-        violations.append(
-            f"TOO_MANY_FILES: {len(changed_files)} changed (max {MAX_FILES_CHANGED})"
-        )
+        violations.append(f"TOO_MANY_FILES: {len(changed_files)} changed (max {MAX_FILES_CHANGED})")
 
     added_count = sum(1 for l in diff.splitlines() if l.startswith("+") and not l.startswith("+++"))
-    removed_count = sum(1 for l in diff.splitlines() if l.startswith("-") and not l.startswith("---"))
+    removed_count = sum(
+        1 for l in diff.splitlines() if l.startswith("-") and not l.startswith("---")
+    )
     total_changed = added_count + removed_count
     if total_changed > MAX_DIFF_LINES:
-        violations.append(
-            f"DIFF_TOO_LARGE: {total_changed} lines changed (max {MAX_DIFF_LINES})"
-        )
+        violations.append(f"DIFF_TOO_LARGE: {total_changed} lines changed (max {MAX_DIFF_LINES})")
 
     return violations
 

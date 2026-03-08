@@ -6,8 +6,8 @@ Run: cd apps/backend-rag && PYTHONPATH=. python backend/scripts/test_ollama_vs_g
 """
 
 import asyncio
-import time
 import sys
+import time
 from pathlib import Path
 
 # Add backend to path
@@ -29,22 +29,25 @@ TEST_MESSAGES = [
     # Short
     ("short_1", "KBLI 47911 apa itu?"),
     # Long
-    ("long_1", "Ho bisogno di aprire una società a Bali per un progetto di e-commerce, voglio vendere prodotti artigianali balinesi online e ho bisogno di capire quale tipo di società è meglio, PT PMA o CV, e quali sono i costi e i tempi"),
+    (
+        "long_1",
+        "Ho bisogno di aprire una società a Bali per un progetto di e-commerce, voglio vendere prodotti artigianali balinesi online e ho bisogno di capire quale tipo di società è meglio, PT PMA o CV, e quali sono i costi e i tempi",
+    ),
 ]
 
 
 async def test_ollama_titles():
     """Test title generation via Ollama."""
-    from backend.llm.ollama_client import ollama_chat, MODEL_FAST, is_ollama_available
+    from backend.llm.ollama_client import MODEL_FAST, is_ollama_available, ollama_chat
 
     available = await is_ollama_available(MODEL_FAST)
     if not available:
         print(f"❌ Ollama not available or {MODEL_FAST} not loaded")
         return {}
 
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"🟢 OLLAMA ({MODEL_FAST}) — Local, Free")
-    print(f"{'='*70}")
+    print(f"{'=' * 70}")
 
     results = {}
     total_time = 0
@@ -101,9 +104,9 @@ async def test_gemini_titles():
         print("❌ Gemini client not available (check GOOGLE_API_KEY)")
         return {}
 
-    print(f"\n{'='*70}")
-    print(f"🔵 GEMINI FLASH (API) — Google Cloud")
-    print(f"{'='*70}")
+    print(f"\n{'=' * 70}")
+    print("🔵 GEMINI FLASH (API) — Google Cloud")
+    print(f"{'=' * 70}")
 
     results = {}
     total_time = 0
@@ -130,7 +133,9 @@ Return ONLY the title text, nothing else."""
                 max_output_tokens=30,
                 temperature=0.3,
             )
-            title = result.get("text", "").strip().strip('"').strip("'")[:50] if result else "FAILED"
+            title = (
+                result.get("text", "").strip().strip('"').strip("'")[:50] if result else "FAILED"
+            )
         except Exception as e:
             title = f"ERROR: {e}"
 
@@ -154,11 +159,11 @@ async def compare():
     gemini_results = await test_gemini_titles()
 
     if ollama_results and gemini_results:
-        print(f"\n{'='*70}")
+        print(f"\n{'=' * 70}")
         print("📊 SIDE-BY-SIDE COMPARISON")
-        print(f"{'='*70}")
+        print(f"{'=' * 70}")
         print(f"{'ID':10s} | {'Ollama':40s} | {'Gemini':40s}")
-        print(f"{'-'*10}-+-{'-'*40}-+-{'-'*40}")
+        print(f"{'-' * 10}-+-{'-' * 40}-+-{'-' * 40}")
 
         for test_id, _ in TEST_MESSAGES:
             o = ollama_results.get(test_id, {})
@@ -175,8 +180,10 @@ async def compare():
         g_avg = sum(r["ms"] for r in gemini_results.values()) / len(gemini_results)
         speedup = g_avg / o_avg if o_avg > 0 else 0
 
-        print(f"\n  Ollama avg: {o_avg:.0f}ms | Gemini avg: {g_avg:.0f}ms | Speedup: {speedup:.1f}x")
-        print(f"  Cost saved: 100% (Ollama is free)")
+        print(
+            f"\n  Ollama avg: {o_avg:.0f}ms | Gemini avg: {g_avg:.0f}ms | Speedup: {speedup:.1f}x"
+        )
+        print("  Cost saved: 100% (Ollama is free)")
 
 
 if __name__ == "__main__":

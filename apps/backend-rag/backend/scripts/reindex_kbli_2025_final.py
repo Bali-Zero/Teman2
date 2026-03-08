@@ -41,7 +41,9 @@ EMBED_BATCH_SIZE = 20
 UPSERT_BATCH_SIZE = 20
 DELETE_BATCH_SIZE = 100
 
-SOURCE_FILE = Path(__file__).resolve().parents[4] / "source_documents" / "KBLI_2025_FINAL_CLEAN.json"
+SOURCE_FILE = (
+    Path(__file__).resolve().parents[4] / "source_documents" / "KBLI_2025_FINAL_CLEAN.json"
+)
 
 
 def deterministic_uuid(code: str) -> str:
@@ -211,9 +213,7 @@ async def delete_old_points(qdrant_url: str, api_key: str | None):
             f"{qdrant_url}/collections/{COLLECTION_NAME}/points/count",
             json={
                 "filter": {
-                    "must_not": [
-                        {"key": "metadata.doc_type", "match": {"value": "kbli_gold"}}
-                    ]
+                    "must_not": [{"key": "metadata.doc_type", "match": {"value": "kbli_gold"}}]
                 },
                 "exact": True,
             },
@@ -235,9 +235,7 @@ async def delete_old_points(qdrant_url: str, api_key: str | None):
             f"{qdrant_url}/collections/{COLLECTION_NAME}/points/delete",
             json={
                 "filter": {
-                    "must_not": [
-                        {"key": "metadata.doc_type", "match": {"value": "kbli_gold"}}
-                    ]
+                    "must_not": [{"key": "metadata.doc_type", "match": {"value": "kbli_gold"}}]
                 }
             },
             headers=headers,
@@ -292,7 +290,9 @@ async def verify_collection(qdrant_url: str, api_key: str | None):
             cr = await http.post(
                 f"{qdrant_url}/collections/{COLLECTION_NAME}/points/count",
                 json={
-                    "filter": {"must": [{"key": "metadata.doc_type", "match": {"value": doc_type}}]},
+                    "filter": {
+                        "must": [{"key": "metadata.doc_type", "match": {"value": doc_type}}]
+                    },
                     "exact": True,
                 },
                 headers=headers,
@@ -303,9 +303,15 @@ async def verify_collection(qdrant_url: str, api_key: str | None):
 
 
 async def main():
-    parser = argparse.ArgumentParser(description="Re-index kbli_2025_final from KBLI_2025_FINAL_CLEAN.json")
-    parser.add_argument("--dry-run", action="store_true", help="Parse and build but don't embed or upsert")
-    parser.add_argument("--qdrant-url", type=str, default="", help="Qdrant URL (default: from env or localhost)")
+    parser = argparse.ArgumentParser(
+        description="Re-index kbli_2025_final from KBLI_2025_FINAL_CLEAN.json"
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Parse and build but don't embed or upsert"
+    )
+    parser.add_argument(
+        "--qdrant-url", type=str, default="", help="Qdrant URL (default: from env or localhost)"
+    )
     parser.add_argument("--skip-delete", action="store_true", help="Skip deleting old points")
     parser.add_argument("--limit", type=int, default=0, help="Limit number of codes (0=all)")
     args = parser.parse_args()
@@ -351,11 +357,13 @@ async def main():
         payload = build_payload(entry, embedding_text)
         payload["metadata"]["indexed_at"] = indexed_at
 
-        all_points.append({
-            "id": deterministic_uuid(code),
-            "payload": payload,
-            "_text_to_embed": embedding_text,
-        })
+        all_points.append(
+            {
+                "id": deterministic_uuid(code),
+                "payload": payload,
+                "_text_to_embed": embedding_text,
+            }
+        )
 
     logger.info(f"Built {len(all_points)} points")
 
@@ -373,7 +381,9 @@ async def main():
     # Text length stats
     text_lengths = [len(p["_text_to_embed"]) for p in all_points]
     avg_len = sum(text_lengths) / len(text_lengths)
-    logger.info(f"  Avg text length: {avg_len:.0f} chars (min={min(text_lengths)}, max={max(text_lengths)})")
+    logger.info(
+        f"  Avg text length: {avg_len:.0f} chars (min={min(text_lengths)}, max={max(text_lengths)})"
+    )
 
     if args.dry_run:
         logger.info("\nDRY RUN - sample points:")
@@ -430,14 +440,16 @@ async def main():
     logger.info(f"\nStep 4: Upserting {len(all_points)} points...")
     qdrant_points = []
     for point, emb, sparse in zip(all_points, embeddings, sparse_vectors):
-        qdrant_points.append({
-            "id": point["id"],
-            "vector": {
-                "dense": emb,
-                "bm25": sparse,
-            },
-            "payload": point["payload"],
-        })
+        qdrant_points.append(
+            {
+                "id": point["id"],
+                "vector": {
+                    "dense": emb,
+                    "bm25": sparse,
+                },
+                "payload": point["payload"],
+            }
+        )
 
     await upsert_to_qdrant(qdrant_points, qdrant_url, qdrant_api_key)
 

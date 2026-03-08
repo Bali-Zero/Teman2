@@ -23,7 +23,15 @@ def get_recently_changed_files(repo_root: str, days: int = 30) -> set[str]:
     """Get files changed in the last N days via git log."""
     try:
         result = subprocess.run(
-            ["git", "log", f"--since={days} days ago", "--name-only", "--pretty=format:", "--", "apps/backend-rag/backend/"],
+            [
+                "git",
+                "log",
+                f"--since={days} days ago",
+                "--name-only",
+                "--pretty=format:",
+                "--",
+                "apps/backend-rag/backend/",
+            ],
             capture_output=True,
             text=True,
             cwd=repo_root,
@@ -138,18 +146,20 @@ def analyze(
         else:
             continue  # Skip files above 80%
 
-        gaps.append({
-            "file": filepath,
-            "coverage_pct": round(pct, 1),
-            "statements": num_statements,
-            "missing_lines_count": len(missing_lines),
-            "missing_branches_count": len(missing_branches),
-            "severity": severity,
-            "is_recent": is_recent,
-            "is_router": is_router_file(filepath),
-            "is_service": is_service_file(filepath),
-            "priority_score": round(priority_score, 1),
-        })
+        gaps.append(
+            {
+                "file": filepath,
+                "coverage_pct": round(pct, 1),
+                "statements": num_statements,
+                "missing_lines_count": len(missing_lines),
+                "missing_branches_count": len(missing_branches),
+                "severity": severity,
+                "is_recent": is_recent,
+                "is_router": is_router_file(filepath),
+                "is_service": is_service_file(filepath),
+                "priority_score": round(priority_score, 1),
+            }
+        )
 
     # Sort by priority score (lowest = most important)
     gaps.sort(key=lambda g: g["priority_score"])
@@ -180,7 +190,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Analyze coverage gaps")
     parser.add_argument("coverage_report", help="Path to pytest-cov JSON report")
     parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         default="/tmp/nuz-coverage-gaps.json",
         help="Output path",
     )
@@ -204,7 +215,7 @@ def main() -> None:
         json.dump(result, f, indent=2)
 
     # Print summary
-    print(f"=== Coverage Gap Analysis ===")
+    print("=== Coverage Gap Analysis ===")
     print(f"Total coverage: {result['total_coverage_pct']}%")
     print(f"Files analyzed: {result['total_files_analyzed']}")
     print(f"Files below 80%: {result['gap_count']}")

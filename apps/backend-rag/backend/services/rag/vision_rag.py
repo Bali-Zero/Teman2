@@ -191,9 +191,7 @@ Output JSON:
 
             payload = {
                 "model": MODEL_HEAVY,
-                "messages": [
-                    {"role": "user", "content": prompt, "images": [image_base64]}
-                ],
+                "messages": [{"role": "user", "content": prompt, "images": [image_base64]}],
                 "stream": False,
                 "think": False,
                 "options": {"temperature": 0.1, "num_predict": 8192},
