@@ -43,9 +43,9 @@ def _load_module(monkeypatch, perf_monitor, embedding_cache, search_cache):
     )
 
     app_pkg = types.ModuleType("app")
-    app_pkg.__path__ = [str(backend_path / "app")]
+    app_pkg.__path__ = [str(backend_path / "backend" / "app")]
     routers_pkg = types.ModuleType("backend.app.routers")
-    routers_pkg.__path__ = [str(backend_path / "app" / "routers")]
+    routers_pkg.__path__ = [str(backend_path / "backend" / "app" / "routers")]
     monkeypatch.setitem(sys.modules, "app", app_pkg)
     monkeypatch.setitem(sys.modules, "backend.app.routers", routers_pkg)
 
@@ -54,7 +54,7 @@ def _load_module(monkeypatch, perf_monitor, embedding_cache, search_cache):
         del sys.modules[module_name]
 
     spec = importlib.util.spec_from_file_location(
-        module_name, backend_path / "app" / "routers" / "performance.py"
+        module_name, backend_path / "backend" / "app" / "routers" / "performance.py"
     )
     module = importlib.util.module_from_spec(spec)
     sys.modules[module_name] = module

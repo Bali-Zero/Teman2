@@ -5,7 +5,7 @@ import types
 from pathlib import Path
 
 backend_path = Path(__file__).parent.parent.parent.parent.parent
-module_path = backend_path / "services" / "ingestion" / "politics_ingestion.py"
+module_path = backend_path / "backend" / "services" / "ingestion" / "politics_ingestion.py"
 module_name = "backend.services.ingestion.politics_ingestion"
 
 
