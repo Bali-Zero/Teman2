@@ -43,10 +43,14 @@ describe("AuthApi", () => {
 
       const result = await authApi.login("test@example.com", "1234");
 
-      expect(mockRequest).toHaveBeenCalledWith("/api/auth/login", {
-        method: "POST",
-        body: JSON.stringify({ email: "test@example.com", pin: "1234" }),
-      });
+      expect(mockRequest).toHaveBeenCalledWith(
+        "/api/auth/login",
+        {
+          method: "POST",
+          body: JSON.stringify({ email: "test@example.com", pin: "1234" }),
+        },
+        90000,
+      );
       expect(mockClient.setCsrfToken).toHaveBeenCalledWith("csrf-token");
       expect(mockClient.setToken).toHaveBeenCalledWith("test-token");
       expect(mockClient.setUserProfile).toHaveBeenCalledWith(

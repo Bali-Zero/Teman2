@@ -28,43 +28,43 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json(data, { status: upstream.status });
     }
 
-    const { token, csrfToken, user, token_type, expiresIn, redirectTo } =
-      data.data;
+    const { token, csrfToken, user, expiresIn } = data.data;
     const cookieDomain =
       process.env.COOKIE_DOMAIN ||
       (process.env.NODE_ENV === "production" ? ".balizero.com" : "localhost");
     const maxAge = expiresIn || 86400;
+    const isSecure = process.env.NODE_ENV === "production";
+
+    // Build raw Set-Cookie header strings (no newlines — bypasses NextResponse.cookies.set() bug)
+    const respHeaders = new Headers();
+    const tokenCookieParts = [
+      `nz_access_token=${token}`,
+      `Domain=${cookieDomain}`,
+      `HttpOnly`,
+      `Max-Age=${maxAge}`,
+      `Path=/`,
+      `SameSite=Lax`,
+    ];
+    if (isSecure) tokenCookieParts.push("Secure");
+    respHeaders.append("set-cookie", tokenCookieParts.join("; "));
+
+    if (csrfToken) {
+      const csrfCookieParts = [
+        `nz_csrf_token=${csrfToken}`,
+        `Domain=${cookieDomain}`,
+        `Max-Age=${maxAge}`,
+        `Path=/`,
+        `SameSite=Lax`,
+      ];
+      if (isSecure) csrfCookieParts.push("Secure");
+      respHeaders.append("set-cookie", csrfCookieParts.join("; "));
+    }
 
     // Build response with proper cookies
     const resp = NextResponse.json(
       { success: true, message: data.message, data: data.data },
-      { status: 200 },
+      { status: 200, headers: respHeaders },
     );
-
-    // Set httpOnly auth cookie — shared across *.balizero.com
-    resp.cookies.set({
-      name: "nz_access_token",
-      value: token,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge,
-      path: "/",
-      domain: cookieDomain,
-    });
-
-    if (csrfToken) {
-      resp.cookies.set({
-        name: "nz_csrf_token",
-        value: csrfToken,
-        httpOnly: false,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge,
-        path: "/",
-        domain: cookieDomain,
-      });
-    }
 
     logger.info("Login successful, cookies set", {
       component: "LoginRoute",
@@ -77,7 +77,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const errMsg = error instanceof Error ? error.message : String(error);
     logger.error(
       "Login route error",
-      { component: "LoginRoute", action: "login", metadata: { errMsg, backendUrl: BACKEND_URL } },
+      {
+        component: "LoginRoute",
+        action: "login",
+        metadata: { errMsg, backendUrl: BACKEND_URL },
+      },
       error instanceof Error ? error : new Error(String(error)),
     );
     return NextResponse.json(
