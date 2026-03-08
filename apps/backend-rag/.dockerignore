@@ -1,5 +1,7 @@
 # Exclude EVERYTHING except backend folder
 !backend/
+!training-data/
+!scripts/
 *.md
 !*.txt
 !requirements.txt

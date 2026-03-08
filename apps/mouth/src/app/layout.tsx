@@ -132,7 +132,9 @@ export const metadata: Metadata = {
   },
   verification: {
     google: process.env.GOOGLE_SITE_VERIFICATION || "",
-    // Add when ready: yandex, bing
+    other: {
+      "msvalidate.01": process.env.BING_SITE_VERIFICATION || "",
+    },
   },
   other: {
     // AI/LLM optimization - for ChatGPT, Claude, Perplexity, Gemini
