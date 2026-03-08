@@ -86,9 +86,6 @@ export default function PrimeMap3D() {
     setIsAnalyzing(true);
     setZoningResult(null);
     
-    // In a real scenario, this would be:
-    // await fetch('/api/rag/query', { method: 'POST', body: JSON.stringify({ query: "What is the zoning here?", context: { lat: pos.lat, lng: pos.lng } }) })
-    
     // Simulating network delay and PostGIS response
     setTimeout(() => {
       // Mock response based on the mock geojson we injected in the backend
@@ -117,7 +114,6 @@ export default function PrimeMap3D() {
       
       {/* 
         We use Next.js Script to load the maps API asynchronously.
-        Note: You must replace YOUR_API_KEY in the environment.
         v=beta is REQUIRED for 3D Maps.
       */}
       <Script 
