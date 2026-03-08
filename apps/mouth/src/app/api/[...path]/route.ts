@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { toError } from "@/lib/types/common";
 
@@ -264,6 +265,57 @@ async function proxy(req: NextRequest): Promise<Response> {
     respHeaders.delete("content-length"); // Length may change after decompression
 
     const bodyBuffer = await upstream.arrayBuffer();
+
+    // CRITICAL: For auth/login responses, manually set cookies via NextResponse
+    // Vercel Edge Runtime silently drops Set-Cookie headers with domain=.balizero.com
+    // when they come from a proxied response. We must use NextResponse.cookies.set()
+    // to bypass this restriction.
+    const isLoginEndpoint =
+      url.pathname === "/api/auth/login" &&
+      req.method === "POST" &&
+      upstream.status === 200;
+
+    if (isLoginEndpoint) {
+      try {
+        const bodyJson = JSON.parse(new TextDecoder().decode(bodyBuffer));
+        const jwt = bodyJson?.data?.token;
+        const csrf = bodyJson?.data?.csrfToken;
+        if (jwt) {
+          const cookieDomain = process.env.COOKIE_DOMAIN || ".balizero.com";
+          const maxAge = 86400; // 24h
+          const nextResp = new NextResponse(bodyBuffer, {
+            status: upstream.status,
+            statusText: upstream.statusText,
+            headers: respHeaders,
+          });
+          nextResp.cookies.set({
+            name: "nz_access_token",
+            value: jwt,
+            httpOnly: true,
+            secure: true,
+            sameSite: "none",
+            maxAge,
+            path: "/",
+            domain: cookieDomain,
+          });
+          if (csrf) {
+            nextResp.cookies.set({
+              name: "nz_csrf_token",
+              value: csrf,
+              httpOnly: false,
+              secure: true,
+              sameSite: "none",
+              maxAge,
+              path: "/",
+              domain: cookieDomain,
+            });
+          }
+          return nextResp;
+        }
+      } catch {
+        // Fall through to normal response if JSON parse fails
+      }
+    }
 
     return new Response(bodyBuffer, {
       status: upstream.status,
