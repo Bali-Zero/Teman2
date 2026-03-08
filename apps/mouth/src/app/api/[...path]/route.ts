@@ -283,38 +283,37 @@ async function proxy(req: NextRequest): Promise<Response> {
         if (jwt) {
           const cookieDomain = process.env.COOKIE_DOMAIN || ".balizero.com";
           const maxAge = 86400; // 24h
-          // CRITICAL: Strip upstream Set-Cookie headers before creating NextResponse.
-          // Without this, upstream SameSite=none cookies are forwarded alongside
-          // our SameSite=lax cookies, causing browser to use the wrong one.
+          // CRITICAL: Strip upstream Set-Cookie headers — they carry SameSite=none
+          // which Chrome 130+ rejects without Partitioned. We re-set cookies manually
+          // using raw header strings to bypass Vercel Edge Runtime restrictions.
           respHeaders.delete("set-cookie");
-          const nextResp = new NextResponse(bodyBuffer, {
+          // Build raw Set-Cookie strings — Vercel Edge forwards these reliably
+          const tokenCookie = [
+            `nz_access_token=${jwt}`,
+            `Domain=${cookieDomain}`,
+            `HttpOnly`,
+            `Max-Age=${maxAge}`,
+            `Path=/`,
+            `SameSite=Lax`,
+            `Secure`,
+          ].join("; ");
+          respHeaders.append("set-cookie", tokenCookie);
+          if (csrf) {
+            const csrfCookie = [
+              `nz_csrf_token=${csrf}`,
+              `Domain=${cookieDomain}`,
+              `Max-Age=${maxAge}`,
+              `Path=/`,
+              `SameSite=Lax`,
+              `Secure`,
+            ].join("; ");
+            respHeaders.append("set-cookie", csrfCookie);
+          }
+          return new Response(bodyBuffer, {
             status: upstream.status,
             statusText: upstream.statusText,
             headers: respHeaders,
           });
-          nextResp.cookies.set({
-            name: "nz_access_token",
-            value: jwt,
-            httpOnly: true,
-            secure: true,
-            sameSite: "lax",
-            maxAge,
-            path: "/",
-            domain: cookieDomain,
-          });
-          if (csrf) {
-            nextResp.cookies.set({
-              name: "nz_csrf_token",
-              value: csrf,
-              httpOnly: false,
-              secure: true,
-              sameSite: "lax",
-              maxAge,
-              path: "/",
-              domain: cookieDomain,
-            });
-          }
-          return nextResp;
         }
       } catch {
         // Fall through to normal response if JSON parse fails
