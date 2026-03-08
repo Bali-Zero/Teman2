@@ -19,7 +19,7 @@
 | **Portal Visa**           | ✅ PASS | `my.balizero.com/portal/visa` → HTTP 200 OK             |
 | **Portal Taxes**          | ✅ PASS | `my.balizero.com/portal/taxes` → HTTP 200 OK            |
 | **Redirect balizero.com** | ✅ PASS | `www.balizero.com/portal/*` → Redirect 301              |
-| **Redirect zantara**      | ✅ PASS | `zantara.balizero.com/portal/*` → Redirect 301          |
+| **Redirect zantara**      | ✅ PASS | `kita.balizero.com/portal/*` → Redirect 301             |
 
 ---
 
@@ -28,7 +28,7 @@
 ```
 ✅ balizero.com              → Sito pubblico
 ✅ www.balizero.com          → Sito pubblico
-✅ zantara.balizero.com      → Dashboard admin/intelligence
+✅ kita.balizero.com      → Dashboard admin/intelligence
 ✅ my.balizero.com           → Portal clienti (LIVE!)
 ```
 
@@ -40,7 +40,7 @@
 
 ```
 ✅ balizero.com/portal/*     → Redirect 301 → my.balizero.com/portal/*
-✅ zantara.balizero.com/portal/* → Redirect 301 → my.balizero.com/portal/*
+✅ kita.balizero.com/portal/* → Redirect 301 → my.balizero.com/portal/*
 ✅ my.balizero.com/          → Redirect 307 → /portal/login
 ✅ my.balizero.com/portal/*  → ✅ Accessibile direttamente
 ```
@@ -65,7 +65,7 @@
 
 ```bash
 ✅ www.balizero.com/portal/vault → HTTP 301 (Redirect)
-✅ zantara.balizero.com/portal/vault → HTTP 301 (Redirect)
+✅ kita.balizero.com/portal/vault → HTTP 301 (Redirect)
 ```
 
 ---
