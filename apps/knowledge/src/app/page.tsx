@@ -346,9 +346,7 @@ export default function KnowledgePage() {
                         metadata: {
                           documentId: docId,
                           title: result.metadata?.title,
-                          collection: (
-                            result.metadata as Record<string, unknown>
-                          )?.collection as string,
+                          collection: result.metadata?.collection,
                         },
                       });
                       trackUserInteraction("click", "search_result", docId);
@@ -364,16 +362,12 @@ export default function KnowledgePage() {
                   </h3>
                   <p className="text-sm text-[var(--foreground-muted)] line-clamp-2">
                     {result.text ||
-                      ((result.metadata as Record<string, unknown>)
-                        ?.summary as string) ||
+                      result.metadata?.summary ||
                       "No preview available"}
                   </p>
-                  {(result.metadata as Record<string, unknown>)?.collection && (
+                  {result.metadata?.collection && (
                     <span className="inline-block mt-2 text-xs text-[var(--accent)] bg-[var(--accent)]/10 px-2 py-1 rounded">
-                      {
-                        (result.metadata as Record<string, unknown>)
-                          ?.collection as string
-                      }
+                      {result.metadata.collection}
                     </span>
                   )}
                 </div>
