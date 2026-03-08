@@ -15,7 +15,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 # Add backend to path
-backend_path = Path(__file__).resolve().parents[4] / "backend"
+backend_path = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(backend_path))
 
 

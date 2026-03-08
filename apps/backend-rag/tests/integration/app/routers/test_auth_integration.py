@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 # Set environment variables before imports
 os.environ.setdefault("JWT_SECRET_KEY", "test_jwt_secret_key_for_testing_only_min_32_chars")
 
-backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
+backend_path = Path(__file__).parent.parent.parent.parent.parent
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 

@@ -27,7 +27,7 @@ os.environ["DATABASE_URL"] = "postgresql://test:test@localhost:5432/test"
 os.environ["GOOGLE_API_KEY"] = "test_google_api_key"
 
 # Add backend directory to Python path
-backend_path = Path(__file__).parent.parent.parent / "backend"
+backend_path = Path(__file__).parent.parent.parent
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 

@@ -14,7 +14,7 @@ os.environ.setdefault("JWT_SECRET_KEY", "test_jwt_secret_key_for_testing_only_mi
 os.environ.setdefault("QDRANT_URL", "http://localhost:6333")
 os.environ.setdefault("OPENAI_API_KEY", "test_openai_api_key")
 
-backend_path = Path(__file__).parent.parent.parent / "backend"
+backend_path = Path(__file__).parent.parent.parent
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 

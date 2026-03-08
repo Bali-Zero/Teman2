@@ -21,7 +21,7 @@ class _Metric:
 
 
 def _load_module(monkeypatch, aggregator_results=None):
-    backend_path = Path(__file__).resolve().parents[4] / "backend"
+    backend_path = Path(__file__).resolve().parents[4]
     aggregator_results = aggregator_results or {}
 
     class _Aggregator:

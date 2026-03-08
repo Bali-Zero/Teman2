@@ -16,7 +16,7 @@ def _load_module(
     search_errors=None,
     stats_errors=None,
 ):
-    backend_path = Path(__file__).resolve().parents[4] / "backend"
+    backend_path = Path(__file__).resolve().parents[4]
 
     class _Embedder:
         def generate_single_embedding(self, _query):

@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 
 def _load_module(monkeypatch, service_result=None, service_error=None):
-    backend_path = Path(__file__).resolve().parents[4] / "backend"
+    backend_path = Path(__file__).resolve().parents[4]
 
     class _ImageService:
         def __init__(self, api_key=None):

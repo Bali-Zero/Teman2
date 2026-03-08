@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 
 def _load_module(monkeypatch, service=None):
-    backend_path = Path(__file__).resolve().parents[4] / "backend"
+    backend_path = Path(__file__).resolve().parents[4]
 
     async def get_database_pool():
         return None

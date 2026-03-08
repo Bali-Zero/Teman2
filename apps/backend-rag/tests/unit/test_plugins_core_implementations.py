@@ -11,7 +11,7 @@ from unittest.mock import MagicMock
 import pytest
 
 # Ensure backend is in path
-backend_path = Path(__file__).parent.parent.parent / "backend"
+backend_path = Path(__file__).parent.parent.parent
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 

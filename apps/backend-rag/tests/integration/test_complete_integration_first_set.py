@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 # Aggiungi il backend al path
-backend_path = Path(__file__).parent.parent / "backend"
+backend_path = Path(__file__).parent.parent
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 

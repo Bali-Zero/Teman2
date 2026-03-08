@@ -73,7 +73,7 @@ def _load_module(
         ),
     )
 
-    backend_path = Path(__file__).resolve().parents[3] / "backend"
+    backend_path = Path(__file__).resolve().parents[3]
     module_name = "middleware.hybrid_auth"
     if module_name in sys.modules:
         del sys.modules[module_name]

@@ -47,7 +47,7 @@ def _load_module(
     orchestrator_init_error=False,
     orchestrator_context_error=False,
 ):
-    backend_path = Path(__file__).resolve().parents[4] / "backend"
+    backend_path = Path(__file__).resolve().parents[4]
 
     def handle_database_error(exc):
         return HTTPException(status_code=500, detail=str(exc))

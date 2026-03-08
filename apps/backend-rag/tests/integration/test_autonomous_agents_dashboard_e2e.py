@@ -24,7 +24,7 @@ os.environ.setdefault("GOOGLE_API_KEY", "test_google_api_key")
 os.environ.setdefault("OPENAI_API_KEY", "test_openai_key")
 
 # Make backend modules importable
-backend_path = Path(__file__).parent.parent.parent / "backend"
+backend_path = Path(__file__).parent.parent.parent
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
