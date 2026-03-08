@@ -180,30 +180,21 @@ FREE_MODELS: dict[str, ModelConfig] = {
     # -------------------------------------------------------------------------
     # QWEN - Chinese & reasoning
     # -------------------------------------------------------------------------
-    "qwen3-235b": ModelConfig(
-        id="qwen/qwen3-235b-a22b:free",
-        name="Qwen 3 235B",
+    "qwen3.5-27b": ModelConfig(
+        id="qwen/qwen3.5-27b",
+        name="Qwen 3.5 27B",
         provider="Qwen",
-        context_length=131_072,
-        strengths=["massive scale", "reasoning", "multilingual", "Chinese"],
-        best_for=[TaskType.REASONING, TaskType.LONG_FORM, TaskType.TRANSLATION],
-        speed="slow",
-    ),
-    "qwen3-coder": ModelConfig(
-        id="qwen/qwen3-coder:free",
-        name="Qwen 3 Coder",
-        provider="Qwen",
-        context_length=262_000,
-        strengths=["coding", "technical", "long context"],
-        best_for=[TaskType.CODING],
+        context_length=262_144,
+        strengths=["hybrid DeltaNet+MoE", "reasoning", "multilingual", "262K context"],
+        best_for=[TaskType.REASONING, TaskType.LONG_FORM, TaskType.TRANSLATION, TaskType.CODING],
         speed="medium",
     ),
-    "qwen3-4b": ModelConfig(
-        id="qwen/qwen3-4b:free",
-        name="Qwen 3 4B",
+    "qwen3.5-35b-a3b": ModelConfig(
+        id="qwen/qwen3.5-35b-a3b",
+        name="Qwen 3.5 35B-A3B",
         provider="Qwen",
-        context_length=40_960,
-        strengths=["fast", "lightweight", "Chinese"],
+        context_length=262_144,
+        strengths=["fast MoE", "lightweight", "262K context"],
         best_for=[TaskType.SHORT_FORM, TaskType.TRANSLATION],
         speed="fast",
     ),
@@ -338,7 +329,7 @@ TASK_FALLBACK_CHAINS: dict[TaskType, list[str]] = {
         "dolphin-mistral",  # Creative
     ],
     TaskType.REASONING: [
-        "qwen3-235b",  # Massive reasoning
+        "qwen3.5-27b",  # Hybrid DeltaNet+MoE reasoning
         "hermes-405b",  # Deep thinking
         "olmo-3-32b-think",  # Thinking model
         "gpt-oss-120b",  # Large scale
@@ -354,7 +345,7 @@ TASK_FALLBACK_CHAINS: dict[TaskType, list[str]] = {
     TaskType.TRANSLATION: [
         "gemini-flash",  # Multi-language, fast
         "llama-3.3-70b",  # Quality
-        "qwen3-235b",  # Chinese expert
+        "qwen3.5-27b",  # Chinese expert
         "glm-4.5-air",  # Asian languages
         "kimi-k2",  # Chinese
         "mistral-small",  # European
@@ -368,7 +359,7 @@ TASK_FALLBACK_CHAINS: dict[TaskType, list[str]] = {
         "llama-3.2-3b",  # Simple summaries
     ],
     TaskType.CODING: [
-        "qwen3-coder",  # Coding specialist
+        "qwen3.5-27b",  # Coding + reasoning
         "devstral",  # Development focus
         "mistral-small",  # Structured code
         "llama-3.3-70b",  # General coding

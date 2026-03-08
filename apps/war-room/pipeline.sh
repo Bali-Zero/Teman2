@@ -222,9 +222,9 @@ print(json.dumps(merged, ensure_ascii=False, indent=2))
 " > "$OUTPUT/raw/manus_dump.json"
 log "   ✅ Merged: $(python3 -c "import json; d=json.load(open('$OUTPUT/raw/manus_dump.json')); print(', '.join(d.get('sources_used',[])))" 2>/dev/null || echo '?') → $(python3 -c "import json; print(len(json.load(open('$OUTPUT/raw/manus_dump.json')).get('facts',[])))" 2>/dev/null || echo '?') facts totali"
 
-# ── FASE 1.5: Pre-processing con Qwen3-32B (locale, gratis) ──
+# ── FASE 1.5: Pre-processing con Qwen3.5-27B (locale, gratis) ──
 log ""
-log "━━━ FASE 1.5: QWEN3 PRE-PROCESSOR (locale) ━━━"
+log "━━━ FASE 1.5: QWEN3.5 PRE-PROCESSOR (locale) ━━━"
 if ! $DRY_RUN; then
   $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/015_qwen_preprocessor.py" \
     --grok "$OUTPUT/raw/grok_dump.json" \

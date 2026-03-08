@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 """
-FASE 1.5 — Qwen3-32B Pre-Processor
-Runs Qwen3-32B via Ollama locale (MacBook Pro M4 48GB)
+FASE 1.5 — Qwen3.5-27B Pre-Processor
+Runs Qwen3.5-27B via Ollama locale (MacBook Pro M4 48GB)
 Zero cost — locale
 """
 import json, argparse, sys, subprocess
 from pathlib import Path
 
 def run_qwen_on_pro(prompt: str) -> str:
-    """Chiama Qwen3:32b via Ollama locale — siamo sul Pro M4 48GB."""
+    """Chiama Qwen3.5:27b via Ollama locale — siamo sul Pro M4 48GB."""
     result = subprocess.run(
-        ["ollama", "run", "qwen3:32b", "--nowordwrap"],
+        ["ollama", "run", "qwen3.5:27b", "--nowordwrap"],
         input=prompt, capture_output=True, text=True, timeout=300
     )
     if result.returncode != 0:
-        raise RuntimeError(f"Qwen3 error: {result.stderr}")
+        raise RuntimeError(f"Qwen3.5 error: {result.stderr}")
     return result.stdout.strip()
 
 def main():
@@ -41,7 +41,7 @@ MANUS LEGAL FACTS:
 
 Output ONLY valid JSON. No markdown, no prose."""
 
-    print("🔄 Qwen3-32B pre-processor (Ollama locale Pro M4 48GB)...", file=sys.stderr)
+    print("🔄 Qwen3.5-27B pre-processor (Ollama locale Pro M4 48GB)...", file=sys.stderr)
     response = run_qwen_on_pro(prompt)
 
     # Extract JSON from response

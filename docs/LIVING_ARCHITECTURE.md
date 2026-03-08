@@ -8109,13 +8109,13 @@ OpenRouter Smart AI Client - Native Fallback System
 Uses OpenRouter's native 'models' array for server-side fallback (more efficient).
 With $10+ credits: 1000 req/day on free models.
 
-Free Models Available (as of 2025):
+Free Models Available (as of 2026):
 
 - google/gemini-2.0-flash-exp:free (1M context, best for RAG)
 - meta-llama/llama-3.3-70b-instruct:free (131K context, best reasoning)
-- qwen/qwen3-235b-a22b:free (40K context, powerful)
+- qwen/qwen3.5-27b (262K context, powerful hybrid DeltaNet+MoE)
 - mistralai/mistral-small-3.1-24b-instruct:free (32K context, fast)
-- meta-llama/llama-3.2-3b-instruct:free (131K context, fastest)
+- qwen/qwen3.5-35b-a3b (262K context, fast MoE)
 
 Best Practice: Use 'models' array for automatic server-side fallback.
 OpenRouter tries models in order until one succeeds.

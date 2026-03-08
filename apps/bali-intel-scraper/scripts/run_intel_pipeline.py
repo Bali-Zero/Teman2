@@ -290,7 +290,7 @@ class IntelPipeline:
         return True
     
     def step_qwen_filter(self) -> bool:
-        """Step 2.5: LLM content quality scoring via Ollama (gemma3:12b or qwen3:32b).
+        """Step 2.5: LLM content quality scoring via Ollama (gemma3:12b or qwen3.5:27b).
 
         Evaluates each article for relevance to our audience (expats/investors
         in Indonesia) and assigns a quality score 0-100. Threshold: >= 45.
@@ -311,7 +311,7 @@ class IntelPipeline:
             r = _httpx.get(f'{ollama_url}/api/tags', timeout=5)
             models = [m['name'] for m in r.json().get('models', [])]
             # Prefer gemma3 (reliable JSON), fallback to qwen3
-            for candidate in ['gemma3:12b', 'qwen3:32b']:
+            for candidate in ['gemma3:12b', 'qwen3.5:27b']:
                 if any(candidate in m for m in models):
                     ollama_model = candidate
                     break
@@ -453,7 +453,7 @@ class IntelPipeline:
             'filtered': len(filtered),
             'avg_score': round(avg_score, 1),
             'errors': errors,
-            'method': 'qwen3_32b',
+            'method': 'qwen3.5_27b',
         })
         return True
 
