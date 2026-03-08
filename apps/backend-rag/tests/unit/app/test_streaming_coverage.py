@@ -68,7 +68,7 @@ def _load_module(monkeypatch, validate_user=None):
         del sys.modules[module_name]
 
     spec = importlib.util.spec_from_file_location(
-        module_name, backend_path / "app" / "streaming.py"
+        module_name, backend_path / "backend" / "app" / "streaming.py"
     )
     module = importlib.util.module_from_spec(spec)
     sys.modules[module_name] = module

@@ -39,7 +39,7 @@ routers_pkg.__path__ = []
 sys.modules.setdefault("backend.app.routers", routers_pkg)
 
 module_name = "backend.app.routers.autonomous_agents"
-module_path = backend_path / "app" / "routers" / "autonomous_agents.py"
+module_path = backend_path / "backend" / "app" / "routers" / "autonomous_agents.py"
 spec = importlib.util.spec_from_file_location(module_name, module_path)
 autonomous_agents = importlib.util.module_from_spec(spec)
 sys.modules[module_name] = autonomous_agents

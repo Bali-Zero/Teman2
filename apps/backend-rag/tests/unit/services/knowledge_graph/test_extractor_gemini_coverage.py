@@ -8,15 +8,15 @@ from pathlib import Path
 import pytest
 
 backend_path = Path(__file__).parent.parent.parent.parent.parent
-module_path = backend_path / "services" / "knowledge_graph" / "extractor_gemini.py"
+module_path = backend_path / "backend" / "services" / "knowledge_graph" / "extractor_gemini.py"
 module_name = "backend.services.knowledge_graph.extractor_gemini"
 
 
 def _build_module(monkeypatch, client_factory):
     services_pkg = types.ModuleType("services")
-    services_pkg.__path__ = [str(backend_path / "services")]
+    services_pkg.__path__ = [str(backend_path / "backend" / "services")]
     kg_pkg = types.ModuleType("backend.services.knowledge_graph")
-    kg_pkg.__path__ = [str(backend_path / "services" / "knowledge_graph")]
+    kg_pkg.__path__ = [str(backend_path / "backend" / "services" / "knowledge_graph")]
     monkeypatch.setitem(sys.modules, "services", services_pkg)
     monkeypatch.setitem(sys.modules, "backend.services.knowledge_graph", kg_pkg)
 
@@ -56,7 +56,7 @@ def _build_module(monkeypatch, client_factory):
 
     ontology_name = "backend.services.knowledge_graph.ontology"
     if ontology_name not in sys.modules:
-        ontology_path = backend_path / "services" / "knowledge_graph" / "ontology.py"
+        ontology_path = backend_path / "backend" / "services" / "knowledge_graph" / "ontology.py"
         ontology_spec = importlib.util.spec_from_file_location(ontology_name, ontology_path)
         ontology_module = importlib.util.module_from_spec(ontology_spec)
         sys.modules[ontology_name] = ontology_module

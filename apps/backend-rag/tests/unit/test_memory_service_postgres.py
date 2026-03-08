@@ -33,7 +33,7 @@ def mock_problematic_modules():
     # Mock backend.services package to prevent its __init__.py from running
     # but allow submodules to be loaded from disk
     svc_mock = types.ModuleType("backend.services")
-    svc_mock.__path__ = [str(backend_path / "services")]
+    svc_mock.__path__ = [str(backend_path / "backend" / "services")]
     sys.modules["backend.services"] = svc_mock
 
     # Also mock problematic sister-modules of memory

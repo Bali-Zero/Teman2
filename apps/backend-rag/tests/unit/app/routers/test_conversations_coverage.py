@@ -147,9 +147,9 @@ def _load_module(
     )
 
     services_pkg = types.ModuleType("services")
-    services_pkg.__path__ = [str(backend_path / "services")]
+    services_pkg.__path__ = [str(backend_path / "backend" / "services")]
     crm_pkg = types.ModuleType("backend.services.crm")
-    crm_pkg.__path__ = [str(backend_path / "services" / "crm")]
+    crm_pkg.__path__ = [str(backend_path / "backend" / "services" / "crm")]
     monkeypatch.setitem(sys.modules, "services", services_pkg)
     monkeypatch.setitem(sys.modules, "backend.services.crm", crm_pkg)
 
@@ -167,9 +167,9 @@ def _load_module(
     monkeypatch.setitem(sys.modules, "backend.services.crm.auto_crm_service", auto_crm_module)
 
     app_pkg = types.ModuleType("app")
-    app_pkg.__path__ = [str(backend_path / "app")]
+    app_pkg.__path__ = [str(backend_path / "backend" / "app")]
     routers_pkg = types.ModuleType("backend.app.routers")
-    routers_pkg.__path__ = [str(backend_path / "app" / "routers")]
+    routers_pkg.__path__ = [str(backend_path / "backend" / "app" / "routers")]
     monkeypatch.setitem(sys.modules, "app", app_pkg)
     monkeypatch.setitem(sys.modules, "backend.app.routers", routers_pkg)
 
@@ -178,7 +178,7 @@ def _load_module(
         del sys.modules[module_name]
 
     spec = importlib.util.spec_from_file_location(
-        module_name, backend_path / "app" / "routers" / "conversations.py"
+        module_name, backend_path / "backend" / "app" / "routers" / "conversations.py"
     )
     module = importlib.util.module_from_spec(spec)
     sys.modules[module_name] = module

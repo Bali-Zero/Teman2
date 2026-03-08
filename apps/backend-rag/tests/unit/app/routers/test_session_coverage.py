@@ -64,7 +64,7 @@ class _SessionService:
 
 def _load_module(monkeypatch, settings_overrides=None):
     backend_path = Path(__file__).resolve().parents[4]
-    module_path = backend_path / "app" / "routers" / "session.py"
+    module_path = backend_path / "backend" / "app" / "routers" / "session.py"
 
     settings_stub = types.SimpleNamespace(redis_url="redis://custom:6379", api_keys="test_key_1,test_key_2")
     if settings_overrides:
@@ -82,9 +82,9 @@ def _load_module(monkeypatch, settings_overrides=None):
     )
 
     app_pkg = types.ModuleType("app")
-    app_pkg.__path__ = [str(backend_path / "app")]
+    app_pkg.__path__ = [str(backend_path / "backend" / "app")]
     routers_pkg = types.ModuleType("backend.app.routers")
-    routers_pkg.__path__ = [str(backend_path / "app" / "routers")]
+    routers_pkg.__path__ = [str(backend_path / "backend" / "app" / "routers")]
     monkeypatch.setitem(sys.modules, "app", app_pkg)
     monkeypatch.setitem(sys.modules, "backend.app.routers", routers_pkg)
 
