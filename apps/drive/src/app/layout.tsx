@@ -34,7 +34,7 @@ import type { ReactNode } from "react";
 
 async function AuthGate({ children }: { children: ReactNode }) {
   const cookieStore = await cookies();
-  const token = cookieStore.get("nz_auth_token")?.value;
+  const token = cookieStore.get("nz_access_token")?.value || cookieStore.get("nz_auth_token")?.value;
 
   if (!token) {
     const redirectUrl = encodeURIComponent(
