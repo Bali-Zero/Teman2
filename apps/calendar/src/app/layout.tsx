@@ -14,6 +14,7 @@ export const metadata: Metadata = {
 async function getSession(): Promise<boolean> {
   const cookieStore = await cookies();
   const token =
+    cookieStore.get("nz_access_token")?.value ||
     cookieStore.get("balizero_session")?.value ||
     cookieStore.get("auth_token")?.value ||
     cookieStore.get("next-auth.session-token")?.value ||

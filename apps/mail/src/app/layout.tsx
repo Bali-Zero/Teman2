@@ -25,6 +25,10 @@ export const metadata: Metadata = {
 async function isAuthenticated(): Promise<boolean> {
   const cookieStore = await cookies();
 
+  const nzToken = cookieStore.get("nz_access_token");
+  if (nzToken?.value) return true;
+
+  // Legacy fallbacks
   const bzSession = cookieStore.get("bz_session");
   if (bzSession?.value) return true;
 
