@@ -24,7 +24,7 @@ os.environ.setdefault("WHATSAPP_VERIFY_TOKEN", "test_whatsapp_verify_token")
 os.environ.setdefault("INSTAGRAM_VERIFY_TOKEN", "test_instagram_verify_token")
 
 # Add backend directory to Python path
-backend_path = Path(__file__).parent.parent.parent / "backend"
+backend_path = Path(__file__).parent.parent.parent
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 

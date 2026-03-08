@@ -62,7 +62,7 @@ def _load_module(monkeypatch, validate_user=None):
         types.SimpleNamespace(IntelligentRouter=object, redis_url="redis://localhost:6379"),
     )
 
-    backend_path = Path(__file__).resolve().parents[3] / "backend"
+    backend_path = Path(__file__).resolve().parents[3]
     module_name = "backend.app.streaming"
     if module_name in sys.modules:
         del sys.modules[module_name]

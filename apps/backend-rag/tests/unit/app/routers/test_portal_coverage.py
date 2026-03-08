@@ -81,7 +81,7 @@ class _PortalService:
 
 
 def _load_module(monkeypatch):
-    backend_path = Path(__file__).resolve().parents[4] / "backend"
+    backend_path = Path(__file__).resolve().parents[4]
 
     monkeypatch.setitem(
         sys.modules,

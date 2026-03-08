@@ -20,7 +20,7 @@ import pytest
 from pydantic import ValidationError
 
 # Add backend to path
-backend_path = Path(__file__).parent.parent.parent.parent.parent.parent / "backend"
+backend_path = Path(__file__).parent.parent.parent.parent.parent.parent
 sys.path.insert(0, str(backend_path))
 
 from backend.app.core.error_classification import ErrorClassifier

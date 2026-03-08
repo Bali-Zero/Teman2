@@ -45,7 +45,7 @@ def _load_module(monkeypatch):
     config_mock.Settings = MagicMock()
     monkeypatch.setitem(sys.modules, "backend.app.core.config", config_mock)
 
-    backend_path = Path(__file__).resolve().parents[4] / "backend"
+    backend_path = Path(__file__).resolve().parents[4]
     module_name = "backend.core.legal.hierarchical_indexer"
     if module_name in sys.modules:
         del sys.modules[module_name]

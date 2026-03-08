@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
+backend_path = Path(__file__).parent.parent.parent.parent.parent
 module_path = backend_path / "services" / "knowledge_graph" / "extractor_gemini.py"
 module_name = "backend.services.knowledge_graph.extractor_gemini"
 

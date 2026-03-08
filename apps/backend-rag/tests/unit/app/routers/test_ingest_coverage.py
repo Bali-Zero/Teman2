@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 
 def _load_module(monkeypatch, ingest_results=None, ingest_error=None, stats=None, stats_error=None):
-    backend_path = Path(__file__).resolve().parents[4] / "backend"
+    backend_path = Path(__file__).resolve().parents[4]
 
     class _IngestionService:
         def __init__(self):

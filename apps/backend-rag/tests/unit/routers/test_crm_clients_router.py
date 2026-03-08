@@ -24,7 +24,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
 # Ensure backend is in path
-backend_path = Path(__file__).parent.parent.parent.parent / "backend"
+backend_path = Path(__file__).parent.parent.parent.parent
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
@@ -202,6 +202,7 @@ def mock_dependencies(monkeypatch):
     crm_utils_mock = types.ModuleType("backend.app.utils.crm_utils")
     crm_utils_mock.extract_json_from_llm_response = MagicMock()
     crm_utils_mock.is_crm_admin = MagicMock()
+    crm_utils_mock.verify_client_access = AsyncMock()
     monkeypatch.setitem(sys.modules, "backend.app.utils.crm_utils", crm_utils_mock)
 
     error_handlers_mock = types.ModuleType("backend.app.utils.error_handlers")
@@ -237,6 +238,7 @@ def mock_dependencies(monkeypatch):
     # Mock core.cache
     cache_mock = types.ModuleType("backend.core.cache")
     cache_mock.cached = mock_decorator
+    cache_mock.invalidate_cache = MagicMock()
     monkeypatch.setitem(sys.modules, "backend.core.cache", cache_mock)
 
     # Mock redis_client

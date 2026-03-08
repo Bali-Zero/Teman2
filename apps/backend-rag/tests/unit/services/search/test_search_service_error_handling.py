@@ -19,7 +19,7 @@ from unittest.mock import AsyncMock, MagicMock, Mock, patch
 import pytest
 
 # Add backend to path
-backend_path = Path(__file__).parent.parent.parent.parent.parent.parent / "backend"
+backend_path = Path(__file__).parent.parent.parent.parent.parent.parent
 sys.path.insert(0, str(backend_path))
 
 from backend.app.core.error_classification import ErrorCategory, ErrorClassifier

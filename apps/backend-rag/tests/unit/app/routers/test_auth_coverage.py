@@ -42,7 +42,7 @@ class _DummyPool:
 
 
 def _load_module(monkeypatch, pool=None):
-    backend_path = Path(__file__).resolve().parents[4] / "backend"
+    backend_path = Path(__file__).resolve().parents[4]
 
     settings_stub = types.SimpleNamespace(
         jwt_secret_key="secret",

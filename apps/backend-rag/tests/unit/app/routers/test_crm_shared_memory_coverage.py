@@ -101,7 +101,7 @@ def _load_module(monkeypatch):
         ),
     )
 
-    backend_path = Path(__file__).resolve().parents[4] / "backend"
+    backend_path = Path(__file__).resolve().parents[4]
     app_pkg = types.ModuleType("app")
     app_pkg.__path__ = [str(backend_path / "app")]
     routers_pkg = types.ModuleType("backend.app.routers")

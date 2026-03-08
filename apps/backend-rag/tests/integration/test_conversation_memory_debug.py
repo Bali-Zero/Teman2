@@ -32,7 +32,7 @@ os.environ.setdefault("QDRANT_URL", "http://localhost:6333")
 os.environ.setdefault("OPENAI_API_KEY", "test_openai_api_key_for_testing")
 os.environ.setdefault("GOOGLE_API_KEY", "test_google_api_key_for_testing")
 
-backend_path = Path(__file__).parent.parent.parent / "backend"
+backend_path = Path(__file__).parent.parent.parent
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
@@ -137,7 +137,7 @@ class TestConversationMemoryDebug:
 
         import sys
 
-        backend_path = Path(__file__).parent.parent.parent / "backend"
+        backend_path = Path(__file__).parent.parent.parent
         if str(backend_path) not in sys.path:
             sys.path.insert(0, str(backend_path))
         from backend.app.routers.oracle_universal import extract_entities_from_history
