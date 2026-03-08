@@ -46,6 +46,8 @@ const PUBLIC_DOMAIN = "balizero.com";
 const APP_DOMAIN = "kita.balizero.com";
 const PORTAL_DOMAIN = "my.balizero.com";
 const MOBILE_DOMAIN = "mo.balizero.com";
+// SSO subdomains: all *.balizero.com apps that share auth via cookie
+const SSO_SUBDOMAINS = ["mail", "calendar", "drive", "knowledge"];
 
 // Scraper detection — classify requests as human, welcome bot, or suspicious
 const WELCOME_BOTS =
@@ -123,13 +125,17 @@ export function middleware(request: NextRequest) {
   }
 
   // Determine if we're on the public domain
+  const subdomain = hostname.split(".")[0]; // e.g. "mail", "calendar", "kita", "balizero"
+  const isSSOSubdomain = SSO_SUBDOMAINS.includes(subdomain);
   const isPublicDomain =
     hostname.includes(PUBLIC_DOMAIN) &&
     !hostname.includes("kita") &&
-    !hostname.includes("my");
+    !hostname.includes("my") &&
+    !isSSOSubdomain;
   const isAppDomain =
     hostname.includes(APP_DOMAIN) ||
-    (hostname.includes("kita") && !hostname.includes("my"));
+    (hostname.includes("kita") && !hostname.includes("my")) ||
+    isSSOSubdomain;
   const isPortalDomain =
     hostname.includes(PORTAL_DOMAIN) || hostname.includes("my.balizero.com");
 
