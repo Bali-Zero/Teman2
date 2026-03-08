@@ -97,7 +97,7 @@ Inject into index.html (regex replacement + backup)
 
 ### Status
 
-🚀 **LIVE:** https://zantara.balizero.com/kbli-navigator
+🚀 **LIVE:** https://kita.balizero.com/kbli-navigator
 
 ### Deployment Timeline
 
@@ -121,7 +121,7 @@ Inject into index.html (regex replacement + backup)
 
 ### Manual Tests to Perform
 
-1. **Open:** https://zantara.balizero.com/kbli-navigator
+1. **Open:** https://kita.balizero.com/kbli-navigator
 2. **Test English searches:**
    - "restaurant" → Should find 56101
    - "software" → Should find 62013
@@ -243,7 +243,7 @@ git push origin main --force
 
 ### Production
 
-- **Live URL:** https://zantara.balizero.com/kbli-navigator
+- **Live URL:** https://kita.balizero.com/kbli-navigator
 - **Main File:** `apps/mouth/public/kbli-navigator/index.html` (915KB)
 
 ### Scripts

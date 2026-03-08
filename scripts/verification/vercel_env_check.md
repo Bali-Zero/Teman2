@@ -152,7 +152,7 @@ vercel env ls | grep NEXT_PUBLIC_API_URL
 
 Dopo aver configurato le variabili e redeployato:
 
-1. Apri `https://zantara.balizero.com/dashboard`
+1. Apri `https://kita.balizero.com/dashboard`
 2. Apri DevTools (F12) → Console
 3. Cerca errori che menzionano:
    - "Failed to load"

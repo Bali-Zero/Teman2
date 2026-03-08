@@ -344,7 +344,7 @@ def create_optimized_app() -> Any:
     # Optimized CORS
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["https://zantara.balizero.com"],
+        allow_origins=["https://kita.balizero.com"],
         allow_credentials=True,
         allow_methods=["GET", "POST"],
         allow_headers=["*"],

@@ -7,7 +7,7 @@ import { ExternalLink, Globe, ArrowRight } from "lucide-react";
 
 /**
  * HomepagePreviewWidget - Mostra un'anteprima della homepage balizero.com
- * sulla dashboard di zantara.balizero.com
+ * sulla dashboard di kita.balizero.com
  */
 export function HomepagePreviewWidget() {
   return (

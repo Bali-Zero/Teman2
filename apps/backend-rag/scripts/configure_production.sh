@@ -220,7 +220,7 @@ if [ -n "$SENDGRID_API_KEY" ]; then
     echo "     -d '{\"force_send\": true, \"test_email\": \"your@email.com\"}'"
     echo ""
     echo "2. Access admin dashboard:"
-    echo "   https://zantara.balizero.com/notifications"
+    echo "   https://kita.balizero.com/notifications"
     echo ""
     echo "3. Monitor SendGrid activity:"
     echo "   https://app.sendgrid.com/email_activity"

@@ -19,7 +19,7 @@
 
 ### Domain Status:
 
-- ✅ `zantara.balizero.com` → Redirect a `/login` (normale, richiede auth)
+- ✅ `kita.balizero.com` → Redirect a `/login` (normale, richiede auth)
 - ✅ `balizero.com` → Attivo
 - ✅ `www.balizero.com` → Attivo
 - ✅ HTML carica correttamente (verificato con curl)
@@ -91,7 +91,7 @@ console.warn(...)  ❌ Dovrebbe essere logger.warn()
 ### Step 1: Accesso ✅
 
 1. ✅ Apri browser
-2. ✅ Vai a: https://zantara.balizero.com
+2. ✅ Vai a: https://kita.balizero.com
 3. ✅ Verifica redirect a `/login` funziona
 4. ⏳ Login con credenziali (da fare manualmente)
 
@@ -212,7 +212,7 @@ vercel inspect https://mouth-77xuogi1i-nuzantara-2026.vercel.app
 ### Health Check:
 
 ```bash
-curl -I https://zantara.balizero.com
+curl -I https://kita.balizero.com
 ```
 
 ---

@@ -51,7 +51,7 @@ def get_samesite_policy() -> str:
     Return SameSite policy for cookies.
 
     Returns:
-        - "none" in production for cross-subdomain (zantara.balizero.com <-> api.balizero.com)
+        - "none" in production for cross-subdomain (kita.balizero.com <-> api.balizero.com)
         - "lax" in development (localhost same-origin)
     """
     # Cross-subdomain requires SameSite=none (with Secure=true)

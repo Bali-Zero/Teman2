@@ -67,5 +67,5 @@ Merge conflict resolution, KBLI Navigator routing fix, documentation updates.
 
 ## 5. Next Steps (for future sessions)
 
-- [ ] Verify redirect live on balizero.com / zantara.balizero.com (Vercel project config)
+- [ ] Verify redirect live on balizero.com / kita.balizero.com (Vercel project config)
 - [ ] Rewrite e2e skipped tests for new ZantaraChat UI (if needed)

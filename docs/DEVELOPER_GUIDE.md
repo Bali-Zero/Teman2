@@ -19,7 +19,7 @@ Nuzantara (codename "Zantara") is a production AI-powered business intelligence 
 
 **Production URLs:**
 
-- Frontend: https://zantara.balizero.com (Vercel)
+- Frontend: https://kita.balizero.com (Vercel)
 - Backend: https://nuzantara-rag.fly.dev (Fly.io, Singapore)
 - API Docs: https://nuzantara-rag.fly.dev/docs (Swagger)
 

@@ -445,7 +445,7 @@ export default function TaxPage() {
 
   const handleCardClick = (service: TaxService) => {
     window.open(
-      `https://zantara.balizero.com/chat?q=${encodeURIComponent(`Tell me about ${service.title} in Indonesia`)}`,
+      `https://kita.balizero.com/chat?q=${encodeURIComponent(`Tell me about ${service.title} in Indonesia`)}`,
       "_blank",
     );
   };
@@ -634,7 +634,7 @@ export default function TaxPage() {
           </div>
           <Button
             onClick={() =>
-              window.open("https://zantara.balizero.com/chat", "_blank")
+              window.open("https://kita.balizero.com/chat", "_blank")
             }
             className="gap-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white whitespace-nowrap"
           >

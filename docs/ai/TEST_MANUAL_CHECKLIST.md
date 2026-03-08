@@ -2,7 +2,7 @@
 
 **Data:** 2026-01-13  
 **Deploy ID:** `dpl_5VdjGD2zPVcVGiztCaTQwpT6Jfb7`  
-**URL:** https://zantara.balizero.com
+**URL:** https://kita.balizero.com
 
 ---
 
@@ -13,7 +13,7 @@
 - ✅ Deploy completato: `3ba0a46c`
 - ✅ Status: Ready (Production)
 - ✅ Build: Success (1m)
-- ✅ URL attivo: https://zantara.balizero.com
+- ✅ URL attivo: https://kita.balizero.com
 
 ---
 
@@ -21,7 +21,7 @@
 
 ### 1. Accesso e Login
 
-- [ ] Accedere a https://zantara.balizero.com
+- [ ] Accedere a https://kita.balizero.com
 - [ ] Verificare redirect a `/login` funziona
 - [ ] Login con credenziali valide
 - [ ] Verificare redirect a dashboard/chat

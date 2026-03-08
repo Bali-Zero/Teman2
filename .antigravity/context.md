@@ -6,7 +6,7 @@
 **Version:** 5.2.0  
 **Type:** Production AI Business Intelligence Platform  
 **Owner:** Bali Zero  
-**URL:** https://zantara.balizero.com
+**URL:** https://kita.balizero.com
 
 ## Architecture Overview
 

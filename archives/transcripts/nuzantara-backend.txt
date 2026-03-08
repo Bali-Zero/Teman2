@@ -5552,8 +5552,8 @@ def _allowed_origins() -> set[str]:
     defaults = {
         "https://balizero.com",  # Primary production domain
         "https://www.balizero.com",  # Primary production domain (www)
-        "https://zantara.balizero.com",
-        "https://www.zantara.balizero.com",
+        "https://kita.balizero.com",
+        "https://www.kita.balizero.com",
         "https://nuzantara-mouth.vercel.app",  # Frontend Vercel deployment
         "http://localhost:3000",
     }
@@ -57956,7 +57956,7 @@ async def oauth_callback(
     Google redirects here after user grants consent.
     """
     # Frontend base URL for redirects
-    frontend_url = "https://zantara.balizero.com"
+    frontend_url = "https://kita.balizero.com"
 
     # Handle OAuth errors
     if error:
@@ -64784,7 +64784,7 @@ class Settings(BaseSettings):
         description="Zoho OAuth redirect URI (set via ZOHO_REDIRECT_URI env var)",
     )
     frontend_url: str = Field(
-        default="https://zantara.balizero.com",
+        default="https://kita.balizero.com",
         description="Frontend URL for OAuth redirects (set via FRONTEND_URL env var)",
     )
     zoho_api_domain: str = Field(
@@ -67967,8 +67967,8 @@ def get_allowed_origins() -> list[str]:
     default_origins = [
         "https://balizero.com",  # Primary production domain
         "https://www.balizero.com",  # Primary production domain (www)
-        "https://zantara.balizero.com",  # Admin dashboard
-        "https://www.zantara.balizero.com",
+        "https://kita.balizero.com",  # Admin dashboard
+        "https://www.kita.balizero.com",
         "https://my.balizero.com",  # Portal clienti
         "https://www.my.balizero.com",
         "https://nuzantara-mouth.vercel.app",  # Frontend Vercel deployment
@@ -70711,7 +70711,7 @@ def get_samesite_policy() -> str:
     Return SameSite policy for cookies.
 
     Returns:
-        - "none" in production for cross-subdomain (zantara.balizero.com <-> api.balizero.com)
+        - "none" in production for cross-subdomain (kita.balizero.com <-> api.balizero.com)
         - "lax" in development (localhost same-origin)
     """
     # Cross-subdomain requires SameSite=none (with Secure=true)
@@ -98933,7 +98933,7 @@ class TestGetAllowedOrigins:
             origins = get_allowed_origins()
 
             assert len(origins) > 0
-            assert "https://zantara.balizero.com" in origins
+            assert "https://kita.balizero.com" in origins
             assert "http://localhost:3000" in origins
 
     def test_get_allowed_origins_from_settings(self):
@@ -98946,7 +98946,7 @@ class TestGetAllowedOrigins:
 
             assert "https://example.com" in origins
             assert "https://test.com" in origins
-            assert "https://zantara.balizero.com" in origins  # Defaults still included
+            assert "https://kita.balizero.com" in origins  # Defaults still included
 
     def test_get_allowed_origins_with_dev_origins(self):
         """Test getting origins including dev origins"""
@@ -99061,7 +99061,7 @@ class TestCORSConfig:
 
             assert "https://example.com" in origins
             assert "https://test.com" in origins
-            assert "https://zantara.balizero.com" in origins  # Default
+            assert "https://kita.balizero.com" in origins  # Default
 
     def test_get_allowed_origins_with_dev_origins(self):
         """Test getting allowed origins with dev origins"""
@@ -99082,7 +99082,7 @@ class TestCORSConfig:
 
             origins = get_allowed_origins()
 
-            assert "https://zantara.balizero.com" in origins
+            assert "https://kita.balizero.com" in origins
             assert "http://localhost:3000" in origins
 
     def test_register_cors_middleware(self, mock_app):
@@ -208716,7 +208716,7 @@ def create_optimized_app() -> Any:
     # Optimized CORS
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["https://zantara.balizero.com"],
+        allow_origins=["https://kita.balizero.com"],
         allow_credentials=True,
         allow_methods=["GET", "POST"],
         allow_headers=["*"],

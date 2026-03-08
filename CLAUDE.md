@@ -42,7 +42,7 @@ See `docs/PRO_AIR_CONNECTION.md` for full details.
 **Name:** Nuzantara (Zantara)  
 **Version:** 5.2.0  
 **Type:** Production AI-powered business intelligence platform for Bali Zero  
-**URL:** https://zantara.balizero.com
+**URL:** https://kita.balizero.com
 
 ### Architecture
 

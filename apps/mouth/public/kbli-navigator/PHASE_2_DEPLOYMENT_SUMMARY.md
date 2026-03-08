@@ -131,7 +131,7 @@ git push origin main
 ### Vercel Deployment
 
 - **Trigger:** GitHub push to main branch
-- **Expected URL:** https://zantara.balizero.com/kbli-navigator
+- **Expected URL:** https://kita.balizero.com/kbli-navigator
 - **Build time:** ~2-3 minutes
 - **Status:** Will auto-deploy (Vercel watches main branch)
 
@@ -142,7 +142,7 @@ git push origin main
 ### Manual Testing Checklist
 
 1. **Open Navigator:**
-   - Visit https://zantara.balizero.com/kbli-navigator
+   - Visit https://kita.balizero.com/kbli-navigator
    - Verify page loads correctly
 
 2. **Test Relevance Scoring:**
@@ -399,4 +399,4 @@ Total Score =
 
 **🎉 Phase 2 successfully deployed to production!**
 
-**Expected live at:** https://zantara.balizero.com/kbli-navigator (2-3 minutes after push)
+**Expected live at:** https://kita.balizero.com/kbli-navigator (2-3 minutes after push)

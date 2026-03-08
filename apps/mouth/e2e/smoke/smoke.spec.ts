@@ -18,13 +18,13 @@ import { test, expect, Page } from "@playwright/test";
  * Environment variables:
  *   E2E_TEST_EMAIL - test user email (default: zero@balizero.com)
  *   E2E_TEST_PIN - test user PIN (default: 010719)
- *   E2E_BASE_URL - base URL (default: https://zantara.balizero.com)
+ *   E2E_BASE_URL - base URL (default: https://kita.balizero.com)
  */
 
 const CONFIG = {
   email: process.env.E2E_TEST_EMAIL || "zero@balizero.com",
   pin: process.env.E2E_TEST_PIN || "010719",
-  baseUrl: process.env.E2E_BASE_URL || "https://zantara.balizero.com",
+  baseUrl: process.env.E2E_BASE_URL || "https://kita.balizero.com",
 };
 
 // Increase timeout for AI responses

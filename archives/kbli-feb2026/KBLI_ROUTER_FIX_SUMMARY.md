@@ -221,7 +221,7 @@ curl -X POST http://localhost:8080/api/v1/kbli-notebook/chat \
 
 ```bash
 # After deploy
-curl -X POST https://zantara.balizero.com/api/v1/kbli-notebook/chat \
+curl -X POST https://kita.balizero.com/api/v1/kbli-notebook/chat \
   -H "Content-Type: application/json" \
   -d '{"query":"56101 sanksi"}'
 ```

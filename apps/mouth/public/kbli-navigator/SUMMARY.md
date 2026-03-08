@@ -21,7 +21,7 @@
    - Relevance scoring (6-factor algorithm)
    - "Did You Mean?" suggestions
    - **Commit:** `2ded80b96`
-   - **Legacy URL:** https://zantara.balizero.com/kbli-navigator → redirects to `/kbli`
+   - **Legacy URL:** https://kita.balizero.com/kbli-navigator → redirects to `/kbli`
 
 3. **Phase 1: Data Ready**
    - Bilingual keywords file generated (347KB)
@@ -119,7 +119,7 @@ After Phase 1+2:            98%  (+345% total!)
 
 **Steps:**
 
-1. Open https://zantara.balizero.com/kbli-navigator
+1. Open https://kita.balizero.com/kbli-navigator
 2. Use `QUICK_TEST_CHECKLIST.md` (9 tests, ~10 minutes)
 3. Verify Phase 2 works correctly
 4. Document any issues
@@ -272,7 +272,7 @@ After Phase 1+2:            98%  (+345% total!)
 
 ### URLs
 
-- **Production:** https://zantara.balizero.com/kbli-navigator
+- **Production:** https://kita.balizero.com/kbli-navigator
 - **Git Commit:** `2ded80b96`
 
 ### Files
@@ -301,7 +301,7 @@ git push origin main
 ### Immediate Actions (Choose One)
 
 1. **🧪 Test Phase 2**
-   - Open https://zantara.balizero.com/kbli-navigator
+   - Open https://kita.balizero.com/kbli-navigator
    - Follow QUICK_TEST_CHECKLIST.md
    - Report results (~10 minutes)
 

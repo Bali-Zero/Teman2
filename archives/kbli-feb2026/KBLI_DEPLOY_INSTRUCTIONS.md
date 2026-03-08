@@ -75,7 +75,7 @@ The JSON files are in place. Next time backend deploys or restarts, it will load
 
 ## 🧪 Testing
 
-After deploy, test at: **https://zantara.balizero.com/kbli-navigator**
+After deploy, test at: **https://kita.balizero.com/kbli-navigator**
 
 **Test queries:**
 

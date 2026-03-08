@@ -1,7 +1,7 @@
 # Dashboard Analysis - Zantara Dashboard
 
 **Data Analisi:** 2026-01-21  
-**URL:** https://zantara.balizero.com/dashboard  
+**URL:** https://kita.balizero.com/dashboard  
 **Status:** ✅ Funzionante
 
 ---

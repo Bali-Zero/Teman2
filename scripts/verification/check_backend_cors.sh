@@ -8,7 +8,7 @@ echo "======================================================================"
 echo ""
 
 BACKEND_URL="https://nuzantara-rag.fly.dev"
-FRONTEND_ORIGIN="https://zantara.balizero.com"
+FRONTEND_ORIGIN="https://kita.balizero.com"
 
 # Colori
 RED='\033[0;31m'
@@ -111,7 +111,7 @@ if command -v fly &> /dev/null; then
     echo "  fly secrets list -a nuzantara-rag"
     echo ""
     echo "Per impostare ZANTARA_ALLOWED_ORIGINS:"
-    echo "  fly secrets set ZANTARA_ALLOWED_ORIGINS=\"https://zantara.balizero.com,https://www.zantara.balizero.com\" -a nuzantara-rag"
+    echo "  fly secrets set ZANTARA_ALLOWED_ORIGINS=\"https://kita.balizero.com,https://www.kita.balizero.com\" -a nuzantara-rag"
 else
     echo "⚠️  Fly CLI non installato"
     echo ""
@@ -131,7 +131,7 @@ if [ -f "$CORS_FILE" ]; then
     echo "✅ File CORS config trovato: $CORS_FILE"
     echo ""
     echo "Verifica che contenga:"
-    echo "  - 'https://zantara.balizero.com' in default_origins"
+    echo "  - 'https://kita.balizero.com' in default_origins"
     echo ""
     echo "Contenuto rilevante:"
     grep -A 10 "default_origins" "$CORS_FILE" | head -15
@@ -151,7 +151,7 @@ echo ""
 echo "❌ Se i test falliscono:"
 echo "   1. Verifica che il backend sia deployato con CORS config aggiornato"
 echo "   2. Controlla che ZANTARA_ALLOWED_ORIGINS sia impostato su Fly.io"
-echo "   3. Verifica che cors_config.py includa zantara.balizero.com"
+echo "   3. Verifica che cors_config.py includa kita.balizero.com"
 echo "   4. Redeploy backend se necessario"
 echo ""
 echo "======================================================================"

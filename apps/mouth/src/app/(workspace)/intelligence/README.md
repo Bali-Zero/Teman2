@@ -51,7 +51,7 @@ The Intelligence Center provides a comprehensive platform for managing automated
 
 ### Access
 
-- **URL**: `https://zantara.balizero.com/intelligence`
+- **URL**: `https://kita.balizero.com/intelligence`
 - **Default**: Redirects to `/intelligence/visa-oracle`
 
 ### Navigation

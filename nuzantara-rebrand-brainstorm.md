@@ -165,7 +165,7 @@ LEGORA (unified)
 
 ### Phase 2: Soft Transition (3 mesi)
 
-- Redirect 301 nuzantara.balizero.com → new.balizero.com
+- Redirect 301 nukita.balizero.com → new.balizero.com
 - Comunicazione ai clienti esistenti
 
 ### Phase 3: Full Cutover

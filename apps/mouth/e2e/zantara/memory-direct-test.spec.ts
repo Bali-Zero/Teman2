@@ -11,7 +11,7 @@ import { test, expect, Page } from "@playwright/test";
 const TEST_CONFIG = {
   email: process.env.E2E_TEST_EMAIL || "zero@balizero.com",
   pin: process.env.E2E_TEST_PIN || "010719",
-  baseUrl: process.env.PLAYWRIGHT_BASE_URL || "https://zantara.balizero.com",
+  baseUrl: process.env.PLAYWRIGHT_BASE_URL || "https://kita.balizero.com",
   apiUrl: process.env.NUZANTARA_API_URL || "https://nuzantara-rag.fly.dev",
   responseTimeout: 60000,
   waitBetweenMessages: 5000, // Wait 5 seconds between messages

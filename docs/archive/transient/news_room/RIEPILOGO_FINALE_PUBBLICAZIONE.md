@@ -162,7 +162,7 @@ Quando un articolo arriva nella News Room:
 
 ### Pubblicare un Articolo
 
-1. Vai a `https://zantara.balizero.com/intelligence/news-room`
+1. Vai a `https://kita.balizero.com/intelligence/news-room`
 2. Trova articolo da pubblicare
 3. Clicca "Publish"
 4. Articolo viene:

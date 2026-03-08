@@ -40,7 +40,7 @@
 - **Allowed Origins:**
   - `https://balizero.com`
   - `https://www.balizero.com`
-  - `https://zantara.balizero.com`
+  - `https://kita.balizero.com`
   - `https://nuzantara-mouth.vercel.app`
 
 ## 🔄 Recent Deployments

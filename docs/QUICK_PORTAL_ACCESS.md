@@ -11,7 +11,7 @@
 1. **Login su Dashboard Admin:**
 
    ```
-   https://zantara.balizero.com/login
+   https://kita.balizero.com/login
    ```
 
    - Email: `zero@balizero.com` (o il tuo account admin)

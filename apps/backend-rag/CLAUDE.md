@@ -514,7 +514,7 @@ Removed blocking `await cache_service.get_stats()` call (hypothesis: Redis scan_
 
 ### Problem Identified
 
-The documents page at `https://zantara.balizero.com/documents` was returning 500 errors with no folders visible.
+The documents page at `https://kita.balizero.com/documents` was returning 500 errors with no folders visible.
 
 **Root Cause Analysis:**
 
@@ -585,7 +585,7 @@ fly secrets set GOOGLE_SERVICE_ACCOUNT_JSON="$(cat nuzantara-2846d801caee.json)"
 
 ### Verification
 
-**Documents Page Test:** https://zantara.balizero.com/documents
+**Documents Page Test:** https://kita.balizero.com/documents
 
 - ✅ Page loads successfully
 - ✅ Folders visible: Company, Company_vino, Individual_Damar

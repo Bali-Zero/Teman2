@@ -118,7 +118,7 @@ export TELEGRAM_APPROVAL_CHAT_ID=1125336968
 ### URL
 
 ```
-https://zantara.balizero.com/intelligence
+https://kita.balizero.com/intelligence
 ```
 
 **Funzionalità:**

@@ -77,7 +77,7 @@ The BaliZero Intel Pipeline is a complete news processing system that:
 │         - Generate HTML preview                                 │
 │         - Send notification to Telegram                        │
 │         - Wait for manual approval/rejection                    │
-│     6b. News Room UI → zantara.balizero.com/intelligence        │
+│     6b. News Room UI → kita.balizero.com/intelligence        │
 │         - Frontend deployed on Vercel, custom domain            │
 │         - Team can review articles in web interface              │
 │         - Includes preview URL for E-E-A-T human review         │
@@ -489,7 +489,7 @@ fly secrets set TELEGRAM_APPROVAL_CHAT_ID="8290313965,ANOTHER_CHAT_ID" -a nuzant
 
 - **Updated Step 6: Approval Channels**
   - Documented parallel approval channels (Telegram + News Room UI)
-  - News Room UI: `zantara.balizero.com/intelligence` (Vercel)
+  - News Room UI: `kita.balizero.com/intelligence` (Vercel)
   - Telegram: Bot notifications with inline buttons
 
 - **Updated Step 7: Auto-Memory**

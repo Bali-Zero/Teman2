@@ -74,8 +74,8 @@ curl -I https://my.balizero.com/portal/taxes
 curl -I https://www.balizero.com/portal/vault
 # Expected: Location: https://my.balizero.com/portal/vault
 
-# Da zantara.balizero.com
-curl -I https://zantara.balizero.com/portal/vault
+# Da kita.balizero.com
+curl -I https://kita.balizero.com/portal/vault
 # Expected: Location: https://my.balizero.com/portal/vault
 ```
 
@@ -95,7 +95,7 @@ curl -I https://zantara.balizero.com/portal/vault
 ```
 ✅ balizero.com              → Sito pubblico
 ✅ www.balizero.com          → Sito pubblico
-✅ zantara.balizero.com      → Dashboard admin/intelligence
+✅ kita.balizero.com      → Dashboard admin/intelligence
 ✅ my.balizero.com           → Portal clienti (IN DEPLOY)
 ```
 
@@ -103,7 +103,7 @@ curl -I https://zantara.balizero.com/portal/vault
 
 ```
 ✅ balizero.com/portal/*     → Redirect 301 → my.balizero.com/portal/*
-✅ zantara.balizero.com/portal/* → Redirect 301 → my.balizero.com/portal/*
+✅ kita.balizero.com/portal/* → Redirect 301 → my.balizero.com/portal/*
 ✅ my.balizero.com/portal/*  → ✅ Accessibile direttamente
 ✅ my.balizero.com/*         → Redirect → /portal/login
 ```

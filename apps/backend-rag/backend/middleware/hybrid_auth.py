@@ -63,8 +63,12 @@ def _allowed_origins() -> set[str]:
     defaults = {
         "https://balizero.com",  # Primary production domain
         "https://www.balizero.com",  # Primary production domain (www)
-        "https://zantara.balizero.com",
-        "https://www.zantara.balizero.com",
+        "https://kita.balizero.com",
+        "https://www.kita.balizero.com",
+        "https://mail.balizero.com",  # Mail subdomain
+        "https://calendar.balizero.com",  # Calendar subdomain
+        "https://drive.balizero.com",  # Drive subdomain
+        "https://knowledge.balizero.com",  # Knowledge subdomain
         "https://nuzantara-mouth.vercel.app",  # Frontend Vercel deployment
         "http://localhost:3000",
     }

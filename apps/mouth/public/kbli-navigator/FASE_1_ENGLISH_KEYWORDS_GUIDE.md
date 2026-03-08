@@ -1135,7 +1135,7 @@ Wait 2-3 minutes for Vercel deployment, then test:
 
 ```bash
 # Test production
-open https://zantara.balizero.com/kbli-navigator
+open https://kita.balizero.com/kbli-navigator
 ```
 
 **Quick verification:**

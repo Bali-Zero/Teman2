@@ -320,7 +320,7 @@ export default function Home() {
         </ul>
         {/* Violet Zantara AI pill with real lotus image */}
         <Link
-          href="https://zantara.balizero.com/chat"
+          href="https://kita.balizero.com/chat"
           className="nav-cta"
           target="_blank"
           rel="noopener noreferrer"

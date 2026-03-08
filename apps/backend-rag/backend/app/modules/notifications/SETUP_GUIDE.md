@@ -127,7 +127,7 @@ curl -X POST https://backend-rag.fly.dev/api/notifications/test/ \
 
 ### Step 4: Access Admin Dashboard
 
-**URL:** https://zantara.balizero.com/notifications
+**URL:** https://kita.balizero.com/notifications
 
 **Features:**
 

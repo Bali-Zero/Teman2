@@ -8,7 +8,7 @@ import { test, expect, Page } from "@playwright/test";
 const TEST_CONFIG = {
   email: process.env.E2E_TEST_EMAIL || "zero@balizero.com",
   pin: process.env.E2E_TEST_PIN || "010719",
-  baseUrl: "https://zantara.balizero.com", // Production
+  baseUrl: "https://kita.balizero.com", // Production
 };
 
 // Helper to send message and grab full response

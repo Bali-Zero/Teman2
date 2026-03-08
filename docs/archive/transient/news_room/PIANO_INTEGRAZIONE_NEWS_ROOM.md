@@ -8,7 +8,7 @@
 
 ## 🎯 OBIETTIVO FINALE
 
-Dashboard News Room (`https://zantara.balizero.com/intelligence/news-room`) dove:
+Dashboard News Room (`https://kita.balizero.com/intelligence/news-room`) dove:
 
 - ✅ Visualizzare articoli pending dall'Intel Scraper
 - ✅ Approvare/rifiutare articoli

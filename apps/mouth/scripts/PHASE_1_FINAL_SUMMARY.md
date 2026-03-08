@@ -182,7 +182,7 @@ fix: critical bugs - dashboard timeout, race conditions, memory leaks
 
 🚀 **DEPLOYED:** All commits pushed to GitHub
 ✅ **Vercel:** Auto-deployment complete (2-3 minutes)
-🌐 **Live URL:** https://zantara.balizero.com/kbli-navigator
+🌐 **Live URL:** https://kita.balizero.com/kbli-navigator
 
 ### Test Searches (Try Now!)
 

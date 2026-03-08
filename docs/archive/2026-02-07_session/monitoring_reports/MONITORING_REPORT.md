@@ -19,7 +19,7 @@
 
 ### Verifica Domini:
 
-- ✅ `zantara.balizero.com` → Redirect a `/login` (normale, richiede auth)
+- ✅ `kita.balizero.com` → Redirect a `/login` (normale, richiede auth)
 - ✅ `mouth-77xuogi1i-nuzantara-2026.vercel.app` → 401 (normale, Vercel SSO)
 - ✅ Deploy attivo e funzionante
 
@@ -96,7 +96,7 @@
 
 ### 1. Chat Streaming ✅
 
-- [ ] Aprire https://zantara.balizero.com/login
+- [ ] Aprire https://kita.balizero.com/login
 - [ ] Login con credenziali
 - [ ] Aprire chat page
 - [ ] Inviare messaggio
@@ -141,7 +141,7 @@ vercel inspect https://mouth-77xuogi1i-nuzantara-2026.vercel.app
 ### Health Check:
 
 ```bash
-curl -I https://zantara.balizero.com
+curl -I https://kita.balizero.com
 ```
 
 ---

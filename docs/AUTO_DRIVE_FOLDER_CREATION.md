@@ -210,7 +210,7 @@ settings.gdrive_companies_folder_id       # Loaded from env
 ### **Manual Tests (To Do)**
 
 - [ ] **Create Individual Client**
-  - Go to zantara.balizero.com/clients/new
+  - Go to kita.balizero.com/clients/new
   - Fill form, select "Individual" type
   - Click Create Client
   - Verify toast shows "Drive folder created"

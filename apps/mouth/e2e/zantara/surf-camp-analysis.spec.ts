@@ -3,7 +3,7 @@ import { test, expect, Page } from "@playwright/test";
 const TEST_CONFIG = {
   email: process.env.E2E_TEST_EMAIL || "zero@balizero.com",
   pin: process.env.E2E_TEST_PIN || "010719",
-  baseUrl: "https://zantara.balizero.com",
+  baseUrl: "https://kita.balizero.com",
 };
 
 test.describe("Zantara Surf Camp Analysis (Gemini 3 Pro)", () => {

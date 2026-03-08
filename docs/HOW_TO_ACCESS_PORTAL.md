@@ -24,7 +24,7 @@
 1. **Login su Dashboard Admin:**
 
    ```
-   https://zantara.balizero.com/login
+   https://kita.balizero.com/login
    ```
 
    - Usa le tue credenziali admin
@@ -125,7 +125,7 @@ curl -X POST https://nuzantara-rag.fly.dev/api/portal/invite/send \
    - Email + PIN → Enter ✅
 
 2. **Non hai account?**
-   - Login su `zantara.balizero.com` (dashboard admin)
+   - Login su `kita.balizero.com` (dashboard admin)
    - Crea invito per te stesso
    - Completa registrazione
    - Accedi ✅

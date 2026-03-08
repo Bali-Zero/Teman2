@@ -4,7 +4,7 @@
 
 ## PRE-REMOVAL (monolith still has all features)
 
-### zantara.balizero.com (monolith — apps/mouth/)
+### kita.balizero.com (monolith — apps/mouth/)
 
 | Route              | Status | TTFB   | Size    |
 | ------------------ | ------ | ------ | ------- |
@@ -62,6 +62,31 @@
 
 **Verification:** 901 tests passing, 0 TypeScript errors.
 
-### Benchmark (pending Vercel deploy)
+### Deployment & SSO verification
 
-_Monolith not yet redeployed — old routes still serve. Post-deploy benchmark needed._
+- **Deployed:** Vercel production `mouth-gdz5uiar0` (9m after push, Ready)
+- **Commit:** `5bb6f75e3` on `main`
+- **SSO:** All subdomains correctly use `.balizero.com` cookie domain
+  - mail/calendar/drive → 307 redirect to `kita.balizero.com/login?redirect=...`
+  - knowledge → 200 (public, auth optional via client-side cookie)
+- **CDN cache:** Old monolith routes still served from Vercel edge cache (age ~52m). Will expire and 404 once ISR revalidation occurs.
+
+### Standalone subdomain performance (post-deploy)
+
+| URL                            | Status | TTFB   | Size    |
+| ------------------------------ | ------ | ------ | ------- |
+| `knowledge.balizero.com/`      | 200    | 0.291s | 15,268b |
+| `knowledge.balizero.com/kitas` | 200    | 0.207s | 15,703b |
+| `mail.balizero.com/`           | 307    | 0.538s | 4,204b  |
+| `calendar.balizero.com/`       | 307    | 0.777s | 4,160b  |
+| `drive.balizero.com/`          | 307    | 0.640s | 4,423b  |
+
+### Key metrics
+
+| Metric                      | Monolith (before) | Standalone       | Improvement          |
+| --------------------------- | ----------------- | ---------------- | -------------------- |
+| Knowledge page size         | 48,118b           | 15,268b          | **-68%**             |
+| Knowledge KITAS page size   | 48,588b           | 15,703b          | **-68%**             |
+| Auth-gated page size        | 37-49KB           | 4.2KB (redirect) | **-89%**             |
+| Monolith codebase reduction | —                 | -20,170 lines    | **69 files removed** |
+| Test suite                  | 901 passing       | 901 passing      | **0 regressions**    |

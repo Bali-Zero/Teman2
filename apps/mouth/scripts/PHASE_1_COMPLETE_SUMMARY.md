@@ -95,7 +95,7 @@ feat(kbli): add English keywords to 1,377 KBLI codes - Phase 1
 
 ### Production
 
-🚀 **Deployed to:** https://zantara.balizero.com/kbli-navigator
+🚀 **Deployed to:** https://kita.balizero.com/kbli-navigator
 ⏳ **Vercel auto-deployment:** In progress (2-3 minutes)
 
 ---
@@ -108,7 +108,7 @@ feat(kbli): add English keywords to 1,377 KBLI codes - Phase 1
 2. **Test production:**
 
    ```
-   https://zantara.balizero.com/kbli-navigator
+   https://kita.balizero.com/kbli-navigator
 
    Try searches:
    - "restaurant" → Should find code 56101

@@ -147,7 +147,7 @@ def add_service_account_to_shared_drive(creds):
    Role: {result.get("role")}
 
 The Service Account now has access to AMBARADAM Shared Drive.
-Department folders should now appear on zantara.balizero.com/documents
+Department folders should now appear on kita.balizero.com/documents
 """)
         return True
 
@@ -199,7 +199,7 @@ Shared Drive ID: {sd}
 ╚══════════════════════════════════════════════════════════════╝
 
 1. Wait 1-2 minutes for permissions to propagate
-2. Visit https://zantara.balizero.com/documents
+2. Visit https://kita.balizero.com/documents
 3. You should see the department folders:
    - BOARD
    - CRM

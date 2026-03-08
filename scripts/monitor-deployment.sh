@@ -4,7 +4,7 @@
 
 set -e
 
-FRONTEND_URL="https://zantara.balizero.com"
+FRONTEND_URL="https://kita.balizero.com"
 BACKEND_URL="https://nuzantara-rag.fly.dev"
 VERCEL_PROJECT="nuzantara-2026/mouth"
 
