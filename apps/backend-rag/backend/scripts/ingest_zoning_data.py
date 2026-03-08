@@ -3,6 +3,7 @@
 Nuzantara Prime - Geospatial Data Ingestion
 Loads GeoJSON polygon data into the PostGIS database.
 """
+
 import asyncio
 import json
 import logging
@@ -10,7 +11,9 @@ import sys
 from pathlib import Path
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger("ingest_zoning")
 
 # Add the parent directory to sys.path to allow imports from backend
@@ -53,7 +56,9 @@ async def ingest_geojson(file_path: Path):
             geom = feature.get("geometry")
 
             if not geom or geom.get("type") not in ["Polygon", "MultiPolygon"]:
-                logger.warning(f"Skipping feature without valid Polygon geometry: {props.get('name', 'Unknown')}")
+                logger.warning(
+                    f"Skipping feature without valid Polygon geometry: {props.get('name', 'Unknown')}"
+                )
                 continue
 
             district = props.get("district", "Unknown")
@@ -78,13 +83,21 @@ async def ingest_geojson(file_path: Path):
             """
             try:
                 await conn.execute(
-                    query, district, subdistrict, zoning_type, allowed_kbli, geom_json, avg_price, risk_score
+                    query,
+                    district,
+                    subdistrict,
+                    zoning_type,
+                    allowed_kbli,
+                    geom_json,
+                    avg_price,
+                    risk_score,
                 )
                 inserted_count += 1
             except Exception as e:
                 logger.error(f"Failed to insert feature {district} - {subdistrict}: {e}")
 
     logger.info(f"✅ Ingestion complete. Inserted {inserted_count} zoning polygons.")
+
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

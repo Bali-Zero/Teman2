@@ -109,7 +109,8 @@ def main() -> None:
     parser.add_argument("before", help="Path to before test results JSON")
     parser.add_argument("after", help="Path to after test results JSON")
     parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         default="/tmp/nuz-regression-report.json",
         help="Output path",
     )
@@ -128,25 +129,29 @@ def main() -> None:
         json.dump(result, f, indent=2)
 
     # Print summary
-    print(f"=== Regression Analysis ===")
+    print("=== Regression Analysis ===")
     print(f"Action: {result['action']}")
-    print(f"")
-    print(f"Before: {result['summary_before']['passed']} passed, {result['summary_before']['failed']} failed")
-    print(f"After:  {result['summary_after']['passed']} passed, {result['summary_after']['failed']} failed")
+    print("")
+    print(
+        f"Before: {result['summary_before']['passed']} passed, {result['summary_before']['failed']} failed"
+    )
+    print(
+        f"After:  {result['summary_after']['passed']} passed, {result['summary_after']['failed']} failed"
+    )
     print(f"Delta:  {result['delta']['passed']:+d} passed, {result['delta']['failed']:+d} failed")
-    print(f"")
+    print("")
     print(f"Fixed:        {result['fixed_count']}")
     print(f"Regressions:  {result['regression_count']}")
     print(f"Still failing: {result['still_failing_count']}")
     print(f"New failures: {result['new_failure_count']}")
 
     if result["regressions"]:
-        print(f"\nREGRESSIONS (tests that broke):")
+        print("\nREGRESSIONS (tests that broke):")
         for r in result["regressions"][:10]:
             print(f"  - {r}")
 
     if result["fixed"]:
-        print(f"\nFIXED (tests that now pass):")
+        print("\nFIXED (tests that now pass):")
         for f_item in result["fixed"][:10]:
             print(f"  + {f_item}")
 

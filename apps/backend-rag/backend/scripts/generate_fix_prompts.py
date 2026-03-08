@@ -18,10 +18,8 @@ Usage:
 
 import ast
 import json
-import re
 import sys
 from pathlib import Path
-
 
 # Base directory for backend code
 BACKEND_ROOT = Path(__file__).resolve().parent.parent.parent  # apps/backend-rag/
@@ -57,7 +55,10 @@ def read_file_safe(filepath: Path, max_lines: int = 200) -> str:
     try:
         lines = filepath.read_text().splitlines()
         if len(lines) > max_lines:
-            return "\n".join(lines[:max_lines]) + f"\n\n... [{len(lines) - max_lines} more lines truncated]"
+            return (
+                "\n".join(lines[:max_lines])
+                + f"\n\n... [{len(lines) - max_lines} more lines truncated]"
+            )
         return "\n".join(lines)
     except (FileNotFoundError, PermissionError):
         return ""
@@ -76,7 +77,11 @@ def extract_test_function(test_file: Path, test_name: str) -> str:
             if node.name == test_name:
                 lines = source.splitlines()
                 start = node.lineno - 1
-                end = node.end_lineno if hasattr(node, "end_lineno") and node.end_lineno else start + 20
+                end = (
+                    node.end_lineno
+                    if hasattr(node, "end_lineno") and node.end_lineno
+                    else start + 20
+                )
                 return "\n".join(lines[start:end])
 
     return ""
@@ -188,7 +193,11 @@ def build_fix_prompt(
 
     # Safety check (only for source fixes, not test-mock fixes)
     if not is_mock_fix:
-        source_rel = str(source_file_path.relative_to(BACKEND_ROOT)) if source_file_path.exists() else first["file_path"]
+        source_rel = (
+            str(source_file_path.relative_to(BACKEND_ROOT))
+            if source_file_path.exists()
+            else first["file_path"]
+        )
         if is_protected_file(source_rel):
             return ""  # Skip protected files
 
@@ -200,38 +209,38 @@ def build_fix_prompt(
 2. The test file has a fixture (often `autouse=True`) that replaces real modules in
    `sys.modules` with `types.ModuleType` mocks. The mock is MISSING an attribute
    that the real module exports.
-3. Fix the TEST FILE (`{first['test_file']}`) by adding the missing attribute to the mock.
+3. Fix the TEST FILE (`{first["test_file"]}`) by adding the missing attribute to the mock.
    Look for `types.ModuleType(...)` + `monkeypatch.setitem(sys.modules, ...)` patterns.
 4. Compare what the REAL source module exports vs what the mock provides.
    Add the missing attribute (use `MagicMock()` or `AsyncMock()` as appropriate).
 5. After fixing, verify:
    ```bash
-   cd {BACKEND_ROOT} && source .venv/bin/activate && PYTHONPATH=. pytest {first['test_id']} -x -q --tb=short
+   cd {BACKEND_ROOT} && source .venv/bin/activate && PYTHONPATH=. pytest {first["test_id"]} -x -q --tb=short
    ```
 6. If it passes, run the full test file:
    ```bash
-   PYTHONPATH=. pytest {first['test_file']} -q --tb=short
+   PYTHONPATH=. pytest {first["test_file"]} -q --tb=short
    ```
 7. Commit:
    ```bash
-   git add {first['test_file']} && git commit -m "fix(auto): mock - {group_key}"
+   git add {first["test_file"]} && git commit -m "fix(auto): mock - {group_key}"
    ```"""
     else:
         fix_target = first["file_path"]
         fix_instructions = f"""## Instructions
 1. Read the error carefully. Identify the ROOT CAUSE.
-2. Fix the SOURCE code (in `{first['file_path']}`), NOT the test file.
+2. Fix the SOURCE code (in `{first["file_path"]}`), NOT the test file.
 3. After fixing, run ONLY the affected test to verify:
    ```bash
-   cd {BACKEND_ROOT} && source .venv/bin/activate && PYTHONPATH=. pytest {first['test_id']} -x -q --tb=short
+   cd {BACKEND_ROOT} && source .venv/bin/activate && PYTHONPATH=. pytest {first["test_id"]} -x -q --tb=short
    ```
 4. If the fix passes, also run the full test file to check for regressions:
    ```bash
-   PYTHONPATH=. pytest {first['test_file']} -q --tb=short
+   PYTHONPATH=. pytest {first["test_file"]} -q --tb=short
    ```
 5. If both pass, commit the fix with a descriptive message:
    ```bash
-   git add {first['file_path']} && git commit -m "fix(auto): {error_type.lower()} - {group_key}"
+   git add {first["file_path"]} && git commit -m "fix(auto): {error_type.lower()} - {group_key}"
    ```"""
 
     # Build the prompt
@@ -245,31 +254,31 @@ Work in directory: {BACKEND_ROOT}
 {affected_tests}
 
 ## Primary Failing Test
-File: {first['test_file']}
-Test: {first['test_id']}
+File: {first["test_file"]}
+Test: {first["test_id"]}
 ```python
 {test_code}
 ```
 
 ## Error Output
 ```
-{first['root_exception']}
+{first["root_exception"]}
 
-{first['error_message'][:400]}
+{first["error_message"][:400]}
 ```""",
     ]
 
     if is_mock_fix and test_fixture_code:
         prompt_parts.append(f"""
 ## Test File (contains the mock fixture to fix)
-File: {first['test_file']}
+File: {first["test_file"]}
 ```python
 {test_fixture_code}
 ```""")
 
     prompt_parts.append(f"""
 ## Source Code Under Test (reference — shows what the real module exports)
-File: {first['file_path']}
+File: {first["file_path"]}
 ```python
 {source_code}
 ```
@@ -281,8 +290,8 @@ File: {first['file_path']}
 - NEVER suppress errors — fix the root cause
 - NEVER weaken assertions or change expected values
 - Keep changes MINIMAL — smallest diff that fixes the test
-- Maximum {SAFETY_RAILS['max_diff_lines']} lines changed
-- Maximum {SAFETY_RAILS['max_files_changed']} files changed
+- Maximum {SAFETY_RAILS["max_diff_lines"]} lines changed
+- Maximum {SAFETY_RAILS["max_files_changed"]} files changed
 - If you cannot fix it without more context, respond: ESCALATE: <reason>
 
 ## COMMIT RULE (CRITICAL)
@@ -297,9 +306,18 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="Generate fix prompts from failure queue")
     parser.add_argument("queue", help="Path to classified failure queue JSON")
-    parser.add_argument("--max-fixes", type=int, default=30, help="Max number of fix prompts to generate")
-    parser.add_argument("--output-dir", default="/tmp/nuz-fix-prompts", help="Output directory for prompt files")
-    parser.add_argument("--types", nargs="*", default=None, help="Only generate for these error types (e.g., IMPORT FIXTURE)")
+    parser.add_argument(
+        "--max-fixes", type=int, default=30, help="Max number of fix prompts to generate"
+    )
+    parser.add_argument(
+        "--output-dir", default="/tmp/nuz-fix-prompts", help="Output directory for prompt files"
+    )
+    parser.add_argument(
+        "--types",
+        nargs="*",
+        default=None,
+        help="Only generate for these error types (e.g., IMPORT FIXTURE)",
+    )
     args = parser.parse_args()
 
     if not Path(args.queue).exists():
@@ -349,28 +367,32 @@ def main() -> None:
         filename = f"fix-{generated + 1:03d}.txt"
         (output_dir / filename).write_text(prompt)
 
-        manifest.append({
-            "file": filename,
-            "group_key": group_key,
-            "error_type": error_type,
-            "failure_count": len(failures),
-            "primary_test": failures[0]["test_id"],
-            "source_file": failures[0]["file_path"],
-        })
+        manifest.append(
+            {
+                "file": filename,
+                "group_key": group_key,
+                "error_type": error_type,
+                "failure_count": len(failures),
+                "primary_test": failures[0]["test_id"],
+                "source_file": failures[0]["file_path"],
+            }
+        )
 
         generated += 1
 
     # Write manifest
     (output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
 
-    print(f"=== Fix Prompt Generation ===")
+    print("=== Fix Prompt Generation ===")
     print(f"Total failure groups: {len(groups)}")
     print(f"Prompts generated: {generated}")
     print(f"Skipped (protected files): {skipped}")
     print(f"Output directory: {output_dir}")
-    print(f"\nGenerated prompts:")
+    print("\nGenerated prompts:")
     for item in manifest:
-        print(f"  {item['file']}  [{item['error_type']}]  {item['failure_count']}x  {item['group_key']}")
+        print(
+            f"  {item['file']}  [{item['error_type']}]  {item['failure_count']}x  {item['group_key']}"
+        )
 
 
 if __name__ == "__main__":

@@ -95,20 +95,30 @@ async def check_zoning_requirements_node(
             if row:
                 zoning_data = dict(row)
                 state["zoning_info"] = zoning_data
-                logger.info(f"✅ [Property Subgraph] Found zoning: {zoning_data['zoning_type']} in {zoning_data['district_name']}")
+                logger.info(
+                    f"✅ [Property Subgraph] Found zoning: {zoning_data['zoning_type']} in {zoning_data['district_name']}"
+                )
 
                 # Add a requirement based on zoning
-                state.setdefault("property_requirements", []).append({
-                    "requirement_type": "zoning",
-                    "details": {
-                        "district": zoning_data["district_name"],
-                        "zone": zoning_data["zoning_type"],
-                        "allowed_activities": "Restricted by KBLI" if zoning_data.get("allowed_kbli") else "Unrestricted",
-                        "risk_level": "High" if zoning_data.get("risk_score", 0) > 0.7 else "Normal"
+                state.setdefault("property_requirements", []).append(
+                    {
+                        "requirement_type": "zoning",
+                        "details": {
+                            "district": zoning_data["district_name"],
+                            "zone": zoning_data["zoning_type"],
+                            "allowed_activities": "Restricted by KBLI"
+                            if zoning_data.get("allowed_kbli")
+                            else "Unrestricted",
+                            "risk_level": "High"
+                            if zoning_data.get("risk_score", 0) > 0.7
+                            else "Normal",
+                        },
                     }
-                })
+                )
             else:
-                logger.info("⚠️ [Property Subgraph] Coordinates do not fall within any known zoning area.")
+                logger.info(
+                    "⚠️ [Property Subgraph] Coordinates do not fall within any known zoning area."
+                )
     except Exception as e:
         logger.error(f"❌ [Property Subgraph] Zoning check failed: {e}")
 
@@ -116,7 +126,8 @@ async def check_zoning_requirements_node(
 
 
 async def get_property_requirements_node(
-    state: PropertyState, db_pool: asyncpg.Pool = None  # noqa: ARG001
+    state: PropertyState,
+    db_pool: asyncpg.Pool = None,  # noqa: ARG001
 ) -> PropertyState:
     """Get ownership requirements."""
     logger.info("📋 [Property Subgraph] Getting property requirements...")

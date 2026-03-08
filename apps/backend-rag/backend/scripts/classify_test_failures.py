@@ -21,13 +21,11 @@ Usage:
 import json
 import re
 import sys
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Literal
 
-FailureType = Literal[
-    "IMPORT", "SYNTAX", "FIXTURE", "TYPE", "LOGIC", "INTEGRATION", "FLAKY"
-]
+FailureType = Literal["IMPORT", "SYNTAX", "FIXTURE", "TYPE", "LOGIC", "INTEGRATION", "FLAKY"]
 
 PRIORITY: dict[FailureType, int] = {
     "IMPORT": 1,
@@ -142,9 +140,7 @@ def extract_root_exception(longrepr: str) -> str:
         return e_lines[-1].strip()[:300]
 
     # Look for standard Python traceback "ExceptionType: message"
-    exc_lines = re.findall(
-        r"^(\w+(?:Error|Exception|Warning):\s*.*)$", longrepr, re.MULTILINE
-    )
+    exc_lines = re.findall(r"^(\w+(?:Error|Exception|Warning):\s*.*)$", longrepr, re.MULTILINE)
     if exc_lines:
         return exc_lines[-1].strip()[:300]
 
@@ -252,9 +248,7 @@ def classify_report(report_path: str) -> list[TestFailure]:
             if phase_data.get("traceback"):
                 tb = phase_data["traceback"]
                 if isinstance(tb, list):
-                    longrepr = "\n".join(
-                        entry.get("message", str(entry)) for entry in tb
-                    )
+                    longrepr = "\n".join(entry.get("message", str(entry)) for entry in tb)
                 else:
                     longrepr = str(tb)
                 break
@@ -305,9 +299,7 @@ def build_summary(failures: list[TestFailure]) -> dict:
     return {
         "total": len(failures),
         "by_type": by_type,
-        "top_root_causes": [
-            {"group": g, "count": c} for g, c in top_groups
-        ],
+        "top_root_causes": [{"group": g, "count": c} for g, c in top_groups],
         "unique_groups": len(by_group),
     }
 
@@ -318,7 +310,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Classify pytest failures")
     parser.add_argument("report", help="Path to pytest-json-report JSON file")
     parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         default="/tmp/nuz-failure-queue.json",
         help="Output path for classified failures",
     )
@@ -342,11 +335,11 @@ def main() -> None:
         json.dump(output, f, indent=2)
 
     # Print summary to stdout
-    print(f"=== Test Failure Classification ===")
+    print("=== Test Failure Classification ===")
     print(f"Total failures: {summary['total']}")
     print(f"By type: {json.dumps(summary['by_type'], indent=2)}")
     print(f"Unique root causes: {summary['unique_groups']}")
-    print(f"\nTop root causes:")
+    print("\nTop root causes:")
     for item in summary["top_root_causes"][:10]:
         print(f"  {item['count']:4d}x  {item['group']}")
     print(f"\nOutput written to: {args.output}")
