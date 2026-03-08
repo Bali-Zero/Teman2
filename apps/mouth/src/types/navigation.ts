@@ -7,6 +7,7 @@ export interface NavItem {
   badge?: number;
   children?: NavItem[];
   roles?: string[]; // Role-based access
+  external?: boolean; // Opens in new tab / external subdomain
 }
 
 export interface NavSection {
@@ -39,7 +40,12 @@ export const navigation: NavSection[] = [
       { title: "Intelligence Center", href: "/intelligence", icon: "Activity" },
       { title: "Zantara AI", href: "/chat", icon: "MessageSquare" },
       { title: "Dream Room", href: "/dream", icon: "Cloud" },
-      { title: "Email", href: "/email", icon: "Mail" },
+      {
+        title: "Email",
+        href: "https://mail.balizero.com",
+        icon: "Mail",
+        external: true,
+      },
     ],
   },
   {
@@ -47,15 +53,30 @@ export const navigation: NavSection[] = [
     items: [
       { title: "Clients", href: "/clients", icon: "Users" },
       { title: "Process", href: "/process", icon: "FolderKanban" },
-      { title: "Documents", href: "/documents", icon: "FolderOpen" },
-      { title: "Knowledge", href: "/knowledge", icon: "BookOpen" },
+      {
+        title: "Documents",
+        href: "https://drive.balizero.com",
+        icon: "FolderOpen",
+        external: true,
+      },
+      {
+        title: "Knowledge",
+        href: "https://knowledge.balizero.com",
+        icon: "BookOpen",
+        external: true,
+      },
     ],
   },
   {
     title: "Team",
     items: [
       { title: "Team", href: "/team", icon: "UserCircle" },
-      { title: "Calendar", href: "/calendar", icon: "Calendar" },
+      {
+        title: "Calendar",
+        href: "https://calendar.balizero.com",
+        icon: "Calendar",
+        external: true,
+      },
       { title: "Analytics", href: "/analytics", icon: "BarChart3" },
     ],
   },
@@ -100,13 +121,12 @@ export const routeTitles: Record<string, string> = {
   "/intelligence/system-pulse": "System Pulse",
   "/chat": "Zantara AI",
   "/whatsapp": "WhatsApp",
-  "/email": "Email",
   "/clients": "Clients",
   "/clients/new": "New Client",
   "/process": "Process",
   "/process/new": "New Process",
   "/process/deadlines": "Deadlines",
-  "/documents": "Documents",
+  "/documents": "Documents (Drive)",
   "/knowledge": "Knowledge Base",
   "/team": "Team",
   "/team/timesheet": "Timesheet",

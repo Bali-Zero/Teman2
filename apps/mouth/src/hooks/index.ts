@@ -60,24 +60,6 @@ export {
   usePortalNotifications,
 } from "./usePortal";
 
-// Drive optimized hooks
-export {
-  useDriveStatus,
-  useDriveFilesInfinite,
-  useDriveFiles,
-  useFileMetadata,
-  usePrefetchFolder,
-  useDriveUpload,
-  useDriveMutationsOptimized,
-  useDriveSearch,
-} from "./useDriveOptimized";
-
-// File selection hook
-export {
-  useFileSelection,
-  useFileKeyboardNavigation,
-} from "./useFileSelection";
-
 // Re-export from optimized hooks
 export {
   useDebounce,

@@ -10,7 +10,6 @@ import { AudioApi } from "./media/audio.api";
 import { ImageApi } from "./media/image.api";
 import { CrmApi } from "./crm/crm.api";
 import { DriveApi } from "./drive/drive.api";
-import { EmailApi } from "./email/email.api";
 import { PortalApi } from "./portal/portal.api";
 import { WhatsAppApi } from "./whatsapp/whatsapp.api";
 import { TelegramApi } from "./telegram/telegram.api";
@@ -19,7 +18,6 @@ import { TwitterApi } from "./twitter/twitter.api";
 import { WorkflowApi } from "./workflow";
 import { WebSocketUtils } from "./websocket/websocket.utils";
 import { AnalyticsApi } from "./analytics/analytics.api";
-import { KnowledgeActivityApi } from "./knowledge-activity.api";
 import { UserProfile, UserMemoryContext, AgentStep } from "@/types";
 import type { LoginResponse } from "./auth/auth.types";
 import type {
@@ -52,7 +50,6 @@ export class ApiClient extends ApiClientBase {
   private imageApi: ImageApi;
   private crmApi: CrmApi;
   private driveApi: DriveApi;
-  private emailApi: EmailApi;
   private portalApi: PortalApi;
   private whatsappApi: WhatsAppApi;
   private telegramApi: TelegramApi;
@@ -61,7 +58,6 @@ export class ApiClient extends ApiClientBase {
   private workflowApi: WorkflowApi;
   private wsUtils: WebSocketUtils;
   private analyticsApi: AnalyticsApi;
-  private kbActivityApi: KnowledgeActivityApi;
 
   constructor(baseUrl: string) {
     super(baseUrl);
@@ -76,7 +72,6 @@ export class ApiClient extends ApiClientBase {
     this.imageApi = new ImageApi(this);
     this.crmApi = new CrmApi(this);
     this.driveApi = new DriveApi(this);
-    this.emailApi = new EmailApi(this);
     this.portalApi = new PortalApi(this);
     this.whatsappApi = new WhatsAppApi(this);
     this.telegramApi = new TelegramApi(this);
@@ -85,7 +80,6 @@ export class ApiClient extends ApiClientBase {
     this.workflowApi = new WorkflowApi(this);
     this.wsUtils = new WebSocketUtils(this);
     this.analyticsApi = new AnalyticsApi(baseUrl, () => this.token);
-    this.kbActivityApi = new KnowledgeActivityApi(this);
   }
 
   // ============================================================================
@@ -140,14 +134,6 @@ export class ApiClient extends ApiClientBase {
 
   public get drive(): DriveApi {
     return this.driveApi;
-  }
-
-  // ============================================================================
-  // Email (Zoho Mail integration)
-  // ============================================================================
-
-  public get email(): EmailApi {
-    return this.emailApi;
   }
 
   // ============================================================================
@@ -208,14 +194,6 @@ export class ApiClient extends ApiClientBase {
 
   public get knowledge(): KnowledgeApi {
     return this.knowledgeApi;
-  }
-
-  // ============================================================================
-  // Knowledge Activity Tracking
-  // ============================================================================
-
-  public get kbActivity(): KnowledgeActivityApi {
-    return this.kbActivityApi;
   }
 
   public get conversations(): ConversationsApi {

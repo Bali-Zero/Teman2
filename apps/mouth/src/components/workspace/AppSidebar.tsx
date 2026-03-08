@@ -23,6 +23,7 @@ import {
   FileText,
   Cloud,
   Calendar,
+  ExternalLink,
 } from "lucide-react";
 import {
   navigation,
@@ -127,22 +128,19 @@ export function AppSidebar({
       activeColor: "#9CA3AF",
     };
 
-    return (
-      <Link
-        key={item.href}
-        href={item.href}
-        className={cn(
-          "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
-          "text-sm font-medium group",
-          active
-            ? "bg-white/5 border border-white/10"
-            : "text-[#9AA0AE] hover:bg-white/5",
-        )}
-        style={{
-          color: active ? colors.activeColor : undefined,
-          borderColor: active ? `${colors.activeColor}20` : undefined,
-        }}
-      >
+    const sharedClassName = cn(
+      "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
+      "text-sm font-medium group",
+      active
+        ? "bg-white/5 border border-white/10"
+        : "text-[#9AA0AE] hover:bg-white/5",
+    );
+    const sharedStyle = {
+      color: active ? colors.activeColor : undefined,
+      borderColor: active ? `${colors.activeColor}20` : undefined,
+    };
+    const sharedContent = (
+      <>
         <Icon
           className={cn("w-5 h-5", !active && colors.cssClass)}
           style={active ? { color: colors.activeColor } : undefined}
@@ -156,6 +154,9 @@ export function AppSidebar({
         >
           {item.title}
         </span>
+        {item.external && (
+          <ExternalLink className="w-3 h-3 opacity-50" />
+        )}
         {badge && badge > 0 && (
           <span
             className="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-semibold rounded-full text-[#0B0E13]"
@@ -164,6 +165,32 @@ export function AppSidebar({
             {badge > 99 ? "99+" : badge}
           </span>
         )}
+      </>
+    );
+
+    if (item.external) {
+      return (
+        <a
+          key={item.href}
+          href={item.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={sharedClassName}
+          style={sharedStyle}
+        >
+          {sharedContent}
+        </a>
+      );
+    }
+
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        className={sharedClassName}
+        style={sharedStyle}
+      >
+        {sharedContent}
       </Link>
     );
   };
