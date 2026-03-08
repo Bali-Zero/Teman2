@@ -74,13 +74,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     return resp;
   } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
     logger.error(
       "Login route error",
-      { component: "LoginRoute", action: "login" },
+      { component: "LoginRoute", action: "login", metadata: { errMsg, backendUrl: BACKEND_URL } },
       error instanceof Error ? error : new Error(String(error)),
     );
     return NextResponse.json(
-      { success: false, message: "Internal server error" },
+      { success: false, message: "Internal server error", debug: errMsg },
       { status: 500 },
     );
   }
