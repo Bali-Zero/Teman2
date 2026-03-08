@@ -18,6 +18,7 @@ Leader Election:
 """
 
 import asyncio
+import contextlib
 import logging
 import os
 import uuid
@@ -230,10 +231,8 @@ class AutonomousScheduler:
         for task in self.tasks.values():
             if task._task and not task._task.done():
                 task._task.cancel()
-                try:
+                with contextlib.suppress(asyncio.CancelledError, asyncio.TimeoutError):
                     await asyncio.wait_for(task._task, timeout=5)
-                except (asyncio.CancelledError, asyncio.TimeoutError):
-                    pass
 
         self._running = False
         logger.info("✅ AutonomousScheduler stopped")
@@ -290,7 +289,7 @@ async def create_and_start_scheduler(
     db_pool,
     ai_client,
     search_service,
-    auto_ingestion_enabled: bool = False,  # Disabled - scraper not configured
+    auto_ingestion_enabled: bool = False,  # Disabled - handled by bali-intel-scraper
     self_healing_enabled: bool = True,  # Active - health monitoring
     conversation_trainer_enabled: bool = True,  # Active - learns from conversations
     conversation_cleanup_enabled: bool = True,  # Active - cleans old data
@@ -588,6 +587,58 @@ async def create_and_start_scheduler(
             logger.info("✅ Renewal Alerts Checker registered (12h interval)")
         except Exception as e:
             logger.error(f"❌ Failed to register Renewal Alerts: {e}")
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # TASK 7: INTEL SCRAPER TRIGGER (every 24 hours)
+    # Wakes up bali-intel-scraper (suspended Fly.io machine) and triggers
+    # the full intel pipeline. Articles are submitted to /api/intel/scraper/submit.
+    # ═══════════════════════════════════════════════════════════════════════════
+    try:
+        import httpx as _httpx
+
+        async def run_intel_scraper_trigger() -> None:
+            """Trigger bali-intel-scraper to run the full intel pipeline."""
+            scraper_url = os.getenv("INTEL_SCRAPER_URL", "https://bali-intel-scraper.fly.dev")
+            scraper_api_key = os.getenv("INTEL_SCRAPER_TRIGGER_KEY", "")
+
+            try:
+                logger.info("🕵️ Triggering bali-intel-scraper pipeline...")
+                async with _httpx.AsyncClient(timeout=30.0) as client:
+                    # Wake up the suspended machine first
+                    health_r = await client.get(f"{scraper_url}/health", timeout=20.0)
+                    logger.info(f"🕵️ Scraper health: {health_r.status_code}")
+
+                # Wait for machine to warm up, then trigger pipeline
+                await asyncio.sleep(10)
+                async with _httpx.AsyncClient(timeout=600.0) as client:
+                    headers = {}
+                    if scraper_api_key:
+                        headers["X-API-Key"] = scraper_api_key
+                    resp = await client.post(
+                        f"{scraper_url}/api/pipeline/run",
+                        json={"mode": "full", "max_articles": 50, "require_approval": False},
+                        headers=headers,
+                        timeout=600.0,
+                    )
+                    if resp.status_code in (200, 202):
+                        result = resp.json()
+                        logger.info(
+                            f"✅ Intel scraper triggered: {result.get('articles_processed', '?')} articles"
+                        )
+                    else:
+                        logger.warning(f"⚠️ Intel scraper returned {resp.status_code}: {resp.text[:200]}")
+            except Exception as e:
+                logger.error(f"❌ Intel scraper trigger error: {e}", exc_info=True)
+
+        scheduler.register_task(
+            name="intel_scraper_trigger",
+            task_func=run_intel_scraper_trigger,
+            interval_seconds=86400,  # 24 hours
+            enabled=True,
+        )
+        logger.info("✅ Intel Scraper Trigger registered (24h interval)")
+    except Exception as e:
+        logger.error(f"❌ Failed to register Intel Scraper Trigger: {e}")
 
     # ═══════════════════════════════════════════════════════════════════════════
     # TASK 8: BIRTHPLACE ENRICHMENT (Ollama)
