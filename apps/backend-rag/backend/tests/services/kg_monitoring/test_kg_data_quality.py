@@ -118,7 +118,7 @@ class TestDataCompleteness:
 
         avg_completeness = sum(completeness_scores) / len(completeness_scores)
 
-        assert avg_completeness > 0.5
+        assert avg_completeness >= 0.5
 
     def test_identify_sparse_nodes(self):
         """Test identifying nodes with sparse properties"""

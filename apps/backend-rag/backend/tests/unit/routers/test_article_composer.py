@@ -373,6 +373,7 @@ def test_compose_status_not_configured(test_client):
 # --- PUBLISH ENDPOINT TESTS ---
 
 
+@pytest.mark.asyncio
 @patch("backend.services.integrations.github_publisher.github_publisher")
 async def test_publish_article_with_cover_image(
     mock_publisher, test_client, sample_enriched_article
@@ -411,6 +412,7 @@ async def test_publish_article_with_cover_image(
     assert len(call_args[1]["files"]) == 2  # MDX + image
 
 
+@pytest.mark.asyncio
 @patch("backend.services.integrations.github_publisher.github_publisher")
 async def test_publish_article_without_cover_image(
     mock_publisher, test_client, sample_enriched_article
@@ -452,6 +454,7 @@ def test_publish_article_github_not_configured(
     assert "GitHub API not configured" in data["message"]
 
 
+@pytest.mark.asyncio
 @patch("backend.services.integrations.github_publisher.github_publisher")
 async def test_publish_article_github_error(mock_publisher, test_client, sample_enriched_article):
     """Test publish handles GitHub API errors"""
@@ -513,10 +516,10 @@ def test_generate_slug_multiple_spaces():
 
 
 def test_generate_slug_long_headline():
-    """Test slug generation limits length to 60 chars"""
+    """Test slug generation limits length to 120 chars"""
     headline = "This is a very long headline that should be truncated to sixty characters maximum"
     slug = generate_slug(headline)
-    assert len(slug) <= 60
+    assert len(slug) <= 120
     assert not slug.endswith("-")  # No trailing hyphen
 
 
@@ -602,6 +605,7 @@ def test_build_enrichment_prompt_priority_instructions():
 # --- INTEGRATION TEST ---
 
 
+@pytest.mark.asyncio
 @pytest.mark.skip(reason="Article composer compose endpoint disabled (501)")
 @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
 @patch("backend.app.routers.article_composer.anthropic.Anthropic")

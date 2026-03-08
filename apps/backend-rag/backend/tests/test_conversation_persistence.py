@@ -19,10 +19,13 @@ async def db_pool():
     database_url = os.getenv("DATABASE_URL")
     if not database_url:
         pytest.skip("DATABASE_URL not set")
+        return
 
     pool = await asyncpg.create_pool(database_url, min_size=1, max_size=2)
-    yield pool
-    await pool.close()
+    try:
+        yield pool
+    finally:
+        await pool.close()
 
 
 @pytest.mark.asyncio

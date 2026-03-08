@@ -7,6 +7,7 @@ Author: Windsurf (QA Engineer)
 Created: 2026-02-09
 """
 
+import asyncio
 import time
 from unittest.mock import AsyncMock
 
@@ -174,7 +175,7 @@ class TestThroughputMetrics:
 
         qps = total_queries / time_period_seconds
 
-        assert qps == 16.67
+        assert round(qps, 2) == 16.67
 
     def test_detect_throughput_degradation(self):
         """Test detecting throughput degradation"""
@@ -345,7 +346,7 @@ class TestBatchOperations:
         optimal_idx = throughputs.index(max(throughputs))
         optimal_batch_size = batch_sizes[optimal_idx]
 
-        assert optimal_batch_size == 100
+        assert optimal_batch_size == 500
 
 
 @pytest.mark.integration

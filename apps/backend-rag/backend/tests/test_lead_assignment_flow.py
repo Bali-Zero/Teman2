@@ -45,14 +45,16 @@ logger = logging.getLogger(__name__)
 
 
 @pytest.fixture
-async def db_pool():
+def db_pool():
     """Mock database pool for testing"""
     pool = MagicMock(spec=asyncpg.Pool)
     conn = AsyncMock()
 
-    # Mock acquire context manager
-    pool.acquire.return_value.__aenter__ = AsyncMock(return_value=conn)
-    pool.acquire.return_value.__aexit__ = AsyncMock(return_value=None)
+    # Mock acquire as async context manager
+    acm = AsyncMock()
+    acm.__aenter__ = AsyncMock(return_value=conn)
+    acm.__aexit__ = AsyncMock(return_value=None)
+    pool.acquire.return_value = acm
 
     return pool
 

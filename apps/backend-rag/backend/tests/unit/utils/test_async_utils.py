@@ -17,6 +17,7 @@ from backend.app.utils.async_utils import (
 class TestGatherWithConcurrency:
     """Tests for gather_with_concurrency function."""
 
+    @pytest.mark.asyncio
     async def test_respects_concurrency_limit(self):
         """Test that concurrency limit is respected."""
         running = 0
@@ -38,6 +39,7 @@ class TestGatherWithConcurrency:
         assert max_running <= 2
         assert sorted(results) == [0, 1, 2, 3, 4]
 
+    @pytest.mark.asyncio
     async def test_returns_results_in_order(self):
         """Test that results are returned in input order."""
 
@@ -52,11 +54,13 @@ class TestGatherWithConcurrency:
 class TestCircuitBreaker:
     """Tests for CircuitBreaker class."""
 
+    @pytest.mark.asyncio
     async def test_initially_closed(self):
         """Test that circuit starts in closed state."""
         cb = CircuitBreaker()
         assert cb.state == "closed"
 
+    @pytest.mark.asyncio
     async def test_opens_after_failures(self):
         """Test that circuit opens after threshold failures."""
         cb = CircuitBreaker(failure_threshold=3)
@@ -70,6 +74,7 @@ class TestCircuitBreaker:
 
         assert cb.state == "open"
 
+    @pytest.mark.asyncio
     async def test_raises_when_open(self):
         """Test that calls fail when circuit is open."""
         cb = CircuitBreaker(failure_threshold=1)
@@ -83,6 +88,7 @@ class TestCircuitBreaker:
         with pytest.raises(CircuitBreakerOpen):
             await cb.call(failing_func)
 
+    @pytest.mark.asyncio
     async def test_closes_after_success(self):
         """Test that circuit closes after successful call."""
         cb = CircuitBreaker(failure_threshold=1)
@@ -112,6 +118,7 @@ class TestCircuitBreaker:
 class TestDebouncer:
     """Tests for Debouncer class."""
 
+    @pytest.mark.asyncio
     async def test_debounces_multiple_calls(self):
         """Test that multiple calls are debounced."""
         debouncer = Debouncer(delay=0.05)
@@ -131,6 +138,7 @@ class TestDebouncer:
         # Should only be called once
         assert call_count == 1
 
+    @pytest.mark.asyncio
     async def test_allows_new_call_after_delay(self):
         """Test that new calls work after delay."""
         debouncer = Debouncer(delay=0.05)
