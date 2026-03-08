@@ -30,6 +30,7 @@ export class AuthApi {
           method: "POST",
           body: JSON.stringify({ email, pin }),
         },
+        90000, // 90s timeout — backend may cold-start on Fly.io
       );
 
       logger.debug("API response received", {

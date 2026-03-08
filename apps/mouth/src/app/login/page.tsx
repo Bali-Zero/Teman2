@@ -1,7 +1,7 @@
 "use client";
 
 import { useSystemSound } from "@/hooks/useSystemSound";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { api } from "@/lib/api";
@@ -14,6 +14,11 @@ const ERROR_RESET_DELAY_MS = 2000;
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [pin, setPin] = useState("");
+
+  // Warmup: ping backend on mount so Fly.io is awake before user submits
+  useEffect(() => {
+    fetch("/api/health", { method: "GET" }).catch(() => {});
+  }, []);
   const [loginStage, setLoginStage] = useState<
     "idle" | "authenticating" | "success" | "denied"
   >("idle");
