@@ -26,7 +26,7 @@ from backend.core.cache import init_cache, close_cache
 from backend.core.task_queue import init_task_queue, stop_task_queue
 
 # Import routers
-from backend.app.routers import health
+from backend.app.routers import health, pipeline
 from backend.core.api_cache import APICacheMiddleware
 
 logger = get_logger(__name__, component="main")
@@ -207,6 +207,7 @@ def create_app() -> FastAPI:
 
     # Include routers
     app.include_router(health.router)
+    app.include_router(pipeline.router)
 
     # Exception handlers
     @app.exception_handler(Exception)

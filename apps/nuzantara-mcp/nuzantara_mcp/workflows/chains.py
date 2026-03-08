@@ -476,7 +476,7 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
 
         # Step 3: Review staging items
         try:
-            staging = await _call_safe("/api/intel/staging", params={"status": "pending_review", "limit": 20})
+            staging = await _call_safe("/api/intel/staging/pending", params={"limit": 20})
             items = staging.get("items") or staging.get("data") or []
             stats["items_reviewed"] = len(items)
 

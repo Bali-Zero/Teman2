@@ -36,16 +36,14 @@ def register(mcp, _call, _call_safe):
         List intelligence items in staging (pending review).
 
         Args:
-            status: Filter by status (pending_review, approved, rejected, published)
+            status: Filter by type: "visa", "news", or "all" (default)
             limit: Max items to return
 
         Returns:
             List of intel items with title, source, date, status, preview.
         """
-        params: dict = {"limit": limit}
-        if status:
-            params["status"] = status
-        return await _call("/api/intel/staging", params=params)
+        intel_type = status if status in ("visa", "news") else "all"
+        return await _call("/api/intel/staging/pending", params={"type": intel_type})
 
     @mcp.tool()
     async def approve_staging_item(item_id: str) -> dict:
@@ -58,6 +56,9 @@ def register(mcp, _call, _call_safe):
         Returns:
             Updated item with approved status.
         """
+        # item_id format: "{type}/{id}" or just "{id}" for news
+        if "/" not in item_id:
+            item_id = f"news/{item_id}"
         return await _call(
             f"/api/intel/staging/approve/{item_id}", method="POST"
         )
@@ -129,5 +130,5 @@ def register(mcp, _call, _call_safe):
             Matching intelligence items ranked by relevance.
         """
         return await _call(
-            "/api/intel/search", params={"query": query, "limit": limit}
+            "/api/intel/search", method="POST", json={"query": query, "limit": limit}
         )
