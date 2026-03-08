@@ -283,6 +283,10 @@ async function proxy(req: NextRequest): Promise<Response> {
         if (jwt) {
           const cookieDomain = process.env.COOKIE_DOMAIN || ".balizero.com";
           const maxAge = 86400; // 24h
+          // CRITICAL: Strip upstream Set-Cookie headers before creating NextResponse.
+          // Without this, upstream SameSite=none cookies are forwarded alongside
+          // our SameSite=lax cookies, causing browser to use the wrong one.
+          respHeaders.delete("set-cookie");
           const nextResp = new NextResponse(bodyBuffer, {
             status: upstream.status,
             statusText: upstream.statusText,
