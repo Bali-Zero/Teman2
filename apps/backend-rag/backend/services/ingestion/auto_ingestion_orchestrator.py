@@ -139,7 +139,7 @@ class AutoIngestionOrchestrator:
             source_type=SourceType.WEB_SCRAPER,
             name="OSS KBLI Database",
             url="https://oss.go.id/informasi/kbli-berbasis-risiko",
-            target_collection="kbli_comprehensive",
+            target_collection="kbli_2025_final",
             scrape_frequency_hours=168,  # Weekly
         ),
         "ditjen_imigrasi": MonitoredSource(

@@ -426,6 +426,31 @@ BUSINESS_KEYWORDS = [
 ]
 
 
+NEWS_KEYWORDS = [
+    "news",
+    "notizie",
+    "berita",
+    "latest",
+    "update",
+    "aggiornamento",
+    "regulation change",
+    "new regulation",
+    "new law",
+    "nuova legge",
+    "what's new",
+    "cosa c'è di nuovo",
+    "recent",
+    "recente",
+    "announcement",
+    "annuncio",
+    "pengumuman",
+    "article",
+    "articolo",
+    "insight",
+    "briefing",
+]
+
+
 class KeywordMatcherService:
     """
     Service for matching keywords to domains.
@@ -445,6 +470,7 @@ class KeywordMatcherService:
             "books": BOOKS_KEYWORDS,
             "circular": CIRCULAR_KEYWORDS,  # Kemnaker/Imigrasi circulars
             "business": BUSINESS_KEYWORDS,  # Business setup & capital (training_conversations_hybrid)
+            "news": NEWS_KEYWORDS,  # Intel articles, news, updates (balizero_news)
         }
         self.modifier_keywords = {
             "updates": UPDATE_KEYWORDS,

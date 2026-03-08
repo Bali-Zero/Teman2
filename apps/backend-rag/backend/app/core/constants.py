@@ -124,18 +124,18 @@ class EvidenceScoreConstants:
 class IntelConstants:
     """Constants for Intel service (intel.py)"""
 
-    # Qdrant collection mappings
+    # Qdrant collection mappings — all intel is consolidated in balizero_news
     COLLECTIONS = {
         "visa": "visa_oracle",
-        "news": "bali_intel_bali_news",
-        "immigration": "bali_intel_immigration",
-        "bkpm_tax": "bali_intel_bkpm_tax",
-        "realestate": "bali_intel_realestate",
-        "events": "bali_intel_events",
-        "social": "bali_intel_social",
-        "competitors": "bali_intel_competitors",
-        "bali_news": "bali_intel_bali_news",
-        "roundup": "bali_intel_roundup",
+        "news": "balizero_news",
+        "immigration": "balizero_news",
+        "bkpm_tax": "balizero_news",
+        "realestate": "balizero_news",
+        "events": "balizero_news",
+        "social": "balizero_news",
+        "competitors": "balizero_news",
+        "bali_news": "balizero_news",
+        "roundup": "balizero_news",
     }
 
     # Visa classification keywords

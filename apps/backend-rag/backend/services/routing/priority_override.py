@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 CollectionName = Literal[
     "visa_oracle",
     "kbli_2025_final",
-    "kbli_comprehensive",
     "tax_genius",
     "legal_architect",
     "zantara_books",
@@ -24,6 +23,7 @@ CollectionName = Literal[
     "kb_indonesian",
     "cultural_insights",
     "bali_zero_team",
+    "balizero_news",
 ]
 
 # Backend Services keywords (for technical/API queries)

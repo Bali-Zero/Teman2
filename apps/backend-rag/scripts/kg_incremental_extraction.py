@@ -62,6 +62,13 @@ import httpx
 
 from backend.llm.genai_client import get_genai_client
 
+try:
+    from openai import AsyncOpenAI
+
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -132,12 +139,15 @@ class KGIncrementalExtractor:
     """Extracts KG entities from unprocessed Qdrant chunks."""
 
     def __init__(
-        self, db_pool: asyncpg.Pool, qdrant_url: str, qdrant_api_key: str, gemini_client=None
+        self, db_pool: asyncpg.Pool, qdrant_url: str, qdrant_api_key: str,
+        gemini_client=None, openai_client=None, provider: str = "gemini"
     ):
         self.db_pool = db_pool
         self.qdrant_url = qdrant_url.rstrip("/")
         self.qdrant_api_key = qdrant_api_key
         self.gemini = gemini_client
+        self.openai = openai_client
+        self.provider = provider
         self.stats = {
             "chunks_processed": 0,
             "entities_extracted": 0,
@@ -145,6 +155,12 @@ class KGIncrementalExtractor:
             "errors": 0,
             "start_time": None,
         }
+
+    def _llm_available(self) -> bool:
+        """Check if the configured LLM provider is available."""
+        if self.provider == "openai":
+            return self.openai is not None
+        return self.gemini is not None and getattr(self.gemini, "is_available", True)
 
     def _qdrant_request(self, method: str, endpoint: str, json_data: dict = None) -> dict:
         """Make HTTP request to Qdrant API with retries."""
@@ -339,15 +355,15 @@ class KGIncrementalExtractor:
                 "relationships_extracted": 0,
             }
 
-        if not self.gemini or not getattr(self.gemini, "is_available", True):
-            logger.warning("Gemini client not available - skipping extraction")
+        if not self._llm_available():
+            logger.warning("LLM client not available - skipping extraction")
             return {"chunks_processed": 0, "entities_extracted": 0, "relationships_extracted": 0}
 
         # Process each chunk
         for chunk in chunks:
             try:
                 # Extract entities/relationships
-                result = await self.extract_with_gemini(chunk["text"])
+                result = await self.extract_entities(chunk["text"])
 
                 # Save entities
                 for entity in result.get("entities", []):
@@ -403,6 +419,40 @@ class KGIncrementalExtractor:
         except Exception as e:
             logger.warning(f"Extraction failed: {e}")
             return {"entities": [], "relationships": []}
+
+    async def extract_with_openai(self, text: str) -> dict:
+        """Extract entities using OpenAI gpt-4o-mini."""
+        if not self.openai:
+            return {"entities": [], "relationships": []}
+
+        prompt = EXTRACTION_PROMPT.format(text=text[:8000])
+
+        try:
+            response = await self.openai.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1,
+                response_format={"type": "json_object"},
+            )
+            response_text = response.choices[0].message.content.strip()
+
+            # Clean JSON from markdown (shouldn't happen with json_object mode, but safety)
+            if "```json" in response_text:
+                response_text = response_text.split("```json")[1].split("```")[0]
+            elif "```" in response_text:
+                response_text = response_text.split("```")[1].split("```")[0]
+
+            result = json.loads(response_text)
+            return result
+        except Exception as e:
+            logger.warning(f"OpenAI extraction failed: {e}")
+            return {"entities": [], "relationships": []}
+
+    async def extract_entities(self, text: str) -> dict:
+        """Route extraction to the configured provider."""
+        if self.provider == "openai":
+            return await self.extract_with_openai(text)
+        return await self.extract_with_gemini(text)
 
     async def save_entity(self, entity: dict, chunk_id: str, collection: str):
         """Save entity to PostgreSQL."""
@@ -488,8 +538,8 @@ class KGIncrementalExtractor:
         chunk_id = chunk["id"]
         collection = chunk["collection"]
 
-        # Extract with Gemini
-        result = await self.extract_with_gemini(text)
+        # Extract with configured provider
+        result = await self.extract_entities(text)
 
         entities = result.get("entities", [])
         relationships = result.get("relationships", [])
@@ -556,14 +606,19 @@ class KGIncrementalExtractor:
             logger.info("DRY RUN - No extraction performed")
             return self.stats
 
-        if not self.gemini or not self.gemini.is_available:
-            logger.error("Gemini client not available - cannot proceed")
+        if not self._llm_available():
+            logger.error("LLM client not available - cannot proceed")
             return self.stats
 
-        # Process chunks in parallel batches
-        logger.info("\nStarting extraction (parallel workers: 2, Free Tier: 15 RPM)...")
-
-        batch_size = 2  # Process 2 chunks in parallel (Free Tier: 15 RPM limit)
+        # OpenAI has much higher RPM (500+), Gemini free tier is 15 RPM
+        if self.provider == "openai":
+            batch_size = 5
+            sleep_between = 1.0
+            logger.info(f"\nStarting extraction with OpenAI (parallel workers: {batch_size})...")
+        else:
+            batch_size = 2
+            sleep_between = 8.0
+            logger.info(f"\nStarting extraction with Gemini (parallel workers: {batch_size}, Free Tier: 15 RPM)...")
 
         for i in range(0, len(chunks_to_process), batch_size):
             batch = chunks_to_process[i : i + batch_size]
@@ -582,8 +637,8 @@ class KGIncrementalExtractor:
                         f"Rate: {rate:.1f} chunks/min"
                     )
 
-                # Rate limit: 2 chunk ogni 8s = 15 RPM (Google AI Studio Free Tier limit)
-                await asyncio.sleep(8.0)
+                # Rate limit between batches
+                await asyncio.sleep(sleep_between)
 
             except Exception as e:
                 logger.error(f"Error processing batch at {i}: {e}")
@@ -606,6 +661,8 @@ async def main():
     parser.add_argument("--collection", type=str, help="Specific collection to process")
     parser.add_argument("--limit", type=int, help="Limit chunks per collection")
     parser.add_argument("--dry-run", action="store_true", help="Just show what would be processed")
+    parser.add_argument("--provider", type=str, default="openai", choices=["gemini", "openai"],
+                        help="LLM provider for extraction (default: openai)")
     args = parser.parse_args()
 
     # Database connection
@@ -627,20 +684,36 @@ async def main():
 
     logger.info(f"Using Qdrant: {qdrant_url[:50]}...")
 
-    # Gemini client (optional for dry-run)
+    # LLM client initialization (optional for dry-run)
     gemini = None
-    if not args.dry_run:
-        try:
-            gemini = get_genai_client()
-            if getattr(gemini, "is_available", True):
-                logger.info(f"✅ GenAI Client initialized")
-            else:
-                logger.warning("⚠️ GenAI Client initialized but not available")
-        except Exception as e:
-            logger.warning(f"Could not initialize Gemini: {e}")
+    openai_client = None
+    provider = args.provider
 
-    # Run extraction - pass URL/key instead of client to allow fresh connections
-    extractor = KGIncrementalExtractor(db_pool, qdrant_url, qdrant_api_key, gemini)
+    if not args.dry_run:
+        if provider == "openai":
+            openai_key = os.environ.get("OPENAI_API_KEY")
+            if openai_key and OPENAI_AVAILABLE:
+                openai_client = AsyncOpenAI(api_key=openai_key)
+                logger.info("✅ OpenAI client initialized (gpt-4o-mini)")
+            else:
+                logger.error("OpenAI not available (missing key or package). Install: pip install openai")
+                await db_pool.close()
+                return
+        else:
+            try:
+                gemini = get_genai_client()
+                if getattr(gemini, "is_available", True):
+                    logger.info("✅ GenAI Client initialized")
+                else:
+                    logger.warning("⚠️ GenAI Client initialized but not available")
+            except Exception as e:
+                logger.warning(f"Could not initialize Gemini: {e}")
+
+    # Run extraction
+    extractor = KGIncrementalExtractor(
+        db_pool, qdrant_url, qdrant_api_key,
+        gemini_client=gemini, openai_client=openai_client, provider=provider
+    )
 
     collections = [args.collection] if args.collection else None
 

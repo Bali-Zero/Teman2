@@ -14,7 +14,6 @@ CollectionName = Literal[
     "visa_oracle",
     "immigration_circulars",  # Kemnaker/Imigrasi circulars (SE, policy updates)
     "kbli_2025_final",
-    "kbli_comprehensive",
     "tax_genius",
     "legal_architect",
     "zantara_books",
@@ -27,6 +26,7 @@ CollectionName = Literal[
     "kb_indonesian",
     "cultural_insights",
     "bali_zero_team",
+    "balizero_news",
 ]
 
 
@@ -50,7 +50,6 @@ class FallbackManagerService:
             "legal_architect",
         ],  # Circulars fallback to main visa
         "kbli_2025_final": ["legal_architect", "tax_genius", "visa_oracle"],
-        "kbli_comprehensive": ["kbli_2025_final", "legal_architect", "tax_genius"],
         "tax_genius": [
             "tax_knowledge",
             "tax_updates",

@@ -490,10 +490,10 @@ async def submit_from_scraper(
                 if drive_svc.service:
                     image_bytes = base64.b64decode(submission.cover_image_base64)
                     # Use Intel_Images folder on Drive (create if needed)
-                    intel_images_folder_id = os.getenv(
-                        "INTEL_IMAGES_DRIVE_FOLDER_ID", "root"
+                    intel_images_folder_id = os.getenv("INTEL_IMAGES_DRIVE_FOLDER_ID", "root")
+                    file_ext = (
+                        "png" if len(image_bytes) > 0 and image_bytes[:4] == b"\x89PNG" else "jpg"
                     )
-                    file_ext = "png" if len(image_bytes) > 0 and image_bytes[:4] == b"\x89PNG" else "jpg"
                     drive_result = await drive_svc.upload_file_to_folder(
                         folder_id=intel_images_folder_id,
                         file_content=image_bytes,

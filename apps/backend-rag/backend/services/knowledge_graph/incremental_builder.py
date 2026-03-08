@@ -31,7 +31,7 @@ class KGIncrementalBuilder:
         "kbli_2025_final",
         "tax_genius_hybrid",
         "visa_oracle",
-        "balizero_news_history",  # news_history
+        "balizero_news",  # Intel articles, news
     ]
 
     # Google AI Studio Free Tier Limits

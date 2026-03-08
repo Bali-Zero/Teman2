@@ -93,7 +93,7 @@ class CollectionHealthService:
             "tax_genius": self._init_metrics("tax_genius"),
             "legal_architect": self._init_metrics("legal_architect"),
             "kb_indonesian": self._init_metrics("kb_indonesian"),
-            "kbli_comprehensive": self._init_metrics("kbli_comprehensive"),
+            "balizero_news": self._init_metrics("balizero_news"),
             "zantara_books": self._init_metrics("zantara_books"),
             "cultural_insights": self._init_metrics("cultural_insights"),
             "tax_updates": self._init_metrics("tax_updates"),

@@ -35,7 +35,6 @@ CollectionName = Literal[
     "visa_oracle",
     "immigration_circulars",  # Kemnaker/Imigrasi circulars (SE, policy updates)
     "kbli_2025_final",
-    "kbli_comprehensive",
     "tax_genius",
     "legal_architect",
     "zantara_books",
@@ -49,6 +48,7 @@ CollectionName = Literal[
     "cultural_insights",
     "bali_zero_team",
     "training_conversations_hybrid",  # Business setup guides & capital requirements
+    "balizero_news",  # Intel articles: immigration, tax, bali news, business regulations
 ]
 
 
@@ -470,7 +470,6 @@ class QueryRouter:
             "legal_architect",
         ],  # Circulars fallback to main visa
         "kbli_2025_final": ["legal_architect", "tax_genius", "visa_oracle"],
-        "kbli_comprehensive": ["kbli_2025_final", "legal_architect", "tax_genius"],
         "tax_genius": [
             "tax_knowledge",
             "tax_updates",
@@ -488,6 +487,11 @@ class QueryRouter:
             "legal_architect",
             "kbli_2025_final",
         ],  # Team fallback to main company collections
+        "balizero_news": [
+            "visa_oracle",
+            "legal_architect",
+            "kbli_2025_final",
+        ],  # News fallback to specialized collections
     }
 
     # Confidence thresholds (from centralized constants)
@@ -620,6 +624,9 @@ class QueryRouter:
         elif primary_domain == "kbli":
             collection = "kbli_2025_final"
             logger.info(f"🧭 Route: {collection} (kbli: score={domain_scores['kbli']})")
+        elif primary_domain == "news":
+            collection = "balizero_news"
+            logger.info(f"🧭 Route: {collection} (news: score={domain_scores['news']})")
         elif primary_domain == "team":
             # FIXED 2026-01-10: bali_zero_team doesn't exist, fallback to bali_zero_pricing
             # TODO: Recreate bali_zero_team collection or use alternative
