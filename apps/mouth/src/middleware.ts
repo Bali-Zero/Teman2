@@ -223,6 +223,27 @@ export function middleware(request: NextRequest) {
 
   // === APP DOMAIN (kita.balizero.com) ===
   if (isAppDomain) {
+    // === SSO SUBDOMAINS (mail/calendar/drive/knowledge.balizero.com) ===
+    // These subdomains don't have their own routes — redirect to kita.balizero.com
+    // with the appropriate deep-link path. Auth is handled by kita's workspace layout
+    // which reads the httpOnly cookie shared across .balizero.com.
+    if (isSSOSubdomain) {
+      // Map subdomain → internal route on kita
+      const subdomainRouteMap: Record<string, string> = {
+        mail: "/email",
+        calendar: "/calendar",
+        drive: "/documents",
+        knowledge: "/knowledge",
+      };
+      const targetRoute = subdomainRouteMap[subdomain] || "/dashboard";
+      // Preserve any path after the root (e.g. calendar.balizero.com/event/123 → /calendar/event/123)
+      const deepPath =
+        pathname === "/" ? targetRoute : `${targetRoute}${pathname}`;
+      const kitaUrl = new URL(deepPath, `https://${APP_DOMAIN}`);
+      kitaUrl.search = request.nextUrl.search;
+      return NextResponse.redirect(kitaUrl, 302);
+    }
+
     // SEO: Block indexing for zantara subdomain (internal app)
     // robots.txt override
     if (pathname === "/robots.txt") {
