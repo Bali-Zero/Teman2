@@ -116,7 +116,7 @@ async def check_zoning_requirements_node(
 
 
 async def get_property_requirements_node(
-    state: PropertyState, db_pool: asyncpg.Pool
+    state: PropertyState, db_pool: asyncpg.Pool = None  # noqa: ARG001
 ) -> PropertyState:
     """Get ownership requirements."""
     logger.info("📋 [Property Subgraph] Getting property requirements...")
