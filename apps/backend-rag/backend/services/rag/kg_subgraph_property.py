@@ -31,10 +31,13 @@ class PropertyState(TypedDict, total=False):
     is_foreign_buyer: bool
     property_value: int | None
     location: str | None
+    lat: float | None
+    lng: float | None
     property_requirements: list[dict]
+    zoning_info: dict | None
 
 
-async def identify_property_type_node(state: PropertyState, llm) -> PropertyState:
+async def identify_property_type_node(state: PropertyState, llm=None) -> PropertyState:  # noqa: ARG001
     """Identify property ownership type."""
     logger.info("🏠 [Property Subgraph] Identifying property type...")
 
@@ -55,7 +58,60 @@ async def identify_property_type_node(state: PropertyState, llm) -> PropertyStat
     state["property_type"] = prop_type
     state["is_foreign_buyer"] = is_foreign
 
+    # Extract coordinates if present in context
+    context = state.get("user_context", {})
+    if "lat" in context and "lng" in context:
+        state["lat"] = float(context["lat"])
+        state["lng"] = float(context["lng"])
+
     logger.info(f"✅ [Property Subgraph] Type: {prop_type}, foreign: {is_foreign}")
+    return state
+
+
+async def check_zoning_requirements_node(
+    state: PropertyState, db_pool: asyncpg.Pool
+) -> PropertyState:
+    """Check zoning restrictions based on geospatial coordinates using PostGIS."""
+    lat = state.get("lat")
+    lng = state.get("lng")
+
+    if not lat or not lng:
+        logger.info("📍 [Property Subgraph] No coordinates provided, skipping zoning check.")
+        return state
+
+    logger.info(f"🗺️ [Property Subgraph] Checking zoning for coordinates: {lat}, {lng}")
+
+    # ST_Contains(geom, ST_SetSRID(ST_MakePoint(lng, lat), 4326))
+    query = """
+        SELECT district_name, zoning_type, allowed_kbli, avg_price_per_are, risk_score
+        FROM bali_zoning_layers
+        WHERE ST_Contains(boundary, ST_SetSRID(ST_MakePoint($1, $2), 4326))
+        LIMIT 1
+    """
+
+    try:
+        async with db_pool.acquire() as conn:
+            row = await conn.fetchrow(query, lng, lat)
+            if row:
+                zoning_data = dict(row)
+                state["zoning_info"] = zoning_data
+                logger.info(f"✅ [Property Subgraph] Found zoning: {zoning_data['zoning_type']} in {zoning_data['district_name']}")
+
+                # Add a requirement based on zoning
+                state.setdefault("property_requirements", []).append({
+                    "requirement_type": "zoning",
+                    "details": {
+                        "district": zoning_data["district_name"],
+                        "zone": zoning_data["zoning_type"],
+                        "allowed_activities": "Restricted by KBLI" if zoning_data.get("allowed_kbli") else "Unrestricted",
+                        "risk_level": "High" if zoning_data.get("risk_score", 0) > 0.7 else "Normal"
+                    }
+                })
+            else:
+                logger.info("⚠️ [Property Subgraph] Coordinates do not fall within any known zoning area.")
+    except Exception as e:
+        logger.error(f"❌ [Property Subgraph] Zoning check failed: {e}")
+
     return state
 
 
@@ -179,6 +235,9 @@ def build_property_subgraph(db_pool: asyncpg.Pool, llm: Any) -> StateGraph:
     async def _identify(s) -> Any:
         return await identify_property_type_node(s, llm)
 
+    async def _check_zoning(s) -> Any:
+        return await check_zoning_requirements_node(s, db_pool)
+
     async def _get_reqs(s) -> Any:
         return await get_property_requirements_node(s, db_pool)
 
@@ -186,13 +245,15 @@ def build_property_subgraph(db_pool: asyncpg.Pool, llm: Any) -> StateGraph:
         return await synthesize_property_workflow_node(s)
 
     subgraph.add_node("identify_property_type", _identify)
+    subgraph.add_node("check_zoning_requirements", _check_zoning)
     subgraph.add_node("get_property_requirements", _get_reqs)
     subgraph.add_node("synthesize_property_workflow", _synthesize)
 
     subgraph.set_entry_point("identify_property_type")
-    subgraph.add_edge("identify_property_type", "get_property_requirements")
+    subgraph.add_edge("identify_property_type", "check_zoning_requirements")
+    subgraph.add_edge("check_zoning_requirements", "get_property_requirements")
     subgraph.add_edge("get_property_requirements", "synthesize_property_workflow")
     subgraph.add_edge("synthesize_property_workflow", END)
 
-    logger.info("✅ [Property Subgraph] Built with 3 nodes")
+    logger.info("✅ [Property Subgraph] Built with 4 nodes")
     return subgraph

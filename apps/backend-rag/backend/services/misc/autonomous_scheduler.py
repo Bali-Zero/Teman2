@@ -589,58 +589,6 @@ async def create_and_start_scheduler(
             logger.error(f"❌ Failed to register Renewal Alerts: {e}")
 
     # ═══════════════════════════════════════════════════════════════════════════
-    # TASK 7: INTEL SCRAPER TRIGGER (every 24 hours)
-    # Wakes up bali-intel-scraper (suspended Fly.io machine) and triggers
-    # the full intel pipeline. Articles are submitted to /api/intel/scraper/submit.
-    # ═══════════════════════════════════════════════════════════════════════════
-    try:
-        import httpx as _httpx
-
-        async def run_intel_scraper_trigger() -> None:
-            """Trigger bali-intel-scraper to run the full intel pipeline."""
-            scraper_url = os.getenv("INTEL_SCRAPER_URL", "https://bali-intel-scraper.fly.dev")
-            scraper_api_key = os.getenv("INTEL_SCRAPER_TRIGGER_KEY", "")
-
-            try:
-                logger.info("🕵️ Triggering bali-intel-scraper pipeline...")
-                async with _httpx.AsyncClient(timeout=30.0) as client:
-                    # Wake up the suspended machine first
-                    health_r = await client.get(f"{scraper_url}/health", timeout=20.0)
-                    logger.info(f"🕵️ Scraper health: {health_r.status_code}")
-
-                # Wait for machine to warm up, then trigger pipeline
-                await asyncio.sleep(10)
-                async with _httpx.AsyncClient(timeout=600.0) as client:
-                    headers = {}
-                    if scraper_api_key:
-                        headers["X-API-Key"] = scraper_api_key
-                    resp = await client.post(
-                        f"{scraper_url}/api/pipeline/run",
-                        json={"mode": "full", "max_articles": 50, "require_approval": False},
-                        headers=headers,
-                        timeout=600.0,
-                    )
-                    if resp.status_code in (200, 202):
-                        result = resp.json()
-                        logger.info(
-                            f"✅ Intel scraper triggered: {result.get('articles_processed', '?')} articles"
-                        )
-                    else:
-                        logger.warning(f"⚠️ Intel scraper returned {resp.status_code}: {resp.text[:200]}")
-            except Exception as e:
-                logger.error(f"❌ Intel scraper trigger error: {e}", exc_info=True)
-
-        scheduler.register_task(
-            name="intel_scraper_trigger",
-            task_func=run_intel_scraper_trigger,
-            interval_seconds=86400,  # 24 hours
-            enabled=True,
-        )
-        logger.info("✅ Intel Scraper Trigger registered (24h interval)")
-    except Exception as e:
-        logger.error(f"❌ Failed to register Intel Scraper Trigger: {e}")
-
-    # ═══════════════════════════════════════════════════════════════════════════
     # TASK 8: BIRTHPLACE ENRICHMENT (Ollama)
     # Enriches client birthplace with cultural context for personalized conversations
     # Runs daily at ~22:00 Bali time (after work hours, when Ollama has capacity)
