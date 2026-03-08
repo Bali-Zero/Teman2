@@ -13,6 +13,7 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
 from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.utils.crm_utils import is_super_admin
 from backend.services.integrations.google_drive_service import GoogleDriveService
 
 logger = logging.getLogger(__name__)
@@ -40,9 +41,6 @@ class SystemConnectionStatus(BaseModel):
     configured: bool
     connected_as: str | None = None  # Email of connected account
     root_folder_id: str | None = None
-
-
-from backend.app.utils.crm_utils import is_super_admin
 
 
 class FileItem(BaseModel):
@@ -91,7 +89,7 @@ async def get_connection_status(
 
 @router.get("/auth/url")
 async def get_auth_url(
-    request: Request,
+    request: Request,  # noqa: ARG001
     current_user: dict = Depends(get_current_user),
     db_pool=Depends(get_database_pool),
 ) -> dict[str, str]:
@@ -130,7 +128,7 @@ async def oauth_callback(
     Google redirects here after user grants consent.
     """
     # Frontend base URL for redirects
-    frontend_url = "https://zantara.balizero.com"
+    frontend_url = "https://kita.balizero.com"
 
     # Handle OAuth errors
     if error:
@@ -350,13 +348,13 @@ async def list_files(
         )
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.get("/files/{file_id}")
 async def get_file(
     file_id: str,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),  # noqa: ARG001
     db_pool=Depends(get_database_pool),
 ) -> FileItem:
     """
@@ -383,14 +381,14 @@ async def get_file(
         )
 
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 @router.get("/search")
 async def search_files(
     q: str = Query(..., min_length=2, description="Search query"),
     page_size: int = Query(20, ge=1, le=50),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),  # noqa: ARG001
     db_pool=Depends(get_database_pool),
 ) -> list[FileItem]:
     """

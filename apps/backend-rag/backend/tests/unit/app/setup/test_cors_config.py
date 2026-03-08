@@ -13,7 +13,10 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from backend.app.setup.cors_config import get_allowed_origins, register_cors_middleware
+from backend.app.setup.cors_config import (  # noqa: E402
+    get_allowed_origins,
+    register_cors_middleware,
+)
 
 
 @pytest.fixture
@@ -37,7 +40,7 @@ class TestCORSConfig:
 
             assert "https://example.com" in origins
             assert "https://test.com" in origins
-            assert "https://zantara.balizero.com" in origins  # Default
+            assert "https://kita.balizero.com" in origins  # Default
 
     def test_get_allowed_origins_with_dev_origins(self):
         """Test getting allowed origins with dev origins"""
@@ -58,7 +61,7 @@ class TestCORSConfig:
 
             origins = get_allowed_origins()
 
-            assert "https://zantara.balizero.com" in origins
+            assert "https://kita.balizero.com" in origins
             assert "http://localhost:3000" in origins
 
     def test_register_cors_middleware(self, mock_app):
