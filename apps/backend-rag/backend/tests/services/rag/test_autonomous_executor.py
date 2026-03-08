@@ -98,7 +98,7 @@ class TestPlanGeneration:
         """Created plan is stored and retrievable."""
         plan = await executor.create_plan("Create NPWP for test@example.com", "test@example.com")
 
-        retrieved = executor.get_plan_status(plan["plan_id"])
+        retrieved = await executor.get_plan_status(plan["plan_id"])
         assert retrieved is not None
         assert retrieved["plan_id"] == plan["plan_id"]
 
@@ -226,13 +226,13 @@ class TestApprovalFlow:
     @pytest.mark.asyncio
     async def test_record_approval_true(self, executor):
         """Recording approval sets the approval flag."""
-        executor.record_approval("plan_1", "step_3", True)
+        await executor.record_approval("plan_1", "step_3", True)
         assert executor._approvals["plan_1_step_3"] is True
 
     @pytest.mark.asyncio
     async def test_record_approval_false(self, executor):
         """Recording rejection sets the approval flag to False."""
-        executor.record_approval("plan_1", "step_3", False)
+        await executor.record_approval("plan_1", "step_3", False)
         assert executor._approvals["plan_1_step_3"] is False
 
     @pytest.mark.asyncio
@@ -323,7 +323,7 @@ class TestPlanListing:
         await executor.create_plan("Create NPWP for a@b.com", "a@b.com")
         await executor.create_plan("Apply for KITAS for c@d.com", "c@d.com")
 
-        plans = executor.list_plans()
+        plans = await executor.list_plans()
         assert len(plans) == 2
 
     @pytest.mark.asyncio
@@ -332,13 +332,14 @@ class TestPlanListing:
         await executor.create_plan("Create NPWP for a@b.com", "a@b.com")
         await executor.create_plan("Apply for KITAS for c@d.com", "c@d.com")
 
-        plans = executor.list_plans(user_email="a@b.com")
+        plans = await executor.list_plans(user_email="a@b.com")
         assert len(plans) == 1
         assert plans[0]["user_email"] == "a@b.com"
 
-    def test_get_nonexistent_plan(self, executor):
+    @pytest.mark.asyncio
+    async def test_get_nonexistent_plan(self, executor):
         """Getting a non-existent plan returns None."""
-        assert executor.get_plan_status("plan_nonexistent") is None
+        assert await executor.get_plan_status("plan_nonexistent") is None
 
 
 # ============================================================================
