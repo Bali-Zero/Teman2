@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 
-const BACKEND_URL =
-  process.env.NUZANTARA_API_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  "https://nuzantara-rag.fly.dev";
+function getBackendUrl(): string {
+  const raw =
+    process.env.NUZANTARA_API_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    "https://nuzantara-rag.fly.dev";
+  // Normalize: strip trailing slash and /api suffix to get base URL
+  return raw.replace(/\/+$/, "").replace(/\/api$/, "");
+}
+const BACKEND_URL = getBackendUrl();
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {

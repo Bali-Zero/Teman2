@@ -428,11 +428,19 @@ class KGIncrementalExtractor:
         prompt = EXTRACTION_PROMPT.format(text=text[:8000])
 
         try:
+            model_name = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+            extra = {}
+            if os.environ.get("OPENAI_BASE_URL", "").startswith("http://localhost"):
+                # Ollama: no response_format json_object (not supported by all models)
+                # Use think:false for qwen3.5 to disable chain-of-thought
+                extra = {"extra_body": {"think": False}}
+            else:
+                extra = {"response_format": {"type": "json_object"}}
             response = await self.openai.chat.completions.create(
-                model="gpt-4o-mini",
+                model=model_name,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.1,
-                response_format={"type": "json_object"},
+                **extra,
             )
             response_text = response.choices[0].message.content.strip()
 
@@ -612,9 +620,10 @@ class KGIncrementalExtractor:
 
         # OpenAI has much higher RPM (500+), Gemini free tier is 15 RPM
         if self.provider == "openai":
-            batch_size = 5
-            sleep_between = 1.0
-            logger.info(f"\nStarting extraction with OpenAI (parallel workers: {batch_size})...")
+            is_local = os.environ.get("OPENAI_BASE_URL", "").startswith("http://localhost")
+            batch_size = 1 if is_local else 5
+            sleep_between = 0.5 if is_local else 1.0
+            logger.info(f"\nStarting extraction with OpenAI (parallel workers: {batch_size}, local={is_local})...")
         else:
             batch_size = 2
             sleep_between = 8.0
@@ -692,9 +701,14 @@ async def main():
     if not args.dry_run:
         if provider == "openai":
             openai_key = os.environ.get("OPENAI_API_KEY")
+            openai_base_url = os.environ.get("OPENAI_BASE_URL")
+            openai_model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
             if openai_key and OPENAI_AVAILABLE:
-                openai_client = AsyncOpenAI(api_key=openai_key)
-                logger.info("✅ OpenAI client initialized (gpt-4o-mini)")
+                client_kwargs = {"api_key": openai_key}
+                if openai_base_url:
+                    client_kwargs["base_url"] = openai_base_url
+                openai_client = AsyncOpenAI(**client_kwargs)
+                logger.info(f"✅ OpenAI client initialized (model={openai_model}, base_url={openai_base_url or 'default'})")
             else:
                 logger.error("OpenAI not available (missing key or package). Install: pip install openai")
                 await db_pool.close()
