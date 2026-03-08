@@ -281,7 +281,9 @@ async function proxy(req: NextRequest): Promise<Response> {
         const jwt = bodyJson?.data?.token;
         const csrf = bodyJson?.data?.csrfToken;
         if (jwt) {
-          const cookieDomain = process.env.COOKIE_DOMAIN || ".balizero.com";
+          const cookieDomain = (
+            process.env.COOKIE_DOMAIN || ".balizero.com"
+          ).replace(/\s+/g, "");
           const maxAge = 86400; // 24h
           // CRITICAL: Strip upstream Set-Cookie headers — they carry SameSite=none
           // which Chrome 130+ rejects without Partitioned. We re-set cookies manually

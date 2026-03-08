@@ -28,43 +28,38 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json(data, { status: upstream.status });
     }
 
-    const { token, csrfToken, user, expiresIn } = data.data;
-    const cookieDomain =
+    const { user, expiresIn } = data.data;
+    // Strip whitespace/newlines — backend may include trailing \n in token values
+    const token = String(data.data.token).replace(/\s+/g, "");
+    const csrfToken = data.data.csrfToken
+      ? String(data.data.csrfToken).replace(/\s+/g, "")
+      : undefined;
+    // Strip any whitespace/newlines from env var values
+    const cookieDomain = (
       process.env.COOKIE_DOMAIN ||
-      (process.env.NODE_ENV === "production" ? ".balizero.com" : "localhost");
+      (process.env.NODE_ENV === "production" ? ".balizero.com" : "localhost")
+    ).replace(/\s+/g, "");
     const maxAge = expiresIn || 86400;
     const isSecure = process.env.NODE_ENV === "production";
 
-    // Build raw Set-Cookie header strings (no newlines — bypasses NextResponse.cookies.set() bug)
-    const respHeaders = new Headers();
-    const tokenCookieParts = [
-      `nz_access_token=${token}`,
-      `Domain=${cookieDomain}`,
-      `HttpOnly`,
-      `Max-Age=${maxAge}`,
-      `Path=/`,
-      `SameSite=Lax`,
-    ];
-    if (isSecure) tokenCookieParts.push("Secure");
-    respHeaders.append("set-cookie", tokenCookieParts.join("; "));
-
-    if (csrfToken) {
-      const csrfCookieParts = [
-        `nz_csrf_token=${csrfToken}`,
-        `Domain=${cookieDomain}`,
-        `Max-Age=${maxAge}`,
-        `Path=/`,
-        `SameSite=Lax`,
-      ];
-      if (isSecure) csrfCookieParts.push("Secure");
-      respHeaders.append("set-cookie", csrfCookieParts.join("; "));
-    }
-
-    // Build response with proper cookies
-    const resp = NextResponse.json(
-      { success: true, message: data.message, data: data.data },
-      { status: 200, headers: respHeaders },
-    );
+    // Build cookie attributes — all values explicitly stripped of whitespace
+    const secure = isSecure ? "; Secure" : "";
+    const tokenCookie =
+      `nz_access_token=${token}` +
+      `; Domain=${cookieDomain}` +
+      `; HttpOnly` +
+      `; Max-Age=${maxAge}` +
+      `; Path=/` +
+      `; SameSite=Lax` +
+      secure;
+    const csrfCookieStr = csrfToken
+      ? `nz_csrf_token=${csrfToken}` +
+        `; Domain=${cookieDomain}` +
+        `; Max-Age=${maxAge}` +
+        `; Path=/` +
+        `; SameSite=Lax` +
+        secure
+      : null;
 
     logger.info("Login successful, cookies set", {
       component: "LoginRoute",
@@ -72,7 +67,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       user: user?.email,
     });
 
-    return resp;
+    // Build headers as array of tuples to avoid any Headers.append newline issues
+    const headerTuples: [string, string][] = [
+      ["content-type", "application/json"],
+      ["set-cookie", tokenCookie],
+    ];
+    if (csrfCookieStr) headerTuples.push(["set-cookie", csrfCookieStr]);
+
+    return new Response(
+      JSON.stringify({ success: true, message: data.message, data: data.data }),
+      { status: 200, headers: headerTuples },
+    ) as unknown as NextResponse;
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     logger.error(
