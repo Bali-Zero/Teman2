@@ -24,14 +24,27 @@ export class AuthApi {
     });
 
     try {
-      const response = await this.client.request<BackendLoginResponse>(
-        "/api/auth/login",
-        {
-          method: "POST",
-          body: JSON.stringify({ email, pin }),
-        },
-        90000, // 90s timeout — backend may cold-start on Fly.io
-      );
+      // CRITICAL: Call backend directly (not via Next.js proxy) so the browser
+      // receives Set-Cookie headers with Domain=.balizero.com. Vercel Edge strips
+      // these headers from proxied responses regardless of how they are set.
+      const backendUrl =
+        process.env.NEXT_PUBLIC_BACKEND_DIRECT_URL ||
+        "https://nuzantara-rag.fly.dev";
+      const directResp = await fetch(`${backendUrl}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, pin }),
+        credentials: "include", // Browser stores Set-Cookie from backend directly
+        signal: AbortSignal.timeout(90000),
+      });
+      if (!directResp.ok) {
+        const errBody = await directResp.json().catch(() => ({}));
+        throw new Error(
+          (errBody as { detail?: string }).detail ||
+            `Login failed: ${directResp.status}`,
+        );
+      }
+      const response: BackendLoginResponse = await directResp.json();
 
       logger.debug("API response received", {
         component: "AuthApi",
