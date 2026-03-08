@@ -7,7 +7,7 @@
 import type {
   KnowledgeSearchResponse,
   TierLevel,
-} from "./knowledge/knowledge.types";
+} from "./api/knowledge/knowledge.types";
 import { logger } from "./logger";
 
 const BACKEND_URL = "https://nuzantara-rag.fly.dev";
