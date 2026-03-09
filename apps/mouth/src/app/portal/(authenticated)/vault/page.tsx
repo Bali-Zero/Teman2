@@ -90,23 +90,23 @@ export default function VaultPage() {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusStyle = (status: string): React.CSSProperties => {
     switch (status) {
       case "verified":
-        return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400";
+        return { background: "rgba(16,185,129,0.12)", color: "#34d399" };
       case "pending":
-        return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
+        return { background: "rgba(245,158,11,0.12)", color: "#fbbf24" };
       case "expired":
-        return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+        return { background: "rgba(239,68,68,0.12)", color: "#f87171" };
       default:
-        return "bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400";
+        return { background: "var(--bz-surface)", color: "var(--bz-text-2)" };
     }
   };
 
   if (isLoading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--bz-accent-warm)" }} />
       </div>
     );
   }
@@ -116,24 +116,24 @@ export default function VaultPage() {
       {/* Header */}
       <section>
         <h1 className="text-2xl font-bold tracking-tight">Document Vault</h1>
-        <p className="text-muted-foreground">Manage your important documents</p>
+        <p style={{ color: "var(--bz-text-2)" }}>Manage your important documents</p>
       </section>
 
       {/* Upload Section */}
-      <section className="rounded-lg border border-dashed border-primary/50 bg-primary/5 p-6 text-center">
+      <section className="rounded-lg border border-dashed p-6 text-center" style={{ borderColor: "rgba(201,169,110,0.4)", background: "rgba(201,169,110,0.05)" }}>
         <label
           htmlFor="file-upload"
           className="flex flex-col items-center gap-2 cursor-pointer"
         >
           {isUploading ? (
-            <Loader2 className="w-10 h-10 animate-spin text-primary" />
+            <Loader2 className="w-10 h-10 animate-spin" style={{ color: "var(--bz-accent-warm)" }} />
           ) : (
-            <Upload className="w-10 h-10 text-primary" />
+            <Upload className="w-10 h-10" style={{ color: "var(--bz-accent-warm)" }} />
           )}
           <div className="text-sm font-medium">
             {isUploading ? "Uploading..." : "Click to upload document"}
           </div>
-          <div className="text-xs text-muted-foreground">
+          <div className="text-xs" style={{ color: "var(--bz-text-2)" }}>
             PDF, JPG, PNG up to 10MB
           </div>
           <input
@@ -162,12 +162,10 @@ export default function VaultPage() {
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={cn(
-                "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors",
-                selectedCategory === cat
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700",
-              )}
+              className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors"
+              style={selectedCategory === cat
+                ? { background: "var(--bz-accent-warm)", color: "#0c0c0e" }
+                : { background: "var(--bz-surface)", color: "var(--bz-text-2)" }}
             >
               {cat.charAt(0).toUpperCase() + cat.slice(1)}
             </button>
@@ -178,7 +176,7 @@ export default function VaultPage() {
       {/* Documents List */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-muted-foreground">
+          <h2 className="text-sm font-semibold" style={{ color: "var(--bz-text-2)" }}>
             {filteredDocs.length} Document{filteredDocs.length !== 1 ? "s" : ""}
           </h2>
           {(searchQuery || selectedCategory !== "all") && (
@@ -197,7 +195,7 @@ export default function VaultPage() {
         </div>
 
         {filteredDocs.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
+          <div className="text-center py-12" style={{ color: "var(--bz-text-2)" }}>
             <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
             <p>No documents found</p>
           </div>
@@ -206,11 +204,12 @@ export default function VaultPage() {
             {filteredDocs.map((doc) => (
               <div
                 key={doc.id}
-                className="rounded-lg border bg-card p-4 hover:bg-muted/50 transition-colors"
+                className="rounded-lg border p-4 transition-colors"
+                style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
               >
                 <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-md bg-primary/10">
-                    <FileText className="w-5 h-5 text-primary" />
+                  <div className="p-2 rounded-md" style={{ background: "rgba(201,169,110,0.12)" }}>
+                    <FileText className="w-5 h-5" style={{ color: "var(--bz-accent-warm)" }} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-sm truncate">
@@ -218,26 +217,24 @@ export default function VaultPage() {
                     </h3>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <span
-                        className={cn(
-                          "text-xs px-2 py-0.5 rounded-full font-medium",
-                          getStatusColor(doc.status),
-                        )}
+                        className="text-xs px-2 py-0.5 rounded-full font-medium"
+                        style={getStatusStyle(doc.status)}
                       >
                         {doc.status}
                       </span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs" style={{ color: "var(--bz-text-2)" }}>
                         {doc.category}
                       </span>
-                      <span className="text-xs text-muted-foreground">•</span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs" style={{ color: "var(--bz-text-2)" }}>•</span>
+                      <span className="text-xs" style={{ color: "var(--bz-text-2)" }}>
                         {doc.size}
                       </span>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="text-xs mt-1" style={{ color: "var(--bz-text-2)" }}>
                       Uploaded: {new Date(doc.uploadDate).toLocaleDateString()}
                     </p>
                     {doc.expiryDate && (
-                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                      <p className="text-xs mt-0.5" style={{ color: "#fbbf24" }}>
                         Expires: {new Date(doc.expiryDate).toLocaleDateString()}
                       </p>
                     )}

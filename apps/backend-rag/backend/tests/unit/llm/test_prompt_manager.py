@@ -26,24 +26,19 @@ class TestPromptManager:
         manager = PromptManager()
         assert manager is not None
 
-    @patch("backend.llm.prompt_manager.SYSTEM_PROMPT_FILE")
-    def test_load_system_prompt(self, mock_file):
-        """Test loading system prompt via get_system_prompt"""
-        mock_file.read_text.return_value = "# System Prompt\nTest content"
-        mock_file.exists.return_value = True
+    def test_load_system_prompt(self):
+        """Test loading system prompt via get_system_prompt (uses ZANTARA_MASTER_TEMPLATE)"""
         manager = PromptManager()
         prompt = manager.get_system_prompt()
         assert prompt is not None
         assert isinstance(prompt, str)
 
-    @patch("backend.llm.prompt_manager.SYSTEM_PROMPT_FILE")
-    def test_load_system_prompt_not_found(self, mock_file):
-        """Test loading system prompt when file not found - uses fallback"""
-        mock_file.exists.return_value = False
-        mock_file.read_text.side_effect = FileNotFoundError()
+    def test_load_system_prompt_not_found(self):
+        """Test get_system_prompt always returns a string (template-based, no file I/O)"""
         manager = PromptManager()
         prompt = manager.get_system_prompt()
         assert isinstance(prompt, str)
+        assert len(prompt) > 0
 
     def test_build_prompt_with_tone(self):
         """Test building prompt with tone via build_system_prompt"""

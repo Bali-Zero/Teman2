@@ -27,9 +27,7 @@ _BADUNG_TERRITORIAL_URL = (
 _GMAPS_GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json"
 
 
-async def _resolve_desa_code_from_latlng(
-    lat: float, lng: float, gmaps_api_key: str
-) -> str | None:
+async def _resolve_desa_code_from_latlng(lat: float, lng: float, gmaps_api_key: str) -> str | None:
     """
     Deterministic step 1: call Google Maps Geocoding to get the BPS desa code
     from coordinates.  Returns a 10-digit BPS code like '5103030005' or None.
@@ -60,9 +58,7 @@ async def _resolve_desa_code_from_latlng(
         return None
 
 
-async def _fetch_and_ingest_desa(
-    desa_code: str, db_pool: asyncpg.Pool
-) -> int:
+async def _fetch_and_ingest_desa(desa_code: str, db_pool: asyncpg.Pool) -> int:
     """
     Deterministic step 2: download GeoJSON for desa_code from Badung API
     and insert all valid GISTARU polygons into bali_zoning_layers.
@@ -102,15 +98,17 @@ async def _fetch_and_ingest_desa(
         district = attr.get("kabupaten") or "Badung"
         subdistrict = attr.get("kecamatan") or subdistrict_name
 
-        rows.append((
-            district,
-            subdistrict,
-            f"{zoning_code}: {zoning_name}",
-            json.dumps([zoning_code]),
-            json.dumps(geom),
-            0.0,
-            0.5,
-        ))
+        rows.append(
+            (
+                district,
+                subdistrict,
+                f"{zoning_code}: {zoning_name}",
+                json.dumps([zoning_code]),
+                json.dumps(geom),
+                0.0,
+                0.5,
+            )
+        )
 
     if not rows:
         return 0
@@ -249,7 +247,9 @@ async def check_zoning_requirements_node(
                         "zone": zone,
                         "zone_code": zone.split(":")[0].strip(),
                         "allowed_activities": (
-                            "Restricted by KBLI" if zoning_data.get("allowed_kbli") else "Unrestricted"
+                            "Restricted by KBLI"
+                            if zoning_data.get("allowed_kbli")
+                            else "Unrestricted"
                         ),
                         "risk_level": (
                             "High" if zoning_data.get("risk_score", 0) > 0.7 else "Normal"
@@ -383,9 +383,7 @@ async def synthesize_property_workflow_node(state: PropertyState) -> PropertySta
     return state
 
 
-def build_property_subgraph(
-    db_pool: asyncpg.Pool, llm: Any, gmaps_api_key: str = ""
-) -> StateGraph:
+def build_property_subgraph(db_pool: asyncpg.Pool, llm: Any, gmaps_api_key: str = "") -> StateGraph:
     """Build Property Subgraph."""
     import os
 

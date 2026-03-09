@@ -110,10 +110,10 @@ export default function PortalLayout({
   // Show loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#2a2a2a]">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--bz-base)" }}>
         <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-[var(--foreground-muted)]">Loading...</p>
+          <div className="w-10 h-10 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: "var(--bz-accent-warm)", borderTopColor: "transparent" }} />
+          <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>Loading...</p>
         </div>
       </div>
     );
@@ -121,7 +121,7 @@ export default function PortalLayout({
 
   return (
     <ToastProvider>
-      <div className="min-h-screen bg-[#2a2a2a]">
+      <div className="min-h-screen" style={{ background: "var(--bz-base)" }}>
         {/* Desktop Sidebar */}
         <div className="hidden md:block">
           <AppSidebar
