@@ -89,7 +89,6 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.62.0",
-    "@google-cloud/secret-manager": "^6.1.0",
     "@google/generative-ai": "^0.24.1",
     "@modelcontextprotocol/sdk": "^1.26.0",
     "@prisma/client": "^6.16.2",
