@@ -25,11 +25,13 @@ interface ZoningInfo {
 
 export default function PrimeMap3D() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [map3DElement, setMap3DElement] = useState<any>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [selectedPoint, setSelectedPoint] = useState<Coordinate | null>(null);
   const [zoningResult, setZoningResult] = useState<ZoningInfo | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
 
   // Load the map once the script is ready
   useEffect(() => {
@@ -88,6 +90,49 @@ export default function PrimeMap3D() {
     initMap();
   }, [isLoaded]);
 
+  // Initialize Places Autocomplete once map is ready
+  useEffect(() => {
+    if (!isLoaded || !searchInputRef.current) return;
+
+    const initAutocomplete = async () => {
+      try {
+        const { Autocomplete } = await (window as any).google.maps.importLibrary("places");
+        const autocomplete = new Autocomplete(searchInputRef.current, {
+          componentRestrictions: { country: 'id' },
+          fields: ['geometry', 'name', 'formatted_address'],
+          types: ['geocode', 'establishment'],
+        });
+
+        autocomplete.addListener('place_changed', () => {
+          const place = autocomplete.getPlace();
+          if (!place.geometry?.location) return;
+
+          const lat = place.geometry.location.lat();
+          const lng = place.geometry.location.lng();
+          const newPos = { lat, lng, altitude: 0 };
+
+          setSelectedPoint(newPos);
+          setSearchValue(place.name || place.formatted_address || '');
+          analyzeLocation(newPos);
+
+          // Fly map to the selected location
+          setMap3DElement((currentMap: any) => {
+            if (currentMap) {
+              currentMap.center = { lat, lng, altitude: 300 };
+              currentMap.tilt = 65;
+              currentMap.range = 1200;
+            }
+            return currentMap;
+          });
+        });
+      } catch (e) {
+        logger.error("Failed to initialize Places Autocomplete", { component: "PrimeMap3D" }, e instanceof Error ? e : new Error(String(e)));
+      }
+    };
+
+    initAutocomplete();
+  }, [isLoaded]);
+
   const analyzeLocation = async (pos: Coordinate) => {
     setIsAnalyzing(true);
     setZoningResult(null);
@@ -113,13 +158,30 @@ export default function PrimeMap3D() {
         v=beta is REQUIRED for 3D Maps.
       */}
       <Script 
-        src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&v=beta&libraries=maps3d`} 
+        src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&v=beta&libraries=maps3d,places`}
         strategy="afterInteractive"
         onLoad={() => setIsLoaded(true)}
       />
 
       {/* The 3D Map Container */}
       <div ref={mapContainerRef} className="absolute inset-0 w-full h-full" />
+
+      {/* Search Bar */}
+      <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20 w-96">
+        <div className="relative">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            ref={searchInputRef}
+            type="text"
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+            placeholder="Search location in Bali..."
+            className="w-full pl-10 pr-4 py-3 bg-black/80 backdrop-blur-md text-white placeholder-slate-400 rounded-lg border border-white/20 shadow-xl focus:outline-none focus:border-blue-500 text-sm"
+          />
+        </div>
+      </div>
 
       {/* Nuzantara Intelligence Overlay */}
       <div className="absolute top-6 left-6 z-10 w-80 bg-black/80 backdrop-blur-md text-white p-6 rounded-lg border border-white/10 shadow-xl">

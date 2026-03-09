@@ -180,6 +180,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             # ========================================================================
             "/preview/",  # BUSINESS: Article preview pages for Telegram approval - no indexing, public preview
             "/api/dashboard/map/",  # BUSINESS: Streamlit dashboard — KBLI validation, client geo, risk zones, stats
+            "/api/prime/zoning",  # BUSINESS: Prime Intelligence geospatial zoning API - public map intelligence layer
             # ========================================================================
             # INTERNAL SERVICE ENDPOINTS - REMOVED FROM PUBLIC (Now require API key)
             # ========================================================================
