@@ -124,12 +124,13 @@ export const driveApi = {
     const response = await client.request<{
       status: string;
       files_accessible: boolean;
+      root_folder_id?: string | null;
     }>("/api/drive/status");
 
     return {
       connected: response.status === "connected",
       configured: true,
-      root_folder_id: null,
+      root_folder_id: response.root_folder_id ?? null,
     };
   },
 

@@ -40,6 +40,8 @@ import type {
 } from "@/lib/api/drive/drive.types";
 
 export default function DrivePage() {
+  const BZ_ROOT_FOLDER_ID = "1hkOeV03YM5-sHbQhswYz809jsrnwC0At";
+
   // Navigation State
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -66,6 +68,14 @@ export default function DrivePage() {
   const isConnected = driveStatus?.connected ?? false;
   const isConfigured = driveStatus?.configured ?? false;
   const isAtRoot = currentFolderId === null && searchQuery === "";
+
+  // Auto-navigate to BZ root folder when connected (Service Account — no OAuth needed)
+  useEffect(() => {
+    if (!statusLoading && isConnected && currentFolderId === null) {
+      const rootId = driveStatus?.root_folder_id ?? BZ_ROOT_FOLDER_ID;
+      setCurrentFolderId(rootId);
+    }
+  }, [statusLoading, isConnected, driveStatus?.root_folder_id]);
 
   // Selection State
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
@@ -327,8 +337,14 @@ export default function DrivePage() {
           transition={{ duration: 0.5 }}
           className="relative"
         >
-          <div className="absolute inset-0 animate-pulse rounded-full bg-[#1a73e8]/20 blur-2xl" />
-          <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-[#1a73e8] shadow-xl">
+          <div
+            className="absolute inset-0 animate-pulse rounded-full blur-2xl"
+            style={{ background: "rgba(212,132,90,0.15)" }}
+          />
+          <div
+            className="relative flex h-24 w-24 items-center justify-center rounded-full shadow-xl"
+            style={{ background: "var(--bz-accent)" }}
+          >
             <CloudOff className="h-12 w-12 text-white" />
           </div>
         </motion.div>
@@ -352,7 +368,8 @@ export default function DrivePage() {
             <Button
               onClick={handleConnect}
               size="lg"
-              className="bg-gradient-to-r from-blue-500 to-indigo-600 px-8 py-6 text-lg text-white shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all rounded-2xl"
+              className="px-8 py-6 text-lg text-white shadow-lg transition-all rounded-2xl hover:shadow-xl"
+              style={{ background: "var(--bz-accent)" }}
             >
               <Cloud className="mr-3 h-5 w-5" />
               Connect Google Drive
@@ -376,7 +393,10 @@ export default function DrivePage() {
               key={i}
               className="rounded-lg border border-[#3c3c3c] bg-[#1e1e20] p-4 shadow-sm"
             >
-              <div className="text-2xl font-bold text-[#1a73e8]">
+              <div
+                className="text-2xl font-bold"
+                style={{ color: "var(--bz-accent)" }}
+              >
                 {stat.label}
               </div>
               <div className="text-sm text-[#9aa0a6]">{stat.desc}</div>
