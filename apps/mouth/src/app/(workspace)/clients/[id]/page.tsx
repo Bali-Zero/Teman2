@@ -1078,6 +1078,16 @@ function OverviewTab({
                         </p>
                       </div>
                     )}
+                    {client.birthplace && (
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                          Birthplace
+                        </p>
+                        <p className="text-sm font-medium">
+                          {client.birthplace}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </>
               )}
