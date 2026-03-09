@@ -97,7 +97,7 @@ export function DriveSidebar({
           }}
           className="w-full justify-start gap-2.5 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 text-slate-700 dark:text-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 transition-all"
         >
-          <Plus className="h-4 w-4 text-blue-500" />
+          <Plus className="h-4 w-4 text-[#d4845a]" />
           <span className="text-sm font-medium">Nuovo</span>
         </Button>
       </div>
@@ -115,7 +115,7 @@ export function DriveSidebar({
                 w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors
                 ${
                   isActive
-                    ? "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400"
+                    ? "bg-[#d4845a]/10 text-[#d4845a]"
                     : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60"
                 }
               `}
@@ -147,7 +147,7 @@ export function DriveSidebar({
             initial={{ width: 0 }}
             animate={{ width: `${Math.min(usagePercent, 100)}%` }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="h-full rounded-full bg-blue-500"
+            className="h-full rounded-full bg-[#d4845a]"
           />
         </div>
 

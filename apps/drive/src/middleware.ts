@@ -13,8 +13,11 @@ export function middleware(request: NextRequest) {
 
   const token = request.cookies.get("nz_access_token");
   if (!token?.value) {
+    const returnTo = encodeURIComponent(
+      `https://drive.balizero.com${pathname}${request.nextUrl.search}`,
+    );
     return NextResponse.redirect(
-      `https://kita.balizero.com/login?redirect=https://drive.balizero.com`,
+      `https://kita.balizero.com/login?redirect=${returnTo}`,
     );
   }
 

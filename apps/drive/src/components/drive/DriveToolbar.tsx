@@ -81,7 +81,7 @@ export function DriveToolbar({
               relative flex items-center rounded-xl border bg-slate-50/80 dark:bg-slate-800/50 transition-all duration-200
               ${
                 isSearchFocused
-                  ? "border-blue-400/50 shadow-sm shadow-blue-500/10 bg-white dark:bg-slate-800"
+                  ? "border-[var(--bz-accent)]/40 shadow-sm shadow-[var(--bz-accent)]/10 bg-white dark:bg-slate-800"
                   : "border-slate-200/60 dark:border-slate-700/40 hover:border-slate-300 dark:hover:border-slate-600"
               }
             `}
@@ -89,7 +89,7 @@ export function DriveToolbar({
             <Search
               className={`
               ml-3.5 h-4 w-4 transition-colors
-              ${isSearchFocused ? "text-blue-500" : "text-slate-400"}
+              ${isSearchFocused ? "text-[var(--bz-accent)]" : "text-slate-400"}
             `}
             />
             <input
@@ -163,7 +163,7 @@ export function DriveToolbar({
                 relative flex items-center justify-center rounded-md px-2.5 py-1.5 transition-all duration-200
                 ${
                   viewMode === "grid"
-                    ? "text-blue-600 dark:text-blue-400"
+                    ? "text-[var(--bz-accent)]"
                     : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                 }
               `}
@@ -184,7 +184,7 @@ export function DriveToolbar({
                 relative flex items-center justify-center rounded-md px-2.5 py-1.5 transition-all duration-200
                 ${
                   viewMode === "list"
-                    ? "text-blue-600 dark:text-blue-400"
+                    ? "text-[var(--bz-accent)]"
                     : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                 }
               `}
@@ -209,7 +209,7 @@ export function DriveToolbar({
                 flex items-center justify-center rounded-lg p-2 transition-all duration-200
                 ${
                   showInfoPanel
-                    ? "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400"
+                    ? "bg-[var(--bz-accent)]/10 text-[var(--bz-accent)]"
                     : "text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300"
                 }
                 ${!hasSelection ? "opacity-40 cursor-not-allowed" : ""}
@@ -238,7 +238,8 @@ export function DriveToolbar({
           <Button
             size="sm"
             onClick={onCreateClick}
-            className="h-9 bg-blue-500 hover:bg-blue-600 text-white shadow-sm hover:shadow-md transition-all"
+            className="h-9 text-white shadow-sm hover:shadow-md transition-all"
+            style={{ background: "var(--bz-accent)" }}
           >
             <Plus className="h-3.5 w-3.5 sm:mr-1.5" />
             <span className="hidden sm:inline text-[13px] font-medium">
