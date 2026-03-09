@@ -16,7 +16,6 @@ import {
   Grid3X3,
   ExternalLink,
   X,
-  LayoutGrid,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -258,30 +257,7 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-[#141416] overflow-hidden">
-      {/* Top Bar */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-white/5 bg-[#141416] shrink-0">
-        <a
-          href="https://kita.balizero.com"
-          className="flex items-center gap-2 text-sm text-[#9AA0AE] hover:text-[#E6E7EB] transition-colors"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Kita
-        </a>
-
-        <span className="text-sm font-medium text-[#E6E7EB]">
-          Bali Zero Calendar
-        </span>
-
-        <a
-          href="https://kita.balizero.com"
-          className="p-2 rounded-lg text-[#9AA0AE] hover:bg-white/5 hover:text-[#E6E7EB] transition-colors"
-          title="App switcher"
-        >
-          <LayoutGrid className="h-4 w-4" />
-        </a>
-      </div>
-
+    <div className="h-full flex flex-col bg-[#141416] overflow-hidden">
       {/* Calendar Area */}
       <div className="flex-1 flex flex-col overflow-hidden rounded-none">
         {/* Header */}
