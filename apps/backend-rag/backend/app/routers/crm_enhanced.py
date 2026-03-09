@@ -99,11 +99,13 @@ async def _gemini_ocr(image_data: bytes, mime_type: str, prompt: str) -> str:
                     "http://localhost:11434/api/chat",
                     json={
                         "model": _OLLAMA_VISION_MODEL,
-                        "messages": [{
-                            "role": "user",
-                            "content": ollama_prompt,
-                            "images": [image_b64],
-                        }],
+                        "messages": [
+                            {
+                                "role": "user",
+                                "content": ollama_prompt,
+                                "images": [image_b64],
+                            }
+                        ],
                         "stream": False,
                         "options": {"temperature": 0.1, "num_predict": 512},
                     },
@@ -111,7 +113,9 @@ async def _gemini_ocr(image_data: bytes, mime_type: str, prompt: str) -> str:
                 resp.raise_for_status()
                 content = resp.json().get("message", {}).get("content", "").strip()
                 if content:
-                    logger.info(f"OCR via Ollama {_OLLAMA_VISION_MODEL} (local): {len(content)} chars")
+                    logger.info(
+                        f"OCR via Ollama {_OLLAMA_VISION_MODEL} (local): {len(content)} chars"
+                    )
                     return content
                 logger.warning("Ollama vision returned empty, falling back to Gemini")
     except Exception as _e:

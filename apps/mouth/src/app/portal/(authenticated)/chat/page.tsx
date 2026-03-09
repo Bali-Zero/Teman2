@@ -174,7 +174,7 @@ export default function ChatPage() {
   if (isLoading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--bz-accent-warm)" }} />
       </div>
     );
   }
@@ -186,17 +186,17 @@ export default function ChatPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Messages</h1>
-            <p className="text-muted-foreground">
+            <p style={{ color: "var(--bz-text-2)" }}>
               Chat with your Bali Zero team
             </p>
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm" style={{ color: "var(--bz-text-2)" }}>
             <Users className="w-4 h-4" />
             <span>Bali Zero Team</span>
           </div>
         </div>
         {unreadCount > 0 && (
-          <div className="mt-2 px-3 py-1.5 bg-primary/10 text-primary text-sm rounded-full inline-flex items-center gap-1.5">
+          <div className="mt-2 px-3 py-1.5 text-sm rounded-full inline-flex items-center gap-1.5" style={{ background: "rgba(201,169,110,0.12)", color: "var(--bz-accent-warm)" }}>
             <MessageCircle className="w-4 h-4" />
             {unreadCount} unread message{unreadCount !== 1 ? "s" : ""}
           </div>
@@ -210,11 +210,11 @@ export default function ChatPage() {
       >
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center py-12">
-            <MessageCircle className="w-16 h-16 text-muted-foreground/30 mb-4" />
-            <h3 className="text-lg font-semibold text-muted-foreground">
+            <MessageCircle className="w-16 h-16 mb-4" style={{ color: "var(--bz-text-3)" }} />
+            <h3 className="text-lg font-semibold" style={{ color: "var(--bz-text-2)" }}>
               No messages yet
             </h3>
-            <p className="text-sm text-muted-foreground/70 mt-1 max-w-xs">
+            <p className="text-sm mt-1 max-w-xs" style={{ color: "var(--bz-text-3)" }}>
               Start a conversation with your Bali Zero team. We're here to help!
             </p>
           </div>
@@ -224,7 +224,7 @@ export default function ChatPage() {
               {/* Date Separator */}
               <div className="flex items-center gap-3 my-4">
                 <div className="flex-1 h-px bg-border" />
-                <span className="text-xs font-medium text-muted-foreground px-2">
+                <span className="text-xs font-medium px-2" style={{ color: "var(--bz-text-2)" }}>
                   {formatDate(dateMessages[0].createdAt)}
                 </span>
                 <div className="flex-1 h-px bg-border" />
@@ -277,7 +277,7 @@ export default function ChatPage() {
             )}
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground/60 mt-2 text-center">
+        <p className="text-xs mt-2 text-center" style={{ color: "var(--bz-text-3)" }}>
           Messages are typically responded to within 24 hours
         </p>
       </div>
@@ -302,8 +302,8 @@ function MessageBubble({
     >
       {/* Team Avatar */}
       {isFromTeam && (
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-          <Users className="w-4 h-4 text-primary" />
+        <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(201,169,110,0.12)" }}>
+          <Users className="w-4 h-4" style={{ color: "var(--bz-accent-warm)" }} />
         </div>
       )}
 
@@ -311,15 +311,16 @@ function MessageBubble({
       <div
         className={cn(
           "max-w-[80%] md:max-w-[70%] rounded-2xl px-4 py-2.5",
-          isFromTeam
-            ? "bg-neutral-100 dark:bg-neutral-800 rounded-tl-sm"
-            : "bg-primary text-primary-foreground rounded-tr-sm",
-          isUnread && "ring-2 ring-primary/30",
+          isFromTeam ? "rounded-tl-sm" : "rounded-tr-sm",
+          isUnread && "ring-2",
         )}
+        style={isFromTeam
+          ? { background: "var(--bz-surface)", boxShadow: isUnread ? "0 0 0 2px rgba(201,169,110,0.3)" : undefined }
+          : { background: "var(--bz-accent-warm)", color: "#0c0c0e" }}
       >
         {/* Sender name for team messages */}
         {isFromTeam && message.sentBy && (
-          <p className="text-xs font-medium text-primary mb-1">
+          <p className="text-xs font-medium mb-1" style={{ color: "var(--bz-accent-warm)" }}>
             {message.sentBy}
           </p>
         )}
@@ -327,10 +328,8 @@ function MessageBubble({
         {/* Subject if present */}
         {message.subject && (
           <p
-            className={cn(
-              "text-sm font-semibold mb-1",
-              isFromTeam ? "text-foreground" : "text-primary-foreground",
-            )}
+            className="text-sm font-semibold mb-1"
+            style={{ color: isFromTeam ? "var(--bz-text-1)" : "#0c0c0e" }}
           >
             {message.subject}
           </p>
@@ -338,20 +337,16 @@ function MessageBubble({
 
         {/* Message content */}
         <p
-          className={cn(
-            "text-sm whitespace-pre-wrap break-words",
-            isFromTeam ? "text-foreground" : "text-primary-foreground",
-          )}
+          className="text-sm whitespace-pre-wrap break-words"
+          style={{ color: isFromTeam ? "var(--bz-text-1)" : "#0c0c0e" }}
         >
           {message.content}
         </p>
 
         {/* Time */}
         <p
-          className={cn(
-            "text-[10px] mt-1",
-            isFromTeam ? "text-muted-foreground" : "text-primary-foreground/70",
-          )}
+          className="text-[10px] mt-1"
+          style={{ color: isFromTeam ? "var(--bz-text-2)" : "rgba(12,12,14,0.6)" }}
         >
           {formatTime(message.createdAt)}
           {!isFromTeam && message.readAt && " • Read"}
@@ -360,8 +355,8 @@ function MessageBubble({
 
       {/* User Avatar */}
       {!isFromTeam && (
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-          <User className="w-4 h-4 text-primary-foreground" />
+        <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "var(--bz-accent-warm)" }}>
+          <User className="w-4 h-4" style={{ color: "#0c0c0e" }} />
         </div>
       )}
     </div>

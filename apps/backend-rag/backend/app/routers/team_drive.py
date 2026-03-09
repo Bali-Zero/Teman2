@@ -301,17 +301,11 @@ async def drive_status(
         result = await drive.list_files(page_size=1)
         files_accessible = len(result.get("files", [])) > 0
     except Exception as e:
-        logger.warning(
-            f"[TEAM_DRIVE] Generic list_files failed, trying BZ root folder: {e}"
-        )
+        logger.warning(f"[TEAM_DRIVE] Generic list_files failed, trying BZ root folder: {e}")
         try:
-            result = await drive.list_files(
-                folder_id=BZ_ROOT_FOLDER_ID, page_size=1
-            )
+            result = await drive.list_files(folder_id=BZ_ROOT_FOLDER_ID, page_size=1)
             files_accessible = len(result.get("files", [])) > 0
-            logger.info(
-                f"[TEAM_DRIVE] BZ root folder accessible: {files_accessible}"
-            )
+            logger.info(f"[TEAM_DRIVE] BZ root folder accessible: {files_accessible}")
         except Exception as e2:
             logger.error(
                 f"[TEAM_DRIVE] BZ root folder also failed: {e2}. "
