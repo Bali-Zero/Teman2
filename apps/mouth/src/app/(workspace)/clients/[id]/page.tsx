@@ -464,7 +464,7 @@ const INTERACTION_ICONS: Record<string, React.ReactNode> = {
   note: <FileText className="w-4 h-4" />,
 };
 
-type TabType = "overview" | "family" | "immigration" | "company" | "tax";
+type TabType = "overview" | "documents" | "family" | "immigration" | "company" | "tax";
 type ModalType =
   | "none"
   | "edit_client"
@@ -541,7 +541,7 @@ export default function ClientDetailPage() {
     const tabParam = searchParams.get("tab");
     if (
       tabParam &&
-      ["overview", "family", "immigration", "company", "tax"].includes(tabParam)
+      ["overview", "documents", "family", "immigration", "company", "tax"].includes(tabParam)
     ) {
       setActiveTab(tabParam as TabType);
     }
@@ -777,6 +777,11 @@ export default function ClientDetailPage() {
         {[
           { key: "overview", label: "Overview", icon: User },
           {
+            key: "documents",
+            label: `Documents (${stats.documents_count})`,
+            icon: FileText,
+          },
+          {
             key: "family",
             label: `Family (${stats.family_count})`,
             icon: Users,
@@ -816,6 +821,21 @@ export default function ClientDetailPage() {
           onEditClick={() => setActiveModal("edit_client")}
           onRefresh={refreshProfile}
           clientId={clientId}
+        />
+      )}
+
+      {activeTab === "documents" && (
+        <DocumentsTab
+          clientId={clientId}
+          documents={documents}
+          documentsByCategory={documentsByCategory}
+          formatDate={formatDate}
+          onAddClick={() => setActiveModal("add_document")}
+          onEditClick={(doc) => {
+            setEditingDocument(doc);
+            setActiveModal("edit_document");
+          }}
+          onRefresh={refreshProfile}
         />
       )}
 
@@ -2214,6 +2234,143 @@ function FamilyMemberUploadButton({
             : `Upload ${documentType === "passport" ? "Passport" : "Visa"}`}
       </Button>
     </>
+  );
+}
+
+// ============================================
+// DOCUMENTS TAB — all client documents by category
+// ============================================
+function DocumentsTab({
+  clientId,
+  documents,
+  documentsByCategory,
+  formatDate,
+  onAddClick,
+  onEditClick,
+  onRefresh,
+}: {
+  clientId: number;
+  documents: ClientDocument[];
+  documentsByCategory: Record<string, ClientDocument[]>;
+  formatDate: (d: string) => string;
+  onAddClick: () => void;
+  onEditClick: (doc: ClientDocument) => void;
+  onRefresh: () => Promise<void>;
+}) {
+  const categoryLabels: Record<string, string> = {
+    profile: "Profile",
+    immigration: "Immigration",
+    company: "Company",
+    tax: "Tax",
+    family: "Family",
+    other: "Other",
+  };
+
+  const categoryIcons: Record<string, React.ElementType> = {
+    profile: User,
+    immigration: Globe,
+    company: Building2,
+    tax: DollarSign,
+    family: Users,
+    other: FileText,
+  };
+
+  const sortedCategories = Object.keys(documentsByCategory).sort((a, b) => {
+    const order = ["profile", "immigration", "company", "tax", "family", "other"];
+    return order.indexOf(a) - order.indexOf(b);
+  });
+
+  if (documents.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background-secondary)]/50 p-12 text-center">
+        <FileText className="w-12 h-12 mx-auto text-[var(--foreground-muted)] mb-3 opacity-50" />
+        <p className="text-[var(--foreground-muted)]">No documents yet</p>
+        <p className="text-sm text-[var(--foreground-muted)] mt-1 mb-4">
+          Upload passport, visa, or company documents
+        </p>
+        <Button size="sm" onClick={onAddClick} className="gap-2">
+          <Plus className="w-4 h-4" />
+          Add Document
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-[var(--foreground)]">Documents</h3>
+          <p className="text-sm text-[var(--foreground-muted)]">{documents.length} documents across {sortedCategories.length} categories</p>
+        </div>
+        <Button size="sm" onClick={onAddClick} className="gap-2">
+          <Plus className="w-4 h-4" />
+          Add Document
+        </Button>
+      </div>
+
+      {sortedCategories.map((cat) => {
+        const catDocs = documentsByCategory[cat];
+        const Icon = categoryIcons[cat] || FileText;
+        return (
+          <div key={cat} className="space-y-2">
+            <div className="flex items-center gap-2 pb-1 border-b border-[var(--border)]">
+              <Icon className="w-4 h-4 text-[var(--accent)]" />
+              <h4 className="text-sm font-semibold text-[var(--foreground)] capitalize">
+                {categoryLabels[cat] || cat}
+              </h4>
+              <span className="text-xs text-[var(--foreground-muted)] bg-[var(--background-secondary)] px-2 py-0.5 rounded-full">
+                {catDocs.length}
+              </span>
+            </div>
+            <div className="space-y-1">
+              {catDocs.map((doc) => (
+                <div
+                  key={doc.id}
+                  className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-3 hover:bg-[var(--background-secondary)]/80 transition-colors"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <FileText className="w-4 h-4 shrink-0 text-[var(--foreground-muted)]" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-[var(--foreground)] truncate">
+                        {doc.file_name || doc.document_type}
+                      </p>
+                      <p className="text-xs text-[var(--foreground-muted)] capitalize">
+                        {doc.document_type?.replace(/_/g, " ")}
+                        {doc.expiry_date ? ` · Expires ${formatDate(doc.expiry_date)}` : ""}
+                        {doc.status === "verified" && (
+                          <span className="ml-1 text-green-500">· ✓ Verified</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {doc.google_drive_file_url && (
+                      <a
+                        href={doc.google_drive_file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-[var(--accent)] hover:underline px-2 py-1 rounded border border-[var(--border)] hover:bg-[var(--background)]"
+                      >
+                        View
+                      </a>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => onEditClick(doc)}
+                    >
+                      Edit
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
