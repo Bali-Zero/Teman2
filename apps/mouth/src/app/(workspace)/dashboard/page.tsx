@@ -17,13 +17,12 @@ import {
   WhatsAppPreview,
   AiPulseWidget,
   FinancialRealityWidget,
-  FeaturedArticlesWidget,
-  HomepagePreviewWidget,
   GrafanaWidget,
   NusantaraHealthWidget,
   CaseDistribution,
   MiniSparkline,
 } from "@/components/dashboard";
+import { HeroLiveWindow } from "@/components/workspace/HeroLiveWindow";
 import type { PraticaPreview, WhatsAppMessage } from "@/components/dashboard";
 import { DashboardErrorBoundary } from "@/components/ErrorBoundary";
 import { useDashboardData } from "@/hooks/useDashboardData";
@@ -227,13 +226,8 @@ export default function DashboardPage() {
   return (
     <DashboardErrorBoundary>
       <div className="space-y-6 sm:space-y-8">
-        {/* Featured Articles */}
-        <FeaturedArticlesWidget />
-
-        {/* Homepage Preview */}
-        <div className="animate-in fade-in slide-in-from-top-4 duration-700">
-          <HomepagePreviewWidget />
-        </div>
+        {/* Live Homepage Hero — mirrors balizero.com copertina */}
+        <HeroLiveWindow />
 
         {/* Real-time Status */}
         {realtime.isConnected && (
