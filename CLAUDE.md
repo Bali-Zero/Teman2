@@ -414,6 +414,29 @@ async function fetchKBLI(code: string): Promise<KBLIResponse | null> {
 
 ---
 
+## 13. Frontend Deploy — QA Automatico (OBBLIGATORIO)
+
+**Ogni volta che fai deploy che impatta il frontend (Vercel), DEVI automaticamente:**
+
+1. Aspetta che il deploy sia live (curl 200/307 sulle URL impattate)
+2. Screenshot con Playwright (`mcp__playwright__browser_navigate` + `browser_take_screenshot`) di ogni app modificata
+3. Verifica visivamente: colori corretti, logo presente, nessun elemento rotto
+4. Se trovi problemi → fixa e rideploya senza aspettare conferma
+5. Report finale con screenshot inline
+
+**URL da monitorare:**
+
+- `https://kita.balizero.com` — workspace principale
+- `https://calendar.balizero.com` — calendar
+- `https://mail.balizero.com` — mail
+- `https://drive.balizero.com` — drive
+- `https://knowledge.balizero.com` — knowledge
+- `https://my.balizero.com` — portal clienti
+
+**Non serve che l'utente lo chieda — è parte del processo di deploy.**
+
+---
+
 ## 13. Pre-Deploy Checklist
 
 Before any production deployment:
