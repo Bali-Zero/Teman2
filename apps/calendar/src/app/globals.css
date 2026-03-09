@@ -1,26 +1,43 @@
 @import "tailwindcss";
 
 :root {
-  --bg-primary: #141416;
-  --bg-secondary: #1a1d24;
-  --bg-surface: #242424;
-  --text-primary: #ececec;
-  --text-muted: #9aa0ae;
-  --accent: #d4845a;
-  --border: rgba(255, 255, 255, 0.05);
+  --bz-base:        #0c0c0e;
+  --bz-elevated:    #131315;
+  --bz-surface:     #1a1a1e;
+  --bz-card:        #202024;
+  --bz-card-hover:  #262629;
+  --bz-accent:      #d4845a;
+  --bz-accent-hover:#bf7350;
+  --bz-accent-warm: #c9a96e;
+  --bz-accent-cool: #5e7fb5;
+  --bz-text-1:      #edeae4;
+  --bz-text-2:      #8c8884;
+  --bz-text-3:      #575350;
+  --bz-border:      rgba(255,255,255,0.055);
+  --bz-border-hover:rgba(255,255,255,0.10);
+  --bz-border-accent:rgba(201,169,110,0.18);
+  --bz-green:       #4db87a;
+  --bz-red:         #d95f5a;
+  --bz-amber:       #d4923a;
+  --bz-sidebar-width: 216px;
+  --bz-header-height: 48px;
+
+  /* backward compat */
+  --bg-primary:   var(--bz-base);
+  --bg-secondary: var(--bz-elevated);
+  --bg-surface:   var(--bz-surface);
+  --text-primary: var(--bz-text-1);
+  --text-muted:   var(--bz-text-2);
+  --accent:       var(--bz-accent);
+  --border:       var(--bz-border);
 }
 
-html,
-body {
+html, body {
   height: 100%;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
+  background-color: var(--bz-base);
+  color: var(--bz-text-1);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-* {
-  box-sizing: border-box;
-}
-
-input[type="datetime-local"]::-webkit-calendar-picker-indicator {
-  filter: invert(1) opacity(0.4);
-}
+* { box-sizing: border-box; }

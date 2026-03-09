@@ -3,59 +3,54 @@
 @tailwind utilities;
 
 :root {
-  /* Background */
-  --background: #141416;
-  --background-secondary: #1a1a1e;
-  --background-elevated: #222228;
+  /* Warm Depth tokens */
+  --bz-base:         #0c0c0e;
+  --bz-elevated:     #131315;
+  --bz-surface:      #1a1a1e;
+  --bz-card:         #202024;
+  --bz-card-hover:   #262629;
+  --bz-accent:       #d4845a;
+  --bz-accent-hover: #bf7350;
+  --bz-accent-warm:  #c9a96e;
+  --bz-accent-cool:  #5e7fb5;
+  --bz-text-1:       #edeae4;
+  --bz-text-2:       #8c8884;
+  --bz-text-3:       #575350;
+  --bz-border:        rgba(255,255,255,0.055);
+  --bz-border-hover:  rgba(255,255,255,0.10);
+  --bz-border-accent: rgba(201,169,110,0.18);
+  --bz-green:        #4db87a;
+  --bz-red:          #d95f5a;
+  --bz-amber:        #d4923a;
 
-  /* Foreground */
-  --foreground: #ececec;
-  --foreground-muted: #888896;
-
-  /* Accent (Bali Zero orange) */
-  --accent: #d4845a;
-  --accent-hover: #c47249;
-
-  /* Borders */
-  --border: #2a2a32;
-
-  /* Semantic colors */
-  --error: #e55353;
-  --warning: #f5a623;
-  --success: #4caf86;
-
-  /* Font */
-  --font-geist-sans: "Geist", system-ui, -apple-system, sans-serif;
+  /* backward compat */
+  --background:           var(--bz-base);
+  --background-secondary: var(--bz-elevated);
+  --background-elevated:  var(--bz-surface);
+  --foreground:           var(--bz-text-1);
+  --foreground-muted:     var(--bz-text-2);
+  --accent:               var(--bz-accent);
+  --accent-hover:         var(--bz-accent-hover);
+  --border:               rgba(255,255,255,0.08);
+  --error:                var(--bz-red);
+  --warning:              var(--bz-amber);
+  --success:              var(--bz-green);
+  --font-geist-sans: "Inter", system-ui, -apple-system, sans-serif;
   --font-geist-mono: "Geist Mono", ui-monospace, monospace;
 }
 
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
-}
+* { box-sizing: border-box; padding: 0; margin: 0; }
 
-html,
-body {
+html, body {
   max-width: 100vw;
   overflow-x: hidden;
-  background-color: var(--background);
-  color: var(--foreground);
+  background-color: var(--bz-base);
+  color: var(--bz-text-1);
   font-family: var(--font-geist-sans);
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--foreground-muted);
-}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bz-surface); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--bz-text-3); }
