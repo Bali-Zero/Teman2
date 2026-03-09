@@ -135,17 +135,17 @@ export default async function RootLayout({
                 },
                 {
                   name: "Calendar",
-                  href: "https://kita.balizero.com/calendar",
+                  href: "https://calendar.balizero.com",
                   emoji: "📅",
                 },
                 {
                   name: "Drive",
-                  href: "https://kita.balizero.com/documents",
+                  href: "https://drive.balizero.com",
                   emoji: "💾",
                 },
                 {
                   name: "Knowledge",
-                  href: "https://kita.balizero.com/knowledge",
+                  href: "https://knowledge.balizero.com",
                   emoji: "📚",
                 },
               ].map((app) => (
