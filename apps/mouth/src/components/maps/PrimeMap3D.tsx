@@ -1,5 +1,5 @@
 'use client';
-
+// Prime Intelligence 3D Map — Google Maps JS API (v=beta) with maps3d library
 import React, { useEffect, useRef, useState } from 'react';
 import Script from 'next/script';
 import { logger } from '@/lib/logger';
