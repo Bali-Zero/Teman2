@@ -311,7 +311,7 @@ export default function DrivePage() {
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
         >
-          <Loader2 className="h-10 w-10 text-blue-500" />
+          <Loader2 className="h-10 w-10 text-[#d4845a]" />
         </motion.div>
         <p className="text-slate-400">Loading Bali Zero Drive...</p>
       </div>

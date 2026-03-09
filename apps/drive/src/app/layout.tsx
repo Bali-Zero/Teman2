@@ -14,7 +14,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className="h-screen overflow-hidden bg-[#141416] text-[#f1f1f1]">
+      <body className="h-screen overflow-hidden bg-[#0c0c0e] text-[#f1f1f1]">
         <Providers>
           <AuthGate>
             <AppShell>{children}</AppShell>

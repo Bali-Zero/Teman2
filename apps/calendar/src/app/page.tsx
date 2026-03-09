@@ -250,14 +250,14 @@ export default function CalendarPage() {
 
   if (!isMounted || !currentMonth) {
     return (
-      <div className="h-screen flex items-center justify-center bg-[#141416]">
+      <div className="h-screen flex items-center justify-center bg-[#0c0c0e]">
         <RefreshCw className="h-8 w-8 animate-spin text-[#9AA0AE]" />
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col bg-[#141416] overflow-hidden">
+    <div className="h-full flex flex-col bg-[#0c0c0e] overflow-hidden">
       {/* Calendar Area */}
       <div className="flex-1 flex flex-col overflow-hidden rounded-none">
         {/* Header */}
@@ -278,7 +278,7 @@ export default function CalendarPage() {
               <select
                 value={selectedCalendar}
                 onChange={(e) => setSelectedCalendar(e.target.value)}
-                className="bg-[#1A1D24] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#E6E7EB] focus:ring-2 focus:ring-[#FB7185] focus:outline-none"
+                className="bg-[#1A1D24] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#E6E7EB] focus:ring-2 focus:ring-[#d4845a] focus:outline-none"
               >
                 {calendars.map((cal) => (
                   <option key={cal.id} value={cal.id}>
@@ -294,7 +294,7 @@ export default function CalendarPage() {
                   className={cn(
                     "px-3 py-2 text-sm transition-colors",
                     view === "month"
-                      ? "bg-[#FB7185] text-white"
+                      ? "bg-[#d4845a] text-white"
                       : "text-[#9AA0AE] hover:bg-white/5",
                   )}
                 >
@@ -305,7 +305,7 @@ export default function CalendarPage() {
                   className={cn(
                     "px-3 py-2 text-sm transition-colors",
                     view === "list"
-                      ? "bg-[#FB7185] text-white"
+                      ? "bg-[#d4845a] text-white"
                       : "text-[#9AA0AE] hover:bg-white/5",
                   )}
                 >
@@ -325,7 +325,7 @@ export default function CalendarPage() {
 
               <button
                 onClick={() => setShowCreateForm(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#FB7185] text-white hover:bg-[#F43F5E] transition-colors"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#d4845a] text-white hover:bg-[#bf7350] transition-colors"
               >
                 <Plus className="h-4 w-4" /> Nuovo
               </button>
@@ -397,7 +397,7 @@ export default function CalendarPage() {
                       key={day}
                       className={cn(
                         "text-center text-xs font-medium py-2",
-                        i === 0 && "text-[#FB7185]",
+                        i === 0 && "text-[#d4845a]",
                         i !== 0 && "text-[#9AA0AE]",
                       )}
                     >
@@ -419,19 +419,19 @@ export default function CalendarPage() {
                         className={cn(
                           "min-h-[90px] p-2 border border-white/5 rounded-lg cursor-pointer transition-all",
                           isInMonth ? "bg-[#1A1D24]" : "bg-[#1A1D24]/30",
-                          isToday(date) && "ring-2 ring-[#FB7185]",
+                          isToday(date) && "ring-2 ring-[#d4845a]",
                           isSelected(date) &&
-                            "bg-[#FB7185]/10 border-[#FB7185]/50",
+                            "bg-[#d4845a]/10 border-[#d4845a]/50",
                           !isInMonth && "opacity-40",
-                          "hover:border-[#FB7185]/30",
+                          "hover:border-[#d4845a]/30",
                         )}
                       >
                         <div
                           className={cn(
                             "text-sm font-medium mb-1",
-                            isToday(date) && "text-[#FB7185]",
+                            isToday(date) && "text-[#d4845a]",
                             !isToday(date) && isInMonth && "text-[#E6E7EB]",
-                            date.getDay() === 0 && "text-[#FB7185]",
+                            date.getDay() === 0 && "text-[#d4845a]",
                           )}
                         >
                           {date.getDate()}
@@ -447,7 +447,7 @@ export default function CalendarPage() {
                               }}
                               className={cn(
                                 "text-xs px-1.5 py-0.5 rounded truncate cursor-pointer",
-                                "bg-[#FB7185]/20 text-[#FB7185] hover:bg-[#FB7185]/30",
+                                "bg-[#d4845a]/20 text-[#d4845a] hover:bg-[#d4845a]/30",
                                 event.hangoutLink &&
                                   "bg-[#34D399]/20 text-[#34D399]",
                               )}
@@ -488,7 +488,7 @@ export default function CalendarPage() {
                         className={cn(
                           "px-6 py-4 cursor-pointer hover:bg-white/5 transition-colors",
                           selectedEvent?.id === event.id &&
-                            "bg-[#FB7185]/10 border-l-2 border-l-[#FB7185]",
+                            "bg-[#d4845a]/10 border-l-2 border-l-[#d4845a]",
                         )}
                       >
                         <div className="flex items-start justify-between">
@@ -550,7 +550,7 @@ export default function CalendarPage() {
                       onChange={(e) =>
                         setNewEvent({ ...newEvent, summary: e.target.value })
                       }
-                      className="w-full bg-[#242424] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#E6E7EB] focus:ring-2 focus:ring-[#FB7185] focus:outline-none"
+                      className="w-full bg-[#242424] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#E6E7EB] focus:ring-2 focus:ring-[#d4845a] focus:outline-none"
                       placeholder="Aggiungi titolo"
                     />
                   </div>
@@ -567,7 +567,7 @@ export default function CalendarPage() {
                         onChange={(e) =>
                           setNewEvent({ ...newEvent, from: e.target.value })
                         }
-                        className="w-full bg-[#242424] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#E6E7EB] focus:ring-2 focus:ring-[#FB7185] focus:outline-none"
+                        className="w-full bg-[#242424] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#E6E7EB] focus:ring-2 focus:ring-[#d4845a] focus:outline-none"
                       />
                     </div>
                     <div>
@@ -581,7 +581,7 @@ export default function CalendarPage() {
                         onChange={(e) =>
                           setNewEvent({ ...newEvent, to: e.target.value })
                         }
-                        className="w-full bg-[#242424] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#E6E7EB] focus:ring-2 focus:ring-[#FB7185] focus:outline-none"
+                        className="w-full bg-[#242424] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#E6E7EB] focus:ring-2 focus:ring-[#d4845a] focus:outline-none"
                       />
                     </div>
                   </div>
@@ -596,7 +596,7 @@ export default function CalendarPage() {
                       onChange={(e) =>
                         setNewEvent({ ...newEvent, location: e.target.value })
                       }
-                      className="w-full bg-[#242424] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#E6E7EB] focus:ring-2 focus:ring-[#FB7185] focus:outline-none"
+                      className="w-full bg-[#242424] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#E6E7EB] focus:ring-2 focus:ring-[#d4845a] focus:outline-none"
                       placeholder="Aggiungi luogo"
                     />
                   </div>
@@ -613,7 +613,7 @@ export default function CalendarPage() {
                           description: e.target.value,
                         })
                       }
-                      className="w-full bg-[#242424] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#E6E7EB] focus:ring-2 focus:ring-[#FB7185] focus:outline-none resize-none"
+                      className="w-full bg-[#242424] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#E6E7EB] focus:ring-2 focus:ring-[#d4845a] focus:outline-none resize-none"
                       rows={3}
                       placeholder="Aggiungi descrizione"
                     />
@@ -644,7 +644,7 @@ export default function CalendarPage() {
                     </button>
                     <button
                       type="submit"
-                      className="flex-1 px-4 py-2 rounded-lg bg-[#FB7185] text-white hover:bg-[#F43F5E]"
+                      className="flex-1 px-4 py-2 rounded-lg bg-[#d4845a] text-white hover:bg-[#bf7350]"
                     >
                       Salva
                     </button>
@@ -661,7 +661,7 @@ export default function CalendarPage() {
                     <div className="flex gap-1">
                       <button
                         onClick={() => deleteEvent(selectedEvent.id)}
-                        className="p-2 rounded-lg text-[#FB7185] hover:bg-[#FB7185]/10"
+                        className="p-2 rounded-lg text-[#d4845a] hover:bg-[#d4845a]/10"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -736,7 +736,7 @@ export default function CalendarPage() {
                             key={i}
                             className="text-sm flex items-center gap-2 text-[#E6E7EB]"
                           >
-                            <div className="w-8 h-8 rounded-full bg-[#FB7185]/20 flex items-center justify-center text-xs font-medium text-[#FB7185]">
+                            <div className="w-8 h-8 rounded-full bg-[#d4845a]/20 flex items-center justify-center text-xs font-medium text-[#d4845a]">
                               {email[0].toUpperCase()}
                             </div>
                             {email}

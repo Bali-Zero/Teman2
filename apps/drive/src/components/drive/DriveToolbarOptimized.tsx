@@ -132,7 +132,7 @@ export function DriveToolbarOptimized({
       return {
         icon: Loader2,
         text: "Syncing...",
-        className: "text-blue-500 animate-spin",
+        className: "text-[#d4845a] animate-spin",
       };
     if (!isConnected)
       return {
@@ -163,7 +163,7 @@ export function DriveToolbarOptimized({
             value={localQuery}
             onChange={(e) => setLocalQuery(e.target.value)}
             placeholder="Search files... (Ctrl+K)"
-            className="w-full pl-10 pr-10 py-2 rounded-lg bg-slate-100/80 dark:bg-slate-800/80 border-0 text-sm focus:ring-2 focus:ring-blue-500/20 placeholder:text-slate-400 transition-all"
+            className="w-full pl-10 pr-10 py-2 rounded-lg bg-slate-100/80 dark:bg-slate-800/80 border-0 text-sm focus:ring-2 focus:ring-[#d4845a]/20 placeholder:text-slate-400 transition-all"
           />
           {localQuery && (
             <button
@@ -204,12 +204,12 @@ export function DriveToolbarOptimized({
               onClick={() => setShowFilters(!showFilters)}
               className={cn(
                 "relative",
-                fileTypeFilter !== "all" && "text-blue-600",
+                fileTypeFilter !== "all" && "text-[#d4845a]",
               )}
             >
               <Filter className="h-4 w-4" />
               {fileTypeFilter !== "all" && (
-                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 bg-blue-500 rounded-full" />
+                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 bg-[#d4845a] rounded-full" />
               )}
             </Button>
           )}
@@ -221,7 +221,7 @@ export function DriveToolbarOptimized({
               className={cn(
                 "p-1.5 rounded-md transition-all",
                 viewMode === "grid"
-                  ? "bg-white dark:bg-slate-700 shadow-sm text-blue-600"
+                  ? "bg-white dark:bg-slate-700 shadow-sm text-[#d4845a]"
                   : "text-slate-400 hover:text-slate-600",
               )}
               title="Grid view (Ctrl+Shift+V)"
@@ -233,7 +233,7 @@ export function DriveToolbarOptimized({
               className={cn(
                 "p-1.5 rounded-md transition-all",
                 viewMode === "list"
-                  ? "bg-white dark:bg-slate-700 shadow-sm text-blue-600"
+                  ? "bg-white dark:bg-slate-700 shadow-sm text-[#d4845a]"
                   : "text-slate-400 hover:text-slate-600",
               )}
               title="List view (Ctrl+Shift+V)"
@@ -249,7 +249,7 @@ export function DriveToolbarOptimized({
             onClick={onToggleInfoPanel}
             className={cn(
               "hidden md:flex",
-              hasSelection && !showInfoPanel && "text-blue-600",
+              hasSelection && !showInfoPanel && "text-[#d4845a]",
             )}
           >
             Info
@@ -259,7 +259,7 @@ export function DriveToolbarOptimized({
           <Button
             onClick={onCreateClick}
             size="sm"
-            className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
+            className="text-white gap-1.5" style={{ background: "var(--bz-accent)" }}
           >
             <span className="hidden sm:inline">New</span>
             <span className="sm:hidden">+</span>
@@ -281,7 +281,7 @@ export function DriveToolbarOptimized({
                 className={cn(
                   "px-3 py-1 text-xs font-medium rounded-full transition-all",
                   fileTypeFilter === type.value
-                    ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                    ? "bg-[#d4845a]/15 text-[#d4845a]"
                     : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100",
                 )}
               >
@@ -301,7 +301,7 @@ export function DriveToolbarOptimized({
             </span>
           )}
           {selectedCount !== undefined && selectedCount > 0 && (
-            <span className="text-blue-600 font-medium">
+            <span className="text-[#d4845a] font-medium">
               {selectedCount} selected
             </span>
           )}
