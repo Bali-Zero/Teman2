@@ -77,7 +77,9 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
         # Step 1: Expiry alerts
         try:
             alerts = await _call_safe("/api/crm/expiry-alerts", params={"days_ahead": 90})
-            urgent = [a for a in (alerts.get("alerts") or alerts.get("data") or []) if isinstance(a, dict) and a.get("days_remaining", 999) < 30]
+            # alerts may be a list directly or a dict with "alerts"/"data" key
+            alerts_list = alerts if isinstance(alerts, list) else (alerts.get("alerts") or alerts.get("data") or [])
+            urgent = [a for a in alerts_list if isinstance(a, dict) and a.get("days_remaining", 999) < 30]
             reminders_sent = 0
             for alert in urgent[:10]:  # Cap at 10 reminders per run
                 phone = alert.get("client_phone") or alert.get("phone")
@@ -92,7 +94,7 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
                         "summary": f"Auto-sent expiry reminder ({alert.get('days_remaining')}d remaining)",
                         "channel": "whatsapp",
                     })
-            report["expiry_alerts"] = {"total": len(alerts.get("alerts", [])), "urgent": len(urgent), "reminders_sent": reminders_sent}
+            report["expiry_alerts"] = {"total": len(alerts_list), "urgent": len(urgent), "reminders_sent": reminders_sent}
             log.append({"step": "expiry_alerts", "status": "ok", "reminders_sent": reminders_sent})
         except Exception as e:
             log.append({"step": "expiry_alerts", "status": "error", "detail": str(e)})
@@ -101,10 +103,18 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
         try:
             agents = await _call_safe("/api/autonomous-agents/status")
             stale_agents = []
-            for name, info in (agents.get("agents") or agents.get("data") or {}).items():
-                if isinstance(info, dict) and info.get("status") == "error":
-                    stale_agents.append(name)
-            report["agents"] = {"total": len(agents.get("agents", {})), "stale": stale_agents}
+            # agents may be a list or a dict with "agents"/"data" key
+            agents_dict = agents if isinstance(agents, dict) else {}
+            agents_map = agents_dict.get("agents") or agents_dict.get("data") or {}
+            if isinstance(agents_map, dict):
+                for name, info in agents_map.items():
+                    if isinstance(info, dict) and info.get("status") == "error":
+                        stale_agents.append(name)
+            elif isinstance(agents_map, list):
+                for item in agents_map:
+                    if isinstance(item, dict) and item.get("status") == "error":
+                        stale_agents.append(item.get("name", "unknown"))
+            report["agents"] = {"total": len(agents_map), "stale": stale_agents}
             log.append({"step": "agent_health", "status": "ok", "stale_agents": stale_agents})
         except Exception as e:
             log.append({"step": "agent_health", "status": "error", "detail": str(e)})
@@ -129,7 +139,7 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
 
         # Step 4: Team and completion metrics
         try:
-            hours_data = await _call_safe("/api/team-activity/hours/weekly")
+            hours_data = await _call_safe("/api/team/activity/weekly")
             completion_data = await _call_safe("/api/analytics/completion-rates", params={"period": "7d"})
             report["team_hours"] = hours_data
             report["completion_rates"] = completion_data
