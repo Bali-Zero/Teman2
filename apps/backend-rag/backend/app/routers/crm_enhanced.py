@@ -72,15 +72,52 @@ async def _download_drive_file(file_id: str) -> tuple[bytes, str]:
 
 async def _gemini_ocr(image_data: bytes, mime_type: str, prompt: str) -> str:
     """
-    Run OCR on image data using Gemini.
-    Strategy: try Gemini CLI first (free, ~25s), fallback to API (paid, ~3s).
+    Run OCR on image data.
+    Strategy:
+      1. Ollama qwen2.5vl:7b (local, free, confirmed working for passports)
+      2. Gemini CLI (free via Ultra subscription)
+      3. Gemini API (paid, fast fallback)
     Returns raw text response from the model.
     """
     import asyncio
+    import base64 as _base64
     import shutil
     import tempfile
 
-    # --- Attempt 1: Gemini CLI (free via Ultra subscription) ---
+    # --- Attempt 1: Ollama qwen2.5vl:7b (local, free) ---
+    try:
+        import httpx as _httpx
+
+        from backend.llm.ollama_client import is_ollama_available
+
+        _OLLAMA_VISION_MODEL = "qwen2.5vl:7b"
+        if await is_ollama_available(_OLLAMA_VISION_MODEL):
+            image_b64 = _base64.b64encode(image_data).decode()
+            ollama_prompt = f"{prompt} Return JSON only, null for missing fields."
+            async with _httpx.AsyncClient(timeout=120.0) as _client:
+                resp = await _client.post(
+                    "http://localhost:11434/api/chat",
+                    json={
+                        "model": _OLLAMA_VISION_MODEL,
+                        "messages": [{
+                            "role": "user",
+                            "content": ollama_prompt,
+                            "images": [image_b64],
+                        }],
+                        "stream": False,
+                        "options": {"temperature": 0.1, "num_predict": 512},
+                    },
+                )
+                resp.raise_for_status()
+                content = resp.json().get("message", {}).get("content", "").strip()
+                if content:
+                    logger.info(f"OCR via Ollama {_OLLAMA_VISION_MODEL} (local): {len(content)} chars")
+                    return content
+                logger.warning("Ollama vision returned empty, falling back to Gemini")
+    except Exception as _e:
+        logger.warning(f"Ollama vision error: {_e}, falling back to Gemini")
+
+    # --- Attempt 2: Gemini CLI (free via Ultra subscription) ---
     gemini_path = shutil.which("gemini")
     if gemini_path:
         try:
