@@ -175,7 +175,8 @@ function DocumentUploadModal({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Add any notes about this document..."
-              className="w-full px-3 py-2 rounded-lg border bg-background text-sm min-h-[80px]"
+              className="w-full px-3 py-2 rounded-lg border text-sm min-h-[80px]"
+              style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)", color: "var(--bz-text-1)" }}
             />
           </div>
 

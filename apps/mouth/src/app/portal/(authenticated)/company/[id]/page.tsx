@@ -57,7 +57,7 @@ export default function CompanyDetailPage() {
   if (isLoading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--bz-accent-warm)" }} />
       </div>
     );
   }
@@ -65,8 +65,8 @@ export default function CompanyDetailPage() {
   if (!company) {
     return (
       <div className="text-center py-12">
-        <Building2 className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
-        <h2 className="text-lg font-semibold text-muted-foreground">
+        <Building2 className="w-16 h-16 mx-auto mb-4 opacity-30" style={{ color: "var(--bz-text-2)" }} />
+        <h2 className="text-lg font-semibold" style={{ color: "var(--bz-text-2)" }}>
           Company not found
         </h2>
         <Button
@@ -95,30 +95,30 @@ export default function CompanyDetailPage() {
       </Button>
 
       {/* Company Header */}
-      <section className="rounded-xl border bg-card p-6">
+      <section className="rounded-xl border p-6" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-primary/10">
-              <Building2 className="w-6 h-6 text-primary" />
+            <div className="p-3 rounded-xl" style={{ background: "rgba(201,169,110,0.1)" }}>
+              <Building2 className="w-6 h-6" style={{ color: "var(--bz-accent-warm)" }} />
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight">
                 {company.name}
               </h1>
-              <p className="text-sm text-muted-foreground">{company.type}</p>
+              <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>{company.type}</p>
             </div>
           </div>
           <StatusBadge status={company.status} />
         </div>
 
         {company.address && (
-          <p className="mt-4 text-sm text-muted-foreground">
+          <p className="mt-4 text-sm" style={{ color: "var(--bz-text-2)" }}>
             {company.address}
           </p>
         )}
 
         {company.isPrimary && (
-          <div className="mt-4 px-3 py-1.5 bg-primary/10 text-primary text-xs font-medium rounded-full inline-flex items-center gap-1.5">
+          <div className="mt-4 px-3 py-1.5 text-xs font-medium rounded-full inline-flex items-center gap-1.5" style={{ background: "rgba(201,169,110,0.1)", color: "var(--bz-accent-warm)" }}>
             <Shield className="w-3.5 h-3.5" />
             Primary Company
           </div>
@@ -126,9 +126,9 @@ export default function CompanyDetailPage() {
       </section>
 
       {/* Licenses Section */}
-      <section className="rounded-xl border bg-card p-6 space-y-4">
+      <section className="rounded-xl border p-6 space-y-4" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
         <div className="flex items-center gap-2">
-          <FileCheck className="w-5 h-5 text-primary" />
+          <FileCheck className="w-5 h-5" style={{ color: "var(--bz-accent-warm)" }} />
           <h2 className="text-lg font-semibold">Licenses</h2>
         </div>
 
@@ -139,7 +139,7 @@ export default function CompanyDetailPage() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-8 text-muted-foreground">
+          <div className="text-center py-8" style={{ color: "var(--bz-text-2)" }}>
             <FileCheck className="w-10 h-10 mx-auto mb-2 opacity-30" />
             <p className="text-sm">No licenses on record</p>
           </div>
@@ -147,9 +147,9 @@ export default function CompanyDetailPage() {
       </section>
 
       {/* Compliance Calendar Section */}
-      <section className="rounded-xl border bg-card p-6 space-y-4">
+      <section className="rounded-xl border p-6 space-y-4" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
         <div className="flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-primary" />
+          <Calendar className="w-5 h-5" style={{ color: "var(--bz-accent-warm)" }} />
           <h2 className="text-lg font-semibold">Compliance Calendar</h2>
         </div>
 
@@ -165,7 +165,7 @@ export default function CompanyDetailPage() {
               ))}
           </div>
         ) : (
-          <div className="text-center py-8 text-muted-foreground">
+          <div className="text-center py-8" style={{ color: "var(--bz-text-2)" }}>
             <Calendar className="w-10 h-10 mx-auto mb-2 opacity-30" />
             <p className="text-sm">No compliance deadlines</p>
           </div>
@@ -173,9 +173,9 @@ export default function CompanyDetailPage() {
       </section>
 
       {/* Directors Section */}
-      <section className="rounded-xl border bg-card p-6 space-y-4">
+      <section className="rounded-xl border p-6 space-y-4" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
         <div className="flex items-center gap-2">
-          <Users className="w-5 h-5 text-primary" />
+          <Users className="w-5 h-5" style={{ color: "var(--bz-accent-warm)" }} />
           <h2 className="text-lg font-semibold">Directors</h2>
         </div>
 
@@ -184,10 +184,11 @@ export default function CompanyDetailPage() {
             {company.directors.map((director, index) => (
               <div
                 key={index}
-                className="flex items-center gap-3 p-3 rounded-lg bg-neutral-50 dark:bg-neutral-900"
+                className="flex items-center gap-3 p-3 rounded-lg"
+                style={{ background: "var(--bz-surface)" }}
               >
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <span className="text-sm font-semibold text-primary">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "rgba(201,169,110,0.1)" }}>
+                  <span className="text-sm font-semibold" style={{ color: "var(--bz-accent-warm)" }}>
                     {director.charAt(0).toUpperCase()}
                   </span>
                 </div>
@@ -196,7 +197,7 @@ export default function CompanyDetailPage() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-8 text-muted-foreground">
+          <div className="text-center py-8" style={{ color: "var(--bz-text-2)" }}>
             <Users className="w-10 h-10 mx-auto mb-2 opacity-30" />
             <p className="text-sm">No directors on record</p>
           </div>
@@ -209,29 +210,25 @@ export default function CompanyDetailPage() {
 // Sub-components
 
 function StatusBadge({ status }: { status: "active" | "pending" }) {
-  const config = {
+  const config: Record<string, { icon: React.ElementType; label: string; style: React.CSSProperties }> = {
     active: {
       icon: CheckCircle,
       label: "Active",
-      className:
-        "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+      style: { background: "rgba(16,185,129,0.12)", color: "#34d399" },
     },
     pending: {
       icon: Clock,
       label: "Pending",
-      className:
-        "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+      style: { background: "rgba(245,158,11,0.12)", color: "#fbbf24" },
     },
   };
 
-  const { icon: Icon, label, className } = config[status];
+  const { icon: Icon, label, style } = config[status] ?? config.pending;
 
   return (
     <div
-      className={cn(
-        "px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-medium",
-        className,
-      )}
+      className="px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-medium"
+      style={style}
     >
       <Icon className="w-3.5 h-3.5" />
       {label}
@@ -240,36 +237,16 @@ function StatusBadge({ status }: { status: "active" | "pending" }) {
 }
 
 function LicenseCard({ license }: { license: CompanyLicense }) {
-  const getStatusConfig = (status: string) => {
+  const getStatusConfig = (status: string): { icon: React.ElementType; badgeStyle: React.CSSProperties; borderColor: string } => {
     switch (status) {
       case "active":
-        return {
-          icon: CheckCircle,
-          className:
-            "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
-          borderClass: "border-emerald-200 dark:border-emerald-800",
-        };
+        return { icon: CheckCircle, badgeStyle: { background: "rgba(16,185,129,0.12)", color: "#34d399" }, borderColor: "rgba(16,185,129,0.25)" };
       case "expiring":
-        return {
-          icon: AlertTriangle,
-          className:
-            "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-          borderClass: "border-amber-200 dark:border-amber-800",
-        };
+        return { icon: AlertTriangle, badgeStyle: { background: "rgba(245,158,11,0.12)", color: "#fbbf24" }, borderColor: "rgba(245,158,11,0.3)" };
       case "expired":
-        return {
-          icon: AlertTriangle,
-          className:
-            "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-          borderClass: "border-red-200 dark:border-red-800",
-        };
+        return { icon: AlertTriangle, badgeStyle: { background: "rgba(239,68,68,0.12)", color: "#f87171" }, borderColor: "rgba(239,68,68,0.3)" };
       default:
-        return {
-          icon: Clock,
-          className:
-            "bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400",
-          borderClass: "border-neutral-200 dark:border-neutral-700",
-        };
+        return { icon: Clock, badgeStyle: { background: "var(--bz-surface)", color: "var(--bz-text-2)" }, borderColor: "var(--bz-border)" };
     }
   };
 
@@ -277,11 +254,11 @@ function LicenseCard({ license }: { license: CompanyLicense }) {
   const Icon = config.icon;
 
   return (
-    <div className={cn("rounded-lg border p-4", config.borderClass)}>
+    <div className="rounded-lg border p-4" style={{ borderColor: config.borderColor, background: "var(--bz-surface)" }}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-sm">{license.name}</h3>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs mt-1" style={{ color: "var(--bz-text-2)" }}>
             Expires:{" "}
             {new Date(license.expiryDate).toLocaleDateString("en-US", {
               month: "long",
@@ -291,24 +268,16 @@ function LicenseCard({ license }: { license: CompanyLicense }) {
           </p>
           {license.daysRemaining !== undefined && (
             <p
-              className={cn(
-                "text-xs font-medium mt-1",
-                license.daysRemaining <= 30
-                  ? "text-red-600 dark:text-red-400"
-                  : license.daysRemaining <= 60
-                    ? "text-amber-600 dark:text-amber-400"
-                    : "text-emerald-600 dark:text-emerald-400",
-              )}
+              className="text-xs font-medium mt-1"
+              style={{ color: license.daysRemaining <= 30 ? "#f87171" : license.daysRemaining <= 60 ? "#fbbf24" : "#34d399" }}
             >
               {license.daysRemaining} days remaining
             </p>
           )}
         </div>
         <div
-          className={cn(
-            "px-2.5 py-1 rounded-full flex items-center gap-1 text-xs font-medium",
-            config.className,
-          )}
+          className="px-2.5 py-1 rounded-full flex items-center gap-1 text-xs font-medium"
+          style={config.badgeStyle}
         >
           <Icon className="w-3 h-3" />
           {license.status.charAt(0).toUpperCase() + license.status.slice(1)}
@@ -319,29 +288,26 @@ function LicenseCard({ license }: { license: CompanyLicense }) {
 }
 
 function ComplianceCard({ item }: { item: ComplianceItem }) {
-  const getStatusConfig = (status: string) => {
+  const getStatusConfig = (status: string): { icon: React.ElementType; badgeStyle: React.CSSProperties; bgStyle: React.CSSProperties } => {
     switch (status) {
       case "completed":
         return {
           icon: CheckCircle,
-          className:
-            "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
-          bgClass: "bg-neutral-50 dark:bg-neutral-900",
+          badgeStyle: { background: "rgba(16,185,129,0.12)", color: "#34d399" },
+          bgStyle: { background: "var(--bz-surface)", borderColor: "var(--bz-border)" },
         };
       case "overdue":
         return {
           icon: AlertTriangle,
-          className:
-            "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-          bgClass: "bg-red-50/50 dark:bg-red-950/10",
+          badgeStyle: { background: "rgba(239,68,68,0.12)", color: "#f87171" },
+          bgStyle: { background: "rgba(239,68,68,0.06)", borderColor: "rgba(239,68,68,0.25)" },
         };
       case "upcoming":
       default:
         return {
           icon: Clock,
-          className:
-            "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-          bgClass: "bg-amber-50/50 dark:bg-amber-950/10",
+          badgeStyle: { background: "rgba(245,158,11,0.12)", color: "#fbbf24" },
+          bgStyle: { background: "rgba(245,158,11,0.06)", borderColor: "rgba(245,158,11,0.25)" },
         };
     }
   };
@@ -352,17 +318,13 @@ function ComplianceCard({ item }: { item: ComplianceItem }) {
   const isPast = dueDate < new Date() && item.status !== "completed";
 
   return (
-    <div className={cn("rounded-lg p-4 border", config.bgClass)}>
+    <div className="rounded-lg p-4 border" style={config.bgStyle}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1">
           <h3 className="font-semibold text-sm">{item.name}</h3>
           <p
-            className={cn(
-              "text-xs mt-1",
-              isPast
-                ? "text-red-600 dark:text-red-400 font-medium"
-                : "text-muted-foreground",
-            )}
+            className="text-xs mt-1"
+            style={{ color: isPast ? "#f87171" : "var(--bz-text-2)", fontWeight: isPast ? 500 : 400 }}
           >
             {isPast ? "Was due: " : "Due: "}
             {dueDate.toLocaleDateString("en-US", {
@@ -374,10 +336,8 @@ function ComplianceCard({ item }: { item: ComplianceItem }) {
           </p>
         </div>
         <div
-          className={cn(
-            "px-2.5 py-1 rounded-full flex items-center gap-1 text-xs font-medium",
-            config.className,
-          )}
+          className="px-2.5 py-1 rounded-full flex items-center gap-1 text-xs font-medium"
+          style={config.badgeStyle}
         >
           <Icon className="w-3 h-3" />
           {item.status.charAt(0).toUpperCase() + item.status.slice(1)}

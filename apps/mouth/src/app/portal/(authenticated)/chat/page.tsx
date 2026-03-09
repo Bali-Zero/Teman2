@@ -182,7 +182,7 @@ export default function ChatPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-180px)] md:h-[calc(100vh-140px)] animate-in fade-in duration-500">
       {/* Header */}
-      <section className="flex-shrink-0 pb-4 border-b">
+      <section className="flex-shrink-0 pb-4 border-b" style={{ borderColor: "var(--bz-border)" }}>
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Messages</h1>
@@ -206,7 +206,7 @@ export default function ChatPage() {
       {/* Messages Container */}
       <div
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto py-4 space-y-4 scrollbar-thin scrollbar-thumb-neutral-300 dark:scrollbar-thumb-neutral-700"
+        className="flex-1 overflow-y-auto py-4 space-y-4 scrollbar-thin scrollbar-thumb-neutral-600"
       >
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center py-12">
@@ -223,11 +223,11 @@ export default function ChatPage() {
             <div key={date}>
               {/* Date Separator */}
               <div className="flex items-center gap-3 my-4">
-                <div className="flex-1 h-px bg-border" />
+                <div className="flex-1 h-px" style={{ background: "var(--bz-border)" }} />
                 <span className="text-xs font-medium px-2" style={{ color: "var(--bz-text-2)" }}>
                   {formatDate(dateMessages[0].createdAt)}
                 </span>
-                <div className="flex-1 h-px bg-border" />
+                <div className="flex-1 h-px" style={{ background: "var(--bz-border)" }} />
               </div>
 
               {/* Messages for this date */}
@@ -247,7 +247,7 @@ export default function ChatPage() {
       </div>
 
       {/* Input Area */}
-      <div className="flex-shrink-0 pt-4 border-t">
+      <div className="flex-shrink-0 pt-4 border-t" style={{ borderColor: "var(--bz-border)" }}>
         <div className="flex gap-2">
           <input
             ref={inputRef}
@@ -258,11 +258,15 @@ export default function ChatPage() {
             placeholder="Type a message..."
             disabled={isSending}
             className={cn(
-              "flex-1 px-4 py-3 rounded-xl border bg-background",
-              "focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary",
-              "placeholder:text-muted-foreground/60",
+              "flex-1 px-4 py-3 rounded-xl border",
+              "focus:outline-none focus:ring-2",
               "disabled:opacity-50 disabled:cursor-not-allowed",
             )}
+            style={{
+              background: "var(--bz-surface)",
+              borderColor: "var(--bz-border)",
+              color: "var(--bz-text-1)",
+            }}
           />
           <Button
             onClick={handleSendMessage}

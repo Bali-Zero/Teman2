@@ -25,8 +25,6 @@ import type { VisaInfo } from "@/lib/api/portal/portal.types";
 interface PassportValidityInfo {
   color: string;
   label: string;
-  bgClass: string;
-  textClass: string;
   alertLevel: "ok" | "warning" | "critical" | "expired";
   monthsUntil: number;
 }
@@ -38,8 +36,6 @@ const getPassportValidityColor = (
     return {
       color: "gray",
       label: "No expiry",
-      bgClass: "bg-gray-100 dark:bg-gray-800",
-      textClass: "text-gray-600 dark:text-gray-400",
       alertLevel: "ok",
       monthsUntil: 999,
     };
@@ -54,8 +50,6 @@ const getPassportValidityColor = (
     return {
       color: "red",
       label: "EXPIRED",
-      bgClass: "bg-red-100 dark:bg-red-900/30",
-      textClass: "text-red-700 dark:text-red-400",
       alertLevel: "expired",
       monthsUntil: monthsUntilExpiry,
     };
@@ -63,8 +57,6 @@ const getPassportValidityColor = (
     return {
       color: "red",
       label: `${Math.floor(monthsUntilExpiry)} months`,
-      bgClass: "bg-red-50 dark:bg-red-900/20",
-      textClass: "text-red-600 dark:text-red-400",
       alertLevel: "critical",
       monthsUntil: monthsUntilExpiry,
     };
@@ -72,8 +64,6 @@ const getPassportValidityColor = (
     return {
       color: "yellow",
       label: `${Math.floor(monthsUntilExpiry)} months`,
-      bgClass: "bg-yellow-50 dark:bg-yellow-900/20",
-      textClass: "text-yellow-700 dark:text-yellow-400",
       alertLevel: "warning",
       monthsUntil: monthsUntilExpiry,
     };
@@ -81,8 +71,6 @@ const getPassportValidityColor = (
     return {
       color: "green",
       label: `${Math.floor(monthsUntilExpiry)} months`,
-      bgClass: "bg-green-50 dark:bg-green-900/20",
-      textClass: "text-green-600 dark:text-green-400",
       alertLevel: "ok",
       monthsUntil: monthsUntilExpiry,
     };
