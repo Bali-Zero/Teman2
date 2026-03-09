@@ -131,7 +131,8 @@ export function middleware(request: NextRequest) {
     hostname.includes(PUBLIC_DOMAIN) &&
     !hostname.includes("kita") &&
     !hostname.includes("my") &&
-    !isSSOSubdomain;
+    !isSSOSubdomain &&
+    subdomain !== "prime";
   const isAppDomain =
     hostname.includes(APP_DOMAIN) ||
     (hostname.includes("kita") && !hostname.includes("my")) ||
