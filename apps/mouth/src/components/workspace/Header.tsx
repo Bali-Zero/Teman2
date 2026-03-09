@@ -68,140 +68,95 @@ export function Header({
   };
 
   return (
-    <header className="sticky top-0 z-30 w-full bg-[#242424] border-b border-white/5">
-      <div className="flex items-center justify-between h-16 px-4 md:px-6">
-        {/* Left Section - Mobile Menu + Greeting */}
-        <div className="flex items-center gap-4">
-          {/* Mobile Menu Button */}
+    <header
+      className="sticky top-0 z-30 w-full border-b"
+      style={{ height: "var(--bz-header-height, 48px)", background: "var(--bz-elevated)", borderColor: "var(--bz-border)" }}
+    >
+      <div className="flex items-center h-full px-5 gap-3">
+        {/* Mobile menu */}
+        <button
+          onClick={onMobileMenuToggle}
+          className="md:hidden p-1.5 rounded-lg transition-colors"
+          style={{ color: "var(--bz-text-2)" }}
+          aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
+        >
+          {isMobileMenuOpen ? <X size={16} /> : <Menu size={16} />}
+        </button>
+
+        {/* Page title */}
+        <h1 className="text-[13px] font-medium" style={{ color: "var(--bz-text-1)" }}>
+          {getPageTitle()}
+        </h1>
+
+        <div className="flex-1" />
+
+        {/* Date chip */}
+        <span className="hidden sm:block text-[11px]" style={{ color: "var(--bz-text-3)" }}>
+          {formatDate()}
+        </span>
+
+        {/* WhatsApp badge */}
+        {whatsappUnread > 0 && (
+          <button className="relative p-1.5 rounded-lg transition-colors hidden md:flex"
+                  style={{ color: "var(--bz-text-2)" }}
+                  aria-label={`${whatsappUnread} unread WhatsApp`}>
+            <MessageCircle size={15} />
+            <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] text-[8px] font-bold rounded-full flex items-center justify-center text-white"
+                  style={{ background: "var(--bz-accent)" }}>
+              {whatsappUnread > 99 ? "99+" : whatsappUnread}
+            </span>
+          </button>
+        )}
+
+        {/* Notifications */}
+        <div className="relative">
           <button
-            onClick={onMobileMenuToggle}
-            className="md:hidden p-2 rounded-lg hover:bg-[var(--background-elevated)] transition-colors"
-            aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="relative p-1.5 rounded-lg transition-colors"
+            style={{ color: "var(--bz-text-2)" }}
+            aria-label="Notifications"
           >
-            {isMobileMenuOpen ? (
-              <X className="w-5 h-5 text-[var(--foreground)]" />
-            ) : (
-              <Menu className="w-5 h-5 text-[var(--foreground)]" />
+            <Bell size={15} />
+            {notificationCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] text-[8px] font-bold rounded-full flex items-center justify-center text-white"
+                    style={{ background: "var(--bz-accent)" }}>
+                {notificationCount > 99 ? "99+" : notificationCount}
+              </span>
             )}
           </button>
-
-          {/* Compact Greeting - Page Title + Date */}
-          <div className="hidden sm:block">
-            <h1 className="text-lg font-semibold text-[var(--foreground)]">
-              {getPageTitle()}
-            </h1>
-            <p className="text-xs text-[var(--foreground-muted)]">
-              {formatDate()} • {userName.split(" ")[0]}
-            </p>
-          </div>
-
-          {/* Mobile Page Title */}
-          <h1 className="sm:hidden text-lg font-semibold text-[var(--foreground)]">
-            {getPageTitle()}
-          </h1>
-        </div>
-
-        {/* Right Section - Actions */}
-        <div className="flex items-center gap-2">
-          {/* WhatsApp Unread Badge */}
-          {whatsappUnread > 0 && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative hidden md:flex hover:bg-[var(--background-elevated)]"
-              aria-label={`${whatsappUnread} unread WhatsApp messages`}
-            >
-              <MessageCircle className="w-5 h-5 text-[var(--foreground-secondary)]" />
-              <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] text-xs font-semibold rounded-full bg-[var(--accent)] text-white">
-                {whatsappUnread > 99 ? "99+" : whatsappUnread}
-              </span>
-            </Button>
-          )}
-
-          {/* Notifications */}
-          <div className="relative">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowNotifications(!showNotifications)}
-              className="relative hover:bg-[var(--background-elevated)]"
-              aria-label={`${notificationCount} notifications`}
-            >
-              <Bell className="w-5 h-5 text-[var(--foreground-secondary)]" />
-              {notificationCount > 0 && (
-                <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] text-xs font-semibold rounded-full bg-[var(--accent)] text-white">
-                  {notificationCount > 99 ? "99+" : notificationCount}
-                </span>
-              )}
-            </Button>
-
-            {/* Notifications Dropdown */}
-            {showNotifications && (
-              <>
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setShowNotifications(false)}
-                />
-                <div className="absolute right-0 top-full mt-2 w-80 max-h-96 overflow-y-auto z-50 bg-[var(--background-secondary)] border border-[var(--border)] rounded-xl shadow-xl">
-                  <div className="p-4 border-b border-[var(--border)]">
-                    <h3 className="font-semibold text-[var(--foreground)]">
-                      Notifications
-                    </h3>
-                  </div>
-                  <div className="p-4">
-                    <p className="text-sm text-[var(--foreground-muted)] text-center py-4">
-                      No new notifications
-                    </p>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Clock In/Out Button */}
-          {showClock && onToggleClock && (
+          {showNotifications && (
             <>
-              <Button
-                onClick={onToggleClock}
-                disabled={isClockLoading}
-                variant="outline"
-                size="sm"
-                className={cn(
-                  "hidden sm:flex items-center gap-2 transition-all",
-                  isClockIn
-                    ? "border-[var(--success)] text-[var(--success)] hover:bg-[var(--success)]/10"
-                    : "border-[var(--border)] text-[var(--foreground-secondary)] hover:bg-[var(--background-elevated)]",
-                )}
-              >
-                <Clock className="w-4 h-4" />
-                <span className="hidden md:inline">
-                  {isClockLoading
-                    ? "Loading..."
-                    : isClockIn
-                      ? "Clock Out"
-                      : "Clock In"}
-                </span>
-              </Button>
-
-              {/* Mobile Clock Button */}
-              <Button
-                onClick={onToggleClock}
-                disabled={isClockLoading}
-                variant="ghost"
-                size="icon"
-                className={cn(
-                  "sm:hidden",
-                  isClockIn
-                    ? "text-[var(--success)]"
-                    : "text-[var(--foreground-secondary)]",
-                )}
-                aria-label={isClockIn ? "Clock out" : "Clock in"}
-              >
-                <Clock className="w-5 h-5" />
-              </Button>
+              <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
+              <div className="absolute right-0 top-full mt-2 w-72 z-50 rounded-xl shadow-xl border"
+                   style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
+                <div className="p-3 border-b text-[12px] font-semibold"
+                     style={{ borderColor: "var(--bz-border)", color: "var(--bz-text-1)" }}>
+                  Notifications
+                </div>
+                <div className="p-4 text-[11px] text-center" style={{ color: "var(--bz-text-3)" }}>
+                  No new notifications
+                </div>
+              </div>
             </>
           )}
         </div>
+
+        {/* Clock chip */}
+        {showClock && onToggleClock && (
+          <button
+            onClick={onToggleClock}
+            disabled={isClockLoading}
+            className={cn("hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium transition-all border")}
+            style={isClockIn
+              ? { borderColor: "rgba(77,184,122,0.25)", background: "rgba(77,184,122,0.07)", color: "var(--bz-green)" }
+              : { borderColor: "var(--bz-border)", background: "var(--bz-surface)", color: "var(--bz-text-2)" }
+            }
+          >
+            <span className={cn("w-[5px] h-[5px] rounded-full", isClockIn && "animate-pulse")}
+                  style={{ background: isClockIn ? "var(--bz-green)" : "var(--bz-text-3)" }} />
+            {isClockLoading ? "..." : isClockIn ? "Clocked In" : "Clock In"}
+          </button>
+        )}
       </div>
     </header>
   );
