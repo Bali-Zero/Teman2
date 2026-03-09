@@ -45,8 +45,7 @@ async def get_zoning(
         from sqlalchemy import text
 
         result = await db.execute(
-            text(_ZONING_QUERY),
-            {"lat": lat, "lng": lng},
+            text(_ZONING_QUERY).bindparams(lat=lat, lng=lng),
         )
         row = result.mappings().first()
 
