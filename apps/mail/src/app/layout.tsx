@@ -55,47 +55,15 @@ export default async function RootLayout({
     <html lang="en">
       <body>
         {/* Top bar */}
-        <header className="h-12 flex items-center justify-between px-4 border-b border-[var(--border)] bg-[var(--background-secondary)]">
-          {/* Left: Back to Kita */}
-          <a
-            href="https://kita.balizero.com"
-            className="flex items-center gap-2 text-sm text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10 19l-7-7m0 0l7-7m-7 7h18"
-              />
-            </svg>
-            <span>Back to Kita</span>
+        <header style={{ height: "48px", display: "flex", alignItems: "center", padding: "0 16px", gap: "8px", borderBottom: "1px solid var(--bz-border)", background: "var(--bz-elevated)", position: "sticky", top: 0, zIndex: 40 }}>
+          {/* Left: BZ Logo + App name */}
+          <a href="https://kita.balizero.com" style={{ display: "flex", alignItems: "center", gap: "8px", textDecoration: "none" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/static/balizero-logo-clean.png" alt="Bali Zero" width={22} height={22} style={{ borderRadius: "50%", flexShrink: 0 }} />
+            <span style={{ color: "var(--bz-text-3)", fontSize: 14 }}>/</span>
+            <span style={{ fontSize: "13px", fontWeight: 500, color: "var(--bz-text-1)" }}>Mail</span>
           </a>
-
-          {/* Center: App name */}
-          <div className="flex items-center gap-2">
-            <svg
-              className="w-5 h-5 text-[var(--accent)]"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-              />
-            </svg>
-            <span className="text-sm font-semibold text-[var(--foreground)]">
-              Mail
-            </span>
-          </div>
+          <div style={{ flex: 1 }} />
 
           {/* Right: App switcher */}
           <div className="relative group">

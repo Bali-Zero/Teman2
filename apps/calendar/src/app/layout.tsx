@@ -62,30 +62,30 @@ export default async function RootLayout({
             zIndex: 40,
           }}
         >
-          {/* Left: Back to Kita */}
+          {/* Left: BZ Logo + App name */}
           <a
             href="https://kita.balizero.com"
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "6px",
-              fontSize: "14px",
-              color: "inherit",
-              opacity: 0.6,
+              gap: "8px",
               textDecoration: "none",
             }}
           >
-            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            <span>Back to Kita</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/static/balizero-logo-clean.png"
+              alt="Bali Zero"
+              width={22}
+              height={22}
+              style={{ borderRadius: "50%", flexShrink: 0 }}
+            />
+            <span style={{ color: "var(--bz-text-3)", fontSize: 14 }}>/</span>
+            <span style={{ fontSize: "13px", fontWeight: 500, color: "var(--bz-text-1)" }}>Calendar</span>
           </a>
 
-          {/* Center: App name */}
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <span style={{ fontSize: "18px" }}>📅</span>
-            <span style={{ fontSize: "14px", fontWeight: 600 }}>Calendar</span>
-          </div>
+          {/* Center: spacer */}
+          <div style={{ flex: 1 }} />
 
           {/* Right: App switcher */}
           <div className="relative group" style={{ position: "relative" }}>

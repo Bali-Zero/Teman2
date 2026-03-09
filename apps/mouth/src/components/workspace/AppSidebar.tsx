@@ -53,35 +53,14 @@ const iconMap: Record<string, React.ElementType> = {
   Calendar,
 };
 
-// Color configuration for nav items
-// cssClass: for inactive state with hover, activeColor: for active state
-const navColors: Record<string, { cssClass: string; activeColor: string }> = {
-  "/dashboard": { cssClass: "nav-icon-blue", activeColor: "#60A5FA" },
-  "/intelligence": { cssClass: "nav-icon-orange", activeColor: "#FB923C" },
-  "/chat": { cssClass: "nav-icon-purple", activeColor: "#A78BFA" },
-  "/dream": { cssClass: "nav-icon-indigo", activeColor: "#818CF8" },
-  "/whatsapp": { cssClass: "nav-icon-emerald", activeColor: "#34D399" },
-  "/email": { cssClass: "nav-icon-sky", activeColor: "#38BDF8" },
-  "/clients": { cssClass: "nav-icon-teal", activeColor: "#2DD4BF" },
-  "/clients/analytics": { cssClass: "nav-icon-pink", activeColor: "#F472B6" },
-  "/process": { cssClass: "nav-icon-amber", activeColor: "#FBBF24" },
-  "/documents": { cssClass: "nav-icon-yellow", activeColor: "#FACC15" },
-  "/knowledge": { cssClass: "nav-icon-violet", activeColor: "#C084FC" },
-  "/team": { cssClass: "nav-icon-cyan", activeColor: "#22D3EE" },
-  "/team/analytics": { cssClass: "nav-icon-pink", activeColor: "#F472B6" },
-  "/revenue/analytics": { cssClass: "nav-icon-green", activeColor: "#4ADE80" },
-  "/calendar": { cssClass: "nav-icon-rose", activeColor: "#FB7185" },
-  "/analytics": { cssClass: "nav-icon-pink", activeColor: "#F472B6" },
-  "/settings": { cssClass: "nav-icon-gray", activeColor: "#9CA3AF" },
-  // Portal routes
-  "/portal": { cssClass: "nav-icon-blue", activeColor: "#60A5FA" },
-  "/portal/vault": { cssClass: "nav-icon-purple", activeColor: "#A78BFA" },
-  "/portal/messages": { cssClass: "nav-icon-emerald", activeColor: "#34D399" },
-  "/portal/visa": { cssClass: "nav-icon-amber", activeColor: "#FBBF24" },
-  "/portal/taxes": { cssClass: "nav-icon-red", activeColor: "#F87171" },
-  "/portal/profile": { cssClass: "nav-icon-cyan", activeColor: "#22D3EE" },
-  "/portal/settings": { cssClass: "nav-icon-gray", activeColor: "#9CA3AF" },
-};
+// Sub-app switcher config
+const SUB_APPS = [
+  { label: "kita",  href: "https://kita.balizero.com",      current: true },
+  { label: "mail",  href: "https://mail.balizero.com",      current: false },
+  { label: "drive", href: "https://drive.balizero.com",     current: false },
+  { label: "cal",   href: "https://calendar.balizero.com",  current: false },
+  { label: "kb",    href: "https://knowledge.balizero.com", current: false },
+];
 
 interface AppSidebarProps {
   user: {
@@ -119,48 +98,27 @@ export function AppSidebar({
   const renderNavItem = (item: NavItem) => {
     const Icon = iconMap[item.icon] || Home;
     const active = isActive(item.href);
-    const badge =
-      item.href === "/whatsapp"
-        ? unreadWhatsApp
-        : item.badge;
-    const colors = navColors[item.href] || {
-      cssClass: "nav-icon-gray",
-      activeColor: "#9CA3AF",
-    };
+    const badge = item.href === "/whatsapp" ? unreadWhatsApp : item.badge;
 
     const sharedClassName = cn(
-      "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
-      "text-sm font-medium group",
+      "flex items-center gap-2 px-2 py-[6px] rounded-[7px] mb-[1px] text-[12.5px] transition-colors group",
       active
-        ? "bg-white/5 border border-white/10"
-        : "text-[#9AA0AE] hover:bg-white/5",
+        ? "font-medium"
+        : "hover:bg-[var(--bz-surface)] hover:text-[var(--bz-text-1)]",
     );
-    const sharedStyle = {
-      color: active ? colors.activeColor : undefined,
-      borderColor: active ? `${colors.activeColor}20` : undefined,
-    };
+    const sharedStyle = active
+      ? { background: "rgba(212,132,90,0.10)", color: "var(--bz-accent)" }
+      : { color: "var(--bz-text-2)" };
+
     const sharedContent = (
       <>
-        <Icon
-          className={cn("w-5 h-5", !active && colors.cssClass)}
-          style={active ? { color: colors.activeColor } : undefined}
-        />
-        <span
-          className={cn(
-            "flex-1 transition-colors",
-            !active && "group-hover:text-[#E6E7EB]",
-          )}
-          style={{ color: active ? colors.activeColor : undefined }}
-        >
-          {item.title}
-        </span>
-        {item.external && (
-          <ExternalLink className="w-3 h-3 opacity-50" />
-        )}
+        <Icon size={15} className="flex-shrink-0" style={{ opacity: active ? 1 : 0.65 }} />
+        <span className="flex-1">{item.title}</span>
+        {item.external && <ExternalLink size={10} style={{ color: "var(--bz-text-3)", opacity: 0.6 }} />}
         {badge && badge > 0 && (
           <span
-            className="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-semibold rounded-full text-[#0B0E13]"
-            style={{ backgroundColor: colors.activeColor }}
+            className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
+            style={{ background: "rgba(212,132,90,0.18)", color: "var(--bz-accent)" }}
           >
             {badge > 99 ? "99+" : badge}
           </span>
@@ -170,128 +128,113 @@ export function AppSidebar({
 
     if (item.external) {
       return (
-        <a
-          key={item.href}
-          href={item.href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={sharedClassName}
-          style={sharedStyle}
-        >
+        <a key={item.href} href={item.href} target="_blank" rel="noopener noreferrer"
+           className={sharedClassName} style={sharedStyle}>
           {sharedContent}
         </a>
       );
     }
 
     return (
-      <Link
-        key={item.href}
-        href={item.href}
-        className={sharedClassName}
-        style={sharedStyle}
-      >
+      <Link key={item.href} href={item.href} className={sharedClassName} style={sharedStyle}>
         {sharedContent}
       </Link>
     );
   };
 
   const renderNavSection = (section: NavSection, index: number) => (
-    <div key={index} className="space-y-1">
+    <div key={index} className="space-y-0">
       {section.title && (
-        <p className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-[#9AA0AE] opacity-80">
+        <div className="text-[9px] font-semibold uppercase tracking-[0.7px] px-2 pt-3 pb-1"
+             style={{ color: "var(--bz-text-3)" }}>
           {section.title}
-        </p>
+        </div>
       )}
       {section.items.map(renderNavItem)}
     </div>
   );
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-60 flex flex-col bg-[#242424] border-r border-white/5">
-      {/* Logo Section */}
-      <div className="flex items-center justify-center px-4 py-5 border-b border-[rgba(255,255,255,0.04)]">
-        <div className="relative w-12 h-12 rounded-full overflow-hidden">
+    <aside className="fixed left-0 top-0 z-40 h-screen flex flex-col border-r"
+           style={{ width: "var(--bz-sidebar-width, 216px)", background: "var(--bz-elevated)", borderColor: "var(--bz-border)" }}>
+
+      {/* Workspace Picker */}
+      <div className="p-2.5 border-b" style={{ borderColor: "var(--bz-border)" }}>
+        <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg transition-colors hover:bg-[var(--bz-surface)]">
           <Image
-            src="/assets/logo/balizero-logo-clean.png"
+            src="/static/balizero-logo-clean.png"
             alt="Bali Zero"
-            fill
-            className="object-cover scale-110"
+            width={24}
+            height={24}
+            className="rounded-full flex-shrink-0"
+            priority
           />
-        </div>
+          <span className="text-[13px] font-semibold flex-1 text-left tracking-tight"
+                style={{ color: "var(--bz-text-1)" }}>
+            Bali Zero
+          </span>
+          <span className="text-[10px]" style={{ color: "var(--bz-text-3)" }}>⌃</span>
+        </button>
       </div>
 
+      {/* Sub-app switcher */}
+      {!isPortal && (
+        <div className="flex gap-0.5 p-2 border-b" style={{ borderColor: "var(--bz-border)" }}>
+          {SUB_APPS.map((app) => (
+            <a
+              key={app.label}
+              href={app.href}
+              className="flex-1 text-center py-1 rounded-md text-[9.5px] font-medium transition-all"
+              style={app.current
+                ? { background: "rgba(212,132,90,0.10)", color: "var(--bz-accent)", border: "1px solid rgba(212,132,90,0.15)" }
+                : { color: "var(--bz-text-3)" }
+              }
+            >
+              {app.label}
+            </a>
+          ))}
+        </div>
+      )}
+
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+      <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0">
         {nav.map(renderNavSection)}
       </nav>
 
       {/* User Profile Footer */}
-      <div className="p-3 border-t border-[rgba(255,255,255,0.04)] bg-transparent">
-        <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-[#4FD1C5]/5 transition-colors cursor-pointer group">
-          {/* Avatar */}
-          <div className="relative">
-            <div className="w-10 h-10 rounded-full bg-[#1A1D24] flex items-center justify-center overflow-hidden border border-[rgba(255,255,255,0.04)]">
-              {user.avatar ? (
-                <Image
-                  src={user.avatar}
-                  alt={user.name}
-                  fill
-                  className="object-cover"
-                />
-              ) : (
-                <UserCircle className="w-6 h-6 text-[#9AA0AE]" />
-              )}
-            </div>
-            {/* Online indicator */}
-            {!isPortal && (
-              <span
-                className={cn(
-                  "absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#0B0E13]",
-                  user.isOnline ? "bg-[#4FD1C5]" : "bg-[#9AA0AE]",
-                )}
-              />
-            )}
-            {isPortal && (
-              <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#0B0E13] bg-[#4FD1C5]" />
+      <div className="border-t p-2.5" style={{ borderColor: "var(--bz-border)" }}>
+        <div className="flex items-center gap-2 px-1.5 py-1.5 rounded-lg hover:bg-[var(--bz-surface)] cursor-pointer transition-colors">
+          <div className="relative flex-shrink-0">
+            {user.avatar ? (
+              <Image src={user.avatar} alt={user.name} width={26} height={26}
+                     className="rounded-[7px]" />
+            ) : (
+              <div className="w-[26px] h-[26px] rounded-[7px] flex items-center justify-center text-[10px] font-bold text-white"
+                   style={{ background: "linear-gradient(135deg, #c9a96e 0%, #d4845a 100%)" }}>
+                {user.name?.[0]?.toUpperCase() || "U"}
+              </div>
             )}
           </div>
-
-          {/* User Info */}
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-[#E6E7EB] truncate">
+            <div className="text-[12px] font-medium truncate" style={{ color: "var(--bz-text-1)" }}>
               {user.name}
-            </p>
-            <p className="text-xs text-[#9AA0AE] truncate">
-              {isPortal ? "Client Portal" : user.team || "Team"}
-            </p>
-          </div>
-
-          {/* Status */}
-          {!isPortal && (
-            <div className="flex flex-col items-end text-right">
-              <span
-                className={cn(
-                  "text-xs font-medium",
-                  user.isOnline ? "text-[#4FD1C5]" : "text-[#9AA0AE]",
-                )}
-              >
-                {user.isOnline ? "Online" : "Offline"}
-              </span>
-              {user.hoursToday && (
-                <span className="text-xs text-[#9AA0AE]">
-                  {user.hoursToday}
-                </span>
-              )}
             </div>
-          )}
+            <div className="text-[10px]" style={{ color: "var(--bz-text-3)" }}>
+              {isPortal ? "Client Portal" : user.role || user.team || "Team"}
+            </div>
+          </div>
+          <div className="w-[7px] h-[7px] rounded-full flex-shrink-0"
+               style={{
+                 background: user.isOnline ? "var(--bz-green)" : "var(--bz-text-3)",
+                 boxShadow: user.isOnline ? "0 0 5px rgba(77,184,122,0.45)" : "none",
+               }} />
         </div>
-
-        {/* Logout Button */}
-        <button
-          onClick={onLogout}
-          className="flex items-center gap-2 w-full mt-2 px-3 py-2 text-sm text-[#9AA0AE] hover:text-[#E6E7EB] hover:bg-[#4FD1C5]/10 rounded-lg transition-colors"
-        >
-          <LogOut className="w-4 h-4" />
+        <button onClick={onLogout}
+                className="flex items-center gap-2 w-full mt-1 px-2 py-1.5 text-[11px] rounded-lg transition-colors"
+                style={{ color: "var(--bz-text-3)" }}
+                onMouseEnter={e => (e.currentTarget.style.color = "var(--bz-text-1)")}
+                onMouseLeave={e => (e.currentTarget.style.color = "var(--bz-text-3)")}>
+          <LogOut size={13} />
           <span>Logout</span>
         </button>
       </div>

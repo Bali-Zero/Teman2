@@ -65,38 +65,23 @@ function AppShell({ children }: { children: ReactNode }) {
           height: "48px",
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
           padding: "0 16px",
-          borderBottom: "1px solid rgba(255,255,255,0.08)",
-          backgroundColor: "#1a1a1c",
+          gap: "8px",
+          borderBottom: "1px solid var(--bz-border, rgba(255,255,255,0.055))",
+          background: "var(--bz-elevated, #131315)",
           position: "relative",
           zIndex: 40,
           flexShrink: 0,
         }}
       >
-        {/* Left: Back to Kita */}
-        <a
-          href="https://kita.balizero.com"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            fontSize: "14px",
-            color: "rgba(241,241,241,0.5)",
-            textDecoration: "none",
-          }}
-        >
-          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          <span>Back to Kita</span>
+        {/* Left: BZ Logo + App name */}
+        <a href="https://kita.balizero.com" style={{ display: "flex", alignItems: "center", gap: "8px", textDecoration: "none" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/static/balizero-logo-clean.png" alt="Bali Zero" width={22} height={22} style={{ borderRadius: "50%", flexShrink: 0 }} />
+          <span style={{ color: "var(--bz-text-3, #575350)", fontSize: 14 }}>/</span>
+          <span style={{ fontSize: "13px", fontWeight: 500, color: "var(--bz-text-1, #edeae4)" }}>Drive</span>
         </a>
-
-        {/* Center: App name */}
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <span style={{ fontSize: "18px" }}>💾</span>
-          <span style={{ fontSize: "14px", fontWeight: 600, color: "#f1f1f1" }}>Drive</span>
-        </div>
+        <div style={{ flex: 1 }} />
 
         {/* Right: App switcher */}
         <div className="drive-app-switcher" style={{ position: "relative" }}>
