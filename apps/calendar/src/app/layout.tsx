@@ -23,6 +23,14 @@ async function getSession(): Promise<boolean> {
   return !!token;
 }
 
+const apps = [
+  { name: "Kita", href: "https://kita.balizero.com", emoji: "🏠" },
+  { name: "Mail", href: "https://mail.balizero.com", emoji: "✉️" },
+  { name: "Calendar", href: "https://calendar.balizero.com", emoji: "📅", active: true },
+  { name: "Drive", href: "https://drive.balizero.com", emoji: "💾" },
+  { name: "Knowledge", href: "https://knowledge.balizero.com", emoji: "📚" },
+];
+
 export default async function RootLayout({
   children,
 }: {
@@ -38,7 +46,130 @@ export default async function RootLayout({
 
   return (
     <html lang="it">
-      <body className={geist.className}>{children}</body>
+      <body className={geist.className}>
+        {/* Top bar */}
+        <header
+          style={{
+            height: "48px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "0 16px",
+            borderBottom: "1px solid rgba(255,255,255,0.1)",
+            backgroundColor: "rgba(0,0,0,0.05)",
+            position: "sticky",
+            top: 0,
+            zIndex: 40,
+          }}
+        >
+          {/* Left: Back to Kita */}
+          <a
+            href="https://kita.balizero.com"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              fontSize: "14px",
+              color: "inherit",
+              opacity: 0.6,
+              textDecoration: "none",
+            }}
+          >
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            <span>Back to Kita</span>
+          </a>
+
+          {/* Center: App name */}
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <span style={{ fontSize: "18px" }}>📅</span>
+            <span style={{ fontSize: "14px", fontWeight: 600 }}>Calendar</span>
+          </div>
+
+          {/* Right: App switcher */}
+          <div className="relative group" style={{ position: "relative" }}>
+            <button
+              style={{
+                padding: "8px",
+                borderRadius: "8px",
+                border: "none",
+                background: "none",
+                cursor: "pointer",
+                opacity: 0.6,
+              }}
+              title="Switch app"
+            >
+              {/* 3x3 grid icon */}
+              <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                <rect x="3" y="3" width="4" height="4" rx="0.5" />
+                <rect x="10" y="3" width="4" height="4" rx="0.5" />
+                <rect x="17" y="3" width="4" height="4" rx="0.5" />
+                <rect x="3" y="10" width="4" height="4" rx="0.5" />
+                <rect x="10" y="10" width="4" height="4" rx="0.5" />
+                <rect x="17" y="10" width="4" height="4" rx="0.5" />
+                <rect x="3" y="17" width="4" height="4" rx="0.5" />
+                <rect x="10" y="17" width="4" height="4" rx="0.5" />
+                <rect x="17" y="17" width="4" height="4" rx="0.5" />
+              </svg>
+            </button>
+
+            {/* Dropdown */}
+            <div
+              className="app-switcher-dropdown"
+              style={{
+                position: "absolute",
+                right: 0,
+                top: "100%",
+                marginTop: "4px",
+                width: "192px",
+                border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: "12px",
+                boxShadow: "0 25px 50px rgba(0,0,0,0.4)",
+                padding: "8px",
+                zIndex: 50,
+                backgroundColor: "#1a1a1a",
+              }}
+            >
+              {apps.map((app) => (
+                <a
+                  key={app.name}
+                  href={app.href}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    padding: "8px 12px",
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    textDecoration: "none",
+                    color: app.active ? "#fff" : "rgba(255,255,255,0.6)",
+                    backgroundColor: app.active ? "rgba(255,255,255,0.1)" : "transparent",
+                  }}
+                >
+                  <span>{app.emoji}</span>
+                  <span>{app.name}</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        </header>
+
+        {/* Main content */}
+        <main style={{ height: "calc(100vh - 48px)" }}>{children}</main>
+
+        <style>{`
+          .relative.group .app-switcher-dropdown {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 150ms, visibility 150ms;
+          }
+          .relative.group:hover .app-switcher-dropdown {
+            opacity: 1;
+            visibility: visible;
+          }
+        `}</style>
+      </body>
     </html>
   );
 }

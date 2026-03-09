@@ -16,7 +16,9 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className="h-screen overflow-hidden bg-[#141416] text-[#f1f1f1]">
         <Providers>
-          <AuthGate>{children}</AuthGate>
+          <AuthGate>
+            <AppShell>{children}</AppShell>
+          </AuthGate>
         </Providers>
       </body>
     </html>
@@ -44,4 +46,141 @@ async function AuthGate({ children }: { children: ReactNode }) {
   }
 
   return <>{children}</>;
+}
+
+const apps = [
+  { name: "Kita", href: "https://kita.balizero.com", emoji: "🏠" },
+  { name: "Mail", href: "https://mail.balizero.com", emoji: "✉️" },
+  { name: "Calendar", href: "https://calendar.balizero.com", emoji: "📅" },
+  { name: "Drive", href: "https://drive.balizero.com", emoji: "💾", active: true },
+  { name: "Knowledge", href: "https://knowledge.balizero.com", emoji: "📚" },
+];
+
+function AppShell({ children }: { children: ReactNode }) {
+  return (
+    <>
+      {/* Top bar */}
+      <header
+        style={{
+          height: "48px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0 16px",
+          borderBottom: "1px solid rgba(255,255,255,0.08)",
+          backgroundColor: "#1a1a1c",
+          position: "relative",
+          zIndex: 40,
+          flexShrink: 0,
+        }}
+      >
+        {/* Left: Back to Kita */}
+        <a
+          href="https://kita.balizero.com"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            fontSize: "14px",
+            color: "rgba(241,241,241,0.5)",
+            textDecoration: "none",
+          }}
+        >
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          <span>Back to Kita</span>
+        </a>
+
+        {/* Center: App name */}
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <span style={{ fontSize: "18px" }}>💾</span>
+          <span style={{ fontSize: "14px", fontWeight: 600, color: "#f1f1f1" }}>Drive</span>
+        </div>
+
+        {/* Right: App switcher */}
+        <div className="drive-app-switcher" style={{ position: "relative" }}>
+          <button
+            className="drive-switcher-btn"
+            style={{
+              padding: "8px",
+              borderRadius: "8px",
+              border: "none",
+              background: "none",
+              cursor: "pointer",
+              color: "rgba(241,241,241,0.5)",
+            }}
+            title="Switch app"
+          >
+            {/* 3x3 grid icon */}
+            <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+              <rect x="3" y="3" width="4" height="4" rx="0.5" />
+              <rect x="10" y="3" width="4" height="4" rx="0.5" />
+              <rect x="17" y="3" width="4" height="4" rx="0.5" />
+              <rect x="3" y="10" width="4" height="4" rx="0.5" />
+              <rect x="10" y="10" width="4" height="4" rx="0.5" />
+              <rect x="17" y="10" width="4" height="4" rx="0.5" />
+              <rect x="3" y="17" width="4" height="4" rx="0.5" />
+              <rect x="10" y="17" width="4" height="4" rx="0.5" />
+              <rect x="17" y="17" width="4" height="4" rx="0.5" />
+            </svg>
+          </button>
+
+          {/* Dropdown */}
+          <div
+            className="drive-switcher-dropdown"
+            style={{
+              position: "absolute",
+              right: 0,
+              top: "100%",
+              marginTop: "4px",
+              width: "192px",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: "12px",
+              boxShadow: "0 25px 50px rgba(0,0,0,0.6)",
+              padding: "8px",
+              zIndex: 50,
+              backgroundColor: "#1e1e20",
+            }}
+          >
+            {apps.map((app) => (
+              <a
+                key={app.name}
+                href={app.href}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  padding: "8px 12px",
+                  borderRadius: "8px",
+                  fontSize: "14px",
+                  textDecoration: "none",
+                  color: app.active ? "#f1f1f1" : "rgba(241,241,241,0.55)",
+                  backgroundColor: app.active ? "rgba(255,255,255,0.08)" : "transparent",
+                }}
+              >
+                <span>{app.emoji}</span>
+                <span>{app.name}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      </header>
+
+      {/* Main content */}
+      <main style={{ height: "calc(100vh - 48px)", overflow: "auto" }}>{children}</main>
+
+      <style>{`
+        .drive-app-switcher .drive-switcher-dropdown {
+          opacity: 0;
+          visibility: hidden;
+          transition: opacity 150ms, visibility 150ms;
+        }
+        .drive-app-switcher:hover .drive-switcher-dropdown {
+          opacity: 1;
+          visibility: visible;
+        }
+      `}</style>
+    </>
+  );
 }
