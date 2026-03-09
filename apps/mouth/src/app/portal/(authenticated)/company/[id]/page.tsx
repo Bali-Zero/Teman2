@@ -17,6 +17,7 @@ import {
 import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 import type {
   PortalCompany,
   CompanyLicense,
@@ -48,7 +49,7 @@ export default function CompanyDetailPage() {
       setCompany(data);
     } catch (err) {
       error("Failed to load company details", "Please try again later");
-      console.error(err);
+      logger.error("Failed to load portal company detail", {}, err as Error);
     } finally {
       setIsLoading(false);
     }

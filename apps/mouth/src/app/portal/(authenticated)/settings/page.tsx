@@ -5,6 +5,7 @@ import { Loader2, Bell, Mail, MessageCircle, Globe, Save } from "lucide-react";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 import type { PortalPreferences } from "@/lib/api/portal/portal.types";
 import { Button } from "@/components/ui/button";
 
@@ -28,7 +29,7 @@ export default function SettingsPage() {
       setPreferences(data);
     } catch (err) {
       error("Failed to load settings", "Please try again later");
-      console.error(err);
+      logger.error("Failed to load portal settings", {}, err as Error);
     } finally {
       setIsLoading(false);
     }
@@ -61,7 +62,7 @@ export default function SettingsPage() {
       success("Settings saved", "Your preferences have been updated");
     } catch (err) {
       error("Failed to save settings", "Please try again");
-      console.error(err);
+      logger.error("Failed to save portal settings", {}, err as Error);
     } finally {
       setIsSaving(false);
     }

@@ -14,6 +14,7 @@ import {
 import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 import type { PortalCompany } from "@/lib/api/portal/portal.types";
 
 export default function CompaniesPage() {
@@ -33,7 +34,7 @@ export default function CompaniesPage() {
       setCompanies(data);
     } catch (err) {
       error("Failed to load companies", "Please try again later");
-      console.error(err);
+      logger.error("Failed to load portal companies", {}, err as Error);
     } finally {
       setIsLoading(false);
     }

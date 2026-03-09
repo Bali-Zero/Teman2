@@ -5,6 +5,7 @@ import { Loader2, Send, MessageCircle, User, Users } from "lucide-react";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 import type {
   PortalMessage,
   MessagesResponse,
@@ -41,7 +42,7 @@ export default function ChatPage() {
         if (!silent) {
           error("Failed to load messages", "Please try again later");
         }
-        console.error(err);
+        logger.error("Failed to load portal messages", {}, err as Error);
       } finally {
         setIsLoading(false);
       }
@@ -59,7 +60,7 @@ export default function ChatPage() {
       try {
         await api.portal.markMessageRead(parseInt(msg.id));
       } catch (err) {
-        console.error("Failed to mark message as read:", msg.id, err);
+        logger.error("Failed to mark message as read", {}, err as Error);
       }
     }
 
@@ -116,7 +117,7 @@ export default function ChatPage() {
       inputRef.current?.focus();
     } catch (err) {
       error("Failed to send message", "Please try again");
-      console.error(err);
+      logger.error("Failed to send portal message", {}, err as Error);
     } finally {
       setIsSending(false);
     }
