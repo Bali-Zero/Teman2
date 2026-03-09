@@ -135,7 +135,8 @@ export function middleware(request: NextRequest) {
   const isAppDomain =
     hostname.includes(APP_DOMAIN) ||
     (hostname.includes("kita") && !hostname.includes("my")) ||
-    isSSOSubdomain;
+    isSSOSubdomain ||
+    subdomain === "prime";
   const isPortalDomain =
     hostname.includes(PORTAL_DOMAIN) || hostname.includes("my.balizero.com");
 
@@ -242,6 +243,14 @@ export function middleware(request: NextRequest) {
       const kitaUrl = new URL(deepPath, `https://${APP_DOMAIN}`);
       kitaUrl.search = request.nextUrl.search;
       return NextResponse.redirect(kitaUrl, 302);
+    }
+
+    // prime.balizero.com → rewrite to /prime (keeps subdomain, no redirect)
+    if (subdomain === "prime") {
+      const rewritePath = pathname === "/" ? "/prime" : `/prime${pathname}`;
+      const rewriteUrl = request.nextUrl.clone();
+      rewriteUrl.pathname = rewritePath;
+      return NextResponse.rewrite(rewriteUrl);
     }
 
     // SEO: Block indexing for zantara subdomain (internal app)
