@@ -5,12 +5,11 @@ Exposes PostGIS spatial queries for the Prime 3D map intelligence layer.
 """
 
 import logging
+import os
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from backend.app.dependencies import get_db
+import asyncpg
+from fastapi import APIRouter, Query
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +24,7 @@ _ZONING_QUERY = """
         avg_price_per_are,
         risk_score
     FROM bali_zoning_layers
-    WHERE ST_Contains(boundary, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326))
+    WHERE ST_Contains(boundary, ST_SetSRID(ST_MakePoint($1, $2), 4326))
     ORDER BY risk_score DESC
     LIMIT 1
 """
@@ -35,19 +34,22 @@ _ZONING_QUERY = """
 async def get_zoning(
     lat: float = Query(..., ge=-90, le=90, description="Latitude"),
     lng: float = Query(..., ge=-180, le=180, description="Longitude"),
-    db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """
     Return GISTARU zoning data for a given lat/lng coordinate.
     Uses PostGIS ST_Contains with a GIST index — typically < 10ms.
     """
     try:
-        from sqlalchemy import text
+        db_url = os.environ.get("DATABASE_URL", "")
+        # asyncpg uses postgresql:// not postgres://
+        if db_url.startswith("postgres://"):
+            db_url = db_url.replace("postgres://", "postgresql://", 1)
 
-        result = await db.execute(
-            text(_ZONING_QUERY).bindparams(lat=lat, lng=lng),
-        )
-        row = result.mappings().first()
+        conn = await asyncpg.connect(db_url)
+        try:
+            row = await conn.fetchrow(_ZONING_QUERY, lng, lat)
+        finally:
+            await conn.close()
 
         if not row:
             logger.info(f"⚠️ [Prime] No zoning match for {lat},{lng}")

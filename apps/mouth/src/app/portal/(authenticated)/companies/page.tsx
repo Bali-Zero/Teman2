@@ -42,7 +42,7 @@ export default function CompaniesPage() {
   if (isLoading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--bz-accent-warm)" }} />
       </div>
     );
   }
@@ -52,19 +52,19 @@ export default function CompaniesPage() {
       {/* Header */}
       <section>
         <h1 className="text-2xl font-bold tracking-tight">Your Companies</h1>
-        <p className="text-muted-foreground">
+        <p style={{ color: "var(--bz-text-2)" }}>
           Manage your business entities in Indonesia
         </p>
       </section>
 
       {/* Companies List */}
       {companies.length === 0 ? (
-        <section className="rounded-xl border border-dashed bg-card p-12 text-center">
-          <Building2 className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
-          <h2 className="text-lg font-semibold text-muted-foreground">
+        <section className="rounded-xl border border-dashed p-12 text-center" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
+          <Building2 className="w-16 h-16 mx-auto mb-4 opacity-30" style={{ color: "var(--bz-text-2)" }} />
+          <h2 className="text-lg font-semibold" style={{ color: "var(--bz-text-2)" }}>
             No companies yet
           </h2>
-          <p className="text-sm text-muted-foreground/70 mt-1">
+          <p className="text-sm mt-1" style={{ color: "var(--bz-text-3)" }}>
             Contact us to set up your Indonesian business entity.
           </p>
         </section>
@@ -97,18 +97,12 @@ function CompanyCard({
     const hasUpcoming = company.compliance.some((c) => c.status === "upcoming");
 
     if (hasOverdue) {
-      return { label: "Overdue", className: "text-red-600 dark:text-red-400" };
+      return { label: "Overdue", color: "#f87171" };
     }
     if (hasUpcoming) {
-      return {
-        label: "Upcoming",
-        className: "text-amber-600 dark:text-amber-400",
-      };
+      return { label: "Upcoming", color: "#fbbf24" };
     }
-    return {
-      label: "Compliant",
-      className: "text-emerald-600 dark:text-emerald-400",
-    };
+    return { label: "Compliant", color: "#34d399" };
   };
 
   const getLicenseStatus = () => {
@@ -132,14 +126,12 @@ function CompanyCard({
   return (
     <div
       onClick={onClick}
-      className={cn(
-        "rounded-xl border bg-card p-4 cursor-pointer transition-all",
-        "hover:bg-muted/50 hover:border-primary/30 active:scale-[0.99]",
-      )}
+      className="rounded-xl border p-4 cursor-pointer transition-all active:scale-[0.99]"
+      style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
     >
       <div className="flex items-start gap-4">
-        <div className="p-3 rounded-xl bg-primary/10 flex-shrink-0">
-          <Building2 className="w-6 h-6 text-primary" />
+        <div className="p-3 rounded-xl flex-shrink-0" style={{ background: "rgba(201,169,110,0.1)" }}>
+          <Building2 className="w-6 h-6" style={{ color: "var(--bz-accent-warm)" }} />
         </div>
 
         <div className="flex-1 min-w-0">
@@ -150,17 +142,17 @@ function CompanyCard({
                   {company.name}
                 </h3>
                 {company.isPrimary && (
-                  <Shield className="w-4 h-4 text-primary flex-shrink-0" />
+                  <Shield className="w-4 h-4 flex-shrink-0" style={{ color: "var(--bz-accent-warm)" }} />
                 )}
               </div>
-              <p className="text-sm text-muted-foreground mt-0.5">
+              <p className="text-sm mt-0.5" style={{ color: "var(--bz-text-2)" }}>
                 {company.type}
               </p>
             </div>
 
             <div className="flex items-center gap-1 flex-shrink-0">
               <StatusBadge status={company.status} />
-              <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              <ChevronRight className="w-5 h-5" style={{ color: "var(--bz-text-2)" }} />
             </div>
           </div>
 
@@ -173,7 +165,7 @@ function CompanyCard({
                   <licenseStatus.icon
                     className={cn("w-3.5 h-3.5", licenseStatus.className)}
                   />
-                  <span className="text-muted-foreground">
+                  <span style={{ color: "var(--bz-text-2)" }}>
                     {company.licenses.length} license
                     {company.licenses.length !== 1 ? "s" : ""}
                   </span>
@@ -181,7 +173,7 @@ function CompanyCard({
               )}
 
             {company.directors && company.directors.length > 0 && (
-              <div className="flex items-center gap-1.5 text-muted-foreground">
+              <div className="flex items-center gap-1.5" style={{ color: "var(--bz-text-2)" }}>
                 <span>
                   {company.directors.length} director
                   {company.directors.length !== 1 ? "s" : ""}
@@ -190,7 +182,7 @@ function CompanyCard({
             )}
 
             {compliance && (
-              <div className={cn("font-medium", compliance.className)}>
+              <div className="font-medium" style={{ color: compliance.color }}>
                 {compliance.label}
               </div>
             )}
@@ -202,29 +194,25 @@ function CompanyCard({
 }
 
 function StatusBadge({ status }: { status: "active" | "pending" }) {
-  const config = {
+  const config: Record<string, { icon: React.ElementType; label: string; style: React.CSSProperties }> = {
     active: {
       icon: CheckCircle,
       label: "Active",
-      className:
-        "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+      style: { background: "rgba(16,185,129,0.12)", color: "#34d399" },
     },
     pending: {
       icon: Clock,
       label: "Pending",
-      className:
-        "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+      style: { background: "rgba(245,158,11,0.12)", color: "#fbbf24" },
     },
   };
 
-  const { icon: Icon, label, className } = config[status];
+  const { icon: Icon, label, style } = config[status] ?? config.pending;
 
   return (
     <div
-      className={cn(
-        "px-2 py-1 rounded-full flex items-center gap-1 text-xs font-medium",
-        className,
-      )}
+      className="px-2 py-1 rounded-full flex items-center gap-1 text-xs font-medium"
+      style={style}
     >
       <Icon className="w-3 h-3" />
       {label}
