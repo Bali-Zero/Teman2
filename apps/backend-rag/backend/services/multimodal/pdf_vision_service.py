@@ -3,12 +3,13 @@ PDF Vision Service
 Analisi multimodale di PDF — OCR, tabelle, passaporti, documenti CRM.
 Integrato con Google Drive per scaricare i file on-demand.
 
-Primary: Local Ollama qwen3.5:27b vision (free, ~20s per page)
+Primary: Local Ollama qwen2.5vl:7b (free, ~30s per page, confirmed working)
 Fallback: Google Gemini 2.0 Flash Vision (API)
 
-UPDATED 2026-03-08:
-- Ollama-first with Gemini fallback
-- qwen3.5:27b has native vision (27 vision blocks)
+NOTE: qwen3.5:27b/9b Q4_K_M quantization does NOT work for vision despite
+      reporting "vision" capability. Use qwen2.5vl:7b instead.
+UPDATED 2026-03-09:
+- Switched from qwen3.5:27b to qwen2.5vl:7b (confirmed passport OCR working)
 """
 
 import base64
@@ -22,7 +23,7 @@ from PIL import Image
 
 from backend.app.core.config import settings
 from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
-from backend.llm.ollama_client import MODEL_HEAVY, is_ollama_available
+from backend.llm.ollama_client import is_ollama_available
 from backend.services.oracle.smart_oracle import download_pdf_from_drive
 
 logger = logging.getLogger(__name__)
@@ -40,7 +41,7 @@ class PDFVisionService:
         self.api_key = api_key or settings.google_api_key
         self._genai_client: GenAIClient | None = None
         self.model_name = "gemini-2.0-flash-001"
-        self.ollama_model = MODEL_HEAVY  # qwen3.5:27b (has vision)
+        self.ollama_model = "qwen2.5vl:7b"  # confirmed working for vision OCR
 
     def _get_genai_client(self) -> GenAIClient | None:
         """Lazy load GenAI client."""
