@@ -11,9 +11,16 @@ interface Coordinate {
 }
 
 interface ZoningInfo {
-  district: string;
-  zone: string;
-  allowed_activities: string;
+  status: "found" | "outside_coverage" | "error";
+  district?: string;
+  subdistrict?: string;
+  zone_code?: string;
+  zone_name?: string;
+  zone_type?: string;
+  allowed_kbli?: string[];
+  risk_score?: number;
+  source?: string;
+  message?: string;
 }
 
 export default function PrimeMap3D() {
@@ -81,32 +88,21 @@ export default function PrimeMap3D() {
     initMap();
   }, [isLoaded]);
 
-  // Simulate calling the Nuzantara Backend RAG with coordinates
   const analyzeLocation = async (pos: Coordinate) => {
     setIsAnalyzing(true);
     setZoningResult(null);
-    
-    // Simulating network delay and PostGIS response
-    setTimeout(() => {
-      // Mock response based on the mock geojson we injected in the backend
-      const isCanggu = pos.lat > -8.655 && pos.lat < -8.648;
-      
-      if (isCanggu) {
-        setZoningResult({
-          district: "Canggu (Badung)",
-          zone: "Tourism / Commercial",
-          allowed_activities: "KBLI 56101 (Restaurant), 55110 (Hotel) allowed."
-        });
-      } else {
-        setZoningResult({
-          district: "Pererenan (Badung)",
-          zone: "Green Zone",
-          allowed_activities: "Agriculture only. Commercial development restricted."
-        });
-      }
-      
+    try {
+      const res = await fetch(
+        `/api/prime/zoning?lat=${pos.lat}&lng=${pos.lng}`,
+      );
+      const data: ZoningInfo = await res.json();
+      setZoningResult(data);
+    } catch (e) {
+      logger.error("Zoning fetch failed", { metadata: { lat: pos.lat, lng: pos.lng } }, e instanceof Error ? e : new Error(String(e)));
+      setZoningResult({ status: "error", message: "Could not reach zoning database." });
+    } finally {
       setIsAnalyzing(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -155,22 +151,44 @@ export default function PrimeMap3D() {
 
         {zoningResult && !isAnalyzing && (
           <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <div className="border-l-2 border-blue-500 pl-3">
-              <div className="text-xs text-slate-400 uppercase tracking-wider">District</div>
-              <div className="font-medium text-white">{zoningResult.district}</div>
-            </div>
-            <div className="border-l-2 border-emerald-500 pl-3">
-              <div className="text-xs text-slate-400 uppercase tracking-wider">Zoning Status</div>
-              <div className="font-medium text-emerald-400">{zoningResult.zone}</div>
-            </div>
-            <div className="border-l-2 border-purple-500 pl-3">
-              <div className="text-xs text-slate-400 uppercase tracking-wider">KBLI / Business</div>
-              <div className="text-sm text-slate-300 leading-snug">{zoningResult.allowed_activities}</div>
-            </div>
-            
-            <button className="w-full mt-4 bg-white text-black font-semibold py-2.5 rounded hover:bg-slate-200 transition-colors text-sm">
-              Generate PMA Quote
-            </button>
+            {zoningResult.status === "found" ? (
+              <>
+                <div className="border-l-2 border-blue-500 pl-3">
+                  <div className="text-xs text-slate-400 uppercase tracking-wider">District</div>
+                  <div className="font-medium text-white">
+                    {zoningResult.subdistrict
+                      ? `${zoningResult.subdistrict}, ${zoningResult.district}`
+                      : zoningResult.district}
+                  </div>
+                </div>
+                <div className="border-l-2 border-emerald-500 pl-3">
+                  <div className="text-xs text-slate-400 uppercase tracking-wider">Zone Code</div>
+                  <div className="font-mono text-emerald-400 font-semibold">
+                    {zoningResult.zone_code}
+                  </div>
+                  <div className="text-xs text-slate-400 mt-0.5">{zoningResult.zone_name}</div>
+                </div>
+                <div className="border-l-2 border-purple-500 pl-3">
+                  <div className="text-xs text-slate-400 uppercase tracking-wider">Risk</div>
+                  <div className={`text-sm font-medium ${(zoningResult.risk_score ?? 0) > 0.7 ? "text-red-400" : "text-emerald-400"}`}>
+                    {(zoningResult.risk_score ?? 0) > 0.7 ? "High" : "Normal"}
+                    <span className="text-slate-500 font-normal ml-1">
+                      ({((zoningResult.risk_score ?? 0) * 100).toFixed(0)}%)
+                    </span>
+                  </div>
+                </div>
+                <div className="text-xs text-slate-600 pt-1">
+                  Source: {zoningResult.source}
+                </div>
+                <button className="w-full mt-2 bg-white text-black font-semibold py-2.5 rounded hover:bg-slate-200 transition-colors text-sm">
+                  Generate PMA Quote
+                </button>
+              </>
+            ) : (
+              <div className="text-sm text-amber-400 border-l-2 border-amber-500 pl-3">
+                {zoningResult.message ?? "Outside GISTARU coverage area."}
+              </div>
+            )}
           </div>
         )}
       </div>

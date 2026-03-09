@@ -73,6 +73,7 @@ def include_routers(api: FastAPI) -> None:
         oracle_ingest,
         oracle_universal,
         performance,
+        prime,
         portal,
         portal_invite,
         portal_taxes,
@@ -228,6 +229,7 @@ def include_routers(api: FastAPI) -> None:
 
     # Performance router (productivity removed - will be MCP)
     api.include_router(performance.router)
+    api.include_router(prime.router)
 
     # Module routers (Prime Standard)
     api.include_router(dream.router)  # [NEW] Dream Room
