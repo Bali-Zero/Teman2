@@ -26,7 +26,7 @@ export function HeroLiveWindow() {
   const { data } = useSWR<{ articles?: HeroArticle[] }>(
     "/api/blog/homepage-hero",
     fetcher,
-    { refreshInterval: 5 * 60 * 1000 }
+    { refreshInterval: 5 * 60 * 1000 },
   );
 
   const articles: (HeroArticle | undefined)[] =
@@ -39,7 +39,8 @@ export function HeroLiveWindow() {
       style={{
         height: 264,
         border: "1px solid var(--bz-border-accent)",
-        boxShadow: "0 0 0 1px var(--bz-border-accent), 0 4px 24px rgba(0,0,0,0.5)",
+        boxShadow:
+          "0 0 0 1px var(--bz-border-accent), 0 4px 24px rgba(0,0,0,0.5)",
       }}
     >
       {/* Background */}
@@ -101,9 +102,18 @@ export function HeroLiveWindow() {
           background: "rgba(0,0,0,0.3)",
         }}
       >
-        <HeroCard article={main} gradient={CARD_GRADIENTS[0]} isMain style={{ gridRow: "1 / 3" }} />
+        <HeroCard
+          article={main}
+          gradient={CARD_GRADIENTS[0]}
+          isMain
+          style={{ gridRow: "1 / 3" }}
+        />
         {rest.slice(0, 4).map((article, i) => (
-          <HeroCard key={i} article={article} gradient={CARD_GRADIENTS[i + 1]} />
+          <HeroCard
+            key={i}
+            article={article}
+            gradient={CARD_GRADIENTS[i + 1]}
+          />
         ))}
       </div>
     </div>
@@ -121,50 +131,80 @@ function HeroCard({
   isMain?: boolean;
   style?: React.CSSProperties;
 }) {
-  const href = article?.href || (article ? `https://balizero.com/articles/${article.category}/${article.slug}` : "#");
+  const href =
+    article?.href ||
+    (article
+      ? `https://balizero.com/articles/${article.category}/${article.slug}`
+      : "#");
 
   return (
     <a
       href={article ? href : undefined}
       target={article?.href?.startsWith("http") ? "_blank" : undefined}
-      rel={article?.href?.startsWith("http") ? "noopener noreferrer" : undefined}
+      rel={
+        article?.href?.startsWith("http") ? "noopener noreferrer" : undefined
+      }
       className="relative overflow-hidden block"
       style={{ ...style, background: gradient }}
     >
       {/* Grain */}
-      <div className="absolute inset-0 pointer-events-none opacity-[0.06]"
-           style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")" }} />
+      <div
+        className="absolute inset-0 pointer-events-none opacity-[0.06]"
+        style={{
+          backgroundImage:
+            "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+        }}
+      />
 
       {/* Cover image */}
       {article?.cover_image && (
-        <div className="absolute inset-0 bg-cover bg-center"
-             style={{ backgroundImage: `url(${article.cover_image})`, opacity: 0.4 }} />
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{
+            backgroundImage: `url(${article.cover_image})`,
+            opacity: 0.4,
+          }}
+        />
       )}
 
       {/* Gradient overlay */}
-      <div className="absolute inset-0"
-           style={{ background: "linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.3) 50%, transparent 100%)" }} />
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.3) 50%, transparent 100%)",
+        }}
+      />
 
       {/* Content */}
-      <div className={`absolute bottom-0 left-0 right-0 ${isMain ? "p-3.5" : "p-2.5"}`}>
+      <div
+        className={`absolute bottom-0 left-0 right-0 ${isMain ? "p-3.5" : "p-2.5"}`}
+      >
         {article?.category && (
-          <span className={`block font-bold uppercase tracking-[1px] mb-1 ${isMain ? "text-[9px]" : "text-[7.5px]"}`}
-                style={{ color: "var(--bz-accent-warm)" }}>
+          <span
+            className={`block font-bold uppercase tracking-[1px] mb-1 ${isMain ? "text-[9px]" : "text-[7.5px]"}`}
+            style={{ color: "var(--bz-accent-warm)" }}
+          >
             {article.category}
           </span>
         )}
         {article?.title && (
-          <div style={{
-            fontSize: isMain ? 15 : 10.5,
-            fontWeight: isMain ? 700 : 600,
-            lineHeight: 1.35,
-            color: "rgba(237,234,228,0.92)",
-          }}>
+          <div
+            style={{
+              fontSize: isMain ? 15 : 10.5,
+              fontWeight: isMain ? 700 : 600,
+              lineHeight: 1.35,
+              color: "rgba(237,234,228,0.92)",
+            }}
+          >
             {article.title}
           </div>
         )}
         {!article && (
-          <div className="h-3 rounded animate-pulse" style={{ background: "rgba(255,255,255,0.06)", width: "70%" }} />
+          <div
+            className="h-3 rounded animate-pulse"
+            style={{ background: "rgba(255,255,255,0.06)", width: "70%" }}
+          />
         )}
       </div>
     </a>

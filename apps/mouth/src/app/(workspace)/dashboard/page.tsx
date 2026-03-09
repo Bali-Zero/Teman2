@@ -167,11 +167,31 @@ export default function DashboardPage() {
       statusCounts[p.status] = (statusCounts[p.status] || 0) + 1;
     }
     return [
-      { label: "In Progress", value: statusCounts["in_progress"] || 0, color: "var(--accent, #3b82f6)" },
-      { label: "Inquiry", value: statusCounts["inquiry"] || 0, color: "var(--foreground-muted, #9ca3af)" },
-      { label: "Quotation", value: statusCounts["quotation"] || 0, color: "var(--warning, #f59e0b)" },
-      { label: "Documents", value: statusCounts["documents"] || 0, color: "var(--warning, #f59e0b)" },
-      { label: "Completed", value: statusCounts["completed"] || 0, color: "var(--success, #22c55e)" },
+      {
+        label: "In Progress",
+        value: statusCounts["in_progress"] || 0,
+        color: "var(--accent, #3b82f6)",
+      },
+      {
+        label: "Inquiry",
+        value: statusCounts["inquiry"] || 0,
+        color: "var(--foreground-muted, #9ca3af)",
+      },
+      {
+        label: "Quotation",
+        value: statusCounts["quotation"] || 0,
+        color: "var(--warning, #f59e0b)",
+      },
+      {
+        label: "Documents",
+        value: statusCounts["documents"] || 0,
+        color: "var(--warning, #f59e0b)",
+      },
+      {
+        label: "Completed",
+        value: statusCounts["completed"] || 0,
+        color: "var(--success, #22c55e)",
+      },
     ];
   }, [practices]);
 
