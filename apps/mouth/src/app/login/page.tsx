@@ -75,10 +75,14 @@ export default function LoginPage() {
         },
       );
 
-      // Get redirect path based on user role
-      // Clients go to /portal, team members go to /dashboard
-      const redirectTo =
-        loginResponse.user?.role === "client" ? "/portal" : "/dashboard";
+      // Get redirect path: honour ?redirect= param (SSO subdomains), else role-based
+      const urlParams = new URLSearchParams(globalThis.location.search);
+      const redirectParam = urlParams.get("redirect");
+      const redirectTo = redirectParam
+        ? redirectParam
+        : loginResponse.user?.role === "client"
+          ? "/portal"
+          : "/dashboard";
       logger.info("Redirect path determined", {
         component: "LoginPage",
         action: "handleLogin",
@@ -122,7 +126,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex w-full min-h-screen bg-black overflow-hidden font-sans text-white selection:bg-cyan-500/30 relative">
+    <div className="flex w-full min-h-screen bg-[var(--bz-base)] overflow-hidden font-sans text-white selection:bg-cyan-500/30 relative">
       <style
         dangerouslySetInnerHTML={{
           __html: `
@@ -130,9 +134,9 @@ export default function LoginPage() {
         input:-webkit-autofill:hover, 
         input:-webkit-autofill:focus, 
         input:-webkit-autofill:active {
-            -webkit-box-shadow: 0 0 0 30px #212222 inset !important;
+            -webkit-box-shadow: 0 0 0 30px var(--bz-elevated) inset !important;
             -webkit-text-fill-color: white !important;
-            caret-color: #CE1126 !important;
+            caret-color: var(--bz-accent) !important;
         }
       `,
         }}
@@ -161,7 +165,7 @@ export default function LoginPage() {
           transition={{ duration: 0.1 }}
           className="absolute inset-0 z-50 bg-black/90 flex items-center justify-center backdrop-blur-sm"
         >
-          <h1 className="text-4xl md:text-6xl font-mono font-bold text-[#CE1126] tracking-widest uppercase">
+          <h1 className="text-4xl md:text-6xl font-mono font-bold text-[var(--bz-accent)] tracking-widest uppercase">
             Access Denied
           </h1>
         </motion.div>
@@ -175,7 +179,7 @@ export default function LoginPage() {
           opacity: loginStage === "authenticating" ? 0.5 : 1, // Dim on authenticating
         }}
         transition={{ duration: 0.8, ease: "easeOut" }}
-        className="w-full lg:w-[35%] h-full min-h-screen bg-[#212222] relative z-20 flex flex-col px-12 lg:px-16 py-12"
+        className="w-full lg:w-[35%] h-full min-h-screen bg-[var(--bz-elevated)] relative z-20 flex flex-col px-12 lg:px-16 py-12"
       >
         {/* Top: Brand Identity */}
         <div className="flex flex-col items-center w-full pt-8 mb-auto">
@@ -223,7 +227,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 onFocus={() => play("focus")}
                 disabled={loginStage !== "idle"}
-                className="w-full bg-black/20 border-b border-white/10 py-3 pl-0 text-red-50 placeholder-white/20 caret-[#CE1126] focus:outline-none focus:border-[#CE1126] focus:shadow-[0_0_10px_rgba(206,17,38,0.2)] focus:bg-white/[0.02] transition-colors duration-0 text-sm font-light tracking-wide rounded-none"
+                className="w-full bg-black/20 border-b border-white/10 py-3 pl-0 text-red-50 placeholder-white/20 caret-[var(--bz-accent)] focus:outline-none focus:border-[var(--bz-accent)] focus:shadow-[0_0_10px_rgba(212,132,90,0.2)] focus:bg-white/[0.02] transition-colors duration-0 text-sm font-light tracking-wide rounded-none"
               />
             </div>
 
@@ -243,7 +247,7 @@ export default function LoginPage() {
                 onChange={(e) => setPin(e.target.value)}
                 onFocus={() => play("focus")}
                 disabled={loginStage !== "idle"}
-                className="w-full bg-black/20 border-b border-white/10 py-3 pl-0 text-red-50 placeholder-white/20 caret-[#CE1126] focus:outline-none focus:border-[#CE1126] focus:shadow-[0_0_10px_rgba(206,17,38,0.2)] focus:bg-white/[0.02] transition-colors duration-0 text-sm font-light tracking-wide rounded-none"
+                className="w-full bg-black/20 border-b border-white/10 py-3 pl-0 text-red-50 placeholder-white/20 caret-[var(--bz-accent)] focus:outline-none focus:border-[var(--bz-accent)] focus:shadow-[0_0_10px_rgba(212,132,90,0.2)] focus:bg-white/[0.02] transition-colors duration-0 text-sm font-light tracking-wide rounded-none"
               />
             </div>
 
@@ -251,7 +255,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loginStage !== "idle"}
-                className="w-full group relative overflow-hidden bg-white/5 hover:bg-[#CE1126] hover:border-[#CE1126] hover:shadow-[0_0_30px_rgba(206,17,38,0.4)] border border-white/10 text-white text-xs font-bold tracking-[0.2em] uppercase py-4 transition-all duration-300 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full group relative overflow-hidden bg-white/5 hover:bg-[var(--bz-accent)] hover:border-[var(--bz-accent)] hover:shadow-[0_0_30px_rgba(212,132,90,0.4)] border border-white/10 text-white text-xs font-bold tracking-[0.2em] uppercase py-4 transition-all duration-300 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span className="opacity-80 group-hover:opacity-100 transition-opacity">
                   Authenticate
@@ -286,7 +290,7 @@ export default function LoginPage() {
       </motion.div>
 
       {/* RIGHT COLUMN - Kintsugi Capital */}
-      <div className="hidden lg:block lg:w-[65%] relative z-0 h-screen bg-[#212222]">
+      <div className="hidden lg:block lg:w-[65%] relative z-0 h-screen bg-[var(--bz-elevated)]">
         <motion.div
           className="relative w-full h-full"
           animate={{
@@ -306,8 +310,8 @@ export default function LoginPage() {
         </motion.div>
 
         {/* Cinematic Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#212222] via-transparent to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#212222] via-transparent to-transparent opacity-90" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[var(--bz-elevated)] via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[var(--bz-elevated)] via-transparent to-transparent opacity-90" />
 
         {/* Kintsugi Text Overlay */}
         <div className="absolute bottom-12 right-16 text-right max-w-md flex flex-col items-end">
