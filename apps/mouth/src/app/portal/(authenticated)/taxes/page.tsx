@@ -13,6 +13,7 @@ import {
 import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 import type {
   TaxOverview,
   TaxObligation,
@@ -35,7 +36,7 @@ export default function TaxesPage() {
       setTaxData(data);
     } catch (err) {
       error("Failed to load tax information", "Please try again later");
-      console.error(err);
+      logger.error("Failed to load portal tax data", {}, err as Error);
     } finally {
       setIsLoading(false);
     }
