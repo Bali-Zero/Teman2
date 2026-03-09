@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS bali_zoning_layers (
     subdistrict_name VARCHAR(255),
     zoning_type VARCHAR(100) NOT NULL, -- e.g., 'Green Zone', 'Tourism', 'Commercial'
     allowed_kbli JSONB,                -- List of flat KBLI codes permitted here
-    boundary GEOMETRY(Polygon, 4326),  -- 4326 = WGS 84 (Standard Google Maps Lat/Lng)
+    boundary GEOMETRY(Geometry, 4326),  -- 4326 = WGS 84 (Standard Google Maps Lat/Lng) - supports Polygon + MultiPolygon
     avg_price_per_are DECIMAL,         -- Contextual data for Prime
     risk_score FLOAT,                  -- AI calculated risk score
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
