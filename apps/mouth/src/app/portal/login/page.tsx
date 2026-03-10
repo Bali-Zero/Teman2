@@ -52,18 +52,18 @@ export default function PortalLoginPage() {
           0%, 100% { opacity: var(--op-base); transform: scale(1); }
           50%       { opacity: var(--op-peak); transform: scale(1.5); }
         }
-        /* Unidirectional left→right star drift — 3 speeds for parallax depth */
+        /* Pendulum star drift — diagonal ease-in-out, 3 parallax speeds */
         @keyframes starDriftFast {
-          0%   { transform: translateX(0px); }
-          100% { transform: translateX(6px); }
+          0%, 100% { transform: translate(0px, 0px); }
+          50%      { transform: translate(15px, -5px); }
         }
         @keyframes starDriftMid {
-          0%   { transform: translateX(0px); }
-          100% { transform: translateX(3.5px); }
+          0%, 100% { transform: translate(0px, 0px); }
+          50%      { transform: translate(10px, -3px); }
         }
         @keyframes starDriftSlow {
-          0%   { transform: translateX(0px); }
-          100% { transform: translateX(1.8px); }
+          0%, 100% { transform: translate(0px, 0px); }
+          50%      { transform: translate(5px, -1.5px); }
         }
         @keyframes glassShimmer {
           0%, 100% { opacity: 0.18; }
@@ -128,8 +128,8 @@ export default function PortalLoginPage() {
           <rect width="1440" height="900" fill="url(#skyGrad)" />
 
           {/* ── ANIMATED STARFIELD ── */}
-          {/* Layer A — distant stars, slowest drift */}
-          <g style={{ animation: "starDriftSlow 90s linear infinite" }}>
+          {/* Layer A — distant stars, slowest pendulum */}
+          <g style={{ animation: "starDriftSlow 300s ease-in-out infinite" }}>
             {[
               [88,45,0.18,4.2],[144,72,0.22,6.1],[201,28,0.16,8.3],[267,91,0.25,5.0],
               [312,55,0.19,7.2],[389,38,0.14,3.8],[445,82,0.23,9.1],[501,19,0.17,6.7],
@@ -157,8 +157,8 @@ export default function PortalLoginPage() {
             ))}
           </g>
 
-          {/* Layer B — mid stars, medium drift */}
-          <g style={{ animation: "starDriftMid 60s linear infinite" }}>
+          {/* Layer B — mid stars, medium pendulum */}
+          <g style={{ animation: "starDriftMid 200s ease-in-out infinite" }}>
             {[
               [55,220,0.15,5.9],[123,248,0.19,7.2],[191,235,0.22,4.4],[259,212,0.13,8.6],
               [327,244,0.17,6.1],[395,228,0.24,3.8],[463,241,0.16,5.5],[531,217,0.20,7.7],
@@ -184,8 +184,8 @@ export default function PortalLoginPage() {
             ))}
           </g>
 
-          {/* Layer C — bright foreground stars, fastest drift */}
-          <g style={{ animation: "starDriftFast 40s linear infinite" }}>
+          {/* Layer C — bright foreground stars, fastest pendulum */}
+          <g style={{ animation: "starDriftFast 120s ease-in-out infinite" }}>
             {[
               [180,88,0.65,3.8],[520,45,0.7,5.1],[860,72,0.6,4.4],[1200,55,0.72,3.2],
               [350,195,0.58,6.2],[750,168,0.68,4.7],[1100,182,0.62,5.5],
