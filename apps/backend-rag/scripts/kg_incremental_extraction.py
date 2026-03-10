@@ -209,7 +209,7 @@ class KGIncrementalExtractor:
 
         while True:
             # Build scroll request
-            scroll_data = {"limit": batch_size, "with_payload": True, "with_vector": False}
+            scroll_data = {"limit": batch_size, "with_payload": True, "with_vectors": False}
             if next_offset is not None:
                 scroll_data["offset"] = next_offset
 
@@ -266,7 +266,7 @@ class KGIncrementalExtractor:
             filter_data = {
                 "must": [
                     {
-                        "key": "metadata.document_id",
+                        "key": "document_id",
                         "match": {"value": document_id}
                     }
                 ]
@@ -277,7 +277,7 @@ class KGIncrementalExtractor:
             scroll_data = {
                 "limit": batch_size,
                 "with_payload": True,
-                "with_vector": False
+                "with_vectors": False
             }
             if next_offset is not None:
                 scroll_data["offset"] = next_offset

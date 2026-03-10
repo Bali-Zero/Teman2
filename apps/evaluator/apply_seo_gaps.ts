@@ -1,6 +1,6 @@
 /**
  * apply_seo_gaps.ts
- * Reads SEO_ACTION_PLAN_REAL_DATA.json and patches KBLI page metadata
+ * Reads data/analysis/SEO_ACTION_PLAN_REAL_DATA.json and patches KBLI page metadata
  * if critical SEO gaps are detected.
  *
  * Usage: npx tsx apps/evaluator/apply_seo_gaps.ts [--dry-run]
@@ -19,7 +19,7 @@ const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.resolve(__dirname, "../../");
 const ACTION_PLAN_PATH = path.join(
   PROJECT_ROOT,
-  "SEO_ACTION_PLAN_REAL_DATA.json",
+  "data/analysis/SEO_ACTION_PLAN_REAL_DATA.json",
 );
 const PAGE_PATH = path.join(
   PROJECT_ROOT,

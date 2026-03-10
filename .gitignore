@@ -131,6 +131,11 @@ service-account-key.json
 .secrets/*
 !.secrets/README.md
 
+# Root-local env and secret files
+.env.combined
+service-account.json
+google-credentials.json
+
 # Database
 *.db
 *.sqlite
@@ -143,6 +148,7 @@ temp/
 *.tmp
 *.bak
 *.backup
+.AppleDouble
 
 # Data & Artifacts
 data/temp/
@@ -220,6 +226,20 @@ lint_*.txt
 
 # Cursor IDE
 .cursorignore
+
+# Root-local artifacts and session output
+.CLAUDE.md.swp
+.next/
+.vercel/
+.playwright-mcp/
+snapshots/
+test_results/
+venv/
+__pycache__/
+.ruff_cache/
+"Client Portal Login UPGRADED"/
+prime-*.png
+prime_*.png
 
 # Backup directories
 backups/

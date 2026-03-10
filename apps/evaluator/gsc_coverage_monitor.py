@@ -31,7 +31,7 @@ logging.basicConfig(level=logging.INFO, format="[CoverageMonitor] %(levelname)s:
 
 # Paths
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-CREDENTIALS_PATH = PROJECT_ROOT / "google-credentials.json"
+CREDENTIALS_PATH = PROJECT_ROOT / ".secrets" / "google-credentials.json"
 STATE_PATH = PROJECT_ROOT / "apps" / "evaluator" / "indexing_state.json"
 COVERAGE_STATE_PATH = PROJECT_ROOT / "apps" / "evaluator" / "coverage_state.json"
 KBLI_DATA_PATH = PROJECT_ROOT / "apps" / "mouth" / "data" / "KBLI_2025_FINAL_CLEAN.json"

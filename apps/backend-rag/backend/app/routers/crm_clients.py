@@ -6,7 +6,7 @@ Refactored: Migrated to asyncpg with connection pooling (2025-12-07)
 """
 
 import time
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 import asyncpg
@@ -100,6 +100,27 @@ class ClientCreate(BaseModel):
             raise ValueError("full_name must be less than 200 characters")
         return v.strip()
 
+    @field_validator("date_of_birth")
+    @classmethod
+    def validate_not_minor(cls, v: str | None) -> str | None:
+        """Block standalone profiles for clients under 18 years old."""
+        if not v:
+            return v
+        try:
+            dob = datetime.strptime(v, "%Y-%m-%d").date()
+            today = date.today()
+            age = (today - dob).days // 365
+            if age < 18:
+                raise ValueError(
+                    f"MINORE ({age} anni): i clienti under 18 non possono avere profilo singolo. "
+                    "Collegare al profilo del genitore tramite family members."
+                )
+        except ValueError as e:
+            if "MINORE" in str(e):
+                raise
+            # Invalid date format — handled elsewhere
+        return v
+
 
 class ClientUpdate(BaseModel):
     full_name: str | None = None
@@ -157,6 +178,26 @@ class ClientUpdate(BaseModel):
             if len(v) > 200:
                 raise ValueError("full_name must be less than 200 characters")
             return v.strip()
+        return v
+
+    @field_validator("date_of_birth")
+    @classmethod
+    def validate_not_minor(cls, v: str | None) -> str | None:
+        """Block setting date_of_birth that makes client under 18."""
+        if not v:
+            return v
+        try:
+            dob = datetime.strptime(v, "%Y-%m-%d").date()
+            today = date.today()
+            age = (today - dob).days // 365
+            if age < 18:
+                raise ValueError(
+                    f"MINORE ({age} anni): i clienti under 18 non possono avere profilo singolo. "
+                    "Collegare al profilo del genitore tramite family members."
+                )
+        except ValueError as e:
+            if "MINORE" in str(e):
+                raise
         return v
 
 

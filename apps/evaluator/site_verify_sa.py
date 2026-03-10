@@ -20,7 +20,7 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-CREDENTIALS_PATH = PROJECT_ROOT / "google-credentials.json"
+CREDENTIALS_PATH = PROJECT_ROOT / ".secrets" / "google-credentials.json"
 SITE_URL = "https://balizero.com/"
 VERIFICATION_TOKEN = "tuGW8kCBjRE-ycNaFdotBkKfOIaunurqnj-XDAVlPWw"
 

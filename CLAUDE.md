@@ -82,6 +82,15 @@ See `docs/PRO_AIR_CONNECTION.md` for full details.
 - Only ask if you genuinely need user input (e.g., choosing between multiple valid approaches)
 - **NEVER** ask "should I write this?" or "do you want me to...?" — just do it
 
+### Browser Automation Rules (ENFORCE STRICTLY)
+
+- **ALWAYS use `mcp__claude-in-chrome__*` tools** for any browser interaction
+- **NEVER fall back to `mcp__playwright__*` autonomously** — only if user explicitly orders it
+- **Text before screenshot**: use `get_page_text`, `find`, `javascript_tool`, `read_console_messages` first
+- Screenshots (`computer`) only for visual QA (layout, colors, logo) — never for content/debug
+- If Claude-in-Chrome fails → run recovery steps from the `browser` skill, then report to user
+- See skill: `browser` (`~/.claude/skills/browser.md`)
+
 **Exception:** Only ask for decisions on:
 
 - Architecture choices with trade-offs (use `AskUserQuestion`)

@@ -464,7 +464,14 @@ const INTERACTION_ICONS: Record<string, React.ReactNode> = {
   note: <FileText className="w-4 h-4" />,
 };
 
-type TabType = "overview" | "documents" | "process" | "family" | "immigration" | "company" | "tax";
+type TabType =
+  | "overview"
+  | "documents"
+  | "process"
+  | "family"
+  | "immigration"
+  | "company"
+  | "tax";
 type ModalType =
   | "none"
   | "edit_client"
@@ -541,7 +548,15 @@ export default function ClientDetailPage() {
     const tabParam = searchParams?.get("tab");
     if (
       tabParam &&
-      ["overview", "documents", "process", "family", "immigration", "company", "tax"].includes(tabParam)
+      [
+        "overview",
+        "documents",
+        "process",
+        "family",
+        "immigration",
+        "company",
+        "tax",
+      ].includes(tabParam)
     ) {
       setActiveTab(tabParam as TabType);
     }
@@ -588,9 +603,7 @@ export default function ClientDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
         <AlertTriangle className="w-12 h-12 text-red-500" />
-        <p className="text-[var(--bz-text-2)]">
-          {error || "Client not found"}
-        </p>
+        <p className="text-[var(--bz-text-2)]">{error || "Client not found"}</p>
         <Button variant="outline" onClick={() => router.push("/clients")}>
           Back to Clients
         </Button>
@@ -1009,9 +1022,7 @@ function OverviewTab({
                   <User className="w-4 h-4 text-[var(--bz-accent)]" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs text-[var(--bz-text-2)]">
-                    Full Name
-                  </p>
+                  <p className="text-xs text-[var(--bz-text-2)]">Full Name</p>
                   <p className="text-base font-semibold">{client.full_name}</p>
                 </div>
               </div>
@@ -1500,9 +1511,7 @@ function PassportCard({
               {/* Passport Number */}
               {client.passport_number && (
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-[var(--bz-text-2)]">
-                    Number:
-                  </span>
+                  <span className="text-[var(--bz-text-2)]">Number:</span>
                   <span className="font-mono text-[var(--bz-text-1)]">
                     {client.passport_number}
                   </span>
@@ -1934,9 +1943,7 @@ function VisaCard({
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-[var(--bz-text-2)]">
-                    Finish:
-                  </span>
+                  <span className="text-[var(--bz-text-2)]">Finish:</span>
                   <span className="text-[var(--bz-text-1)]">
                     {visaProcess.completion_date
                       ? formatDate(visaProcess.completion_date)
@@ -2086,9 +2093,7 @@ function VisaCard({
           <div className="flex-1 flex flex-col">
             <div className="aspect-[3/2] rounded-lg border-2 border-dashed border-[var(--bz-border)] flex flex-col items-center justify-center gap-2 bg-[var(--bz-base)]/50">
               <FileText className="w-10 h-10 text-[var(--bz-text-2)] opacity-50" />
-              <span className="text-sm text-[var(--bz-text-2)]">
-                No visa
-              </span>
+              <span className="text-sm text-[var(--bz-text-2)]">No visa</span>
             </div>
 
             {/* Upload Button */}
@@ -2291,7 +2296,14 @@ function DocumentsTab({
   };
 
   const sortedCategories = Object.keys(documentsByCategory).sort((a, b) => {
-    const order = ["profile", "immigration", "company", "tax", "family", "other"];
+    const order = [
+      "profile",
+      "immigration",
+      "company",
+      "tax",
+      "family",
+      "other",
+    ];
     return order.indexOf(a) - order.indexOf(b);
   });
 
@@ -2315,8 +2327,13 @@ function DocumentsTab({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">Documents</h3>
-          <p className="text-sm text-[var(--bz-text-2)]">{documents.length} documents across {sortedCategories.length} categories</p>
+          <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">
+            Documents
+          </h3>
+          <p className="text-sm text-[var(--bz-text-2)]">
+            {documents.length} documents across {sortedCategories.length}{" "}
+            categories
+          </p>
         </div>
         <Button size="sm" onClick={onAddClick} className="gap-2">
           <Plus className="w-4 h-4" />
@@ -2352,9 +2369,13 @@ function DocumentsTab({
                       </p>
                       <p className="text-xs text-[var(--bz-text-2)] capitalize">
                         {doc.document_type?.replace(/_/g, " ")}
-                        {doc.expiry_date ? ` · Expires ${formatDate(doc.expiry_date)}` : ""}
+                        {doc.expiry_date
+                          ? ` · Expires ${formatDate(doc.expiry_date)}`
+                          : ""}
                         {doc.status === "verified" && (
-                          <span className="ml-1 text-green-500">· ✓ Verified</span>
+                          <span className="ml-1 text-green-500">
+                            · ✓ Verified
+                          </span>
                         )}
                       </p>
                     </div>
@@ -2437,9 +2458,7 @@ function FamilyTab({
       {familyMembers.length === 0 ? (
         <div className="rounded-xl border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)]/50 p-12 text-center">
           <Users className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-50" />
-          <p className="text-[var(--bz-text-2)]">
-            No family members added yet
-          </p>
+          <p className="text-[var(--bz-text-2)]">No family members added yet</p>
           <p className="text-sm text-[var(--bz-text-2)] mt-1">
             Add spouse, children, or dependents
           </p>
@@ -3490,6 +3509,22 @@ function EditClientModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.full_name.trim()) return alert("Full name is required");
+
+    // Block saving if client is under 18 (date_of_birth from existing client record)
+    if (client.date_of_birth) {
+      const dob = new Date(client.date_of_birth);
+      const today = new Date();
+      const age = Math.floor(
+        (today.getTime() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000),
+      );
+      if (age < 18) {
+        alert(
+          `⚠️ MINORE (${age} anni)\n\nI clienti under 18 non possono avere un profilo singolo.\nCollegare al profilo del genitore tramite "Family Members".`,
+        );
+        return;
+      }
+    }
+
     setIsSaving(true);
     try {
       const user = await api.getProfile();
@@ -4044,9 +4079,7 @@ function EditFamilyMemberModal({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1.5">
-            Visa Type
-          </label>
+          <label className="block text-sm font-medium mb-1.5">Visa Type</label>
           <input
             type="text"
             value={formData.current_visa_type}
@@ -4535,9 +4568,7 @@ function CompanyDocUpload({
         <div className="flex items-start gap-3">
           <div
             className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg flex-shrink-0 ${
-              hasDoc
-                ? "bg-green-500/10"
-                : "bg-[var(--bz-text-2)]/5"
+              hasDoc ? "bg-green-500/10" : "bg-[var(--bz-text-2)]/5"
             }`}
           >
             {docIcon[docType] || "📄"}
@@ -4725,9 +4756,7 @@ function CompanyTab({
           <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">
             Companies
           </h3>
-          <p className="text-sm text-[var(--bz-text-2)]">
-            Profile Perseroan
-          </p>
+          <p className="text-sm text-[var(--bz-text-2)]">Profile Perseroan</p>
         </div>
         <Button
           size="sm"
@@ -4750,9 +4779,7 @@ function CompanyTab({
       {companies.length === 0 ? (
         <div className="rounded-xl border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)]/50 p-12 text-center">
           <Building2 className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-50" />
-          <p className="text-[var(--bz-text-2)]">
-            No companies linked yet
-          </p>
+          <p className="text-[var(--bz-text-2)]">No companies linked yet</p>
           <p className="text-sm text-[var(--bz-text-2)] mt-1">
             Link this client to PT PMA or other companies
           </p>
@@ -4873,8 +4900,7 @@ function CompanyTab({
                                 {(() => {
                                   const nominal =
                                     company.share_nominal_value || 1000000;
-                                  const total =
-                                    company.shares_count * nominal;
+                                  const total = company.shares_count * nominal;
                                   if (total >= 1e12)
                                     return `Rp ${(total / 1e12).toFixed(total % 1e12 === 0 ? 0 : 1)}T`;
                                   if (total >= 1e9)
@@ -4983,7 +5009,6 @@ function CompanyTab({
                         )}
                       </div>
                     )}
-
                   </div>
 
                   {/* Right Column: Contact, Address, People */}
@@ -5085,8 +5110,12 @@ function CompanyTab({
                           {company.nib && (
                             <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-[var(--bz-base)] border border-[var(--bz-border)]">
                               <div className="flex items-center gap-2">
-                                <span className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] w-12">NIB</span>
-                                <span className="text-xs font-mono">{company.nib}</span>
+                                <span className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] w-12">
+                                  NIB
+                                </span>
+                                <span className="text-xs font-mono">
+                                  {company.nib}
+                                </span>
                               </div>
                               <CheckCircle2 className="w-3 h-3 text-green-400 flex-shrink-0" />
                             </div>
@@ -5094,15 +5123,20 @@ function CompanyTab({
                           {company.npwp_company && (
                             <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-[var(--bz-base)] border border-[var(--bz-border)]">
                               <div className="flex items-center gap-2">
-                                <span className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] w-12">NPWP</span>
-                                <span className="text-xs font-mono">{company.npwp_company}</span>
+                                <span className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] w-12">
+                                  NPWP
+                                </span>
+                                <span className="text-xs font-mono">
+                                  {company.npwp_company}
+                                </span>
                               </div>
                               <CheckCircle2 className="w-3 h-3 text-green-400 flex-shrink-0" />
                             </div>
                           )}
                         </div>
                         <p className="text-[10px] text-[var(--bz-text-2)] mt-1.5">
-                          {(companyDocs[company.company_id] || []).length} documents on file
+                          {(companyDocs[company.company_id] || []).length}{" "}
+                          documents on file
                         </p>
                       </div>
                     )}
@@ -5513,12 +5547,8 @@ function TaxTab({
               <Icon className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h4 className="font-semibold text-[var(--bz-text-1)]">
-                {title}
-              </h4>
-              <p className="text-xs text-[var(--bz-text-2)]">
-                {subtitle}
-              </p>
+              <h4 className="font-semibold text-[var(--bz-text-1)]">{title}</h4>
+              <p className="text-xs text-[var(--bz-text-2)]">{subtitle}</p>
             </div>
           </div>
           {isOverdue ? (
@@ -5538,9 +5568,7 @@ function TaxTab({
 
         <div className="mt-4 pt-4 border-t border-[var(--bz-border)]">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-[var(--bz-text-2)]">
-              Deadline
-            </span>
+            <span className="text-sm text-[var(--bz-text-2)]">Deadline</span>
             <span
               className={`text-sm font-medium ${isOverdue ? "text-red-400" : daysUntil <= 30 ? "text-yellow-400" : "text-emerald-400"}`}
             >
@@ -6218,9 +6246,7 @@ function AddCompanyModal({
               <div>
                 <label className="block text-xs font-medium mb-1.5">
                   NIB (Business ID){" "}
-                  <span className="text-[var(--bz-text-2)]">
-                    - Number
-                  </span>
+                  <span className="text-[var(--bz-text-2)]">- Number</span>
                 </label>
                 <input
                   type="text"

@@ -95,12 +95,12 @@ docs/
 
 ### 🤖 AI/ML
 
-| Topic                  | Document                                                                       |
-| ---------------------- | ------------------------------------------------------------------------------ |
-| **System Prompt**      | [ai/AI_HANDOVER_PROTOCOL.md](ai/AI_HANDOVER_PROTOCOL.md)                       |
-| **KG Assessment**      | [KG_VALUE_ASSESSMENT_2026_01_18.md](KG_VALUE_ASSESSMENT_2026_01_18.md)         |
-| **Architecture Brief** | [../BRIEF_KB_ARCHITECTURE_REASONING.md](../BRIEF_KB_ARCHITECTURE_REASONING.md) |
-| **KG Strategy**        | [../SUPER_KNOWLEDGE_GRAPH_STRATEGY.md](../SUPER_KNOWLEDGE_GRAPH_STRATEGY.md)   |
+| Topic                  | Document                                                                                         |
+| ---------------------- | ------------------------------------------------------------------------------------------------ |
+| **System Prompt**      | [ai/AI_HANDOVER_PROTOCOL.md](ai/AI_HANDOVER_PROTOCOL.md)                                         |
+| **KG Assessment**      | [KG_VALUE_ASSESSMENT_2026_01_18.md](KG_VALUE_ASSESSMENT_2026_01_18.md)                           |
+| **Architecture Brief** | [../BRIEF_KB_ARCHITECTURE_REASONING.md](../BRIEF_KB_ARCHITECTURE_REASONING.md)                   |
+| **KG Strategy**        | [architecture/SUPER_KNOWLEDGE_GRAPH_STRATEGY.md](architecture/SUPER_KNOWLEDGE_GRAPH_STRATEGY.md) |
 
 ### ✨ Features
 
