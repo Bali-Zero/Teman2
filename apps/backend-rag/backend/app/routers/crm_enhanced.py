@@ -1840,19 +1840,22 @@ async def upload_document_base64(
             raise HTTPException(status_code=400, detail="Invalid base64 file content")
 
         # Determine category and folder name
-        category = "immigration"  # Default
-        folder_name = "01_Immigration"
-
         dt = data.document_type.lower()
-        if "tax" in dt:
+        if dt in ("passport", "photo", "cv", "profile_document"):
+            category = "profile"
+            folder_name = "00_Profile"
+        elif "tax" in dt or dt in ("npwp_personal", "spt_personal", "spt_company", "lkpm"):
             category = "tax"
             folder_name = "03_Tax"
-        elif "company" in dt:
+        elif "company" in dt or dt in ("akta_pendirian", "sk_decree", "nib", "npwp", "company_profile"):
             category = "company"
             folder_name = "02_Company"
         elif "family" in dt:
-            category = "personal"
+            category = "family"
             folder_name = "04_Family"
+        else:
+            category = "immigration"
+            folder_name = "01_Immigration"
 
         async with pool.acquire() as conn:
             client = await conn.fetchrow(
