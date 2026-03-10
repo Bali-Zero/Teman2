@@ -256,7 +256,7 @@ export default function DashboardPage() {
 
         {/* Admin-only section */}
         {isZero && (
-          <>
+          <div data-testid="ai-pulse-widget">
             {/* Financial (admin) */}
             {revenue && (
               <FinancialRealityWidget
@@ -264,7 +264,7 @@ export default function DashboardPage() {
                 growth={revenueGrowth || 0}
               />
             )}
-          </>
+          </div>
         )}
 
         {/* Stats Cards — responsive: 2 cols on small, 4 on large */}
