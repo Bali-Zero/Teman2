@@ -11,6 +11,7 @@ import {
   NewsletterSidebar,
 } from "@/components/blog";
 import type { ArticleCategory, ArticleListItem } from "@/lib/blog/types";
+import { logger } from "@/lib/logger";
 
 // Category metadata
 const CATEGORY_META: Record<
@@ -66,7 +67,7 @@ const CATEGORY_META: Record<
 
 export default function CategoryPage() {
   const params = useParams();
-  const category = params.category as ArticleCategory;
+  const category = (params?.category ?? "") as ArticleCategory;
   const [articles, setArticles] = React.useState<ArticleListItem[]>([]);
   const [loading, setLoading] = React.useState(true);
 
@@ -107,7 +108,7 @@ export default function CategoryPage() {
           setArticles(data.articles || []);
         }
       } catch (error) {
-        console.error("Failed to fetch articles:", error);
+        logger.error("Failed to fetch articles", {}, error instanceof Error ? error : new Error(String(error)));
       } finally {
         setLoading(false);
       }

@@ -29,7 +29,7 @@ export default function NewPracticePage() {
   const [formData, setFormData] = useState({
     title: "", // Maps to notes
     practice_type_code: "visa",
-    client_id: searchParams.get("client_id")
+    client_id: searchParams?.get("client_id")
       ? Number(searchParams.get("client_id"))
       : undefined,
   });
@@ -67,7 +67,7 @@ export default function NewPracticePage() {
 
   // Load initial client if provided in URL
   useEffect(() => {
-    const preselectedId = searchParams.get("client_id");
+    const preselectedId = searchParams?.get("client_id");
     if (preselectedId) {
       api.crm
         .getClient(Number(preselectedId))

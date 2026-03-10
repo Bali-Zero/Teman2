@@ -477,7 +477,7 @@ export default function ClientDetailPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const clientId = Number(params.id);
+  const clientId = Number(params?.id ?? 0);
 
   const [profile, setProfile] = useState<ClientProfile | null>(null);
   const [interactions, setInteractions] = useState<Interaction[]>([]);
@@ -538,7 +538,7 @@ export default function ClientDetailPage() {
 
   // Read tab from URL params and set active tab
   useEffect(() => {
-    const tabParam = searchParams.get("tab");
+    const tabParam = searchParams?.get("tab");
     if (
       tabParam &&
       ["overview", "documents", "process", "family", "immigration", "company", "tax"].includes(tabParam)

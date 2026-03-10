@@ -89,6 +89,7 @@ export function AppSidebar({
   const nav = navigationConfig || navigation;
 
   const isActive = (href: string) => {
+    if (!pathname) return false;
     if (href === "/dashboard" || href === "/portal") {
       return pathname === href;
     }
@@ -164,15 +165,11 @@ export function AppSidebar({
           <Image
             src="/static/balizero-logo-clean.png"
             alt="Bali Zero"
-            width={24}
-            height={24}
+            width={36}
+            height={36}
             className="rounded-full flex-shrink-0"
             priority
           />
-          <span className="text-[13px] font-semibold flex-1 text-left tracking-tight"
-                style={{ color: "var(--bz-text-1)" }}>
-            Bali Zero
-          </span>
           <span className="text-[10px]" style={{ color: "var(--bz-text-3)" }}>⌃</span>
         </button>
       </div>

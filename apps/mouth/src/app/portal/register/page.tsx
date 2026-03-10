@@ -5,11 +5,12 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { Lock, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
+import { logger } from "@/lib/logger";
 
 function RegisterContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const token = searchParams.get("token");
+  const token = searchParams?.get("token");
 
   const [isValidating, setIsValidating] = useState(true);
   const [isValid, setIsValid] = useState(false);
@@ -39,7 +40,7 @@ function RegisterContent() {
           setError(result.message || "This invitation is no longer valid.");
         }
       } catch (err) {
-        console.error("Token validation failed:", err);
+        logger.error("Token validation failed", {}, err instanceof Error ? err : new Error(String(err)));
         setError("Failed to validate invitation. Please try again.");
       } finally {
         setIsValidating(false);
@@ -81,7 +82,7 @@ function RegisterContent() {
         setError(result.message || "Registration failed. Please try again.");
       }
     } catch (err) {
-      console.error("Registration failed:", err);
+      logger.error("Registration failed", {}, err instanceof Error ? err : new Error(String(err)));
       setError("Registration failed. Please try again or contact support.");
     } finally {
       setIsSubmitting(false);
