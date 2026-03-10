@@ -280,7 +280,7 @@ export default function PrimeMap3D() {
       </div>
 
       {/* Intelligence Panel */}
-      <div className="absolute top-6 left-6 z-10 w-80 bg-black/85 backdrop-blur-md text-white rounded-xl border border-white/10 shadow-2xl overflow-hidden">
+      <div className="absolute top-6 left-6 z-10 w-[340px] bg-black/85 backdrop-blur-md text-white rounded-xl border border-white/10 shadow-2xl overflow-hidden">
 
         {/* Header */}
         <div className="px-5 pt-5 pb-4 border-b border-white/10">
