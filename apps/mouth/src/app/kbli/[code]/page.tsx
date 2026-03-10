@@ -17,6 +17,7 @@ import { KBLICard } from "@/components/kbli/KBLICard";
 import {
   KBLICodeJsonLd,
   KBLIBreadcrumbJsonLd,
+  KBLIFaqJsonLd,
 } from "@/components/kbli/KBLIStructuredData";
 import { LicensingSection } from "@/components/kbli/LicensingSection";
 import { getRelatedArticle } from "@/lib/kbli-articles";
@@ -108,6 +109,7 @@ export default async function KBLICodePage({
   return (
     <>
       <KBLICodeJsonLd code={kbli} />
+      <KBLIFaqJsonLd code={kbli} />
       <KBLIBreadcrumbJsonLd
         items={[
           { name: "KBLI Navigator", url: "https://balizero.com/kbli" },
