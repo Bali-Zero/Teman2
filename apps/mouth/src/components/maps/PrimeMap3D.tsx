@@ -418,24 +418,14 @@ export default function PrimeMap3D() {
                         {zoningResult.businesses.map((biz, idx) => (
                           <div
                             key={biz.code ?? `${biz.title_en}-${idx}`}
-                            className="flex items-center justify-between gap-2 bg-slate-800/40 rounded-lg px-3 py-2 border border-white/5"
+                            className="flex items-center gap-2 bg-slate-800/40 rounded-lg px-3 py-2 border border-white/5"
                           >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className={`text-xs px-1.5 py-0.5 rounded border flex-shrink-0 ${CATEGORY_COLORS[biz.category_en] ?? CATEGORY_COLORS["Services"]}`}>
-                                {biz.category_en}
-                              </span>
-                              <span className="text-sm text-white truncate">{biz.title_en}</span>
-                            </div>
-                            {biz.pma_open !== false && (
-                              <span className="text-xs text-emerald-400 flex-shrink-0 font-medium" title="Open to foreign-owned company (PT PMA)">
-                                ✓ Foreign OK
-                              </span>
-                            )}
+                            <span className={`text-xs px-1.5 py-0.5 rounded border flex-shrink-0 ${CATEGORY_COLORS[biz.category_en] ?? CATEGORY_COLORS["Services"]}`}>
+                              {biz.category_en}
+                            </span>
+                            <span className="text-sm text-white truncate">{biz.title_en}</span>
                           </div>
                         ))}
-                      </div>
-                      <div className="text-xs text-slate-600 mt-2">
-                        ✓ Foreign OK = open to PT PMA (foreign-owned company)
                       </div>
                     </div>
                   ) : null}
