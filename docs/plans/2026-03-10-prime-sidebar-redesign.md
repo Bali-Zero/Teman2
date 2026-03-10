@@ -1,4 +1,5 @@
 # Prime Intelligence — Sidebar Redesign + Reverse Geocoding + Zone Colors
+
 **Date:** 2026-03-10
 **Status:** Approved
 
@@ -52,29 +53,32 @@ Height: `h-screen` (full viewport). The page wrapper (`apps/mouth/src/app/prime/
 ```
 [BZ logo 28px] / MAP
 ```
+
 - Logo: `balizero-logo-clean.png` from `/public/`
 - "/ MAP" in `text-slate-400 font-mono text-xs tracking-widest`
 
 ### Accordion Sections (in order)
 
-| # | Title | Icon | Default | Content |
-|---|-------|------|---------|---------|
-| 1 | Location | MapPin | **Open** | Subdistrict, district, **street address** (reverse geocoded) |
-| 2 | Zone | Layers | **Open** | Zone code + color swatch + EN label + ID name + risk badge |
-| 3 | What you can open | Building2 | **Open** | Business list with category chips |
-| 4 | Development Limits | Ruler | Closed | KDB/height/green area grid + notes |
-| 5 | Overlays & Risks | AlertTriangle | Closed | KKOP, LP2B, tsunami, heritage flags |
-| 6 | Land Price | TrendingUp | Closed | Est. price per are |
-| 7 | Latest Intel | Newspaper | Closed | Semantic news articles |
+| #   | Title              | Icon          | Default  | Content                                                      |
+| --- | ------------------ | ------------- | -------- | ------------------------------------------------------------ |
+| 1   | Location           | MapPin        | **Open** | Subdistrict, district, **street address** (reverse geocoded) |
+| 2   | Zone               | Layers        | **Open** | Zone code + color swatch + EN label + ID name + risk badge   |
+| 3   | What you can open  | Building2     | **Open** | Business list with category chips                            |
+| 4   | Development Limits | Ruler         | Closed   | KDB/height/green area grid + notes                           |
+| 5   | Overlays & Risks   | AlertTriangle | Closed   | KKOP, LP2B, tsunami, heritage flags                          |
+| 6   | Land Price         | TrendingUp    | Closed   | Est. price per are                                           |
+| 7   | Latest Intel       | Newspaper     | Closed   | Semantic news articles                                       |
 
 Each section header: `flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-white/5`
 Title: `flex items-center gap-2 text-sm font-semibold text-white` (open) or `text-slate-400` (closed)
 Chevron: rotates 180° when open, terracotta when open
 
 ### CTA (sticky bottom)
+
 ```
 [Get a Free Business Setup Quote →]
 ```
+
 `sticky bottom-0 p-4 bg-black border-t border-white/10`
 
 ---
@@ -86,9 +90,10 @@ Chevron: rotates 180° when open, terracotta when open
 ```typescript
 // In analyzeLocation(), parallel Promise.all
 const [zoningData, geoData] = await Promise.all([
-  fetch(`/api/prime/zoning?lat=...&lng=...`).then(r => r.json()),
-  fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${MAPS_KEY}`)
-    .then(r => r.json())
+  fetch(`/api/prime/zoning?lat=...&lng=...`).then((r) => r.json()),
+  fetch(
+    `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${MAPS_KEY}`,
+  ).then((r) => r.json()),
 ]);
 ```
 
@@ -115,6 +120,7 @@ const [zoningData, geoData] = await Promise.all([
 ```
 
 Query:
+
 ```sql
 SELECT
   ST_AsGeoJSON(ST_Simplify(geom, 0.0001)) as geometry,
@@ -127,6 +133,7 @@ WHERE geom IS NOT NULL
 ### Frontend: Polygon3DElement rendering
 
 When "Zone colors" filter toggle is ON:
+
 1. Fetch `/api/prime/zones-geojson` (cached in React ref after first fetch)
 2. For each feature, create `Polygon3DElement` with:
    - `fillColor`: zone color at 40% opacity
@@ -173,15 +180,15 @@ Icon: `SlidersHorizontal` from lucide-react
 
 Layers:
 
-| Toggle | Label | Default |
-|--------|-------|---------|
-| Zone colors | 🎨 Zone overlay | OFF |
-| KKOP | ✈ Aviation zones | OFF |
-| LP2B | 🌾 Protected farmland | OFF |
-| Tsunami | 🌊 Tsunami risk | OFF |
-| Land prices | 💰 Price heatmap | OFF |
+| Toggle      | Label                 | Default |
+| ----------- | --------------------- | ------- |
+| Zone colors | 🎨 Zone overlay       | OFF     |
+| KKOP        | ✈ Aviation zones      | OFF     |
+| LP2B        | 🌾 Protected farmland | OFF     |
+| Tsunami     | 🌊 Tsunami risk       | OFF     |
+| Land prices | 💰 Price heatmap      | OFF     |
 
-*v1: only Zone colors is functional. Others show as "Coming soon" or are disabled.*
+_v1: only Zone colors is functional. Others show as "Coming soon" or are disabled._
 
 Toggle style: standard iOS-style pill switch with terracotta `#d4845a` active color.
 
@@ -189,11 +196,11 @@ Toggle style: standard iOS-style pill switch with terracotta `#d4845a` active co
 
 ## Files to Change
 
-| File | Change |
-|------|--------|
+| File                                            | Change                                                |
+| ----------------------------------------------- | ----------------------------------------------------- |
 | `apps/mouth/src/components/maps/PrimeMap3D.tsx` | Full rewrite of layout + sidebar + filter + geocoding |
-| `apps/mouth/src/app/prime/page.tsx` | Remove explicit height, use h-screen |
-| `apps/backend-rag/backend/app/routers/prime.py` | Add `GET /zones-geojson` endpoint |
+| `apps/mouth/src/app/prime/page.tsx`             | Remove explicit height, use h-screen                  |
+| `apps/backend-rag/backend/app/routers/prime.py` | Add `GET /zones-geojson` endpoint                     |
 
 ---
 

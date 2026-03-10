@@ -9,10 +9,8 @@ export const metadata = {
 
 export default function PrimePage() {
   return (
-    <main className="min-h-screen bg-slate-950 flex flex-col">
-      <div className="flex-1 p-4">
-        <PrimeMap3D />
-      </div>
+    <main className="h-screen bg-black overflow-hidden">
+      <PrimeMap3D />
     </main>
   );
 }
