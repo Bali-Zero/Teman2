@@ -730,14 +730,11 @@ export default function PrimeMap3D() {
           <Image
             src="/balizero-logo-clean.png"
             alt="Bali Zero"
-            width={26}
-            height={26}
-            className="rounded-full"
+            width={28}
+            height={28}
+            className="rounded-full flex-shrink-0"
           />
-          <span className="text-white font-semibold text-sm tracking-tight">
-            Bali Zero
-          </span>
-          <span className="text-white/20 text-xs mx-0.5">/</span>
+          <span className="text-white/20 text-xs">/</span>
           <span className="text-slate-400 font-mono text-xs tracking-widest uppercase">
             MAP
           </span>
