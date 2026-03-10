@@ -40,27 +40,55 @@ _BATARA_API_URL = "https://secure.pelayanan-dpupr.badungkab.go.id/api/certificat
 # Maps activity keywords to investor-friendly category labels
 # =============================================================================
 
-# Keywords to skip — generic infrastructure/residential items, not investor-relevant
-_SKIP_KEYWORDS = {
+# Activities to skip — non investor-relevant (residential, infrastructure, local-only)
+# Uses word-boundary matching: "road" won't match "abroad"
+_SKIP_PATTERNS = [
     "local resident", "employee", "official residence", "boarding house",
-    "single house", "cluster house", "coupled house", "dormitory",
-    "septic tank", "wastewater", "irrigation", "cleanwater", "trash",
-    "toilet", "parking", "pedestrian", "road", "disability",
-}
+    "single house", "cluster house", "coupled house", "dormitory", "townhouse",
+    "septic tank", "wastewater", "irrigation", "cleanwater", "trash can",
+    "toilet facility", "parking area", "pedestrian lane", "disability access",
+    "loading unloading", "road network", "road complete", "bike lane",
+    "public road access", "pavement area", "lot area", "building height",
+    "minimum gsb", "minimum kdh", "maximum kdb", "maximum klb", "maximum ktb",
+    "road dimension", "road equipment", "trash", "zone_requirement",
+    "car trading", "car spare parts", "motorcycle trade", "motorcycle maintenance",
+    "wholesale trade of fishery", "wholesale of motor vehicle",
+    "wholesale trade of food", "wholesale of household",
+    "wholesale of machinery", "wholesale of building material",
+    "wholesale of agricultural", "wholesale of fuel",
+    "village government", "government service", "public service office",
+    "fire station", "police", "military", "cemetery", "funeral",
+    "religious", "worship", "mosque", "temple", "church",
+    "television broadcasting",  # not relevant for most investors
+]
 
-# Category mapping by keyword presence in activity name
+# Investor-relevant category mapping — use word-boundary checks to avoid false matches
+# e.g. "spa" must not match "spare parts"
 _ACTIVITY_CATEGORIES: list[tuple[list[str], str]] = [
-    (["hotel", "resort", "boutique hotel", "villa", "guesthouse", "penginapan", "lodging"], "Hospitality"),
-    (["restaurant", "café", "cafe", "food", "beverage", "bar", "bakery", "catering"], "F&B"),
-    (["spa", "salon", "wellness", "yoga", "fitness", "gym", "massage"], "Wellness"),
-    (["retail", "shop", "store", "boutique", "trade", "perdagangan"], "Retail"),
-    (["office", "consulting", "consultant", "agency", "professional service"], "Services"),
-    (["real estate", "property", "land", "properti", "development"], "Property"),
-    (["software", "it ", "technology", "digital", "programming"], "Technology"),
-    (["school", "education", "training", "university", "course"], "Education"),
-    (["hospital", "clinic", "healthcare", "medical", "health service"], "Healthcare"),
-    (["manufacturing", "factory", "industrial", "processing"], "Industry"),
-    (["creative", "design", "art", "studio", "media", "photography"], "Creative"),
+    (["hotel", "resort", "villa", "guesthouse", "penginapan", "lodging (≥", "lodging (<"], "Hospitality"),
+    (["restaurant", "café", "cafe", " bar ", "bakery", "catering", "food court",
+      "food, beverage, and tobacco trade in shop",
+      "trade of various goods in a store"], "F&B"),
+    (["spa ", "beauty salon", "beauty center", "beauty treatment", "wellness center",
+      "yoga", "fitness center", "gym", "massage"], "Wellness"),
+    (["boutique ", "retail of", "specialty store", "fashion", "jewelry", "artisan craft",
+      "souvenir", "art gallery", "gallery"], "Retail"),
+    (["consulting", "consultant", "law firm", "notary", "accounting firm",
+      "financial advisor", "professional service"], "Services"),
+    (["real estate", "property development", "land development", "co-working space",
+      "serviced apartment"], "Property"),
+    (["software", "information technology", "it service", "digital", "programming",
+      "data center", "startup"], "Technology"),
+    (["school", "international school", "university", "college", "training center",
+      "language course", "vocational"], "Education"),
+    (["hospital", "clinic", "medical center", "dental", "healthcare facility",
+      "pharmaceutical"], "Healthcare"),
+    (["food processing", "garment", "handicraft", "artisan manufacturing",
+      "waste management", "recycling"], "Industry"),
+    (["design studio", "creative agency", "photography studio", "film production",
+      "music studio", "architecture"], "Creative"),
+    (["restaurant and café", "café and restaurant", "coffee shop", "juice bar",
+      "fine dining", "bistro", "lounge"], "F&B"),
 ]
 
 
@@ -74,9 +102,17 @@ def _classify_activity(name: str) -> str:
 
 
 def _is_investor_relevant(name: str) -> bool:
-    """Filter out generic non-investor activities."""
+    """Filter out non-investor-relevant activities using skip patterns."""
     lower = name.lower()
-    return not any(kw in lower for kw in _SKIP_KEYWORDS)
+    # Skip anything matching our blocklist
+    if any(pat in lower for pat in _SKIP_PATTERNS):
+        return False
+    # Skip pure wholesale/trade that's not consumer-facing
+    if lower.startswith("wholesale") and "fuel" not in lower:
+        return False
+    # Skip construction/infrastructure specifics
+    infra_kw = ["road network", "road dimension", "pavement", "minimum jb", "minimum jbs", "minimum gsb"]
+    return not any(kw in lower for kw in infra_kw)
 
 
 def _rgb_string_to_hex(rgb_str: str) -> str:
@@ -184,24 +220,38 @@ async def _query_batara(lat: float, lng: float) -> dict[str, Any] | None:
             activities: list[dict[str, Any]] = zone.get("activities", [])
 
             # Build investor-relevant "allowed" businesses from BATARA activities
-            businesses: list[dict[str, Any]] = []
+            # Two passes: priority items first (hospitality/F&B/wellness), then others
+            priority_cats = {"Hospitality", "F&B", "Wellness", "Creative"}
+            first_pass: list[dict[str, Any]] = []
+            second_pass: list[dict[str, Any]] = []
+            seen_categories: dict[str, int] = {}
+
             for act in activities:
                 pivot = act.get("pivot", {})
-                is_allowed = pivot.get("i", False)  # i = Izin (allowed)
-                if not is_allowed:
+                if not pivot.get("i", False):  # i = Izin (allowed)
                     continue
                 name = act.get("name", "")
                 if not name or not _is_investor_relevant(name):
                     continue
                 category = _classify_activity(name)
-                businesses.append({
-                    "title_en": name,
-                    "category_en": category,
-                    "pma_open": True,  # shown as default; refined per KBLI in future
-                })
+                if category == "Other":
+                    continue
+                entry = {"title_en": name, "category_en": category, "pma_open": True}
+                if category in priority_cats:
+                    first_pass.append(entry)
+                else:
+                    second_pass.append(entry)
 
-            # Limit to top 12 most relevant for UI display
-            businesses = businesses[:12]
+            # Merge: priority first, then others; cap each category at 2
+            merged: list[dict[str, Any]] = []
+            for entry in first_pass + second_pass:
+                cat = entry["category_en"]
+                if seen_categories.get(cat, 0) >= 2:
+                    continue
+                seen_categories[cat] = seen_categories.get(cat, 0) + 1
+                merged.append(entry)
+
+            businesses = merged[:10]
 
             hex_color = _rgb_string_to_hex(zone_color_rgb) if zone_color_rgb else None
             is_restricted = zone_code in _RESTRICTED_ZONES
