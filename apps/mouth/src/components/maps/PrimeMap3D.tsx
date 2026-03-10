@@ -729,24 +729,15 @@ export default function PrimeMap3D() {
         />
 
         {/* Header */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10 flex-shrink-0 overflow-hidden">
+        <div className="flex items-center px-4 py-3 border-b border-white/10 flex-shrink-0 overflow-hidden">
           <Image
-            src="/assets/logo/balizero-logo-clean.png"
-            alt="Bali Zero"
-            width={36}
-            height={36}
-            className="rounded-full flex-shrink-0 ring-1 ring-white/10"
+            src="/assets/logo/balizeromap.svg"
+            alt="Bali Zero Map"
+            width={120}
+            height={40}
+            className="flex-shrink-0"
             unoptimized
           />
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-white font-semibold text-sm tracking-tight whitespace-nowrap">
-              Bali Zero
-            </span>
-            <span className="text-white/20 text-xs">/</span>
-            <span className="text-slate-400 font-mono text-[10px] tracking-widest uppercase whitespace-nowrap">
-              MAP
-            </span>
-          </div>
         </div>
 
         {/* Tab bar — visible after map click */}
