@@ -1,0 +1,232 @@
+{
+  "C-1": {
+    "name": "Campuran Intensitas Tinggi",
+    "KDB": "60%",
+    "KLB": "1,8",
+    "KDH": "30%",
+    "KTB": "60%",
+    "TB": "15 Meter",
+    "GSB": "1X Rumija + Telajakan",
+    "note": "Basement maksimal 1 lantai"
+  },
+  "K-1": {
+    "name": "Perdagangan dan Jasa Skala Kota",
+    "KDB": "60%",
+    "KLB": "2,4",
+    "KDH": "20%",
+    "KTB": "60%",
+    "TB": "15 Meter",
+    "GSB": "1X Rumija + Telajakan",
+    "note": "Basement maksimal 2 lantai, atau ditentukan lain setelah memenuhi persyaratan sesuai ketentuan"
+  },
+  "K-2": {
+    "name": "Perdagangan dan Jasa Skala WP",
+    "KDB": "60%",
+    "KLB": "2,4",
+    "KDH": "20%",
+    "KTB": "60%",
+    "TB": "15 Meter",
+    "GSB": "1X Rumija + Telajakan",
+    "note": "Basement maksimal 2 lantai"
+  },
+  "KT": {
+    "name": "Perkantoran",
+    "KDB": "50%",
+    "KLB": "2,0",
+    "KDH": "30%",
+    "KTB": "50%",
+    "TB": "15 Meter",
+    "GSB": "1X Rumija + Telajakan",
+    "note": "Basement maksimal 2 lantai"
+  },
+  "LS": {
+    "name": "Lindung Spiritual dan Kearifan Lokal",
+    "KDB": "50%",
+    "KLB": "0,1",
+    "KDH": "30%",
+    "KTB": "50%",
+    "TB": "4 Meter",
+    "GSB": "1X Rumija + Telajakan",
+    "note": "Dominan berupa bangunan pura dan bangunan pendukung"
+  },
+  "P-1": {
+    "name": "Tanaman Pangan",
+    "KDB": "2,5%",
+    "KLB": "0,025",
+    "KDH": "95%",
+    "KTB": "2,5%",
+    "TB": "4 Meter",
+    "GSB": null,
+    "note": "Bangunan hanya diperuntukan untuk kegiatan terkait dengan pertanian tanaman pangan, seperti bale subak, pura subak dan bangunan penyosohan beras dan diperbolehkan bersyarat untuk pengembangan jalur ejalan kaki untuk rekreasi dan belorahraga melalui pelebaran pada pematang sawah dan bangunan tidak permanen untuk mendukung kegiatan rekreasi dan olahraga"
+  },
+  "PL-4": {
+    "name": "Instalasi Pengolahan Air Limbah (IPAL)",
+    "KDB": "10%",
+    "KLB": "0,1",
+    "KDH": "20%",
+    "KTB": "80%",
+    "TB": "8 Meter",
+    "GSB": "1X Rumija + Telajakan",
+    "note": null
+  },
+  "R-2": {
+    "name": "Perumahan Kepadatan Tinggi",
+    "KDB": "70%",
+    "KLB": "2,1",
+    "KDH": "20%",
+    "KTB": "70%",
+    "TB": "12 Meter",
+    "GSB": "1X Rumija + Telajakan",
+    "note": "Luas persil menimum 100 meter persegi, Jarak bebas bangunan samping untuk bangunan kopel / deret tidak diberlakukan, basement maksimal 1 lantai"
+  },
+  "R-3": {
+    "name": "Perumahan Kepadatan Sedang",
+    "KDB": "60%",
+    "KLB": "1,8",
+    "KDH": "30%",
+    "KTB": "60%",
+    "TB": "12 Meter",
+    "GSB": "1X Rumija + Telajakan",
+    "note": "Luas persil menimum 100 meter persegi, Jarak bebas bangunan samping untuk bangunan kopel / deret tidak diberlakukan, basement maksimal 1 lantai"
+  },
+  "RTH-2": {
+    "name": "Taman Kota",
+    "KDB": "5%",
+    "KLB": "0,05",
+    "KDH": "80%",
+    "KTB": "5%",
+    "TB": "12 Meter",
+    "GSB": null,
+    "note": "Sebagian RTH-2 berupa hamparan persawahan"
+  },
+  "RTH-4": {
+    "name": "Taman Kelurahan",
+    "KDB": "5%",
+    "KLB": "0,05",
+    "KDH": "80%",
+    "KTB": "5%",
+    "TB": "12 Meter",
+    "GSB": null,
+    "note": null
+  },
+  "RTH-7": {
+    "name": "Pemakaman",
+    "KDB": "10%",
+    "KLB": "0,1",
+    "KDH": "80%",
+    "KTB": "10%",
+    "TB": "12 Meter",
+    "GSB": null,
+    "note": null
+  },
+  "SP": {
+    "name": "Sempadan Pantai",
+    "KDB": "30%",
+    "KLB": "0,3",
+    "KDH": "50%",
+    "KTB": "30%",
+    "TB": "4 Meter",
+    "GSB": null,
+    "note": "Untuk KDB, KDH dan KTB dihitung dari sisal persil yang berada di zona sempadan pantai, ketinggian bangunan maksimal 4 meter kecuali bangunan pengawas dan pengamanan pantai, GSB dihitung dari as jalan bila terdapat jalan umum pada zona sempadan pantai"
+  },
+  "SPU-1": {
+    "name": "SPU Skala Kota",
+    "KDB": "50%",
+    "KLB": "2,0",
+    "KDH": "30%",
+    "KTB": "50%",
+    "TB": "15 Meter",
+    "GSB": "1X Rumija + Telajakan",
+    "note": "Basement maksimal 2 lantai"
+  },
+  "SPU-2": {
+    "name": "SPU Skala Kecamatan",
+    "KDB": "50%",
+    "KLB": "1,5",
+    "KDH": "30%",
+    "KTB": "50%",
+    "TB": "12 Meter",
+    "GSB": "1X Rumija + Telajakan",
+    "note": "Basement maksimal 1 lantai"
+  },
+  "SPU-3": {
+    "name": "SPU Skala Kelurahan",
+    "KDB": "50%",
+    "KLB": "1,0",
+    "KDH": "30%",
+    "KTB": "50%",
+    "TB": "8 Meter",
+    "GSB": "1X Rumija + Telajakan",
+    "note": "Basement maksimal 1 lantai"
+  },
+  "W-1": {
+    "name": "Pariwisata W-1",
+    "KDB": "40%",
+    "KLB": "0,8",
+    "KDH": "40%",
+    "KTB": "60%",
+    "TB": "8 Meter",
+    "GSB": null,
+    "note": "TB maksimal bangunan 8 Meter"
+  },
+  "W-2": {
+    "name": "Pariwisata W-2",
+    "KDB": "50%",
+    "KLB": "2,0",
+    "KDH": "30%",
+    "KTB": "50%",
+    "TB": "15 Meter",
+    "GSB": "1X Rumija + Telajakan",
+    "note": "KWT max 60% untuk persil skala besar dan terpadu, basement maksimal 2 lantai, TB Maksimal villa dan pondok wisata 8 meter, maksimal lantai villa dan pondok wisata 2 lantai, basement villa dan pondok wisata maksimal 1 lantai"
+  },
+  "R-4": {
+    "name": "Perumahan Kepadatan Rendah",
+    "KDB": "60%",
+    "KLB": "1,8",
+    "KDH": "30%",
+    "KTB": "60%",
+    "TB": "12 Meter",
+    "GSB": "1X Rumija + Telajakan",
+    "note": "Luas persil menimum 100 meter persegi, Jarak bebas bangunan samping untuk bangunan kopel / deret tidak diberlakukan, basement maksimal 1 lantai"
+  },
+  "K-3": {
+    "name": "Perdagangan dan Jasa Skala SWP",
+    "KDB": "60%",
+    "KLB": "1,8",
+    "KDH": "20%",
+    "KTB": "60%",
+    "TB": "12 Meter",
+    "GSB": "1X Rumija + Telajakan",
+    "note": "Basement maksimal 2 lantai"
+  },
+  "BA": {
+    "name": "Badan Air",
+    "KDB": "N/A",
+    "KLB": "N/A",
+    "KDH": "N/A",
+    "KTB": "N/A",
+    "TB": "N/A",
+    "GSB": "N/A",
+    "note": "Zona non edificabile (infrastruttura/vincolo)"
+  },
+  "RTNH": {
+    "name": "Ruang Terbuka Non Hijau",
+    "KDB": "5%",
+    "KLB": "0,05",
+    "KDH": "10%",
+    "KTB": null,
+    "TB": "4 Meter",
+    "GSB": null,
+    "note": "Diutamankan dalam bentuk plasa terbuka"
+  },
+  "SS": {
+    "name": "Sempadan Sungai",
+    "KDB": "20%",
+    "KLB": "0,2",
+    "KDH": "70%",
+    "KTB": "20%",
+    "TB": "4 Meter",
+    "GSB": null,
+    "note": "Jarak sempadan pada sungai bertanggul min 4 meter, tidak bertanggul min 10 meter (kedalaman 3m), min 15 meter (kedalaman 3-20m)"
+  }
+}
