@@ -6,8 +6,11 @@ Primary source: BATARA (batara.badungkab.go.id) — official Badung RDTR data.
 Fallback: PostGIS local DB (GISTARU import).
 """
 
+import asyncio
+import json
 import logging
 import os
+from pathlib import Path
 from typing import Any
 
 import asyncpg
@@ -18,6 +21,44 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/prime", tags=["prime"])
 
+# =============================================================================
+# BUILDING CODES — loaded once at import time from JSON
+# =============================================================================
+_BUILDING_CODES_PATH = Path(__file__).parent.parent.parent / "data" / "master_building_codes_complete.json"
+try:
+    with open(_BUILDING_CODES_PATH, encoding="utf-8") as _f:
+        _BUILDING_CODES: dict[str, dict[str, str]] = json.load(_f)
+    logger.info(f"✅ [Prime] Loaded building codes for {len(_BUILDING_CODES)} zone types")
+except Exception as _e:
+    _BUILDING_CODES = {}
+    logger.warning(f"⚠️ [Prime] Could not load building codes: {_e}")
+
+
+def _calculate_building_yield(zone_code: str) -> dict[str, Any] | None:
+    """Return building limit summary for a zone code (KDB, KLB, KDH, TB, GSB)."""
+    data = _BUILDING_CODES.get(zone_code)
+    if not data:
+        return None
+    # KLB uses Indonesian comma decimal ("1,8") — normalise to dot
+    def _parse_pct(val: str) -> float:
+        return float(val.replace(",", ".").replace("%", "").strip())
+
+    try:
+        return {
+            "zone_name_id":   data.get("name", ""),
+            "kdb_pct":        _parse_pct(data.get("KDB", "0")),   # max building coverage %
+            "klb_ratio":      _parse_pct(data.get("KLB", "0")),   # floor area ratio
+            "kdh_pct":        _parse_pct(data.get("KDH", "0")),   # min green area %
+            "ktb_pct":        _parse_pct(data.get("KTB", "0")),   # basement coverage %
+            "height_limit":   data.get("TB", "—"),                 # max height (string, e.g. "15 Meter")
+            "setback":        data.get("GSB", "—"),                # building setback
+            "notes":          data.get("note", ""),
+        }
+    except Exception as exc:
+        logger.warning(f"⚠️ [Prime] Building codes parse error for {zone_code}: {exc}")
+        return None
+
+
 _ZONING_QUERY = """
     SELECT
         district_name,
@@ -26,6 +67,15 @@ _ZONING_QUERY = """
         allowed_kbli,
         avg_price_per_are,
         risk_score
+    FROM bali_zoning_layers
+    WHERE ST_Contains(boundary, ST_SetSRID(ST_MakePoint($1, $2), 4326))
+    ORDER BY risk_score DESC
+    LIMIT 1
+"""
+
+# Separate lightweight query used when BATARA handles zoning but we still want price
+_PRICE_QUERY = """
+    SELECT avg_price_per_are
     FROM bali_zoning_layers
     WHERE ST_Contains(boundary, ST_SetSRID(ST_MakePoint($1, $2), 4326))
     ORDER BY risk_score DESC
@@ -270,6 +320,7 @@ async def _query_batara(lat: float, lng: float) -> dict[str, Any] | None:
                 overlays["evac_center"] = geom["teb_05"]
 
             label_info = _ZONE_LABELS.get(zone_code, {"label_en": zone_name, "desc_en": zone_definition[:120] if zone_definition else ""})
+            building_codes = _calculate_building_yield(zone_code)
 
             logger.info(f"✅ [Prime/BATARA] {zone_code} '{zone_name}' @ {lat},{lng} — {len(businesses)} businesses")
             return {
@@ -282,12 +333,31 @@ async def _query_batara(lat: float, lng: float) -> dict[str, Any] | None:
                 "businesses": businesses,
                 "business_count": len(businesses),
                 "overlays": overlays,
+                "building_codes": building_codes,
                 "source": "BATARA/Badung DPUPR (official)",
             }
 
     except Exception as exc:
         logger.warning(f"⚠️ [Prime] BATARA query failed ({lat},{lng}): {exc}")
         return None
+
+
+async def _query_price(lat: float, lng: float) -> float | None:
+    """Lightweight PostGIS lookup — returns avg_price_per_are or None."""
+    try:
+        db_url = os.environ.get("DATABASE_URL", "")
+        if db_url.startswith("postgres://"):
+            db_url = db_url.replace("postgres://", "postgresql://", 1)
+        conn = await asyncpg.connect(db_url)
+        try:
+            row = await conn.fetchrow(_PRICE_QUERY, lng, lat)
+        finally:
+            await conn.close()
+        if row and row["avg_price_per_are"]:
+            return float(row["avg_price_per_are"])
+    except Exception as exc:
+        logger.debug(f"[Prime] Price lookup skipped: {exc}")
+    return None
 
 
 @router.get("/zoning")
@@ -300,15 +370,16 @@ async def get_zoning(
     Primary: BATARA API (live Badung DPUPR data).
     Fallback: PostGIS local DB (GISTARU import, Badung only).
     """
-    # --- PRIMARY: BATARA live API ---
-    batara = await _query_batara(lat, lng)
+    # --- PRIMARY: BATARA live API + parallel price lookup ---
+    batara, price = await asyncio.gather(
+        _query_batara(lat, lng),
+        _query_price(lat, lng),
+    )
     if batara:
-        return {
-            "status": "found",
-            "lat": lat,
-            "lng": lng,
-            **batara,
-        }
+        result: dict[str, Any] = {"status": "found", "lat": lat, "lng": lng, **batara}
+        if price:
+            result["avg_price_per_are"] = price
+        return result
 
     # --- FALLBACK: PostGIS local DB ---
     try:
@@ -337,6 +408,7 @@ async def get_zoning(
 
         label_info = _ZONE_LABELS.get(zone_code, {"label_en": zone_name, "desc_en": "Contact local authorities for details"})
         is_restricted = zone_code in _RESTRICTED_ZONES
+        building_codes = _calculate_building_yield(zone_code)
 
         logger.info(f"✅ [Prime/PostGIS] Zoning hit: {zone_type} @ {lat},{lng}")
         return {
@@ -355,6 +427,7 @@ async def get_zoning(
             "businesses": [],
             "business_count": 0,
             "overlays": {},
+            "building_codes": building_codes,
             "avg_price_per_are": float(row["avg_price_per_are"] or 0),
             "risk_score": float(row["risk_score"] or 0),
             "source": "PostGIS/GISTARU (local cache)",

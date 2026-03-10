@@ -18,6 +18,17 @@ interface BusinessOpportunity {
   category_en: string;
 }
 
+interface BuildingCodes {
+  zone_name_id: string;
+  kdb_pct: number;       // max building coverage %
+  klb_ratio: number;     // floor area ratio
+  kdh_pct: number;       // min green area %
+  ktb_pct: number;       // basement coverage %
+  height_limit: string;  // e.g. "15 Meter"
+  setback: string;       // GSB
+  notes: string;
+}
+
 interface ZoningInfo {
   status: "found" | "outside_coverage" | "error";
   district?: string;
@@ -31,6 +42,7 @@ interface ZoningInfo {
   is_restricted?: boolean;
   businesses?: BusinessOpportunity[];
   overlays?: Record<string, string>;  // KKOP, LP2B, tsunami, heritage, evac
+  building_codes?: BuildingCodes;     // KDB/KLB/KDH/TB/GSB from master_building_codes
   allowed_kbli?: string[];
   risk_score?: number;
   avg_price_per_are?: number;
@@ -374,6 +386,32 @@ export default function PrimeMap3D() {
                       </span>
                     </div>
                   </div>
+
+                  {/* Building Codes — KDB / Height / Green Area */}
+                  {zoningResult.building_codes && !zoningResult.is_restricted && (
+                    <div>
+                      <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">Development Limits</div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <div className="rounded-lg bg-slate-800/50 border border-white/5 p-2 text-center">
+                          <div className="text-white font-semibold text-sm">{zoningResult.building_codes.kdb_pct}%</div>
+                          <div className="text-slate-500 text-[10px] mt-0.5">Coverage</div>
+                        </div>
+                        <div className="rounded-lg bg-slate-800/50 border border-white/5 p-2 text-center">
+                          <div className="text-white font-semibold text-sm">{zoningResult.building_codes.height_limit.replace(' Meter', 'm')}</div>
+                          <div className="text-slate-500 text-[10px] mt-0.5">Max Height</div>
+                        </div>
+                        <div className="rounded-lg bg-slate-800/50 border border-white/5 p-2 text-center">
+                          <div className="text-white font-semibold text-sm">{zoningResult.building_codes.kdh_pct}%</div>
+                          <div className="text-slate-500 text-[10px] mt-0.5">Green Area</div>
+                        </div>
+                      </div>
+                      {zoningResult.building_codes.notes && (
+                        <div className="text-[10px] text-slate-600 mt-1.5 leading-relaxed">
+                          {zoningResult.building_codes.notes}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Overlay flags (KKOP, LP2B, tsunami, heritage) */}
                   {zoningResult.overlays && Object.keys(zoningResult.overlays).length > 0 && (
