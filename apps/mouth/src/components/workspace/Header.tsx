@@ -35,6 +35,7 @@ export function Header({
 
   // Get page title from pathname
   const getPageTitle = () => {
+    if (!pathname) return "Dashboard";
     // Check exact match first
     if (routeTitles[pathname]) {
       return routeTitles[pathname];

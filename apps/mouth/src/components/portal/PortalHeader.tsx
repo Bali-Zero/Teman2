@@ -37,6 +37,7 @@ export function PortalHeader({
   const getPageTitle = () => {
     if (customTitle) return customTitle;
 
+    if (!pathname) return "Dashboard";
     // Check exact match first
     if (routeTitles[pathname]) {
       return routeTitles[pathname];
