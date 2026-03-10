@@ -57,6 +57,7 @@ export interface Article {
   seoTitle?: string;
   seoDescription?: string;
   canonicalUrl?: string;
+  noIndex?: boolean; // Exclude from search engines (off-topic/low-value content)
 
   // Analytics
   readingTime: number; // minutes
