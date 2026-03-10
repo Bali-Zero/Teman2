@@ -84,10 +84,10 @@ export default function PortalLoginPage() {
               fill="#e8d5a0" opacity={0.3 + (i % 5) * 0.1} />
           ))}
 
-          {/* Moon */}
-          <circle cx="720" cy="120" r="45" fill="#1a1020" />
-          <circle cx="735" cy="108" r="45" fill="#0d0c15" />
-          <circle cx="720" cy="120" r="44" fill="none" stroke="#c9a96e" strokeWidth="0.5" opacity="0.4" />
+          {/* Moon — kept subtle in background */}
+          <circle cx="720" cy="80" r="30" fill="#1a1020" />
+          <circle cx="732" cy="70" r="30" fill="#0d0c15" />
+          <circle cx="720" cy="80" r="29" fill="none" stroke="#c9a96e" strokeWidth="0.4" opacity="0.25" />
 
           {/* Ambient gate glow from below */}
           <ellipse cx="720" cy="520" rx="300" ry="180" fill="url(#glow)" />
@@ -205,30 +205,42 @@ export default function PortalLoginPage() {
       {/* ── CONTENT ── */}
       <div className="relative z-10 flex flex-col min-h-screen">
 
-        {/* Top bar */}
-        <div className="flex items-center justify-between px-8 pt-6">
-          <div className="flex items-center gap-2.5">
-            <Image
-              src="/static/balizero-logo-clean.png"
-              alt="Bali Zero"
-              width={28}
-              height={28}
-              className="rounded-full"
-              priority
-            />
-            <span className="text-[13px] font-medium tracking-wide" style={{ color: "#edeae4" }}>
-              Bali Zero
-            </span>
-          </div>
+        {/* Team workspace link — top right only */}
+        <div className="flex items-center justify-end px-8 pt-6">
           <a
             href="/login"
             className="text-[11px] transition-colors"
-            style={{ color: "rgba(237,234,228,0.35)" }}
+            style={{ color: "rgba(237,234,228,0.25)" }}
             onMouseEnter={e => (e.currentTarget.style.color = "#c9a96e")}
-            onMouseLeave={e => (e.currentTarget.style.color = "rgba(237,234,228,0.35)")}
+            onMouseLeave={e => (e.currentTarget.style.color = "rgba(237,234,228,0.25)")}
           >
             Team workspace →
           </a>
+        </div>
+
+        {/* BZ Logo — large, centered in gate opening */}
+        <div className="absolute inset-0 flex justify-center" style={{ top: "16%" }}>
+          <div style={{ position: "relative" }}>
+            {/* Halo glow behind logo */}
+            <div style={{
+              position: "absolute",
+              top: "50%", left: "50%",
+              transform: "translate(-50%, -50%)",
+              width: "160px", height: "160px",
+              borderRadius: "50%",
+              background: "radial-gradient(circle, rgba(201,169,110,0.22) 0%, rgba(201,169,110,0) 70%)",
+              filter: "blur(12px)",
+            }} />
+            <Image
+              src="/static/balizero-logo-clean.png"
+              alt="Bali Zero"
+              width={88}
+              height={88}
+              className="rounded-full relative z-10"
+              style={{ opacity: 0.95 }}
+              priority
+            />
+          </div>
         </div>
 
         {/* Spacer — push form to bottom */}
@@ -242,9 +254,9 @@ export default function PortalLoginPage() {
             <p className="text-[11px] uppercase tracking-[3px] mb-1" style={{ color: "#c9a96e", opacity: 0.7 }}>
               Private Client Access
             </p>
-            <h1 className="text-[28px] font-light leading-tight tracking-tight" style={{ color: "#edeae4" }}>
-              Your Bali life,<br />
-              <span style={{ color: "#c9a96e" }}>one portal away.</span>
+            <h1 className="text-[24px] font-light leading-tight tracking-[0.04em] uppercase" style={{ color: "#edeae4" }}>
+              Your Bali Life,<br />
+              <span style={{ color: "#c9a96e" }}>One Portal Away.</span>
             </h1>
           </div>
 

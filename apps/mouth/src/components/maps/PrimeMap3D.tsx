@@ -11,10 +11,10 @@ interface Coordinate {
 }
 
 interface BusinessOpportunity {
-  code: string;
+  code?: string;           // present in PostGIS fallback path only
   title_en: string;
-  title_id: string;
-  pma_open: boolean;
+  title_id?: string;
+  pma_open?: boolean;
   category_en: string;
 }
 
@@ -25,10 +25,12 @@ interface ZoningInfo {
   zone_code?: string;
   zone_name?: string;           // Indonesian official name (e.g. "Perdagangan dan Jasa Skala SWP")
   zone_label_en?: string;       // Plain English label (e.g. "Neighborhood Commercial Zone")
+  zone_color_hex?: string;      // Official hex color from BATARA API
   zone_type?: string;
   zone_description_en?: string;
   is_restricted?: boolean;
   businesses?: BusinessOpportunity[];
+  overlays?: Record<string, string>;  // KKOP, LP2B, tsunami, heritage, evac
   allowed_kbli?: string[];
   risk_score?: number;
   avg_price_per_are?: number;
@@ -248,7 +250,9 @@ export default function PrimeMap3D() {
 
   const riskScore = zoningResult?.risk_score ?? 0;
   const isHighRisk = riskScore > 0.7;
-  const zoneColor = zoningResult?.zone_code ? (ZONE_COLORS[zoningResult.zone_code] ?? "#6B7280") : "#6B7280";
+  // Prefer official color from BATARA API, fallback to our static map
+  const zoneColor = zoningResult?.zone_color_hex
+    ?? (zoningResult?.zone_code ? (ZONE_COLORS[zoningResult.zone_code] ?? "#6B7280") : "#6B7280");
 
   return (
     <div className="relative w-full h-[800px] bg-slate-900 rounded-xl overflow-hidden shadow-2xl border border-slate-700">
@@ -371,6 +375,32 @@ export default function PrimeMap3D() {
                     </div>
                   </div>
 
+                  {/* Overlay flags (KKOP, LP2B, tsunami, heritage) */}
+                  {zoningResult.overlays && Object.keys(zoningResult.overlays).length > 0 && (
+                    <div className="space-y-1">
+                      {zoningResult.overlays.kkop && (
+                        <div className="text-xs bg-amber-500/10 border border-amber-500/20 text-amber-300 rounded px-2.5 py-1.5">
+                          ✈ KKOP Aviation Zone — height restrictions apply
+                        </div>
+                      )}
+                      {zoningResult.overlays.lp2b && (
+                        <div className="text-xs bg-green-500/10 border border-green-500/20 text-green-300 rounded px-2.5 py-1.5">
+                          🌾 Protected Farmland (LP2B) — conversion restricted
+                        </div>
+                      )}
+                      {zoningResult.overlays.tsunami && (
+                        <div className="text-xs bg-blue-500/10 border border-blue-500/20 text-blue-300 rounded px-2.5 py-1.5">
+                          🌊 Tsunami Risk Zone — {zoningResult.overlays.tsunami}
+                        </div>
+                      )}
+                      {zoningResult.overlays.heritage && (
+                        <div className="text-xs bg-yellow-500/10 border border-yellow-500/20 text-yellow-300 rounded px-2.5 py-1.5">
+                          🏛 Heritage Area — {zoningResult.overlays.heritage}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Businesses you can open */}
                   {zoningResult.is_restricted ? (
                     <div className="bg-red-900/20 border border-red-500/20 rounded-lg p-3">
@@ -385,9 +415,9 @@ export default function PrimeMap3D() {
                         What you can open here
                       </div>
                       <div className="space-y-1.5">
-                        {zoningResult.businesses.map((biz) => (
+                        {zoningResult.businesses.map((biz, idx) => (
                           <div
-                            key={biz.code}
+                            key={biz.code ?? `${biz.title_en}-${idx}`}
                             className="flex items-center justify-between gap-2 bg-slate-800/40 rounded-lg px-3 py-2 border border-white/5"
                           >
                             <div className="flex items-center gap-2 min-w-0">
@@ -396,7 +426,7 @@ export default function PrimeMap3D() {
                               </span>
                               <span className="text-sm text-white truncate">{biz.title_en}</span>
                             </div>
-                            {biz.pma_open && (
+                            {biz.pma_open !== false && (
                               <span className="text-xs text-emerald-400 flex-shrink-0 font-medium" title="Open to foreign-owned company (PT PMA)">
                                 ✓ Foreign OK
                               </span>
