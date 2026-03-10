@@ -464,7 +464,7 @@ const INTERACTION_ICONS: Record<string, React.ReactNode> = {
   note: <FileText className="w-4 h-4" />,
 };
 
-type TabType = "overview" | "process" | "family" | "immigration" | "company" | "tax";
+type TabType = "overview" | "documents" | "process" | "family" | "immigration" | "company" | "tax";
 type ModalType =
   | "none"
   | "edit_client"
@@ -541,7 +541,7 @@ export default function ClientDetailPage() {
     const tabParam = searchParams.get("tab");
     if (
       tabParam &&
-      ["overview", "process", "family", "immigration", "company", "tax"].includes(tabParam)
+      ["overview", "documents", "process", "family", "immigration", "company", "tax"].includes(tabParam)
     ) {
       setActiveTab(tabParam as TabType);
     }
@@ -777,9 +777,14 @@ export default function ClientDetailPage() {
         {[
           { key: "overview", label: "Overview", icon: User },
           {
+            key: "documents",
+            label: `Documents (${stats.documents_count})`,
+            icon: FileText,
+          },
+          {
             key: "process",
             label: `Process (${stats.practices_count ?? activePractices.length + completedPractices.length})`,
-            icon: FileText,
+            icon: FolderOpen,
           },
           {
             key: "family",
@@ -821,6 +826,21 @@ export default function ClientDetailPage() {
           onEditClick={() => setActiveModal("edit_client")}
           onRefresh={refreshProfile}
           clientId={clientId}
+        />
+      )}
+
+      {activeTab === "documents" && (
+        <DocumentsTab
+          clientId={clientId}
+          documents={documents}
+          documentsByCategory={documentsByCategory}
+          formatDate={formatDate}
+          onAddClick={() => setActiveModal("add_document")}
+          onEditClick={(doc) => {
+            setEditingDocument(doc);
+            setActiveModal("edit_document");
+          }}
+          onRefresh={refreshProfile}
         />
       )}
 
