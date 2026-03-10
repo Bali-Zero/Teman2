@@ -323,6 +323,7 @@ async function getMdxArticleBySlug(
     contentStructure: frontmatter.contentStructure || undefined,
     relatedArticleIds: frontmatter.relatedArticles || [],
     locale: frontmatter.locale || "en",
+    noIndex: frontmatter.noIndex || false,
   };
 }
 

@@ -64,6 +64,8 @@ export const metadata: Metadata = {
     "pt pma registration process",
     "indonesian work permit",
     // Local SEO
+    "bali visa agency",
+    "visa agency bali",
     "visa agent bali",
     "immigration consultant bali",
     "notaris bali",

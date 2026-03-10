@@ -28,6 +28,43 @@ export async function generateMetadata({
     };
   }
 
+  const metaOverrides: Record<string, { title: string; description: string }> =
+    {
+      visa: {
+        title:
+          "Bali Visa Agency 2026 | KITAS, Visit & Working Visa Indonesia | Bali Zero",
+        description:
+          "Trusted visa agency in Bali. KITAS, KITAP, Visit Visa, Investor Visa & Working Permits handled end-to-end. 1000+ expats served. Fast processing, transparent pricing.",
+      },
+      company: {
+        title:
+          "Company Setup Bali 2026 | PT PMA, Licenses & Business Registration | Bali Zero",
+        description:
+          "Set up your company in Bali with expert guidance. PT PMA, PMDN, KBLI licenses, Hygiene Certificates & more. Full compliance guaranteed.",
+      },
+    };
+
+  const override = metaOverrides[slug];
+  if (override) {
+    return {
+      title: override.title,
+      description: override.description,
+      keywords: [
+        "bali visa agency",
+        "visa agent bali",
+        "kitas bali",
+        "bali immigration consultant",
+        "indonesia visa service",
+        "working visa bali",
+        "investor kitas bali",
+        "bali zero visa",
+      ],
+      alternates: {
+        canonical: `https://balizero.com/services/${slug}`,
+      },
+    };
+  }
+
   return {
     title: `${service.name} Bali 2026 | Cost & Requirements | Bali Zero`,
     description: service.tagline,
