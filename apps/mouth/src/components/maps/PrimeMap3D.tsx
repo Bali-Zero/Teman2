@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import Script from "next/script";
 import Image from "next/image";
+import { PrimeZantaraChat } from "./PrimeZantaraChat";
 import { logger } from "@/lib/logger";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -255,6 +256,7 @@ export default function PrimeMap3D() {
   const [streetAddress, setStreetAddress] = useState<string | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(320);
   const [showFilters, setShowFilters] = useState(false);
+  const [sidebarTab, setSidebarTab] = useState<"data" | "chat">("data");
   const [layers, setLayers] = useState<MapLayers>({
     zoneColors: false,
     kkop: false,
@@ -344,6 +346,7 @@ export default function PrimeMap3D() {
     async (pos: Coordinate) => {
       setIsAnalyzing(true);
       setZoningResult(null);
+      setSidebarTab("data");
       setStreetAddress(null);
       try {
         const [zoningRes] = await Promise.all([
@@ -746,7 +749,34 @@ export default function PrimeMap3D() {
           </div>
         </div>
 
+        {/* Tab bar — visible after map click */}
+        {zoningResult && (
+          <div className="flex border-b border-white/10 flex-shrink-0">
+            <button
+              onClick={() => setSidebarTab("data")}
+              className={`flex-1 py-2 text-xs font-semibold tracking-wide transition-colors ${
+                sidebarTab === "data"
+                  ? "text-white border-b-2 border-[#d4845a]"
+                  : "text-slate-500 hover:text-slate-400"
+              }`}
+            >
+              📊 Data
+            </button>
+            <button
+              onClick={() => setSidebarTab("chat")}
+              className={`flex-1 py-2 text-xs font-semibold tracking-wide transition-colors ${
+                sidebarTab === "chat"
+                  ? "text-white border-b-2 border-[#d4845a]"
+                  : "text-slate-500 hover:text-slate-400"
+              }`}
+            >
+              💬 Ask Zantara
+            </button>
+          </div>
+        )}
+
         {/* Scrollable content */}
+        {sidebarTab === "data" && (
         <div className="flex-1 overflow-y-auto overflow-x-hidden">
           {/* Loading state */}
           {isAnalyzing && (
@@ -1088,6 +1118,16 @@ export default function PrimeMap3D() {
             </>
           )}
         </div>
+        )}
+
+        {/* CHAT TAB */}
+        {sidebarTab === "chat" && (
+          <PrimeZantaraChat
+            zoningResult={zoningResult}
+            selectedPoint={selectedPoint}
+            streetAddress={streetAddress}
+          />
+        )}
 
         {/* CTA — sticky bottom */}
         {zoningResult?.status === "found" && (
