@@ -338,16 +338,18 @@ export default function PrimeMap3D() {
                       borderColor: `${zoneColor}40`,
                     }}
                   >
-                    <div className="flex items-center gap-2 mb-1">
-                      {/* Colour swatch matching GISTARU official */}
-                      <span
-                        className="w-3 h-3 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: zoneColor }}
-                      />
-                      <span className="font-mono font-bold text-sm" style={{ color: zoneColor }}>
-                        {zoningResult.zone_code}
-                      </span>
-                      <span className="text-white font-medium text-sm">
+                    <div className="flex items-start gap-2 mb-1">
+                      {/* Colour swatch + code — fixed width so label never wraps under it */}
+                      <div className="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
+                        <span
+                          className="w-2.5 h-2.5 rounded-full"
+                          style={{ backgroundColor: zoneColor }}
+                        />
+                        <span className="font-mono font-bold text-sm" style={{ color: zoneColor }}>
+                          {zoningResult.zone_code}
+                        </span>
+                      </div>
+                      <span className="text-white font-semibold text-sm leading-snug">
                         {zoningResult.zone_label_en}
                       </span>
                     </div>
