@@ -17,6 +17,8 @@ import asyncpg
 import httpx
 from fastapi import APIRouter, Query
 
+from backend.core.embeddings import create_embeddings_generator
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/prime", tags=["prime"])
@@ -360,6 +362,95 @@ async def _query_price(lat: float, lng: float) -> float | None:
     return None
 
 
+# =============================================================================
+# INTEL SEARCH — semantic search against balizero_news Qdrant collection
+# =============================================================================
+_INTEL_COLLECTION = "balizero_news"
+
+# Module-level embedder (lazy-init on first call, reused thereafter)
+_embedder = None
+
+def _get_embedder():
+    global _embedder
+    if _embedder is None:
+        _embedder = create_embeddings_generator(api_key=os.environ.get("OPENAI_API_KEY"))
+    return _embedder
+
+
+async def _search_local_intel(
+    zone_code: str,
+    subdistrict: str,
+    category: str | None = None,
+    limit: int = 4,
+) -> list[dict[str, Any]]:
+    """
+    Semantic search in balizero_news Qdrant collection for articles
+    relevant to the clicked zone and location.
+    Uses the Qdrant HTTP API directly to preserve full payload fields.
+    Returns up to `limit` articles with title, source_url, category, published_at.
+    """
+    try:
+        qdrant_url = os.environ.get("QDRANT_URL", "")
+        qdrant_api_key = os.environ.get("QDRANT_API_KEY", "")
+        if not qdrant_url:
+            return []
+
+        # Build a natural-language query describing what investor would search for
+        query_parts = [f"Bali {subdistrict} zone {zone_code}"]
+        if category:
+            query_parts.append(category.lower())
+        query_parts.append("investment regulation property news")
+        query_text = " ".join(query_parts)
+
+        embedder = _get_embedder()
+        embedding = await embedder.generate_single_embedding(query_text)
+
+        search_url = f"{qdrant_url.rstrip('/')}/collections/{_INTEL_COLLECTION}/points/search"
+        headers: dict[str, str] = {"Content-Type": "application/json"}
+        if qdrant_api_key:
+            headers["api-key"] = qdrant_api_key
+
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.post(
+                search_url,
+                json={"vector": embedding, "limit": limit * 2, "with_payload": True},
+                headers=headers,
+            )
+            if resp.status_code != 200:
+                logger.debug(f"[Prime] Intel search HTTP {resp.status_code}")
+                return []
+            data = resp.json()
+
+        MIN_SCORE = 0.45
+        articles: list[dict[str, Any]] = []
+        for hit in data.get("result", []):
+            score = hit.get("score", 0.0)
+            if score < MIN_SCORE:
+                continue
+            payload = hit.get("payload", {})
+            title = payload.get("title", "")
+            source_url = payload.get("source_url", "")
+            if not title or not source_url:
+                continue
+            articles.append({
+                "title": title,
+                "source_url": source_url,
+                "category": payload.get("category", ""),
+                "source_name": payload.get("source_name", ""),
+                "published_at": payload.get("published_at", ""),
+                "relevance_score": round(score, 3),
+            })
+            if len(articles) >= limit:
+                break
+
+        logger.info(f"[Prime/Intel] {len(articles)} articles found for {zone_code} in {subdistrict}")
+        return articles
+
+    except Exception as exc:
+        logger.debug(f"[Prime] Intel search skipped: {exc}")
+        return []
+
+
 @router.get("/zoning")
 async def get_zoning(
     lat: float = Query(..., ge=-90, le=90, description="Latitude"),
@@ -379,6 +470,12 @@ async def get_zoning(
         result: dict[str, Any] = {"status": "found", "lat": lat, "lng": lng, **batara}
         if price:
             result["avg_price_per_are"] = price
+        # Intel search: use zone_code + area name in parallel (best-effort, non-blocking)
+        zone_code_val = batara.get("zone_code", "")
+        subdistrict_val = batara.get("zone_name", "Bali")
+        intel_articles = await _search_local_intel(zone_code_val, subdistrict_val)
+        if intel_articles:
+            result["intel_articles"] = intel_articles
         return result
 
     # --- FALLBACK: PostGIS local DB ---
