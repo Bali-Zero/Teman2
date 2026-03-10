@@ -422,13 +422,13 @@ export default function PrimeMap3D() {
             }));
 
             const poly = new Polygon3DElement({
-              outerCoordinates: outerCoords,
               altitudeMode: "CLAMP_TO_GROUND",
               fillColor: `${color}55`, // ~33% opacity
               strokeColor: `${color}99`, // ~60% opacity
               strokeWidth: 1,
               extruded: false,
             });
+            poly.outerCoordinates = outerCoords;
 
             map.append(poly);
             zonePolygonsRef.current.push(poly);
@@ -933,44 +933,46 @@ export default function PrimeMap3D() {
                     title="Development Limits"
                     hasContent={hasBuildingCodes}
                   >
-                    <div className="space-y-2">
-                      <div className="grid grid-cols-3 gap-1.5">
-                        {[
-                          {
-                            val: `${zoningResult.building_codes!.kdb_pct}%`,
-                            label: "Coverage",
-                          },
-                          {
-                            val: zoningResult.building_codes!.height_limit.replace(
-                              " Meter",
-                              "m",
-                            ),
-                            label: "Max Height",
-                          },
-                          {
-                            val: `${zoningResult.building_codes!.kdh_pct}%`,
-                            label: "Green Area",
-                          },
-                        ].map(({ val, label }) => (
-                          <div
-                            key={label}
-                            className="rounded-lg bg-white/5 border border-white/8 p-2 text-center backdrop-blur-sm"
-                          >
-                            <div className="text-white font-semibold text-sm">
-                              {val}
+                    {zoningResult.building_codes && (
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {[
+                            {
+                              val: `${zoningResult.building_codes.kdb_pct}%`,
+                              label: "Coverage",
+                            },
+                            {
+                              val: zoningResult.building_codes.height_limit.replace(
+                                " Meter",
+                                "m",
+                              ),
+                              label: "Max Height",
+                            },
+                            {
+                              val: `${zoningResult.building_codes.kdh_pct}%`,
+                              label: "Green Area",
+                            },
+                          ].map(({ val, label }) => (
+                            <div
+                              key={label}
+                              className="rounded-lg bg-white/5 border border-white/8 p-2 text-center backdrop-blur-sm"
+                            >
+                              <div className="text-white font-semibold text-sm">
+                                {val}
+                              </div>
+                              <div className="text-slate-500 text-[10px] mt-0.5">
+                                {label}
+                              </div>
                             </div>
-                            <div className="text-slate-500 text-[10px] mt-0.5">
-                              {label}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      {zoningResult.building_codes?.notes && (
-                        <div className="text-[10px] text-slate-600 leading-relaxed">
-                          {zoningResult.building_codes.notes}
+                          ))}
                         </div>
-                      )}
-                    </div>
+                        {zoningResult.building_codes.notes && (
+                          <div className="text-[10px] text-slate-600 leading-relaxed">
+                            {zoningResult.building_codes.notes}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </AccordionSection>
 
                   {/* ── Overlays & Risks ── */}
