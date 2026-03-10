@@ -310,16 +310,18 @@ async def _query_batara(lat: float, lng: float) -> dict[str, Any] | None:
 
             # Overlay data
             overlays: dict[str, str] = {}
-            if geom.get("kkop_1") and geom["kkop_1"] != "Tidak":
-                overlays["kkop"] = geom["kkop_1"]
+            kkop_val = geom.get("kkop_1", "")
+            if kkop_val and "tidak" not in kkop_val.lower():
+                overlays["kkop"] = kkop_val
             if geom.get("lp2b_2") == "Ya":
                 overlays["lp2b"] = "Protected farmland (LP2B)"
             if geom.get("krb_03") and geom["krb_03"] != "Tidak Ada":
                 overlays["tsunami"] = geom["krb_03"]
             if geom.get("cagbud") and geom["cagbud"] != "Tidak Ada":
                 overlays["heritage"] = geom["cagbud"]
-            if geom.get("teb_05") and geom["teb_05"] != "Tidak Ada":
-                overlays["evac_center"] = geom["teb_05"]
+            teb_val = geom.get("teb_05", "")
+            if teb_val and "tidak" not in teb_val.lower():
+                overlays["evac_center"] = teb_val
 
             label_info = _ZONE_LABELS.get(zone_code, {"label_en": zone_name, "desc_en": zone_definition[:120] if zone_definition else ""})
             building_codes = _calculate_building_yield(zone_code)
@@ -447,7 +449,7 @@ async def _search_local_intel(
         return articles
 
     except Exception as exc:
-        logger.debug(f"[Prime] Intel search skipped: {exc}")
+        logger.warning(f"[Prime] Intel search skipped: {exc}")
         return []
 
 
