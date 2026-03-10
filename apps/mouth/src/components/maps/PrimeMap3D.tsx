@@ -46,8 +46,18 @@ interface ZoningInfo {
   allowed_kbli?: string[];
   risk_score?: number;
   avg_price_per_are?: number;
+  intel_articles?: IntelArticle[];
   source?: string;
   message?: string;
+}
+
+interface IntelArticle {
+  title: string;
+  source_url: string;
+  category?: string;
+  source_name?: string;
+  published_at?: string;
+  relevance_score?: number;
 }
 
 // Official GISTARU Bali colors (from Permen ATR/BPN + RDTR Badung system)
@@ -467,6 +477,34 @@ export default function PrimeMap3D() {
                       </div>
                     </div>
                   ) : null}
+
+                  {/* Intel articles — semantic news for this zone */}
+                  {zoningResult.intel_articles && zoningResult.intel_articles.length > 0 && (
+                    <div>
+                      <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">Latest Intel for This Area</div>
+                      <div className="space-y-1.5">
+                        {zoningResult.intel_articles.map((article, idx) => (
+                          <a
+                            key={idx}
+                            href={article.source_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-start gap-2 bg-slate-800/30 rounded-lg px-3 py-2 border border-white/5 hover:border-white/10 hover:bg-slate-800/50 transition-colors group"
+                          >
+                            <span className="text-slate-500 text-[10px] mt-0.5 flex-shrink-0">↗</span>
+                            <div className="min-w-0">
+                              <div className="text-xs text-slate-300 group-hover:text-white transition-colors line-clamp-2 leading-snug">
+                                {article.title}
+                              </div>
+                              {article.source_name && (
+                                <div className="text-[10px] text-slate-600 mt-0.5">{article.source_name}</div>
+                              )}
+                            </div>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Source */}
                   <div className="text-xs text-slate-700 pt-1">
