@@ -2,7 +2,8 @@
 Nuzantara Prime — Geospatial Zoning API
 
 Exposes PostGIS spatial queries for the Prime 3D map intelligence layer.
-Enriches zone data with KBLI business opportunities for non-specialist audiences.
+Primary source: BATARA (batara.badungkab.go.id) — official Badung RDTR data.
+Fallback: PostGIS local DB (GISTARU import).
 """
 
 import logging
@@ -10,6 +11,7 @@ import os
 from typing import Any
 
 import asyncpg
+import httpx
 from fastapi import APIRouter, Query
 
 logger = logging.getLogger(__name__)
@@ -30,108 +32,67 @@ _ZONING_QUERY = """
     LIMIT 1
 """
 
+# BATARA official API — Badung DPUPR spatial planning service
+_BATARA_API_URL = "https://secure.pelayanan-dpupr.badungkab.go.id/api/certificate/point"
+
 # =============================================================================
-# ZONE → BUSINESS OPPORTUNITIES MAPPING
-# Based on GISTARU Badung zoning regulations (RDTR 2022-2042)
-# Each zone lists top KBLI codes relevant for foreign investors (PMA focus)
-# Format: { zone_code: [ {code, title_en, title_id, pma_open, category_en} ] }
+# BUSINESS CATEGORY CLASSIFICATION
+# Maps activity keywords to investor-friendly category labels
 # =============================================================================
-_ZONE_KBLI_MAP: dict[str, list[dict[str, Any]]] = {
-    # K-1: Perdagangan dan Jasa Skala Kota (City-scale Commerce & Services)
-    "K-1": [
-        {"code": "47112", "title_en": "Supermarket / Convenience Store", "title_id": "Minimarket/Supermarket", "pma_open": True, "category_en": "Retail"},
-        {"code": "56101", "title_en": "Restaurant / Café", "title_id": "Restoran & Kafe", "pma_open": True, "category_en": "F&B"},
-        {"code": "56301", "title_en": "Bar / Lounge", "title_id": "Bar & Lounge", "pma_open": True, "category_en": "F&B"},
-        {"code": "55110", "title_en": "Hotel (5-star / Boutique)", "title_id": "Hotel Berbintang", "pma_open": True, "category_en": "Hospitality"},
-        {"code": "55203", "title_en": "Villa Rental", "title_id": "Vila Sewa", "pma_open": True, "category_en": "Hospitality"},
-        {"code": "68111", "title_en": "Real Estate Development", "title_id": "Pengembangan Properti", "pma_open": True, "category_en": "Property"},
-        {"code": "74120", "title_en": "Design & Creative Agency", "title_id": "Desain & Kreatif", "pma_open": True, "category_en": "Creative"},
-        {"code": "85499", "title_en": "Private School / Training Center", "title_id": "Sekolah & Kursus", "pma_open": True, "category_en": "Education"},
-    ],
-    # K-2: Perdagangan dan Jasa Skala WP (District-scale Commerce)
-    "K-2": [
-        {"code": "56101", "title_en": "Restaurant / Café", "title_id": "Restoran & Kafe", "pma_open": True, "category_en": "F&B"},
-        {"code": "56301", "title_en": "Bar / Lounge", "title_id": "Bar & Lounge", "pma_open": True, "category_en": "F&B"},
-        {"code": "55203", "title_en": "Villa Rental", "title_id": "Vila Sewa", "pma_open": True, "category_en": "Hospitality"},
-        {"code": "55201", "title_en": "Homestay / Guesthouse", "title_id": "Homestay & Penginapan", "pma_open": True, "category_en": "Hospitality"},
-        {"code": "47112", "title_en": "Retail Shop", "title_id": "Toko Ritel", "pma_open": True, "category_en": "Retail"},
-        {"code": "93199", "title_en": "Yoga / Fitness Studio", "title_id": "Studio Yoga & Fitness", "pma_open": True, "category_en": "Wellness"},
-        {"code": "74901", "title_en": "Consulting Agency", "title_id": "Konsultan Bisnis", "pma_open": True, "category_en": "Services"},
-    ],
-    # K-3: Perdagangan dan Jasa Skala SWP (Neighborhood Commerce)
-    "K-3": [
-        {"code": "56101", "title_en": "Restaurant / Café", "title_id": "Restoran & Kafe", "pma_open": True, "category_en": "F&B"},
-        {"code": "56102", "title_en": "Food Court / Warung", "title_id": "Warung Makan", "pma_open": True, "category_en": "F&B"},
-        {"code": "55201", "title_en": "Homestay / Guesthouse", "title_id": "Homestay & Penginapan", "pma_open": True, "category_en": "Hospitality"},
-        {"code": "55203", "title_en": "Villa Rental", "title_id": "Vila Sewa", "pma_open": True, "category_en": "Hospitality"},
-        {"code": "93199", "title_en": "Yoga / Wellness Studio", "title_id": "Studio Yoga & Wellness", "pma_open": True, "category_en": "Wellness"},
-        {"code": "96021", "title_en": "Spa / Beauty Salon", "title_id": "Spa & Salon", "pma_open": True, "category_en": "Wellness"},
-        {"code": "47112", "title_en": "Specialty Shop / Boutique", "title_id": "Toko Butik", "pma_open": True, "category_en": "Retail"},
-    ],
-    # C-1: Campuran Intensitas Tinggi (High-intensity Mixed Use)
-    "C-1": [
-        {"code": "55110", "title_en": "Hotel (Boutique / Business)", "title_id": "Hotel Butik & Bisnis", "pma_open": True, "category_en": "Hospitality"},
-        {"code": "55203", "title_en": "Villa Rental", "title_id": "Vila Sewa", "pma_open": True, "category_en": "Hospitality"},
-        {"code": "56101", "title_en": "Restaurant / Café", "title_id": "Restoran & Kafe", "pma_open": True, "category_en": "F&B"},
-        {"code": "68111", "title_en": "Real Estate / Property Development", "title_id": "Pengembangan Properti", "pma_open": True, "category_en": "Property"},
-        {"code": "41017", "title_en": "Hotel Construction & Development", "title_id": "Konstruksi Hotel", "pma_open": True, "category_en": "Construction"},
-        {"code": "74120", "title_en": "Design Studio / Creative Office", "title_id": "Studio Desain", "pma_open": True, "category_en": "Creative"},
-        {"code": "93199", "title_en": "Yoga / Fitness / Wellness", "title_id": "Wellness & Fitness", "pma_open": True, "category_en": "Wellness"},
-        {"code": "85499", "title_en": "Co-working / Learning Center", "title_id": "Co-working & Pendidikan", "pma_open": True, "category_en": "Education"},
-    ],
-    # C-2: Campuran Intensitas Menengah (Medium Mixed Use)
-    "C-2": [
-        {"code": "55203", "title_en": "Villa Rental", "title_id": "Vila Sewa", "pma_open": True, "category_en": "Hospitality"},
-        {"code": "55201", "title_en": "Homestay / Boutique Stay", "title_id": "Homestay Butik", "pma_open": True, "category_en": "Hospitality"},
-        {"code": "56101", "title_en": "Restaurant / Café", "title_id": "Restoran & Kafe", "pma_open": True, "category_en": "F&B"},
-        {"code": "93199", "title_en": "Yoga / Wellness Studio", "title_id": "Studio Wellness", "pma_open": True, "category_en": "Wellness"},
-        {"code": "96021", "title_en": "Spa / Beauty Center", "title_id": "Spa & Kecantikan", "pma_open": True, "category_en": "Wellness"},
-        {"code": "68111", "title_en": "Property / Real Estate", "title_id": "Properti", "pma_open": True, "category_en": "Property"},
-    ],
-    # R-2: Perumahan Kepadatan Tinggi (High-density Residential)
-    "R-2": [
-        {"code": "55201", "title_en": "Homestay / Guesthouse", "title_id": "Homestay", "pma_open": True, "category_en": "Hospitality"},
-        {"code": "55203", "title_en": "Villa Rental", "title_id": "Vila Sewa", "pma_open": True, "category_en": "Hospitality"},
-        {"code": "68111", "title_en": "Property Investment / Leasing", "title_id": "Investasi Properti", "pma_open": True, "category_en": "Property"},
-        {"code": "96021", "title_en": "Small Spa / Home Salon", "title_id": "Spa Rumahan", "pma_open": True, "category_en": "Wellness"},
-    ],
-    # R-3: Perumahan Kepadatan Sedang (Medium Residential)
-    "R-3": [
-        {"code": "55201", "title_en": "Homestay / Guesthouse", "title_id": "Homestay", "pma_open": True, "category_en": "Hospitality"},
-        {"code": "55203", "title_en": "Villa Rental", "title_id": "Vila Sewa", "pma_open": True, "category_en": "Hospitality"},
-        {"code": "68111", "title_en": "Property Investment / Leasing", "title_id": "Investasi Properti", "pma_open": True, "category_en": "Property"},
-    ],
-    # R-4: Perumahan Kepadatan Rendah (Low-density Residential)
-    "R-4": [
-        {"code": "55203", "title_en": "Luxury Villa Development", "title_id": "Vila Mewah", "pma_open": True, "category_en": "Hospitality"},
-        {"code": "68111", "title_en": "Land / Property Investment", "title_id": "Investasi Lahan", "pma_open": True, "category_en": "Property"},
-    ],
-    # KPI: Kawasan Peruntukan Industri (Industrial Zone)
-    "KPI": [
-        {"code": "10791", "title_en": "Food Processing Plant", "title_id": "Industri Makanan & Minuman", "pma_open": True, "category_en": "Industry"},
-        {"code": "13101", "title_en": "Textile / Garment Factory", "title_id": "Industri Tekstil", "pma_open": True, "category_en": "Industry"},
-        {"code": "32901", "title_en": "Handicraft / Artisan Manufacturing", "title_id": "Kerajinan Tangan", "pma_open": True, "category_en": "Industry"},
-        {"code": "38211", "title_en": "Waste Management / Recycling", "title_id": "Pengelolaan Limbah", "pma_open": True, "category_en": "Industry"},
-    ],
-    # KT: Perkantoran (Office Zone)
-    "KT": [
-        {"code": "74901", "title_en": "Business Consulting Office", "title_id": "Kantor Konsultan", "pma_open": True, "category_en": "Services"},
-        {"code": "74120", "title_en": "Design / Architecture Studio", "title_id": "Studio Desain & Arsitektur", "pma_open": True, "category_en": "Creative"},
-        {"code": "62010", "title_en": "Software / IT Company", "title_id": "Perusahaan IT & Software", "pma_open": True, "category_en": "Technology"},
-        {"code": "69200", "title_en": "Accounting / Financial Services", "title_id": "Akuntansi & Keuangan", "pma_open": True, "category_en": "Finance"},
-    ],
-    # SPU-1: Sarana Pelayanan Umum Skala Kota (Public Facilities - City)
-    "SPU-1": [
-        {"code": "85499", "title_en": "International School / University", "title_id": "Sekolah Internasional", "pma_open": True, "category_en": "Education"},
-        {"code": "86101", "title_en": "Private Hospital / Clinic", "title_id": "Rumah Sakit & Klinik", "pma_open": True, "category_en": "Healthcare"},
-    ],
+
+# Keywords to skip — generic infrastructure/residential items, not investor-relevant
+_SKIP_KEYWORDS = {
+    "local resident", "employee", "official residence", "boarding house",
+    "single house", "cluster house", "coupled house", "dormitory",
+    "septic tank", "wastewater", "irrigation", "cleanwater", "trash",
+    "toilet", "parking", "pedestrian", "road", "disability",
 }
 
-# Zones where business is NOT allowed (protected/infrastructure)
-_RESTRICTED_ZONES = {"HL", "PS", "CB", "LS", "EM", "BA", "BJ", "HK", "RTH-2", "RTH-3", "RTH-4", "KS-4", "IK-1", "P-1", "P-2", "P-3", "P-4", "PL-3", "PL-4", "PTL"}
+# Category mapping by keyword presence in activity name
+_ACTIVITY_CATEGORIES: list[tuple[list[str], str]] = [
+    (["hotel", "resort", "boutique hotel", "villa", "guesthouse", "penginapan", "lodging"], "Hospitality"),
+    (["restaurant", "café", "cafe", "food", "beverage", "bar", "bakery", "catering"], "F&B"),
+    (["spa", "salon", "wellness", "yoga", "fitness", "gym", "massage"], "Wellness"),
+    (["retail", "shop", "store", "boutique", "trade", "perdagangan"], "Retail"),
+    (["office", "consulting", "consultant", "agency", "professional service"], "Services"),
+    (["real estate", "property", "land", "properti", "development"], "Property"),
+    (["software", "it ", "technology", "digital", "programming"], "Technology"),
+    (["school", "education", "training", "university", "course"], "Education"),
+    (["hospital", "clinic", "healthcare", "medical", "health service"], "Healthcare"),
+    (["manufacturing", "factory", "industrial", "processing"], "Industry"),
+    (["creative", "design", "art", "studio", "media", "photography"], "Creative"),
+]
 
-# Human-readable zone labels and descriptions for non-specialists
-# label_en: short plain-English name shown next to the zone code in the UI
+
+def _classify_activity(name: str) -> str:
+    """Map an activity name to an investor-friendly category."""
+    lower = name.lower()
+    for keywords, category in _ACTIVITY_CATEGORIES:
+        if any(kw in lower for kw in keywords):
+            return category
+    return "Other"
+
+
+def _is_investor_relevant(name: str) -> bool:
+    """Filter out generic non-investor activities."""
+    lower = name.lower()
+    return not any(kw in lower for kw in _SKIP_KEYWORDS)
+
+
+def _rgb_string_to_hex(rgb_str: str) -> str:
+    """Convert '250 211 140' → '#fad38c'."""
+    try:
+        parts = [int(x) for x in rgb_str.replace(",", " ").split()]
+        if len(parts) == 3:
+            return "#{:02x}{:02x}{:02x}".format(*parts)
+    except (ValueError, AttributeError):
+        pass
+    return "#a0aec0"  # neutral gray fallback
+
+
+# =============================================================================
+# FALLBACK: Zone labels for PostGIS-only path (no BATARA)
+# =============================================================================
 _ZONE_LABELS: dict[str, dict[str, str]] = {
     "K-1": {"label_en": "City Commercial Zone",        "desc_en": "Large-scale commerce — shopping centers, hotels, offices"},
     "K-2": {"label_en": "District Commercial Zone",    "desc_en": "Mid-scale commerce — restaurants, retail, professional services"},
@@ -181,22 +142,102 @@ _ZONE_LABELS: dict[str, dict[str, str]] = {
     "IK-1":{"label_en": "Capture Fishery Zone",       "desc_en": "Coastal fishing zone — no land development"},
 }
 
-# Backward-compat alias
-_ZONE_DESCRIPTIONS: dict[str, str] = {k: v["desc_en"] for k, v in _ZONE_LABELS.items()}
+_RESTRICTED_ZONES = {
+    "HL", "PS", "CB", "LS", "EM", "BA", "BJ", "HK",
+    "RTH-2", "RTH-3", "RTH-4", "KS-4", "IK-1",
+    "P-1", "P-2", "P-3", "P-4", "PL-3", "PL-4", "PTL",
+}
 
 
-def _enrich_zone(zone_code: str) -> dict[str, Any]:
-    """Return business opportunities, label, and description for a given zone code."""
-    businesses = _ZONE_KBLI_MAP.get(zone_code, [])
-    label_info = _ZONE_LABELS.get(zone_code, {"label_en": "Specialized Zone", "desc_en": "Contact local authorities for details"})
-    is_restricted = zone_code in _RESTRICTED_ZONES
-    return {
-        "businesses": businesses,
-        "zone_label_en": label_info["label_en"],
-        "zone_description_en": label_info["desc_en"],
-        "is_restricted": is_restricted,
-        "business_count": len(businesses),
-    }
+async def _query_batara(lat: float, lng: float) -> dict[str, Any] | None:
+    """
+    Query the official BATARA API (Badung DPUPR) for RDTR zoning data.
+    Returns enriched zone dict or None if unavailable.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            resp = await client.post(
+                _BATARA_API_URL,
+                json={"x": str(lng), "y": str(lat), "informationType": "RDTR"},
+                headers={"Accept": "application/json", "Accept-Language": "en"},
+            )
+            if resp.status_code != 200:
+                return None
+
+            data = resp.json()
+            if data.get("status") != 200:
+                return None
+
+            geom_list = data.get("data", {}).get("territorials", {}).get("geom", [])
+            if not geom_list:
+                return None
+
+            geom = geom_list[0]
+            zone = geom.get("zone", {})
+            if not zone:
+                return None
+
+            zone_code: str = zone.get("code", "")
+            zone_name: str = zone.get("name", "")
+            zone_color_rgb: str = zone.get("color", "")
+            zone_definition: str = zone.get("definition", "")
+            activities: list[dict[str, Any]] = zone.get("activities", [])
+
+            # Build investor-relevant "allowed" businesses from BATARA activities
+            businesses: list[dict[str, Any]] = []
+            for act in activities:
+                pivot = act.get("pivot", {})
+                is_allowed = pivot.get("i", False)  # i = Izin (allowed)
+                if not is_allowed:
+                    continue
+                name = act.get("name", "")
+                if not name or not _is_investor_relevant(name):
+                    continue
+                category = _classify_activity(name)
+                businesses.append({
+                    "title_en": name,
+                    "category_en": category,
+                    "pma_open": True,  # shown as default; refined per KBLI in future
+                })
+
+            # Limit to top 12 most relevant for UI display
+            businesses = businesses[:12]
+
+            hex_color = _rgb_string_to_hex(zone_color_rgb) if zone_color_rgb else None
+            is_restricted = zone_code in _RESTRICTED_ZONES
+
+            # Overlay data
+            overlays: dict[str, str] = {}
+            if geom.get("kkop_1") and geom["kkop_1"] != "Tidak":
+                overlays["kkop"] = geom["kkop_1"]
+            if geom.get("lp2b_2") == "Ya":
+                overlays["lp2b"] = "Protected farmland (LP2B)"
+            if geom.get("krb_03") and geom["krb_03"] != "Tidak Ada":
+                overlays["tsunami"] = geom["krb_03"]
+            if geom.get("cagbud") and geom["cagbud"] != "Tidak Ada":
+                overlays["heritage"] = geom["cagbud"]
+            if geom.get("teb_05") and geom["teb_05"] != "Tidak Ada":
+                overlays["evac_center"] = geom["teb_05"]
+
+            label_info = _ZONE_LABELS.get(zone_code, {"label_en": zone_name, "desc_en": zone_definition[:120] if zone_definition else ""})
+
+            logger.info(f"✅ [Prime/BATARA] {zone_code} '{zone_name}' @ {lat},{lng} — {len(businesses)} businesses")
+            return {
+                "zone_code": zone_code,
+                "zone_name": zone_name,
+                "zone_label_en": label_info["label_en"],
+                "zone_description_en": label_info["desc_en"] or zone_definition[:120],
+                "zone_color_hex": hex_color,
+                "is_restricted": is_restricted,
+                "businesses": businesses,
+                "business_count": len(businesses),
+                "overlays": overlays,
+                "source": "BATARA/Badung DPUPR (official)",
+            }
+
+    except Exception as exc:
+        logger.warning(f"⚠️ [Prime] BATARA query failed ({lat},{lng}): {exc}")
+        return None
 
 
 @router.get("/zoning")
@@ -205,9 +246,21 @@ async def get_zoning(
     lng: float = Query(..., ge=-180, le=180, description="Longitude"),
 ) -> dict[str, Any]:
     """
-    Return GISTARU zoning data + business opportunities for a given lat/lng.
-    Uses PostGIS ST_Contains with a GIST index — typically < 10ms.
+    Return official RDTR zoning data + business opportunities for a given lat/lng.
+    Primary: BATARA API (live Badung DPUPR data).
+    Fallback: PostGIS local DB (GISTARU import, Badung only).
     """
+    # --- PRIMARY: BATARA live API ---
+    batara = await _query_batara(lat, lng)
+    if batara:
+        return {
+            "status": "found",
+            "lat": lat,
+            "lng": lng,
+            **batara,
+        }
+
+    # --- FALLBACK: PostGIS local DB ---
     try:
         db_url = os.environ.get("DATABASE_URL", "")
         if db_url.startswith("postgres://"):
@@ -223,7 +276,7 @@ async def get_zoning(
             logger.info(f"⚠️ [Prime] No zoning match for {lat},{lng}")
             return {
                 "status": "outside_coverage",
-                "message": "Coordinates outside mapped GISTARU coverage (Kabupaten Badung only).",
+                "message": "Coordinates outside mapped Badung RDTR coverage.",
                 "lat": lat,
                 "lng": lng,
             }
@@ -232,9 +285,10 @@ async def get_zoning(
         zone_code = zone_type.split(":")[0].strip()
         zone_name = zone_type.split(":", 1)[1].strip() if ":" in zone_type else zone_type
 
-        enrichment = _enrich_zone(zone_code)
+        label_info = _ZONE_LABELS.get(zone_code, {"label_en": zone_name, "desc_en": "Contact local authorities for details"})
+        is_restricted = zone_code in _RESTRICTED_ZONES
 
-        logger.info(f"✅ [Prime] Zoning hit: {zone_type} @ {lat},{lng} ({enrichment['business_count']} businesses)")
+        logger.info(f"✅ [Prime/PostGIS] Zoning hit: {zone_type} @ {lat},{lng}")
         return {
             "status": "found",
             "lat": lat,
@@ -243,15 +297,17 @@ async def get_zoning(
             "subdistrict": row["subdistrict_name"],
             "zone_code": zone_code,
             "zone_name": zone_name,
-            "zone_label_en": enrichment["zone_label_en"],
+            "zone_label_en": label_info["label_en"],
+            "zone_description_en": label_info["desc_en"],
+            "zone_color_hex": None,
             "zone_type": zone_type,
-            "zone_description_en": enrichment["zone_description_en"],
-            "is_restricted": enrichment["is_restricted"],
-            "businesses": enrichment["businesses"],
-            "allowed_kbli": row["allowed_kbli"],
+            "is_restricted": is_restricted,
+            "businesses": [],
+            "business_count": 0,
+            "overlays": {},
             "avg_price_per_are": float(row["avg_price_per_are"] or 0),
             "risk_score": float(row["risk_score"] or 0),
-            "source": "GISTARU/Badung DPUPR",
+            "source": "PostGIS/GISTARU (local cache)",
         }
 
     except Exception as e:

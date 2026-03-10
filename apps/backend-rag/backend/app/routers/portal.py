@@ -639,7 +639,7 @@ async def get_profile(
             # Get client data with assigned team member
             row = await conn.fetchrow(
                 """
-                SELECT 
+                SELECT
                     c.id,
                     c.full_name,
                     c.email,
@@ -654,7 +654,7 @@ async def get_profile(
                     c.created_at,
                     c.assigned_to,
                     tm.full_name as assigned_to_name,
-                    tm.avatar_url as assigned_to_avatar
+                    tm.avatar as assigned_to_avatar
                 FROM clients c
                 LEFT JOIN team_members tm ON c.assigned_to = tm.email
                 WHERE c.id = $1
