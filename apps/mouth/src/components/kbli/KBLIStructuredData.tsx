@@ -85,6 +85,62 @@ export function KBLICodeJsonLd({ code }: { code: KBLICode }) {
   );
 }
 
+export function KBLIFaqJsonLd({ code }: { code: KBLICode }) {
+  const pmaAnswer =
+    code.pma.status === "open"
+      ? `Yes. KBLI ${code.code} (${code.titleId}) is TERBUKA — open to 100% foreign ownership via PT PMA. No local Indonesian partner required.`
+      : code.pma.status === "restricted"
+        ? `Partially. KBLI ${code.code} is TERBATAS — foreign ownership capped at ${code.pma.maxForeign}%.${code.pma.condition ? ` Condition: ${code.pma.condition}` : ""} An Indonesian partner holds the remaining shares.`
+        : `No. KBLI ${code.code} (${code.titleId}) is TERTUTUP — closed to foreign investment. Reserved for Indonesian nationals only.`;
+
+  const licenseAnswer =
+    code.licensing.length > 0
+      ? `KBLI ${code.code} has a ${code.licensing[0].riskCategory} risk classification. Required license: ${code.licensing[0].licenseType ?? "NIB (Nomor Induk Berusaha)"}. ${code.licensing[0].timeframe ? `Processing time: ${code.licensing[0].timeframe}.` : "Processed through OSS (Online Single Submission)."}`
+      : `KBLI ${code.code} requires a NIB (Nomor Induk Berusaha) via OSS (Online Single Submission). Contact a licensed consultant for specific requirements.`;
+
+  const questions: { question: string; answer: string }[] = [
+    {
+      question: `Can foreigners operate a ${code.titleEn.toLowerCase()} business in Indonesia?`,
+      answer: pmaAnswer,
+    },
+    {
+      question: `What license is required for KBLI ${code.code}?`,
+      answer: licenseAnswer,
+    },
+    {
+      question: `What is KBLI ${code.code}?`,
+      answer: `KBLI ${code.code} is the Indonesian business classification code for "${code.titleId}" (${code.titleEn}). It falls under Section ${code.section ?? "N/A"} of KBLI 2025, the Indonesian Standard Industrial Classification updated by BPS (Regulation 7/2025), effective June 18, 2026.`,
+    },
+  ];
+
+  if (code.transition.previousCodes.length > 0) {
+    questions.push({
+      question: `How did KBLI ${code.code} change from KBLI 2020 to 2025?`,
+      answer: `KBLI ${code.code} was mapped from previous code${code.transition.previousCodes.length > 1 ? "s" : ""} ${code.transition.previousCodes.join(", ")} (KBLI 2020).${code.transition.mappingNote ? ` ${code.transition.mappingNote}` : ""} All businesses must migrate to KBLI 2025 by June 18, 2026 per BPS Regulation 7/2025.`,
+    });
+  }
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: questions.map((q) => ({
+      "@type": "Question",
+      name: q.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: q.answer,
+      },
+    })),
+  };
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+    />
+  );
+}
+
 export function KBLIBreadcrumbJsonLd({
   items,
 }: {
