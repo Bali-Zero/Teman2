@@ -540,3 +540,97 @@ async def get_zoning(
             "lat": lat,
             "lng": lng,
         }
+
+
+# =============================================================================
+# ZONE COLORS — GeoJSON for frontend polygon overlay
+# In-memory cache: zones don't change, no need to re-query per request.
+# =============================================================================
+
+_ZONES_GEOJSON_CACHE: dict[str, Any] | None = None
+
+_ZONE_COLORS_MAP: dict[str, str] = {
+    "K-1": "#E8472A", "K-2": "#E8472A", "K-3": "#E8472A",
+    "C-1": "#F0826E", "C-2": "#F0826E",
+    "W": "#FFA5FF", "W-1": "#FFA5FF", "W-2": "#FF85F5",
+    "R-2": "#FF7D00", "R-3": "#FF9D30", "R-4": "#FFB860",
+    "P-1": "#C8C83C", "P-2": "#D4D44A", "P-3": "#C8C83C", "P-4": "#BEB82E",
+    "KT": "#A855F7",
+    "KPI": "#690000",
+    "SPU-1": "#D4845A", "SPU-2": "#D4845A", "SPU-3": "#D4845A", "SPU-4": "#D4845A",
+    "HL": "#224027", "KS-4": "#224027", "THR": "#224027", "TWA": "#224027",
+    "EM": "#2D966E",
+    "PS": "#05D7D7", "SS": "#05D7D7", "SP": "#05D7D7",
+    "LS": "#F59E0B", "CB": "#B45309",
+    "RTH-2": "#3BA062", "RTH-3": "#3BA062", "RTH-4": "#3BA062",
+    "RTH-5": "#3BA062", "RTH-7": "#6B7280", "RTH-8": "#3BA062",
+    "RTNH": "#9CA3AF",
+    "BA": "#97DBF2",
+    "BJ": "#9CA3AF", "TR": "#6B7280",
+    "HK": "#9B00FF",
+    "PL-3": "#6B7280", "PL-4": "#6B7280", "PTL": "#6B7280", "IK-1": "#507DD2",
+}
+
+_ZONES_GEOJSON_QUERY = """
+    SELECT
+        ST_AsGeoJSON(ST_Simplify(boundary, 0.0001)) AS geometry,
+        zoning_type
+    FROM bali_zoning_layers
+    WHERE boundary IS NOT NULL
+"""
+
+
+@router.get("/zones-geojson")
+async def get_zones_geojson() -> dict[str, Any]:
+    """
+    Return a GeoJSON FeatureCollection of all zoning polygons with their
+    official colors. Simplified (tolerance 0.0001) for fast frontend rendering.
+    Result is cached in-memory after first load.
+    """
+    global _ZONES_GEOJSON_CACHE
+    if _ZONES_GEOJSON_CACHE is not None:
+        return _ZONES_GEOJSON_CACHE
+
+    db_url = os.environ.get("DATABASE_URL", "")
+    if not db_url:
+        return {"type": "FeatureCollection", "features": []}
+
+    try:
+        conn = await asyncpg.connect(db_url)
+        try:
+            rows = await conn.fetch(_ZONES_GEOJSON_QUERY)
+        finally:
+            await conn.close()
+
+        features: list[dict[str, Any]] = []
+        for row in rows:
+            geom_str = row["geometry"]
+            if not geom_str:
+                continue
+            try:
+                geom = json.loads(geom_str)
+            except Exception:
+                continue
+
+            zone_type: str = row["zoning_type"] or ""
+            zone_code = zone_type.split(":")[0].strip()
+            color = _ZONE_COLORS_MAP.get(zone_code, "#6B7280")
+
+            features.append({
+                "type": "Feature",
+                "geometry": geom,
+                "properties": {
+                    "zone_code": zone_code,
+                    "zone_type": zone_type,
+                    "color": color,
+                },
+            })
+
+        result: dict[str, Any] = {"type": "FeatureCollection", "features": features}
+        _ZONES_GEOJSON_CACHE = result
+        logger.info(f"✅ [Prime/GeoJSON] Loaded {len(features)} zone polygons (cached)")
+        return result
+
+    except Exception as e:
+        logger.error(f"❌ [Prime/GeoJSON] Failed to load zones: {e}", exc_info=True)
+        return {"type": "FeatureCollection", "features": []}
