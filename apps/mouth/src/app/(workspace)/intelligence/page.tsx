@@ -60,10 +60,10 @@ export default function IntelligencePage() {
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Hero Section */}
       <div className="text-center py-8">
-        <h1 className="text-4xl font-bold text-[var(--foreground)] mb-3">
+        <h1 className="text-4xl font-bold mb-3" style={{ color: "var(--bz-text-1)" }}>
           Intelligence Center
         </h1>
-        <p className="text-lg text-[var(--foreground-muted)] max-w-2xl mx-auto">
+        <p className="text-lg max-w-2xl mx-auto" style={{ color: "var(--bz-text-2)" }}>
           AI-powered tools for monitoring Indonesian immigration regulations,
           curating news, and creating expert content.
         </p>
@@ -78,16 +78,16 @@ export default function IntelligencePage() {
               key={tool.href}
               href={tool.href}
               className={`
-                group relative overflow-hidden rounded-2xl border border-[var(--border)]
+                group relative overflow-hidden rounded-2xl
                 bg-gradient-to-br ${tool.color}
                 p-6 transition-all duration-300
-                hover:border-[var(--accent)]/50 hover:shadow-lg hover:shadow-[var(--accent)]/10
                 hover:-translate-y-1
               `}
+            style={{ border: "1px solid var(--bz-border)" }}
             >
               {/* Badge */}
               {tool.badge && (
-                <span className="absolute top-4 right-4 px-2 py-0.5 text-xs font-bold rounded-full bg-[var(--accent)] text-white">
+                <span className="absolute top-4 right-4 px-2 py-0.5 text-xs font-bold rounded-full text-white" style={{ background: "var(--bz-accent)" }}>
                   {tool.badge}
                 </span>
               )}
@@ -98,15 +98,15 @@ export default function IntelligencePage() {
               </div>
 
               {/* Content */}
-              <h3 className="text-xl font-semibold text-[var(--foreground)] mb-2 group-hover:text-[var(--accent)] transition-colors">
+              <h3 className="text-xl font-semibold mb-2 transition-colors group-hover:opacity-80" style={{ color: "var(--bz-text-1)" }}>
                 {tool.name}
               </h3>
-              <p className="text-[var(--foreground-muted)] text-sm mb-4">
+              <p className="text-sm mb-4" style={{ color: "var(--bz-text-2)" }}>
                 {tool.description}
               </p>
 
               {/* Arrow */}
-              <div className="flex items-center text-[var(--accent)] text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--bz-accent)" }}>
                 Open tool
                 <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
               </div>
@@ -116,13 +116,13 @@ export default function IntelligencePage() {
       </div>
 
       {/* Quick Stats */}
-      <div className="mt-12 p-6 rounded-2xl border border-[var(--border)] bg-[var(--background-elevated)]">
+      <div className="mt-12 p-6 rounded-2xl" style={{ border: "1px solid var(--bz-border)", background: "var(--bz-card)" }}>
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-[var(--foreground)]">
+            <h3 className="text-lg font-semibold" style={{ color: "var(--bz-text-1)" }}>
               System Status
             </h3>
-            <p className="text-sm text-[var(--foreground-muted)]">
+            <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
               All intelligence agents are operational
             </p>
           </div>

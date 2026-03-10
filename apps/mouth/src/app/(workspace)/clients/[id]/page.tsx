@@ -579,7 +579,7 @@ export default function ClientDetailPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-[var(--accent)]" />
+        <Loader2 className="w-8 h-8 animate-spin text-[var(--bz-accent)]" />
       </div>
     );
   }
@@ -588,7 +588,7 @@ export default function ClientDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
         <AlertTriangle className="w-12 h-12 text-red-500" />
-        <p className="text-[var(--foreground-muted)]">
+        <p className="text-[var(--bz-text-2)]">
           {error || "Client not found"}
         </p>
         <Button variant="outline" onClick={() => router.push("/clients")}>
@@ -644,7 +644,7 @@ export default function ClientDetailPage() {
         </Button>
         <div className="flex items-center gap-4 flex-1">
           {/* Avatar */}
-          <div className="w-16 h-16 rounded-full bg-[var(--accent)]/20 flex items-center justify-center overflow-hidden">
+          <div className="w-16 h-16 rounded-full bg-[var(--bz-accent)]/20 flex items-center justify-center overflow-hidden">
             {client.avatar_url ? (
               <img
                 src={client.avatar_url}
@@ -652,7 +652,7 @@ export default function ClientDetailPage() {
                 className="w-full h-full object-cover"
               />
             ) : countryFlag ? (
-              <div className="w-full h-full rounded-full bg-[var(--background)] flex items-center justify-center text-4xl">
+              <div className="w-full h-full rounded-full bg-[var(--bz-base)] flex items-center justify-center text-4xl">
                 {countryFlag}
               </div>
             ) : (
@@ -660,10 +660,10 @@ export default function ClientDetailPage() {
             )}
           </div>
           <div className="flex-1">
-            <h1 className="text-2xl font-bold text-[var(--foreground)]">
+            <h1 className="text-2xl font-bold text-[var(--bz-text-1)]">
               {client.full_name}
             </h1>
-            <p className="text-sm text-[var(--foreground-muted)]">
+            <p className="text-sm text-[var(--bz-text-2)]">
               Client #{client.id} • {client.client_type || "Individual"}
               {client.company_name && ` • ${client.company_name}`}
             </p>
@@ -678,7 +678,7 @@ export default function ClientDetailPage() {
               })()}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 group px-3 py-1.5 rounded-lg bg-[var(--background-secondary)] border border-[var(--border)] hover:border-green-500/50 transition-all"
+              className="flex items-center gap-2 group px-3 py-1.5 rounded-lg bg-[var(--bz-surface)] border border-[var(--bz-border)] hover:border-green-500/50 transition-all"
               title={`Assigned to: ${client.assigned_to.split("@")[0]}`}
             >
               {getTeamMemberAvatar(client.assigned_to) ? (
@@ -693,10 +693,10 @@ export default function ClientDetailPage() {
                 </div>
               )}
               <div className="flex flex-col">
-                <span className="text-xs text-[var(--foreground-muted)]">
+                <span className="text-xs text-[var(--bz-text-2)]">
                   Assigned to
                 </span>
-                <span className="text-sm font-medium text-[var(--foreground)] capitalize">
+                <span className="text-sm font-medium text-[var(--bz-text-1)] capitalize">
                   {client.assigned_to.split("@")[0]}
                 </span>
               </div>
@@ -773,7 +773,7 @@ export default function ClientDetailPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-[var(--border)] pb-2 overflow-x-auto">
+      <div className="flex gap-2 border-b border-[var(--bz-border)] pb-2 overflow-x-auto">
         {[
           { key: "overview", label: "Overview", icon: User },
           {
@@ -970,9 +970,9 @@ function OverviewTab({
         {/* COLUMN 1: Client Info */}
         <div className="flex flex-col h-full">
           {/* Client Info Card */}
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden flex-1 flex flex-col h-full">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
-              <h3 className="font-semibold text-[var(--foreground)]">
+          <div className="rounded-xl border border-[var(--bz-border)] bg-[var(--bz-surface)] overflow-hidden flex-1 flex flex-col h-full">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--bz-border)]">
+              <h3 className="font-semibold text-[var(--bz-text-1)]">
                 Client Info
               </h3>
               <div className="flex items-center gap-2">
@@ -990,61 +990,61 @@ function OverviewTab({
             <div className="p-4 space-y-4 flex-1">
               {/* Full Name */}
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-[var(--accent)]/10 flex items-center justify-center">
-                  <User className="w-4 h-4 text-[var(--accent)]" />
+                <div className="w-8 h-8 rounded-full bg-[var(--bz-accent)]/10 flex items-center justify-center">
+                  <User className="w-4 h-4 text-[var(--bz-accent)]" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs text-[var(--foreground-muted)]">
+                  <p className="text-xs text-[var(--bz-text-2)]">
                     Full Name
                   </p>
                   <p className="text-base font-semibold">{client.full_name}</p>
                 </div>
               </div>
 
-              <div className="border-t border-[var(--border)]" />
+              <div className="border-t border-[var(--bz-border)]" />
 
               {/* Contact Info */}
               <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                  <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                     Email
                   </p>
                   <p className="text-sm font-medium truncate">
                     {client.email || (
-                      <span className="text-[var(--foreground-muted)] italic text-xs">
+                      <span className="text-[var(--bz-text-2)] italic text-xs">
                         —
                       </span>
                     )}
                   </p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                  <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                     Phone
                   </p>
                   <p className="text-sm font-medium">
                     {client.phone ? (
                       formatPhoneNumber(client.phone)
                     ) : (
-                      <span className="text-[var(--foreground-muted)] italic text-xs">
+                      <span className="text-[var(--bz-text-2)] italic text-xs">
                         —
                       </span>
                     )}
                   </p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                  <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                     Nationality
                   </p>
                   <p className="text-sm font-medium">
                     {client.nationality || (
-                      <span className="text-[var(--foreground-muted)] italic text-xs">
+                      <span className="text-[var(--bz-text-2)] italic text-xs">
                         —
                       </span>
                     )}
                   </p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                  <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                     Gender
                   </p>
                   <p className="text-sm font-medium">
@@ -1053,7 +1053,7 @@ function OverviewTab({
                     ) : client.gender === "F" ? (
                       "Female"
                     ) : (
-                      <span className="text-[var(--foreground-muted)] italic text-xs">
+                      <span className="text-[var(--bz-text-2)] italic text-xs">
                         —
                       </span>
                     )}
@@ -1064,11 +1064,11 @@ function OverviewTab({
               {/* Passport & DOB - from OCR extraction */}
               {(client.passport_number || client.date_of_birth) && (
                 <>
-                  <div className="border-t border-[var(--border)]" />
+                  <div className="border-t border-[var(--bz-border)]" />
                   <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                     {client.passport_number && (
                       <div>
-                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                        <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                           Passport
                         </p>
                         <p className="text-sm font-semibold font-mono">
@@ -1078,7 +1078,7 @@ function OverviewTab({
                     )}
                     {client.passport_expiry && (
                       <div>
-                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                        <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                           Passport Expiry
                         </p>
                         <p
@@ -1090,7 +1090,7 @@ function OverviewTab({
                     )}
                     {client.date_of_birth && (
                       <div>
-                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                        <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                           Date of Birth
                         </p>
                         <p className="text-sm font-medium">
@@ -1100,7 +1100,7 @@ function OverviewTab({
                     )}
                     {client.birthplace && (
                       <div>
-                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                        <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                           Birthplace
                         </p>
                         <p className="text-sm font-medium">
@@ -1115,9 +1115,9 @@ function OverviewTab({
               {/* Address */}
               {client.address && (
                 <>
-                  <div className="border-t border-[var(--border)]" />
+                  <div className="border-t border-[var(--bz-border)]" />
                   <div>
-                    <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                    <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                       Address
                     </p>
                     <p className="text-sm font-medium">{client.address}</p>
@@ -1129,19 +1129,19 @@ function OverviewTab({
 
           {/* Stats Row */}
           <div className="grid grid-cols-2 gap-3 mt-4">
-            <div className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-3">
+            <div className="rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] p-3">
               <div className="flex items-center gap-1.5 mb-1">
                 <Users className="w-3.5 h-3.5 text-blue-500" />
-                <span className="text-[10px] text-[var(--foreground-muted)]">
+                <span className="text-[10px] text-[var(--bz-text-2)]">
                   Family
                 </span>
               </div>
               <p className="text-lg font-bold">{stats.family_count}</p>
             </div>
-            <div className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-3">
+            <div className="rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] p-3">
               <div className="flex items-center gap-1.5 mb-1">
                 <FileText className="w-3.5 h-3.5 text-purple-500" />
-                <span className="text-[10px] text-[var(--foreground-muted)]">
+                <span className="text-[10px] text-[var(--bz-text-2)]">
                   Docs
                 </span>
               </div>
@@ -1420,7 +1420,7 @@ function PassportCard({
   };
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden flex flex-col h-full">
+    <div className="rounded-xl border border-[var(--bz-border)] bg-[var(--bz-surface)] overflow-hidden flex flex-col h-full">
       {/* OCR Processing Indicator */}
       {ocrPolling && (
         <div className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 border-b border-blue-500/20 text-blue-400 text-xs">
@@ -1429,8 +1429,8 @@ function PassportCard({
         </div>
       )}
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
-        <h3 className="text-base font-semibold text-[var(--foreground)] flex items-center gap-2">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--bz-border)]">
+        <h3 className="text-base font-semibold text-[var(--bz-text-1)] flex items-center gap-2">
           <CreditCard className="w-5 h-5" />
           Passport
         </h3>
@@ -1457,7 +1457,7 @@ function PassportCard({
               className="w-full block relative group cursor-pointer"
               title="Click to download passport"
             >
-              <div className="aspect-[3/2] rounded-lg overflow-hidden border-2 border-dashed border-[var(--border)] bg-[var(--background)]">
+              <div className="aspect-[3/2] rounded-lg overflow-hidden border-2 border-dashed border-[var(--bz-border)] bg-[var(--bz-base)]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={getDriveProxyUrl(passportImageUrl) || passportImageUrl}
@@ -1485,10 +1485,10 @@ function PassportCard({
               {/* Passport Number */}
               {client.passport_number && (
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-[var(--foreground-muted)]">
+                  <span className="text-[var(--bz-text-2)]">
                     Number:
                   </span>
-                  <span className="font-mono text-[var(--foreground)]">
+                  <span className="font-mono text-[var(--bz-text-1)]">
                     {client.passport_number}
                   </span>
                 </div>
@@ -1545,12 +1545,12 @@ function PassportCard({
                   }`}
                 >
                   <span
-                    className={`${isBirthday ? "text-yellow-700 dark:text-yellow-300 font-semibold" : "text-[var(--foreground-muted)]"}`}
+                    className={`${isBirthday ? "text-yellow-700 dark:text-yellow-300 font-semibold" : "text-[var(--bz-text-2)]"}`}
                   >
                     {isBirthday ? "🎂 DOB:" : "DOB:"}
                   </span>
                   <span
-                    className={`${isBirthday ? "font-bold text-yellow-700 dark:text-yellow-300" : "text-[var(--foreground)]"}`}
+                    className={`${isBirthday ? "font-bold text-yellow-700 dark:text-yellow-300" : "text-[var(--bz-text-1)]"}`}
                   >
                     {formatDate(client.date_of_birth)}
                     {isBirthday && " (Today!)"}
@@ -1592,9 +1592,9 @@ function PassportCard({
           </div>
         ) : (
           <div className="flex-1 flex flex-col">
-            <div className="aspect-[3/2] rounded-lg border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-2 bg-[var(--background)]/50">
-              <CreditCard className="w-10 h-10 text-[var(--foreground-muted)] opacity-50" />
-              <span className="text-sm text-[var(--foreground-muted)]">
+            <div className="aspect-[3/2] rounded-lg border-2 border-dashed border-[var(--bz-border)] flex flex-col items-center justify-center gap-2 bg-[var(--bz-base)]/50">
+              <CreditCard className="w-10 h-10 text-[var(--bz-text-2)] opacity-50" />
+              <span className="text-sm text-[var(--bz-text-2)]">
                 No passport
               </span>
             </div>
@@ -1625,7 +1625,7 @@ function PassportCard({
         )}
 
         {/* Caption */}
-        <p className="text-xs text-[var(--foreground-muted)] text-center mt-3">
+        <p className="text-xs text-[var(--bz-text-2)] text-center mt-3">
           {passportImageUrl
             ? `${client.passport_number || "Passport"} • ${client.nationality || ""}`
             : "Upload passport (JPG, PNG, PDF - max 10MB)"}
@@ -1881,7 +1881,7 @@ function VisaCard({
   };
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden flex flex-col h-full">
+    <div className="rounded-xl border border-[var(--bz-border)] bg-[var(--bz-surface)] overflow-hidden flex flex-col h-full">
       {/* OCR Processing Indicator */}
       {ocrPolling && (
         <div className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 border-b border-blue-500/20 text-blue-400 text-xs">
@@ -1890,8 +1890,8 @@ function VisaCard({
         </div>
       )}
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
-        <h3 className="text-base font-semibold text-[var(--foreground)] flex items-center gap-2">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--bz-border)]">
+        <h3 className="text-base font-semibold text-[var(--bz-text-1)] flex items-center gap-2">
           <FileText className="w-5 h-5" />
           Actual Visa
         </h3>
@@ -1913,16 +1913,16 @@ function VisaCard({
             {visaProcess.start_date && (
               <div className="mt-3 space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-[var(--foreground-muted)]">Start:</span>
-                  <span className="text-[var(--foreground)]">
+                  <span className="text-[var(--bz-text-2)]">Start:</span>
+                  <span className="text-[var(--bz-text-1)]">
                     {formatDate(visaProcess.start_date)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-[var(--foreground-muted)]">
+                  <span className="text-[var(--bz-text-2)]">
                     Finish:
                   </span>
-                  <span className="text-[var(--foreground)]">
+                  <span className="text-[var(--bz-text-1)]">
                     {visaProcess.completion_date
                       ? formatDate(visaProcess.completion_date)
                       : "TBD"}
@@ -1940,7 +1940,7 @@ function VisaCard({
               rel="noopener noreferrer"
               className="block relative group"
             >
-              <div className="aspect-[3/2] rounded-lg overflow-hidden border-2 border-dashed border-[var(--border)] bg-[var(--background)]">
+              <div className="aspect-[3/2] rounded-lg overflow-hidden border-2 border-dashed border-[var(--bz-border)] bg-[var(--bz-base)]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={
@@ -1970,8 +1970,8 @@ function VisaCard({
               {/* Visa Type */}
               {latestVisa.document_type && (
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-[var(--foreground-muted)]">Type:</span>
-                  <span className="font-medium text-[var(--foreground)]">
+                  <span className="text-[var(--bz-text-2)]">Type:</span>
+                  <span className="font-medium text-[var(--bz-text-1)]">
                     {latestVisa.document_type}
                   </span>
                 </div>
@@ -1980,8 +1980,8 @@ function VisaCard({
               {/* Start Date */}
               {visaStartDate && (
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-[var(--foreground-muted)]">Start:</span>
-                  <span className="text-[var(--foreground)]">
+                  <span className="text-[var(--bz-text-2)]">Start:</span>
+                  <span className="text-[var(--bz-text-1)]">
                     {formatDate(visaStartDate)}
                   </span>
                 </div>
@@ -1995,7 +1995,7 @@ function VisaCard({
                       ? "bg-red-500 text-white border border-red-600 animate-pulse"
                       : visaAlert.alertLevel === "warning"
                         ? "bg-yellow-500 text-black border border-yellow-600"
-                        : "bg-[var(--background)] border border-[var(--border)]"
+                        : "bg-[var(--bz-base)] border border-[var(--bz-border)]"
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -2004,7 +2004,7 @@ function VisaCard({
                         visaAlert.alertLevel === "critical" ||
                         visaAlert.alertLevel === "warning"
                           ? "opacity-90"
-                          : "text-[var(--foreground-muted)]"
+                          : "text-[var(--bz-text-2)]"
                       }`}
                     >
                       Exp Visa:
@@ -2014,7 +2014,7 @@ function VisaCard({
                         visaAlert.alertLevel === "critical" ||
                         visaAlert.alertLevel === "warning"
                           ? ""
-                          : "text-[var(--foreground)]"
+                          : "text-[var(--bz-text-1)]"
                       }`}
                     >
                       {formatDate(visaExpiryDate)}
@@ -2069,9 +2069,9 @@ function VisaCard({
           </div>
         ) : (
           <div className="flex-1 flex flex-col">
-            <div className="aspect-[3/2] rounded-lg border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-2 bg-[var(--background)]/50">
-              <FileText className="w-10 h-10 text-[var(--foreground-muted)] opacity-50" />
-              <span className="text-sm text-[var(--foreground-muted)]">
+            <div className="aspect-[3/2] rounded-lg border-2 border-dashed border-[var(--bz-border)] flex flex-col items-center justify-center gap-2 bg-[var(--bz-base)]/50">
+              <FileText className="w-10 h-10 text-[var(--bz-text-2)] opacity-50" />
+              <span className="text-sm text-[var(--bz-text-2)]">
                 No visa
               </span>
             </div>
@@ -2102,7 +2102,7 @@ function VisaCard({
         )}
 
         {/* Caption */}
-        <p className="text-xs text-[var(--foreground-muted)] text-center mt-3">
+        <p className="text-xs text-[var(--bz-text-2)] text-center mt-3">
           {latestVisa?.google_drive_file_url
             ? `${latestVisa.document_type || "Visa"} • ${visaAlert.alertLevel !== "ok" ? "⚠️ Action needed" : "Valid"}`
             : "Upload visa (JPG, PNG, PDF - max 10MB)"}
@@ -2282,10 +2282,10 @@ function DocumentsTab({
 
   if (documents.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background-secondary)]/50 p-12 text-center">
-        <FileText className="w-12 h-12 mx-auto text-[var(--foreground-muted)] mb-3 opacity-50" />
-        <p className="text-[var(--foreground-muted)]">No documents yet</p>
-        <p className="text-sm text-[var(--foreground-muted)] mt-1 mb-4">
+      <div className="rounded-xl border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)]/50 p-12 text-center">
+        <FileText className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-50" />
+        <p className="text-[var(--bz-text-2)]">No documents yet</p>
+        <p className="text-sm text-[var(--bz-text-2)] mt-1 mb-4">
           Upload passport, visa, or company documents
         </p>
         <Button size="sm" onClick={onAddClick} className="gap-2">
@@ -2300,8 +2300,8 @@ function DocumentsTab({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-[var(--foreground)]">Documents</h3>
-          <p className="text-sm text-[var(--foreground-muted)]">{documents.length} documents across {sortedCategories.length} categories</p>
+          <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">Documents</h3>
+          <p className="text-sm text-[var(--bz-text-2)]">{documents.length} documents across {sortedCategories.length} categories</p>
         </div>
         <Button size="sm" onClick={onAddClick} className="gap-2">
           <Plus className="w-4 h-4" />
@@ -2314,12 +2314,12 @@ function DocumentsTab({
         const Icon = categoryIcons[cat] || FileText;
         return (
           <div key={cat} className="space-y-2">
-            <div className="flex items-center gap-2 pb-1 border-b border-[var(--border)]">
-              <Icon className="w-4 h-4 text-[var(--accent)]" />
-              <h4 className="text-sm font-semibold text-[var(--foreground)] capitalize">
+            <div className="flex items-center gap-2 pb-1 border-b border-[var(--bz-border)]">
+              <Icon className="w-4 h-4 text-[var(--bz-accent)]" />
+              <h4 className="text-sm font-semibold text-[var(--bz-text-1)] capitalize">
                 {categoryLabels[cat] || cat}
               </h4>
-              <span className="text-xs text-[var(--foreground-muted)] bg-[var(--background-secondary)] px-2 py-0.5 rounded-full">
+              <span className="text-xs text-[var(--bz-text-2)] bg-[var(--bz-surface)] px-2 py-0.5 rounded-full">
                 {catDocs.length}
               </span>
             </div>
@@ -2327,15 +2327,15 @@ function DocumentsTab({
               {catDocs.map((doc) => (
                 <div
                   key={doc.id}
-                  className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-3 hover:bg-[var(--background-secondary)]/80 transition-colors"
+                  className="flex items-center justify-between rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] p-3 hover:bg-[var(--bz-surface)]/80 transition-colors"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <FileText className="w-4 h-4 shrink-0 text-[var(--foreground-muted)]" />
+                    <FileText className="w-4 h-4 shrink-0 text-[var(--bz-text-2)]" />
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-[var(--foreground)] truncate">
+                      <p className="text-sm font-medium text-[var(--bz-text-1)] truncate">
                         {doc.file_name || doc.document_type}
                       </p>
-                      <p className="text-xs text-[var(--foreground-muted)] capitalize">
+                      <p className="text-xs text-[var(--bz-text-2)] capitalize">
                         {doc.document_type?.replace(/_/g, " ")}
                         {doc.expiry_date ? ` · Expires ${formatDate(doc.expiry_date)}` : ""}
                         {doc.status === "verified" && (
@@ -2350,7 +2350,7 @@ function DocumentsTab({
                         href={doc.google_drive_file_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-[var(--accent)] hover:underline px-2 py-1 rounded border border-[var(--border)] hover:bg-[var(--background)]"
+                        className="text-xs text-[var(--bz-accent)] hover:underline px-2 py-1 rounded border border-[var(--bz-border)] hover:bg-[var(--bz-base)]"
                       >
                         View
                       </a>
@@ -2410,7 +2410,7 @@ function FamilyTab({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-[var(--foreground)]">
+        <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">
           Family Members
         </h3>
         <Button size="sm" className="gap-2" onClick={onAddClick}>
@@ -2420,12 +2420,12 @@ function FamilyTab({
       </div>
 
       {familyMembers.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background-secondary)]/50 p-12 text-center">
-          <Users className="w-12 h-12 mx-auto text-[var(--foreground-muted)] mb-3 opacity-50" />
-          <p className="text-[var(--foreground-muted)]">
+        <div className="rounded-xl border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)]/50 p-12 text-center">
+          <Users className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-50" />
+          <p className="text-[var(--bz-text-2)]">
             No family members added yet
           </p>
-          <p className="text-sm text-[var(--foreground-muted)] mt-1">
+          <p className="text-sm text-[var(--bz-text-2)] mt-1">
             Add spouse, children, or dependents
           </p>
         </div>
@@ -2445,16 +2445,16 @@ function FamilyTab({
             return (
               <div
                 key={member.id}
-                className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden group"
+                className="rounded-xl border border-[var(--bz-border)] bg-[var(--bz-surface)] overflow-hidden group"
               >
                 {/* Header with relationship badge */}
-                <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border)] bg-[var(--background-secondary)]">
+                <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--bz-border)] bg-[var(--bz-surface)]">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[var(--accent)]/20 flex items-center justify-center">
-                      <User className="w-5 h-5 text-[var(--accent)]" />
+                    <div className="w-10 h-10 rounded-full bg-[var(--bz-accent)]/20 flex items-center justify-center">
+                      <User className="w-5 h-5 text-[var(--bz-accent)]" />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-[var(--foreground)]">
+                      <h4 className="font-semibold text-[var(--bz-text-1)]">
                         {member.full_name}
                       </h4>
                       <span className="inline-block px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-xs capitalize">
@@ -2466,7 +2466,7 @@ function FamilyTab({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-[var(--foreground-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10"
+                      className="h-8 w-8 text-[var(--bz-text-2)] hover:text-[var(--bz-accent)] hover:bg-[var(--bz-accent)]/10"
                       onClick={() => onEditClick(member)}
                     >
                       <Edit2 className="w-4 h-4" />
@@ -2486,13 +2486,13 @@ function FamilyTab({
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 p-5">
                   {/* COL 1: Personal Info */}
                   <div className="space-y-3">
-                    <h5 className="text-xs uppercase tracking-wider text-[var(--foreground-muted)] font-medium">
+                    <h5 className="text-xs uppercase tracking-wider text-[var(--bz-text-2)] font-medium">
                       Personal Info
                     </h5>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                       {member.nationality && (
                         <div>
-                          <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                          <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                             Nationality
                           </p>
                           <p className="text-sm font-medium">
@@ -2502,7 +2502,7 @@ function FamilyTab({
                       )}
                       {member.date_of_birth && (
                         <div>
-                          <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                          <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                             Date of Birth
                           </p>
                           <p className="text-sm font-medium">
@@ -2512,7 +2512,7 @@ function FamilyTab({
                       )}
                       {member.email && (
                         <div>
-                          <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                          <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                             Email
                           </p>
                           <p className="text-sm font-medium truncate">
@@ -2522,7 +2522,7 @@ function FamilyTab({
                       )}
                       {member.phone && (
                         <div>
-                          <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                          <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                             Phone
                           </p>
                           <p className="text-sm font-medium">{member.phone}</p>
@@ -2530,11 +2530,11 @@ function FamilyTab({
                       )}
                     </div>
                     {member.notes && (
-                      <div className="mt-2 p-2 rounded-lg bg-[var(--background)]/50 border border-[var(--border)]">
-                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)] mb-1">
+                      <div className="mt-2 p-2 rounded-lg bg-[var(--bz-base)]/50 border border-[var(--bz-border)]">
+                        <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1">
                           Notes
                         </p>
-                        <p className="text-xs text-[var(--foreground-muted)]">
+                        <p className="text-xs text-[var(--bz-text-2)]">
                           {member.notes}
                         </p>
                       </div>
@@ -2543,15 +2543,15 @@ function FamilyTab({
 
                   {/* COL 2: Passport */}
                   <div className="space-y-3">
-                    <h5 className="text-xs uppercase tracking-wider text-[var(--foreground-muted)] font-medium">
+                    <h5 className="text-xs uppercase tracking-wider text-[var(--bz-text-2)] font-medium">
                       Passport
                     </h5>
                     {member.passport_number || memberPassportDoc ? (
-                      <div className="rounded-lg border border-[var(--border)] bg-[var(--background)] p-3 space-y-2">
+                      <div className="rounded-lg border border-[var(--bz-border)] bg-[var(--bz-base)] p-3 space-y-2">
                         {member.passport_number && (
                           <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                             <div>
-                              <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                              <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                                 Number
                               </p>
                               <p className="text-sm font-semibold font-mono">
@@ -2560,7 +2560,7 @@ function FamilyTab({
                             </div>
                             {member.passport_expiry && (
                               <div>
-                                <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                                <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                                   Expiry
                                 </p>
                                 <p
@@ -2651,9 +2651,9 @@ function FamilyTab({
                         />
                       </div>
                     ) : (
-                      <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--background)]/30 p-4 text-center space-y-3">
-                        <CreditCard className="w-6 h-6 mx-auto text-[var(--foreground-muted)] opacity-30 mb-1" />
-                        <p className="text-xs text-[var(--foreground-muted)]">
+                      <div className="rounded-lg border border-dashed border-[var(--bz-border)] bg-[var(--bz-base)]/30 p-4 text-center space-y-3">
+                        <CreditCard className="w-6 h-6 mx-auto text-[var(--bz-text-2)] opacity-30 mb-1" />
+                        <p className="text-xs text-[var(--bz-text-2)]">
                           No passport data
                         </p>
                         <FamilyMemberUploadButton
@@ -2669,15 +2669,15 @@ function FamilyTab({
 
                   {/* COL 3: Visa */}
                   <div className="space-y-3">
-                    <h5 className="text-xs uppercase tracking-wider text-[var(--foreground-muted)] font-medium">
+                    <h5 className="text-xs uppercase tracking-wider text-[var(--bz-text-2)] font-medium">
                       Actual Visa
                     </h5>
                     {member.current_visa_type || memberVisaDoc ? (
-                      <div className="rounded-lg border border-[var(--border)] bg-[var(--background)] p-3 space-y-2">
+                      <div className="rounded-lg border border-[var(--bz-border)] bg-[var(--bz-base)] p-3 space-y-2">
                         {member.current_visa_type && (
                           <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                             <div>
-                              <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                              <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                                 Type
                               </p>
                               <p className="text-sm font-semibold uppercase">
@@ -2686,7 +2686,7 @@ function FamilyTab({
                             </div>
                             {member.visa_expiry && (
                               <div>
-                                <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                                <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                                   Expiry
                                 </p>
                                 <p
@@ -2775,9 +2775,9 @@ function FamilyTab({
                         />
                       </div>
                     ) : (
-                      <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--background)]/30 p-4 text-center space-y-3">
-                        <Globe className="w-6 h-6 mx-auto text-[var(--foreground-muted)] opacity-30 mb-1" />
-                        <p className="text-xs text-[var(--foreground-muted)]">
+                      <div className="rounded-lg border border-dashed border-[var(--bz-border)] bg-[var(--bz-base)]/30 p-4 text-center space-y-3">
+                        <Globe className="w-6 h-6 mx-auto text-[var(--bz-text-2)] opacity-30 mb-1" />
+                        <p className="text-xs text-[var(--bz-text-2)]">
                           No visa data
                         </p>
                         <FamilyMemberUploadButton
@@ -2896,17 +2896,17 @@ function ImmigrationTab({
   const renderDocCard = (doc: ClientDocument) => (
     <div
       key={doc.id}
-      className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden group"
+      className="rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] overflow-hidden group"
     >
       {doc.google_drive_file_url && (
         <div className="relative">
           <div
-            className={`aspect-[3/2] overflow-hidden border-b bg-[var(--background)] ${
+            className={`aspect-[3/2] overflow-hidden border-b bg-[var(--bz-base)] ${
               doc.alert_color === "expired" || doc.alert_color === "red"
                 ? "border-red-500/50"
                 : doc.alert_color === "yellow"
                   ? "border-yellow-500/50"
-                  : "border-[var(--border)]"
+                  : "border-[var(--bz-border)]"
             }`}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -2929,7 +2929,7 @@ function ImmigrationTab({
       )}
       <div className="p-3">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-[var(--foreground)] capitalize">
+          <span className="text-sm font-medium text-[var(--bz-text-1)] capitalize">
             {doc.document_type.replace(/_/g, " ")}
           </span>
           <div className="flex items-center gap-1">
@@ -2975,7 +2975,7 @@ function ImmigrationTab({
         </div>
         {doc.file_name && (
           <p
-            className="text-xs text-[var(--foreground-muted)] truncate mb-1"
+            className="text-xs text-[var(--bz-text-2)] truncate mb-1"
             title={doc.file_name}
           >
             {doc.file_name}
@@ -2992,7 +2992,7 @@ function ImmigrationTab({
           </div>
         )}
         {doc.family_member_name && (
-          <p className="text-xs text-[var(--foreground-muted)] mt-1">
+          <p className="text-xs text-[var(--bz-text-2)] mt-1">
             {doc.family_member_name}
           </p>
         )}
@@ -3026,7 +3026,7 @@ function ImmigrationTab({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-[var(--foreground)]">
+        <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">
           Immigration
         </h3>
         <Button size="sm" className="gap-2" onClick={onAddClick}>
@@ -3036,12 +3036,12 @@ function ImmigrationTab({
       </div>
 
       {immigrationDocs.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background-secondary)]/50 p-12 text-center">
-          <Globe className="w-12 h-12 mx-auto text-[var(--foreground-muted)] mb-3 opacity-50" />
-          <p className="text-[var(--foreground-muted)]">
+        <div className="rounded-xl border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)]/50 p-12 text-center">
+          <Globe className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-50" />
+          <p className="text-[var(--bz-text-2)]">
             No immigration documents yet
           </p>
-          <p className="text-sm text-[var(--foreground-muted)] mt-1">
+          <p className="text-sm text-[var(--bz-text-2)] mt-1">
             Upload KITAS, visa, or working permit documents
           </p>
         </div>
@@ -3050,11 +3050,11 @@ function ImmigrationTab({
           if (sectionDocs.length === 0) return null;
           return (
             <div key={title} className="space-y-3">
-              <h4 className="font-medium text-[var(--foreground)] flex items-center gap-2">
+              <h4 className="font-medium text-[var(--bz-text-1)] flex items-center gap-2">
                 <span className={`px-2 py-0.5 rounded text-xs ${color}`}>
                   {title}
                 </span>
-                <span className="text-[var(--foreground-muted)]">
+                <span className="text-[var(--bz-text-2)]">
                   ({sectionDocs.length})
                 </span>
               </h4>
@@ -3088,7 +3088,7 @@ function ProcessTab({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-[var(--foreground)]">
+        <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">
           All Process
         </h3>
         <Button
@@ -3102,26 +3102,26 @@ function ProcessTab({
       </div>
 
       {practices.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background-secondary)]/50 p-12 text-center">
-          <FolderOpen className="w-12 h-12 mx-auto text-[var(--foreground-muted)] mb-3 opacity-50" />
-          <p className="text-[var(--foreground-muted)]">No process yet</p>
+        <div className="rounded-xl border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)]/50 p-12 text-center">
+          <FolderOpen className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-50" />
+          <p className="text-[var(--bz-text-2)]">No process yet</p>
         </div>
       ) : (
         <div className="space-y-3">
           {practices.map((practice) => (
             <div
               key={practice.id}
-              className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-4 hover:border-[var(--accent)]/50 transition-colors group"
+              className="rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] p-4 hover:border-[var(--accent)]/50 transition-colors group"
             >
               <div className="flex items-center justify-between mb-2">
                 <div
                   className="flex-1 cursor-pointer"
                   onClick={() => router.push(`/process/${practice.id}`)}
                 >
-                  <span className="text-sm font-medium text-[var(--foreground)]">
+                  <span className="text-sm font-medium text-[var(--bz-text-1)]">
                     {practice.practice_type_name}
                   </span>
-                  <span className="text-xs text-[var(--foreground-muted)] ml-2">
+                  <span className="text-xs text-[var(--bz-text-2)] ml-2">
                     #{practice.id}
                   </span>
                 </div>
@@ -3141,7 +3141,7 @@ function ProcessTab({
                         e.stopPropagation();
                         router.push(`/process/${practice.id}/edit`);
                       }}
-                      className="p-1 rounded hover:bg-[var(--background-elevated)] text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                      className="p-1 rounded hover:bg-[var(--bz-card)] text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)]"
                       title="Edit process"
                     >
                       <Edit2 className="w-4 h-4" />
@@ -3169,7 +3169,7 @@ function ProcessTab({
                           }
                         }
                       }}
-                      className="p-1 rounded hover:bg-red-500/20 text-[var(--foreground-muted)] hover:text-red-500"
+                      className="p-1 rounded hover:bg-red-500/20 text-[var(--bz-text-2)] hover:text-red-500"
                       title="Delete process"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -3209,14 +3209,14 @@ function TimelineTab({
 }) {
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-[var(--foreground)]">
+      <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">
         Activity Timeline
       </h3>
 
       {interactions.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background-secondary)]/50 p-12 text-center">
-          <Clock className="w-12 h-12 mx-auto text-[var(--foreground-muted)] mb-3 opacity-50" />
-          <p className="text-[var(--foreground-muted)]">No activity yet</p>
+        <div className="rounded-xl border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)]/50 p-12 text-center">
+          <Clock className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-50" />
+          <p className="text-[var(--bz-text-2)]">No activity yet</p>
         </div>
       ) : (
         <div className="space-y-1">
@@ -3232,7 +3232,7 @@ function TimelineTab({
                         ? "bg-blue-500/20 text-blue-500"
                         : interaction.interaction_type === "call"
                           ? "bg-purple-500/20 text-purple-500"
-                          : "bg-[var(--accent)]/20 text-[var(--accent)]"
+                          : "bg-[var(--bz-accent)]/20 text-[var(--bz-accent)]"
                   }`}
                 >
                   {INTERACTION_ICONS[interaction.interaction_type] || (
@@ -3246,28 +3246,28 @@ function TimelineTab({
 
               {/* Content */}
               <div className="flex-1 pb-4">
-                <div className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-3">
+                <div className="rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] p-3">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-[var(--foreground)]">
+                    <span className="text-xs font-medium text-[var(--bz-text-1)]">
                       {interaction.interaction_type.charAt(0).toUpperCase() +
                         interaction.interaction_type.slice(1)}
                     </span>
-                    <span className="text-[10px] text-[var(--foreground-muted)]">
+                    <span className="text-[10px] text-[var(--bz-text-2)]">
                       {formatDate(interaction.interaction_date)}{" "}
                       {formatTime(interaction.interaction_date)}
                     </span>
                   </div>
                   {interaction.subject && (
-                    <p className="text-sm text-[var(--foreground)] mb-1">
+                    <p className="text-sm text-[var(--bz-text-1)] mb-1">
                       {interaction.subject}
                     </p>
                   )}
                   {interaction.summary && (
-                    <p className="text-xs text-[var(--foreground-muted)] line-clamp-2">
+                    <p className="text-xs text-[var(--bz-text-2)] line-clamp-2">
                       {interaction.summary}
                     </p>
                   )}
-                  <div className="flex items-center gap-2 mt-2 text-[10px] text-[var(--foreground-muted)]">
+                  <div className="flex items-center gap-2 mt-2 text-[10px] text-[var(--bz-text-2)]">
                     <span>{interaction.team_member}</span>
                     {interaction.sentiment && (
                       <span
@@ -3316,9 +3316,9 @@ function Modal({
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative bg-[var(--background)] border border-[var(--border)] rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between p-6 border-b border-[var(--border)]">
-          <h2 className="text-xl font-semibold text-[var(--foreground)]">
+      <div className="relative bg-[var(--bz-base)] border border-[var(--bz-border)] rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between p-6 border-b border-[var(--bz-border)]">
+          <h2 className="text-xl font-semibold text-[var(--bz-text-1)]">
             {title}
           </h2>
           <Button
@@ -3332,7 +3332,7 @@ function Modal({
         </div>
         <form onSubmit={onSave} className="overflow-y-auto flex-1">
           <div className="p-6 space-y-6">{children}</div>
-          <div className="flex items-center justify-end gap-3 p-6 border-t border-[var(--border)] bg-[var(--background-secondary)] mt-auto">
+          <div className="flex items-center justify-end gap-3 p-6 border-t border-[var(--bz-border)] bg-[var(--bz-surface)] mt-auto">
             <Button
               type="button"
               variant="outline"
@@ -3494,7 +3494,7 @@ function EditClientModal({
   };
 
   const inputClass =
-    "w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 focus:border-[var(--accent)]";
+    "w-full px-4 py-2.5 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50 focus:border-[var(--accent)]";
 
   return (
     <Modal
@@ -3504,9 +3504,9 @@ function EditClientModal({
       onSave={handleSubmit}
     >
       {/* Avatar Upload */}
-      <div className="flex items-center gap-6 pb-6 border-b border-[var(--border)]">
+      <div className="flex items-center gap-6 pb-6 border-b border-[var(--bz-border)]">
         <div className="relative">
-          <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-[var(--border)] bg-[var(--background-secondary)] flex items-center justify-center">
+          <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-[var(--bz-border)] bg-[var(--bz-surface)] flex items-center justify-center">
             {formData.avatar_url ? (
               <img
                 src={formData.avatar_url}
@@ -3526,7 +3526,7 @@ function EditClientModal({
                 className="w-full h-full object-cover"
               />
             ) : (
-              <User className="w-12 h-12 text-[var(--foreground-muted)]" />
+              <User className="w-12 h-12 text-[var(--bz-text-2)]" />
             )}
           </div>
           {formData.avatar_url && (
@@ -3541,10 +3541,10 @@ function EditClientModal({
         </div>
         <div className="flex-1">
           <label className="block text-sm font-medium mb-1">Client Photo</label>
-          <p className="text-xs text-[var(--foreground-muted)] mb-2">
+          <p className="text-xs text-[var(--bz-text-2)] mb-2">
             Upload a profile picture (max 2MB)
           </p>
-          <label className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 transition-colors cursor-pointer">
+          <label className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--bz-accent)] text-white hover:bg-[var(--bz-accent)]/90 transition-colors cursor-pointer">
             <Upload className="w-4 h-4" />
             {formData.avatar_url ? "Change Photo" : "Upload Photo"}
             <input
@@ -3695,7 +3695,7 @@ function EditClientModal({
                 className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
                   formData.status === value
                     ? `border-${color}-500/50`
-                    : "border-transparent bg-[var(--background-secondary)]"
+                    : "border-transparent bg-[var(--bz-surface)]"
                 }`}
                 style={{
                   backgroundColor:
@@ -3705,7 +3705,7 @@ function EditClientModal({
                   color:
                     formData.status === value
                       ? `var(--${color === "blue" ? "accent" : color}-500, #3b82f6)`
-                      : "var(--foreground-muted)",
+                      : "var(--bz-text-2)",
                 }}
               >
                 {label}
@@ -3755,7 +3755,7 @@ function AddFamilyMemberModal({
   };
 
   const inputClass =
-    "w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50";
+    "w-full px-4 py-2.5 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50";
 
   return (
     <Modal
@@ -3904,7 +3904,7 @@ function EditFamilyMemberModal({
   };
 
   const inputClass =
-    "w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50";
+    "w-full px-4 py-2.5 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50";
 
   return (
     <Modal
@@ -4126,7 +4126,7 @@ function AddDocumentModal({
   };
 
   const inputClass =
-    "w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50";
+    "w-full px-4 py-2.5 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50";
 
   return (
     <Modal
@@ -4288,7 +4288,7 @@ function EditDocumentModal({
   };
 
   const inputClass =
-    "w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50";
+    "w-full px-4 py-2.5 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50";
 
   return (
     <Modal
@@ -4507,8 +4507,8 @@ function CompanyDocUpload({
     <div
       className={`rounded-xl overflow-hidden transition-all ${
         hasDoc
-          ? "bg-gradient-to-br from-[var(--background)] to-[var(--background-secondary)] border border-[var(--border)] shadow-sm"
-          : "border border-dashed border-[var(--border)] hover:border-[var(--accent)]/40 bg-[var(--background)]/50"
+          ? "bg-gradient-to-br from-[var(--bz-base)] to-[var(--bz-surface)] border border-[var(--bz-border)] shadow-sm"
+          : "border border-dashed border-[var(--bz-border)] hover:border-[var(--bz-accent)]/40 bg-[var(--bz-base)]/50"
       }`}
     >
       {/* Top accent bar */}
@@ -4522,20 +4522,20 @@ function CompanyDocUpload({
             className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg flex-shrink-0 ${
               hasDoc
                 ? "bg-green-500/10"
-                : "bg-[var(--foreground-muted)]/5"
+                : "bg-[var(--bz-text-2)]/5"
             }`}
           >
             {docIcon[docType] || "📄"}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-[var(--foreground)]">
+              <span className="text-sm font-semibold text-[var(--bz-text-1)]">
                 {label}
               </span>
               {hasDoc ? (
                 <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
               ) : (
-                <span className="text-[10px] text-[var(--foreground-muted)]">
+                <span className="text-[10px] text-[var(--bz-text-2)]">
                   {hint}
                 </span>
               )}
@@ -4543,7 +4543,7 @@ function CompanyDocUpload({
 
             {/* Existing doc filename */}
             {existingDoc?.file_name && !uploadedFile && (
-              <p className="text-[11px] text-[var(--foreground-muted)] truncate mt-0.5">
+              <p className="text-[11px] text-[var(--bz-text-2)] truncate mt-0.5">
                 {existingDoc.file_name}
               </p>
             )}
@@ -4562,7 +4562,7 @@ function CompanyDocUpload({
               <Button
                 variant="ghost"
                 size="sm"
-                className="gap-1.5 text-xs h-7 px-2.5 flex-1 hover:bg-[var(--accent)]/10 hover:text-[var(--accent)]"
+                className="gap-1.5 text-xs h-7 px-2.5 flex-1 hover:bg-[var(--bz-accent)]/10 hover:text-[var(--bz-accent)]"
                 onClick={() => {
                   window.open(
                     `/api/documents/proxy/${existingDoc.google_drive_file_id}`,
@@ -4698,7 +4698,7 @@ function CompanyTab({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-[var(--accent)]" />
+        <Loader2 className="w-6 h-6 animate-spin text-[var(--bz-accent)]" />
       </div>
     );
   }
@@ -4707,10 +4707,10 @@ function CompanyTab({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-[var(--foreground)]">
+          <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">
             Companies
           </h3>
-          <p className="text-sm text-[var(--foreground-muted)]">
+          <p className="text-sm text-[var(--bz-text-2)]">
             Profile Perseroan
           </p>
         </div>
@@ -4733,12 +4733,12 @@ function CompanyTab({
       )}
 
       {companies.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background-secondary)]/50 p-12 text-center">
-          <Building2 className="w-12 h-12 mx-auto text-[var(--foreground-muted)] mb-3 opacity-50" />
-          <p className="text-[var(--foreground-muted)]">
+        <div className="rounded-xl border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)]/50 p-12 text-center">
+          <Building2 className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-50" />
+          <p className="text-[var(--bz-text-2)]">
             No companies linked yet
           </p>
-          <p className="text-sm text-[var(--foreground-muted)] mt-1">
+          <p className="text-sm text-[var(--bz-text-2)] mt-1">
             Link this client to PT PMA or other companies
           </p>
         </div>
@@ -4763,17 +4763,17 @@ function CompanyTab({
             return (
               <div
                 key={company.company_id}
-                className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden"
+                className="rounded-xl border border-[var(--bz-border)] bg-[var(--bz-surface)] overflow-hidden"
               >
                 {/* Company Header */}
-                <div className="px-6 py-4 border-b border-[var(--border)] bg-gradient-to-r from-purple-500/5 to-blue-500/5">
+                <div className="px-6 py-4 border-b border-[var(--bz-border)] bg-gradient-to-r from-purple-500/5 to-blue-500/5">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-4">
                       <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center">
                         <Building2 className="w-7 h-7 text-purple-400" />
                       </div>
                       <div>
-                        <h4 className="text-lg font-bold text-[var(--foreground)]">
+                        <h4 className="text-lg font-bold text-[var(--bz-text-1)]">
                           {company.company_name}
                         </h4>
                         <div className="flex items-center gap-2 mt-1">
@@ -4781,7 +4781,7 @@ function CompanyTab({
                             {company.company_type}
                           </span>
                           {company.brand_name && (
-                            <span className="text-xs text-[var(--foreground-muted)]">
+                            <span className="text-xs text-[var(--bz-text-2)]">
                               d/b/a {company.brand_name}
                             </span>
                           )}
@@ -4803,7 +4803,7 @@ function CompanyTab({
                             ).replace(/_/g, " ")}
                           </span>
                           {company.is_primary && (
-                            <span className="px-2 py-0.5 rounded bg-[var(--accent)]/20 text-[var(--accent)] text-xs">
+                            <span className="px-2 py-0.5 rounded bg-[var(--bz-accent)]/20 text-[var(--bz-accent)] text-xs">
                               Primary
                             </span>
                           )}
@@ -4813,24 +4813,24 @@ function CompanyTab({
                   </div>
 
                   {/* Quick Reference */}
-                  <p className="mt-3 text-xs text-[var(--foreground-muted)] tracking-wide">
+                  <p className="mt-3 text-xs text-[var(--bz-text-2)] tracking-wide">
                     {getCompanySummary(company)}
                   </p>
                 </div>
 
                 {/* Body — 2 column layout */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 divide-y lg:divide-y-0 lg:divide-x divide-[var(--border)]">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 divide-y lg:divide-y-0 lg:divide-x divide-[var(--bz-border)]">
                   {/* Left Column: Legal & Registration */}
                   <div className="p-6 space-y-5">
-                    <h5 className="text-xs uppercase tracking-wider text-[var(--foreground-muted)] font-semibold">
+                    <h5 className="text-xs uppercase tracking-wider text-[var(--bz-text-2)] font-semibold">
                       Legal & Registration
                     </h5>
 
                     {/* Client's Role in Company */}
-                    <div className="p-3 rounded-lg bg-[var(--accent)]/5 border border-[var(--accent)]/20">
+                    <div className="p-3 rounded-lg bg-[var(--bz-accent)]/5 border border-[var(--accent)]/20">
                       <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                         <div>
-                          <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                          <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                             Client Role
                           </p>
                           <p className="text-sm font-semibold capitalize">
@@ -4840,7 +4840,7 @@ function CompanyTab({
                         {company.ownership_percentage !== undefined &&
                           company.ownership_percentage > 0 && (
                             <div>
-                              <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                              <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                                 Ownership
                               </p>
                               <p className="text-sm font-semibold">
@@ -4851,7 +4851,7 @@ function CompanyTab({
                         {company.shares_count !== undefined &&
                           company.shares_count > 0 && (
                             <div>
-                              <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                              <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                                 Capital
                               </p>
                               <p className="text-sm font-semibold">
@@ -4877,14 +4877,14 @@ function CompanyTab({
                     {/* SK Kemenkumham */}
                     {company.sk_menhumkam_no && (
                       <div>
-                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                        <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                           SK Kemenkumham
                         </p>
                         <p className="text-sm font-mono font-medium">
                           {company.sk_menhumkam_no}
                         </p>
                         {company.sk_menhumkam_date && (
-                          <p className="text-xs text-[var(--foreground-muted)]">
+                          <p className="text-xs text-[var(--bz-text-2)]">
                             Dated: {formatDate(company.sk_menhumkam_date)}
                           </p>
                         )}
@@ -4895,14 +4895,14 @@ function CompanyTab({
                     <div className="grid grid-cols-1 gap-4">
                       {company.akta_pendirian_no && (
                         <div>
-                          <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                          <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                             Akta Pendirian
                           </p>
                           <p className="text-sm font-mono">
                             {company.akta_pendirian_no}
                           </p>
                           {company.akta_pendirian_date && (
-                            <p className="text-xs text-[var(--foreground-muted)]">
+                            <p className="text-xs text-[var(--bz-text-2)]">
                               Date: {formatDate(company.akta_pendirian_date)}
                             </p>
                           )}
@@ -4910,14 +4910,14 @@ function CompanyTab({
                       )}
                       {company.akta_perubahan_no && (
                         <div>
-                          <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                          <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                             Akta Perubahan (Latest Amendment)
                           </p>
                           <p className="text-sm font-mono">
                             {company.akta_perubahan_no}
                           </p>
                           {company.akta_perubahan_date && (
-                            <p className="text-xs text-[var(--foreground-muted)]">
+                            <p className="text-xs text-[var(--bz-text-2)]">
                               Date: {formatDate(company.akta_perubahan_date)}
                             </p>
                           )}
@@ -4929,7 +4929,7 @@ function CompanyTab({
                     <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                       {company.nib && (
                         <div>
-                          <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                          <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                             NIB
                           </p>
                           <p className="text-sm font-mono">{company.nib}</p>
@@ -4937,7 +4937,7 @@ function CompanyTab({
                       )}
                       {company.npwp_company && (
                         <div>
-                          <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                          <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                             NPWP
                           </p>
                           <p className="text-sm font-mono">
@@ -4949,7 +4949,7 @@ function CompanyTab({
 
                     {company.kbli_code && (
                       <div>
-                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                        <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                           KBLI Classification
                         </p>
                         <div className="mt-1 space-y-1">
@@ -4962,7 +4962,7 @@ function CompanyTab({
                           ))}
                         </div>
                         {company.kbli_description && (
-                          <p className="text-xs text-[var(--foreground-muted)] mt-1">
+                          <p className="text-xs text-[var(--bz-text-2)] mt-1">
                             {company.kbli_description}
                           </p>
                         )}
@@ -4973,14 +4973,14 @@ function CompanyTab({
 
                   {/* Right Column: Contact, Address, People */}
                   <div className="p-6 space-y-5">
-                    <h5 className="text-xs uppercase tracking-wider text-[var(--foreground-muted)] font-semibold">
+                    <h5 className="text-xs uppercase tracking-wider text-[var(--bz-text-2)] font-semibold">
                       Contact & Location
                     </h5>
 
                     {/* Registered Address */}
                     {company.registered_address && (
                       <div>
-                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                        <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                           Registered Address
                         </p>
                         <p className="text-sm">{company.registered_address}</p>
@@ -4991,7 +4991,7 @@ function CompanyTab({
                     {company.office_address &&
                       company.office_address !== company.registered_address && (
                         <div>
-                          <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                          <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                             Office Address
                           </p>
                           <p className="text-sm">{company.office_address}</p>
@@ -5002,7 +5002,7 @@ function CompanyTab({
                       <div className="grid grid-cols-2 gap-x-4">
                         {company.city && (
                           <div>
-                            <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                            <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                               City
                             </p>
                             <p className="text-sm">{company.city}</p>
@@ -5010,7 +5010,7 @@ function CompanyTab({
                         )}
                         {company.province && (
                           <div>
-                            <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                            <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                               Province
                             </p>
                             <p className="text-sm">{company.province}</p>
@@ -5023,7 +5023,7 @@ function CompanyTab({
                     <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                       {company.company_phone && (
                         <div>
-                          <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                          <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                             Phone
                           </p>
                           <p className="text-sm">{company.company_phone}</p>
@@ -5031,7 +5031,7 @@ function CompanyTab({
                       )}
                       {company.company_email && (
                         <div>
-                          <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)]">
+                          <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                             Email
                           </p>
                           <p className="text-sm truncate">
@@ -5044,14 +5044,14 @@ function CompanyTab({
                     {/* People */}
                     {people.length > 0 && (
                       <div>
-                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)] mb-2">
+                        <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-2">
                           People & Stakeholders
                         </p>
                         <div className="space-y-2">
                           {people.map((p, i) => (
                             <div key={i} className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-full bg-[var(--accent)]/10 flex items-center justify-center">
-                                <User className="w-3.5 h-3.5 text-[var(--accent)]" />
+                              <div className="w-7 h-7 rounded-full bg-[var(--bz-accent)]/10 flex items-center justify-center">
+                                <User className="w-3.5 h-3.5 text-[var(--bz-accent)]" />
                               </div>
                               <span className="text-sm">{p}</span>
                             </div>
@@ -5063,30 +5063,30 @@ function CompanyTab({
                     {/* Key Identifiers */}
                     {(company.nib || company.npwp_company) && (
                       <div>
-                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)] mb-2">
+                        <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-2">
                           Key Identifiers
                         </p>
                         <div className="grid grid-cols-1 gap-1.5">
                           {company.nib && (
-                            <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-[var(--background)] border border-[var(--border)]">
+                            <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-[var(--bz-base)] border border-[var(--bz-border)]">
                               <div className="flex items-center gap-2">
-                                <span className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)] w-12">NIB</span>
+                                <span className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] w-12">NIB</span>
                                 <span className="text-xs font-mono">{company.nib}</span>
                               </div>
                               <CheckCircle2 className="w-3 h-3 text-green-400 flex-shrink-0" />
                             </div>
                           )}
                           {company.npwp_company && (
-                            <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-[var(--background)] border border-[var(--border)]">
+                            <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-[var(--bz-base)] border border-[var(--bz-border)]">
                               <div className="flex items-center gap-2">
-                                <span className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)] w-12">NPWP</span>
+                                <span className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] w-12">NPWP</span>
                                 <span className="text-xs font-mono">{company.npwp_company}</span>
                               </div>
                               <CheckCircle2 className="w-3 h-3 text-green-400 flex-shrink-0" />
                             </div>
                           )}
                         </div>
-                        <p className="text-[10px] text-[var(--foreground-muted)] mt-1.5">
+                        <p className="text-[10px] text-[var(--bz-text-2)] mt-1.5">
                           {(companyDocs[company.company_id] || []).length} documents on file
                         </p>
                       </div>
@@ -5094,11 +5094,11 @@ function CompanyTab({
 
                     {/* Notes */}
                     {company.notes && (
-                      <div className="p-3 rounded-lg bg-[var(--background)]/50 border border-[var(--border)]">
-                        <p className="text-[10px] uppercase tracking-wider text-[var(--foreground-muted)] mb-1">
+                      <div className="p-3 rounded-lg bg-[var(--bz-base)]/50 border border-[var(--bz-border)]">
+                        <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1">
                           Notes
                         </p>
-                        <p className="text-xs text-[var(--foreground-muted)]">
+                        <p className="text-xs text-[var(--bz-text-2)]">
                           {company.notes}
                         </p>
                       </div>
@@ -5107,8 +5107,8 @@ function CompanyTab({
                 </div>
 
                 {/* Company Documents — Upload Section */}
-                <div className="px-6 py-5 border-t border-[var(--border)]">
-                  <h5 className="text-xs uppercase tracking-wider text-[var(--foreground-muted)] font-semibold mb-4">
+                <div className="px-6 py-5 border-t border-[var(--bz-border)]">
+                  <h5 className="text-xs uppercase tracking-wider text-[var(--bz-text-2)] font-semibold mb-4">
                     Company Documents
                   </h5>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -5303,21 +5303,21 @@ function TaxTab({
     description: string;
     docTypes: { key: string; label: string; hint: string }[];
   }) => (
-    <div className="bg-[var(--background-secondary)] border border-[var(--border)] rounded-xl p-4 space-y-4">
+    <div className="bg-[var(--bz-surface)] border border-[var(--bz-border)] rounded-xl p-4 space-y-4">
       <div>
-        <h4 className="font-semibold text-[var(--foreground)]">{title}</h4>
-        <p className="text-xs text-[var(--foreground-muted)]">{description}</p>
+        <h4 className="font-semibold text-[var(--bz-text-1)]">{title}</h4>
+        <p className="text-xs text-[var(--bz-text-2)]">{description}</p>
       </div>
 
       <div className="space-y-3">
         {docTypes.map((doc) => (
           <div
             key={doc.key}
-            className="border border-dashed border-[var(--border)] rounded-lg p-3"
+            className="border border-dashed border-[var(--bz-border)] rounded-lg p-3"
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium">{doc.label}</span>
-              <span className="text-xs text-[var(--foreground-muted)]">
+              <span className="text-xs text-[var(--bz-text-2)]">
                 {doc.hint}
               </span>
             </div>
@@ -5335,7 +5335,7 @@ function TaxTab({
               />
               <label
                 htmlFor={`${section}-${doc.key}`}
-                className="flex-1 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
+                className="flex-1 px-3 py-2 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-base)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
               >
                 {isUploading ? "Uploading..." : `Select ${doc.label} file`}
               </label>
@@ -5486,8 +5486,8 @@ function TaxTab({
     return (
       <div
         onClick={onClick}
-        className={`rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-5 cursor-pointer transition-all hover:border-[var(--accent)] ${
-          activeSection === section ? "ring-2 ring-[var(--accent)]" : ""
+        className={`rounded-xl border border-[var(--bz-border)] bg-[var(--bz-surface)] p-5 cursor-pointer transition-all hover:border-[var(--accent)] ${
+          activeSection === section ? "ring-2 ring-[var(--bz-accent)]" : ""
         }`}
       >
         <div className="flex items-start justify-between">
@@ -5498,10 +5498,10 @@ function TaxTab({
               <Icon className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h4 className="font-semibold text-[var(--foreground)]">
+              <h4 className="font-semibold text-[var(--bz-text-1)]">
                 {title}
               </h4>
-              <p className="text-xs text-[var(--foreground-muted)]">
+              <p className="text-xs text-[var(--bz-text-2)]">
                 {subtitle}
               </p>
             </div>
@@ -5521,9 +5521,9 @@ function TaxTab({
           )}
         </div>
 
-        <div className="mt-4 pt-4 border-t border-[var(--border)]">
+        <div className="mt-4 pt-4 border-t border-[var(--bz-border)]">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-[var(--foreground-muted)]">
+            <span className="text-sm text-[var(--bz-text-2)]">
               Deadline
             </span>
             <span
@@ -5542,10 +5542,10 @@ function TaxTab({
       {/* Header with year selector */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-[var(--foreground)]">
+          <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">
             Tax Overview
           </h3>
-          <p className="text-sm text-[var(--foreground-muted)]">
+          <p className="text-sm text-[var(--bz-text-2)]">
             Manage tax obligations and filings
           </p>
         </div>
@@ -5586,17 +5586,17 @@ function TaxTab({
           />
 
           {/* LKPM with 4 quarters */}
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-5">
+          <div className="rounded-xl border border-[var(--bz-border)] bg-[var(--bz-surface)] p-5">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
                   <FileText className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-[var(--foreground)]">
+                  <h4 className="font-semibold text-[var(--bz-text-1)]">
                     LKPM
                   </h4>
-                  <p className="text-xs text-[var(--foreground-muted)]">
+                  <p className="text-xs text-[var(--bz-text-2)]">
                     Laporan Kegiatan Penanaman Modal
                   </p>
                 </div>
@@ -5616,12 +5616,12 @@ function TaxTab({
                   key={q}
                   className={`text-center p-3 rounded-lg border ${
                     activeSection === "lkpm"
-                      ? "border-[var(--accent)] bg-[var(--accent)]/10"
-                      : "border-[var(--border)]"
+                      ? "border-[var(--accent)] bg-[var(--bz-accent)]/10"
+                      : "border-[var(--bz-border)]"
                   }`}
                 >
                   <p className="text-lg font-bold">Q{q}</p>
-                  <p className="text-xs text-[var(--foreground-muted)]">
+                  <p className="text-xs text-[var(--bz-text-2)]">
                     {q === 1 && "Jan-Mar"}
                     {q === 2 && "Apr-Jun"}
                     {q === 3 && "Jul-Sep"}
@@ -5714,7 +5714,7 @@ const FileUploadField = memo(function FileUploadField({
       <label className="block text-xs font-medium mb-1.5">
         {label}
         {subLabel && (
-          <span className="text-[var(--foreground-muted)]"> {subLabel}</span>
+          <span className="text-[var(--bz-text-2)]"> {subLabel}</span>
         )}
       </label>
       <div className="flex items-center gap-2">
@@ -5733,7 +5733,7 @@ const FileUploadField = memo(function FileUploadField({
             ${
               error
                 ? "border-red-500 bg-red-500/10 text-red-500"
-                : "border-[var(--border)] bg-[var(--background-secondary)] hover:border-[var(--accent)]"
+                : "border-[var(--bz-border)] bg-[var(--bz-surface)] hover:border-[var(--accent)]"
             }
           `}
         >
@@ -6107,17 +6107,17 @@ function AddCompanyModal({
   }, [reset, onClose]);
 
   const inputClass =
-    "w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 text-sm";
+    "w-full px-3 py-2 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50 text-sm";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--background)] p-6 shadow-xl">
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl border border-[var(--bz-border)] bg-[var(--bz-base)] p-6 shadow-xl">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h3 className="text-lg font-semibold text-[var(--foreground)]">
+            <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">
               Add New Company
             </h3>
-            <p className="text-sm text-[var(--foreground-muted)]">
+            <p className="text-sm text-[var(--bz-text-2)]">
               Create a new PT PMA and link it to this client
             </p>
           </div>
@@ -6140,7 +6140,7 @@ function AddCompanyModal({
         >
           {/* Company Basic Info */}
           <div className="space-y-3">
-            <h4 className="text-sm font-medium text-[var(--foreground)] flex items-center gap-2">
+            <h4 className="text-sm font-medium text-[var(--bz-text-1)] flex items-center gap-2">
               <Building2 className="w-4 h-4" />
               Basic Information
             </h4>
@@ -6192,8 +6192,8 @@ function AddCompanyModal({
           </div>
 
           {/* Business IDs */}
-          <div className="space-y-3 pt-4 border-t border-[var(--border)]">
-            <h4 className="text-sm font-medium text-[var(--foreground)] flex items-center gap-2">
+          <div className="space-y-3 pt-4 border-t border-[var(--bz-border)]">
+            <h4 className="text-sm font-medium text-[var(--bz-text-1)] flex items-center gap-2">
               <CreditCard className="w-4 h-4" />
               Business Identification
             </h4>
@@ -6203,7 +6203,7 @@ function AddCompanyModal({
               <div>
                 <label className="block text-xs font-medium mb-1.5">
                   NIB (Business ID){" "}
-                  <span className="text-[var(--foreground-muted)]">
+                  <span className="text-[var(--bz-text-2)]">
                     - Number
                   </span>
                 </label>
@@ -6218,7 +6218,7 @@ function AddCompanyModal({
               <div>
                 <label className="block text-xs font-medium mb-1.5">
                   NIB Document{" "}
-                  <span className="text-[var(--foreground-muted)]">
+                  <span className="text-[var(--bz-text-2)]">
                     - Upload + OCR
                   </span>
                 </label>
@@ -6232,7 +6232,7 @@ function AddCompanyModal({
                   />
                   <label
                     htmlFor="nib-doc-upload"
-                    className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--background-secondary)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
+                    className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
                   >
                     {documents.nib ? documents.nib.name : "Upload NIB file"}
                   </label>
@@ -6273,7 +6273,7 @@ function AddCompanyModal({
               <div>
                 <label className="block text-xs font-medium mb-1.5">
                   NPWP Company{" "}
-                  <span className="text-[var(--foreground-muted)]">
+                  <span className="text-[var(--bz-text-2)]">
                     - Number (auto from OCR)
                   </span>
                 </label>
@@ -6288,7 +6288,7 @@ function AddCompanyModal({
               <div>
                 <label className="block text-xs font-medium mb-1.5">
                   NPWP Document{" "}
-                  <span className="text-[var(--foreground-muted)]">
+                  <span className="text-[var(--bz-text-2)]">
                     - Upload + OCR
                   </span>
                 </label>
@@ -6304,7 +6304,7 @@ function AddCompanyModal({
                   />
                   <label
                     htmlFor="npwp-upload"
-                    className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--background-secondary)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
+                    className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
                   >
                     {documents.npwp ? documents.npwp.name : "Upload NPWP"}
                   </label>
@@ -6342,8 +6342,8 @@ function AddCompanyModal({
           </div>
 
           {/* Document Uploads - Other docs only (AKTA, SK, Business ID, Profile Perseroan) */}
-          <div className="space-y-3 pt-4 border-t border-[var(--border)]">
-            <h4 className="text-sm font-medium text-[var(--foreground)] flex items-center gap-2">
+          <div className="space-y-3 pt-4 border-t border-[var(--bz-border)]">
+            <h4 className="text-sm font-medium text-[var(--bz-text-1)] flex items-center gap-2">
               <Upload className="w-4 h-4" />
               Document Uploads
             </h4>
@@ -6364,7 +6364,7 @@ function AddCompanyModal({
                   />
                   <label
                     htmlFor="akta-upload"
-                    className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--background-secondary)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
+                    className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
                   >
                     {documents.akta ? documents.akta.name : "Upload AKTA"}
                   </label>
@@ -6395,7 +6395,7 @@ function AddCompanyModal({
                   />
                   <label
                     htmlFor="sk-upload"
-                    className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--background-secondary)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
+                    className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
                   >
                     {documents.sk ? documents.sk.name : "Upload SK"}
                   </label>
@@ -6430,7 +6430,7 @@ function AddCompanyModal({
                   />
                   <label
                     htmlFor="business-id-upload"
-                    className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--background-secondary)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
+                    className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
                   >
                     {documents.businessId
                       ? documents.businessId.name
@@ -6467,7 +6467,7 @@ function AddCompanyModal({
                   />
                   <label
                     htmlFor="profile-perseroan-upload"
-                    className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--background-secondary)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
+                    className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
                   >
                     {documents.profilePerseroan
                       ? documents.profilePerseroan.name
@@ -6492,8 +6492,8 @@ function AddCompanyModal({
           </div>
 
           {/* Address */}
-          <div className="space-y-3 pt-4 border-t border-[var(--border)]">
-            <h4 className="text-sm font-medium text-[var(--foreground)] flex items-center gap-2">
+          <div className="space-y-3 pt-4 border-t border-[var(--bz-border)]">
+            <h4 className="text-sm font-medium text-[var(--bz-text-1)] flex items-center gap-2">
               <MapPin className="w-4 h-4" />
               Address
             </h4>
@@ -6573,8 +6573,8 @@ function AddCompanyModal({
           </div>
 
           {/* Client Link */}
-          <div className="space-y-3 pt-4 border-t border-[var(--border)]">
-            <h4 className="text-sm font-medium text-[var(--foreground)] flex items-center gap-2">
+          <div className="space-y-3 pt-4 border-t border-[var(--bz-border)]">
+            <h4 className="text-sm font-medium text-[var(--bz-text-1)] flex items-center gap-2">
               <Users className="w-4 h-4" />
               Client Association
             </h4>
@@ -6623,11 +6623,11 @@ function AddCompanyModal({
                 id="is_primary"
                 checked={formData.is_primary}
                 onChange={(e) => updateField("is_primary", e.target.checked)}
-                className="rounded border-[var(--border)] bg-[var(--background-secondary)]"
+                className="rounded border-[var(--bz-border)] bg-[var(--bz-surface)]"
               />
               <label
                 htmlFor="is_primary"
-                className="text-sm text-[var(--foreground)]"
+                className="text-sm text-[var(--bz-text-1)]"
               >
                 Set as primary company for this client
               </label>
@@ -6635,7 +6635,7 @@ function AddCompanyModal({
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-3 pt-6 border-t border-[var(--border)]">
+          <div className="flex justify-end gap-3 pt-6 border-t border-[var(--bz-border)]">
             <Button
               type="button"
               variant="outline"

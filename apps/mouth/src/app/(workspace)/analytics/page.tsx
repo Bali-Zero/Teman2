@@ -126,7 +126,7 @@ function StatCard({
     | "cyan";
 }) {
   const variants = {
-    default: "text-[var(--foreground)]",
+    default: "text-[var(--bz-text-1)]",
     success: "text-[var(--success)]",
     warning: "text-[var(--warning)]",
     danger: "text-[var(--error)]",
@@ -148,22 +148,22 @@ function StatCard({
     <div
       onClick={onClick}
       className={cn(
-        "p-4 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]",
+        "p-4 rounded-xl border border-[var(--bz-border)] bg-[var(--bz-surface)]",
         onClick &&
-          "cursor-pointer hover:border-[var(--accent)] hover:bg-[var(--background-elevated)] transition-all",
+          "cursor-pointer hover:border-[var(--bz-accent)] hover:bg-[var(--bz-card)] transition-all",
         accent?.border,
       )}
     >
       <div className="flex items-center gap-3 mb-2">
-        <div className="p-2 rounded-lg bg-[var(--background-elevated)]/50">
+        <div className="p-2 rounded-lg bg-[var(--bz-card)]/50">
           <Icon
             className={cn(
               "w-4 h-4",
-              accent ? accent.icon : "text-[var(--foreground-muted)]",
+              accent ? accent.icon : "text-[var(--bz-text-2)]",
             )}
           />
         </div>
-        <span className="text-sm text-[var(--foreground-muted)]">{title}</span>
+        <span className="text-sm text-[var(--bz-text-2)]">{title}</span>
       </div>
       <p className={cn("text-2xl font-bold", variants[variant])}>
         {animate && isNumeric && numericValue > 0 ? (
@@ -182,7 +182,7 @@ function StatCard({
         )}
       </p>
       {subtitle && (
-        <p className="text-xs text-[var(--foreground-muted)] mt-1">
+        <p className="text-xs text-[var(--bz-text-2)] mt-1">
           {subtitle}
         </p>
       )}
@@ -206,7 +206,7 @@ function ProgressBar({
 }) {
   const percent = Math.min((value / max) * 100, 100);
   const colors = {
-    accent: "bg-[var(--accent)]",
+    accent: "bg-[var(--bz-accent)]",
     success: "bg-[var(--success)]",
     warning: "bg-[var(--warning)]",
     danger: "bg-[var(--error)]",
@@ -215,12 +215,12 @@ function ProgressBar({
   return (
     <div className="space-y-1">
       {label && (
-        <div className="flex justify-between text-xs text-[var(--foreground-muted)]">
+        <div className="flex justify-between text-xs text-[var(--bz-text-2)]">
           <span>{label}</span>
           {showValue && <span>{percent.toFixed(0)}%</span>}
         </div>
       )}
-      <div className="h-2 rounded-full bg-[var(--background-elevated)]">
+      <div className="h-2 rounded-full bg-[var(--bz-card)]">
         <div
           className={cn("h-full rounded-full transition-all", colors[color])}
           style={{ width: `${percent}%` }}
@@ -249,26 +249,26 @@ function ExpandableSection({
   return (
     <div
       className={cn(
-        "rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden transition-all",
-        isExpanded && "lg:col-span-2 ring-2 ring-[var(--accent)]",
+        "rounded-xl border border-[var(--bz-border)] bg-[var(--bz-surface)] overflow-hidden transition-all",
+        isExpanded && "lg:col-span-2 ring-2 ring-[var(--bz-accent)]",
       )}
     >
       <div
         onClick={onToggle}
-        className="px-4 py-3 border-b border-[var(--border)] bg-[var(--background-elevated)]/30 flex items-center justify-between cursor-pointer hover:bg-[var(--background-elevated)]/50 transition-colors"
+        className="px-4 py-3 border-b border-[var(--bz-border)] bg-[var(--bz-card)]/30 flex items-center justify-between cursor-pointer hover:bg-[var(--bz-card)]/50 transition-colors"
       >
         <div className="flex items-center gap-2">
-          <Icon className="w-4 h-4 text-[var(--accent)]" />
-          <h3 className="font-semibold text-[var(--foreground)]">{title}</h3>
+          <Icon className="w-4 h-4 text-[var(--bz-accent)]" />
+          <h3 className="font-semibold text-[var(--bz-text-1)]">{title}</h3>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-[var(--foreground-muted)]">
+          <span className="text-xs text-[var(--bz-text-2)]">
             {isExpanded ? "Click to collapse" : "Click for details"}
           </span>
           {isExpanded ? (
-            <ChevronUp className="w-4 h-4 text-[var(--foreground-muted)]" />
+            <ChevronUp className="w-4 h-4 text-[var(--bz-text-2)]" />
           ) : (
-            <ChevronDown className="w-4 h-4 text-[var(--foreground-muted)]" />
+            <ChevronDown className="w-4 h-4 text-[var(--bz-text-2)]" />
           )}
         </div>
       </div>
@@ -289,11 +289,11 @@ function DataTable({
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-[var(--border)]">
+          <tr className="border-b border-[var(--bz-border)]">
             {headers.map((h, i) => (
               <th
                 key={i}
-                className="text-left py-2 px-3 text-[var(--foreground-muted)] font-medium"
+                className="text-left py-2 px-3 text-[var(--bz-text-2)] font-medium"
               >
                 {h}
               </th>
@@ -304,7 +304,7 @@ function DataTable({
           {rows.map((row, i) => (
             <tr
               key={i}
-              className="border-b border-[var(--border)]/50 hover:bg-[var(--background-elevated)]/30"
+              className="border-b border-[var(--bz-border)]/50 hover:bg-[var(--bz-card)]/30"
             >
               {row.map((cell, j) => (
                 <td key={j} className="py-2 px-3">
@@ -477,8 +477,8 @@ export default function AnalyticsDashboard() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-4">
-          <RefreshCw className="w-8 h-8 animate-spin text-[var(--accent)]" />
-          <p className="text-[var(--foreground-muted)]">Loading analytics...</p>
+          <RefreshCw className="w-8 h-8 animate-spin text-[var(--bz-accent)]" />
+          <p className="text-[var(--bz-text-2)]">Loading analytics...</p>
         </div>
       </div>
     );
@@ -489,10 +489,10 @@ export default function AnalyticsDashboard() {
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-4 p-6 rounded-xl border border-[var(--error)]/20 bg-[var(--error)]/5">
           <AlertTriangle className="w-8 h-8 text-[var(--error)]" />
-          <p className="text-[var(--foreground)]">{error}</p>
+          <p className="text-[var(--bz-text-1)]">{error}</p>
           <button
             onClick={handleRefresh}
-            className="px-4 py-2 rounded-lg bg-[var(--accent)] text-white"
+            className="px-4 py-2 rounded-lg bg-[var(--bz-accent)] text-white"
           >
             Retry
           </button>
@@ -508,22 +508,22 @@ export default function AnalyticsDashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--foreground)]">
+          <h1 className="text-2xl font-bold text-[var(--bz-text-1)]">
             System Analytics
           </h1>
-          <p className="text-sm text-[var(--foreground-muted)]">
+          <p className="text-sm text-[var(--bz-text-2)]">
             Founder Dashboard - Click on any section to see full details
           </p>
         </div>
         <div className="flex items-center gap-3">
           {lastRefresh && (
-            <span className="text-xs text-[var(--foreground-muted)]">
+            <span className="text-xs text-[var(--bz-text-2)]">
               Updated: {lastRefresh.toLocaleTimeString()}
             </span>
           )}
           <button
             onClick={handleExport}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] hover:bg-[var(--background-elevated)] text-sm"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--bz-border)] hover:bg-[var(--bz-card)] text-sm"
             title="Export analytics data"
           >
             <Download className="w-4 h-4" />
@@ -533,7 +533,7 @@ export default function AnalyticsDashboard() {
             onClick={handleRefresh}
             disabled={isLoading}
             className={cn(
-              "p-2 rounded-lg border border-[var(--border)] hover:bg-[var(--background-elevated)]",
+              "p-2 rounded-lg border border-[var(--bz-border)] hover:bg-[var(--bz-card)]",
               isLoading && "opacity-50",
             )}
             title="Refresh data"
@@ -629,16 +629,16 @@ export default function AnalyticsDashboard() {
             onToggle={() => toggleSection("llm")}
             summary={
               <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50">
-                  <p className="text-xs text-[var(--foreground-muted)]">
+                <div className="p-3 rounded-lg bg-[var(--bz-card)]/50">
+                  <p className="text-xs text-[var(--bz-text-2)]">
                     Total Cost
                   </p>
                   <p className="text-lg font-bold text-[var(--success)]">
                     {formatUSD(llmUsage.total_cost_usd)}
                   </p>
                 </div>
-                <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50">
-                  <p className="text-xs text-[var(--foreground-muted)]">
+                <div className="p-3 rounded-lg bg-[var(--bz-card)]/50">
+                  <p className="text-xs text-[var(--bz-text-2)]">
                     Total Tokens
                   </p>
                   <p className="text-lg font-bold">
@@ -651,9 +651,9 @@ export default function AnalyticsDashboard() {
             <div className="space-y-6">
               {/* Token Overview */}
               <div className="grid grid-cols-3 gap-4">
-                <div className="p-4 rounded-lg bg-[var(--accent)]/10 text-center">
-                  <p className="text-xs text-[var(--accent)]">Prompt Tokens</p>
-                  <p className="text-2xl font-bold text-[var(--accent)]">
+                <div className="p-4 rounded-lg bg-[var(--bz-accent)]/10 text-center">
+                  <p className="text-xs text-[var(--bz-accent)]">Prompt Tokens</p>
+                  <p className="text-2xl font-bold text-[var(--bz-accent)]">
                     {formatNumber(llmUsage.total_prompt_tokens)}
                   </p>
                 </div>
@@ -727,16 +727,16 @@ export default function AnalyticsDashboard() {
           onToggle={() => toggleSection("rag")}
           summary={
             <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50">
-                <p className="text-xs text-[var(--foreground-muted)]">
+              <div className="p-3 rounded-lg bg-[var(--bz-card)]/50">
+                <p className="text-xs text-[var(--bz-text-2)]">
                   Avg Latency
                 </p>
                 <p className="text-lg font-bold">
                   {data.rag.avg_latency_ms.toFixed(0)}ms
                 </p>
               </div>
-              <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50">
-                <p className="text-xs text-[var(--foreground-muted)]">
+              <div className="p-3 rounded-lg bg-[var(--bz-card)]/50">
+                <p className="text-xs text-[var(--bz-text-2)]">
                   Queries Today
                 </p>
                 <p className="text-lg font-bold">{data.rag.queries_today}</p>
@@ -748,36 +748,36 @@ export default function AnalyticsDashboard() {
             {/* Latency Breakdown */}
             <div>
               <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                <Zap className="w-4 h-4 text-[var(--accent)]" />
+                <Zap className="w-4 h-4 text-[var(--bz-accent)]" />
                 Latency Breakdown
               </h4>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                  <p className="text-xs text-[var(--foreground-muted)]">
+                <div className="p-3 rounded-lg bg-[var(--bz-card)]/50 text-center">
+                  <p className="text-xs text-[var(--bz-text-2)]">
                     Embedding
                   </p>
                   <p className="text-xl font-bold">
                     {data.rag.embedding_latency_ms.toFixed(0)}ms
                   </p>
                 </div>
-                <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                  <p className="text-xs text-[var(--foreground-muted)]">
+                <div className="p-3 rounded-lg bg-[var(--bz-card)]/50 text-center">
+                  <p className="text-xs text-[var(--bz-text-2)]">
                     Search
                   </p>
                   <p className="text-xl font-bold">
                     {data.rag.search_latency_ms.toFixed(0)}ms
                   </p>
                 </div>
-                <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                  <p className="text-xs text-[var(--foreground-muted)]">
+                <div className="p-3 rounded-lg bg-[var(--bz-card)]/50 text-center">
+                  <p className="text-xs text-[var(--bz-text-2)]">
                     Rerank
                   </p>
                   <p className="text-xl font-bold">
                     {data.rag.rerank_latency_ms.toFixed(0)}ms
                   </p>
                 </div>
-                <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                  <p className="text-xs text-[var(--foreground-muted)]">LLM</p>
+                <div className="p-3 rounded-lg bg-[var(--bz-card)]/50 text-center">
+                  <p className="text-xs text-[var(--bz-text-2)]">LLM</p>
                   <p className="text-xl font-bold">
                     {data.rag.llm_latency_ms.toFixed(0)}ms
                   </p>
@@ -808,7 +808,7 @@ export default function AnalyticsDashboard() {
                 <h4 className="text-sm font-medium mb-3">Usage Stats</h4>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-[var(--foreground-muted)]">
+                    <span className="text-[var(--bz-text-2)]">
                       Queries Today
                     </span>
                     <span className="font-medium">
@@ -816,7 +816,7 @@ export default function AnalyticsDashboard() {
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-[var(--foreground-muted)]">
+                    <span className="text-[var(--bz-text-2)]">
                       Tokens Used
                     </span>
                     <span className="font-medium">
@@ -824,7 +824,7 @@ export default function AnalyticsDashboard() {
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-[var(--foreground-muted)]">
+                    <span className="text-[var(--bz-text-2)]">
                       Avg Latency
                     </span>
                     <span className="font-medium">
@@ -839,7 +839,7 @@ export default function AnalyticsDashboard() {
             {data.rag.top_queries.length > 0 && (
               <div>
                 <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                  <Search className="w-4 h-4 text-[var(--accent)]" />
+                  <Search className="w-4 h-4 text-[var(--bz-accent)]" />
                   Top Queries
                 </h4>
                 <DataTable
@@ -867,8 +867,8 @@ export default function AnalyticsDashboard() {
             onToggle={() => toggleSection("query-insights")}
             summary={
               <div className="grid grid-cols-3 gap-3">
-                <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                  <p className="text-xs text-[var(--foreground-muted)]">
+                <div className="p-3 rounded-lg bg-[var(--bz-card)]/50 text-center">
+                  <p className="text-xs text-[var(--bz-text-2)]">
                     Total Queries
                   </p>
                   <p className="text-lg font-bold">
@@ -896,7 +896,7 @@ export default function AnalyticsDashboard() {
               {/* Satisfaction Overview */}
               <div>
                 <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-[var(--accent)]" />
+                  <TrendingUp className="w-4 h-4 text-[var(--bz-accent)]" />
                   User Satisfaction
                 </h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -912,17 +912,17 @@ export default function AnalyticsDashboard() {
                       {queryInsights.satisfaction.thumbs_down}
                     </p>
                   </div>
-                  <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                    <p className="text-xs text-[var(--foreground-muted)]">
+                  <div className="p-4 rounded-lg bg-[var(--bz-card)]/50 text-center">
+                    <p className="text-xs text-[var(--bz-text-2)]">
                       Total Feedback
                     </p>
                     <p className="text-2xl font-bold">
                       {queryInsights.satisfaction.total_feedback}
                     </p>
                   </div>
-                  <div className="p-4 rounded-lg bg-[var(--accent)]/10 text-center">
-                    <p className="text-xs text-[var(--accent)]">Satisfaction</p>
-                    <p className="text-2xl font-bold text-[var(--accent)]">
+                  <div className="p-4 rounded-lg bg-[var(--bz-accent)]/10 text-center">
+                    <p className="text-xs text-[var(--bz-accent)]">Satisfaction</p>
+                    <p className="text-2xl font-bold text-[var(--bz-accent)]">
                       {queryInsights.satisfaction.satisfaction_percent != null
                         ? `${queryInsights.satisfaction.satisfaction_percent}%`
                         : "N/A"}
@@ -935,7 +935,7 @@ export default function AnalyticsDashboard() {
               {queryInsights.collection_hit_rates.length > 0 && (
                 <div>
                   <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                    <Database className="w-4 h-4 text-[var(--accent)]" />
+                    <Database className="w-4 h-4 text-[var(--bz-accent)]" />
                     Collection Hit Rates
                   </h4>
                   <div className="space-y-3">
@@ -979,13 +979,13 @@ export default function AnalyticsDashboard() {
                       </span>,
                       <span
                         key="col"
-                        className="text-xs text-[var(--foreground-muted)]"
+                        className="text-xs text-[var(--bz-text-2)]"
                       >
                         {q.collections_attempted?.join(", ") || "-"}
                       </span>,
                       <span
                         key="t"
-                        className="text-xs text-[var(--foreground-muted)]"
+                        className="text-xs text-[var(--bz-text-2)]"
                       >
                         {q.last_seen
                           ? new Date(q.last_seen).toLocaleDateString()
@@ -1000,7 +1000,7 @@ export default function AnalyticsDashboard() {
               {queryInsights.query_volume_daily.length > 0 && (
                 <div>
                   <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                    <BarChart3 className="w-4 h-4 text-[var(--accent)]" />
+                    <BarChart3 className="w-4 h-4 text-[var(--bz-accent)]" />
                     Query Volume (Daily)
                   </h4>
                   <div className="flex items-end gap-2 h-32">
@@ -1024,7 +1024,7 @@ export default function AnalyticsDashboard() {
                             key={i}
                             className="flex-1 flex flex-col items-center gap-1"
                           >
-                            <span className="text-[10px] text-[var(--foreground-muted)]">
+                            <span className="text-[10px] text-[var(--bz-text-2)]">
                               {v.query_count}
                             </span>
                             <div
@@ -1033,7 +1033,7 @@ export default function AnalyticsDashboard() {
                                 height: `${Math.max(heightPercent, 4)}%`,
                               }}
                             >
-                              <div className="absolute inset-0 bg-[var(--accent)]" />
+                              <div className="absolute inset-0 bg-[var(--bz-accent)]" />
                               {failPercent > 0 && (
                                 <div
                                   className="absolute bottom-0 left-0 right-0 bg-[var(--error)]"
@@ -1041,7 +1041,7 @@ export default function AnalyticsDashboard() {
                                 />
                               )}
                             </div>
-                            <span className="text-[10px] text-[var(--foreground-muted)]">
+                            <span className="text-[10px] text-[var(--bz-text-2)]">
                               {v.bucket
                                 ? new Date(v.bucket).toLocaleDateString("en", {
                                     month: "short",
@@ -1053,9 +1053,9 @@ export default function AnalyticsDashboard() {
                         );
                       })}
                   </div>
-                  <div className="flex items-center gap-4 mt-2 text-[10px] text-[var(--foreground-muted)]">
+                  <div className="flex items-center gap-4 mt-2 text-[10px] text-[var(--bz-text-2)]">
                     <span className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-sm bg-[var(--accent)]" />{" "}
+                      <span className="w-2 h-2 rounded-sm bg-[var(--bz-accent)]" />{" "}
                       Total
                     </span>
                     <span className="flex items-center gap-1">
@@ -1094,11 +1094,11 @@ export default function AnalyticsDashboard() {
             {/* Resource Usage */}
             <div>
               <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                <Cpu className="w-4 h-4 text-[var(--accent)]" />
+                <Cpu className="w-4 h-4 text-[var(--bz-accent)]" />
                 Resource Usage
               </h4>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50">
+                <div className="p-4 rounded-lg bg-[var(--bz-card)]/50">
                   <ProgressBar
                     value={data.system.cpu_percent}
                     label="CPU"
@@ -1111,7 +1111,7 @@ export default function AnalyticsDashboard() {
                     }
                   />
                 </div>
-                <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50">
+                <div className="p-4 rounded-lg bg-[var(--bz-card)]/50">
                   <ProgressBar
                     value={data.system.memory_percent}
                     label="Memory"
@@ -1124,16 +1124,16 @@ export default function AnalyticsDashboard() {
                     }
                   />
                 </div>
-                <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                  <p className="text-xs text-[var(--foreground-muted)]">
+                <div className="p-4 rounded-lg bg-[var(--bz-card)]/50 text-center">
+                  <p className="text-xs text-[var(--bz-text-2)]">
                     Memory Used
                   </p>
                   <p className="text-xl font-bold">
                     {(data.system.memory_mb / 1024).toFixed(1)} GB
                   </p>
                 </div>
-                <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                  <p className="text-xs text-[var(--foreground-muted)]">
+                <div className="p-4 rounded-lg bg-[var(--bz-card)]/50 text-center">
+                  <p className="text-xs text-[var(--bz-text-2)]">
                     Requests/min
                   </p>
                   <p className="text-xl font-bold">
@@ -1146,7 +1146,7 @@ export default function AnalyticsDashboard() {
             {/* Response Times */}
             <div>
               <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                <Clock className="w-4 h-4 text-[var(--accent)]" />
+                <Clock className="w-4 h-4 text-[var(--bz-accent)]" />
                 Response Times (Percentiles)
               </h4>
               <div className="grid grid-cols-3 gap-4">
@@ -1174,26 +1174,26 @@ export default function AnalyticsDashboard() {
             {/* Database Connections */}
             <div>
               <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                <Database className="w-4 h-4 text-[var(--accent)]" />
+                <Database className="w-4 h-4 text-[var(--bz-accent)]" />
                 Database Connections
               </h4>
               <div className="grid grid-cols-3 gap-4">
-                <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                  <p className="text-xs text-[var(--foreground-muted)]">
+                <div className="p-4 rounded-lg bg-[var(--bz-card)]/50 text-center">
+                  <p className="text-xs text-[var(--bz-text-2)]">
                     Active
                   </p>
-                  <p className="text-xl font-bold text-[var(--accent)]">
+                  <p className="text-xl font-bold text-[var(--bz-accent)]">
                     {data.system.db_connections_active}
                   </p>
                 </div>
-                <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                  <p className="text-xs text-[var(--foreground-muted)]">Idle</p>
+                <div className="p-4 rounded-lg bg-[var(--bz-card)]/50 text-center">
+                  <p className="text-xs text-[var(--bz-text-2)]">Idle</p>
                   <p className="text-xl font-bold">
                     {data.system.db_connections_idle}
                   </p>
                 </div>
-                <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                  <p className="text-xs text-[var(--foreground-muted)]">
+                <div className="p-4 rounded-lg bg-[var(--bz-card)]/50 text-center">
+                  <p className="text-xs text-[var(--bz-text-2)]">
                     Error Rate
                   </p>
                   <p
@@ -1248,16 +1248,16 @@ export default function AnalyticsDashboard() {
           onToggle={() => toggleSection("qdrant")}
           summary={
             <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50">
-                <p className="text-xs text-[var(--foreground-muted)]">
+              <div className="p-3 rounded-lg bg-[var(--bz-card)]/50">
+                <p className="text-xs text-[var(--bz-text-2)]">
                   Total Documents
                 </p>
                 <p className="text-lg font-bold">
                   {formatNumber(data.qdrant.total_documents)}
                 </p>
               </div>
-              <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50">
-                <p className="text-xs text-[var(--foreground-muted)]">
+              <div className="p-3 rounded-lg bg-[var(--bz-card)]/50">
+                <p className="text-xs text-[var(--bz-text-2)]">
                   Collections
                 </p>
                 <p className="text-lg font-bold">
@@ -1270,30 +1270,30 @@ export default function AnalyticsDashboard() {
           <div className="space-y-6">
             {/* Overview Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="p-4 rounded-lg bg-[var(--accent)]/10 text-center">
-                <p className="text-xs text-[var(--accent)]">Total Documents</p>
-                <p className="text-2xl font-bold text-[var(--accent)]">
+              <div className="p-4 rounded-lg bg-[var(--bz-accent)]/10 text-center">
+                <p className="text-xs text-[var(--bz-accent)]">Total Documents</p>
+                <p className="text-2xl font-bold text-[var(--bz-accent)]">
                   {formatNumber(data.qdrant.total_documents)}
                 </p>
               </div>
-              <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                <p className="text-xs text-[var(--foreground-muted)]">
+              <div className="p-4 rounded-lg bg-[var(--bz-card)]/50 text-center">
+                <p className="text-xs text-[var(--bz-text-2)]">
                   Avg Search Latency
                 </p>
                 <p className="text-2xl font-bold">
                   {data.qdrant.search_latency_avg_ms.toFixed(0)}ms
                 </p>
               </div>
-              <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                <p className="text-xs text-[var(--foreground-muted)]">
+              <div className="p-4 rounded-lg bg-[var(--bz-card)]/50 text-center">
+                <p className="text-xs text-[var(--bz-text-2)]">
                   Searches Today
                 </p>
                 <p className="text-2xl font-bold">
                   {data.qdrant.search_operations_today}
                 </p>
               </div>
-              <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                <p className="text-xs text-[var(--foreground-muted)]">
+              <div className="p-4 rounded-lg bg-[var(--bz-card)]/50 text-center">
+                <p className="text-xs text-[var(--bz-text-2)]">
                   Upserts Today
                 </p>
                 <p className="text-2xl font-bold">
@@ -1349,20 +1349,20 @@ export default function AnalyticsDashboard() {
           onToggle={() => toggleSection("crm")}
           summary={
             <div className="grid grid-cols-3 gap-3">
-              <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                <p className="text-xs text-[var(--foreground-muted)]">
+              <div className="p-3 rounded-lg bg-[var(--bz-card)]/50 text-center">
+                <p className="text-xs text-[var(--bz-text-2)]">
                   Clients
                 </p>
                 <p className="text-lg font-bold">{data.crm.clients_total}</p>
               </div>
-              <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                <p className="text-xs text-[var(--foreground-muted)]">Active</p>
+              <div className="p-3 rounded-lg bg-[var(--bz-card)]/50 text-center">
+                <p className="text-xs text-[var(--bz-text-2)]">Active</p>
                 <p className="text-lg font-bold text-[var(--success)]">
                   {data.crm.clients_active}
                 </p>
               </div>
-              <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                <p className="text-xs text-[var(--foreground-muted)]">
+              <div className="p-3 rounded-lg bg-[var(--bz-card)]/50 text-center">
+                <p className="text-xs text-[var(--bz-text-2)]">
                   Practices
                 </p>
                 <p className="text-lg font-bold">{data.crm.practices_total}</p>
@@ -1374,13 +1374,13 @@ export default function AnalyticsDashboard() {
             {/* Client Stats */}
             <div>
               <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                <Users className="w-4 h-4 text-[var(--accent)]" />
+                <Users className="w-4 h-4 text-[var(--bz-accent)]" />
                 Client Overview
               </h4>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="p-4 rounded-lg bg-[var(--accent)]/10 text-center">
-                  <p className="text-xs text-[var(--accent)]">Total Clients</p>
-                  <p className="text-2xl font-bold text-[var(--accent)]">
+                <div className="p-4 rounded-lg bg-[var(--bz-accent)]/10 text-center">
+                  <p className="text-xs text-[var(--bz-accent)]">Total Clients</p>
+                  <p className="text-2xl font-bold text-[var(--bz-accent)]">
                     {data.crm.clients_total}
                   </p>
                 </div>
@@ -1390,16 +1390,16 @@ export default function AnalyticsDashboard() {
                     {data.crm.clients_active}
                   </p>
                 </div>
-                <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                  <p className="text-xs text-[var(--foreground-muted)]">
+                <div className="p-4 rounded-lg bg-[var(--bz-card)]/50 text-center">
+                  <p className="text-xs text-[var(--bz-text-2)]">
                     Docs Pending
                   </p>
                   <p className="text-2xl font-bold">
                     {data.crm.documents_pending}
                   </p>
                 </div>
-                <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                  <p className="text-xs text-[var(--foreground-muted)]">
+                <div className="p-4 rounded-lg bg-[var(--bz-card)]/50 text-center">
+                  <p className="text-xs text-[var(--bz-text-2)]">
                     Practices
                   </p>
                   <p className="text-2xl font-bold">
@@ -1418,9 +1418,9 @@ export default function AnalyticsDashboard() {
                     ([status, count]) => (
                       <div
                         key={status}
-                        className="p-3 rounded-lg bg-[var(--background-elevated)]/50 text-center"
+                        className="p-3 rounded-lg bg-[var(--bz-card)]/50 text-center"
                       >
-                        <p className="text-xs text-[var(--foreground-muted)] capitalize">
+                        <p className="text-xs text-[var(--bz-text-2)] capitalize">
                           {status.replace(/_/g, " ")}
                         </p>
                         <p className="text-lg font-bold">{count}</p>
@@ -1434,7 +1434,7 @@ export default function AnalyticsDashboard() {
             {/* Revenue */}
             <div>
               <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                <DollarSign className="w-4 h-4 text-[var(--accent)]" />
+                <DollarSign className="w-4 h-4 text-[var(--bz-accent)]" />
                 Revenue
               </h4>
               <div className="grid grid-cols-2 gap-4">
@@ -1451,9 +1451,9 @@ export default function AnalyticsDashboard() {
                   </p>
                 </div>
               </div>
-              <div className="mt-3 p-3 rounded-lg bg-[var(--background-elevated)]/50">
+              <div className="mt-3 p-3 rounded-lg bg-[var(--bz-card)]/50">
                 <div className="flex justify-between text-sm">
-                  <span className="text-[var(--foreground-muted)]">
+                  <span className="text-[var(--bz-text-2)]">
                     Total Quoted
                   </span>
                   <span className="font-medium">
@@ -1466,7 +1466,7 @@ export default function AnalyticsDashboard() {
             {/* Renewals */}
             <div>
               <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-[var(--accent)]" />
+                <Calendar className="w-4 h-4 text-[var(--bz-accent)]" />
                 Upcoming Renewals
               </h4>
               <div className="grid grid-cols-3 gap-4">
@@ -1475,7 +1475,7 @@ export default function AnalyticsDashboard() {
                     "p-4 rounded-lg text-center",
                     data.crm.renewals_30_days > 0
                       ? "bg-[var(--error)]/10"
-                      : "bg-[var(--background-elevated)]/50",
+                      : "bg-[var(--bz-card)]/50",
                   )}
                 >
                   <p
@@ -1483,7 +1483,7 @@ export default function AnalyticsDashboard() {
                       "text-xs",
                       data.crm.renewals_30_days > 0
                         ? "text-[var(--error)]"
-                        : "text-[var(--foreground-muted)]",
+                        : "text-[var(--bz-text-2)]",
                     )}
                   >
                     Next 30 Days
@@ -1502,7 +1502,7 @@ export default function AnalyticsDashboard() {
                     "p-4 rounded-lg text-center",
                     data.crm.renewals_60_days > 0
                       ? "bg-[var(--warning)]/10"
-                      : "bg-[var(--background-elevated)]/50",
+                      : "bg-[var(--bz-card)]/50",
                   )}
                 >
                   <p
@@ -1510,7 +1510,7 @@ export default function AnalyticsDashboard() {
                       "text-xs",
                       data.crm.renewals_60_days > 0
                         ? "text-[var(--warning)]"
-                        : "text-[var(--foreground-muted)]",
+                        : "text-[var(--bz-text-2)]",
                     )}
                   >
                     Next 60 Days
@@ -1524,8 +1524,8 @@ export default function AnalyticsDashboard() {
                     {data.crm.renewals_60_days}
                   </p>
                 </div>
-                <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                  <p className="text-xs text-[var(--foreground-muted)]">
+                <div className="p-4 rounded-lg bg-[var(--bz-card)]/50 text-center">
+                  <p className="text-xs text-[var(--bz-text-2)]">
                     Next 90 Days
                   </p>
                   <p className="text-2xl font-bold">
@@ -1539,7 +1539,7 @@ export default function AnalyticsDashboard() {
             {Object.keys(data.crm.practices_by_status).length > 0 && (
               <div>
                 <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-[var(--accent)]" />
+                  <FileText className="w-4 h-4 text-[var(--bz-accent)]" />
                   Practices by Status
                 </h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -1547,9 +1547,9 @@ export default function AnalyticsDashboard() {
                     ([status, count]) => (
                       <div
                         key={status}
-                        className="p-3 rounded-lg bg-[var(--background-elevated)]/50 text-center"
+                        className="p-3 rounded-lg bg-[var(--bz-card)]/50 text-center"
                       >
-                        <p className="text-xs text-[var(--foreground-muted)] capitalize">
+                        <p className="text-xs text-[var(--bz-text-2)] capitalize">
                           {status.replace(/_/g, " ")}
                         </p>
                         <p className="text-lg font-bold">{count}</p>
@@ -1570,16 +1570,16 @@ export default function AnalyticsDashboard() {
           onToggle={() => toggleSection("team")}
           summary={
             <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50">
-                <p className="text-xs text-[var(--foreground-muted)]">
+              <div className="p-3 rounded-lg bg-[var(--bz-card)]/50">
+                <p className="text-xs text-[var(--bz-text-2)]">
                   Hours Today
                 </p>
                 <p className="text-lg font-bold">
                   {data.team.hours_today.toFixed(1)}h
                 </p>
               </div>
-              <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50">
-                <p className="text-xs text-[var(--foreground-muted)]">
+              <div className="p-3 rounded-lg bg-[var(--bz-card)]/50">
+                <p className="text-xs text-[var(--bz-text-2)]">
                   Hours This Week
                 </p>
                 <p className="text-lg font-bold">
@@ -1592,14 +1592,14 @@ export default function AnalyticsDashboard() {
           <div className="space-y-6">
             {/* Hours Overview */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="p-4 rounded-lg bg-[var(--accent)]/10 text-center">
-                <p className="text-xs text-[var(--accent)]">Hours Today</p>
-                <p className="text-2xl font-bold text-[var(--accent)]">
+              <div className="p-4 rounded-lg bg-[var(--bz-accent)]/10 text-center">
+                <p className="text-xs text-[var(--bz-accent)]">Hours Today</p>
+                <p className="text-2xl font-bold text-[var(--bz-accent)]">
                   {data.team.hours_today.toFixed(1)}h
                 </p>
               </div>
-              <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                <p className="text-xs text-[var(--foreground-muted)]">
+              <div className="p-4 rounded-lg bg-[var(--bz-card)]/50 text-center">
+                <p className="text-xs text-[var(--bz-text-2)]">
                   Hours This Week
                 </p>
                 <p className="text-2xl font-bold">
@@ -1678,16 +1678,16 @@ export default function AnalyticsDashboard() {
           onToggle={() => toggleSection("feedback")}
           summary={
             <div className="grid grid-cols-3 gap-3">
-              <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                <p className="text-xs text-[var(--foreground-muted)]">
+              <div className="p-3 rounded-lg bg-[var(--bz-card)]/50 text-center">
+                <p className="text-xs text-[var(--bz-text-2)]">
                   Avg Rating
                 </p>
                 <p className="text-lg font-bold text-[var(--success)]">
                   {data.feedback.avg_rating.toFixed(1)}/5
                 </p>
               </div>
-              <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                <p className="text-xs text-[var(--foreground-muted)]">Total</p>
+              <div className="p-3 rounded-lg bg-[var(--bz-card)]/50 text-center">
+                <p className="text-xs text-[var(--bz-text-2)]">Total</p>
                 <p className="text-lg font-bold">
                   {data.feedback.total_ratings}
                 </p>
@@ -1711,8 +1711,8 @@ export default function AnalyticsDashboard() {
                 </p>
                 <p className="text-xs text-[var(--success)]">out of 5</p>
               </div>
-              <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                <p className="text-xs text-[var(--foreground-muted)]">
+              <div className="p-4 rounded-lg bg-[var(--bz-card)]/50 text-center">
+                <p className="text-xs text-[var(--bz-text-2)]">
                   Total Ratings
                 </p>
                 <p className="text-2xl font-bold">
@@ -1725,8 +1725,8 @@ export default function AnalyticsDashboard() {
                   {data.feedback.negative_feedback_count}
                 </p>
               </div>
-              <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                <p className="text-xs text-[var(--foreground-muted)]">
+              <div className="p-4 rounded-lg bg-[var(--bz-card)]/50 text-center">
+                <p className="text-xs text-[var(--bz-text-2)]">
                   Satisfaction Rate
                 </p>
                 <p className="text-2xl font-bold">
@@ -1759,7 +1759,7 @@ export default function AnalyticsDashboard() {
                       <span className="w-8 text-sm font-medium">
                         {rating} ⭐
                       </span>
-                      <div className="flex-1 h-4 rounded-full bg-[var(--background-elevated)]">
+                      <div className="flex-1 h-4 rounded-full bg-[var(--bz-card)]">
                         <div
                           className={cn(
                             "h-full rounded-full transition-all",
@@ -1772,10 +1772,10 @@ export default function AnalyticsDashboard() {
                           style={{ width: `${percent}%` }}
                         />
                       </div>
-                      <span className="w-12 text-sm text-right text-[var(--foreground-muted)]">
+                      <span className="w-12 text-sm text-right text-[var(--bz-text-2)]">
                         {count}
                       </span>
-                      <span className="w-12 text-sm text-right text-[var(--foreground-muted)]">
+                      <span className="w-12 text-sm text-right text-[var(--bz-text-2)]">
                         {percent.toFixed(0)}%
                       </span>
                     </div>
@@ -1800,7 +1800,7 @@ export default function AnalyticsDashboard() {
                         <span className="text-[var(--error)]">
                           Rating: {f.rating}/5
                         </span>
-                        <span className="text-[var(--foreground-muted)]">
+                        <span className="text-[var(--bz-text-2)]">
                           {new Date(f.date).toLocaleDateString()}
                         </span>
                       </div>
@@ -1836,7 +1836,7 @@ export default function AnalyticsDashboard() {
                         )}
                         style={{ height: `${(t.rating / 5) * 100}%` }}
                       />
-                      <span className="text-[10px] text-[var(--foreground-muted)]">
+                      <span className="text-[10px] text-[var(--bz-text-2)]">
                         {new Date(t.date).toLocaleDateString("en", {
                           weekday: "short",
                         })}
@@ -1889,16 +1889,16 @@ export default function AnalyticsDashboard() {
                   {data.alerts.active_alerts.length}
                 </p>
               </div>
-              <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                <p className="text-xs text-[var(--foreground-muted)]">
+              <div className="p-4 rounded-lg bg-[var(--bz-card)]/50 text-center">
+                <p className="text-xs text-[var(--bz-text-2)]">
                   Errors Today
                 </p>
                 <p className="text-2xl font-bold">
                   {data.alerts.error_count_today}
                 </p>
               </div>
-              <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                <p className="text-xs text-[var(--foreground-muted)]">
+              <div className="p-4 rounded-lg bg-[var(--bz-card)]/50 text-center">
+                <p className="text-xs text-[var(--bz-text-2)]">
                   Slow Queries
                 </p>
                 <p className="text-2xl font-bold">
@@ -1924,7 +1924,7 @@ export default function AnalyticsDashboard() {
                           ? "bg-[var(--error)]/10 border-[var(--error)]/30"
                           : a.severity === "warning"
                             ? "bg-[var(--warning)]/10 border-[var(--warning)]/30"
-                            : "bg-[var(--background-elevated)] border-[var(--border)]",
+                            : "bg-[var(--bz-card)] border-[var(--bz-border)]",
                       )}
                     >
                       <div className="flex items-center justify-between">
@@ -1936,13 +1936,13 @@ export default function AnalyticsDashboard() {
                               ? "bg-[var(--error)]/20 text-[var(--error)]"
                               : a.severity === "warning"
                                 ? "bg-[var(--warning)]/20 text-[var(--warning)]"
-                                : "bg-[var(--background-elevated)] text-[var(--foreground-muted)]",
+                                : "bg-[var(--bz-card)] text-[var(--bz-text-2)]",
                           )}
                         >
                           {a.severity}
                         </span>
                       </div>
-                      <p className="text-sm mt-1 text-[var(--foreground-muted)]">
+                      <p className="text-sm mt-1 text-[var(--bz-text-2)]">
                         {a.message}
                       </p>
                     </div>
@@ -1994,7 +1994,7 @@ export default function AnalyticsDashboard() {
       </div>
 
       {/* Footer */}
-      <div className="text-center text-xs text-[var(--foreground-muted)] py-4">
+      <div className="text-center text-xs text-[var(--bz-text-2)] py-4">
         Generated at {new Date(data.generated_at).toLocaleString()} •
         Auto-refreshes every 60s • Founder Dashboard
       </div>

@@ -1,24 +1,19 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
 import {
   FolderKanban,
   AlertTriangle,
   MessageCircle,
   Clock,
   Mail,
-  BarChart3,
   RefreshCw,
 } from "lucide-react";
 import {
   StatsCard,
   PratichePreview,
   WhatsAppPreview,
-  AiPulseWidget,
   FinancialRealityWidget,
-  GrafanaWidget,
-  NusantaraHealthWidget,
   CaseDistribution,
   MiniSparkline,
 } from "@/components/dashboard";
@@ -170,12 +165,12 @@ export default function DashboardPage() {
       {
         label: "In Progress",
         value: statusCounts["in_progress"] || 0,
-        color: "var(--accent, #3b82f6)",
+        color: "var(--bz-accent, #d4845a)",
       },
       {
         label: "Inquiry",
         value: statusCounts["inquiry"] || 0,
-        color: "var(--foreground-muted, #9ca3af)",
+        color: "var(--bz-text-2, #8c8884)",
       },
       {
         label: "Quotation",
@@ -210,13 +205,13 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="animate-pulse">
-              <div className="h-20 sm:h-24 bg-[var(--muted)] rounded-lg" />
+              <div className="h-20 sm:h-24 rounded-lg" style={{ background: "var(--bz-surface)" }} />
             </div>
           ))}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
-          <div className="animate-pulse h-48 sm:h-64 bg-[var(--muted)] rounded-lg" />
-          <div className="animate-pulse h-48 sm:h-64 bg-[var(--muted)] rounded-lg" />
+          <div className="animate-pulse h-48 sm:h-64 rounded-lg" style={{ background: "var(--bz-surface)" }} />
+          <div className="animate-pulse h-48 sm:h-64 rounded-lg" style={{ background: "var(--bz-surface)" }} />
         </div>
       </div>
     );
@@ -262,48 +257,13 @@ export default function DashboardPage() {
         {/* Admin-only section */}
         {isZero && (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 animate-in fade-in slide-in-from-top-4 duration-700">
-              <div className="flex flex-col gap-4 sm:gap-6">
-                <Link
-                  href="/dashboard/analytics"
-                  className="group flex flex-col items-center justify-center p-4 sm:p-6 rounded-xl border-2 border-sky-500/40 bg-sky-500/10 hover:border-sky-400 hover:bg-sky-500/15 transition-all duration-300 min-h-[140px] sm:aspect-square"
-                >
-                  <div className="p-3 sm:p-4 rounded-lg bg-sky-500/20 group-hover:bg-sky-500/30 transition-colors mb-3 sm:mb-4">
-                    <BarChart3 className="w-8 h-8 sm:w-10 sm:h-10 text-sky-400" />
-                  </div>
-                  <h3 className="font-semibold text-[var(--foreground)] text-center text-sm sm:text-base">
-                    Analytics Dashboard
-                  </h3>
-                  <p className="text-xs sm:text-sm text-[var(--foreground-muted)] text-center mt-1">
-                    Full system metrics
-                  </p>
-                  <div className="text-sky-400 mt-2 sm:mt-4 group-hover:translate-x-1 transition-transform">
-                    &rarr;
-                  </div>
-                </Link>
-
-                <div className="rounded-xl border-2 border-sky-500/40 bg-sky-500/10 p-1">
-                  <AiPulseWidget
-                    systemAppStatus={systemStatus}
-                    oracleStatus={isHealthy ? "active" : "inactive"}
-                  />
-                </div>
-              </div>
-
-              {/* System Health (admin) */}
-              <GrafanaWidget />
-            </div>
-
-            {/* Financial + Nusantara Health (admin) */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-              {revenue && (
-                <FinancialRealityWidget
-                  revenue={revenue}
-                  growth={revenueGrowth || 0}
-                />
-              )}
-              <NusantaraHealthWidget />
-            </div>
+            {/* Financial (admin) */}
+            {revenue && (
+              <FinancialRealityWidget
+                revenue={revenue}
+                growth={revenueGrowth || 0}
+              />
+            )}
           </>
         )}
 
@@ -384,19 +344,19 @@ export default function DashboardPage() {
         {practices.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             {/* Case Distribution Donut */}
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-4 sm:p-5">
-              <h3 className="text-sm font-semibold text-[var(--foreground)] mb-4">
+            <div className="rounded-xl p-4 sm:p-5" style={{ border: "1px solid var(--bz-border)", background: "var(--bz-surface)" }}>
+              <h3 className="text-sm font-semibold mb-4" style={{ color: "var(--bz-text-1)" }}>
                 Case Distribution
               </h3>
               <CaseDistribution segments={caseDistribution} />
             </div>
 
             {/* Activity Trend Sparkline */}
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-4 sm:p-5">
-              <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">
+            <div className="rounded-xl p-4 sm:p-5" style={{ border: "1px solid var(--bz-border)", background: "var(--bz-surface)" }}>
+              <h3 className="text-sm font-semibold mb-2" style={{ color: "var(--bz-text-1)" }}>
                 Weekly Activity
               </h3>
-              <p className="text-xs text-[var(--foreground-muted)] mb-4">
+              <p className="text-xs mb-4" style={{ color: "var(--bz-text-2)" }}>
                 Active cases over the last 7 days
               </p>
               <MiniSparkline
@@ -405,7 +365,7 @@ export default function DashboardPage() {
                 height={64}
                 className="w-full max-w-[280px]"
               />
-              <div className="flex items-center justify-between mt-3 text-xs text-[var(--foreground-muted)]">
+              <div className="flex items-center justify-between mt-3 text-xs" style={{ color: "var(--bz-text-2)" }}>
                 <span>7d ago</span>
                 <span>Today</span>
               </div>
