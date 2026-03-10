@@ -1,15 +1,13 @@
 "use client";
 
 import { logger } from "@/lib/logger";
+
 /**
  * Web Vitals Monitoring
- * Tracks Core Web Vitals (LCP, CLS, INP, TTFB) and sends to analytics
+ * Tracks Core Web Vitals: LCP, CLS, INP, TTFB, FCP
+ * Sends to GA4 via gtag if available, and logs for debugging.
  */
 
-// Web Vitals monitoring disabled temporarily due to Vercel build issues
-// Status: Tracked in backlog - Re-enable when dependency resolution is fixed
-
-// Define Metric type locally
 interface Metric {
   name: "CLS" | "INP" | "LCP" | "TTFB" | "FCP" | "FID";
   value: number;
@@ -25,42 +23,72 @@ interface WebVitalsOptions {
   sendToAnalytics?: (metric: Metric) => void;
 }
 
-/**
- * Initialize Web Vitals monitoring (currently disabled)
- */
-export function initWebVitals(_options: WebVitalsOptions = {}) {
-  // Disabled - web-vitals package has resolution issues on Vercel
-  // Will be re-enabled when fixed
-  if (process.env.NODE_ENV === "development") {
-    logger.debug("[Web Vitals] Monitoring temporarily disabled", {
-      component: "AUTO",
-      action: "log",
-    });
-  }
+function sendToGA4(metric: Metric): void {
+  if (typeof window === "undefined") return;
+  const win = window as typeof window & {
+    gtag?: (...args: unknown[]) => void;
+  };
+  if (typeof win.gtag !== "function") return;
+
+  win.gtag("event", metric.name, {
+    event_category: "Web Vitals",
+    event_label: metric.id,
+    value: Math.round(
+      metric.name === "CLS" ? metric.value * 1000 : metric.value,
+    ),
+    non_interaction: true,
+    metric_rating: metric.rating,
+  });
 }
 
 /**
- * Get INP threshold recommendations
+ * Initialize Web Vitals monitoring.
+ * Uses dynamic import to avoid SSR issues and bundle bloat on non-supporting browsers.
  */
+export function initWebVitals(options: WebVitalsOptions = {}): void {
+  const { enabled = true, debug = false, sendToAnalytics } = options;
+
+  if (!enabled || typeof window === "undefined") return;
+
+  import("web-vitals")
+    .then(({ onCLS, onINP, onLCP, onTTFB, onFCP }) => {
+      const handle = (metric: Metric): void => {
+        if (debug) {
+          logger.info(
+            `[Web Vitals] ${metric.name}: ${formatMetricValue(metric.value, metric.name)} (${metric.rating})`,
+            { component: "WebVitals", action: "metric" },
+          );
+        }
+        sendToGA4(metric);
+        sendToAnalytics?.(metric);
+      };
+
+      onCLS(handle as Parameters<typeof onCLS>[0]);
+      onINP(handle as Parameters<typeof onINP>[0]);
+      onLCP(handle as Parameters<typeof onLCP>[0]);
+      onTTFB(handle as Parameters<typeof onTTFB>[0]);
+      onFCP(handle as Parameters<typeof onFCP>[0]);
+    })
+    .catch((err) => {
+      logger.error(
+        "[Web Vitals] Failed to load web-vitals package",
+        {},
+        err instanceof Error ? err : new Error(String(err)),
+      );
+    });
+}
+
 export const INP_THRESHOLDS = {
-  good: 200, // < 200ms
-  needsImprovement: 500, // 200-500ms
-  poor: 500, // > 500ms
+  good: 200,
+  needsImprovement: 500,
+  poor: 500,
 } as const;
 
-/**
- * Format metric value for display
- */
 export function formatMetricValue(value: number, name: string): string {
-  if (name === "CLS") {
-    return value.toFixed(3);
-  }
+  if (name === "CLS") return value.toFixed(3);
   return `${Math.round(value)}ms`;
 }
 
-/**
- * Get metric rating color
- */
 export function getMetricRatingColor(
   rating: "good" | "needs-improvement" | "poor",
 ): string {
