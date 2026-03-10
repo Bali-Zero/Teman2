@@ -64,10 +64,10 @@ export default function SettingsPage() {
     <div className="space-y-6 max-w-4xl">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-[var(--foreground)]">
+        <h1 className="text-2xl font-bold" style={{ color: "var(--bz-text-1)" }}>
           Settings
         </h1>
-        <p className="text-sm text-[var(--foreground-muted)]">
+        <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
           Manage your account and preferences
         </p>
       </div>
@@ -78,17 +78,18 @@ export default function SettingsPage() {
           <div
             key={section.title}
             onClick={() => handleSettingsClick(section.href)}
-            className="p-4 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] hover:bg-[var(--background-elevated)]/50 cursor-pointer transition-colors group"
+            className="p-4 rounded-xl cursor-pointer transition-colors group hover:opacity-90"
+            style={{ border: "1px solid var(--bz-border)", background: "var(--bz-surface)" }}
           >
             <div className="flex items-start gap-4">
-              <div className="p-2 rounded-lg bg-[var(--background-elevated)] group-hover:bg-[var(--accent)]/10 transition-colors">
-                <section.icon className="w-5 h-5 text-[var(--foreground-muted)] group-hover:text-[var(--accent)] transition-colors" />
+              <div className="p-2 rounded-lg transition-colors" style={{ background: "var(--bz-card)" }}>
+                <section.icon className="w-5 h-5 transition-colors" style={{ color: "var(--bz-text-2)" }} />
               </div>
               <div>
-                <h3 className="font-medium text-[var(--foreground)]">
+                <h3 className="font-medium" style={{ color: "var(--bz-text-1)" }}>
                   {section.title}
                 </h3>
-                <p className="text-sm text-[var(--foreground-muted)]">
+                <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
                   {section.description}
                 </p>
               </div>
@@ -98,15 +99,15 @@ export default function SettingsPage() {
       </div>
 
       {/* Admin Section */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden">
-        <div className="p-4 border-b border-[var(--border)] bg-[var(--background-elevated)]/30">
+      <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--bz-border)", background: "var(--bz-surface)" }}>
+        <div className="p-4" style={{ borderBottom: "1px solid var(--bz-border)", background: "rgba(32,32,36,0.3)" }}>
           <div className="flex items-center gap-2">
-            <Building className="w-5 h-5 text-[var(--accent)]" />
-            <h2 className="font-semibold text-[var(--foreground)]">
+            <Building className="w-5 h-5" style={{ color: "var(--bz-accent)" }} />
+            <h2 className="font-semibold" style={{ color: "var(--bz-text-1)" }}>
               Administration
             </h2>
           </div>
-          <p className="text-sm text-[var(--foreground-muted)] mt-1">
+          <p className="text-sm mt-1" style={{ color: "var(--bz-text-2)" }}>
             Settings reserved for administrators
           </p>
         </div>
@@ -128,13 +129,13 @@ export default function SettingsPage() {
           ].map((item) => (
             <div
               key={item.label}
-              className="flex items-center justify-between p-3 rounded-lg hover:bg-[var(--background-elevated)]/50 cursor-pointer transition-colors"
+              className="flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors hover:opacity-80"
             >
               <div>
-                <p className="text-sm font-medium text-[var(--foreground)]">
+                <p className="text-sm font-medium" style={{ color: "var(--bz-text-1)" }}>
                   {item.label}
                 </p>
-                <p className="text-xs text-[var(--foreground-muted)]">
+                <p className="text-xs" style={{ color: "var(--bz-text-2)" }}>
                   {item.description}
                 </p>
               </div>
@@ -162,9 +163,9 @@ export default function SettingsPage() {
       </div>
 
       {/* Info Box */}
-      <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background-secondary)]/50 p-8 text-center">
-        <Settings className="w-12 h-12 mx-auto text-[var(--foreground-muted)] mb-3 opacity-50" />
-        <p className="text-sm text-[var(--foreground-muted)] max-w-md mx-auto">
+      <div className="rounded-xl border border-dashed p-8 text-center" style={{ borderColor: "var(--bz-border)", background: "rgba(26,26,30,0.5)" }}>
+        <Settings className="w-12 h-12 mx-auto mb-3 opacity-50" style={{ color: "var(--bz-text-2)" }} />
+        <p className="text-sm max-w-md mx-auto" style={{ color: "var(--bz-text-2)" }}>
           Complete settings center to manage profile, security, notifications
           and administrative configurations.
         </p>

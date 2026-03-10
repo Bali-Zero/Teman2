@@ -417,8 +417,8 @@ export default function CaseDetailPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-[var(--accent)] mx-auto mb-4" />
-          <p className="text-[var(--foreground-muted)]">
+          <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4" style={{ color: "var(--bz-accent)" }} />
+          <p style={{ color: "var(--bz-text-2)" }}>
             Loading process details...
           </p>
         </div>
@@ -431,10 +431,10 @@ export default function CaseDetailPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-[var(--foreground)] mb-2">
+          <h2 className="text-2xl font-bold mb-2" style={{ color: "var(--bz-text-1)" }}>
             {error || "Process Not Found"}
           </h2>
-          <p className="text-[var(--foreground-muted)] mb-6">
+          <p className="mb-6" style={{ color: "var(--bz-text-2)" }}>
             The process you're looking for doesn't exist or you don't have
             permission to view it.
           </p>
@@ -468,7 +468,8 @@ export default function CaseDetailPage() {
             );
             router.push("/process");
           }}
-          className="flex items-center gap-2 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors mb-4"
+          className="flex items-center gap-2 transition-colors mb-4"
+          style={{ color: "var(--bz-text-2)" }}
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Process</span>
@@ -477,7 +478,7 @@ export default function CaseDetailPage() {
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold text-[var(--foreground)]">
+              <h1 className="text-3xl font-bold" style={{ color: "var(--bz-text-1)" }}>
                 {practice.practice_type_code
                   ?.toUpperCase()
                   .replace(/_/g, " ") || "Process"}{" "}
@@ -490,7 +491,7 @@ export default function CaseDetailPage() {
                 <span className="text-sm font-medium">{statusInfo.label}</span>
               </div>
             </div>
-            <p className="text-[var(--foreground-muted)]">
+            <p style={{ color: "var(--bz-text-2)" }}>
               {practice.practice_type_name || "Process Details"}
             </p>
           </div>
@@ -511,15 +512,15 @@ export default function CaseDetailPage() {
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
           {/* Client Information */}
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]/50 p-6">
-            <h2 className="text-xl font-semibold text-[var(--foreground)] mb-4 flex items-center gap-2">
+          <div className="rounded-xl p-6" style={{ border: "1px solid var(--bz-border)", background: "rgba(26,26,30,0.5)" }}>
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2" style={{ color: "var(--bz-text-1)" }}>
               <User className="w-5 h-5" />
               Client Information
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm text-[var(--foreground-muted)] mb-1 block">
+                <label className="text-sm mb-1 block" style={{ color: "var(--bz-text-2)" }}>
                   Client Name
                 </label>
                 <button
@@ -533,14 +534,15 @@ export default function CaseDetailPage() {
                     );
                     router.push(`/clients/${practice.client_id}`);
                   }}
-                  className="text-[var(--foreground)] hover:text-[var(--accent)] hover:underline font-medium text-left"
+                  className="hover:underline font-medium text-left transition-colors"
+                  style={{ color: "var(--bz-text-1)" }}
                 >
                   {practice.client_name || "Not specified"}
                 </button>
               </div>
 
               <div>
-                <label className="text-sm text-[var(--foreground-muted)] mb-1 block">
+                <label className="text-sm mb-1 block" style={{ color: "var(--bz-text-2)" }}>
                   Client ID
                 </label>
                 <button
@@ -554,7 +556,8 @@ export default function CaseDetailPage() {
                     );
                     router.push(`/clients/${practice.client_id}`);
                   }}
-                  className="text-[var(--accent)] hover:underline font-medium"
+                  className="hover:underline font-medium"
+                  style={{ color: "var(--bz-accent)" }}
                 >
                   #{practice.client_id}
                 </button>
@@ -562,7 +565,7 @@ export default function CaseDetailPage() {
 
               {practice.client_email && (
                 <div>
-                  <label className="text-sm text-[var(--foreground-muted)] mb-1 block">
+                  <label className="text-sm mb-1 block" style={{ color: "var(--bz-text-2)" }}>
                     Email
                   </label>
                   <a
@@ -575,7 +578,8 @@ export default function CaseDetailPage() {
                         userEmail.current || undefined,
                       )
                     }
-                    className="text-[var(--foreground)] hover:text-[var(--accent)] transition-colors flex items-center gap-2"
+                    className="transition-colors flex items-center gap-2"
+                    style={{ color: "var(--bz-text-1)" }}
                   >
                     <Mail className="w-4 h-4" />
                     {practice.client_email}
@@ -585,7 +589,7 @@ export default function CaseDetailPage() {
 
               {practice.client_phone && (
                 <div>
-                  <label className="text-sm text-[var(--foreground-muted)] mb-1 block">
+                  <label className="text-sm mb-1 block" style={{ color: "var(--bz-text-2)" }}>
                     Phone
                   </label>
                   <a
@@ -600,7 +604,8 @@ export default function CaseDetailPage() {
                         userEmail.current || undefined,
                       )
                     }
-                    className="text-[var(--foreground)] hover:text-[var(--foreground-accent)] transition-colors flex items-center gap-2"
+                    className="transition-colors flex items-center gap-2"
+                    style={{ color: "var(--bz-text-1)" }}
                   >
                     <Phone className="w-4 h-4" />
                     {practice.client_phone}
@@ -610,10 +615,10 @@ export default function CaseDetailPage() {
 
               {practice.client_lead && (
                 <div>
-                  <label className="text-sm text-[var(--foreground-muted)] mb-1 block">
+                  <label className="text-sm mb-1 block" style={{ color: "var(--bz-text-2)" }}>
                     Lead Team Member
                   </label>
-                  <p className="text-[var(--foreground)] font-medium">
+                  <p className="font-medium" style={{ color: "var(--bz-text-1)" }}>
                     {practice.client_lead}
                   </p>
                 </div>
@@ -621,10 +626,10 @@ export default function CaseDetailPage() {
 
               {practice.assigned_to && (
                 <div>
-                  <label className="text-sm text-[var(--foreground-muted)] mb-1 block">
+                  <label className="text-sm mb-1 block" style={{ color: "var(--bz-text-2)" }}>
                     Assigned To
                   </label>
-                  <p className="text-[var(--foreground)] font-medium">
+                  <p className="font-medium" style={{ color: "var(--bz-text-1)" }}>
                     {practice.assigned_to}
                   </p>
                 </div>
@@ -633,15 +638,15 @@ export default function CaseDetailPage() {
           </div>
 
           {/* Process Details */}
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]/50 p-6">
-            <h2 className="text-xl font-semibold text-[var(--foreground)] mb-4 flex items-center gap-2">
+          <div className="rounded-xl p-6" style={{ border: "1px solid var(--bz-border)", background: "rgba(26,26,30,0.5)" }}>
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2" style={{ color: "var(--bz-text-1)" }}>
               <FileText className="w-5 h-5" />
               Process Details
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm text-[var(--foreground-muted)] mb-1 block">
+                <label className="text-sm mb-1 block" style={{ color: "var(--bz-text-2)" }}>
                   Status
                 </label>
                 <div
@@ -653,56 +658,56 @@ export default function CaseDetailPage() {
               </div>
 
               <div>
-                <label className="text-sm text-[var(--foreground-muted)] mb-1 block">
+                <label className="text-sm mb-1 block" style={{ color: "var(--bz-text-2)" }}>
                   Priority
                 </label>
-                <p className="text-[var(--foreground)] font-medium capitalize">
+                <p className="font-medium capitalize" style={{ color: "var(--bz-text-1)" }}>
                   {practice.priority || "Normal"}
                 </p>
               </div>
 
               <div>
-                <label className="text-sm text-[var(--foreground-muted)] mb-1 block">
+                <label className="text-sm mb-1 block" style={{ color: "var(--bz-text-2)" }}>
                   Payment Status
                 </label>
-                <p className="text-[var(--foreground)] font-medium capitalize">
+                <p className="font-medium capitalize" style={{ color: "var(--bz-text-1)" }}>
                   {practice.payment_status || "Not set"}
                 </p>
               </div>
 
               <div>
-                <label className="text-sm text-[var(--foreground-muted)] mb-1 block">
+                <label className="text-sm mb-1 block" style={{ color: "var(--bz-text-2)" }}>
                   Quoted Price
                 </label>
-                <p className="text-[var(--foreground)] font-medium">
+                <p className="font-medium" style={{ color: "var(--bz-text-1)" }}>
                   {formatCurrency(practice.quoted_price)}
                 </p>
               </div>
 
               <div>
-                <label className="text-sm text-[var(--foreground-muted)] mb-1 block">
+                <label className="text-sm mb-1 block" style={{ color: "var(--bz-text-2)" }}>
                   Actual Price
                 </label>
-                <p className="text-[var(--foreground)] font-medium">
+                <p className="font-medium" style={{ color: "var(--bz-text-1)" }}>
                   {formatCurrency(practice.actual_price)}
                 </p>
               </div>
 
               <div>
-                <label className="text-sm text-[var(--foreground-muted)] mb-1 block">
+                <label className="text-sm mb-1 block" style={{ color: "var(--bz-text-2)" }}>
                   Created
                 </label>
-                <p className="text-[var(--foreground)]">
+                <p style={{ color: "var(--bz-text-1)" }}>
                   {formatDate(practice.created_at)}
                 </p>
               </div>
 
               {practice.start_date && (
                 <div>
-                  <label className="text-sm text-[var(--foreground-muted)] mb-1 block">
+                  <label className="text-sm mb-1 block" style={{ color: "var(--bz-text-2)" }}>
                     Start Date
                   </label>
-                  <p className="text-[var(--foreground)]">
+                  <p style={{ color: "var(--bz-text-1)" }}>
                     {formatDate(practice.start_date)}
                   </p>
                 </div>
@@ -710,10 +715,10 @@ export default function CaseDetailPage() {
 
               {practice.completion_date && (
                 <div>
-                  <label className="text-sm text-[var(--foreground-muted)] mb-1 block">
+                  <label className="text-sm mb-1 block" style={{ color: "var(--bz-text-2)" }}>
                     Completion Date
                   </label>
-                  <p className="text-[var(--foreground)]">
+                  <p style={{ color: "var(--bz-text-1)" }}>
                     {formatDate(practice.completion_date)}
                   </p>
                 </div>
@@ -721,10 +726,10 @@ export default function CaseDetailPage() {
 
               {practice.expiry_date && (
                 <div>
-                  <label className="text-sm text-[var(--foreground-muted)] mb-1 block">
+                  <label className="text-sm mb-1 block" style={{ color: "var(--bz-text-2)" }}>
                     Expiry Date
                   </label>
-                  <p className="text-[var(--foreground)]">
+                  <p style={{ color: "var(--bz-text-1)" }}>
                     {formatDate(practice.expiry_date)}
                   </p>
                 </div>
@@ -739,8 +744,8 @@ export default function CaseDetailPage() {
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Quick Actions */}
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]/50 p-6">
-            <h3 className="text-lg font-semibold text-[var(--foreground)] mb-4">
+          <div className="rounded-xl p-6" style={{ border: "1px solid var(--bz-border)", background: "rgba(26,26,30,0.5)" }}>
+            <h3 className="text-lg font-semibold mb-4" style={{ color: "var(--bz-text-1)" }}>
               Quick Actions
             </h3>
             <div className="space-y-2">
@@ -810,12 +815,12 @@ export default function CaseDetailPage() {
           {caseId && <RequiredDocumentsCard practiceId={caseId} />}
 
           {/* Timeline Placeholder */}
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]/50 p-6">
-            <h3 className="text-lg font-semibold text-[var(--foreground)] mb-4 flex items-center gap-2">
+          <div className="rounded-xl p-6" style={{ border: "1px solid var(--bz-border)", background: "rgba(26,26,30,0.5)" }}>
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: "var(--bz-text-1)" }}>
               <Clock className="w-5 h-5" />
               Activity Timeline
             </h3>
-            <p className="text-[var(--foreground-muted)] text-sm">
+            <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
               Timeline feature coming soon...
             </p>
           </div>
@@ -825,14 +830,15 @@ export default function CaseDetailPage() {
       {/* Edit Modal */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-[var(--background-secondary)] rounded-xl border border-[var(--border)] shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-[var(--border)] flex items-center justify-between sticky top-0 bg-[var(--background-secondary)] z-10">
-              <h2 className="text-xl font-bold text-[var(--foreground)]">
+          <div className="rounded-xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto" style={{ background: "var(--bz-surface)", border: "1px solid var(--bz-border)" }}>
+            <div className="p-6 flex items-center justify-between sticky top-0 z-10" style={{ borderBottom: "1px solid var(--bz-border)", background: "var(--bz-surface)" }}>
+              <h2 className="text-xl font-bold" style={{ color: "var(--bz-text-1)" }}>
                 Edit Process #{practice.id}
               </h2>
               <button
                 onClick={() => setIsEditModalOpen(false)}
-                className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                className="transition-colors"
+                style={{ color: "var(--bz-text-2)" }}
               >
                 <svg
                   className="w-5 h-5"
@@ -853,7 +859,7 @@ export default function CaseDetailPage() {
             <div className="p-6 space-y-6">
               {/* Status */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-[var(--foreground)]">
+                <label className="text-sm font-medium" style={{ color: "var(--bz-text-1)" }}>
                   Status
                 </label>
                 <select
@@ -861,7 +867,8 @@ export default function CaseDetailPage() {
                   onChange={(e) =>
                     setEditForm((prev) => ({ ...prev, status: e.target.value }))
                   }
-                  className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none"
+                  style={{ border: "1px solid var(--bz-border)", background: "var(--bz-card)", color: "var(--bz-text-1)" }}
                 >
                   <option value="inquiry">Inquiry</option>
                   <option value="waiting_documents">Waiting Documents</option>
@@ -873,7 +880,7 @@ export default function CaseDetailPage() {
 
               {/* Priority */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-[var(--foreground)]">
+                <label className="text-sm font-medium" style={{ color: "var(--bz-text-1)" }}>
                   Priority
                 </label>
                 <select
@@ -884,7 +891,8 @@ export default function CaseDetailPage() {
                       priority: e.target.value,
                     }))
                   }
-                  className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none"
+                  style={{ border: "1px solid var(--bz-border)", background: "var(--bz-card)", color: "var(--bz-text-1)" }}
                 >
                   <option value="low">Low</option>
                   <option value="normal">Normal</option>
@@ -895,7 +903,7 @@ export default function CaseDetailPage() {
 
               {/* Payment Status */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-[var(--foreground)]">
+                <label className="text-sm font-medium" style={{ color: "var(--bz-text-1)" }}>
                   Payment Status
                 </label>
                 <select
@@ -906,7 +914,8 @@ export default function CaseDetailPage() {
                       payment_status: e.target.value,
                     }))
                   }
-                  className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none"
+                  style={{ border: "1px solid var(--bz-border)", background: "var(--bz-card)", color: "var(--bz-text-1)" }}
                 >
                   <option value="unpaid">Unpaid</option>
                   <option value="partial">Partial</option>
@@ -916,7 +925,7 @@ export default function CaseDetailPage() {
 
               {/* Quoted Price */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-[var(--foreground)]">
+                <label className="text-sm font-medium" style={{ color: "var(--bz-text-1)" }}>
                   Quoted Price (USD)
                 </label>
                 <input
@@ -928,7 +937,8 @@ export default function CaseDetailPage() {
                       quoted_price: e.target.value,
                     }))
                   }
-                  className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none"
+                  style={{ border: "1px solid var(--bz-border)", background: "var(--bz-card)", color: "var(--bz-text-1)" }}
                   placeholder="0.00"
                   step="0.01"
                 />
@@ -936,7 +946,7 @@ export default function CaseDetailPage() {
 
               {/* Actual Price */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-[var(--foreground)]">
+                <label className="text-sm font-medium" style={{ color: "var(--bz-text-1)" }}>
                   Actual Price (USD)
                 </label>
                 <input
@@ -948,14 +958,15 @@ export default function CaseDetailPage() {
                       actual_price: e.target.value,
                     }))
                   }
-                  className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none"
+                  style={{ border: "1px solid var(--bz-border)", background: "var(--bz-card)", color: "var(--bz-text-1)" }}
                   placeholder="0.00"
                   step="0.01"
                 />
               </div>
             </div>
 
-            <div className="p-6 border-t border-[var(--border)] flex justify-end gap-3 sticky bottom-0 bg-[var(--background-secondary)]">
+            <div className="p-6 flex justify-end gap-3 sticky bottom-0" style={{ borderTop: "1px solid var(--bz-border)", background: "var(--bz-surface)" }}>
               <Button
                 variant="outline"
                 onClick={() => setIsEditModalOpen(false)}
@@ -964,7 +975,8 @@ export default function CaseDetailPage() {
                 Cancel
               </Button>
               <Button
-                className="bg-[var(--accent)] hover:bg-[var(--accent)]/90 text-white"
+                className="text-white"
+                style={{ background: "var(--bz-accent)" }}
                 onClick={handleSaveChanges}
                 disabled={isSaving}
               >

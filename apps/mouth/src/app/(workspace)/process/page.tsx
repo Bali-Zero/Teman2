@@ -451,12 +451,12 @@ export default function PratichePage() {
   const totalPages = Math.ceil(filteredPractices.length / itemsPerPage);
 
   const SkeletonCard = () => (
-    <div className="p-3 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] space-y-2">
-      <div className="h-4 bg-[var(--background-secondary)] rounded w-3/4 animate-pulse" />
-      <div className="h-3 bg-[var(--background-secondary)] rounded w-1/2 animate-pulse" />
-      <div className="flex gap-2 pt-2 border-t border-[var(--border)]">
-        <div className="h-6 w-6 bg-[var(--background-secondary)] rounded animate-pulse" />
-        <div className="h-6 w-6 bg-[var(--background-secondary)] rounded animate-pulse" />
+    <div className="p-3 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-card)] space-y-2">
+      <div className="h-4 bg-[var(--bz-surface)] rounded w-3/4 animate-pulse" />
+      <div className="h-3 bg-[var(--bz-surface)] rounded w-1/2 animate-pulse" />
+      <div className="flex gap-2 pt-2 border-t border-[var(--bz-border)]">
+        <div className="h-6 w-6 bg-[var(--bz-surface)] rounded animate-pulse" />
+        <div className="h-6 w-6 bg-[var(--bz-surface)] rounded animate-pulse" />
       </div>
     </div>
   );
@@ -466,15 +466,15 @@ export default function PratichePage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--foreground)]">
+          <h1 className="text-2xl font-bold text-[var(--bz-text-1)]">
             Process
           </h1>
-          <p className="text-sm text-[var(--foreground-muted)]">
+          <p className="text-sm text-[var(--bz-text-2)]">
             Manage KITAS, Visa, PT PMA, Tax and other processes
           </p>
         </div>
         <Button
-          className="gap-2 bg-[var(--accent)] hover:bg-[var(--accent)]/90 text-white"
+          className="gap-2 bg-[var(--bz-accent)] hover:bg-[var(--bz-accent)]/90 text-white"
           onClick={handleNewCase}
         >
           <Plus className="w-4 h-4" />
@@ -486,36 +486,36 @@ export default function PratichePage() {
       <div className="flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground-muted)]" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--bz-text-2)]" />
             <input
               type="text"
               placeholder="Search process by ID, client, type..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 transition-all"
+              className="w-full pl-10 pr-4 py-2 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] placeholder:text-[var(--bz-text-2)] focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50 transition-all"
             />
           </div>
           <div className="flex gap-2">
             <Button
               variant={showFilters ? "default" : "outline"}
-              className="gap-2 border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)]"
+              className="gap-2 border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)]"
               onClick={() => setShowFilters(!showFilters)}
             >
               <Filter className="w-4 h-4" />
               Filters
               {activeFiltersCount > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-[var(--accent)] text-white">
+                <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-[var(--bz-accent)] text-white">
                   {activeFiltersCount}
                 </span>
               )}
             </Button>
-            <div className="flex rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden">
+            <div className="flex rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] overflow-hidden">
               <button
                 onClick={() => setViewMode("kanban")}
                 className={`p-2 transition-all ${
                   viewMode === "kanban"
-                    ? "bg-[var(--accent)]/10 text-[var(--accent)]"
-                    : "text-[var(--foreground-muted)] hover:bg-[var(--background-elevated)]"
+                    ? "bg-[var(--bz-accent)]/10 text-[var(--bz-accent)]"
+                    : "text-[var(--bz-text-2)] hover:bg-[var(--bz-card)]"
                 }`}
                 title="Kanban Board"
               >
@@ -525,8 +525,8 @@ export default function PratichePage() {
                 onClick={() => setViewMode("list")}
                 className={`p-2 transition-all ${
                   viewMode === "list"
-                    ? "bg-[var(--accent)]/10 text-[var(--accent)]"
-                    : "text-[var(--foreground-muted)] hover:bg-[var(--background-elevated)]"
+                    ? "bg-[var(--bz-accent)]/10 text-[var(--bz-accent)]"
+                    : "text-[var(--bz-text-2)] hover:bg-[var(--bz-card)]"
                 }`}
                 title="List View"
               >
@@ -538,13 +538,13 @@ export default function PratichePage() {
 
         {/* Filters Panel */}
         {showFilters && (
-          <div className="p-4 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] space-y-4">
+          <div className="p-4 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-medium text-[var(--foreground)]">Filters</h3>
+              <h3 className="font-medium text-[var(--bz-text-1)]">Filters</h3>
               {activeFiltersCount > 0 && (
                 <button
                   onClick={clearFilters}
-                  className="text-sm text-[var(--accent)] hover:underline flex items-center gap-1"
+                  className="text-sm text-[var(--bz-accent)] hover:underline flex items-center gap-1"
                 >
                   Clear all
                 </button>
@@ -556,7 +556,7 @@ export default function PratichePage() {
               <div>
                 <label
                   htmlFor="status-filter"
-                  className="block text-sm font-medium text-[var(--foreground-muted)] mb-1.5"
+                  className="block text-sm font-medium text-[var(--bz-text-2)] mb-1.5"
                 >
                   Status
                 </label>
@@ -566,7 +566,7 @@ export default function PratichePage() {
                   onChange={(e) =>
                     setFilters({ ...filters, status: e.target.value })
                   }
-                  className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
+                  className="w-full px-3 py-2 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-base)] text-[var(--bz-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50"
                 >
                   <option value="">All statuses</option>
                   <option value="inquiry">Inquiry</option>
@@ -584,7 +584,7 @@ export default function PratichePage() {
               <div>
                 <label
                   htmlFor="type-filter"
-                  className="block text-sm font-medium text-[var(--foreground-muted)] mb-1.5"
+                  className="block text-sm font-medium text-[var(--bz-text-2)] mb-1.5"
                 >
                   Process Type
                 </label>
@@ -594,7 +594,7 @@ export default function PratichePage() {
                   onChange={(e) =>
                     setFilters({ ...filters, type: e.target.value })
                   }
-                  className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
+                  className="w-full px-3 py-2 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-base)] text-[var(--bz-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50"
                 >
                   <option value="">All types</option>
                   <option value="KITAS">KITAS Work Permit</option>
@@ -608,7 +608,7 @@ export default function PratichePage() {
               <div>
                 <label
                   htmlFor="assigned-to-filter"
-                  className="block text-sm font-medium text-[var(--foreground-muted)] mb-1.5"
+                  className="block text-sm font-medium text-[var(--bz-text-2)] mb-1.5"
                 >
                   Assigned To
                 </label>
@@ -618,7 +618,7 @@ export default function PratichePage() {
                   onChange={(e) =>
                     setFilters({ ...filters, assigned_to: e.target.value })
                   }
-                  className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
+                  className="w-full px-3 py-2 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-base)] text-[var(--bz-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50"
                 >
                   <option value="">All team members</option>
                   {Array.from(
@@ -670,18 +670,18 @@ export default function PratichePage() {
             return (
               <div
                 key={column}
-                className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]/50 p-4 flex flex-col h-full min-h-[500px] min-w-[280px]"
+                className="rounded-xl border border-[var(--bz-border)] bg-[var(--bz-surface)]/50 p-4 flex flex-col h-full min-h-[500px] min-w-[280px]"
               >
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <span
                       className={`w-2 h-2 rounded-full ${stepColors[idx]}`}
                     />
-                    <h3 className="font-semibold text-[var(--foreground)] text-sm">
+                    <h3 className="font-semibold text-[var(--bz-text-1)] text-sm">
                       {column}
                     </h3>
                   </div>
-                  <span className="text-xs px-2 py-1 rounded-full bg-[var(--background-elevated)] text-[var(--foreground-muted)]">
+                  <span className="text-xs px-2 py-1 rounded-full bg-[var(--bz-card)] text-[var(--bz-text-2)]">
                     {columnPractices.length}
                   </span>
                 </div>
@@ -694,9 +694,9 @@ export default function PratichePage() {
                       <SkeletonCard />
                     </div>
                   ) : columnPractices.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-32 border border-dashed border-[var(--border)] rounded-lg bg-[var(--background-elevated)]/30">
-                      <FolderKanban className="w-8 h-8 text-[var(--foreground-muted)] opacity-20 mb-2" />
-                      <p className="text-xs text-[var(--foreground-muted)]">
+                    <div className="flex flex-col items-center justify-center h-32 border border-dashed border-[var(--bz-border)] rounded-lg bg-[var(--bz-card)]/30">
+                      <FolderKanban className="w-8 h-8 text-[var(--bz-text-2)] opacity-20 mb-2" />
+                      <p className="text-xs text-[var(--bz-text-2)]">
                         No process
                       </p>
                     </div>
@@ -704,26 +704,26 @@ export default function PratichePage() {
                     columnPractices.map((practice) => (
                       <div
                         key={practice.id}
-                        className={`p-3 rounded-lg border bg-[var(--background-elevated)] cursor-pointer transition-all hover:shadow-md relative group ${
+                        className={`p-3 rounded-lg border bg-[var(--bz-card)] cursor-pointer transition-all hover:shadow-md relative group ${
                           updatingId === practice.id
                             ? "opacity-70 pointer-events-none"
                             : ""
                         } ${
                           selectedPractice?.id === practice.id
-                            ? "border-[var(--accent)] ring-1 ring-[var(--accent)]/30"
-                            : "border-[var(--border)] hover:border-[var(--accent)]/30"
+                            ? "border-[var(--bz-accent)] ring-1 ring-[var(--bz-accent)]/30"
+                            : "border-[var(--bz-border)] hover:border-[var(--bz-accent)]/30"
                         }`}
                         onClick={() => router.push(`/process/${practice.id}`)}
                       >
                         {updatingId === practice.id && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-[var(--background-elevated)]/80 rounded-lg z-10">
-                            <Loader2 className="w-5 h-5 animate-spin text-[var(--accent)]" />
+                          <div className="absolute inset-0 flex items-center justify-center bg-[var(--bz-card)]/80 rounded-lg z-10">
+                            <Loader2 className="w-5 h-5 animate-spin text-[var(--bz-accent)]" />
                           </div>
                         )}
 
                         {/* Card Header */}
                         <div className="flex items-start justify-between mb-1">
-                          <p className="text-sm font-medium text-[var(--foreground)] line-clamp-2 pr-6">
+                          <p className="text-sm font-medium text-[var(--bz-text-1)] line-clamp-2 pr-6">
                             {practice.practice_type_code
                               ?.toUpperCase()
                               .replace(/_/g, " ") || "Process"}
@@ -731,20 +731,20 @@ export default function PratichePage() {
 
                           {/* 3-Dot Menu Trigger */}
                           <button
-                            className="absolute top-3 right-2 p-1 rounded-md text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background-secondary)] opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute top-3 right-2 p-1 rounded-md text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] hover:bg-[var(--bz-surface)] opacity-0 group-hover:opacity-100 transition-opacity"
                             onClick={(e) => handleMenuClick(e, practice)}
                           >
                             <MoreVertical className="w-4 h-4" />
                           </button>
                         </div>
 
-                        <p className="text-xs text-[var(--foreground-muted)] truncate mb-2">
+                        <p className="text-xs text-[var(--bz-text-2)] truncate mb-2">
                           {practice.client_name || "Unknown Client"}
                         </p>
 
                         <div className="flex items-center justify-between">
                           {practice.client_lead ? (
-                            <div className="flex items-center gap-1.5 bg-[var(--accent)]/10 px-2 py-0.5 rounded text-[var(--accent)]">
+                            <div className="flex items-center gap-1.5 bg-[var(--bz-accent)]/10 px-2 py-0.5 rounded text-[var(--bz-accent)]">
                               <User className="w-3 h-3" />
                               <p className="text-[10px] font-medium truncate max-w-[80px]">
                                 {practice.client_lead.split("@")[0]}
@@ -753,13 +753,13 @@ export default function PratichePage() {
                           ) : (
                             <div />
                           )}
-                          <span className="text-[10px] text-[var(--foreground-muted)]">
+                          <span className="text-[10px] text-[var(--bz-text-2)]">
                             #{practice.id}
                           </span>
                         </div>
 
                         {/* Quick Actions */}
-                        <div className="flex items-center gap-1 mt-3 pt-2 border-t border-[var(--border)]">
+                        <div className="flex items-center gap-1 mt-3 pt-2 border-t border-[var(--bz-border)]">
                           {practice.client_phone && (
                             <button
                               onClick={(e) => {
@@ -819,32 +819,32 @@ export default function PratichePage() {
 
       {/* List View */}
       {viewMode === "list" && (
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]/50 overflow-hidden">
+        <div className="rounded-xl border border-[var(--bz-border)] bg-[var(--bz-surface)]/50 overflow-hidden">
           {isLoading ? (
             <div className="p-12 text-center">
               <div className="animate-pulse space-y-4">
-                <div className="h-4 bg-[var(--background-elevated)] rounded w-1/3 mx-auto" />
-                <div className="h-4 bg-[var(--background-elevated)] rounded w-1/2 mx-auto" />
+                <div className="h-4 bg-[var(--bz-card)] rounded w-1/3 mx-auto" />
+                <div className="h-4 bg-[var(--bz-card)] rounded w-1/2 mx-auto" />
               </div>
             </div>
           ) : filteredPractices.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-12">
-              <FolderKanban className="w-16 h-16 text-[var(--foreground-muted)] opacity-50 mb-4" />
-              <h3 className="text-lg font-semibold text-[var(--foreground)] mb-2">
+              <FolderKanban className="w-16 h-16 text-[var(--bz-text-2)] opacity-50 mb-4" />
+              <h3 className="text-lg font-semibold text-[var(--bz-text-1)] mb-2">
                 No process found
               </h3>
-              <p className="text-sm text-[var(--foreground-muted)] max-w-md">
+              <p className="text-sm text-[var(--bz-text-2)] max-w-md">
                 Try adjusting your search or filters to find process.
               </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-[var(--background-elevated)] border-b border-[var(--border)]">
+                <thead className="bg-[var(--bz-card)] border-b border-[var(--bz-border)]">
                   <tr>
                     <th
                       onClick={() => toggleSort("id")}
-                      className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)] cursor-pointer hover:bg-[var(--background)]/50 transition-colors"
+                      className="px-4 py-3 text-left text-sm font-semibold text-[var(--bz-text-1)] cursor-pointer hover:bg-[var(--bz-base)]/50 transition-colors"
                     >
                       <div className="flex items-center gap-2">
                         ID
@@ -861,7 +861,7 @@ export default function PratichePage() {
                     </th>
                     <th
                       onClick={() => toggleSort("practice_type_code")}
-                      className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)] cursor-pointer hover:bg-[var(--background)]/50 transition-colors"
+                      className="px-4 py-3 text-left text-sm font-semibold text-[var(--bz-text-1)] cursor-pointer hover:bg-[var(--bz-base)]/50 transition-colors"
                     >
                       <div className="flex items-center gap-2">
                         Process Type
@@ -878,7 +878,7 @@ export default function PratichePage() {
                     </th>
                     <th
                       onClick={() => toggleSort("client_name")}
-                      className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)] cursor-pointer hover:bg-[var(--background)]/50 transition-colors"
+                      className="px-4 py-3 text-left text-sm font-semibold text-[var(--bz-text-1)] cursor-pointer hover:bg-[var(--bz-base)]/50 transition-colors"
                     >
                       <div className="flex items-center gap-2">
                         Client
@@ -895,7 +895,7 @@ export default function PratichePage() {
                     </th>
                     <th
                       onClick={() => toggleSort("client_lead")}
-                      className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)] cursor-pointer hover:bg-[var(--background)]/50 transition-colors"
+                      className="px-4 py-3 text-left text-sm font-semibold text-[var(--bz-text-1)] cursor-pointer hover:bg-[var(--bz-base)]/50 transition-colors"
                     >
                       <div className="flex items-center gap-2">
                         Assigned To
@@ -912,7 +912,7 @@ export default function PratichePage() {
                     </th>
                     <th
                       onClick={() => toggleSort("status")}
-                      className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)] cursor-pointer hover:bg-[var(--background)]/50 transition-colors"
+                      className="px-4 py-3 text-left text-sm font-semibold text-[var(--bz-text-1)] cursor-pointer hover:bg-[var(--bz-base)]/50 transition-colors"
                     >
                       <div className="flex items-center gap-2">
                         Status
@@ -927,39 +927,39 @@ export default function PratichePage() {
                         )}
                       </div>
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)]">
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-[var(--bz-text-1)]">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[var(--border)]">
+                <tbody className="divide-y divide-[var(--bz-border)]">
                   {paginatedPractices.map((practice) => (
                     <tr
                       key={practice.id}
-                      className="hover:bg-[var(--background-elevated)]/50 transition-colors cursor-pointer"
+                      className="hover:bg-[var(--bz-card)]/50 transition-colors cursor-pointer"
                       onClick={() => router.push(`/process/${practice.id}`)}
                     >
-                      <td className="px-4 py-3 text-sm font-medium text-[var(--foreground)]">
+                      <td className="px-4 py-3 text-sm font-medium text-[var(--bz-text-1)]">
                         #{practice.id}
                       </td>
-                      <td className="px-4 py-3 text-sm text-[var(--foreground)]">
+                      <td className="px-4 py-3 text-sm text-[var(--bz-text-1)]">
                         {practice.practice_type_code
                           ?.toUpperCase()
                           .replace(/_/g, " ") || "-"}
                       </td>
-                      <td className="px-4 py-3 text-sm text-[var(--foreground)]">
+                      <td className="px-4 py-3 text-sm text-[var(--bz-text-1)]">
                         {practice.client_name || "Unknown"}
                       </td>
                       <td className="px-4 py-3 text-sm">
                         {practice.client_lead ? (
-                          <div className="inline-flex items-center gap-1.5 bg-[var(--accent)]/10 px-2 py-0.5 rounded text-[var(--accent)]">
+                          <div className="inline-flex items-center gap-1.5 bg-[var(--bz-accent)]/10 px-2 py-0.5 rounded text-[var(--bz-accent)]">
                             <User className="w-3 h-3" />
                             <span className="text-[10px] font-medium">
                               {practice.client_lead.split("@")[0]}
                             </span>
                           </div>
                         ) : (
-                          <span className="text-[var(--foreground-muted)]">
+                          <span className="text-[var(--bz-text-2)]">
                             -
                           </span>
                         )}
@@ -983,7 +983,7 @@ export default function PratichePage() {
                               "bg-gray-400"
                             }`}
                           />
-                          <span className="text-[var(--foreground)]">
+                          <span className="text-[var(--bz-text-1)]">
                             {practice.status
                               ?.replace(/_/g, " ")
                               .charAt(0)
@@ -1033,7 +1033,7 @@ export default function PratichePage() {
                             </button>
                           )}
                           <button
-                            className="p-1.5 rounded text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background-secondary)] transition-colors"
+                            className="p-1.5 rounded text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] hover:bg-[var(--bz-surface)] transition-colors"
                             onClick={(e) => handleMenuClick(e, practice)}
                             title="More options"
                           >
@@ -1048,8 +1048,8 @@ export default function PratichePage() {
 
               {/* Pagination Controls */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)] bg-[var(--background-elevated)]">
-                  <div className="text-sm text-[var(--foreground-muted)]">
+                <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--bz-border)] bg-[var(--bz-card)]">
+                  <div className="text-sm text-[var(--bz-text-2)]">
                     Showing {(listPageNumber - 1) * itemsPerPage + 1} to{" "}
                     {Math.min(
                       listPageNumber * itemsPerPage,
@@ -1063,7 +1063,7 @@ export default function PratichePage() {
                         setListPageNumber((p) => Math.max(1, p - 1))
                       }
                       disabled={listPageNumber === 1}
-                      className="px-3 py-1 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] hover:bg-[var(--background)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="px-3 py-1 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] hover:bg-[var(--bz-base)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       Previous
                     </button>
@@ -1078,8 +1078,8 @@ export default function PratichePage() {
                               onClick={() => setListPageNumber(pageNum)}
                               className={`px-2 py-1 rounded-lg transition-colors ${
                                 listPageNumber === pageNum
-                                  ? "bg-[var(--accent)] text-white"
-                                  : "bg-[var(--background-secondary)] text-[var(--foreground)] hover:bg-[var(--background)]"
+                                  ? "bg-[var(--bz-accent)] text-white"
+                                  : "bg-[var(--bz-surface)] text-[var(--bz-text-1)] hover:bg-[var(--bz-base)]"
                               }`}
                             >
                               {pageNum}
@@ -1088,7 +1088,7 @@ export default function PratichePage() {
                         },
                       )}
                       {totalPages > 5 && (
-                        <span className="text-[var(--foreground-muted)]">
+                        <span className="text-[var(--bz-text-2)]">
                           ...
                         </span>
                       )}
@@ -1098,7 +1098,7 @@ export default function PratichePage() {
                         setListPageNumber((p) => Math.min(totalPages, p + 1))
                       }
                       disabled={listPageNumber === totalPages}
-                      className="px-3 py-1 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] hover:bg-[var(--background)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="px-3 py-1 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] hover:bg-[var(--bz-base)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       Next
                     </button>
@@ -1112,7 +1112,7 @@ export default function PratichePage() {
 
       {/* Info Footer */}
       <div className="text-center py-8">
-        <p className="text-xs text-[var(--foreground-muted)]">
+        <p className="text-xs text-[var(--bz-text-2)]">
           Pro Tip: Right-click or use the menu on cards to quickly change
           process status.
         </p>
@@ -1122,7 +1122,7 @@ export default function PratichePage() {
       {selectedPractice && menuPosition && (
         <div
           ref={menuRef}
-          className="fixed z-50 min-w-[200px] rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] shadow-xl py-1 animate-in fade-in zoom-in-95 duration-100"
+          className="fixed z-50 min-w-[200px] rounded-lg border border-[var(--bz-border)] bg-[var(--bz-card)] shadow-xl py-1 animate-in fade-in zoom-in-95 duration-100"
           style={{
             // ✅ Smart positioning: adjusts based on viewport boundaries
             // Menu height ~340px (header 40px + 9 items * 32px + padding)
@@ -1140,11 +1140,11 @@ export default function PratichePage() {
             maxWidth: "calc(100vw - 20px)",
           }}
         >
-          <div className="px-3 py-2 border-b border-[var(--border)] bg-[var(--background-secondary)]/50 rounded-t-lg">
-            <p className="text-xs font-semibold text-[var(--foreground)]">
+          <div className="px-3 py-2 border-b border-[var(--bz-border)] bg-[var(--bz-surface)]/50 rounded-t-lg">
+            <p className="text-xs font-semibold text-[var(--bz-text-1)]">
               Update Status
             </p>
-            <p className="text-[10px] text-[var(--foreground-muted)]">
+            <p className="text-[10px] text-[var(--bz-text-2)]">
               Process #{selectedPractice.id}
             </p>
           </div>
@@ -1161,8 +1161,8 @@ export default function PratichePage() {
                 }
                 className={`w-full px-3 py-2 text-left text-sm rounded-md transition-colors flex items-center justify-between group ${
                   selectedPractice.status === option.value
-                    ? "bg-[var(--accent)]/10 text-[var(--accent)] font-medium"
-                    : "text-[var(--foreground)] hover:bg-[var(--accent)]/10 hover:text-[var(--accent)]"
+                    ? "bg-[var(--bz-accent)]/10 text-[var(--bz-accent)] font-medium"
+                    : "text-[var(--bz-text-1)] hover:bg-[var(--bz-accent)]/10 hover:text-[var(--bz-accent)]"
                 } ${updatingId !== null ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 <div className="flex items-center gap-2">
