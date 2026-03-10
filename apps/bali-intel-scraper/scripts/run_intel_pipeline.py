@@ -147,8 +147,15 @@ class IntelPipeline:
             from unified_scraper import UnifiedScraper
             categories = self.config.get('categories', ['immigration', 'tax', 'business'])
             limit      = self.config.get('limit_per_source', 5)
+            
+            import asyncio
             scraper    = UnifiedScraper(categories=categories, limit_per_source=limit)
-            articles   = scraper.scrape_all()
+            async def _run_scraper():
+                res = await scraper.scrape_all()
+                await scraper.close()
+                return res
+            
+            articles   = asyncio.run(_run_scraper())
             self.log(f'Scraped {len(articles)} articles from {scraper.stats.get("sources_processed",0)} sources')
 
             # Exa augmentation (semantic search)
@@ -213,7 +220,8 @@ class IntelPipeline:
             try:
                 with open(published_file) as f:
                     pub_data = json.load(f)
-                for pa in pub_data.get('articles', [])[-200:]:
+                # Load all history, not just last 200
+                for pa in pub_data.get('articles', []):
                     published_urls.add(pa.get('url', ''))
                     words = set(pa.get('title', '').lower().split())
                     if words:
@@ -271,6 +279,21 @@ class IntelPipeline:
                 dupes_history += 1
                 continue
 
+            # 4. Age validation (discard articles older than 30 days)
+            published = article.get('published', '')
+            if published:
+                try:
+                    from dateutil import parser as date_parser
+                    pub_date = date_parser.parse(published)
+                    # if timezone aware, make current time aware
+                    now = datetime.now(pub_date.tzinfo) if pub_date.tzinfo else datetime.now()
+                    if (now - pub_date).days > 30:
+                        # old article, skip
+                        self.log(f"    Skipping old article ({published}): {title[:50]}")
+                        continue
+                except Exception:
+                    pass # if unparseable, we let it pass
+
             seen_urls.add(url)
             seen_title_words.append(title_words)
             validated.append(article)
@@ -293,7 +316,7 @@ class IntelPipeline:
         """Step 2.5: LLM content quality scoring via Ollama (gemma3:12b or qwen3.5:27b).
 
         Evaluates each article for relevance to our audience (expats/investors
-        in Indonesia) and assigns a quality score 0-100. Threshold: >= 45.
+        in Indonesia) and assigns a quality score 0-100. Threshold: >= 30.
         ~20-30s per article, ~20 min for 50 articles.
         """
         articles = self.state.get('articles', [])
@@ -436,7 +459,7 @@ class IntelPipeline:
                     scored.append(art)
 
         # Apply threshold
-        threshold = self.config.get('min_score', 45)
+        threshold = self.config.get('min_score', 30)
         passed = [a for a in scored if a.get('quality_score', 50) >= threshold]
         filtered = [a for a in scored if a.get('quality_score', 50) < threshold]
 

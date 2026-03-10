@@ -74,40 +74,21 @@ class LegalIngestionService:
         category: str | None = None,
         trace_id: str | None = None,
         user_id: str | None = None,
+        document_id: str | None = None,
     ) -> dict[str, Any]:
         """
         Ingest a legal document through the complete pipeline.
-
-        Pipeline stages:
-        1. Parse: Extract text from PDF/HTML
-        2. Clean: Remove headers/footers/noise
-        3. Extract Metadata: Type, number, year, topic
-        4. Parse Structure: BAB, Pasal, Ayat hierarchy
-        5. Chunk: Pasal-aware chunking with context injection
-        6. Embed: Generate embeddings
-        7. Store: Upsert to Qdrant
-
-        Args:
-            file_path: Path to legal document file
-            title: Document title (auto-extracted if not provided)
-            tier_override: Manual tier classification (optional)
-            collection_name: Override collection name (optional)
-            category: Document category (e.g., 'immigrazione', 'tasse')
-            skip_pricing: Remove pricing information if True
-            trace_id: Trace ID for correlation
-            user_id: User ID who initiated ingestion
-
-        Returns:
-            Dictionary with ingestion results
+        ...
         """
         start_time = time.time()
-        document_id = None
         source = "file_upload"
         file_type = Path(file_path).suffix.lower()
 
         try:
-            # Generate document ID and start logging
-            document_id = f"legal_{int(start_time)}_{Path(file_path).stem}"
+            # Generate document ID if not provided
+            if not document_id:
+                document_id = f"legal_{int(start_time)}_{Path(file_path).stem}"
+
             document_id = ingestion_logger.start_ingestion(
                 file_path=file_path,
                 document_id=document_id,

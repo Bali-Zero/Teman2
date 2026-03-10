@@ -47,7 +47,7 @@
 - **Stato:** Migliaia di cartelle clienti già organizzate
 - **Struttura esistente:** Cartelle clienti sparse in varie sottocartelle
 - **Tool disponibili:**
-  - `google-apps-script/ReorganizeCRM.gs` - Script Apps Script per riorganizzazione
+  - `integrations/google-apps-script/ReorganizeCRM.gs` - Script Apps Script per riorganizzazione
   - `tools/reorganize_gdrive.py` - Script Python per scan e riorganizzazione
   - `tools/client_folder_matcher.py` - Matching cartelle → clienti CRM
 
@@ -462,7 +462,7 @@ WHERE id = $2
 
 - **CRM Complete:** `docs/CRM_COMPLETE.md` (consolidated documentation)
 - **Google Drive API:** `apps/backend-rag/backend/app/routers/crm_drive_folders.py`
-- **Reorganization Script:** `google-apps-script/ReorganizeCRM.gs`
+- **Reorganization Script:** `integrations/google-apps-script/ReorganizeCRM.gs`
 - **Python Scanner:** `tools/reorganize_gdrive.py`
 
 ---

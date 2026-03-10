@@ -121,6 +121,22 @@ export default function NewClientPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Block standalone profile creation for minors (< 18 years)
+    if (formData.date_of_birth) {
+      const dob = new Date(formData.date_of_birth);
+      const today = new Date();
+      const age = Math.floor(
+        (today.getTime() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000),
+      );
+      if (age < 18) {
+        alert(
+          `⚠️ MINORE (${age} anni)\n\nI clienti under 18 non possono avere un profilo singolo.\nCollegare al profilo del genitore tramite "Family Members".`,
+        );
+        return;
+      }
+    }
+
     setIsLoading(true);
     try {
       const user = await api.getProfile();

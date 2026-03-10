@@ -327,7 +327,7 @@ nuzantara/
 │
 ├── docs/                        # Documentation
 ├── scripts/                     # Root-level utilities
-└── source_documents/            # KBLI JSON, legal PDFs
+└── data/source_documents/       # KBLI JSON, legal PDFs
 ```
 
 ---
@@ -429,7 +429,7 @@ The `chain_new_client_onboarding` workflow now includes:
 
 3. **Auto-Trigger from Web Form**: `POST /api/crm/clients` with `status=lead|prospect` and non-empty `service_interest` automatically prepares onboarding payload. Logs intent without blocking client creation.
 
-See `CHAIN_ONBOARDING_IMPROVEMENTS.md` for full implementation details.
+See `docs/architecture/CHAIN_ONBOARDING_IMPROVEMENTS.md` for full implementation details.
 
 **Additional MCP servers:**
 

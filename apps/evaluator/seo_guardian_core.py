@@ -17,8 +17,8 @@ logging.basicConfig(level=logging.INFO, format="[SEO Guardian] %(levelname)s: %(
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 MOUTH_APP_DIR = PROJECT_ROOT / "apps" / "mouth"
 KBLI_DATA_PATH = MOUTH_APP_DIR / "data" / "KBLI_2025_FINAL_CLEAN.json"
-CREDENTIALS_PATH = PROJECT_ROOT / "google-credentials.json"
-OUTPUT_PATH = PROJECT_ROOT / "SEO_ACTION_PLAN_REAL_DATA.json"
+CREDENTIALS_PATH = PROJECT_ROOT / ".secrets" / "google-credentials.json"
+OUTPUT_PATH = PROJECT_ROOT / "data" / "analysis" / "SEO_ACTION_PLAN_REAL_DATA.json"
 
 # Date range: last 7 days
 END_DATE = date.today().isoformat()

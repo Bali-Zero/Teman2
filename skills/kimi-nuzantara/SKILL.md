@@ -134,4 +134,4 @@ Mouth (Next.js) → Backend (FastAPI) → Data (Postgres + Qdrant + Redis)
 - Full identity: `.kimi/NUZANTARA_IDENTITY.md`
 - AI Onboarding: `docs/AI_ONBOARDING.md`
 - Living Architecture: `docs/LIVING_ARCHITECTURE.md`
-- System Map: `SYSTEM_MAP_LIVE.md`
+- System Map: `docs/architecture/SYSTEM_MAP_LIVE.md`

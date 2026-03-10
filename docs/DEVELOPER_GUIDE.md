@@ -78,7 +78,7 @@ nuzantara/                              # Monorepo root
 │   └── kbli-voice/                    # KBLI decision engine
 │
 ├── docs/                               # Documentation (you are here)
-├── source_documents/                   # KBLI JSON, legal PDFs
+├── data/source_documents/              # KBLI JSON, legal PDFs
 └── CLAUDE.md                           # AI assistant configuration
 ```
 

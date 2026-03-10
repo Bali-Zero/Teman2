@@ -566,7 +566,7 @@ Grand Total: 2,260 LOC
 
 ### For DevOps
 
-- `DEPLOYMENT_GUIDE.md` - Deployment steps
+- `docs/operations/DEPLOYMENT_GUIDE.md` - Deployment steps
 - `MONITORING_GUIDE.md` - Observability setup
 
 ---
