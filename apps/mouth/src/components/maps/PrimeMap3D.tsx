@@ -729,12 +729,12 @@ export default function PrimeMap3D() {
         />
 
         {/* Header */}
-        <div className="flex items-center px-4 py-3 border-b border-white/10 flex-shrink-0 overflow-hidden">
+        <div className="flex items-center justify-center px-4 py-4 border-b border-white/10 flex-shrink-0 overflow-hidden">
           <Image
             src="/assets/logo/balizeromap.svg"
             alt="Bali Zero Map"
-            width={120}
-            height={40}
+            width={240}
+            height={80}
             className="flex-shrink-0"
             unoptimized
           />
@@ -1160,6 +1160,18 @@ export default function PrimeMap3D() {
               className="w-full pl-9 pr-4 py-2.5 bg-black/85 backdrop-blur-xl text-white placeholder-slate-500 rounded-xl border border-white/15 shadow-2xl focus:outline-none focus:border-[#d4845a]/60 text-sm"
             />
           </div>
+        </div>
+
+        {/* Bottom-center: logo watermark */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+          <Image
+            src="/assets/logo/balizeromap.svg"
+            alt="Bali Zero Map"
+            width={200}
+            height={67}
+            className="opacity-80"
+            unoptimized
+          />
         </div>
 
         {/* Bottom-right: coordinates + filter button */}
