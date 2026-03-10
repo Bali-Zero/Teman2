@@ -726,21 +726,24 @@ export default function PrimeMap3D() {
         />
 
         {/* Header */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10 flex-shrink-0 min-w-0 whitespace-nowrap">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10 flex-shrink-0 overflow-hidden">
           <Image
-            src="/balizero-logo-clean.png"
+            src="/assets/logo/balizero-logo-clean.png"
             alt="Bali Zero"
-            width={32}
-            height={32}
-            className="rounded-full flex-shrink-0"
+            width={36}
+            height={36}
+            className="rounded-full flex-shrink-0 ring-1 ring-white/10"
+            unoptimized
           />
-          <span className="text-white font-semibold text-sm tracking-tight flex-shrink-0">
-            Bali Zero
-          </span>
-          <span className="text-white/20 text-xs flex-shrink-0">/</span>
-          <span className="text-slate-400 font-mono text-xs tracking-widest uppercase flex-shrink-0">
-            MAP
-          </span>
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-white font-semibold text-sm tracking-tight whitespace-nowrap">
+              Bali Zero
+            </span>
+            <span className="text-white/20 text-xs">/</span>
+            <span className="text-slate-400 font-mono text-[10px] tracking-widest uppercase whitespace-nowrap">
+              MAP
+            </span>
+          </div>
         </div>
 
         {/* Scrollable content */}
