@@ -23,7 +23,8 @@ interface ZoningInfo {
   district?: string;
   subdistrict?: string;
   zone_code?: string;
-  zone_name?: string;
+  zone_name?: string;           // Indonesian official name (e.g. "Perdagangan dan Jasa Skala SWP")
+  zone_label_en?: string;       // Plain English label (e.g. "Neighborhood Commercial Zone")
   zone_type?: string;
   zone_description_en?: string;
   is_restricted?: boolean;
@@ -35,20 +36,87 @@ interface ZoningInfo {
   message?: string;
 }
 
+// Official GISTARU Bali colors (from Permen ATR/BPN + RDTR Badung system)
+const ZONE_COLORS: Record<string, string> = {
+  // Commercial (K zones) — red-orange, RDTR Badung standard
+  "K-1": "#E8472A",
+  "K-2": "#E8472A",
+  "K-3": "#E8472A",
+  // Mixed use (C zones) — salmon/coral
+  "C-1": "#F0826E",
+  "C-2": "#F0826E",
+  // Tourism (W zones) — magenta, GISTARU official #FFA5FF
+  "W":   "#FFA5FF",
+  "W-1": "#FFA5FF",
+  "W-2": "#FF85F5",
+  // Residential (R zones) — orange, GISTARU official #FF7D00
+  "R-2": "#FF7D00",
+  "R-3": "#FF9D30",
+  "R-4": "#FFB860",
+  // Agriculture (P zones) — yellow-green, GISTARU official #C8C83C
+  "P-1": "#C8C83C",
+  "P-2": "#D4D44A",
+  "P-3": "#C8C83C",
+  "P-4": "#BEB82E",
+  // Office / Business Park — lavender
+  "KT":  "#A855F7",
+  // Industrial — maroon, GISTARU official #690000
+  "KPI": "#690000",
+  // Public facilities — terracotta
+  "SPU-1": "#D4845A",
+  "SPU-2": "#D4845A",
+  "SPU-3": "#D4845A",
+  "SPU-4": "#D4845A",
+  // Protected forest — dark green, GISTARU official #224027
+  "HL":   "#224027",
+  "KS-4": "#224027",
+  "THR":  "#224027",
+  "TWA":  "#224027",
+  // Mangrove — teal-green, GISTARU official #2D966E
+  "EM":   "#2D966E",
+  // Riparian / coastal buffer — cyan, GISTARU official #05D7D7
+  "PS":   "#05D7D7",
+  "SS":   "#05D7D7",
+  "SP":   "#05D7D7",
+  // Spiritual / cultural — amber
+  "LS":   "#F59E0B",
+  "CB":   "#B45309",
+  // Green spaces — medium green
+  "RTH-2": "#3BA062",
+  "RTH-3": "#3BA062",
+  "RTH-4": "#3BA062",
+  "RTH-5": "#3BA062",
+  "RTH-7": "#6B7280",
+  "RTH-8": "#3BA062",
+  "RTNH":  "#9CA3AF",
+  // Water — light blue, GISTARU official #97DBF2
+  "BA":   "#97DBF2",
+  // Roads — gray
+  "BJ":   "#9CA3AF",
+  "TR":   "#6B7280",
+  // Defense — violet, GISTARU official #9B00FF
+  "HK":   "#9B00FF",
+  // Infrastructure
+  "PL-3": "#6B7280",
+  "PL-4": "#6B7280",
+  "PTL":  "#6B7280",
+  "IK-1": "#507DD2",
+};
+
 const CATEGORY_COLORS: Record<string, string> = {
-  "F&B": "bg-orange-500/20 text-orange-300 border-orange-500/30",
-  "Hospitality": "bg-blue-500/20 text-blue-300 border-blue-500/30",
-  "Wellness": "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
-  "Property": "bg-purple-500/20 text-purple-300 border-purple-500/30",
-  "Retail": "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
-  "Creative": "bg-pink-500/20 text-pink-300 border-pink-500/30",
+  "F&B":        "bg-orange-500/20 text-orange-300 border-orange-500/30",
+  "Hospitality":"bg-blue-500/20 text-blue-300 border-blue-500/30",
+  "Wellness":   "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+  "Property":   "bg-purple-500/20 text-purple-300 border-purple-500/30",
+  "Retail":     "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
+  "Creative":   "bg-pink-500/20 text-pink-300 border-pink-500/30",
   "Technology": "bg-cyan-500/20 text-cyan-300 border-cyan-500/30",
-  "Education": "bg-indigo-500/20 text-indigo-300 border-indigo-500/30",
-  "Services": "bg-slate-500/20 text-slate-300 border-slate-500/30",
-  "Industry": "bg-amber-500/20 text-amber-300 border-amber-500/30",
-  "Finance": "bg-teal-500/20 text-teal-300 border-teal-500/30",
+  "Education":  "bg-indigo-500/20 text-indigo-300 border-indigo-500/30",
+  "Services":   "bg-slate-500/20 text-slate-300 border-slate-500/30",
+  "Industry":   "bg-amber-500/20 text-amber-300 border-amber-500/30",
+  "Finance":    "bg-teal-500/20 text-teal-300 border-teal-500/30",
   "Healthcare": "bg-rose-500/20 text-rose-300 border-rose-500/30",
-  "Construction": "bg-gray-500/20 text-gray-300 border-gray-500/30",
+  "Construction":"bg-gray-500/20 text-gray-300 border-gray-500/30",
 };
 
 function formatPrice(pricePerAre: number): string {
@@ -69,7 +137,7 @@ export default function PrimeMap3D() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [searchValue, setSearchValue] = useState('');
 
-  // Load the map once the script is ready
+  // Load the 3D map
   useEffect(() => {
     if (!isLoaded || !mapContainerRef.current) return;
 
@@ -99,7 +167,7 @@ export default function PrimeMap3D() {
             const pin = new PinElement({
               background: '#1a73e8',
               glyphColor: 'white',
-              scale: 1.5
+              scale: 1.5,
             });
 
             const marker = new Marker3DInteractiveElement({
@@ -121,7 +189,7 @@ export default function PrimeMap3D() {
     initMap();
   }, [isLoaded]);
 
-  // Initialize Places Autocomplete
+  // Places Autocomplete
   useEffect(() => {
     if (!isLoaded || !searchInputRef.current) return;
 
@@ -180,6 +248,7 @@ export default function PrimeMap3D() {
 
   const riskScore = zoningResult?.risk_score ?? 0;
   const isHighRisk = riskScore > 0.7;
+  const zoneColor = zoningResult?.zone_code ? (ZONE_COLORS[zoningResult.zone_code] ?? "#6B7280") : "#6B7280";
 
   return (
     <div className="relative w-full h-[800px] bg-slate-900 rounded-xl overflow-hidden shadow-2xl border border-slate-700">
@@ -261,39 +330,57 @@ export default function PrimeMap3D() {
                     )}
                   </div>
 
-                  {/* Zone */}
-                  <div className="bg-slate-800/60 rounded-lg p-3 border border-slate-700/50">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Zoning</div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-emerald-400 font-bold text-base">{zoningResult.zone_code}</span>
-                          <span className={`text-xs px-1.5 py-0.5 rounded ${isHighRisk ? 'bg-red-500/20 text-red-300' : 'bg-emerald-500/20 text-emerald-300'}`}>
-                            {isHighRisk ? '⚠ High risk' : '✓ Normal'}
-                          </span>
-                        </div>
-                        <div className="text-xs text-slate-400 mt-0.5">{zoningResult.zone_name}</div>
-                      </div>
+                  {/* Zone — colour dot + code + label */}
+                  <div
+                    className="rounded-lg p-3 border"
+                    style={{
+                      backgroundColor: `${zoneColor}18`,
+                      borderColor: `${zoneColor}40`,
+                    }}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      {/* Colour swatch matching GISTARU official */}
+                      <span
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: zoneColor }}
+                      />
+                      <span className="font-mono font-bold text-sm" style={{ color: zoneColor }}>
+                        {zoningResult.zone_code}
+                      </span>
+                      <span className="text-white font-medium text-sm">
+                        {zoningResult.zone_label_en}
+                      </span>
                     </div>
+                    {/* Indonesian official name, smaller */}
+                    <div className="text-xs text-slate-500 ml-5">
+                      {zoningResult.zone_name}
+                    </div>
+                    {/* Plain English description */}
                     {zoningResult.zone_description_en && (
-                      <div className="text-xs text-slate-500 mt-2 leading-relaxed border-t border-slate-700/50 pt-2">
+                      <div className="text-xs text-slate-400 mt-1.5 ml-5 leading-relaxed">
                         {zoningResult.zone_description_en}
                       </div>
                     )}
+                    {/* Risk badge */}
+                    <div className="flex items-center gap-1.5 mt-2 ml-5">
+                      <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${isHighRisk ? 'bg-red-500/20 text-red-300' : 'bg-emerald-500/20 text-emerald-300'}`}>
+                        {isHighRisk ? '⚠ High regulatory risk' : '✓ Normal regulatory risk'}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Businesses you can open */}
                   {zoningResult.is_restricted ? (
                     <div className="bg-red-900/20 border border-red-500/20 rounded-lg p-3">
-                      <div className="text-xs text-red-400 font-medium mb-1">⛔ Protected Zone</div>
+                      <div className="text-xs text-red-400 font-medium mb-1">⛔ Protected Zone — No Commercial Activity</div>
                       <div className="text-xs text-slate-400 leading-relaxed">
-                        This area is protected by Indonesian law. Commercial activities are not permitted here.
+                        This area is legally protected. No construction or commercial activity is permitted.
                       </div>
                     </div>
                   ) : zoningResult.businesses && zoningResult.businesses.length > 0 ? (
                     <div>
                       <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">
-                        Businesses you can open here
+                        What you can open here
                       </div>
                       <div className="space-y-1.5">
                         {zoningResult.businesses.map((biz) => (
@@ -308,15 +395,15 @@ export default function PrimeMap3D() {
                               <span className="text-sm text-white truncate">{biz.title_en}</span>
                             </div>
                             {biz.pma_open && (
-                              <span className="text-xs text-emerald-400 flex-shrink-0 font-medium" title="Open to foreign investors (PMA)">
-                                ✓ Foreigner
+                              <span className="text-xs text-emerald-400 flex-shrink-0 font-medium" title="Open to foreign-owned company (PT PMA)">
+                                ✓ Foreign OK
                               </span>
                             )}
                           </div>
                         ))}
                       </div>
                       <div className="text-xs text-slate-600 mt-2">
-                        ✓ Foreigner = open to PT PMA (foreign-owned company)
+                        ✓ Foreign OK = open to PT PMA (foreign-owned company)
                       </div>
                     </div>
                   ) : null}
@@ -349,7 +436,7 @@ export default function PrimeMap3D() {
           {!isAnalyzing && !zoningResult && (
             <div className="text-center py-6 text-slate-500">
               <div className="text-3xl mb-2">📍</div>
-              <div className="text-xs">Tap any spot in Bali to see<br />what you can build there</div>
+              <div className="text-xs leading-relaxed">Tap any spot in Bali to see<br />what you can build there</div>
             </div>
           )}
         </div>
