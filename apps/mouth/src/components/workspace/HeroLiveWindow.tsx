@@ -30,14 +30,14 @@ export function HeroLiveWindow() {
   );
 
   const articles: (HeroArticle | undefined)[] =
-    data?.articles?.slice(0, 5) ?? Array(5).fill(undefined);
+    data?.articles?.slice(0, 7) ?? Array(7).fill(undefined);
   const [main, ...rest] = articles;
 
   return (
     <div
       className="group relative rounded-[12px] overflow-hidden mb-4"
       style={{
-        height: 264,
+        height: 420,
         border: "1px solid var(--bz-border-accent)",
         boxShadow:
           "0 0 0 1px var(--bz-border-accent), 0 4px 24px rgba(0,0,0,0.5)",
@@ -98,7 +98,7 @@ export function HeroLiveWindow() {
         className="absolute inset-0 grid gap-[2px]"
         style={{
           gridTemplateColumns: "1.5fr 1fr 1fr",
-          gridTemplateRows: "1fr 1fr",
+          gridTemplateRows: "1fr 1fr 1fr",
           background: "rgba(0,0,0,0.3)",
         }}
       >
@@ -106,13 +106,13 @@ export function HeroLiveWindow() {
           article={main}
           gradient={CARD_GRADIENTS[0]}
           isMain
-          style={{ gridRow: "1 / 3" }}
+          style={{ gridRow: "1 / 4" }}
         />
-        {rest.slice(0, 4).map((article, i) => (
+        {rest.slice(0, 6).map((article, i) => (
           <HeroCard
             key={i}
             article={article}
-            gradient={CARD_GRADIENTS[i + 1]}
+            gradient={CARD_GRADIENTS[i % CARD_GRADIENTS.length]}
           />
         ))}
       </div>
@@ -162,7 +162,7 @@ function HeroCard({
           className="absolute inset-0 bg-cover bg-center"
           style={{
             backgroundImage: `url(${article.cover_image})`,
-            opacity: 0.4,
+            opacity: 0.65,
           }}
         />
       )}
