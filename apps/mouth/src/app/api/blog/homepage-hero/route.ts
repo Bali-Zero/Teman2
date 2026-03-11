@@ -15,7 +15,9 @@ export async function GET() {
       homepageLayout.hero_3,
       homepageLayout.hero_4,
       homepageLayout.hero_5,
-    ];
+      (homepageLayout as Record<string, string>).hero_6,
+      (homepageLayout as Record<string, string>).hero_7,
+    ].filter(Boolean);
 
     // Fetch all articles (cached, revalidates every 60s)
     const { articles } = await getAllArticles({ limit: 200 });
