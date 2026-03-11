@@ -53,6 +53,22 @@ class DatabaseConfig:
     @classmethod
     def from_env(cls) -> "DatabaseConfig":
         """Create config from environment variables."""
+        db_url = os.getenv("DATABASE_URL")
+        if db_url and db_url.startswith("postgres"):
+            from urllib.parse import urlparse
+            parsed = urlparse(db_url)
+            return cls(
+                host=parsed.hostname or "localhost",
+                port=parsed.port or 5432,
+                name=parsed.path.lstrip("/") if parsed.path else "bali_intel",
+                user=parsed.username or "postgres",
+                password=parsed.password or "",
+                pool_size=int(os.getenv("DB_POOL_SIZE", "10")),
+                max_overflow=int(os.getenv("DB_MAX_OVERFLOW", "20")),
+                pool_timeout=int(os.getenv("DB_POOL_TIMEOUT", "30")),
+                pool_recycle=int(os.getenv("DB_POOL_RECYCLE", "1800")),
+            )
+        
         return cls(
             host=os.getenv("DB_HOST", "localhost"),
             port=int(os.getenv("DB_PORT", "5432")),
