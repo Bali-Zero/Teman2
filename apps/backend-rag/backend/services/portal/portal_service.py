@@ -321,7 +321,7 @@ class DocumentOCR:
 
             response = await client.generate_content(
                 contents=contents,
-                model="gemini-2.0-flash-001",
+                model="gemini-2.0-flash-lite",
                 max_output_tokens=4096,
             )
 
@@ -1103,6 +1103,18 @@ class PortalService:
                 client_id,
             )
 
+            # Get all directors/shareholders linked to this company
+            directors = await conn.fetch(
+                """
+                SELECT cl.full_name, ccl.role, ccl.ownership_percentage
+                FROM client_company_links ccl
+                JOIN clients cl ON cl.id = ccl.client_id
+                WHERE ccl.company_id = $1
+                ORDER BY ccl.is_primary DESC, ccl.role, cl.full_name
+                """,
+                company_id,
+            )
+
             return {
                 "id": company["id"],
                 "name": company["company_name"],
@@ -1135,6 +1147,18 @@ class PortalService:
                         and d["file_url"] is not None,
                     }
                     for d in documents
+                ],
+                "directors": [
+                    d["full_name"]
+                    for d in directors
+                    if d["role"] in ("director", "commissioner", "president_director")
+                ],
+                "shareholders": [
+                    {
+                        "name": d["full_name"],
+                        "pct": float(d["ownership_percentage"]) if d["ownership_percentage"] else None,
+                    }
+                    for d in directors
                 ],
             }
 
