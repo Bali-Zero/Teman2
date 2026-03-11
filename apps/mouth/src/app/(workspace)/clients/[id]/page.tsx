@@ -3635,7 +3635,7 @@ function EditClientModal({
         </div>
         <div>
           <label className="block text-sm font-medium mb-1.5">Phone</label>
-          <div className="flex gap-1">
+          <div className="flex gap-2">
             <select
               value={extractCountryCode(formData.phone).countryCode}
               onChange={(e) => {
@@ -3645,7 +3645,7 @@ function EditClientModal({
                   phone: e.target.value + localNumber,
                 });
               }}
-              className={`${inputClass} w-[100px] flex-shrink-0`}
+              className={`${inputClass} w-[130px] flex-shrink-0`}
             >
               {COUNTRY_CODES.map(({ code, country, flag }) => (
                 <option key={code} value={code}>
@@ -3661,7 +3661,7 @@ function EditClientModal({
                 const digits = e.target.value.replace(/[^\d]/g, "");
                 setFormData({ ...formData, phone: countryCode + digits });
               }}
-              className={`${inputClass} flex-1`}
+              className={`${inputClass} flex-1 min-w-0`}
               placeholder="Phone number"
             />
           </div>
