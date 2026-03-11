@@ -570,10 +570,10 @@ class PortalService:
             try:
                 companies = await conn.fetch(
                     """
-                    SELECT cc.id, cc.role, cc.is_primary, cp.company_name, cp.entity_type
-                    FROM client_companies cc
-                    JOIN company_profiles cp ON cp.id = cc.company_id
-                    WHERE cc.client_id = $1
+                    SELECT ccl.id, ccl.role, ccl.is_primary, c.company_name, c.company_type
+                    FROM client_company_links ccl
+                    JOIN companies c ON c.id = ccl.company_id
+                    WHERE ccl.client_id = $1
                     """,
                     client_id,
                 )
@@ -1144,7 +1144,7 @@ class PortalService:
             # Clear previous primary
             await conn.execute(
                 """
-                    UPDATE client_companies
+                    UPDATE client_company_links
                     SET is_primary = false
                     WHERE client_id = $1
                     """,
@@ -1154,7 +1154,7 @@ class PortalService:
             # Set new primary
             result = await conn.execute(
                 """
-                    UPDATE client_companies
+                    UPDATE client_company_links
                     SET is_primary = true
                     WHERE client_id = $1 AND company_id = $2
                     """,
