@@ -1163,13 +1163,13 @@ export default function PrimeMap3D() {
         </div>
 
         {/* Bottom-center: logo watermark */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
           <Image
             src="/assets/logo/balizeromap.svg"
             alt="Bali Zero Map"
-            width={200}
-            height={67}
-            className="opacity-80"
+            width={320}
+            height={107}
+            className="opacity-100 drop-shadow-[0_2px_12px_rgba(0,0,0,0.7)]"
             unoptimized
           />
         </div>
