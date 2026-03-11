@@ -384,18 +384,45 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
         except Exception as e:
             return {"chain": "practice_lifecycle", "error": str(e)}
 
+        from datetime import date as _date
+        today = _date.today()
+
         for p in practices:
             if not isinstance(p, dict):
                 continue
             p_id = p.get("id") or p.get("practice_id")
             client_id = p.get("client_id")
-            p_type = p.get("type", "")
-            days_to_expiry = p.get("days_to_expiry")
+            p_type = p.get("practice_type_code") or p.get("type", "")
             status = p.get("status", "")
             days_in_status = p.get("days_in_current_status", 0)
 
-            # Rule 1: Visa expiring within 90 days
-            if "visa" in p_type.lower() and days_to_expiry is not None and days_to_expiry < 90:
+            # Calculate days_to_expiry from expiry_date field (DB backfilled)
+            days_to_expiry = None
+            expiry_raw = p.get("expiry_date")
+            if expiry_raw:
+                try:
+                    if isinstance(expiry_raw, str):
+                        from datetime import datetime as _dt
+                        expiry_d = _dt.strptime(expiry_raw[:10], "%Y-%m-%d").date()
+                    else:
+                        expiry_d = expiry_raw
+                    days_to_expiry = (expiry_d - today).days
+                except Exception:
+                    pass
+
+            # Calculate days_in_status from updated_at if not provided
+            if not days_in_status:
+                updated_raw = p.get("updated_at")
+                if updated_raw:
+                    try:
+                        from datetime import datetime as _dt
+                        updated_d = _dt.fromisoformat(str(updated_raw).replace("Z", "+00:00"))
+                        days_in_status = (today - updated_d.date()).days
+                    except Exception:
+                        days_in_status = 0
+
+            # Rule 1: Practice expiring within 90 days
+            if days_to_expiry is not None and days_to_expiry < 90:
                 try:
                     await _call_safe(f"/api/crm/practices/{p_id}", method="PATCH", json={
                         "status": "renewal_needed", "notes": f"Auto-flagged: {days_to_expiry} days to expiry",
