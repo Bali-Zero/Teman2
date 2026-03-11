@@ -1002,13 +1002,14 @@ class PortalService:
         async with self.pool.acquire() as conn:
             companies = await conn.fetch(
                 """
-                SELECT cc.id, cc.role, cc.is_primary, cc.created_at,
-                       cp.id as company_id, cp.company_name, cp.entity_type,
-                       cp.industry, cp.annual_revenue
-                FROM client_companies cc
-                JOIN company_profiles cp ON cp.id = cc.company_id
-                WHERE cc.client_id = $1
-                ORDER BY cc.is_primary DESC, cc.created_at
+                SELECT ccl.id, ccl.role, ccl.is_primary, ccl.created_at,
+                       ccl.ownership_percentage, ccl.status as link_status,
+                       c.id as company_id, c.company_name, c.company_type,
+                       c.nib, c.npwp_company, c.kbli_code, c.status as company_status
+                FROM client_company_links ccl
+                JOIN companies c ON c.id = ccl.company_id
+                WHERE ccl.client_id = $1
+                ORDER BY ccl.is_primary DESC, ccl.created_at
                 """,
                 client_id,
             )
@@ -1018,10 +1019,15 @@ class PortalService:
                     "id": c["id"],
                     "company_id": c["company_id"],
                     "name": c["company_name"],
-                    "type": c["entity_type"],
-                    "industry": c["industry"],
+                    "type": c["company_type"],
                     "role": c["role"],
                     "is_primary": c["is_primary"],
+                    "ownership_pct": float(c["ownership_percentage"]) if c["ownership_percentage"] else None,
+                    "nib": c["nib"],
+                    "npwp": c["npwp_company"],
+                    "kbli": c["kbli_code"],
+                    "status": c["company_status"],
+                    "link_status": c["link_status"],
                 }
                 for c in companies
             ]
@@ -1032,9 +1038,9 @@ class PortalService:
             # Verify client owns this company
             ownership = await conn.fetchrow(
                 """
-                SELECT cc.role, cc.is_primary
-                FROM client_companies cc
-                WHERE cc.client_id = $1 AND cc.company_id = $2
+                SELECT ccl.role, ccl.is_primary, ccl.ownership_percentage
+                FROM client_company_links ccl
+                WHERE ccl.client_id = $1 AND ccl.company_id = $2
                 """,
                 client_id,
                 company_id,
@@ -1045,7 +1051,7 @@ class PortalService:
             # Get company profile
             company = await conn.fetchrow(
                 """
-                SELECT * FROM company_profiles WHERE id = $1
+                SELECT * FROM companies WHERE id = $1
                 """,
                 company_id,
             )
@@ -1100,11 +1106,15 @@ class PortalService:
             return {
                 "id": company["id"],
                 "name": company["company_name"],
-                "type": company["entity_type"],
-                "industry": company["industry"],
+                "type": company["company_type"],
+                "nib": company["nib"],
+                "npwp": company["npwp_company"],
+                "kbli": company["kbli_code"],
+                "status": company["status"],
                 "ownership": {
                     "role": ownership["role"],
                     "is_primary": ownership["is_primary"],
+                    "pct": float(ownership["ownership_percentage"]) if ownership["ownership_percentage"] else None,
                 },
                 "licenses": [
                     {
