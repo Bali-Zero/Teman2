@@ -8,6 +8,7 @@ Slack/Discord are secondary channels, enabled via webhook URLs.
 
 import asyncio
 import logging
+import time
 from collections import defaultdict
 from datetime import datetime
 from enum import Enum
@@ -64,6 +65,11 @@ class AlertService:
         self._latency_buffer: list[dict[str, Any]] = []
         self._digest_task: asyncio.Task | None = None
 
+        # Rate limiting: track last send time per (title, path) key
+        # Prevents same error from spamming Telegram on repeated failures
+        self._last_alert_time: dict[str, float] = {}
+        self._alert_cooldown_seconds: float = 300.0  # 5 min per error type
+
         logger.info("✅ AlertService initialized")
         logger.info(
             f"   Telegram: {'✅ enabled' if self.enable_telegram else '❌ disabled (need TELEGRAM_BOT_TOKEN + ADMIN_TELEGRAM_CHAT_ID)'}"
@@ -103,6 +109,17 @@ class AlertService:
             results["logging"] = True
         except Exception as e:
             logger.error(f"Failed to log alert: {e}")
+
+        # Rate limiting: deduplicate same alert within cooldown window
+        rate_key = f"{title}:{metadata.get('path', '') if metadata else ''}"
+        now = time.monotonic()
+        last_sent = self._last_alert_time.get(rate_key, 0.0)
+        if now - last_sent < self._alert_cooldown_seconds:
+            logger.debug(
+                f"[alert] Rate limited '{title}' — {int(self._alert_cooldown_seconds - (now - last_sent))}s remaining"
+            )
+            return results
+        self._last_alert_time[rate_key] = now
 
         # Send to Telegram (primary channel)
         if self.enable_telegram:
