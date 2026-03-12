@@ -204,6 +204,7 @@ class ServiceAccountDriveService:
         client_id: int,
         client_name: str,
         client_type: str = "individual",
+        db_pool: Any | None = None,
     ) -> dict[str, Any]:
         """
         Create standardized folder structure for a new client.
@@ -282,6 +283,32 @@ class ServiceAccountDriveService:
                 continue
 
         logger.info(f"✅ Created client folder structure for {client_name}: {root_folder_id}")
+
+        # Persist folder IDs to DB so DrivePollService can match files to clients
+        if db_pool:
+            try:
+                async with db_pool.acquire() as conn:
+                    # Save root folder ID on client record
+                    await conn.execute(
+                        "UPDATE clients SET google_drive_folder_id = $1 WHERE id = $2",
+                        root_folder_id,
+                        client_id,
+                    )
+                    # Save each top-level subfolder to client_drive_subfolders
+                    for subfolder_path, subfolder_data in subfolders.items():
+                        if "/" not in subfolder_path:  # top-level only
+                            await conn.execute(
+                                """INSERT INTO client_drive_subfolders
+                                   (client_id, subfolder_name, subfolder_id, created_at)
+                                   VALUES ($1, $2, $3, NOW())
+                                   ON CONFLICT DO NOTHING""",
+                                client_id,
+                                subfolder_path,
+                                subfolder_data["id"],
+                            )
+                logger.info(f"✅ Drive folder IDs persisted to DB for client {client_id}")
+            except Exception as e:
+                logger.error(f"Failed to persist drive folder IDs for client {client_id}: {e}")
 
         return {
             "success": True,
