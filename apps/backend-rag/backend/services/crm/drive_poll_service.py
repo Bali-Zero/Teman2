@@ -13,6 +13,8 @@ from typing import Any
 
 import asyncpg
 
+from backend.services.crm.document_categorizer import CATEGORY_TO_FOLDER, auto_categorize_document
+
 logger = logging.getLogger(__name__)
 
 
@@ -125,16 +127,19 @@ async def poll_drive_changes() -> dict[str, Any]:
                     f"Drive poll: new file '{file_name}' in {folder_name} for client {client_id}"
                 )
 
-                # Create document record
+                # Create document record with auto-categorization
+                cat_result = auto_categorize_document(file_name)
+                doc_category = cat_result["document_category"]
                 async with db_pool.acquire() as conn:
                     doc_id = await conn.fetchval(
                         """INSERT INTO documents (
-                            client_id, document_type, file_name, file_id,
+                            client_id, document_type, document_category, file_name, file_id,
                             status, storage_type, ocr_status
-                        ) VALUES ($1, $2, $3, $4, 'active', 'google_drive', 'pending')
+                        ) VALUES ($1, $2, $3, $4, $5, 'active', 'google_drive', 'pending')
                         RETURNING id""",
                         client_id,
                         _infer_document_type(file_name, folder_name),
+                        doc_category,
                         file_name,
                         file_id,
                     )
