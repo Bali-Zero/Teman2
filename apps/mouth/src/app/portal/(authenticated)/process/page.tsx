@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, memo } from "react";
+import { useEffect, useState, useCallback, useRef, memo } from "react";
 import {
   Loader2,
   FileText,
@@ -352,7 +352,10 @@ function ProcessCard({
 
 // Main Page Component
 export default function PortalProcessPage() {
-  const { success, error } = useToast();
+  const toast = useToast();
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
+
   const [profile, setProfile] = useState<{
     id: number;
     fullName: string;
@@ -364,7 +367,7 @@ export default function PortalProcessPage() {
     null,
   );
 
-  // Load profile and documents
+  // Load profile and documents — stable reference, no toast dependency in deps
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -377,12 +380,12 @@ export default function PortalProcessPage() {
       const docs = await api.crm.getClientRequiredDocuments(profileData.id);
       setDocuments(docs);
     } catch (err) {
-      error("Failed to load data", "Please try again later");
+      toastRef.current.error("Failed to load data", "Please try again later");
       logger.error("Failed to load process data", {}, err as Error);
     } finally {
       setIsLoading(false);
     }
-  }, [error]);
+  }, []); // stable — no deps that change every render
 
   useEffect(() => {
     loadData();
@@ -405,14 +408,14 @@ export default function PortalProcessPage() {
         notes,
       });
 
-      success(
+      toastRef.current.success(
         "Document uploaded",
         "Your document has been submitted for review",
       );
       setUploadDoc(null);
       await loadData(); // Refresh data
     } catch (err) {
-      error("Upload failed", "Please try again");
+      toastRef.current.error("Upload failed", "Please try again");
       logger.error("Failed to upload document", {}, err as Error);
     } finally {
       setIsUploading(false);
