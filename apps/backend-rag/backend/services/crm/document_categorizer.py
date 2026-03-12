@@ -28,6 +28,10 @@ FAMILY_MEMBER_KEYWORDS: list[str] = [
     "member", "anggota",
     "_fam_", "-fam-", "_fam.", " fam ",    # filename conventions
     "dependant", "dependent",
+    # Documents that are inherently family docs (always go to 04_Family)
+    "marriage", "pernikahan", "akta nikah", "nikah",
+    "birth", "kelahiran", "akta kelahiran",
+    "family card", "kartu keluarga",
 ]
 
 # Comprehensive keyword mapping for document categorization
@@ -154,10 +158,12 @@ def auto_categorize_document(filename: str) -> dict[str, Any]:
     if not filename:
         return _fallback_categorization()
 
+    # Normalize: lowercase + replace underscores/hyphens with spaces for keyword matching
     filename_lower = filename.lower()
+    filename_normalized = filename_lower.replace("_", " ").replace("-", " ")
 
     # Detect if the filename contains a family member keyword
-    is_family_doc = any(kw in filename_lower for kw in FAMILY_MEMBER_KEYWORDS)
+    is_family_doc = any(kw in filename_normalized for kw in FAMILY_MEMBER_KEYWORDS)
 
     # Try each category in priority order
     for category, doc_types in CATEGORIZATION_RULES.items():
@@ -166,11 +172,11 @@ def auto_categorize_document(filename: str) -> dict[str, Any]:
             continue
         for doc_type, keywords in doc_types.items():
             for keyword in keywords:
-                if keyword in filename_lower:
+                if keyword in filename_normalized:
                     return {
                         "document_type": _format_document_type(doc_type),
                         "document_category": category,
-                        "confidence": _calculate_confidence(filename_lower, keyword),
+                        "confidence": _calculate_confidence(filename_normalized, keyword),
                         "matched_keyword": keyword,
                     }
 
