@@ -22,6 +22,7 @@ from backend.app.core.config import settings
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.utils.crm_utils import extract_json_from_llm_response
 from backend.app.utils.json_utils import to_jsonb
+from backend.services.crm.document_categorizer import CATEGORY_TO_FOLDER, auto_categorize_document
 from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
 
 logger = logging.getLogger(__name__)
@@ -1839,23 +1840,10 @@ async def upload_document_base64(
         except Exception:
             raise HTTPException(status_code=400, detail="Invalid base64 file content")
 
-        # Determine category and folder name
-        dt = data.document_type.lower()
-        if dt in ("passport", "photo", "cv", "profile_document"):
-            category = "profile"
-            folder_name = "00_Profile"
-        elif "tax" in dt or dt in ("npwp_personal", "spt_personal", "spt_company", "lkpm"):
-            category = "tax"
-            folder_name = "03_Tax"
-        elif "company" in dt or dt in ("akta_pendirian", "sk_decree", "nib", "npwp", "company_profile"):
-            category = "company"
-            folder_name = "02_Company"
-        elif "family" in dt:
-            category = "family"
-            folder_name = "04_Family"
-        else:
-            category = "immigration"
-            folder_name = "01_Immigration"
+        # Determine category and folder name using filename-based categorization
+        cat_result = auto_categorize_document(data.file_name)
+        category = cat_result["document_category"]
+        folder_name = CATEGORY_TO_FOLDER.get(category, "99_Misc")
 
         async with pool.acquire() as conn:
             client = await conn.fetchrow(
