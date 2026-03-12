@@ -376,7 +376,13 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
             Actions taken: renewals created, reminders sent, escalations flagged.
         """
         log: list[dict] = []
-        stats = {"renewals_created": 0, "reminders_sent": 0, "escalations": 0}
+        stats = {
+            "renewals_created": 0,
+            "reminders_sent": 0,
+            "escalations": 0,
+            "expiring_soon": 0,       # practices with expiry_date within 90 days
+            "blocked": 0,             # practices past expected_completion_date and still open
+        }
 
         try:
             practices_resp = await _call_safe("/api/crm/practices", params={"status": "active", "limit": 200})
@@ -410,6 +416,22 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
                 except Exception:
                     pass
 
+            # Calculate days past expected_completion_date (DB backfilled via backfill_practice_dates.py)
+            days_past_expected = None
+            expected_raw = p.get("expected_completion_date")
+            if expected_raw and status not in ("completed", "archived", "cancelled"):
+                try:
+                    if isinstance(expected_raw, str):
+                        from datetime import datetime as _dt
+                        expected_d = _dt.strptime(expected_raw[:10], "%Y-%m-%d").date()
+                    else:
+                        expected_d = expected_raw
+                    overdue = (today - expected_d).days
+                    if overdue > 0:
+                        days_past_expected = overdue
+                except Exception:
+                    pass
+
             # Calculate days_in_status from updated_at if not provided
             if not days_in_status:
                 updated_raw = p.get("updated_at")
@@ -423,6 +445,7 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
 
             # Rule 1: Practice expiring within 90 days
             if days_to_expiry is not None and days_to_expiry < 90:
+                stats["expiring_soon"] += 1
                 try:
                     await _call_safe(f"/api/crm/practices/{p_id}", method="PATCH", json={
                         "status": "renewal_needed", "notes": f"Auto-flagged: {days_to_expiry} days to expiry",
@@ -436,6 +459,18 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
                     stats["renewals_created"] += 1
                 except Exception:
                     pass
+
+            # Rule 1b: Practice blocked — past expected_completion_date and still open
+            if days_past_expected is not None:
+                stats["blocked"] += 1
+                log.append({
+                    "step": "blocked_practice",
+                    "status": "warning",
+                    "practice_id": p_id,
+                    "type": p_type,
+                    "days_overdue": days_past_expected,
+                    "current_status": status,
+                })
 
             # Rule 2: Waiting documents > 7 days
             elif status == "waiting_documents" and days_in_status > 7:
@@ -466,7 +501,11 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
         log.append({"step": "lifecycle_check", "status": "ok", "practices_checked": len(practices)})
         res = {"chain": "practice_lifecycle", "stats": stats, "log": log}
         await _reflect_and_save(_call_safe, "practice_lifecycle",
-            f"Checked={len(practices)}, renewals={stats.get('renewals_created',0)}, reminders={stats.get('reminders_sent',0)}",
+            (
+                f"Checked={len(practices)}, expiring_soon={stats.get('expiring_soon', 0)}, "
+                f"blocked={stats.get('blocked', 0)}, renewals={stats.get('renewals_created', 0)}, "
+                f"reminders={stats.get('reminders_sent', 0)}, escalations={stats.get('escalations', 0)}"
+            ),
             "success", log)
         return res
 
