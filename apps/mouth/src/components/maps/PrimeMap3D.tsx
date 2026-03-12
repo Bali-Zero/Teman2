@@ -768,347 +768,349 @@ export default function PrimeMap3D() {
 
         {/* Scrollable content */}
         {sidebarTab === "data" && (
-        <div className="flex-1 overflow-y-auto overflow-x-hidden">
-          {/* Loading state */}
-          {isAnalyzing && (
-            <div className="flex items-center gap-3 px-4 py-4 text-[#d4845a]">
-              <svg
-                className="animate-spin h-4 w-4 flex-shrink-0"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                  fill="none"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
-              <span className="text-sm">Analyzing zoning laws…</span>
-            </div>
-          )}
-
-          {/* Idle state */}
-          {!isAnalyzing && !zoningResult && (
-            <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-4 backdrop-blur-sm">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden">
+            {/* Loading state */}
+            {isAnalyzing && (
+              <div className="flex items-center gap-3 px-4 py-4 text-[#d4845a]">
                 <svg
-                  className="w-5 h-5 text-slate-500"
-                  fill="none"
+                  className="animate-spin h-4 w-4 flex-shrink-0"
                   viewBox="0 0 24 24"
-                  stroke="currentColor"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    fill="none"
                   />
                   <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                   />
                 </svg>
+                <span className="text-sm">Analyzing zoning laws…</span>
               </div>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Tap any spot on the map
-                <br />
-                to see what you can build there
-              </p>
-            </div>
-          )}
+            )}
 
-          {/* Results */}
-          {zoningResult && !isAnalyzing && (
-            <>
-              {zoningResult.status === "found" ? (
-                <div>
-                  {/* ── Location ── */}
-                  <AccordionSection
-                    id="location"
-                    icon={IconPin}
-                    title="Location"
-                    defaultOpen
-                    hasContent
+            {/* Idle state */}
+            {!isAnalyzing && !zoningResult && (
+              <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+                <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-4 backdrop-blur-sm">
+                  <svg
+                    className="w-5 h-5 text-slate-500"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
                   >
-                    <div className="rounded-xl bg-white/5 border border-white/8 p-3 backdrop-blur-sm space-y-1">
-                      {streetAddress && (
-                        <div className="text-sm font-semibold text-white">
-                          {streetAddress}
-                        </div>
-                      )}
-                      <div
-                        className={`text-xs text-slate-400 ${streetAddress ? "" : "text-sm text-white font-medium"}`}
-                      >
-                        {zoningResult.subdistrict
-                          ? `${zoningResult.subdistrict}, ${zoningResult.district}`
-                          : zoningResult.district}
-                      </div>
-                      {selectedPoint && (
-                        <div className="text-[10px] text-slate-600 font-mono mt-1">
-                          {selectedPoint.lat.toFixed(6)},{" "}
-                          {selectedPoint.lng.toFixed(6)}
-                        </div>
-                      )}
-                    </div>
-                  </AccordionSection>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                  </svg>
+                </div>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Tap any spot on the map
+                  <br />
+                  to see what you can build there
+                </p>
+              </div>
+            )}
 
-                  {/* ── Zone ── */}
-                  <AccordionSection
-                    id="zone"
-                    icon={IconLayers}
-                    title="Zone"
-                    defaultOpen
-                    hasContent
-                  >
-                    <div
-                      className="rounded-xl p-3 border backdrop-blur-sm"
-                      style={{
-                        backgroundColor: `${zoneColor}14`,
-                        borderColor: `${zoneColor}35`,
-                      }}
+            {/* Results */}
+            {zoningResult && !isAnalyzing && (
+              <>
+                {zoningResult.status === "found" ? (
+                  <div>
+                    {/* ── Location ── */}
+                    <AccordionSection
+                      id="location"
+                      icon={IconPin}
+                      title="Location"
+                      defaultOpen
+                      hasContent
                     >
-                      <div className="flex items-start gap-2 mb-1.5">
-                        <div className="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
-                          <span
-                            className="w-2.5 h-2.5 rounded-full"
-                            style={{ backgroundColor: zoneColor }}
-                          />
-                          <span
-                            className="font-mono font-bold text-sm"
-                            style={{ color: zoneColor }}
-                          >
-                            {zoningResult.zone_code}
-                          </span>
-                        </div>
-                        <span className="text-white font-semibold text-sm leading-snug">
-                          {zoningResult.zone_label_en}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-slate-500 ml-4 mb-1">
-                        {zoningResult.zone_name}
-                      </div>
-                      {zoningResult.zone_description_en && (
-                        <div className="text-xs text-slate-400 ml-4 leading-relaxed">
-                          {zoningResult.zone_description_en}
-                        </div>
-                      )}
-                      <div className="ml-4 mt-2">
-                        <span
-                          className={`text-xs px-1.5 py-0.5 rounded font-medium ${isHighRisk ? "bg-red-500/20 text-red-300" : "bg-emerald-500/20 text-emerald-300"}`}
-                        >
-                          {isHighRisk
-                            ? "⚠ High regulatory risk"
-                            : "✓ Normal regulatory risk"}
-                        </span>
-                      </div>
-                    </div>
-                  </AccordionSection>
-
-                  {/* ── What you can open ── */}
-                  <AccordionSection
-                    id="businesses"
-                    icon={IconBuilding}
-                    title="What you can open"
-                    defaultOpen
-                    hasContent={hasBusinesses || !!zoningResult.is_restricted}
-                  >
-                    {zoningResult.is_restricted ? (
-                      <div className="rounded-xl bg-red-900/20 border border-red-500/20 p-3 backdrop-blur-sm">
-                        <div className="text-xs text-red-400 font-semibold mb-1">
-                          ⛔ Protected Zone — No Commercial Activity
-                        </div>
-                        <div className="text-xs text-slate-400 leading-relaxed">
-                          This area is legally protected. No construction or
-                          commercial activity is permitted.
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-1.5">
-                        {zoningResult.businesses?.map((biz, idx) => (
-                          <div
-                            key={biz.code ?? `${biz.title_en}-${idx}`}
-                            className="flex items-center gap-2 rounded-lg bg-white/5 border border-white/8 px-3 py-2 backdrop-blur-sm hover:bg-white/8 transition-colors"
-                          >
-                            <span
-                              className={`text-xs px-1.5 py-0.5 rounded border flex-shrink-0 ${CATEGORY_COLORS[biz.category_en] ?? CATEGORY_COLORS["Services"]}`}
-                            >
-                              {biz.category_en}
-                            </span>
-                            <span className="text-xs text-white truncate">
-                              {biz.title_en}
-                            </span>
+                      <div className="rounded-xl bg-white/5 border border-white/8 p-3 backdrop-blur-sm space-y-1">
+                        {streetAddress && (
+                          <div className="text-sm font-semibold text-white">
+                            {streetAddress}
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </AccordionSection>
-
-                  {/* ── Development Limits ── */}
-                  <AccordionSection
-                    id="building"
-                    icon={IconRuler}
-                    title="Development Limits"
-                    hasContent={hasBuildingCodes}
-                  >
-                    {zoningResult.building_codes && (
-                      <div className="space-y-2">
-                        <div className="grid grid-cols-3 gap-1.5">
-                          {[
-                            {
-                              val: `${zoningResult.building_codes.kdb_pct}%`,
-                              label: "Coverage",
-                            },
-                            {
-                              val: zoningResult.building_codes.height_limit.replace(
-                                " Meter",
-                                "m",
-                              ),
-                              label: "Max Height",
-                            },
-                            {
-                              val: `${zoningResult.building_codes.kdh_pct}%`,
-                              label: "Green Area",
-                            },
-                          ].map(({ val, label }) => (
-                            <div
-                              key={label}
-                              className="rounded-lg bg-white/5 border border-white/8 p-2 text-center backdrop-blur-sm"
-                            >
-                              <div className="text-white font-semibold text-sm">
-                                {val}
-                              </div>
-                              <div className="text-slate-500 text-[10px] mt-0.5">
-                                {label}
-                              </div>
-                            </div>
-                          ))}
+                        )}
+                        <div
+                          className={`text-xs text-slate-400 ${streetAddress ? "" : "text-sm text-white font-medium"}`}
+                        >
+                          {zoningResult.subdistrict
+                            ? `${zoningResult.subdistrict}, ${zoningResult.district}`
+                            : zoningResult.district}
                         </div>
-                        {zoningResult.building_codes.notes && (
-                          <div className="text-[10px] text-slate-600 leading-relaxed">
-                            {zoningResult.building_codes.notes}
+                        {selectedPoint && (
+                          <div className="text-[10px] text-slate-600 font-mono mt-1">
+                            {selectedPoint.lat.toFixed(6)},{" "}
+                            {selectedPoint.lng.toFixed(6)}
                           </div>
                         )}
                       </div>
-                    )}
-                  </AccordionSection>
+                    </AccordionSection>
 
-                  {/* ── Overlays & Risks ── */}
-                  <AccordionSection
-                    id="overlays"
-                    icon={IconAlert}
-                    title="Overlays & Risks"
-                    hasContent={!!hasOverlays}
-                  >
-                    <div className="space-y-1.5">
-                      {zoningResult.overlays?.kkop && (
-                        <div className="text-xs rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 px-3 py-2 backdrop-blur-sm">
-                          ✈ KKOP Aviation Zone — height restrictions apply
-                        </div>
-                      )}
-                      {zoningResult.overlays?.lp2b && (
-                        <div className="text-xs rounded-xl bg-green-500/10 border border-green-500/20 text-green-300 px-3 py-2 backdrop-blur-sm">
-                          🌾 Protected Farmland (LP2B) — conversion restricted
-                        </div>
-                      )}
-                      {zoningResult.overlays?.tsunami && (
-                        <div className="text-xs rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 px-3 py-2 backdrop-blur-sm">
-                          🌊 Tsunami Risk Zone — {zoningResult.overlays.tsunami}
-                        </div>
-                      )}
-                      {zoningResult.overlays?.heritage && (
-                        <div className="text-xs rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-300 px-3 py-2 backdrop-blur-sm">
-                          🏛 Heritage Area — {zoningResult.overlays.heritage}
-                        </div>
-                      )}
-                    </div>
-                  </AccordionSection>
-
-                  {/* ── Land Price ── */}
-                  <AccordionSection
-                    id="price"
-                    icon={IconTrend}
-                    title="Land Price"
-                    hasContent={hasPrice}
-                  >
-                    <div className="rounded-xl bg-white/5 border border-white/8 px-4 py-3 backdrop-blur-sm">
-                      <div className="text-xl font-bold text-white">
-                        {formatPrice(zoningResult.avg_price_per_are!)}
-                      </div>
-                      <div className="text-xs text-slate-500 mt-0.5">
-                        Estimated market rate — {zoningResult.subdistrict}
-                      </div>
-                    </div>
-                  </AccordionSection>
-
-                  {/* ── Latest Intel ── */}
-                  <AccordionSection
-                    id="intel"
-                    icon={IconNews}
-                    title="Latest Intel"
-                    hasContent={hasIntel}
-                  >
-                    <div className="space-y-1.5">
-                      {zoningResult.intel_articles?.map((article, idx) => (
-                        <a
-                          key={idx}
-                          href={article.source_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-start gap-2 rounded-xl bg-white/5 border border-white/8 px-3 py-2 backdrop-blur-sm hover:bg-white/10 hover:border-white/15 transition-colors group"
-                        >
-                          <span className="text-slate-500 text-[10px] mt-0.5 flex-shrink-0">
-                            ↗
-                          </span>
-                          <div className="min-w-0">
-                            <div className="text-xs text-slate-300 group-hover:text-white transition-colors line-clamp-2 leading-snug">
-                              {article.title}
-                            </div>
-                            {article.source_name && (
-                              <div className="text-[10px] text-slate-600 mt-0.5">
-                                {article.source_name}
-                              </div>
-                            )}
+                    {/* ── Zone ── */}
+                    <AccordionSection
+                      id="zone"
+                      icon={IconLayers}
+                      title="Zone"
+                      defaultOpen
+                      hasContent
+                    >
+                      <div
+                        className="rounded-xl p-3 border backdrop-blur-sm"
+                        style={{
+                          backgroundColor: `${zoneColor}14`,
+                          borderColor: `${zoneColor}35`,
+                        }}
+                      >
+                        <div className="flex items-start gap-2 mb-1.5">
+                          <div className="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
+                            <span
+                              className="w-2.5 h-2.5 rounded-full"
+                              style={{ backgroundColor: zoneColor }}
+                            />
+                            <span
+                              className="font-mono font-bold text-sm"
+                              style={{ color: zoneColor }}
+                            >
+                              {zoningResult.zone_code}
+                            </span>
                           </div>
-                        </a>
-                      ))}
-                    </div>
-                  </AccordionSection>
+                          <span className="text-white font-semibold text-sm leading-snug">
+                            {zoningResult.zone_label_en}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 ml-4 mb-1">
+                          {zoningResult.zone_name}
+                        </div>
+                        {zoningResult.zone_description_en && (
+                          <div className="text-xs text-slate-400 ml-4 leading-relaxed">
+                            {zoningResult.zone_description_en}
+                          </div>
+                        )}
+                        <div className="ml-4 mt-2">
+                          <span
+                            className={`text-xs px-1.5 py-0.5 rounded font-medium ${isHighRisk ? "bg-red-500/20 text-red-300" : "bg-emerald-500/20 text-emerald-300"}`}
+                          >
+                            {isHighRisk
+                              ? "⚠ High regulatory risk"
+                              : "✓ Normal regulatory risk"}
+                          </span>
+                        </div>
+                      </div>
+                    </AccordionSection>
 
-                  {/* Source */}
-                  <div className="px-4 py-2 text-[10px] text-slate-700">
-                    Source: {zoningResult.source}
+                    {/* ── What you can open ── */}
+                    <AccordionSection
+                      id="businesses"
+                      icon={IconBuilding}
+                      title="What you can open"
+                      defaultOpen
+                      hasContent={hasBusinesses || !!zoningResult.is_restricted}
+                    >
+                      {zoningResult.is_restricted ? (
+                        <div className="rounded-xl bg-red-900/20 border border-red-500/20 p-3 backdrop-blur-sm">
+                          <div className="text-xs text-red-400 font-semibold mb-1">
+                            ⛔ Protected Zone — No Commercial Activity
+                          </div>
+                          <div className="text-xs text-slate-400 leading-relaxed">
+                            This area is legally protected. No construction or
+                            commercial activity is permitted.
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {zoningResult.businesses?.map((biz, idx) => (
+                            <div
+                              key={biz.code ?? `${biz.title_en}-${idx}`}
+                              className="flex items-center gap-2 rounded-lg bg-white/5 border border-white/8 px-3 py-2 backdrop-blur-sm hover:bg-white/8 transition-colors"
+                            >
+                              <span
+                                className={`text-xs px-1.5 py-0.5 rounded border flex-shrink-0 ${CATEGORY_COLORS[biz.category_en] ?? CATEGORY_COLORS["Services"]}`}
+                              >
+                                {biz.category_en}
+                              </span>
+                              <span className="text-xs text-white truncate">
+                                {biz.title_en}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </AccordionSection>
+
+                    {/* ── Development Limits ── */}
+                    <AccordionSection
+                      id="building"
+                      icon={IconRuler}
+                      title="Development Limits"
+                      hasContent={hasBuildingCodes}
+                    >
+                      {zoningResult.building_codes && (
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {[
+                              {
+                                val: `${zoningResult.building_codes.kdb_pct}%`,
+                                label: "Coverage",
+                              },
+                              {
+                                val: zoningResult.building_codes.height_limit.replace(
+                                  " Meter",
+                                  "m",
+                                ),
+                                label: "Max Height",
+                              },
+                              {
+                                val: `${zoningResult.building_codes.kdh_pct}%`,
+                                label: "Green Area",
+                              },
+                            ].map(({ val, label }) => (
+                              <div
+                                key={label}
+                                className="rounded-lg bg-white/5 border border-white/8 p-2 text-center backdrop-blur-sm"
+                              >
+                                <div className="text-white font-semibold text-sm">
+                                  {val}
+                                </div>
+                                <div className="text-slate-500 text-[10px] mt-0.5">
+                                  {label}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          {zoningResult.building_codes.notes && (
+                            <div className="text-[10px] text-slate-600 leading-relaxed">
+                              {zoningResult.building_codes.notes}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </AccordionSection>
+
+                    {/* ── Overlays & Risks ── */}
+                    <AccordionSection
+                      id="overlays"
+                      icon={IconAlert}
+                      title="Overlays & Risks"
+                      hasContent={!!hasOverlays}
+                    >
+                      <div className="space-y-1.5">
+                        {zoningResult.overlays?.kkop && (
+                          <div className="text-xs rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 px-3 py-2 backdrop-blur-sm">
+                            ✈ KKOP Aviation Zone — height restrictions apply
+                          </div>
+                        )}
+                        {zoningResult.overlays?.lp2b && (
+                          <div className="text-xs rounded-xl bg-green-500/10 border border-green-500/20 text-green-300 px-3 py-2 backdrop-blur-sm">
+                            🌾 Protected Farmland (LP2B) — conversion restricted
+                          </div>
+                        )}
+                        {zoningResult.overlays?.tsunami && (
+                          <div className="text-xs rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 px-3 py-2 backdrop-blur-sm">
+                            🌊 Tsunami Risk Zone —{" "}
+                            {zoningResult.overlays.tsunami}
+                          </div>
+                        )}
+                        {zoningResult.overlays?.heritage && (
+                          <div className="text-xs rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-300 px-3 py-2 backdrop-blur-sm">
+                            🏛 Heritage Area — {zoningResult.overlays.heritage}
+                          </div>
+                        )}
+                      </div>
+                    </AccordionSection>
+
+                    {/* ── Land Price ── */}
+                    <AccordionSection
+                      id="price"
+                      icon={IconTrend}
+                      title="Land Price"
+                      hasContent={hasPrice}
+                    >
+                      <div className="rounded-xl bg-white/5 border border-white/8 px-4 py-3 backdrop-blur-sm">
+                        <div className="text-xl font-bold text-white">
+                          {formatPrice(zoningResult.avg_price_per_are!)}
+                        </div>
+                        <div className="text-xs text-slate-500 mt-0.5">
+                          Estimated market rate — {zoningResult.subdistrict}
+                        </div>
+                      </div>
+                    </AccordionSection>
+
+                    {/* ── Latest Intel ── */}
+                    <AccordionSection
+                      id="intel"
+                      icon={IconNews}
+                      title="Latest Intel"
+                      hasContent={hasIntel}
+                    >
+                      <div className="space-y-1.5">
+                        {zoningResult.intel_articles?.map((article, idx) => (
+                          <a
+                            key={idx}
+                            href={article.source_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-start gap-2 rounded-xl bg-white/5 border border-white/8 px-3 py-2 backdrop-blur-sm hover:bg-white/10 hover:border-white/15 transition-colors group"
+                          >
+                            <span className="text-slate-500 text-[10px] mt-0.5 flex-shrink-0">
+                              ↗
+                            </span>
+                            <div className="min-w-0">
+                              <div className="text-xs text-slate-300 group-hover:text-white transition-colors line-clamp-2 leading-snug">
+                                {article.title}
+                              </div>
+                              {article.source_name && (
+                                <div className="text-[10px] text-slate-600 mt-0.5">
+                                  {article.source_name}
+                                </div>
+                              )}
+                            </div>
+                          </a>
+                        ))}
+                      </div>
+                    </AccordionSection>
+
+                    {/* Source */}
+                    <div className="px-4 py-2 text-[10px] text-slate-700">
+                      Source: {zoningResult.source}
+                    </div>
                   </div>
-                </div>
-              ) : zoningResult.status === "outside_coverage" ? (
-                <div className="mx-4 my-4 rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 backdrop-blur-sm">
-                  <div className="text-xs text-amber-400 font-semibold mb-1">
-                    Outside coverage area
+                ) : zoningResult.status === "outside_coverage" ? (
+                  <div className="mx-4 my-4 rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 backdrop-blur-sm">
+                    <div className="text-xs text-amber-400 font-semibold mb-1">
+                      Outside coverage area
+                    </div>
+                    <div className="text-xs text-slate-400 leading-relaxed">
+                      GISTARU data covers Kabupaten Badung only (Kuta, Seminyak,
+                      Canggu, Jimbaran, Uluwatu).
+                    </div>
                   </div>
-                  <div className="text-xs text-slate-400 leading-relaxed">
-                    GISTARU data covers Kabupaten Badung only (Kuta, Seminyak,
-                    Canggu, Jimbaran, Uluwatu).
+                ) : (
+                  <div className="mx-4 my-4 rounded-xl bg-red-900/20 border border-red-500/20 px-4 py-3 backdrop-blur-sm">
+                    <div className="text-xs text-red-400">
+                      {zoningResult.message ??
+                        "Lookup failed. Please try again."}
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="mx-4 my-4 rounded-xl bg-red-900/20 border border-red-500/20 px-4 py-3 backdrop-blur-sm">
-                  <div className="text-xs text-red-400">
-                    {zoningResult.message ?? "Lookup failed. Please try again."}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
+                )}
+              </>
+            )}
+          </div>
         )}
 
         {/* CHAT TAB */}
@@ -1156,7 +1158,30 @@ export default function PrimeMap3D() {
               type="text"
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
-              placeholder="Search location in Bali…"
+              onKeyDown={(e) => {
+                if (e.key !== "Enter") return;
+                const val = searchValue.trim();
+                // Match: -8.644590, 115.148143 or -8.644590 115.148143
+                const match = val.match(
+                  /^(-?\d+(?:\.\d+)?)[,\s]+(-?\d+(?:\.\d+)?)$/,
+                );
+                if (!match) return;
+                const lat = parseFloat(match[1]);
+                const lng = parseFloat(match[2]);
+                if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return;
+                const newPos = { lat, lng, altitude: 0 };
+                setSelectedPoint(newPos);
+                analyzeLocation(newPos);
+                setMap3DElement((currentMap: any) => {
+                  if (currentMap) {
+                    currentMap.center = { lat, lng, altitude: 300 };
+                    currentMap.tilt = 65;
+                    currentMap.range = 1200;
+                  }
+                  return currentMap;
+                });
+              }}
+              placeholder="Search location or -8.644, 115.148…"
               className="w-full pl-9 pr-4 py-2.5 bg-black/85 backdrop-blur-xl text-white placeholder-slate-500 rounded-xl border border-white/15 shadow-2xl focus:outline-none focus:border-[#d4845a]/60 text-sm"
             />
           </div>
