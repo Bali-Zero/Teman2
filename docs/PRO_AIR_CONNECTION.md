@@ -1,6 +1,6 @@
 # Pro <-> Air Connection Guide
 
-**Last Updated:** 2026-03-01
+**Last Updated:** 2026-03-13
 
 ## Machines
 
@@ -112,6 +112,35 @@ Copy your public key to the other machine:
 ssh-copy-id -i ~/.ssh/id_ed25519.pub air   # from Pro
 ssh-copy-id -i ~/.ssh/id_ed25519.pub pro   # from Air
 ```
+
+## nz-connect — One-Command Sync
+
+`nz-connect` is a bilateral sync script that works from either machine. It detects which machine it's running on, checks SSH to the peer, and synchronizes git repos automatically.
+
+```bash
+# From either machine — just run:
+nz-connect
+```
+
+**What it does:**
+
+1. Identifies Pro or Air automatically
+2. Verifies SSH peer is reachable (mDNS)
+3. Compares local, peer, and origin commit hashes
+4. Pushes/pulls as needed (with auto-stash if dirty)
+5. Auto-resolves data file conflicts (`bali-intel-scraper/data/`, `published_articles.json`) using `--theirs`
+6. Reports final sync status with colors
+
+**Setup:** The alias is in both `.zshrc` files, pointing to `scripts/nz-connect.sh` in the repo.
+
+| Machine | Repo path                                    | Alias        |
+| ------- | -------------------------------------------- | ------------ |
+| Pro     | `~/Desktop/nuzantara/scripts/nz-connect.sh`  | `nz-connect` |
+| Air     | `~/Projects/nuzantara/scripts/nz-connect.sh` | `nz-connect` |
+
+**Backward compat:** `nz-sync` on Air maps to `nz-connect`.
+
+> **Important:** All SSH aliases now use mDNS hostnames from `~/.ssh/config` (`ssh pro`, `ssh air`). No hardcoded IPs. If DHCP changes the IP, everything still works.
 
 ## Syncthing
 
