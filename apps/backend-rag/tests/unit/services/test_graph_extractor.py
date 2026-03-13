@@ -12,13 +12,10 @@ Tests cover:
 - Various entity and relationship structures
 """
 
-import sys
 from pathlib import Path
 
 # Add backend to path
 backend_path = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(backend_path))
-
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 

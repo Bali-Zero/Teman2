@@ -8,7 +8,6 @@ Tests all endpoints in backend/app/routers/ingest.py:
 - GET /api/ingest/stats
 """
 
-import sys
 from io import BytesIO
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, mock_open, patch
@@ -16,12 +15,6 @@ from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
-# Ensure backend is in path
-backend_path = Path(__file__).parent.parent.parent.parent
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
-
 
 # ============================================================================
 # FIXTURES

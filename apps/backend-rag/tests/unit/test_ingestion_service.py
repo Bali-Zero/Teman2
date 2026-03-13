@@ -3,16 +3,10 @@ Unit tests for Ingestion Service
 100% coverage target with comprehensive mocking
 """
 
-import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-# Ensure backend is in path
-backend_path = Path(__file__).parent.parent.parent
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
 
 from backend.app.models import TierLevel
 from backend.services.ingestion.ingestion_service import IngestionService

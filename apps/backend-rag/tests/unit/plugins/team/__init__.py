@@ -1,1 +1,0 @@
-"""Team plugins unit tests"""

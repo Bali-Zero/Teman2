@@ -3,11 +3,6 @@ import types
 from pathlib import Path
 
 # Add backend to path
-backend_root = Path(__file__).parents[3] / "backend"
-if str(backend_root) not in sys.path:
-    sys.path.insert(0, str(backend_root))
-
-
 def test_llm_getattr_lazy_imports(monkeypatch):
     # Setup dummy modules
     prompt_module = types.ModuleType("backend.llm.prompt_manager")

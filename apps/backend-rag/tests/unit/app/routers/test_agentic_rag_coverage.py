@@ -6,7 +6,6 @@ Tests the main streaming RAG endpoint that powers Zantara chat.
 import json
 
 # Import router
-import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -16,9 +15,6 @@ from fastapi.testclient import TestClient
 
 # Add backend to path
 backend_path = Path(__file__).resolve().parents[4]
-sys.path.insert(0, str(backend_path))
-
-
 @pytest.fixture
 def mock_orchestrator():
     """Mock AgenticRAGOrchestrator"""

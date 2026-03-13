@@ -3,17 +3,11 @@ Unit tests for FastAPI dependency injection
 Target: 90%+ coverage
 """
 
-import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException, Request
-
-# Ensure backend is in path
-backend_root = Path(__file__).parents[2]
-if str(backend_root) not in sys.path:
-    sys.path.insert(0, str(backend_root))
 
 from backend.app.dependencies import (
     get_ai_client,

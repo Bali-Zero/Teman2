@@ -5,13 +5,9 @@ Tests all public methods with success, failure, and edge cases.
 Target: 90%+ coverage
 """
 
-import sys
 from pathlib import Path
 
 # Add backend to path
-backend_path = Path(__file__).parent.parent.parent.parent
-sys.path.insert(0, str(backend_path))
-
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 

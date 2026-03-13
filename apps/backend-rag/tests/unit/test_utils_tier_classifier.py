@@ -3,13 +3,7 @@ Unit tests for Tier Classifier
 Target: 100% coverage for backend/utils/tier_classifier.py
 """
 
-import sys
 from pathlib import Path
-
-# Ensure backend is in path
-backend_path = Path(__file__).parent.parent.parent
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
 
 from backend.app.models import TierLevel
 from backend.utils.tier_classifier import TierClassifier, classify_book_tier

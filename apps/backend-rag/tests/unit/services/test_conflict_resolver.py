@@ -11,7 +11,6 @@ Tests cover:
 """
 
 import os
-import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -19,9 +18,6 @@ from pathlib import Path
 os.environ.setdefault("JWT_SECRET_KEY", "test_jwt_secret_key_for_testing_only_min_32_chars")
 
 # Setup paths
-backend_path = Path(__file__).parent.parent.parent.parent
-sys.path.insert(0, str(backend_path))
-
 import pytest
 
 from backend.services.routing.conflict_resolver import ConflictResolver

@@ -5,17 +5,11 @@ UPDATED: Router now uses SearchService (canonical retriever) instead of Knowledg
 Tests updated to reflect this change.
 """
 
-import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException, Request
-
-# Ensure backend is in path
-backend_path = Path(__file__).parent.parent.parent
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
 
 from backend.app.models import SearchQuery, TierLevel
 from backend.app.modules.knowledge.router import get_search_service, search_health, semantic_search

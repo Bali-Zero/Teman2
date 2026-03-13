@@ -13,16 +13,12 @@ The orchestrator module doesn't import SearchService directly.
 Skipped until patch paths are corrected.
 """
 
-import sys
 from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 
 # Add backend to path
-backend_path = Path(__file__).parent.parent.parent.parent.parent.parent
-sys.path.insert(0, str(backend_path))
-
 from backend.app.core.error_classification import ErrorClassifier
 from backend.services.rag.agentic.orchestrator import StreamEvent
 
