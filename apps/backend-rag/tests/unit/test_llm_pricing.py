@@ -123,14 +123,16 @@ class TestCalculateCost:
         expected = 0.075 + 0.30
         assert cost == pytest.approx(expected, rel=1e-6)
 
-    def test_calculate_cost_gemini_preview_free(self):
-        """Test that Gemini 3 Flash Preview is free."""
+    def test_calculate_cost_gemini_preview(self):
+        """Test cost calculation for Gemini 3 Flash Preview."""
         cost = calculate_cost(
             prompt_tokens=1_000_000,
             completion_tokens=1_000_000,
             model="gemini-3-flash-preview",
         )
-        assert cost == 0.0
+        # Pricing: input=$0.50/1M, output=$3.00/1M
+        expected = 0.50 + 3.00
+        assert cost == pytest.approx(expected, rel=1e-6)
 
     def test_calculate_cost_openai_gpt4o_mini(self):
         """Test cost calculation for GPT-4o-mini."""
