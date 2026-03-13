@@ -13,7 +13,7 @@ from typing import Any
 
 import asyncpg
 
-from backend.services.crm.document_categorizer import CATEGORY_TO_FOLDER, auto_categorize_document
+from backend.services.crm.document_categorizer import auto_categorize_document
 
 logger = logging.getLogger(__name__)
 

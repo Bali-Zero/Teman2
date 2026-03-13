@@ -1022,7 +1022,9 @@ class PortalService:
                     "type": c["company_type"],
                     "role": c["role"],
                     "is_primary": c["is_primary"],
-                    "ownership_pct": float(c["ownership_percentage"]) if c["ownership_percentage"] else None,
+                    "ownership_pct": float(c["ownership_percentage"])
+                    if c["ownership_percentage"]
+                    else None,
                     "nib": c["nib"],
                     "npwp": c["npwp_company"],
                     "kbli": c["kbli_code"],
@@ -1126,7 +1128,9 @@ class PortalService:
                 "ownership": {
                     "role": ownership["role"],
                     "is_primary": ownership["is_primary"],
-                    "pct": float(ownership["ownership_percentage"]) if ownership["ownership_percentage"] else None,
+                    "pct": float(ownership["ownership_percentage"])
+                    if ownership["ownership_percentage"]
+                    else None,
                 },
                 "licenses": [
                     {
@@ -1156,7 +1160,9 @@ class PortalService:
                 "shareholders": [
                     {
                         "name": d["full_name"],
-                        "pct": float(d["ownership_percentage"]) if d["ownership_percentage"] else None,
+                        "pct": float(d["ownership_percentage"])
+                        if d["ownership_percentage"]
+                        else None,
                     }
                     for d in directors
                 ],

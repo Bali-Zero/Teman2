@@ -1077,14 +1077,18 @@ async def chat_kbli(
             if qdrant_payload:
                 direct_kbli_match = KBLISearchResult(
                     code=code,
-                    title=_payload_value(qdrant_payload, "judul", "title_id", default=f"KBLI {code}"),
+                    title=_payload_value(
+                        qdrant_payload, "judul", "title_id", default=f"KBLI {code}"
+                    ),
                     description=(
                         _payload_value(qdrant_payload, "content", "text", "description", default="")
                         or ""
                     )[:200]
                     + "...",
                     score=1.0,
-                    pma_status=_payload_value(qdrant_payload, "pma_status", default="Verify at OSS"),
+                    pma_status=_payload_value(
+                        qdrant_payload, "pma_status", default="Verify at OSS"
+                    ),
                     risk_category=_payload_value(
                         qdrant_payload, "kategori_risiko", default="Verify at OSS"
                     ),
@@ -1291,15 +1295,12 @@ async def chat_kbli(
                         code=code,
                         title=_payload_value(p, "judul", "title_id", default="N/A"),
                         description=(
-                            _payload_value(p, "content", "text", "description", default="")
-                            or ""
+                            _payload_value(p, "content", "text", "description", default="") or ""
                         )[:200]
                         + "...",
                         score=round(r.get("score", 0.0), 4),
                         pma_status=_payload_value(p, "pma_status", default="Verify at OSS"),
-                        risk_category=_payload_value(
-                            p, "kategori_risiko", default="Verify at OSS"
-                        ),
+                        risk_category=_payload_value(p, "kategori_risiko", default="Verify at OSS"),
                     )
                 )
                 if len(results) >= 5:

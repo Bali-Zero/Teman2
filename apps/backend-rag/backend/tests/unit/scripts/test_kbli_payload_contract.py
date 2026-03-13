@@ -36,7 +36,11 @@ def test_gold_kbli_payload_is_flat() -> None:
     payload = build_gold_payload(
         "56210",
         {"whatItMeans": "Katering untuk acara", "tka_positions": []},
-        {"judul": "Aktivitas Jasa Boga untuk Acara Tertentu", "sektor_id": "I", "pma_status": "TERBUKA"},
+        {
+            "judul": "Aktivitas Jasa Boga untuk Acara Tertentu",
+            "sektor_id": "I",
+            "pma_status": "TERBUKA",
+        },
         embedding_text="KBLI 56210 Katering",
     )
 
