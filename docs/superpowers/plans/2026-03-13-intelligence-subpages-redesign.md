@@ -922,6 +922,7 @@ style={{
 - **Replace:** `min-h-screen bg-[#111111]` outer wrapper with `<div className="flex flex-col lg:flex-row gap-5 min-h-0">` split panel.
 - **Edit logic:** single global `isEditing` state — `startEditing()` (no args), `saveEdits()`, `cancelEditing()`.
 - **Token replacements:** `#181818` → `rgba(255,255,255,0.03)`, `#262626` → `rgba(255,255,255,0.04)`, `#6366f1` → `var(--bz-accent)`, `bg-[#111111]` → `var(--bz-base)`, `text-[#737373]` → `var(--bz-text-2)`.
+- **New imports needed:** `Select, SelectContent, SelectItem, SelectTrigger, SelectValue` from `@/components/ui/select` (replacing native `<select>` for position). Also add `Pencil, Save, Send, Copy, Download, Sparkles, FileText` to lucide-react imports if not present.
 
 - [ ] **Step 1: Read the current file**
 
@@ -1271,28 +1272,35 @@ style={{
       )}
       {publishing ? "Publishing..." : "Publish"}
     </button>
-    <button
-      onClick={handleCopyJson}
-      className="p-2 rounded-xl transition-all hover:bg-white/[0.04]"
-      style={{
-        border: "1px solid rgba(255,255,255,0.07)",
-        color: "var(--bz-text-3)",
-      }}
-    >
-      <Copy className="w-3.5 h-3.5" />
-    </button>
-    <button
-      onClick={handleExportJson}
-      className="p-2 rounded-xl transition-all hover:bg-white/[0.04]"
-      style={{
-        border: "1px solid rgba(255,255,255,0.07)",
-        color: "var(--bz-text-3)",
-      }}
-    >
-      <Download className="w-3.5 h-3.5" />
-    </button>
+    {/* Copy/Export — only visible when NOT editing (preserves existing behavior) */}
+    {!isEditing && (
+      <>
+        <button
+          onClick={handleCopyJson}
+          className="p-2 rounded-xl transition-all hover:bg-white/[0.04]"
+          style={{
+            border: "1px solid rgba(255,255,255,0.07)",
+            color: "var(--bz-text-3)",
+          }}
+        >
+          <Copy className="w-3.5 h-3.5" />
+        </button>
+        <button
+          onClick={handleExportJson}
+          className="p-2 rounded-xl transition-all hover:bg-white/[0.04]"
+          style={{
+            border: "1px solid rgba(255,255,255,0.07)",
+            color: "var(--bz-text-3)",
+          }}
+        >
+          <Download className="w-3.5 h-3.5" />
+        </button>
+      </>
+    )}
   </div>
   ```
+
+  **Note:** Add `Select`, `SelectContent`, `SelectItem`, `SelectTrigger`, `SelectValue` from `@/components/ui/select` to article-composer imports (replacing native `<select>` elements).
 
 - [ ] **Step 14: Run full test suite**
 

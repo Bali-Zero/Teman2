@@ -280,7 +280,7 @@ describe("DashboardPage - Unit Tests", () => {
     render(<DashboardPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(screen.getByTestId("nusantara-widget")).toBeInTheDocument();
+      expect(screen.getByTestId("zantara-portal-card")).toBeInTheDocument();
     });
   });
 });
