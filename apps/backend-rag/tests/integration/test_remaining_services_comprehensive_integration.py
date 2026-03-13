@@ -239,7 +239,7 @@ class TestRateLimiterIntegration:
     @pytest.fixture
     def rate_limiter(self):
         """Create rate limiter"""
-        from middleware.rate_limiter import RateLimiter
+        from backend.middleware.rate_limiter import RateLimiter
 
         return RateLimiter()
 
