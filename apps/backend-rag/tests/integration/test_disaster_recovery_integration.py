@@ -221,12 +221,13 @@ class TestServiceRecoveryIntegration:
         """Test service health recovery"""
 
         async with db_pool.acquire() as conn:
-            # Create service_health table
+            # Create service_health table (drop first to ensure correct schema)
+            await conn.execute("DROP TABLE IF EXISTS service_health")
             await conn.execute(
                 """
-                CREATE TABLE IF NOT EXISTS service_health (
+                CREATE TABLE service_health (
                     id SERIAL PRIMARY KEY,
-                    service_name VARCHAR(255),
+                    service_name VARCHAR(255) UNIQUE,
                     status VARCHAR(50),
                     last_check TIMESTAMP DEFAULT NOW(),
                     recovery_attempts INTEGER DEFAULT 0

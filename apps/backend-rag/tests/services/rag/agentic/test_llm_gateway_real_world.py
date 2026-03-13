@@ -500,9 +500,10 @@ class TestHealthcareCompliance:
         def phi_compliant_call(*args, **kwargs):
             message = kwargs.get("message", "")
 
-            # Check for potential PHI
+            # Check for potential PHI (case-insensitive)
+            message_lower = message.lower()
             has_phi = any(
-                pattern in message for pattern in ["ssn", "medical record", "patient id", "dob"]
+                pattern in message_lower for pattern in ["ssn", "medical record", "patient id", "dob"]
             )
 
             if has_phi:

@@ -276,12 +276,13 @@ class TestMonitoringObservabilityAdvanced:
         """Test health dashboard data"""
 
         async with db_pool.acquire() as conn:
-            # Create health_dashboard table
+            # Create health_dashboard table (drop first to ensure correct schema)
+            await conn.execute("DROP TABLE IF EXISTS health_dashboard")
             await conn.execute(
                 """
-                CREATE TABLE IF NOT EXISTS health_dashboard (
+                CREATE TABLE health_dashboard (
                     id SERIAL PRIMARY KEY,
-                    service_name VARCHAR(255),
+                    service_name VARCHAR(255) UNIQUE,
                     health_status VARCHAR(50),
                     uptime_percentage DECIMAL(5,2),
                     last_check TIMESTAMP DEFAULT NOW()
