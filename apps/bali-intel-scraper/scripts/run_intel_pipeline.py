@@ -43,10 +43,10 @@ PIPELINE_STEPS = [
     '2.7_verification',  # Cross-check T1 sources + KB for regulatory articles
     '2.8_clustering',    # Semantic clustering — group articles by theme into dossiers
     '3_enrichment',      # Claude deep enrichment — 1400-2000 word articles per dossier
-    '4_images',          # Gemini Imagen 3 cover images
     '5_seo',             # Gemini SEO optimization
     '6_approval',        # Telegram notification + review file
-    '7_publishing'
+    '7_publishing',
+    '8_images'           # Gemini Imagen 3 cover images (spostato dopo publishing)
 ]
 
 class IntelPipeline:
@@ -117,7 +117,7 @@ class IntelPipeline:
                 return self.step_clustering()
             elif step == '3_enrichment':
                 return self.step_enrichment()
-            elif step == '4_images':
+            elif step == '8_images':
                 return self.step_images()
             elif step == '5_seo':
                 return self.step_seo()
@@ -1038,25 +1038,26 @@ IMPORTANT:
             return None
 
     def step_images(self) -> bool:
-        """Step 4: Generate images with Gemini Imagen 3 via browser automation"""
+        """Step 8: Generate images with Gemini Imagen 3 via browser automation"""
         self.log('Generating images...')
 
         if self.config.get('skip_images'):
             self.log('Images skipped by config')
-            self.update_step_status('4_images', 'skipped', {'reason': 'config'})
+            self.update_step_status('8_images', 'skipped', {'reason': 'config'})
             return True
 
-        # Check enriched articles exist
+        # Check published articles exist
+        # Now it takes from enriched list, but ideally after publishing
         enriched = [a for a in self.state.get('articles', []) if a.get('enrichment')]
         if not enriched:
             self.log('No enriched articles for image generation', 'WARN')
-            self.update_step_status('4_images', 'skipped', {'reason': 'no_enriched_articles'})
+            self.update_step_status('8_images', 'skipped', {'reason': 'no_enriched_articles'})
             return True
 
         script = self.script_dir / 'gemini_image_generator.py'
         if not script.exists():
             self.log('gemini_image_generator.py not found', 'WARN')
-            self.update_step_status('4_images', 'skipped', {'reason': 'script_missing'})
+            self.update_step_status('8_images', 'skipped', {'reason': 'script_missing'})
             return True
 
         # Save current state so the image generator can read articles
@@ -1072,7 +1073,7 @@ IMPORTANT:
             self.log(f'Image generation failed: {result.stderr[:300]}', 'ERROR')
             if result.stdout:
                 self.log(f'stdout: {result.stdout[-300:]}')
-            self.update_step_status('4_images', 'failed', {'error': result.stderr[:300]})
+            self.update_step_status('8_images', 'failed', {'error': result.stderr[:300]})
             return self.config.get('continue_on_error', False)
 
         # Reload state (image generator updates it with image_path/image_url)
@@ -1084,7 +1085,7 @@ IMPORTANT:
 
         images_count = sum(1 for a in self.state.get('articles', []) if a.get('image_path'))
         self.log(f'Images generated: {images_count}/{len(enriched)}')
-        self.update_step_status('4_images', 'completed', {'images_generated': images_count})
+        self.update_step_status('8_images', 'completed', {'images_generated': images_count})
         return True
     
     def step_seo(self) -> bool:
@@ -1405,7 +1406,25 @@ IMPORTANT:
                     json=payload,
                     headers={"X-API-Key": API_KEY}
                 )
-                return r.status_code in (200, 201)
+                if r.status_code in (200, 201):
+                    # Forzare la pubblicazione scavalcando lo staging
+                    res_data = r.json()
+                    item_id = res_data.get("item_id")
+                    intel_type = res_data.get("intel_type", "news")
+                    if item_id:
+                        pub_r = await c.post(
+                            f"{BACKEND_URL}/api/intel/staging/publish/{intel_type}/{item_id}",
+                            json={},
+                            headers={"X-API-Key": API_KEY}
+                        )
+                        if pub_r.status_code in (200, 201):
+                            self.log(f'Auto-published {item_id} successfully.')
+                            return True
+                        else:
+                            self.log(f'Auto-publish failed for {item_id}: {pub_r.text}', 'WARN')
+                            return False
+                    return True
+                return False
 
         async def _run():
             nonlocal published
