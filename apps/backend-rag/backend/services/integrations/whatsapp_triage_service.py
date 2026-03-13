@@ -33,15 +33,24 @@ class WhatsAppTriageService:
     def __init__(self):
         # Personal contacts whitelist (from env var)
         whitelist = settings.whatsapp_personal_contacts or ""
-        self.personal_contacts = set(
-            phone.strip() for phone in whitelist.split(",") if phone.strip()
-        )
+        self.personal_contacts = {phone.strip() for phone in whitelist.split(",") if phone.strip()}
+        # Allowed numbers whitelist — if set, all other numbers are silently ignored
+        allowed = settings.whatsapp_allowed_numbers or ""
+        self.allowed_numbers: set[str] = {phone.strip() for phone in allowed.split(",") if phone.strip()}
+
+    def is_allowed(self, phone: str) -> bool:
+        """Return True if the phone number is allowed to interact with the bot.
+        If no whitelist is configured, everyone is allowed."""
+        if not self.allowed_numbers:
+            return True
+        normalized = phone.lstrip("+")
+        return normalized in self.allowed_numbers
 
     async def should_escalate(
         self,
         phone: str,
         message_text: str,
-        sender_name: str | None = None,
+        sender_name: str | None = None,  # noqa: ARG002
     ) -> tuple[TriageDecision, str]:
         """
         Determine if message should escalate to human.

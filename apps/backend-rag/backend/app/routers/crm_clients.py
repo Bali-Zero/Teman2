@@ -381,6 +381,7 @@ async def create_client(
                                 client_id=new_client["id"],
                                 client_name=client.full_name,
                                 client_type=client.client_type,
+                                db_pool=db_pool,
                             )
                         )
                         logger.info(
@@ -1145,7 +1146,7 @@ IMPORTANT: Return ONLY the JSON object, no additional text."""
 
         result = await genai_client.generate_content(
             contents=contents,
-            model="gemini-2.0-flash-001",
+            model="gemini-2.0-flash-lite",
             max_output_tokens=500,
         )
 
@@ -1354,7 +1355,7 @@ Use null for unclear fields. Return ONLY JSON."""
 
         result = await genai_client.generate_content(
             contents=contents,
-            model="gemini-2.0-flash-001",
+            model="gemini-2.0-flash-lite",
             max_output_tokens=4000,  # Increased further to prevent JSON truncation
         )
 
@@ -1635,7 +1636,7 @@ Rules:
 
         result = await genai_client.generate_content(
             contents=contents,
-            model="gemini-2.0-flash-001",
+            model="gemini-2.0-flash-lite",
             max_output_tokens=2000,
         )
 
@@ -1766,7 +1767,7 @@ Rules:
 
         result = await genai_client.generate_content(
             contents=contents,
-            model="gemini-2.0-flash-001",
+            model="gemini-2.0-flash-lite",
             max_output_tokens=2000,
         )
 

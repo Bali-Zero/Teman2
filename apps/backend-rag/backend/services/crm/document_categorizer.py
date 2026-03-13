@@ -8,57 +8,116 @@ Useful for bulk migration and automatic organization of client documents.
 import re
 from typing import Any
 
+# ─────────────────────────────────────────────────────────────────────────────
+# OFFICIAL FOLDER MAPPING (matches Drive structure)
+#
+# 00_Profile    → passport, photo, alamat (address)
+# 01_Immigration → kitas, visa, e-visa, IMK, ITK (applicant only)
+# 02_Company    → akta + SK, NIB, NPWP company, profile perseroan
+# 03_Tax        → SPT company, SPT personal, NPWP personal, LKPM report
+# 04_Family     → passport/visa/kitas-IMK-ITK of family members
+# 99_Misc       → contract, other
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Keywords that signal "family member" document → 04_Family
+FAMILY_MEMBER_KEYWORDS: list[str] = [
+    "family", "familie", "famig",          # generic family markers
+    "spouse", "moglie", "marito", "wife", "husband",
+    "child", "children", "figlio", "figlia", "figlie", "figli", "bambino",
+    "son", "daughter",
+    "member", "anggota",
+    "_fam_", "-fam-", "_fam.", " fam ",    # filename conventions
+    "dependant", "dependent",
+    # Documents that are inherently family docs (always go to 04_Family)
+    "marriage", "pernikahan", "akta nikah", "nikah",
+    "birth", "kelahiran", "akta kelahiran",
+    "family card", "kartu keluarga",
+]
+
 # Comprehensive keyword mapping for document categorization
-CATEGORIZATION_RULES = {
-    "immigration": {
+# Priority order: family → profile → immigration → company → tax → other
+CATEGORIZATION_RULES: dict[str, dict[str, list[str]]] = {
+    # ── 04_Family: family member documents (checked FIRST) ──────────────────
+    "family": {
+        "passport_family": ["passport", "paspor"],          # combined with family kw
+        "visa_family": ["visa", "e-visa", "evisa", "voa", "b211", "b-211"],
+        "kitas_family": ["kitas", "kitap", "imk", "itk", "itas", "stay permit"],
+        "family_card": ["kk", "kartu keluarga", "family card"],
+        "birth_certificate": ["birth", "kelahiran", "akta kelahiran", "born"],
+        "marriage_certificate": ["marriage", "pernikahan", "akta nikah", "nikah"],
+    },
+    # ── 00_Profile: applicant profile docs ──────────────────────────────────
+    "profile": {
         "passport": ["passport", "paspor", "pp", "pport"],
-        "kitas": ["kitas", "kitap", "stay permit", "limited stay", "itas"],
-        "visa": ["visa", "voa", "b211", "c1", "c2", "e-visa"],
-        "imta": ["imta", "work permit", "izin kerja", "working permit"],
-        "merp": ["merp", "report", "pelaporan", "residence report"],
-        "sktt": ["sktt", "temporary residence", "surat keterangan"],
-        "sponsor_letter": ["sponsor", "sponsorship", "letter"],
+        "photo": ["photo", "foto", "picture", "selfie", "image", "foto_wajah"],
+        "alamat": ["alamat", "address", "ktp", "id card", "kartu tanda penduduk",
+                   "domicile address", "residential address"],
+        "cv": ["cv", "resume", "curriculum vitae"],
     },
-    "pma": {  # Company documents
-        "akta": ["akta", "deed", "pendirian", "notarial", "akta pendirian"],
-        "nib": ["nib", "oss", "business id", "nomor induk"],
-        "tdp": ["tdp", "siup", "business license", "izin usaha"],
-        "npwp_company": ["npwp", "tax id", "tin", "company tax"],
-        "sk_kemenkumham": ["sk", "kemenkumham", "ministry approval", "ministry of law"],
-        "domicile_letter": ["domicile", "domisili", "surat domisili"],
-        "lkpm": ["lkpm", "investment report", "laporan kegiatan"],
+    # ── 01_Immigration: applicant permits/visas ──────────────────────────────
+    "immigration": {
+        "kitas": ["kitas", "kitap", "itas", "limited stay", "stay permit"],
+        "imk": ["imk", "izin masuk kembali", "reentry", "re-entry"],
+        "itk": ["itk", "izin tinggal kunjungan"],
+        "visa": ["visa", "voa", "b211", "b-211", "c1", "c2"],
+        "evisa": ["e-visa", "evisa", "electronic visa", "e visa"],
+        "imta": ["imta", "work permit", "izin kerja", "working permit", "rptka"],
+        "merp": ["merp", "multiple exit re-entry"],
+        "sktt": ["sktt", "temporary residence certificate"],
+        "sponsor_letter": ["sponsor letter", "surat sponsor", "sponsorship letter"],
+        "telex_visa": ["telex", "vitas", "approval letter"],
     },
+    # ── 02_Company: company formation & legal docs ───────────────────────────
+    "company": {
+        "akta": ["akta", "deed", "pendirian", "notarial", "akta pendirian",
+                 "akta perubahan", "deed of establishment"],
+        "sk": ["sk ", "sk_", "sk-", "surat keputusan", "kemenkumham",
+               "ministry of law", "menkumham"],
+        "nib": ["nib", "oss", "nomor induk berusaha", "business id"],
+        "npwp_company": ["npwp perusahaan", "npwp badan", "npwp pt",
+                         "company tax", "npwp company", "tax id company"],
+        "profile_perseroan": ["profile perseroan", "company profile", "profil perusahaan",
+                              "company presentation", "profil pt"],
+        "siup": ["siup", "tdp", "izin usaha", "business license"],
+        "domicile": ["surat domisili", "domicile letter", "keterangan domisili"],
+        "legalisation": ["legalisation", "legalisasi", "apostille", "notarised"],
+    },
+    # ── 03_Tax: tax documents ────────────────────────────────────────────────
     "tax": {
-        "spt": ["spt", "tax return", "annual report", "spt tahunan"],
-        "tax_report": ["tax report", "laporan pajak", "monthly tax"],
-        "bpjs": ["bpjs", "social insurance", "kesehatan", "ketenagakerjaan"],
-        "invoice": ["invoice", "faktur", "receipt", "kwitansi"],
-        "pph": ["pph", "income tax", "pajak penghasilan"],
-        "ppn": ["ppn", "vat", "value added tax"],
-        "bukti_potong": ["bukti potong", "withholding", "pemotongan"],
+        "spt_company": ["spt company", "spt badan", "spt perusahaan",
+                        "annual tax company", "pajak tahunan badan"],
+        "spt_personal": ["spt personal", "spt pribadi", "spt tahunan pribadi",
+                         "annual tax personal", "spt op", "spt tahunan"],
+        "npwp_personal": ["npwp personal", "npwp pribadi", "npwp perorangan",
+                          "personal tax id", "npwp"],
+        "lkpm_report": ["lkpm", "laporan kegiatan penanaman modal",
+                        "investment activity report", "investment report"],
+        "bpjs": ["bpjs", "social insurance", "jamsostek", "kesehatan bpjs",
+                 "ketenagakerjaan bpjs"],
+        "pph": ["pph", "income tax", "pajak penghasilan", "withholding tax",
+                "bukti potong", "pemotongan pajak"],
+        "ppn": ["ppn", "vat", "value added tax", "pajak pertambahan nilai"],
+        "invoice_tax": ["faktur pajak", "tax invoice", "efaktur"],
     },
-    "personal": {
-        "photo": ["photo", "foto", "picture", "jpg", "jpeg", "png", "image"],
-        "cv": ["cv", "resume", "curriculum", "vitae"],
-        "certificate": ["certificate", "sertifikat", "ijazah", "diploma"],
-        "kk": ["kk", "family card", "kartu keluarga"],
-        "ktp": ["ktp", "id card", "identity", "kartu tanda penduduk"],
-        "birth_certificate": ["birth", "kelahiran", "akta kelahiran"],
-        "marriage_certificate": ["marriage", "pernikahan", "akta nikah"],
-    },
-    "property": {
-        "pbb": ["pbb", "property tax", "pajak bumi"],
-        "imb": ["imb", "building permit", "izin mendirikan"],
-        "shm": ["shm", "certificate of ownership", "sertifikat hak milik"],
-        "ajb": ["ajb", "deed of sale", "akta jual beli"],
-        "lease_agreement": ["lease", "rental", "sewa"],
-    },
+    # ── 99_Misc: contracts and everything else ───────────────────────────────
     "other": {
-        "contract": ["contract", "kontrak", "agreement", "perjanjian"],
-        "letter": ["letter", "surat", "correspondence"],
-        "form": ["form", "formulir", "application"],
-        "receipt": ["receipt", "tanda terima", "bukti"],
+        "contract": ["contract", "kontrak", "agreement", "perjanjian", "lease",
+                     "rental agreement", "mou", "memorandum"],
+        "letter": ["surat", "letter", "correspondence", "notifikasi"],
+        "form": ["form", "formulir", "application form"],
+        "receipt": ["receipt", "tanda terima", "kwitansi", "invoice"],
+        "other": ["other", "misc", "miscellaneous", "lainnya"],
     },
+}
+
+# Category → Drive folder name
+CATEGORY_TO_FOLDER: dict[str, str] = {
+    "family":     "04_Family",
+    "profile":    "00_Profile",
+    "immigration": "01_Immigration",
+    "company":    "02_Company",
+    "tax":        "03_Tax",
+    "other":      "99_Misc",
 }
 
 
@@ -99,17 +158,25 @@ def auto_categorize_document(filename: str) -> dict[str, Any]:
     if not filename:
         return _fallback_categorization()
 
+    # Normalize: lowercase + replace underscores/hyphens with spaces for keyword matching
     filename_lower = filename.lower()
+    filename_normalized = filename_lower.replace("_", " ").replace("-", " ")
+
+    # Detect if the filename contains a family member keyword
+    is_family_doc = any(kw in filename_normalized for kw in FAMILY_MEMBER_KEYWORDS)
 
     # Try each category in priority order
     for category, doc_types in CATEGORIZATION_RULES.items():
+        # Skip family category if no family keyword is present
+        if category == "family" and not is_family_doc:
+            continue
         for doc_type, keywords in doc_types.items():
             for keyword in keywords:
-                if keyword in filename_lower:
+                if keyword in filename_normalized:
                     return {
                         "document_type": _format_document_type(doc_type),
                         "document_category": category,
-                        "confidence": _calculate_confidence(filename_lower, keyword),
+                        "confidence": _calculate_confidence(filename_normalized, keyword),
                         "matched_keyword": keyword,
                     }
 
