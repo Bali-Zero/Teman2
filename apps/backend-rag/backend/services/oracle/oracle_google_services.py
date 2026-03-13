@@ -126,7 +126,7 @@ class GoogleServices:
         self._ensure_services_initialized()
         return self._genai_client
 
-    def get_model_name(self, model_name: str = "gemini-2.0-flash-001") -> str:
+    def get_model_name(self, model_name: str = "gemini-2.0-flash-lite") -> str:
         """Get a valid model name, stripping 'models/' prefix if present.
 
         Args:
@@ -138,7 +138,7 @@ class GoogleServices:
         # Strip 'models/' prefix for new SDK compatibility
         return model_name.replace("models/", "")
 
-    def get_gemini_model_name(self, model_name: str = "gemini-2.0-flash-001") -> str:
+    def get_gemini_model_name(self, model_name: str = "gemini-2.0-flash-lite") -> str:
         """Get Gemini model name for use with GenAIClient.
 
         Note: This method now returns a model name string instead of a model instance.
@@ -177,13 +177,13 @@ class GoogleServices:
 
         # Model recommendations by use case (all use Flash for unlimited quota)
         model_mapping = {
-            "legal_reasoning": "gemini-2.0-flash-001",
-            "personality_translation": "gemini-2.0-flash-001",
-            "multilingual": "gemini-2.0-flash-001",
-            "document_analysis": "gemini-2.0-flash-001",
+            "legal_reasoning": "gemini-2.0-flash-lite",
+            "personality_translation": "gemini-2.0-flash-lite",
+            "multilingual": "gemini-2.0-flash-lite",
+            "document_analysis": "gemini-2.0-flash-lite",
         }
 
-        model_name = model_mapping.get(use_case, "gemini-2.0-flash-001")
+        model_name = model_mapping.get(use_case, "gemini-2.0-flash-lite")
         logger.info(f"🧠 Using {model_name} for {use_case}")
         return model_name
 

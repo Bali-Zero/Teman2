@@ -8,10 +8,10 @@ primary_region = "sin"  # Singapore (closest to Indonesian sources)
   dockerfile = "Dockerfile"
 
 [env]
-  PORT = "8002"
+  PORT = "8000"
 
 [http_service]
-  internal_port = 8002
+  internal_port = 8000
   force_https = true
   auto_stop_machines = "suspend"  # Suspend instead of stop (faster wake)
   auto_start_machines = true

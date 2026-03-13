@@ -49,8 +49,8 @@ class VisionRAGService:
 
     def __init__(self):
         self._genai_client: GenAIClient | None = None
-        self.vision_model_name = "gemini-2.0-flash-001"  # Vision capable
-        self.text_model_name = "gemini-2.0-flash-001"
+        self.vision_model_name = "gemini-2.0-flash-lite"  # Vision capable
+        self.text_model_name = "gemini-2.0-flash-lite"
 
     def _get_genai_client(self) -> GenAIClient | None:
         """Lazy load GenAI client."""

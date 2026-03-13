@@ -123,7 +123,7 @@ class IntelligentRouter:
                 "response": answer,
                 "ai_used": "agentic-rag",
                 "category": "agentic",
-                "model": "gemini-2.0-flash-001",  # Zantara AI
+                "model": "gemini-2.0-flash-lite",  # Zantara AI
                 "tokens": {},
                 "used_rag": True,
                 "used_tools": False,
@@ -210,6 +210,6 @@ class IntelligentRouter:
         """Get stats."""
         return {
             "router": "agentic_rag_wrapper",
-            "model": "gemini-2.0-flash-001",
+            "model": "gemini-2.0-flash-lite",
             "rag_available": True,
         }

@@ -46,7 +46,7 @@ class GeminiKGExtractor:
         Initialize Gemini KG Extractor with Google AI Studio
 
         Args:
-            model: Gemini model to use (gemini-flash-3.0-preview, gemini-2.0-flash-001, etc.)
+            model: Gemini model to use (gemini-flash-3.0-preview, gemini-2.0-flash-lite, etc.)
             api_key: Google AI Studio API key (or GOOGLE_API_KEY / GOOGLE_IMAGEN_API_KEY env var)
             max_tokens: Max tokens for response
             temperature: Temperature for generation

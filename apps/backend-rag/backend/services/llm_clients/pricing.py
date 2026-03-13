@@ -69,7 +69,7 @@ LLM_PRICING: dict[str, dict[str, float]] = {
         "output": 0.30,  # $0.30 per 1M output tokens
     },
     # Gemini 2.0 Flash (Fallback)
-    "gemini-2.0-flash-001": {
+    "gemini-2.0-flash-lite": {
         "input": 0.075,  # $0.075 per 1M input tokens
         "output": 0.30,  # $0.30 per 1M output tokens
     },

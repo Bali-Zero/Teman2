@@ -58,7 +58,7 @@ logger = logging.getLogger(__name__)
 TIER_FLASH = 0  # Fast, cost-effective (default) - gemini-2.5-flash
 TIER_LITE = 1  # Alias for FLASH
 TIER_PRO = 2  # Alias for FLASH (no separate pro tier)
-TIER_FALLBACK = 3  # Stable fallback - gemini-2.0-flash-001
+TIER_FALLBACK = 3  # Stable fallback - gemini-2.0-flash-lite
 
 
 class LLMGateway:

@@ -76,7 +76,7 @@ class ZantaraAIClient:
 
         Args:
             api_key: Google API key (defaults to settings.google_api_key)
-            model: Model name (defaults to gemini-2.0-flash-001)
+            model: Model name (defaults to gemini-2.0-flash-lite)
 
         Raises:
             ValueError: If no valid credentials in production environment
@@ -125,7 +125,7 @@ class ZantaraAIClient:
             self._genai_client = None
 
         # Default: use Gemini 2.0 Flash (latest stable, fast, cost-effective)
-        self.model = model or "gemini-2.0-flash-001"
+        self.model = model or "gemini-2.0-flash-lite"
 
         # Initialize pricing even in mock mode
         self.pricing = {

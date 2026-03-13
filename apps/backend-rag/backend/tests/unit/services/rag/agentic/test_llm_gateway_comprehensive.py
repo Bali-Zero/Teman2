@@ -57,13 +57,13 @@ class TestLLMGateway:
 
         chat = MagicMock()
         mock_token_usage = create_token_usage(
-            prompt_tokens=10, completion_tokens=20, model="gemini-2.0-flash-001"
+            prompt_tokens=10, completion_tokens=20, model="gemini-2.0-flash-lite"
         )
 
         with patch.object(llm_gateway, "_send_with_fallback") as mock_send:
             mock_send.return_value = (
                 "response",
-                "gemini-2.0-flash-001",
+                "gemini-2.0-flash-lite",
                 MagicMock(),
                 mock_token_usage,
             )
@@ -73,7 +73,7 @@ class TestLLMGateway:
             )
 
             assert response == "response"
-            assert model == "gemini-2.0-flash-001"
+            assert model == "gemini-2.0-flash-lite"
 
     @pytest.mark.asyncio
     async def test_send_message_fallback(self, llm_gateway):
@@ -127,7 +127,7 @@ class TestLLMGateway:
         tools = [{"name": "test_tool"}]
         llm_gateway.set_gemini_tools(tools)
         mock_token_usage = create_token_usage(
-            prompt_tokens=10, completion_tokens=20, model="gemini-2.0-flash-001"
+            prompt_tokens=10, completion_tokens=20, model="gemini-2.0-flash-lite"
         )
 
         with patch.object(llm_gateway, "_send_with_fallback") as mock_send:
@@ -142,7 +142,7 @@ class TestLLMGateway:
         from backend.services.llm_clients.pricing import create_token_usage
 
         mock_token_usage = create_token_usage(
-            prompt_tokens=10, completion_tokens=20, model="gemini-2.0-flash-001"
+            prompt_tokens=10, completion_tokens=20, model="gemini-2.0-flash-lite"
         )
 
         with patch.object(llm_gateway, "_send_with_fallback") as mock_send:
@@ -159,13 +159,13 @@ class TestLLMGateway:
 
         chat = MagicMock()
         mock_token_usage = create_token_usage(
-            prompt_tokens=10, completion_tokens=20, model="gemini-2.0-flash-001"
+            prompt_tokens=10, completion_tokens=20, model="gemini-2.0-flash-lite"
         )
 
         with patch.object(llm_gateway, "_send_with_fallback") as mock_send:
             mock_send.return_value = (
                 "response",
-                "gemini-2.0-flash-001",
+                "gemini-2.0-flash-lite",
                 MagicMock(),
                 mock_token_usage,
             )

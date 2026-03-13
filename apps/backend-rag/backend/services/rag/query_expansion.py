@@ -409,7 +409,7 @@ Return ONLY a JSON object with language codes as keys:
             result = await asyncio.wait_for(
                 client.generate_content(
                     contents=prompt,
-                    model="gemini-2.0-flash-001",
+                    model="gemini-2.0-flash-lite",
                     max_output_tokens=256,
                 ),
                 timeout=self.llm_timeout_ms / 1000,
@@ -495,7 +495,7 @@ Return ONLY a JSON object with language codes as keys:
             result = await asyncio.wait_for(
                 client.generate_content(
                     contents=prompt,
-                    model="gemini-2.0-flash-001",
+                    model="gemini-2.0-flash-lite",
                     max_output_tokens=256,
                 ),
                 timeout=self.llm_timeout_ms / 1000,

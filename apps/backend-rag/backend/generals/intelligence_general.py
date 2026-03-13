@@ -359,9 +359,9 @@ class IntelligenceGeneral:
             user_prompt += "\n\nPlease provide a comprehensive analysis."
 
             # Use Gemini 3 Pro (or closest equivalent)
-            # Using PRO_MODEL which is gemini-2.0-flash-001 or gemini-2.0-pro-exp if available
+            # Using PRO_MODEL which is gemini-2.0-flash-lite or gemini-2.0-pro-exp if available
             model_name = (
-                payload.get("model") or "gemini-2.0-flash-001"
+                payload.get("model") or "gemini-2.0-flash-lite"
             )  # Use Flash as Pro equivalent
 
             logger.info(f"🧠 Intelligence General: Using model {model_name} for task {task_id}")
