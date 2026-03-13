@@ -292,7 +292,11 @@ async def detailed_health(request: Request) -> dict[str, Any]:
                 },
             }
         else:
-            services["redis"] = {"status": "unavailable", "critical": False, "details": {"reason": "RedisManager not initialized"}}
+            services["redis"] = {
+                "status": "unavailable",
+                "critical": False,
+                "details": {"reason": "RedisManager not initialized"},
+            }
     except Exception as e:
         services["redis"] = {"status": "error", "critical": False, "error": str(e)}
 
