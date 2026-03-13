@@ -3,7 +3,7 @@ Comprehensive Tests for Core Utilities
 Tests embeddings, chunker, parsers, qdrant_db, cache
 """
 
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import numpy as np
 import pytest
@@ -30,41 +30,45 @@ class TestEmbeddingsGeneration:
             self.service = EmbeddingsGenerator(provider="sentence-transformers")
             self.service.transformer = mock_model
 
-    def test_generate_embedding_single_text(self):
+    @pytest.mark.asyncio
+    async def test_generate_embedding_single_text(self):
         """Test generating embedding for single text"""
         text = "What is KITAS?"
 
-        embedding = self.service.generate_single_embedding(text)
+        embedding = await self.service.generate_single_embedding(text)
 
         assert embedding is not None
         assert isinstance(embedding, list)
         assert len(embedding) > 0
 
-    def test_generate_embeddings_batch(self):
+    @pytest.mark.asyncio
+    async def test_generate_embeddings_batch(self):
         """Test batch embedding generation"""
         texts = ["What is KITAS?", "Tax regulations", "Business license"]
 
-        embeddings = self.service.generate_batch_embeddings(texts)
+        embeddings = await self.service.generate_batch_embeddings(texts)
 
         assert len(embeddings) == 3
         assert all(len(emb) > 0 for emb in embeddings)
 
-    def test_embedding_dimension(self):
+    @pytest.mark.asyncio
+    async def test_embedding_dimension(self):
         """Test embedding has correct dimension"""
         text = "Test text"
 
-        embedding = self.service.generate_single_embedding(text)
+        embedding = await self.service.generate_single_embedding(text)
 
         # Standard models use 384 or 768 dimensions
         assert len(embedding) in [384, 768, 1536]
 
-    def test_similar_texts_have_similar_embeddings(self):
+    @pytest.mark.asyncio
+    async def test_similar_texts_have_similar_embeddings(self):
         """Test similar texts produce similar embeddings"""
         text1 = "What is KITAS visa?"
         text2 = "Tell me about KITAS visa"
 
-        emb1 = self.service.generate_single_embedding(text1)
-        emb2 = self.service.generate_single_embedding(text2)
+        emb1 = await self.service.generate_single_embedding(text1)
+        emb2 = await self.service.generate_single_embedding(text2)
 
         # Calculate cosine similarity
         similarity = np.dot(emb1, emb2) / (np.linalg.norm(emb1) * np.linalg.norm(emb2))
@@ -90,26 +94,29 @@ class TestEmbeddingsEdgeCases:
             self.service = EmbeddingsGenerator(provider="sentence-transformers")
             self.service.transformer = mock_model
 
-    def test_empty_text_embedding(self):
+    @pytest.mark.asyncio
+    async def test_empty_text_embedding(self):
         """Test embedding empty text"""
-        embedding = self.service.generate_single_embedding("")
+        embedding = await self.service.generate_single_embedding("")
 
         assert embedding is not None
         assert len(embedding) > 0
 
-    def test_very_long_text_embedding(self):
+    @pytest.mark.asyncio
+    async def test_very_long_text_embedding(self):
         """Test embedding very long text"""
         long_text = "test " * 10000
 
-        embedding = self.service.generate_single_embedding(long_text)
+        embedding = await self.service.generate_single_embedding(long_text)
 
         assert embedding is not None
 
-    def test_unicode_text_embedding(self):
+    @pytest.mark.asyncio
+    async def test_unicode_text_embedding(self):
         """Test embedding text with Unicode characters"""
         text = "Indonesia visa 中文 ภาษาไทย"
 
-        embedding = self.service.generate_single_embedding(text)
+        embedding = await self.service.generate_single_embedding(text)
 
         assert embedding is not None
 
@@ -383,15 +390,16 @@ class TestCacheDecorator:
             # Force use memory cache for tests
             self.cache.redis_available = False
 
-    def test_cached_function_call(self):
+    @pytest.mark.asyncio
+    async def test_cached_function_call(self):
         """Test caching function results"""
         key = "expensive_function:5"
 
         # Simulate cached result
-        self.cache.set(key, 10, ttl=60)
+        await self.cache.set(key, 10, ttl=60)
 
         # Get cached result
-        result = self.cache.get(key)
+        result = await self.cache.get(key)
 
         assert result == 10
 
@@ -457,7 +465,8 @@ def test_chunking_scenarios(chunk_size, text_length, expected_min_chunks):
         ("Very long text " * 100, 384),
     ],
 )
-def test_embedding_consistency(text, expected_embedding_size):
+@pytest.mark.asyncio
+async def test_embedding_consistency(text, expected_embedding_size):
     """Parameterized test for embedding size consistency"""
     with patch("sentence_transformers.SentenceTransformer") as mock_transformer:
         from backend.core.embeddings import EmbeddingsGenerator
@@ -475,8 +484,8 @@ def test_embedding_consistency(text, expected_embedding_size):
         service = EmbeddingsGenerator(provider="sentence-transformers")
         service.transformer = mock_model
 
-    embedding = service.generate_single_embedding(text)
+        embedding = await service.generate_single_embedding(text)
 
-    assert len(embedding) == expected_embedding_size, (
-        f"Embedding for text of length {len(text)} should have size {expected_embedding_size}"
-    )
+        assert len(embedding) == expected_embedding_size, (
+            f"Embedding for text of length {len(text)} should have size {expected_embedding_size}"
+        )

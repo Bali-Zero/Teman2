@@ -15,7 +15,7 @@ backend_path = Path(__file__).parent.parent.parent
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from middleware.rate_limiter import RateLimiter, RateLimitMiddleware, get_rate_limit_stats
+from backend.middleware.rate_limiter import RateLimiter, RateLimitMiddleware, get_rate_limit_stats
 
 
 @pytest.fixture
