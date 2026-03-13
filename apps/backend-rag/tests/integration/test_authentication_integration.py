@@ -127,7 +127,7 @@ class TestAuthenticationIntegration:
 
     def test_rate_limiting_middleware(self):
         """Test rate limiting middleware functionality"""
-        from middleware.rate_limiter import RateLimiter
+        from backend.middleware.rate_limiter import RateLimiter
 
         rate_limiter = RateLimiter()
 
@@ -152,7 +152,7 @@ class TestAuthenticationIntegration:
     def test_error_monitoring_middleware(self):
         """Test error monitoring middleware"""
         from fastapi import FastAPI
-        from middleware.error_monitoring import ErrorMonitoringMiddleware
+        from backend.middleware.error_monitoring import ErrorMonitoringMiddleware
 
         app = FastAPI()
 
@@ -169,7 +169,7 @@ class TestAuthenticationIntegration:
     def test_hybrid_auth_middleware(self):
         """Test hybrid authentication middleware"""
         from fastapi import FastAPI
-        from middleware.hybrid_auth import HybridAuthMiddleware
+        from backend.middleware.hybrid_auth import HybridAuthMiddleware
 
         app = FastAPI()
         middleware = HybridAuthMiddleware(app)

@@ -33,7 +33,7 @@ class TestErrorMonitoringMiddleware:
     @pytest.mark.asyncio
     async def test_error_monitoring_middleware_initialization(self):
         """Test ErrorMonitoringMiddleware initialization"""
-        from middleware.error_monitoring import ErrorMonitoringMiddleware
+        from backend.middleware.error_monitoring import ErrorMonitoringMiddleware
 
         middleware = ErrorMonitoringMiddleware(MagicMock())
 
@@ -142,7 +142,7 @@ class TestHybridAuthMiddleware:
     @pytest.mark.asyncio
     async def test_hybrid_auth_middleware_initialization(self):
         """Test HybridAuthMiddleware initialization"""
-        from middleware.hybrid_auth import HybridAuthMiddleware
+        from backend.middleware.hybrid_auth import HybridAuthMiddleware
 
         middleware = HybridAuthMiddleware(MagicMock())
 
@@ -252,7 +252,7 @@ class TestRateLimitMiddleware:
     @pytest.mark.asyncio
     async def test_rate_limit_middleware_initialization(self):
         """Test RateLimitMiddleware initialization"""
-        from middleware.rate_limiter import RateLimitMiddleware
+        from backend.middleware.rate_limiter import RateLimitMiddleware
 
         middleware = RateLimitMiddleware(MagicMock())
 
@@ -261,7 +261,7 @@ class TestRateLimitMiddleware:
     @pytest.mark.asyncio
     async def test_rate_limiting_logic(self):
         """Test rate limiting logic"""
-        from middleware.rate_limiter import RateLimiter
+        from backend.middleware.rate_limiter import RateLimiter
 
         rate_limiter = RateLimiter()
 

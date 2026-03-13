@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
-from middleware.error_monitoring import ErrorMonitoringMiddleware
+from backend.middleware.error_monitoring import ErrorMonitoringMiddleware
 
 from backend.services.monitoring.alert_service import AlertService
 
