@@ -16,3 +16,6 @@ export { MiniBarChart } from "./MiniBarChart";
 export { MiniSparkline } from "./MiniSparkline";
 export { CaseDistribution } from "./CaseDistribution";
 export { ZantaraPortalCard } from "./ZantaraPortalCard";
+export { DashboardStatCard } from "./DashboardStatCard";
+export { LiveActivityFeed } from "./LiveActivityFeed";
+export { RoleWidget } from "./RoleWidget";
