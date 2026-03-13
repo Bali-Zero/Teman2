@@ -261,11 +261,14 @@ class TestRateLimitMiddleware:
     @pytest.mark.asyncio
     async def test_rate_limiting_logic(self):
         """Test rate limiting logic"""
+        import uuid
+
         from backend.middleware.rate_limiter import RateLimiter
 
         rate_limiter = RateLimiter()
 
-        key = "test_rate_limit_key"
+        # Use unique key to avoid stale state from other test runs
+        key = f"test_rate_limit_{uuid.uuid4().hex[:8]}"
         limit = 5
         window = 60
 
