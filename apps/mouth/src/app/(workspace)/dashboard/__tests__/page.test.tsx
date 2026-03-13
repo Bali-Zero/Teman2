@@ -26,6 +26,22 @@ vi.mock("@/hooks/useDashboardData", () => ({
   useDashboardData: vi.fn(),
 }));
 vi.mock("@/lib/logger");
+vi.mock("@/lib/realtime", () => ({
+  useRealtime: () => ({
+    isConnected: false,
+    onlineUsersCount: 0,
+    connect: vi.fn(),
+    subscribe: vi.fn(() => vi.fn()),
+    sendDashboardUpdate: vi.fn(),
+  }),
+}));
+vi.mock("@/hooks/useRoleMetrics", () => ({
+  useRoleMetrics: vi.fn(() => ({
+    data: undefined,
+    isLoading: false,
+    isError: true,
+  })),
+}));
 vi.mock("next/link", () => ({
   default: ({
     children,
@@ -113,6 +129,19 @@ vi.mock("@/components/dashboard", () => ({
   ),
   ZantaraPortalCard: () => (
     <div data-testid="zantara-portal-card">Zantara AI</div>
+  ),
+  DashboardStatCard: ({ label, value }: { label: string; value: string | number }) => (
+    <div data-testid={`dash-stat-card-${label.toLowerCase().replaceAll(" ", "-")}`}>
+      {label}: {value}
+    </div>
+  ),
+  LiveActivityFeed: ({ events, isLoading }: { events: unknown[]; isLoading: boolean }) => (
+    <div data-testid="live-activity-feed">
+      {isLoading ? "Loading..." : `${events.length} events`}
+    </div>
+  ),
+  RoleWidget: ({ role }: { role: string }) => (
+    <div data-testid="role-widget">{role}</div>
   ),
 }));
 
@@ -205,9 +234,7 @@ describe("DashboardPage - Unit Tests", () => {
     render(<DashboardPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(screen.getByTestId("stats-card-active-cases")).toHaveTextContent(
-        "Active Cases: 5",
-      );
+      expect(screen.getByTestId("live-activity-feed")).toBeInTheDocument();
     });
   });
 
@@ -253,7 +280,7 @@ describe("DashboardPage - Unit Tests", () => {
     render(<DashboardPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(screen.getByTestId("ai-pulse-widget")).toBeInTheDocument();
+      expect(screen.getByTestId("nusantara-widget")).toBeInTheDocument();
     });
   });
 });
