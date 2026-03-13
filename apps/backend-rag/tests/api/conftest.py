@@ -8,6 +8,7 @@ These tests verify endpoints, middleware, and error handling.
 import os
 import sys
 from pathlib import Path
+from unittest.mock import AsyncMock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -275,12 +276,11 @@ def test_app():
     app.state.intelligent_router = MagicMock()
     app.state.health_monitor = MagicMock()
     app.state.health_monitor._running = True
+    app.state.health_monitor.stop = AsyncMock()
     app.state.compliance_monitor = MagicMock()
+    app.state.compliance_monitor.stop = AsyncMock()
     app.state.ws_listener = MagicMock()
     app.state.proactive_compliance_monitor = MagicMock()
-
-    # Mock image generation service
-    from unittest.mock import AsyncMock
 
     app.state.image_generation_service = MagicMock()
     app.state.image_generation_service.generate_image = AsyncMock(

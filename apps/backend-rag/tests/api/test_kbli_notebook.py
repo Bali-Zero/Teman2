@@ -7,15 +7,8 @@ from fastapi.testclient import TestClient
 @pytest.fixture
 def mock_search_service():
     service = MagicMock()
-    service.search = AsyncMock(
-        return_value=[
-            {
-                "text": "Kelompok ini mencakup kegiatan pertanian jagung.",
-                "score": 0.95,
-                "metadata": {"kode": "01111", "judul": "Pertanian Jagung"},
-            }
-        ]
-    )
+    service.embedder = MagicMock()
+    service.embedder.generate_query_embedding = AsyncMock(return_value=[0.1, 0.2, 0.3])
     return service
 
 
@@ -39,11 +32,32 @@ def mock_db_pool():
     return pool
 
 
-def test_search_kbli_endpoint(authenticated_client: TestClient, mock_search_service):
+def test_search_kbli_endpoint(
+    authenticated_client: TestClient, mock_search_service, monkeypatch: pytest.MonkeyPatch
+):
     # Override dependency
     from backend.app.dependencies import get_search_service
+    from backend.app.routers import kbli_notebook
 
     authenticated_client.app.dependency_overrides[get_search_service] = lambda: mock_search_service
+    monkeypatch.setattr(
+        kbli_notebook,
+        "_search_kbli_qdrant",
+        AsyncMock(
+            return_value=[
+                {
+                    "payload": {
+                        "kode_kbli": "01111",
+                        "judul": "Pertanian Jagung",
+                        "content": "Kelompok ini mencakup kegiatan pertanian jagung.",
+                        "pma_status": "TERBUKA",
+                        "kategori_risiko": "Rendah",
+                    },
+                    "score": 0.95,
+                }
+            ]
+        ),
+    )
 
     response = authenticated_client.get("/api/v1/kbli-notebook/search?query=jagung")
 
@@ -75,10 +89,45 @@ def test_inspect_kbli_endpoint(authenticated_client: TestClient, mock_db_pool):
     authenticated_client.app.dependency_overrides.clear()
 
 
-def test_chat_kbli_endpoint(authenticated_client: TestClient, mock_search_service):
+def test_chat_kbli_endpoint(
+    authenticated_client: TestClient, mock_search_service, monkeypatch: pytest.MonkeyPatch
+):
     from backend.app.dependencies import get_search_service
+    from backend.app.routers import kbli_notebook
+
+    if hasattr(authenticated_client.app.state, "health_monitor"):
+        authenticated_client.app.state.health_monitor.stop = AsyncMock()
 
     authenticated_client.app.dependency_overrides[get_search_service] = lambda: mock_search_service
+    monkeypatch.setattr(
+        kbli_notebook,
+        "_search_kbli_qdrant",
+        AsyncMock(
+            return_value=[
+                {
+                    "payload": {
+                        "kode_kbli": "56101",
+                        "judul": "Restoran",
+                        "content": "Aktivitas penyediaan makanan di bangunan tetap.",
+                        "pma_status": "TERBUKA",
+                        "kategori_risiko": "Menengah Rendah",
+                    },
+                    "score": 0.98,
+                }
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        kbli_notebook, "_translate_query_for_kbli", AsyncMock(return_value="restoran")
+    )
+    monkeypatch.setattr(
+        kbli_notebook,
+        "_generate_kbli_explanation_gemini",
+        AsyncMock(return_value="KBLI 56101 adalah kode restoran."),
+    )
+    monkeypatch.setattr(
+        kbli_notebook, "_get_kbli_payload_from_qdrant", AsyncMock(return_value=None)
+    )
 
     response = authenticated_client.post(
         "/api/v1/kbli-notebook/chat", json={"query": "Requirements for KBLI 56101"}
