@@ -12,8 +12,8 @@ describe("IntelligenceLayout", () => {
     vi.clearAllMocks();
   });
 
-  it("should render header with title and description", () => {
-    vi.mocked(usePathname).mockReturnValue("/intelligence/visa-oracle");
+  it("should hide header on the intelligence homepage", () => {
+    vi.mocked(usePathname).mockReturnValue("/intelligence");
 
     render(
       <IntelligenceLayout>
@@ -21,27 +21,12 @@ describe("IntelligenceLayout", () => {
       </IntelligenceLayout>,
     );
 
-    expect(screen.getByText("Intelligence Center")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "AI-powered monitoring of Indonesian immigration regulations",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.queryByText("Visa Oracle")).not.toBeInTheDocument();
+    expect(screen.queryByText("News Room")).not.toBeInTheDocument();
+    expect(screen.queryByText("Article Composer")).not.toBeInTheDocument();
   });
 
-  it('should show "Agent Active" indicator', () => {
-    vi.mocked(usePathname).mockReturnValue("/intelligence/visa-oracle");
-
-    render(
-      <IntelligenceLayout>
-        <div>Test Content</div>
-      </IntelligenceLayout>,
-    );
-
-    expect(screen.getByText("Agent Active")).toBeInTheDocument();
-  });
-
-  it("should render all 3 tabs", () => {
+  it("should show header with tabs on sub-pages", () => {
     vi.mocked(usePathname).mockReturnValue("/intelligence/visa-oracle");
 
     render(
@@ -52,55 +37,10 @@ describe("IntelligenceLayout", () => {
 
     expect(screen.getByText("Visa Oracle")).toBeInTheDocument();
     expect(screen.getByText("News Room")).toBeInTheDocument();
-    expect(screen.getByText("System Pulse")).toBeInTheDocument();
+    expect(screen.getByText("Article Composer")).toBeInTheDocument();
   });
 
-  it("should highlight Visa Oracle tab when active", () => {
-    vi.mocked(usePathname).mockReturnValue("/intelligence/visa-oracle");
-
-    const { container } = render(
-      <IntelligenceLayout>
-        <div>Test Content</div>
-      </IntelligenceLayout>,
-    );
-
-    const visaOracleLink = screen.getByText("Visa Oracle").closest("a");
-    expect(visaOracleLink).toHaveAttribute("href", "/intelligence/visa-oracle");
-    expect(visaOracleLink?.className).toContain("bg-[var(--accent)]/10");
-  });
-
-  it("should highlight News Room tab when active", () => {
-    vi.mocked(usePathname).mockReturnValue("/intelligence/news-room");
-
-    const { container } = render(
-      <IntelligenceLayout>
-        <div>Test Content</div>
-      </IntelligenceLayout>,
-    );
-
-    const newsRoomLink = screen.getByText("News Room").closest("a");
-    expect(newsRoomLink).toHaveAttribute("href", "/intelligence/news-room");
-    expect(newsRoomLink?.className).toContain("bg-[var(--accent)]/10");
-  });
-
-  it("should highlight System Pulse tab when active", () => {
-    vi.mocked(usePathname).mockReturnValue("/intelligence/system-pulse");
-
-    const { container } = render(
-      <IntelligenceLayout>
-        <div>Test Content</div>
-      </IntelligenceLayout>,
-    );
-
-    const systemPulseLink = screen.getByText("System Pulse").closest("a");
-    expect(systemPulseLink).toHaveAttribute(
-      "href",
-      "/intelligence/system-pulse",
-    );
-    expect(systemPulseLink?.className).toContain("bg-[var(--accent)]/10");
-  });
-
-  it("should render tab descriptions", () => {
+  it('should show "Active" status indicator on sub-pages', () => {
     vi.mocked(usePathname).mockReturnValue("/intelligence/visa-oracle");
 
     render(
@@ -109,15 +49,77 @@ describe("IntelligenceLayout", () => {
       </IntelligenceLayout>,
     );
 
-    expect(
-      screen.getByText("Review automated visa regulation discoveries"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Curate immigration news articles"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Monitor agent health and performance"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Active")).toBeInTheDocument();
+  });
+
+  it("should show back link with aria-label on sub-pages", () => {
+    vi.mocked(usePathname).mockReturnValue("/intelligence/visa-oracle");
+
+    render(
+      <IntelligenceLayout>
+        <div>Test Content</div>
+      </IntelligenceLayout>,
+    );
+
+    const backLink = screen.getByRole("link", {
+      name: "Back to Intelligence Center",
+    });
+    expect(backLink).toBeInTheDocument();
+    expect(backLink).toHaveAttribute("href", "/intelligence");
+  });
+
+  it("should render all 3 tabs with correct hrefs", () => {
+    vi.mocked(usePathname).mockReturnValue("/intelligence/visa-oracle");
+
+    render(
+      <IntelligenceLayout>
+        <div>Test Content</div>
+      </IntelligenceLayout>,
+    );
+
+    const visaOracleLink = screen.getByText("Visa Oracle").closest("a");
+    const newsRoomLink = screen.getByText("News Room").closest("a");
+    const articleComposerLink = screen
+      .getByText("Article Composer")
+      .closest("a");
+
+    expect(visaOracleLink).toHaveAttribute("href", "/intelligence/visa-oracle");
+    expect(newsRoomLink).toHaveAttribute("href", "/intelligence/news-room");
+    expect(articleComposerLink).toHaveAttribute(
+      "href",
+      "/intelligence/article-composer",
+    );
+  });
+
+  it("should mark active tab with aria-current=page", () => {
+    vi.mocked(usePathname).mockReturnValue("/intelligence/news-room");
+
+    render(
+      <IntelligenceLayout>
+        <div>Test Content</div>
+      </IntelligenceLayout>,
+    );
+
+    const newsRoomLink = screen.getByText("News Room").closest("a");
+    const visaOracleLink = screen.getByText("Visa Oracle").closest("a");
+
+    expect(newsRoomLink).toHaveAttribute("aria-current", "page");
+    expect(visaOracleLink).not.toHaveAttribute("aria-current");
+  });
+
+  it("should detect active tab via startsWith (deep paths)", () => {
+    vi.mocked(usePathname).mockReturnValue(
+      "/intelligence/visa-oracle/some-deep-path",
+    );
+
+    render(
+      <IntelligenceLayout>
+        <div>Test Content</div>
+      </IntelligenceLayout>,
+    );
+
+    const visaOracleLink = screen.getByText("Visa Oracle").closest("a");
+    expect(visaOracleLink).toHaveAttribute("aria-current", "page");
   });
 
   it("should render children content", () => {
@@ -133,7 +135,7 @@ describe("IntelligenceLayout", () => {
     expect(screen.getByText("Test Child Content")).toBeInTheDocument();
   });
 
-  it("should have correct href attributes for all tabs", () => {
+  it("should not have System Pulse tab", () => {
     vi.mocked(usePathname).mockReturnValue("/intelligence/visa-oracle");
 
     render(
@@ -142,46 +144,21 @@ describe("IntelligenceLayout", () => {
       </IntelligenceLayout>,
     );
 
-    const visaOracleLink = screen.getByText("Visa Oracle").closest("a");
-    const newsRoomLink = screen.getByText("News Room").closest("a");
-    const systemPulseLink = screen.getByText("System Pulse").closest("a");
-
-    expect(visaOracleLink).toHaveAttribute("href", "/intelligence/visa-oracle");
-    expect(newsRoomLink).toHaveAttribute("href", "/intelligence/news-room");
-    expect(systemPulseLink).toHaveAttribute(
-      "href",
-      "/intelligence/system-pulse",
-    );
+    expect(screen.queryByText("System Pulse")).not.toBeInTheDocument();
   });
 
-  it("should not highlight inactive tabs", () => {
+  it("should have status indicator with aria-label", () => {
     vi.mocked(usePathname).mockReturnValue("/intelligence/visa-oracle");
 
-    const { container } = render(
+    render(
       <IntelligenceLayout>
         <div>Test Content</div>
       </IntelligenceLayout>,
     );
 
-    const newsRoomLink = screen.getByText("News Room").closest("a");
-    const systemPulseLink = screen.getByText("System Pulse").closest("a");
-
-    expect(newsRoomLink?.className).not.toContain("bg-[var(--accent)]/10");
-    expect(systemPulseLink?.className).not.toContain("bg-[var(--accent)]/10");
-  });
-
-  it("should handle deep paths for active tab detection", () => {
-    vi.mocked(usePathname).mockReturnValue(
-      "/intelligence/visa-oracle/some-deep-path",
+    const statusContainer = screen.getByLabelText(
+      "Intelligence services: Active",
     );
-
-    const { container } = render(
-      <IntelligenceLayout>
-        <div>Test Content</div>
-      </IntelligenceLayout>,
-    );
-
-    const visaOracleLink = screen.getByText("Visa Oracle").closest("a");
-    expect(visaOracleLink?.className).toContain("bg-[var(--accent)]/10");
+    expect(statusContainer).toBeInTheDocument();
   });
 });
