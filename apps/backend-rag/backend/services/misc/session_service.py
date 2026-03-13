@@ -30,7 +30,9 @@ class SessionService:
     - Automatic cleanup of expired sessions
     """
 
-    def __init__(self, redis_url: str | None = None, ttl_hours: int = 24, redis_client: Any | None = None):
+    def __init__(
+        self, redis_url: str | None = None, ttl_hours: int = 24, redis_client: Any | None = None
+    ):
         """
         Initialize SessionService
 
@@ -50,6 +52,7 @@ class SessionService:
         # Fallback: get from RedisManager
         try:
             from backend.core.redis_manager import RedisManager
+
             manager = RedisManager.get_instance()
             client = manager.get_async_client()
             if client is not None:
@@ -83,6 +86,7 @@ class SessionService:
     def _register_component(status: str) -> None:
         try:
             from backend.core.redis_manager import RedisManager
+
             RedisManager.get_instance().register_component("session_service", status)
         except Exception:
             pass

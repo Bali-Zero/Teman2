@@ -40,6 +40,7 @@ async def _get_redis() -> Any:
     """Get a Redis client for leader election via RedisManager. Returns None if unavailable."""
     try:
         from backend.core.redis_manager import RedisManager
+
         manager = RedisManager.get_instance()
         client = manager.get_async_client()
         if client is not None:

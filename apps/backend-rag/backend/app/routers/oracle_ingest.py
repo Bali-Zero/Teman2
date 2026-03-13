@@ -108,7 +108,9 @@ async def ingest_documents(
         if request.collection not in service.collections:
             # Auto-create collection if legal_intelligence
             if request.collection == "legal_intelligence":
-                logger.info("Auto-creating collection: %s -> %s", request.collection, target_collection)
+                logger.info(
+                    "Auto-creating collection: %s -> %s", request.collection, target_collection
+                )
                 vector_db = QdrantClient(collection_name=target_collection)
                 service.collections[request.collection] = vector_db
             else:

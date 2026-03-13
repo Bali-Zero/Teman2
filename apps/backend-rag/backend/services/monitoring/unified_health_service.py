@@ -171,6 +171,7 @@ class UnifiedHealthService:
             if not self.redis_client:
                 # Try to get from RedisManager if not yet initialized
                 from backend.core.redis_manager import RedisManager
+
                 client = RedisManager.get_instance().get_sync_client()
                 if client is None:
                     return HealthCheckResult(

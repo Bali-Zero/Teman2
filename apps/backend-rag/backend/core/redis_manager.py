@@ -16,16 +16,16 @@ logger = logging.getLogger(__name__)
 
 # TTL configuration by key prefix (seconds)
 TTL_CONFIG: dict[str, int] = {
-    "hybrid_search": 3600,      # 1h — RAG responses
-    "kg:entity": 21600,         # 6h — KG entities
-    "kg:traverse": 21600,       # 6h — KG traversals
-    "query_expand": 7200,       # 2h — query expansion
-    "kbli_translate": 86400,    # 24h — KBLI translations (static)
-    "kbli_inspect": 86400,      # 24h — KBLI inspections (static)
-    "faq": 14400,               # 4h — FAQ cache
-    "notebooklm": 14400,        # 4h — NotebookLM cache
-    "session": 86400,           # 24h — conversation sessions
-    "default": 1800,            # 30min — fallback
+    "hybrid_search": 3600,  # 1h — RAG responses
+    "kg:entity": 21600,  # 6h — KG entities
+    "kg:traverse": 21600,  # 6h — KG traversals
+    "query_expand": 7200,  # 2h — query expansion
+    "kbli_translate": 86400,  # 24h — KBLI translations (static)
+    "kbli_inspect": 86400,  # 24h — KBLI inspections (static)
+    "faq": 14400,  # 4h — FAQ cache
+    "notebooklm": 14400,  # 4h — NotebookLM cache
+    "session": 86400,  # 24h — conversation sessions
+    "default": 1800,  # 30min — fallback
 }
 
 
@@ -78,6 +78,7 @@ class RedisManager:
         """
         if redis_url is None:
             from backend.app.core.config import settings
+
             redis_url = settings.redis_url
 
         self._redis_url = redis_url

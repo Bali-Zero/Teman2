@@ -230,6 +230,7 @@ class CacheService:
         if ttl is None:
             # Extract prefix from key format "zantara:{prefix}:{hash}"
             from backend.core.redis_manager import get_ttl
+
             parts = key.split(":")
             prefix = parts[1] if len(parts) >= 3 else "default"
             ttl = get_ttl(prefix)
