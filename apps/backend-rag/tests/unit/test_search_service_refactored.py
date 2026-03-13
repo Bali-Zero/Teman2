@@ -76,7 +76,7 @@ class TestSearchServiceRefactored:
     def mock_embedder(self):
         """Mock EmbeddingsGenerator"""
         embedder = Mock()
-        embedder.generate_query_embedding.return_value = [0.1] * 1536
+        embedder.generate_query_embedding = AsyncMock(return_value=[0.1] * 1536)
         embedder.provider = "openai"
         embedder.dimensions = 1536
         return embedder
