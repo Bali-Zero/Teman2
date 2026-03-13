@@ -38,8 +38,12 @@ export const navigation: NavSection[] = [
     items: [
       { title: "Dashboard", href: "/dashboard", icon: "Home" },
       { title: "Intelligence Center", href: "/intelligence", icon: "Activity" },
-      { title: "Zantara AI", href: "/chat", icon: "MessageSquare" },
-      { title: "Dream Room", href: "/dream", icon: "Cloud" },
+      {
+        title: "Zantara AI",
+        href: "https://zantara.balizero.com",
+        icon: "MessageSquare",
+        external: true,
+      },
       {
         title: "Email",
         href: "https://mail.balizero.com",
@@ -65,19 +69,6 @@ export const navigation: NavSection[] = [
         icon: "BookOpen",
         external: true,
       },
-    ],
-  },
-  {
-    title: "Team",
-    items: [
-      { title: "Team", href: "/team", icon: "UserCircle" },
-      {
-        title: "Calendar",
-        href: "https://calendar.balizero.com",
-        icon: "Calendar",
-        external: true,
-      },
-      { title: "Analytics", href: "/analytics", icon: "BarChart3" },
     ],
   },
   {
@@ -128,14 +119,9 @@ export const routeTitles: Record<string, string> = {
   "/process/deadlines": "Deadlines",
   "/documents": "Documents (Drive)",
   "/knowledge": "Knowledge Base",
-  "/team": "Team",
-  "/team/timesheet": "Timesheet",
-  "/team/calendar": "Team Calendar",
-  "/calendar": "Bali Zero Calendar",
   "/analytics": "Analytics",
   "/settings": "Settings",
   "/settings/users": "User Management",
-  "/dream": "Dream Room",
   // Portal routes
   "/portal": "Dashboard",
   "/portal/vault": "Vault",

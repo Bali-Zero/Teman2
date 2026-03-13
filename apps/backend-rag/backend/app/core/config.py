@@ -591,6 +591,15 @@ class Settings(BaseSettings):
             "Example: '393471234567,628123456789'"
         ),
     )
+    whatsapp_allowed_numbers: str | None = Field(
+        default=None,
+        description=(
+            "Comma-separated whitelist of phone numbers allowed to interact with WhatsApp bot (no + prefix). "
+            "If set, messages from numbers NOT in this list are silently ignored (no response sent). "
+            "Set via WHATSAPP_ALLOWED_NUMBERS env var. "
+            "Example: '628213107363' — leave empty to allow everyone."
+        ),
+    )
 
     # ========================================
     # TELEGRAM BOT CONFIGURATION
