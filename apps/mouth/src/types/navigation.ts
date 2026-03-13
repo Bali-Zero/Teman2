@@ -73,7 +73,15 @@ export const navigation: NavSection[] = [
   },
   {
     title: "System",
-    items: [{ title: "Settings", href: "/settings", icon: "Settings" }],
+    items: [
+      {
+        title: "Calendar",
+        href: "https://calendar.balizero.com",
+        icon: "Calendar",
+        external: true,
+      },
+      { title: "Settings", href: "/settings", icon: "Settings" },
+    ],
   },
 ];
 
@@ -119,9 +127,14 @@ export const routeTitles: Record<string, string> = {
   "/process/deadlines": "Deadlines",
   "/documents": "Documents (Drive)",
   "/knowledge": "Knowledge Base",
+  "/team": "Team",
+  "/team/timesheet": "Timesheet",
+  "/team/calendar": "Team Calendar",
+  "/calendar": "Bali Zero Calendar",
   "/analytics": "Analytics",
   "/settings": "Settings",
   "/settings/users": "User Management",
+  "/dream": "Dream Room",
   // Portal routes
   "/portal": "Dashboard",
   "/portal/vault": "Vault",

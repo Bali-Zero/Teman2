@@ -300,19 +300,23 @@ export default function DashboardPage() {
     <DashboardErrorBoundary>
       {/* Liquid background */}
       <div className="relative dash-liquid-bg">
-        <div
-          className="p-2.5 grid gap-2"
-          style={{ gridTemplateColumns: "1fr 1fr 1fr 1fr" }}
-        >
-          {/* ── ROW 1: Live Activity (3/4) + Role Widget (1/4) ── */}
-          <LiveActivityFeed events={liveEvents} isLoading={isLoading} />
+        <div className="p-2.5 space-y-3">
+          {/* ── ROW 0: Website Live Cover (Full Width) ── */}
+          <HeroLiveWindow />
 
-          <RoleWidget role={role} userId={user?.email ?? ""} />
+          <div
+            className="grid gap-2"
+            style={{ gridTemplateColumns: "1fr 1fr 1fr 1fr" }}
+          >
+            {/* ── ROW 1: Live Activity (3/4) + Role Widget (1/4) ── */}
+            <LiveActivityFeed events={liveEvents} isLoading={isLoading} />
 
-          {/* ── ROW 2: 4 Stat Cards ── */}
-          {statCards.map((card) => (
-            <DashboardStatCard key={card.label} {...card} />
-          ))}
+            <RoleWidget role={role} userId={user?.email ?? ""} />
+
+            {/* ── ROW 2: 4 Stat Cards ── */}
+            {statCards.map((card) => (
+              <DashboardStatCard key={card.label} {...card} />
+            ))}
 
           {/* ── ROW 3: Pratiche (1.6fr) + Health (1fr) + Intel (1fr) ── */}
           <div

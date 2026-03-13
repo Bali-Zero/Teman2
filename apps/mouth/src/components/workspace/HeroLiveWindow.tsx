@@ -35,12 +35,13 @@ export function HeroLiveWindow() {
 
   return (
     <div
-      className="group relative rounded-[12px] overflow-hidden mb-4"
+      className="group relative rounded-[12px] overflow-hidden mb-2"
       style={{
-        height: 420,
-        border: "1px solid var(--bz-border-accent)",
+        height: 546,
+        border: "1px solid rgba(255, 255, 255, 0.12)",
         boxShadow:
-          "0 0 0 1px var(--bz-border-accent), 0 4px 24px rgba(0,0,0,0.5)",
+          "0 8px 32px 0 rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(255, 255, 255, 0.05)",
+        backdropFilter: "blur(24px)",
       }}
     >
       {/* Background */}
