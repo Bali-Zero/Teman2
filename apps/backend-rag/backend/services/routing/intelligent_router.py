@@ -1,9 +1,9 @@
 import logging
 from collections.abc import AsyncGenerator
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from backend.services.misc.clarification_service import ClarificationService
-from backend.services.misc.context_suggestion_service import get_context_suggestion_service
+if TYPE_CHECKING:
+    from backend.services.misc.clarification_service import ClarificationService
 
 logger = logging.getLogger(__name__)
 
@@ -38,9 +38,13 @@ class IntelligentRouter:
         self.db_pool = db_pool
 
         # Initialize Context Suggestion Service (Phase 3 Proactive AI)
+        from backend.services.misc.context_suggestion_service import get_context_suggestion_service
+
         self.context_suggestion_service = get_context_suggestion_service(db_pool=db_pool)
 
         # Initialize Clarification Service
+        from backend.services.misc.clarification_service import ClarificationService
+
         self.clarification_service = ClarificationService(search_service=search_service)
 
         # Lazy import to avoid circular dependency

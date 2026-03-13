@@ -54,7 +54,6 @@ from backend.services.misc.cultural_insights_service import CulturalInsightsServ
 from backend.services.misc.result_formatter import format_search_results
 
 # Hybrid search integration
-from backend.services.rag.hybrid_search import HybridSearchService, get_hybrid_search_service
 from backend.services.routing.conflict_resolver import ConflictResolver
 from backend.services.search.query_expander import QueryExpander
 from backend.services.search.search_filters import build_search_filter
@@ -325,7 +324,7 @@ class SearchService:
         return self._cultural_insights
 
     @property
-    def hybrid_search_service(self) -> HybridSearchService:
+    def hybrid_search_service(self) -> Any:
         """
         Access to HybridSearchService for advanced hybrid search.
 
@@ -340,6 +339,8 @@ class SearchService:
             ...     alpha=0.5
             ... )
         """
+        from backend.services.rag.hybrid_search import get_hybrid_search_service
+
         return get_hybrid_search_service()
 
     async def _prepare_search_context(
