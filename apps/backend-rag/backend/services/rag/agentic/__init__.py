@@ -29,11 +29,12 @@ All original exports are maintained for seamless integration with existing code.
 """
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from backend.services.misc.clarification_service import ClarificationService
-from backend.services.misc.graph_service import GraphService
 from backend.services.rag.agentic.graph_tool import GraphTraversalTool
+
+if TYPE_CHECKING:
+    from backend.services.misc.clarification_service import ClarificationService
 
 from .kg_orchestrator import AgenticResponse, KGAgenticOrchestrator
 from .orchestrator import AgenticRAGOrchestrator
@@ -89,7 +90,7 @@ def create_agentic_rag(
     db_pool,
     web_search_client=None,
     semantic_cache: "SemanticCache" = None,
-    clarification_service: ClarificationService = None,
+    clarification_service: "ClarificationService" = None,
 ) -> AgenticRAGOrchestrator:
     """
     Factory function to create a fully configured AgenticRAGOrchestrator.
