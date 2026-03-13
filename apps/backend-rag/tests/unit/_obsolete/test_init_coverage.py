@@ -1,6 +1,6 @@
 import sys
 import types
-from pathlib import Path
+
 
 # Add backend to path
 def test_llm_getattr_lazy_imports(monkeypatch):

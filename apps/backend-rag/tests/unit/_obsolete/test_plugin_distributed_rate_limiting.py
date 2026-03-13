@@ -3,7 +3,6 @@ Unit tests for Distributed Rate Limiting with Redis
 Tests Redis-based rate limiting in PluginExecutor
 """
 
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest

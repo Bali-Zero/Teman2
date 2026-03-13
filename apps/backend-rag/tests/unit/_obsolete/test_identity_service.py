@@ -4,7 +4,6 @@ Unit tests for Identity Service
 """
 
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import bcrypt
@@ -1067,7 +1066,7 @@ def test_get_password_hash_very_long_password(identity_service):
     assert hashed.startswith("$2b$")
     # Should be able to verify password at limit
     assert identity_service.verify_password(password, hashed)
-    
+
     # Test that password longer than 72 bytes raises ValueError
     long_password = "a" * 1000
     with pytest.raises(ValueError, match="password cannot be longer than 72 bytes"):

@@ -17,8 +17,6 @@ Tests the core reasoning engine that executes the ReAct pattern:
 
 import json
 import os
-import sys
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

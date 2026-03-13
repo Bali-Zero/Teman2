@@ -6,7 +6,6 @@ import importlib.util
 import sys
 import types
 from dataclasses import dataclass
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest

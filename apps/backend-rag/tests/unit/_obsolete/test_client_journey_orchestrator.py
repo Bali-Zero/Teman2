@@ -10,7 +10,6 @@ Tests all public methods with success, failure, and edge cases.
 Target: 90%+ coverage
 """
 
-from pathlib import Path
 
 # Add backend to path
 from datetime import datetime

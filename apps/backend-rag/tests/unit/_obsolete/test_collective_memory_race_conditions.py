@@ -10,8 +10,6 @@ Tests concurrent fact contributions to ensure atomic promotion.
 """
 
 import asyncio
-import sys
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import asyncpg
