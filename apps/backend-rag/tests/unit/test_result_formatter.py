@@ -62,14 +62,14 @@ class TestFormatSearchResults:
         assert result_primary[0]["metadata"]["source_collection"] == "primary_collection"
 
     def test_pricing_collection_boost(self):
-        """Test that bali_zero_pricing gets boost."""
+        """Test that bali_zero_pricing_hybrid gets boost."""
         raw_results = {
             "documents": ["Test"],
             "distances": [0.3],
             "metadatas": [{}],
             "ids": ["doc1"],
         }
-        result_pricing = format_search_results(raw_results, "bali_zero_pricing")
+        result_pricing = format_search_results(raw_results, "bali_zero_pricing_hybrid")
         result_normal = format_search_results(raw_results, "other_collection")
         assert result_pricing[0]["score"] > result_normal[0]["score"]
         assert result_pricing[0]["metadata"]["pricing_priority"] == "high"

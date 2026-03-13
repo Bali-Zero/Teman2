@@ -16,7 +16,7 @@ backend_path = Path(__file__).parent.parent.parent
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from middleware.request_tracing import RequestTracingMiddleware, get_correlation_id
+from backend.middleware.request_tracing import RequestTracingMiddleware, get_correlation_id
 
 
 @pytest.fixture
@@ -60,7 +60,7 @@ class TestRequestTracingMiddleware:
 
     def test_middleware_stores_trace(self, client):
         """Test that middleware stores trace"""
-        from middleware.request_tracing import RequestTracingMiddleware
+        from backend.middleware.request_tracing import RequestTracingMiddleware
 
         # Clear existing traces first
         RequestTracingMiddleware.clear_traces()
@@ -76,7 +76,7 @@ class TestRequestTracingMiddleware:
 
     def test_middleware_stores_trace_with_query_params(self, client):
         """Test that middleware stores trace with query parameters"""
-        from middleware.request_tracing import RequestTracingMiddleware
+        from backend.middleware.request_tracing import RequestTracingMiddleware
 
         RequestTracingMiddleware.clear_traces()
 
@@ -115,7 +115,7 @@ class TestRequestTracingMiddleware:
 
     def test_middleware_max_traces_limit(self):
         """Test that middleware respects max traces limit"""
-        from middleware.request_tracing import RequestTracingMiddleware
+        from backend.middleware.request_tracing import RequestTracingMiddleware
 
         # Create fresh app with specific max_traces
         test_app = FastAPI()
@@ -143,14 +143,14 @@ class TestTraceStorage:
 
     def test_get_trace_not_found(self):
         """Test getting non-existent trace"""
-        from middleware.request_tracing import RequestTracingMiddleware
+        from backend.middleware.request_tracing import RequestTracingMiddleware
 
         trace = RequestTracingMiddleware.get_trace("non-existent-id")
         assert trace is None
 
     def test_get_recent_traces(self):
         """Test getting recent traces"""
-        from middleware.request_tracing import RequestTracingMiddleware
+        from backend.middleware.request_tracing import RequestTracingMiddleware
 
         # Clear existing traces
         RequestTracingMiddleware.clear_traces()
@@ -177,7 +177,7 @@ class TestTraceStorage:
 
     def test_clear_traces(self):
         """Test clearing traces"""
-        from middleware.request_tracing import RequestTracingMiddleware
+        from backend.middleware.request_tracing import RequestTracingMiddleware
 
         # Create some traces
         app = FastAPI()
@@ -238,7 +238,7 @@ class TestAddStep:
 
     def test_add_step_to_trace(self):
         """Test adding a step to a trace"""
-        from middleware.request_tracing import RequestTracingMiddleware
+        from backend.middleware.request_tracing import RequestTracingMiddleware
 
         # Clear existing traces
         RequestTracingMiddleware.clear_traces()
@@ -279,7 +279,7 @@ class TestAddStep:
 
     def test_add_step_to_nonexistent_trace(self):
         """Test adding step to non-existent trace (should not fail)"""
-        from middleware.request_tracing import RequestTracingMiddleware
+        from backend.middleware.request_tracing import RequestTracingMiddleware
 
         RequestTracingMiddleware.clear_traces()
 
