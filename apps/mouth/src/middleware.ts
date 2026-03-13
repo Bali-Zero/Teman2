@@ -46,6 +46,7 @@ const PUBLIC_DOMAIN = "balizero.com";
 const APP_DOMAIN = "kita.balizero.com";
 const PORTAL_DOMAIN = "my.balizero.com";
 const MOBILE_DOMAIN = "mo.balizero.com";
+const ZANTARA_DOMAIN = "zantara.balizero.com";
 // SSO subdomains: all *.balizero.com apps that share auth via cookie
 const SSO_SUBDOMAINS = ["mail", "calendar", "drive", "knowledge"];
 
@@ -173,6 +174,19 @@ export function middleware(request: NextRequest) {
     const redirectResponse = NextResponse.redirect(publicUrl, 301);
     redirectResponse.headers.set("x-pathname", pathname);
     return redirectResponse;
+  }
+
+  // === ZANTARA DOMAIN (zantara.balizero.com) ===
+  // Dedicated Zantara AI chat — rewrites everything to /kbli-explorer
+  if (hostname === ZANTARA_DOMAIN || hostname === `www.${ZANTARA_DOMAIN}`) {
+    // Allow static/API routes through
+    const rewritePath =
+      pathname === "/" ? "/kbli-explorer" : `/kbli-explorer${pathname}`;
+    const rewriteUrl = request.nextUrl.clone();
+    rewriteUrl.pathname = rewritePath;
+    const rewriteResponse = NextResponse.rewrite(rewriteUrl);
+    rewriteResponse.headers.set("x-pathname", pathname);
+    return rewriteResponse;
   }
 
   // === PUBLIC DOMAIN (balizero.com) ===
