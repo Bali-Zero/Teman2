@@ -287,11 +287,29 @@ Classification confidence thresholds:
 ### Production Stack
 
 - **Frontend:** Vercel (CDN, Edge Functions)
-- **Backend:** Fly.io `nuzantara-rag` (Asia region)
+- **Backend:** Fly.io `nuzantara-rag` (Singapore, shared-cpu-2x, **2GB RAM**, auto_stop=true, min=0)
 - **Databases:**
-  - PostgreSQL: Fly.io managed
-  - Qdrant: Fly.io app
+  - PostgreSQL: Fly.io `nuzantara-postgres` (**2GB RAM**, v0.1.0, upgraded 2026-03-14)
+  - Qdrant: Fly.io `nuzantara-qdrant` (2GB, v1.12.1 — upgrade TODO)
   - Redis: Upstash or Fly.io
+
+### Fly.io — SOLO 3 APP (updated 2026-03-14)
+
+| App                  | CPU       | RAM | Auto-stop     | Note                    |
+| -------------------- | --------- | --- | ------------- | ----------------------- |
+| `nuzantara-rag`      | shared-2x | 2GB | ✅ yes, min=0 | Cold start ~35s         |
+| `nuzantara-postgres` | shared-1x | 2GB | no            | v0.1.0, backup → Tigris |
+| `nuzantara-qdrant`   | shared-1x | 2GB | no            | v1.12.1                 |
+
+**Distrutte (2026-03-14):** `nuzantara-rag-staging`, `bali-intel-scraper`, `zantara-media`, `fly-builder-red-flower-7537`
+
+**bali-intel-scraper**: NON su Fly — gira SOLO locale su Pro via OpenClaw (03:00 WITA)
+
+**Backup & Monitoring:**
+
+- `~/scripts/fly-pg-backup.sh` — pg_dump daily → Tigris `nuzantara-backups`, cron 03:00
+- `~/scripts/fly-health-check.sh` — check ogni 5min, alert Telegram se down
+- Crontab Pro: `*/5` health, `0 3` backup
 
 ### Environment Variables
 
