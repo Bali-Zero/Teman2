@@ -71,8 +71,7 @@ CATEGORIZATION_RULES: dict[str, dict[str, list[str]]] = {
         "marriage_certificate": ["marriage", "pernikahan", "akta nikah", "nikah"],
     },
     # ── 00_Profile: applicant profile docs ──────────────────────────────────
-    "profile": {
-        "passport": ["passport", "paspor", "pp", "pport"],
+    "personal": {
         "photo": ["photo", "foto", "picture", "selfie", "image", "foto_wajah"],
         "alamat": [
             "alamat",
@@ -87,6 +86,7 @@ CATEGORIZATION_RULES: dict[str, dict[str, list[str]]] = {
     },
     # ── 01_Immigration: applicant permits/visas ──────────────────────────────
     "immigration": {
+        "passport": ["passport", "paspor", "pp", "pport"],
         "kitas": ["kitas", "kitap", "itas", "limited stay", "stay permit"],
         "imk": ["imk", "izin masuk kembali", "reentry", "re-entry"],
         "itk": ["itk", "izin tinggal kunjungan"],
@@ -99,7 +99,7 @@ CATEGORIZATION_RULES: dict[str, dict[str, list[str]]] = {
         "telex_visa": ["telex", "vitas", "approval letter"],
     },
     # ── 02_Company: company formation & legal docs ───────────────────────────
-    "company": {
+    "pma": {
         "akta": [
             "akta",
             "deed",
@@ -120,6 +120,7 @@ CATEGORIZATION_RULES: dict[str, dict[str, list[str]]] = {
         ],
         "nib": ["nib", "oss", "nomor induk berusaha", "business id"],
         "npwp_company": [
+            "npwp",
             "npwp perusahaan",
             "npwp badan",
             "npwp pt",
@@ -140,6 +141,7 @@ CATEGORIZATION_RULES: dict[str, dict[str, list[str]]] = {
     },
     # ── 03_Tax: tax documents ────────────────────────────────────────────────
     "tax": {
+        "spt": ["spt"],
         "spt_company": [
             "spt company",
             "spt badan",
@@ -202,9 +204,9 @@ CATEGORIZATION_RULES: dict[str, dict[str, list[str]]] = {
 # Category → Drive folder name
 CATEGORY_TO_FOLDER: dict[str, str] = {
     "family": "04_Family",
-    "profile": "00_Profile",
+    "personal": "00_Profile",
     "immigration": "01_Immigration",
-    "company": "02_Company",
+    "pma": "02_Company",
     "tax": "03_Tax",
     "other": "99_Misc",
 }
