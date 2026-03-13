@@ -24,7 +24,7 @@ qdrant_client_mock = types.ModuleType("qdrant_client")
 qdrant_client_mock.QdrantClient = MagicMock()
 sys.modules["qdrant_client"] = qdrant_client_mock
 
-qdrant_db_path = backend_path / "core" / "qdrant_db.py"
+qdrant_db_path = backend_path / "backend" / "core" / "qdrant_db.py"
 spec = importlib.util.spec_from_file_location("qdrant_db", qdrant_db_path)
 qdrant_db_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(qdrant_db_module)
