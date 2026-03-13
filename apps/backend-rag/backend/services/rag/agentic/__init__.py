@@ -31,10 +31,19 @@ All original exports are maintained for seamless integration with existing code.
 import logging
 from typing import TYPE_CHECKING, Any
 
-from backend.services.rag.agentic.graph_tool import GraphTraversalTool
-
 if TYPE_CHECKING:
     from backend.services.misc.clarification_service import ClarificationService
+
+# Lazy import to prevent circular dependencies
+_GraphTraversalTool = None
+
+def _get_graph_traversal_tool():
+    """Lazy load GraphTraversalTool to prevent circular imports."""
+    global _GraphTraversalTool
+    if _GraphTraversalTool is None:
+        from backend.services.rag.agentic.graph_tool import GraphTraversalTool
+        _GraphTraversalTool = GraphTraversalTool
+    return _GraphTraversalTool
 
 # Core orchestrators
 from .kg_orchestrator import AgenticResponse, KGAgenticOrchestrator

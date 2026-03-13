@@ -19,6 +19,7 @@ from backend.app.routers.crm_interactions import get_interactions_stats, list_in
 from backend.app.routers.crm_practices import get_practices_stats, list_practices
 from backend.app.utils.logging_utils import get_logger
 from backend.core.cache import get_cache_service
+from backend.core.collection_registry import resolve_collection_name
 from backend.core.qdrant_db import QdrantClient
 from backend.services.integrations.zoho_email_service import ZohoEmailService
 from backend.services.integrations.zoho_oauth_service import ZohoOAuthService
@@ -467,7 +468,10 @@ async def get_neural_pulse(
         # 2. Get knowledge docs count (from Qdrant)
         knowledge_docs = 0
         try:
-            qdrant = QdrantClient(qdrant_url=settings.qdrant_url, collection_name="kbli_2025_final")
+            qdrant = QdrantClient(
+                qdrant_url=settings.qdrant_url,
+                collection_name=resolve_collection_name("kbli_2025_final"),
+            )
             qdrant_stats = await qdrant.get_stats()
             knowledge_docs = qdrant_stats.get("total_documents", 0)
             await qdrant.close()

@@ -11,6 +11,7 @@ from collections import defaultdict
 from typing import Any
 
 from backend.app.core.config import settings
+from backend.core.collection_registry import resolve_collection_name
 from backend.core.qdrant_db import QdrantClient
 
 logger = logging.getLogger(__name__)
@@ -54,13 +55,30 @@ class CollectionManager:
             "bali_zero_pricing_hybrid": {"priority": "high", "doc_count": 29},
             "bali_zero_team": {"priority": "high", "doc_count": 22},
             "visa_oracle": {"priority": "high", "doc_count": 1612},
-            "kbli_2025_final": {"priority": "high", "doc_count": 8886, "alias": "kbli_2025_final"},
-            "tax_genius": {"priority": "high", "doc_count": 895},
-            "legal_architect": {"priority": "high", "doc_count": 5041, "alias": "legal_unified"},
-            "legal_unified": {"priority": "high", "doc_count": 5041},
+            "kbli_2025_final": {
+                "priority": "high",
+                "doc_count": 8886,
+                "alias": resolve_collection_name("kbli_2025_final"),
+            },
+            "tax_genius": {
+                "priority": "high",
+                "doc_count": 895,
+                "alias": resolve_collection_name("tax_genius"),
+            },
+            "legal_architect": {
+                "priority": "high",
+                "doc_count": 5041,
+                "alias": resolve_collection_name("legal_architect"),
+            },
+            "legal_unified": {
+                "priority": "high",
+                "doc_count": 5041,
+                "alias": resolve_collection_name("legal_unified"),
+            },
             "legal_unified_hybrid": {
                 "priority": "high",
                 "doc_count": 47959,
+                "alias": resolve_collection_name("legal_unified_hybrid"),
             },  # Dec 2025: Hybrid with BM25
             "tax_genius_hybrid": {
                 "priority": "high",
@@ -74,27 +92,48 @@ class CollectionManager:
             "balizero_news": {
                 "priority": "high",
                 "doc_count": 175,
+                "alias": resolve_collection_name("balizero_news"),
                 "description": "Intel articles: immigration, tax, bali news, business regulations",
             },
-            "zantara_books": {"priority": "medium", "doc_count": 8923, "alias": "knowledge_base"},
-            "cultural_insights": {"priority": "low", "doc_count": 0, "alias": "knowledge_base"},
-            "tax_updates": {"priority": "medium", "doc_count": 895, "alias": "tax_genius"},
-            "tax_knowledge": {"priority": "medium", "doc_count": 895, "alias": "tax_genius"},
+            "zantara_books": {
+                "priority": "medium",
+                "doc_count": 8923,
+                "alias": resolve_collection_name("zantara_books"),
+            },
+            "cultural_insights": {
+                "priority": "low",
+                "doc_count": 0,
+                "alias": resolve_collection_name("cultural_insights"),
+            },
+            "tax_updates": {
+                "priority": "medium",
+                "doc_count": 895,
+                "alias": resolve_collection_name("tax_updates"),
+            },
+            "tax_knowledge": {
+                "priority": "medium",
+                "doc_count": 895,
+                "alias": resolve_collection_name("tax_knowledge"),
+            },
             "property_listings": {
                 "priority": "medium",
                 "doc_count": 29,
-                "alias": "property_unified",
+                "alias": resolve_collection_name("property_listings"),
             },
             "property_knowledge": {
                 "priority": "medium",
                 "doc_count": 29,
-                "alias": "property_unified",
+                "alias": resolve_collection_name("property_knowledge"),
             },
-            "legal_updates": {"priority": "medium", "doc_count": 5041, "alias": "legal_unified"},
+            "legal_updates": {
+                "priority": "medium",
+                "doc_count": 5041,
+                "alias": resolve_collection_name("legal_updates"),
+            },
             "legal_intelligence": {
                 "priority": "medium",
                 "doc_count": 5041,
-                "alias": "legal_unified",
+                "alias": resolve_collection_name("legal_intelligence"),
             },
             # Immigration circulars (Surat Edaran Kemnaker/Imigrasi)
             "immigration_circulars": {

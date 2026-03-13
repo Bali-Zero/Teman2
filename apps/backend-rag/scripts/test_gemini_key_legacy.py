@@ -1,16 +1,28 @@
 import os
+import logging
 import google.generativeai as genai
 
-def test_key():
-    key = "AIzaSyC1cM933ORSdB4CCAx8EYe4mNsYShIoGDI"
-    print(f"Testing key with legacy SDK: {key[:10]}...")
+logger = logging.getLogger(__name__)
+
+
+def _get_api_key() -> str:
+    key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    if not key:
+        raise RuntimeError("Set GEMINI_API_KEY or GOOGLE_API_KEY before running this script.")
+    return key
+
+
+def test_key() -> None:
+    key = _get_api_key()
+    logger.info("Testing key with legacy SDK: %s...", key[:10])
     genai.configure(api_key=key)
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModel("gemini-1.5-flash")
     try:
         response = model.generate_content("Hello, respond with 'OK' if you can hear me.")
-        print(f"Response: {response.text}")
-    except Exception as e:
-        print(f"Error: {e}")
+        logger.info("Response: %s", response.text)
+    except Exception as exc:
+        logger.exception("Legacy Gemini key test failed: %s", exc)
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     test_key()

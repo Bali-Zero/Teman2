@@ -17,7 +17,7 @@
 ### 2. ✅ Google API Key
 
 - **Configurata in:** `apps/bali-intel-scraper/.env.local`
-- **Chiave:** `AIzaSyDWakPSp-49nGIGAjJmAp_YpgZ06Ve_04Q`
+- **Chiave:** `<REDACTED_GOOGLE_API_KEY>`
 - **Uso:** Imagen 4 per generazione immagini veloce (~5-10s invece di ~60s)
 - **Sicurezza:** ✅ File nel `.gitignore`, non committato
 

@@ -58,7 +58,7 @@
 ### **API Keys Status**
 
 ```
-✅ GOOGLE_API_KEY=AIzaSyBgH8hFjOmDu3jHelgy4f8BDELFXMlP50
+✅ GOOGLE_API_KEY=<REDACTED_GOOGLE_API_KEY>
 ✅ OPENROUTER_API_KEY: Configured
 ✅ DEEPSEEK_API_KEY: Configured
 ✅ OPENAI_API_KEY: Configured
