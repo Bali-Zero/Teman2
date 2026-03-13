@@ -66,16 +66,16 @@ export function ZantaraPortalCard() {
             className="absolute -bottom-1.5 -right-1.5 w-[26px] h-[26px] rounded-full flex items-center justify-center"
             style={{
               background: "rgba(12,12,14,0.85)",
-              border: "1px solid rgba(255,255,255,0.10)",
-              boxShadow: "0 0 0 0 rgba(212,132,90,0.4)",
+              border: "1px solid rgba(59,130,246,0.25)",
+              boxShadow: "0 0 0 0 rgba(59,130,246,0.5)",
               animation: "lotusPulse 3s ease-in-out infinite",
             }}
           >
             <Image
-              src="/static/logo_zan.png"
+              src="/static/zantara-lotus-v2.png"
               alt="Zantara"
-              width={18}
-              height={18}
+              width={22}
+              height={22}
               className="object-contain"
             />
           </div>
