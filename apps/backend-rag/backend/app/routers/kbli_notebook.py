@@ -12,6 +12,7 @@ import json
 import logging
 import re
 import time
+from inspect import isawaitable
 from typing import Any
 
 import httpx
@@ -88,6 +89,25 @@ class KBLINotebookChatResponse(BaseModel):
 KBLI_COLLECTION = resolve_collection_name("kbli_2025_final")
 
 
+def _payload_value(payload: dict[str, Any], *keys: str, default: Any = None) -> Any:
+    """Read flat or legacy nested KBLI payload values."""
+    metadata = payload.get("metadata", {}) if isinstance(payload.get("metadata"), dict) else {}
+    for key in keys:
+        if payload.get(key) not in (None, ""):
+            return payload[key]
+        if metadata.get(key) not in (None, ""):
+            return metadata[key]
+    return default
+
+
+async def _resolve_embedding(search_service: Any, query: str) -> list[float]:
+    """Support both async and sync embedding generators in tests and runtime."""
+    embedding_result = search_service.embedder.generate_query_embedding(query)
+    if isawaitable(embedding_result):
+        return await embedding_result
+    return embedding_result
+
+
 @router.get("/llm-health")
 async def kbli_llm_health() -> Any:
     """Check LLM health for KBLI Notebook chat functionality."""
@@ -151,18 +171,25 @@ async def _get_kbli_payload_from_qdrant(code: str) -> dict | None:
     if settings.qdrant_api_key:
         headers["api-key"] = settings.qdrant_api_key
     url = f"{settings.qdrant_url}/collections/{KBLI_COLLECTION}/points/scroll"
-    payload = {
-        "filter": {"must": [{"key": "kode_kbli", "match": {"value": code}}]},
-        "limit": 1,
-        "with_payload": True,
-    }
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.post(url, json=payload, headers=headers)
-            resp.raise_for_status()
-            points = resp.json().get("result", {}).get("points", [])
-            if points:
-                return points[0].get("payload", {})
+            for filter_key in (
+                "kode_kbli",
+                "kode",
+                "metadata.kode",
+                "metadata.kode_kbli",
+                "metadata.kode_kbli_2025",
+            ):
+                payload = {
+                    "filter": {"must": [{"key": filter_key, "match": {"value": code}}]},
+                    "limit": 1,
+                    "with_payload": True,
+                }
+                resp = await client.post(url, json=payload, headers=headers)
+                resp.raise_for_status()
+                points = resp.json().get("result", {}).get("points", [])
+                if points:
+                    return points[0].get("payload", {})
     except Exception as e:
         logger.warning(f"Qdrant lookup for KBLI {code} failed (non-critical): {e}")
     return None
@@ -202,7 +229,7 @@ async def search_kbli(
     logger.info(f"🔍 KBLI Search Request: '{query}' (limit: {limit})")
 
     try:
-        embedding = await search_service.embedder.generate_query_embedding(query)
+        embedding = await _resolve_embedding(search_service, query)
         results = await _search_kbli_qdrant(embedding, limit)
 
         search_results = []
@@ -210,12 +237,15 @@ async def search_kbli(
             p = r.get("payload", {})
             search_results.append(
                 KBLISearchResult(
-                    code=p.get("kode_kbli", "N/A"),
-                    title=p.get("judul", "N/A"),
-                    description=(p.get("content", "") or "")[:200] + "...",
+                    code=_payload_value(p, "kode_kbli", "kode", "kode_kbli_2025", default="N/A"),
+                    title=_payload_value(p, "judul", "title_id", default="N/A"),
+                    description=(
+                        _payload_value(p, "content", "text", "description", default="") or ""
+                    )[:200]
+                    + "...",
                     score=round(r.get("score", 0.0), 4),
-                    pma_status=p.get("pma_status") or "UNKNOWN",
-                    risk_category=p.get("kategori_risiko") or "Unknown",
+                    pma_status=_payload_value(p, "pma_status", default="UNKNOWN"),
+                    risk_category=_payload_value(p, "kategori_risiko", default="Unknown"),
                 )
             )
 
@@ -238,14 +268,13 @@ async def search_kbli(
 @router.get("/inspect/{code}", response_model=KBLIDetail)
 async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> Any:
     """Retrieve deep KG metadata with dynamic TTL based on sector volatility."""
-    from backend.core.cache import (
-        get_cache_service as cache_manager,  # Assume we have access to the manager
-    )
+    from backend.core.cache import get_cache_service
 
     cache_key = f"kbli_inspect_v2_{code}"
     ttl = get_kbli_ttl(code)
 
     # Try manual cache check
+    cache_manager = get_cache_service()
     if cache_manager:
         cached_data = await cache_manager.get(cache_key)
         if cached_data:
@@ -331,10 +360,12 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
 
             # 5. Enrich with Qdrant payload (pma_status, risk category)
             qdrant_payload = await _get_kbli_payload_from_qdrant(code)
-            qdrant_risk = qdrant_payload.get("kategori_risiko") if qdrant_payload else None
+            qdrant_risk = (
+                _payload_value(qdrant_payload, "kategori_risiko") if qdrant_payload else None
+            )
 
             pma_status = (
-                (qdrant_payload.get("pma_status") if qdrant_payload else None)
+                (_payload_value(qdrant_payload, "pma_status") if qdrant_payload else None)
                 or props.get("pma_status")
                 or "UNKNOWN"
             )
@@ -1046,11 +1077,17 @@ async def chat_kbli(
             if qdrant_payload:
                 direct_kbli_match = KBLISearchResult(
                     code=code,
-                    title=qdrant_payload.get("judul", f"KBLI {code}"),
-                    description=(qdrant_payload.get("content", "") or "")[:200] + "...",
+                    title=_payload_value(qdrant_payload, "judul", "title_id", default=f"KBLI {code}"),
+                    description=(
+                        _payload_value(qdrant_payload, "content", "text", "description", default="")
+                        or ""
+                    )[:200]
+                    + "...",
                     score=1.0,
-                    pma_status=qdrant_payload.get("pma_status") or "Verify at OSS",
-                    risk_category=qdrant_payload.get("kategori_risiko") or "Verify at OSS",
+                    pma_status=_payload_value(qdrant_payload, "pma_status", default="Verify at OSS"),
+                    risk_category=_payload_value(
+                        qdrant_payload, "kategori_risiko", default="Verify at OSS"
+                    ),
                 )
                 logger.info(
                     f"✅ Found KBLI {code} via Qdrant payload filter: {direct_kbli_match.title}"
@@ -1238,25 +1275,31 @@ async def chat_kbli(
         # Search semantic context with translated query
         results = []
         try:
-            embedding = await search_service.embedder.generate_query_embedding(search_query)
+            embedding = await _resolve_embedding(search_service, search_query)
             raw_results = await _search_kbli_qdrant(embedding, 7)
 
             # Deduplicate by code
             seen_codes = set()
             for r in raw_results:
                 p = r.get("payload", {})
-                code = p.get("kode_kbli", "N/A")
+                code = _payload_value(p, "kode_kbli", "kode", "kode_kbli_2025", default="N/A")
                 if code in seen_codes:
                     continue
                 seen_codes.add(code)
                 results.append(
                     KBLISearchResult(
                         code=code,
-                        title=p.get("judul", "N/A"),
-                        description=(p.get("content", "") or "")[:200] + "...",
+                        title=_payload_value(p, "judul", "title_id", default="N/A"),
+                        description=(
+                            _payload_value(p, "content", "text", "description", default="")
+                            or ""
+                        )[:200]
+                        + "...",
                         score=round(r.get("score", 0.0), 4),
-                        pma_status=p.get("pma_status") or "Verify at OSS",
-                        risk_category=p.get("kategori_risiko") or "Verify at OSS",
+                        pma_status=_payload_value(p, "pma_status", default="Verify at OSS"),
+                        risk_category=_payload_value(
+                            p, "kategori_risiko", default="Verify at OSS"
+                        ),
                     )
                 )
                 if len(results) >= 5:

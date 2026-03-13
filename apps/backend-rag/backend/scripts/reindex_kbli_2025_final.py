@@ -31,11 +31,13 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+from backend.core.collection_registry import resolve_collection_name
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
 # --- Config ---
-COLLECTION_NAME = "kbli_2025_final"
+COLLECTION_NAME = resolve_collection_name("kbli_2025_final")
 EMBEDDING_MODEL = "text-embedding-3-small"
 EMBED_BATCH_SIZE = 20
 UPSERT_BATCH_SIZE = 20
@@ -163,28 +165,35 @@ def build_payload(entry: dict, embedding_text: str) -> dict:
         if skala.get("kategori_risiko"):
             risk_levels.add(skala["kategori_risiko"])
 
+    description = entry.get("uraian", "")
+    risk_category = next(iter(risk_levels), "")
+
     return {
         "text": embedding_text,
-        "metadata": {
-            "kode": code,
-            "judul": entry.get("judul", ""),
-            "prefix_2": code[:2],
-            "prefix_3": code[:3],
-            "digit_count": len(code),
-            "sources": ["BPS_7_2025", "PP_28_2025"],
-            "doc_type": "kbli_bps",
-            "version": "v8.0-final-complete",
-            "sektor": entry.get("sektor_id", ""),
-            "pma_status": entry.get("pma_status", ""),
-            "pma_max_asing": entry.get("pma_max_asing", ""),
-            "has_per_skala": bool(per_skala),
-            "scales": scales,
-            "risk_levels": list(risk_levels),
-            "has_intel_2026": bool(entry.get("intel_2026")),
-            "has_gold_content": False,
-            "status_mapping": entry.get("status_mapping", ""),
-            "indexed_at": "",  # filled at upsert time
-        },
+        "content": embedding_text,
+        "kode": code,
+        "kode_kbli": code,
+        "kode_kbli_2025": code,
+        "judul": entry.get("judul", ""),
+        "description": description,
+        "prefix_2": code[:2],
+        "prefix_3": code[:3],
+        "digit_count": len(code),
+        "sources": ["BPS_7_2025", "PP_28_2025"],
+        "doc_type": "kbli_bps",
+        "version": "v8.0-final-complete",
+        "sektor": entry.get("sektor_id", ""),
+        "section": entry.get("sektor_id", ""),
+        "pma_status": entry.get("pma_status", ""),
+        "pma_max_asing": entry.get("pma_max_asing", ""),
+        "has_per_skala": bool(per_skala),
+        "scales": scales,
+        "risk_levels": list(risk_levels),
+        "kategori_risiko": risk_category,
+        "has_intel_2026": bool(entry.get("intel_2026")),
+        "has_gold_content": False,
+        "status_mapping": entry.get("status_mapping", ""),
+        "indexed_at": "",  # filled at upsert time
     }
 
 
@@ -213,7 +222,10 @@ async def delete_old_points(qdrant_url: str, api_key: str | None):
             f"{qdrant_url}/collections/{COLLECTION_NAME}/points/count",
             json={
                 "filter": {
-                    "must_not": [{"key": "metadata.doc_type", "match": {"value": "kbli_gold"}}]
+                    "should": [
+                        {"key": "doc_type", "match": {"value": "kbli_bps"}},
+                        {"key": "metadata.doc_type", "match": {"value": "kbli_bps"}},
+                    ]
                 },
                 "exact": True,
             },
@@ -235,7 +247,10 @@ async def delete_old_points(qdrant_url: str, api_key: str | None):
             f"{qdrant_url}/collections/{COLLECTION_NAME}/points/delete",
             json={
                 "filter": {
-                    "must_not": [{"key": "metadata.doc_type", "match": {"value": "kbli_gold"}}]
+                    "should": [
+                        {"key": "doc_type", "match": {"value": "kbli_bps"}},
+                        {"key": "metadata.doc_type", "match": {"value": "kbli_bps"}},
+                    ]
                 }
             },
             headers=headers,
