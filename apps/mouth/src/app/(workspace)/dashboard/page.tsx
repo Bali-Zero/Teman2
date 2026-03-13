@@ -4,13 +4,13 @@ import React from "react";
 import { RefreshCw } from "lucide-react";
 import {
   PratichePreview,
-  NusantaraHealthWidget,
   LiveActivityFeed,
   RoleWidget,
   DashboardStatCard,
   ZantaraPortalCard,
 } from "@/components/dashboard";
 import { HeroLiveWindow } from "@/components/workspace/HeroLiveWindow";
+import { NusantaraHealthWidget } from "@/components/dashboard/NusantaraHealthWidget";
 import type { PraticaPreview } from "@/components/dashboard";
 import { DashboardErrorBoundary } from "@/components/ErrorBoundary";
 import { useDashboardData } from "@/hooks/useDashboardData";
@@ -282,16 +282,16 @@ export default function DashboardPage() {
   if (isError) {
     return (
       <div className="p-4 rounded-xl border border-[#c45c78]/25 bg-[rgba(196,92,120,0.06)]">
-        <h3 className="font-semibold text-[#c45c78]">Dashboard Error</h3>
+        <h3 className="font-semibold text-[#c45c78]">Errore Dashboard</h3>
         <p className="text-sm text-[#c45c78]/70 mt-1">
-          Failed to load dashboard data.
+          Impossibile caricare i dati della dashboard.
         </p>
         <button
           onClick={() => refetch()}
           className="mt-3 px-4 py-2 bg-[#c45c78] text-white rounded-lg hover:opacity-90 transition-opacity inline-flex items-center gap-2 text-sm"
         >
           <RefreshCw className="w-4 h-4" />
-          Retry
+          Riprova
         </button>
       </div>
     );
@@ -322,18 +322,18 @@ export default function DashboardPage() {
               <DashboardStatCard key={card.label} {...card} />
             ))}
 
-            {/* ── ROW 3: Pratiche (1.6fr) + Health (1fr) + Intel (1fr) ── */}
+            {/* ── ROW 3: Pratiche (1.6fr) + Intel (1fr) ── */}
             <div
               className="col-span-4 grid gap-2"
-              style={{ gridTemplateColumns: "1.6fr 1fr 1fr" }}
+              style={{ gridTemplateColumns: "1.6fr 1fr" }}
             >
               {/* Pratiche Pipeline */}
               <PratichePreview
                 pratiche={practices.map(
                   (p): PraticaPreview => ({
                     id: p.id,
-                    title: p.title || "Unknown",
-                    client: p.client || "Unknown Client",
+                    title: p.title || "Sconosciuto",
+                    client: p.client || "Cliente Sconosciuto",
                     status: p.status,
                     daysRemaining: p.daysRemaining,
                     completedAt:
@@ -345,24 +345,10 @@ export default function DashboardPage() {
                 isLoading={isLoading}
               />
 
-              {/* Center: System Health for Zero, journey steps for others */}
-              {isZero ? (
-                <NusantaraHealthWidget />
-              ) : (
-                <div className="glass-base glass-blue p-3.5">
-                  <h4 className="text-[9px] font-bold text-[#4a8ec4]/65 tracking-[.1em] mb-2.5">
-                    PROSSIMI STEP
-                  </h4>
-                  <p className="text-[10px] text-white/35">
-                    Journey steps in arrivo
-                  </p>
-                </div>
-              )}
-
-              {/* Right: Regulatory Intel */}
+              {/* Right: Intel Normativo */}
               <div className="glass-base glass-blue p-3.5">
                 <h4 className="text-[9px] font-bold text-[#4a8ec4]/65 tracking-[.1em] mb-2.5">
-                  REGULATORY INTEL
+                  INTEL NORMATIVO
                 </h4>
                 <div className="flex flex-col gap-2">
                   {[
