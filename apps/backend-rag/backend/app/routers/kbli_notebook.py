@@ -24,6 +24,7 @@ from backend.app.dependencies import (
     get_search_service,
 )
 from backend.core.cache import cached
+from backend.core.collection_registry import resolve_collection_name
 from backend.services.rag.agentic.kg_orchestrator import KGAgenticOrchestrator
 
 logger = logging.getLogger(__name__)
@@ -84,7 +85,7 @@ class KBLINotebookChatResponse(BaseModel):
 # =============================================================================
 
 
-KBLI_COLLECTION = "kbli_2025_final"
+KBLI_COLLECTION = resolve_collection_name("kbli_2025_final")
 
 
 @router.get("/llm-health")

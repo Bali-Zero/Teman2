@@ -255,9 +255,6 @@ def include_routers(api: FastAPI) -> None:
 
     api.include_router(image_generation.router)
 
-    # Analytics router (Founder-only dashboard)
-    api.include_router(analytics.router)
-
     # Query Analytics router (RAG query insights dashboard)
     api.include_router(query_analytics.router)
 
