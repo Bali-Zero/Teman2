@@ -324,31 +324,6 @@ export default function NewsRoomPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      {/* Header */}
-      <div className="flex justify-between items-end border-b border-[var(--border)] pb-6">
-        <div className="space-y-1">
-          <h2 className="text-3xl font-bold tracking-tight text-[var(--foreground)]">
-            News Room
-          </h2>
-          <p className="text-[var(--foreground-muted)] text-lg">
-            Curate and publish intelligence reports
-            {selectedItems.size > 0 && (
-              <span className="ml-2 text-[var(--accent)] font-medium">
-                · {selectedItems.size} selected
-              </span>
-            )}
-          </p>
-        </div>
-        <Button
-          onClick={loadNews}
-          variant="secondary"
-          size="sm"
-          className="gap-2"
-        >
-          <RefreshCw className="h-4 w-4" /> Sync Sources
-        </Button>
-      </div>
-
       {/* Filters and Bulk Actions */}
       <div className="flex flex-col sm:flex-row gap-4 p-4 rounded-lg bg-[var(--background-elevated)] border border-[var(--border)]">
         {/* Search */}
@@ -396,6 +371,17 @@ export default function NewsRoomPage() {
             </SelectContent>
           </Select>
         </div>
+
+        {/* Sync button */}
+        <Button
+          onClick={loadNews}
+          variant="outline"
+          size="sm"
+          className="gap-2 shrink-0"
+        >
+          <RefreshCw className="h-4 w-4" />
+          Sync
+        </Button>
 
         {/* Bulk Actions */}
         {selectedItems.size > 0 && (
