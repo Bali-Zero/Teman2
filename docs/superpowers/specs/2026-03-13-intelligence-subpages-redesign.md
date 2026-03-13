@@ -593,7 +593,7 @@ const inputFocusStyle = {
     {/* Cost pill */}
     {apiCost > 0 && (
       <span className="text-[10px] px-2 py-0.5 rounded-full"
-        style={{ background: "rgba(255,255,255,0.04)", color: "var(--bz-text-3)", border: "1px solid rgba(255,255,255,0.07)" }}>
+        style={{ background: "rgba(255,255,255,0.04)", color: "var(--bz-text-2)", border: "1px solid rgba(255,255,255,0.07)" }}>
         ${apiCost.toFixed(4)}
       </span>
     )}
@@ -611,7 +611,7 @@ const inputFocusStyle = {
     background: loading || !configured || !title.trim()
       ? "rgba(255,255,255,0.04)"
       : "linear-gradient(135deg, rgba(212,132,90,0.8) 0%, rgba(180,100,60,0.8) 100%)",
-    color: loading || !configured || !title.trim() ? "var(--bz-text-3)" : "#fff",
+    color: loading || !configured || !title.trim() ? "var(--bz-text-2)" : "#fff",
     border: "1px solid rgba(212,132,90,0.2)",
   }}
 >
@@ -667,7 +667,7 @@ All result sections (Headline, TL;DR, The Facts, Bali Zero Take, Next Steps, Tag
 )}
 {isEditing && (
   <div className="flex gap-2 justify-end">
-    <button onClick={cancelEditing} className="px-3 py-1.5 rounded-xl text-[11px]" style={{ color: "var(--bz-text-3)" }}>Cancel</button>
+    <button onClick={cancelEditing} className="px-3 py-1.5 rounded-xl text-[11px]" style={{ color: "var(--bz-text-2)" }}>Cancel</button>
     <button onClick={saveEdits} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold"
       style={{ background: "rgba(77,184,122,0.12)", color: "var(--bz-green)", border: "1px solid rgba(77,184,122,0.2)" }}>
       <Save className="w-3.5 h-3.5" /> Save Changes
@@ -678,7 +678,7 @@ All result sections (Headline, TL;DR, The Facts, Bali Zero Take, Next Steps, Tag
 {/* Section card pattern (view mode example): */}
 <div className="rounded-xl border p-4 space-y-2"
   style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.07)" }}>
-  <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--bz-text-3)" }}>
+  <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--bz-text-2)" }}>
     {sectionLabel}
   </span>
   {/* view mode: rendered content */}
