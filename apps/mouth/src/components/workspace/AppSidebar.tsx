@@ -52,6 +52,16 @@ const iconMap: Record<string, React.ElementType> = {
   Calendar,
 };
 
+// Sub-app switcher config
+const SUB_APPS = [
+  { label: "kita",    href: "https://kita.balizero.com",      current: true },
+  { label: "mail",    href: "https://mail.balizero.com",      current: false },
+  { label: "drive",   href: "https://drive.balizero.com",     current: false },
+  { label: "cal",     href: "https://calendar.balizero.com",  current: false },
+  { label: "kb",      href: "https://knowledge.balizero.com", current: false },
+  { label: "zantara", href: "https://zantara.balizero.com",   current: false },
+];
+
 interface AppSidebarProps {
   user: {
     name: string;
@@ -198,6 +208,30 @@ export function AppSidebar({
           </span>
         </button>
       </div>
+
+      {/* Sub-app switcher */}
+      {!isPortal && (
+        <div className="flex gap-0.5 p-2 border-b" style={{ borderColor: "var(--bz-border)" }}>
+          {SUB_APPS.map((app) => (
+            <a
+              key={app.label}
+              href={app.href}
+              className="flex-1 text-center py-1 rounded-md text-[9.5px] font-medium transition-all"
+              style={
+                app.current
+                  ? {
+                      background: "rgba(212,132,90,0.10)",
+                      color: "var(--bz-accent)",
+                      border: "1px solid rgba(212,132,90,0.15)",
+                    }
+                  : { color: "var(--bz-text-3)" }
+              }
+            >
+              {app.label}
+            </a>
+          ))}
+        </div>
+      )}
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0">

@@ -243,6 +243,11 @@ async def process_whatsapp_message(
         # Mark message as read
         await whatsapp_service.mark_message_read(message_id)
 
+        # 0. ALLOWLIST CHECK: Silently ignore numbers not in whitelist
+        if not whatsapp_triage_service.is_allowed(phone):
+            logger.info(f"Ignored message from non-allowed number: {phone}")
+            return
+
         # 1. TRIAGE: Personal or Business?
         decision, reason = await whatsapp_triage_service.should_escalate(
             phone=phone,
@@ -500,7 +505,7 @@ async def _save_conversation(
     message_text: str,
     response_text: str,
     client_profile: dict,
-    sender_name: str | None,
+    sender_name: str | None,  # noqa: ARG001
     phone: str,
 ) -> Any:
     """Save conversation messages and updated profile to PostgreSQL."""
