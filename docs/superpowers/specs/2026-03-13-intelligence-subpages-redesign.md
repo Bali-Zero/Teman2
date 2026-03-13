@@ -23,7 +23,7 @@ All `--bz-*` tokens are defined in `packages/core/styles/bz-tokens.css`.
 | `var(--background-secondary)` | `var(--bz-surface)` | Secondary surfaces |
 | `var(--foreground)` | `var(--bz-text-1)` | Primary text |
 | `var(--foreground-muted)` | `var(--bz-text-2)` | Secondary text |
-| *(none — new)* | `var(--bz-text-3)` | Tertiary/hint text (muted labels, timestamps) |
+| *(none — new)* | `var(--bz-text-3)` | Tertiary/hint text — **decorative only** (`#575350`, very dark on dark bg). Use only for separators, dividers, icon hints. For readable timestamps/metadata use `--bz-text-2` instead. |
 | `var(--accent)` | `var(--bz-accent)` | Brand accent (`#d4845a`) |
 | `var(--border)` | `var(--bz-border)` | Borders |
 | `var(--bz-green)` | `var(--bz-green)` | Success green (`#4db87a`) |
@@ -71,7 +71,7 @@ border-radius: 14px;
       </span>
     </div>
     <div className="h-3 w-px" style={{ background: "var(--bz-border)" }} />
-    <span className="text-[11px]" style={{ color: "var(--bz-text-3)" }}>
+    <span className="text-[11px]" style={{ color: "var(--bz-text-2)" }}>
       {items.filter(i => i.detection_type === "NEW").length} new ·{" "}
       {items.filter(i => i.detection_type === "UPDATED").length} updated
     </span>
@@ -206,7 +206,7 @@ border-radius: 14px;
           {item.title}
         </h3>
         {/* Metadata */}
-        <div className="flex items-center gap-3 text-[10.5px]" style={{ color: "var(--bz-text-3)" }}>
+        <div className="flex items-center gap-3 text-[10.5px]" style={{ color: "var(--bz-text-2)" }}>
           <span className="font-mono">#{item.id.slice(0, 8)}</span>
           <div className="w-px h-3" style={{ background: "var(--bz-border)" }} />
           <span>{new Date(item.detected_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
@@ -233,7 +233,7 @@ border-radius: 14px;
             <X className="w-3.5 h-3.5" style={{ color: "var(--bz-text-3)" }} />
           </button>
         </div>
-        <pre className="text-[10.5px] whitespace-pre-wrap font-mono max-h-48 overflow-auto" style={{ color: "var(--bz-text-3)" }}>
+        <pre className="text-[10.5px] whitespace-pre-wrap font-mono max-h-48 overflow-auto" style={{ color: "var(--bz-text-2)" }}>
           {previewContent}
         </pre>
       </div>
@@ -280,7 +280,7 @@ border-radius: 14px;
 ```tsx
 <div className="flex flex-col items-center justify-center h-64 gap-4">
   <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--bz-accent)" }} />
-  <p className="text-[12px] animate-pulse" style={{ color: "var(--bz-text-3)" }}>
+  <p className="text-[12px] animate-pulse" style={{ color: "var(--bz-text-2)" }}>
     Scanning Intelligence Feed...
   </p>
 </div>
@@ -297,7 +297,7 @@ border-radius: 14px;
     <Sparkles className="w-8 h-8" style={{ color: "var(--bz-accent)" }} />
   </div>
   <h3 className="text-[15px] font-semibold mb-1" style={{ color: "var(--bz-text-1)" }}>All Caught Up!</h3>
-  <p className="text-[12px] text-center max-w-sm mb-6" style={{ color: "var(--bz-text-3)" }}>
+  <p className="text-[12px] text-center max-w-sm mb-6" style={{ color: "var(--bz-text-2)" }}>
     {items.length === 0
       ? "No pending visa updates. The agent is continuously monitoring imigrasi.go.id."
       : "No items match your current filters."}
@@ -404,7 +404,7 @@ Same glassmorphism structure as Visa Oracle filter bar. Includes search + type f
         style={{ background: "rgba(212,132,90,0.1)", color: "var(--bz-accent)", border: "1px solid rgba(212,132,90,0.15)" }}>
         {item.source ? new URL(item.source).hostname.replace("www.", "") : "intel"}
       </span>
-      <span className="text-[10px] flex items-center gap-1" style={{ color: "var(--bz-text-3)" }}>
+      <span className="text-[10px] flex items-center gap-1" style={{ color: "var(--bz-text-2)" }}>
         <Calendar className="w-3 h-3" />
         {new Date(item.detected_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
       </span>
@@ -473,7 +473,7 @@ Same glassmorphism structure as Visa Oracle filter bar. Includes search + type f
       Publish all
     </button>
     <button onClick={() => setSelectedItems(new Set())} className="text-[11px] px-3 py-1.5 rounded-lg transition-all hover:bg-white/[0.04]"
-      style={{ color: "var(--bz-text-3)" }}>
+      style={{ color: "var(--bz-text-2)" }}>
       Deselect
     </button>
   </div>
@@ -484,7 +484,7 @@ Same glassmorphism structure as Visa Oracle filter bar. Includes search + type f
 ```tsx
 <div className="flex flex-col items-center justify-center h-64 gap-4">
   <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--bz-accent)" }} />
-  <p className="text-[12px] animate-pulse" style={{ color: "var(--bz-text-3)" }}>
+  <p className="text-[12px] animate-pulse" style={{ color: "var(--bz-text-2)" }}>
     Gathering Intelligence...
   </p>
 </div>
@@ -517,7 +517,7 @@ if (statusLoading) {
   return (
     <div className="flex flex-col items-center justify-center h-64 gap-4">
       <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--bz-accent)" }} />
-      <p className="text-[12px] animate-pulse" style={{ color: "var(--bz-text-3)" }}>
+      <p className="text-[12px] animate-pulse" style={{ color: "var(--bz-text-2)" }}>
         Initializing Intelligence Center...
       </p>
     </div>
@@ -586,7 +586,7 @@ const inputFocusStyle = {
     <div className="flex items-center gap-1.5">
       <div className="w-1.5 h-1.5 rounded-full"
         style={{ background: configured ? "var(--bz-green)" : "rgba(239,68,68,0.8)", boxShadow: configured ? "0 0 4px rgba(77,184,122,0.5)" : "none" }} />
-      <span className="text-[10px]" style={{ color: "var(--bz-text-3)" }}>
+      <span className="text-[10px]" style={{ color: "var(--bz-text-2)" }}>
         {configured ? "API Ready" : "API Offline"}
       </span>
     </div>
@@ -631,7 +631,7 @@ const inputFocusStyle = {
   </div>
   <div className="text-center">
     <p className="text-[13px] font-medium mb-1" style={{ color: "var(--bz-text-2)" }}>AI Preview</p>
-    <p className="text-[11.5px]" style={{ color: "var(--bz-text-3)" }}>Fill in the form and click Compose</p>
+    <p className="text-[11.5px]" style={{ color: "var(--bz-text-2)" }}>Fill in the form and click Compose</p>
   </div>
 </div>
 ```
@@ -751,7 +751,7 @@ Replace every occurrence in all three files:
 | `bg-[#262626]` | inline style `background: "rgba(255,255,255,0.04)"` |
 | `bg-[#101010]` | inline style `background: "var(--bz-elevated)"` |
 | `text-[#f5f5f5]` | inline style `color: "var(--bz-text-1)"` |
-| `text-[#737373]` | inline style `color: "var(--bz-text-3)"` |
+| `text-[#737373]` | inline style `color: "var(--bz-text-2)"` for readable content; `color: "var(--bz-text-3)"` only for decorative/icon hints |
 | `text-[#a3a3a3]` | inline style `color: "var(--bz-text-2)"` |
 | `border-[#27272a]` | inline style `borderColor: "rgba(255,255,255,0.07)"` |
 | `text-[#6366f1]` (indigo accent in composer) | inline style `color: "var(--bz-accent)"` |
