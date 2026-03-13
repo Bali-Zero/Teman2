@@ -1085,7 +1085,45 @@ IMPORTANT:
 
         images_count = sum(1 for a in self.state.get('articles', []) if a.get('image_path'))
         self.log(f'Images generated: {images_count}/{len(enriched)}')
-        self.update_step_status('8_images', 'completed', {'images_generated': images_count})
+
+        # Upload cover images sugli articoli già pubblicati
+        import asyncio as _asyncio2, httpx as _httpx2, base64 as _b64, os as _os2
+        BACKEND_URL2 = _os2.environ.get('BACKEND_URL', 'https://nuzantara-rag.fly.dev')
+        API_KEY2     = _os2.environ.get('SCRAPER_API_KEY', '')
+
+        async def _upload_covers():
+            uploaded = 0
+            async with _httpx2.AsyncClient(timeout=60) as c:
+                for art in self.state.get('articles', []):
+                    item_id   = art.get('_published_item_id')
+                    intel_type = art.get('_published_intel_type', 'news')
+                    img_path  = art.get('image_path')
+                    if not (item_id and img_path):
+                        continue
+                    from pathlib import Path as _PL
+                    p = _PL(img_path)
+                    if not p.exists() or p.stat().st_size < 5000:
+                        continue
+                    try:
+                        img_b64 = _b64.b64encode(p.read_bytes()).decode('utf-8')
+                        r = await c.post(
+                            f"{BACKEND_URL2}/api/intel/staging/{intel_type}/{item_id}/cover",
+                            json={"cover_image_base64": img_b64, "cover_image_filename": p.name},
+                            headers={"X-API-Key": API_KEY2}
+                        )
+                        if r.status_code in (200, 201):
+                            self.log(f'Cover uploaded for {item_id}')
+                            uploaded += 1
+                        else:
+                            self.log(f'Cover upload failed for {item_id}: {r.text}', 'WARN')
+                    except Exception as e:
+                        self.log(f'Cover upload error for {item_id}: {e}', 'WARN')
+                    await _asyncio2.sleep(2)
+            return uploaded
+
+        covers_uploaded = _asyncio2.run(_upload_covers())
+        self.log(f'Cover images uploaded: {covers_uploaded}/{images_count}')
+        self.update_step_status('8_images', 'completed', {'images_generated': images_count, 'covers_uploaded': covers_uploaded})
         return True
     
     def step_seo(self) -> bool:
@@ -1419,6 +1457,9 @@ IMPORTANT:
                         )
                         if pub_r.status_code in (200, 201):
                             self.log(f'Auto-published {item_id} successfully.')
+                            # Salva item_id e intel_type sull'articolo per step_images
+                            art['_published_item_id'] = item_id
+                            art['_published_intel_type'] = intel_type
                             return True
                         else:
                             self.log(f'Auto-publish failed for {item_id}: {pub_r.text}', 'WARN')
