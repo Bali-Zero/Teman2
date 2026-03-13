@@ -4,7 +4,6 @@ from typing import Any
 
 from backend.services.misc.clarification_service import ClarificationService
 from backend.services.misc.context_suggestion_service import get_context_suggestion_service
-from backend.services.rag.agentic import create_agentic_rag
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +43,8 @@ class IntelligentRouter:
         # Initialize Clarification Service
         self.clarification_service = ClarificationService(search_service=search_service)
 
+        # Lazy import to avoid circular dependency
+        from backend.services.rag.agentic import create_agentic_rag
         self.orchestrator = create_agentic_rag(
             retriever=search_service,
             db_pool=db_pool,
