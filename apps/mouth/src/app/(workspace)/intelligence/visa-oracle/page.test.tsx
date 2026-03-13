@@ -102,7 +102,7 @@ describe("VisaOraclePage", () => {
     });
 
     expect(
-      screen.getByText(/No pending visa updates detected/i),
+      screen.getByText(/No pending visa updates/i),
     ).toBeInTheDocument();
   });
 
@@ -110,7 +110,7 @@ describe("VisaOraclePage", () => {
     render(<VisaOraclePage />);
 
     await waitFor(() => {
-      expect(screen.getByText(/2 items pending review/i)).toBeInTheDocument();
+      expect(screen.getByText(/2 of 2 pending/i)).toBeInTheDocument();
     });
 
     expect(screen.getByText(/1 new/i)).toBeInTheDocument();
@@ -121,7 +121,7 @@ describe("VisaOraclePage", () => {
     render(<VisaOraclePage />);
 
     await waitFor(() => {
-      expect(screen.getByText("✨ NEW REGULATION")).toBeInTheDocument();
+      expect(screen.getByText("\u2726 NEW REGULATION")).toBeInTheDocument();
     });
   });
 
@@ -129,7 +129,7 @@ describe("VisaOraclePage", () => {
     render(<VisaOraclePage />);
 
     await waitFor(() => {
-      expect(screen.getByText("📝 UPDATED POLICY")).toBeInTheDocument();
+      expect(screen.getByText("\u21BA UPDATED POLICY")).toBeInTheDocument();
     });
   });
 
@@ -146,7 +146,7 @@ describe("VisaOraclePage", () => {
       expect(screen.getByText("Updated Visa Policy")).toBeInTheDocument();
     });
 
-    const viewButtons = screen.getAllByText("View Content");
+    const viewButtons = screen.getAllByText("Preview");
     await userEvent.click(viewButtons[0]);
 
     await waitFor(() => {
@@ -173,7 +173,7 @@ describe("VisaOraclePage", () => {
     });
 
     // Open preview
-    const viewButtons = screen.getAllByText("View Content");
+    const viewButtons = screen.getAllByText("Preview");
     await userEvent.click(viewButtons[0]);
 
     await waitFor(() => {
@@ -181,7 +181,7 @@ describe("VisaOraclePage", () => {
     });
 
     // Close preview
-    const hideButton = screen.getByText("Hide Preview");
+    const hideButton = screen.getByText("Hide");
     await userEvent.click(hideButton);
 
     await waitFor(() => {

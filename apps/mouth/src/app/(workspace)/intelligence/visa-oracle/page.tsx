@@ -2,9 +2,6 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { intelligenceApi, StagingItem } from "@/lib/api/intelligence.api";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -18,7 +15,6 @@ import {
   Loader2,
   Check,
   X,
-  FileText,
   ExternalLink,
   Sparkles,
   AlertTriangle,
@@ -30,7 +26,6 @@ import {
   CheckSquare,
   Square,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 type FilterType = "all" | "NEW" | "UPDATED";
 type SortType = "date-desc" | "date-asc" | "title-asc" | "title-desc";
@@ -430,9 +425,15 @@ export default function VisaOraclePage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col justify-center items-center h-96 space-y-4">
-        <Loader2 className="h-12 w-12 animate-spin text-[var(--accent)]" />
-        <p className="text-[var(--foreground-muted)] animate-pulse text-lg">
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <Loader2
+          className="w-8 h-8 animate-spin"
+          style={{ color: "var(--bz-accent)" }}
+        />
+        <p
+          className="text-[12px] animate-pulse"
+          style={{ color: "var(--bz-text-2)" }}
+        >
           Scanning Intelligence Feed...
         </p>
       </div>
@@ -441,151 +442,235 @@ export default function VisaOraclePage() {
 
   if (items.length === 0 || filteredAndSortedItems.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-32 bg-[var(--background-secondary)] rounded-2xl border-2 border-dashed border-[var(--border)]">
-        <div className="bg-[var(--accent)]/10 p-6 rounded-full mb-6">
-          <Sparkles className="h-12 w-12 text-[var(--accent)]" />
+      <div
+        className="flex flex-col items-center justify-center py-24 rounded-2xl border-2 border-dashed"
+        style={{
+          borderColor: "rgba(255,255,255,0.07)",
+          background: "rgba(255,255,255,0.01)",
+        }}
+      >
+        <div
+          className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
+          style={{
+            background: "rgba(212,132,90,0.08)",
+            border: "1px solid rgba(212,132,90,0.15)",
+          }}
+        >
+          <Sparkles className="w-8 h-8" style={{ color: "var(--bz-accent)" }} />
         </div>
-        <h3 className="text-2xl font-bold text-[var(--foreground)] mb-2">
+        <h3
+          className="text-[15px] font-semibold mb-1"
+          style={{ color: "var(--bz-text-1)" }}
+        >
           All Caught Up!
         </h3>
-        <p className="text-[var(--foreground-muted)] text-center max-w-md mb-8">
+        <p
+          className="text-[12px] text-center max-w-sm mb-6"
+          style={{ color: "var(--bz-text-2)" }}
+        >
           {items.length === 0
-            ? "No pending visa updates detected. The Intelligent Visa Agent is continuously monitoring imigrasi.go.id for new regulations."
-            : "No items match your current filters. Try adjusting your search or filters."}
+            ? "No pending visa updates. The agent is continuously monitoring imigrasi.go.id."
+            : "No items match your current filters."}
         </p>
-        <Button variant="outline" className="gap-2" onClick={loadItems}>
-          <RefreshCw className="w-4 h-4" />
-          Check Again
-        </Button>
+        <button
+          onClick={loadItems}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-medium transition-all hover:bg-white/[0.04]"
+          style={{
+            color: "var(--bz-text-2)",
+            border: "1px solid rgba(255,255,255,0.07)",
+          }}
+        >
+          <RefreshCw className="w-3.5 h-3.5" /> Check Again
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-4">
       {/* Stats Bar */}
-      <div className="flex justify-between items-center p-4 rounded-lg bg-[var(--background-elevated)] border border-[var(--border)]">
-        <div className="flex items-center gap-6">
+      <div
+        className="flex items-center justify-between px-4 py-3 rounded-2xl border mb-2"
+        style={{
+          background: "rgba(255,255,255,0.03)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          borderColor: "rgba(255,255,255,0.07)",
+        }}
+      >
+        <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-amber-500" />
-            <span className="text-sm font-medium text-[var(--foreground)]">
-              {filteredAndSortedItems.length} of {items.length}{" "}
-              {items.length === 1 ? "item" : "items"} pending review
+            <AlertTriangle
+              className="w-4 h-4"
+              style={{ color: "var(--bz-accent)" }}
+            />
+            <span
+              className="text-[12px] font-medium"
+              style={{ color: "var(--bz-text-1)" }}
+            >
+              {filteredAndSortedItems.length} of {items.length} pending
             </span>
           </div>
-          <div className="h-4 w-px bg-[var(--border)]" />
-          <div className="text-sm text-[var(--foreground-muted)]">
+          <div className="h-3 w-px" style={{ background: "var(--bz-border)" }} />
+          <span className="text-[11px]" style={{ color: "var(--bz-text-2)" }}>
             {items.filter((i) => i.detection_type === "NEW").length} new ·{" "}
             {items.filter((i) => i.detection_type === "UPDATED").length} updated
-          </div>
+          </span>
           {selectedItems.size > 0 && (
             <>
-              <div className="h-4 w-px bg-[var(--border)]" />
-              <div className="text-sm font-medium text-[var(--accent)]">
+              <div
+                className="h-3 w-px"
+                style={{ background: "var(--bz-border)" }}
+              />
+              <span
+                className="text-[11px] font-semibold"
+                style={{ color: "var(--bz-accent)" }}
+              >
                 {selectedItems.size} selected
-              </div>
+              </span>
             </>
           )}
         </div>
-        <Button
-          variant="outline"
-          size="sm"
+        <button
           onClick={loadItems}
-          className="gap-2"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all hover:bg-white/[0.04]"
+          style={{
+            color: "var(--bz-text-2)",
+            border: "1px solid rgba(255,255,255,0.07)",
+          }}
         >
-          <RefreshCw className="w-4 h-4" />
+          <RefreshCw className="w-3.5 h-3.5" />
           Refresh
-        </Button>
+        </button>
       </div>
 
-      {/* Filters and Bulk Actions */}
-      <div className="flex flex-col sm:flex-row gap-4 p-4 rounded-lg bg-[var(--background-elevated)] border border-[var(--border)]">
-        {/* Search */}
+      {/* Filter Bar */}
+      <div
+        className="flex flex-col sm:flex-row gap-3 px-4 py-3 rounded-2xl border mb-6"
+        style={{
+          background: "rgba(255,255,255,0.03)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          borderColor: "rgba(255,255,255,0.07)",
+        }}
+      >
+        {/* Search input */}
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[var(--foreground-muted)]" />
-          <Input
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5"
+            style={{ color: "var(--bz-text-3)" }}
+          />
+          <input
             placeholder="Search by title, ID, or source..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            className="w-full pl-9 pr-3 py-2 rounded-xl text-[12px] outline-none transition-all"
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.07)",
+              color: "var(--bz-text-1)",
+            }}
           />
         </div>
 
-        {/* Filters */}
-        <div className="flex gap-2">
-          <Select
-            value={filterType}
-            onValueChange={(value) => setFilterType(value as FilterType)}
+        {/* Type filter */}
+        <Select
+          value={filterType}
+          onValueChange={(v) => setFilterType(v as FilterType)}
+        >
+          <SelectTrigger
+            className="w-[130px] h-8 text-[11px] rounded-xl"
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              borderColor: "rgba(255,255,255,0.07)",
+              color: "var(--bz-text-2)",
+            }}
           >
-            <SelectTrigger className="w-[140px]">
-              <Filter className="w-4 h-4 mr-2" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="NEW">New Only</SelectItem>
-              <SelectItem value="UPDATED">Updated Only</SelectItem>
-            </SelectContent>
-          </Select>
+            <Filter
+              className="w-3 h-3 mr-1.5"
+              style={{ color: "var(--bz-text-3)" }}
+            />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value="NEW">New Only</SelectItem>
+            <SelectItem value="UPDATED">Updated Only</SelectItem>
+          </SelectContent>
+        </Select>
 
-          <Select
-            value={sortType}
-            onValueChange={(value) => setSortType(value as SortType)}
+        {/* Sort select */}
+        <Select
+          value={sortType}
+          onValueChange={(v) => setSortType(v as SortType)}
+        >
+          <SelectTrigger
+            className="w-[140px] h-8 text-[11px] rounded-xl"
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              borderColor: "rgba(255,255,255,0.07)",
+              color: "var(--bz-text-2)",
+            }}
           >
-            <SelectTrigger className="w-[160px]">
-              <ArrowUpDown className="w-4 h-4 mr-2" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="date-desc">Newest First</SelectItem>
-              <SelectItem value="date-asc">Oldest First</SelectItem>
-              <SelectItem value="title-asc">Title A-Z</SelectItem>
-              <SelectItem value="title-desc">Title Z-A</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+            <ArrowUpDown
+              className="w-3 h-3 mr-1.5"
+              style={{ color: "var(--bz-text-3)" }}
+            />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="date-desc">Newest First</SelectItem>
+            <SelectItem value="date-asc">Oldest First</SelectItem>
+            <SelectItem value="title-asc">Title A-Z</SelectItem>
+            <SelectItem value="title-desc">Title Z-A</SelectItem>
+          </SelectContent>
+        </Select>
 
-        {/* Bulk Actions */}
+        {/* Bulk actions inline */}
         {selectedItems.size > 0 && (
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
+          <div className="flex gap-2 ml-auto">
+            <button
               onClick={toggleSelectAll}
-              className="gap-2"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-medium transition-all hover:bg-white/[0.04]"
+              style={{
+                color: "var(--bz-text-2)",
+                border: "1px solid rgba(255,255,255,0.07)",
+              }}
             >
               {selectedItems.size === filteredAndSortedItems.length ? (
                 <>
-                  <CheckSquare className="w-4 h-4" />
-                  Deselect All
+                  <CheckSquare className="w-3.5 h-3.5" /> Deselect All
                 </>
               ) : (
                 <>
-                  <Square className="w-4 h-4" />
-                  Select All
+                  <Square className="w-3.5 h-3.5" /> Select All
                 </>
               )}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
+            </button>
+            <button
               onClick={handleBulkApprove}
-              className="gap-2 text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200"
               disabled={!!processing}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all"
+              style={{
+                background: "rgba(77,184,122,0.12)",
+                color: "var(--bz-green)",
+                border: "1px solid rgba(77,184,122,0.2)",
+              }}
             >
-              <Check className="w-4 h-4" />
-              Approve ({selectedItems.size})
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
+              <Check className="w-3.5 h-3.5" /> Approve ({selectedItems.size})
+            </button>
+            <button
               onClick={handleBulkReject}
-              className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
               disabled={!!processing}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all"
+              style={{
+                background: "rgba(239,68,68,0.08)",
+                color: "rgba(239,68,68,0.8)",
+                border: "1px solid rgba(239,68,68,0.2)",
+              }}
             >
-              <X className="w-4 h-4" />
-              Reject ({selectedItems.size})
-            </Button>
+              <X className="w-3.5 h-3.5" /> Reject ({selectedItems.size})
+            </button>
           </div>
         )}
       </div>
@@ -593,178 +678,181 @@ export default function VisaOraclePage() {
       {/* Items Grid */}
       <div className="grid gap-4">
         {filteredAndSortedItems.map((item) => (
-          <Card
+          <div
             key={item.id}
-            className={cn(
-              "group overflow-hidden transition-all duration-200",
-              "border-l-4 shadow-sm hover:shadow-lg",
-              item.detection_type === "NEW"
-                ? "border-l-blue-500"
-                : "border-l-amber-500",
-            )}
+            className="rounded-2xl border overflow-hidden transition-all duration-200 hover:shadow-lg"
+            style={{
+              background: "rgba(255,255,255,0.03)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+              borderColor: "rgba(255,255,255,0.07)",
+              borderLeft: `3px solid ${item.detection_type === "NEW" ? "rgba(212,132,90,0.8)" : "rgba(251,191,36,0.7)"}`,
+            }}
           >
-            <CardHeader className="bg-[var(--background-secondary)] pb-4">
-              <div className="flex justify-between items-start gap-4">
-                <div className="flex items-start gap-3 flex-1">
-                  {/* Checkbox */}
-                  <button
-                    onClick={() => toggleSelectItem(item.id)}
-                    className="mt-1 p-1 rounded hover:bg-[var(--background-elevated)] transition-colors"
-                    aria-label={`Select ${item.title}`}
+            {/* Card header */}
+            <div className="px-4 py-4" style={{ background: "rgba(255,255,255,0.02)" }}>
+              <div className="flex items-start gap-3">
+                <button
+                  onClick={() => toggleSelectItem(item.id)}
+                  className="mt-0.5 p-1 rounded-lg transition-colors hover:bg-white/[0.04]"
+                  aria-label={`Select ${item.title}`}
+                >
+                  {selectedItems.has(item.id) ? (
+                    <CheckSquare
+                      className="w-4 h-4"
+                      style={{ color: "var(--bz-accent)" }}
+                    />
+                  ) : (
+                    <Square className="w-4 h-4" style={{ color: "var(--bz-text-3)" }} />
+                  )}
+                </button>
+                <div className="flex-1 space-y-1.5">
+                  <span
+                    className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold"
+                    style={
+                      item.detection_type === "NEW"
+                        ? {
+                            background: "rgba(212,132,90,0.12)",
+                            color: "var(--bz-accent)",
+                            border: "1px solid rgba(212,132,90,0.2)",
+                          }
+                        : {
+                            background: "rgba(251,191,36,0.12)",
+                            color: "rgba(251,191,36,0.9)",
+                            border: "1px solid rgba(251,191,36,0.2)",
+                          }
+                    }
                   >
-                    {selectedItems.has(item.id) ? (
-                      <CheckSquare className="w-5 h-5 text-[var(--accent)]" />
-                    ) : (
-                      <Square className="w-5 h-5 text-[var(--foreground-muted)]" />
-                    )}
-                  </button>
-                  <div className="space-y-2 flex-1">
-                    {/* Badge */}
-                    <div className="flex items-center gap-3">
-                      <span
-                        className={cn(
-                          "inline-flex items-center rounded-full px-3 py-1 text-xs font-bold shadow-sm",
-                          item.detection_type === "NEW"
-                            ? "bg-blue-100 text-blue-700 border border-blue-200"
-                            : "bg-amber-100 text-amber-700 border border-amber-200",
-                        )}
-                      >
-                        {item.detection_type === "NEW"
-                          ? "✨ NEW REGULATION"
-                          : "📝 UPDATED POLICY"}
-                      </span>
-                    </div>
-
-                    {/* Title */}
-                    <CardTitle className="text-xl group-hover:text-[var(--accent)] transition-colors">
-                      {item.title}
-                    </CardTitle>
-
-                    {/* Metadata */}
-                    <div className="flex items-center gap-4 text-xs text-[var(--foreground-muted)]">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
-                        <span className="font-mono">ID: {item.id}</span>
-                      </div>
-                      <div className="h-3 w-px bg-[var(--border)]" />
-                      <span>
-                        Detected{" "}
-                        {new Date(item.detected_at).toLocaleDateString(
-                          "en-US",
-                          {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          },
-                        )}
-                      </span>
-                    </div>
+                    {item.detection_type === "NEW"
+                      ? "\u2726 NEW REGULATION"
+                      : "\u21BA UPDATED POLICY"}
+                  </span>
+                  <h3
+                    className="text-[13.5px] font-semibold leading-snug"
+                    style={{ color: "var(--bz-text-1)" }}
+                  >
+                    {item.title}
+                  </h3>
+                  <div
+                    className="flex items-center gap-3 text-[10.5px]"
+                    style={{ color: "var(--bz-text-2)" }}
+                  >
+                    <span className="font-mono">#{item.id.slice(0, 8)}</span>
+                    <div
+                      className="w-px h-3"
+                      style={{ background: "var(--bz-border)" }}
+                    />
+                    <span>
+                      {new Date(item.detected_at).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </span>
                   </div>
                 </div>
-
-                {/* Source Link */}
                 <a
                   href={item.source}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-[var(--accent)] hover:bg-[var(--accent)]/10 border border-[var(--accent)]/20 transition-all"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10.5px] font-medium transition-all hover:bg-white/[0.04]"
+                  style={{
+                    color: "var(--bz-text-2)",
+                    border: "1px solid rgba(255,255,255,0.07)",
+                  }}
                 >
-                  Official Source
-                  <ExternalLink className="h-3.5 w-3.5" />
+                  Source <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
-            </CardHeader>
+            </div>
 
-            <CardContent className="pt-6 space-y-4">
-              {/* Preview Section */}
-              {previewId === item.id && (
-                <div className="mb-4 p-4 rounded-lg bg-[var(--background)] border border-[var(--border)]">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-sm font-semibold text-[var(--foreground)]">
+            {/* Preview section (when open) */}
+            {previewId === item.id && (
+              <div className="px-4 pb-3">
+                <div
+                  className="rounded-xl p-3"
+                  style={{
+                    background: "rgba(255,255,255,0.02)",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span
+                      className="text-[11px] font-semibold"
+                      style={{ color: "var(--bz-text-2)" }}
+                    >
                       Content Preview
-                    </h4>
-                    <Button
-                      variant="ghost"
-                      size="sm"
+                    </span>
+                    <button
                       onClick={() => {
                         setPreviewId(null);
                         setPreviewContent("");
                       }}
                     >
-                      <X className="w-4 h-4" />
-                    </Button>
+                      <X
+                        className="w-3.5 h-3.5"
+                        style={{ color: "var(--bz-text-3)" }}
+                      />
+                    </button>
                   </div>
-                  <pre className="text-xs text-[var(--foreground-muted)] whitespace-pre-wrap font-mono max-h-64 overflow-auto p-3 bg-[var(--background-secondary)] rounded">
+                  <pre
+                    className="text-[10.5px] whitespace-pre-wrap font-mono max-h-48 overflow-auto"
+                    style={{ color: "var(--bz-text-2)" }}
+                  >
                     {previewContent}
                   </pre>
                 </div>
-              )}
-
-              {/* Info Box */}
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-[var(--background)]">
-                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-[var(--accent)]/10">
-                  <FileText className="w-5 h-5 text-[var(--accent)]" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-[var(--foreground)]">
-                    Processing Required
-                  </p>
-                  <p className="text-xs text-[var(--foreground-muted)]">
-                    Will be ingested into{" "}
-                    <code className="font-mono bg-[var(--background-secondary)] px-1 py-0.5 rounded">
-                      visa_oracle
-                    </code>{" "}
-                    collection
-                  </p>
-                </div>
               </div>
+            )}
 
-              {/* Action Buttons */}
-              <div className="flex items-center gap-3 pt-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="gap-2"
-                  onClick={() => handlePreview(item.id, item.type)}
-                >
-                  <Eye className="w-4 h-4" />
-                  {previewId === item.id ? "Hide Preview" : "View Content"}
-                </Button>
-
-                <div className="flex-1" />
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                  onClick={() => handleReject(item.id)}
-                  disabled={!!processing}
-                >
-                  <X className="w-4 h-4" />
-                  Reject
-                </Button>
-
-                <Button
-                  size="sm"
-                  className="gap-2 bg-green-600 hover:bg-green-700 text-white shadow-sm hover:shadow-md"
-                  onClick={() => handleApprove(item.id)}
-                  disabled={!!processing}
-                >
-                  {processing === item.id ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Ingesting...
-                    </>
-                  ) : (
-                    <>
-                      <Check className="w-4 h-4" />
-                      Approve & Ingest
-                    </>
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+            {/* Card footer */}
+            <div
+              className="flex items-center gap-2 px-4 py-3"
+              style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
+            >
+              <button
+                onClick={() => handlePreview(item.id, item.type)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] transition-all hover:bg-white/[0.04]"
+                style={{ color: "var(--bz-text-2)" }}
+              >
+                <Eye className="w-3.5 h-3.5" />
+                {previewId === item.id ? "Hide" : "Preview"}
+              </button>
+              <div className="flex-1" />
+              <button
+                onClick={() => handleReject(item.id)}
+                disabled={!!processing}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all"
+                style={{
+                  color: "rgba(239,68,68,0.8)",
+                  border: "1px solid rgba(239,68,68,0.2)",
+                  background: "rgba(239,68,68,0.05)",
+                }}
+              >
+                <X className="w-3.5 h-3.5" /> Reject
+              </button>
+              <button
+                onClick={() => handleApprove(item.id)}
+                disabled={!!processing}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all"
+                style={{
+                  background: "rgba(77,184,122,0.15)",
+                  color: "var(--bz-green)",
+                  border: "1px solid rgba(77,184,122,0.25)",
+                }}
+              >
+                {processing === item.id ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Ingesting...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-3.5 h-3.5" /> Approve & Ingest
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         ))}
       </div>
     </div>
