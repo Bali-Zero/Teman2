@@ -179,8 +179,7 @@ export function middleware(request: NextRequest) {
   // === ZANTARA DOMAIN (zantara.balizero.com) ===
   // Dedicated Zantara AI chat webapp — rewrites to /chat
   if (hostname === ZANTARA_DOMAIN || hostname === `www.${ZANTARA_DOMAIN}`) {
-    const rewritePath =
-      pathname === "/" ? "/chat" : `/chat${pathname}`;
+    const rewritePath = pathname === "/" ? "/chat" : `/chat${pathname}`;
     const rewriteUrl = request.nextUrl.clone();
     rewriteUrl.pathname = rewritePath;
     const rewriteResponse = NextResponse.rewrite(rewriteUrl);
