@@ -77,9 +77,9 @@ class TestImportTime:
     def test_import_middleware(self):
         """Test that middleware modules import successfully"""
         try:
-            from middleware.error_monitoring import ErrorMonitoringMiddleware  # noqa: F401
-            from middleware.hybrid_auth import HybridAuthMiddleware  # noqa: F401
-            from middleware.request_tracing import RequestTracingMiddleware  # noqa: F401
+            from backend.middleware.error_monitoring import ErrorMonitoringMiddleware  # noqa: F401
+            from backend.middleware.hybrid_auth import HybridAuthMiddleware  # noqa: F401
+            from backend.middleware.request_tracing import RequestTracingMiddleware  # noqa: F401
         except ImportError as e:
             pytest.fail(f"Failed to import middleware: {e}")
 
