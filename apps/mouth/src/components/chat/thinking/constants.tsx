@@ -18,14 +18,12 @@ import { ThinkingPhrase } from "./types";
 export const COLLECTION_NAMES: Record<string, string> = {
   visa_oracle: "documenti visti",
   legal_unified: "normativa legale",
-  legal_unified_hybrid: "normativa legale",
-  kbli_unified: "codici KBLI",
   tax_genius: "regolamenti fiscali",
-  tax_genius_hybrid: "regolamenti fiscali",
-  bali_zero_pricing: "listino prezzi",
-  bali_zero_team: "team Bali Zero",
-  collective_memories: "memoria condivisa",
-  training_conversations: "conversazioni precedenti",
+  kbli_2025_final: "codici KBLI",
+  balizero_news: "aggiornamenti normativi",
+  bali_zero_pricing_hybrid: "listino prezzi",
+  training_conversations_hybrid: "conversazioni precedenti",
+  immigration_circulars: "circolari immigrazione",
 };
 
 // Map tool names to icons

@@ -3,6 +3,8 @@ NUZANTARA PRIME - Application Constants
 Centralized constants to replace magic numbers throughout the codebase
 """
 
+from backend.core.collection_registry import resolve_collection_name
+
 # ============================================================================
 # Search Service Constants
 # ============================================================================
@@ -124,18 +126,18 @@ class EvidenceScoreConstants:
 class IntelConstants:
     """Constants for Intel service (intel.py)"""
 
-    # Qdrant collection mappings — all intel is consolidated in balizero_news
+    # Qdrant collection mappings — all intel resolves through the canonical registry
     COLLECTIONS = {
         "visa": "visa_oracle",
-        "news": "balizero_news",
-        "immigration": "balizero_news",
-        "bkpm_tax": "balizero_news",
-        "realestate": "balizero_news",
-        "events": "balizero_news",
-        "social": "balizero_news",
-        "competitors": "balizero_news",
-        "bali_news": "balizero_news",
-        "roundup": "balizero_news",
+        "news": resolve_collection_name("balizero_news"),
+        "immigration": resolve_collection_name("balizero_news"),
+        "bkpm_tax": resolve_collection_name("balizero_news"),
+        "realestate": resolve_collection_name("balizero_news"),
+        "events": resolve_collection_name("balizero_news"),
+        "social": resolve_collection_name("balizero_news"),
+        "competitors": resolve_collection_name("balizero_news"),
+        "bali_news": resolve_collection_name("balizero_news"),
+        "roundup": resolve_collection_name("balizero_news"),
     }
 
     # Visa classification keywords

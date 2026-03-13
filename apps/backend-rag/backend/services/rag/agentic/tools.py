@@ -34,13 +34,12 @@ logger = logging.getLogger(__name__)
 # Note: Collections ending in _hybrid have BM25 sparse vectors for better search
 AVAILABLE_COLLECTIONS = [
     "visa_oracle",
-    "legal_unified_hybrid",
+    "legal_unified",
     "kbli_2025_final",  # KBLI 2025 - 1,563 BPS codes + 304 gold editorial (BPS Reg. 7/2025 + PP28/2025)
-    "tax_genius_hybrid",  # Migrated to hybrid format Dec 2025
+    "tax_genius",
     "bali_zero_pricing_hybrid",
     "training_conversations_hybrid",  # Migrated to hybrid format Dec 2025
     "immigration_circulars",  # Kemnaker/Imigrasi circulars
-    "knowledge_base",  # General knowledge base (largest collection)
     "balizero_news",  # BaliZero intel articles: immigration, tax, bali news, business regulations
 ]
 
@@ -71,16 +70,15 @@ class VectorSearchTool(BaseTool):
             "This is recommended for complex questions that may span multiple topics.\n\n"
             "**OPTIONALLY specify a collection** ONLY for focused single-topic queries:\n"
             "- visa_oracle: Visas, KITAS, KITAP, immigration, stay permits\n"
-            "- legal_unified_hybrid: Laws, company types (PT, CV, Firma), regulations\n"
+            "- legal_unified: Laws, company types (PT, CV, Firma), regulations\n"
             "- kbli_2025_final: Business classification codes (KBLI 2025, BPS 7/2025 + PP28/2025), 1,563 codes with licensing detail, PMA status\n"
-            "- tax_genius_hybrid: Taxes, PPh, PPN, NPWP, fiscal matters\n"
+            "- tax_genius: Taxes, PPh, PPN, NPWP, fiscal matters\n"
             "- bali_zero_pricing_hybrid: Official Bali Zero service pricing and costs\n"
             "- training_conversations_hybrid: Procedures, practical examples, FAQs\n"
             "- immigration_circulars: Immigration policy updates, circulars, Kemnaker regulations\n"
-            "- knowledge_base: General knowledge, procedures, guides (largest collection)\n"
             "- balizero_news: Latest news, intel articles, regulation updates, business news from BaliZero\n\n"
             "Example: 'PT PMA requirements' → federated (legal + visa + tax)\n"
-            "Example: 'PPh 21 rates' → collection='tax_genius_hybrid'\n"
+            "Example: 'PPh 21 rates' → collection='tax_genius'\n"
             "Example: 'Quanto costa D12?' → collection='bali_zero_pricing_hybrid'"
         )
 

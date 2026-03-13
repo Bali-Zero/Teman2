@@ -316,7 +316,7 @@ async def run_knowledge_graph_builder(
 
 @router.get("/knowledge-graph/extract-sample")
 async def extract_kg_sample(
-    collection: str = Query(default="legal_unified_hybrid", description="Qdrant collection name"),
+    collection: str = Query(default="legal_unified", description="Qdrant collection name"),
     sample_size: int = Query(default=50, ge=10, le=200, description="Number of chunks to sample"),
 ) -> dict[str, Any]:
     """
@@ -452,7 +452,7 @@ async def extract_kg_sample(
 
 @router.post("/knowledge-graph/persist-sample")
 async def persist_kg_sample(
-    collection: str = Query(default="legal_unified_hybrid"),
+    collection: str = Query(default="legal_unified"),
     sample_size: int = Query(default=50, ge=10, le=200),
 ) -> dict[str, Any]:
     """
