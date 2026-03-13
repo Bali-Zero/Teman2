@@ -179,17 +179,19 @@ class TestSecurityAdvancedScenarios:
         """Test rate limiting security"""
 
         async with db_pool.acquire() as conn:
-            # Create rate_limits table
+            # Create rate_limits table (drop first to ensure correct schema)
+            await conn.execute("DROP TABLE IF EXISTS rate_limits")
             await conn.execute(
                 """
-                CREATE TABLE IF NOT EXISTS rate_limits (
+                CREATE TABLE rate_limits (
                     id SERIAL PRIMARY KEY,
                     identifier VARCHAR(255),
                     endpoint VARCHAR(255),
                     request_count INTEGER DEFAULT 1,
                     window_start TIMESTAMP DEFAULT NOW(),
                     blocked BOOLEAN DEFAULT FALSE,
-                    created_at TIMESTAMP DEFAULT NOW()
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    UNIQUE (identifier, endpoint)
                 )
                 """
             )
