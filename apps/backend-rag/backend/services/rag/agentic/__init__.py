@@ -34,7 +34,6 @@ from typing import Any
 from backend.services.misc.clarification_service import ClarificationService
 from backend.services.misc.graph_service import GraphService
 from backend.services.rag.agentic.graph_tool import GraphTraversalTool
-from backend.services.search.semantic_cache import SemanticCache
 
 from .kg_orchestrator import AgenticResponse, KGAgenticOrchestrator
 from .orchestrator import AgenticRAGOrchestrator
@@ -89,7 +88,7 @@ def create_agentic_rag(
     retriever,
     db_pool,
     web_search_client=None,
-    semantic_cache: SemanticCache = None,
+    semantic_cache: "SemanticCache" = None,
     clarification_service: ClarificationService = None,
 ) -> AgenticRAGOrchestrator:
     """
