@@ -2,9 +2,6 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { intelligenceApi, StagingItem } from "@/lib/api/intelligence.api";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -313,331 +310,435 @@ export default function NewsRoomPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col justify-center items-center h-96 space-y-4">
-        <Loader2 className="h-12 w-12 animate-spin text-[var(--accent)]" />
-        <p className="text-[var(--foreground-muted)] animate-pulse text-lg">
-          Gathering Global Intelligence...
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <Loader2
+          className="w-8 h-8 animate-spin"
+          style={{ color: "var(--bz-accent)" }}
+        />
+        <p
+          className="text-[12px] animate-pulse"
+          style={{ color: "var(--bz-text-2)" }}
+        >
+          Gathering Intelligence...
         </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      {/* Filters and Bulk Actions */}
-      <div className="flex flex-col sm:flex-row gap-4 p-4 rounded-lg bg-[var(--background-elevated)] border border-[var(--border)]">
-        {/* Search */}
+    <div className="space-y-4">
+      {/* Filter Bar */}
+      <div
+        className="flex flex-col sm:flex-row gap-3 px-4 py-3 rounded-2xl border mb-6"
+        style={{
+          background: "rgba(255,255,255,0.03)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          borderColor: "rgba(255,255,255,0.07)",
+        }}
+      >
+        {/* Search input */}
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[var(--foreground-muted)]" />
-          <Input
-            placeholder="Search by title, ID, or source..."
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5"
+            style={{ color: "var(--bz-text-3)" }}
+          />
+          <input
+            placeholder="Search articles..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            className="w-full pl-9 pr-3 py-2 rounded-xl text-[12px] outline-none transition-all"
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.07)",
+              color: "var(--bz-text-1)",
+            }}
           />
         </div>
 
-        {/* Filters */}
-        <div className="flex gap-2">
-          <Select
-            value={filterType}
-            onValueChange={(value) => setFilterType(value as FilterType)}
+        {/* Type filter */}
+        <Select
+          value={filterType}
+          onValueChange={(v) => setFilterType(v as FilterType)}
+        >
+          <SelectTrigger
+            className="w-[130px] h-8 text-[11px] rounded-xl"
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              borderColor: "rgba(255,255,255,0.07)",
+              color: "var(--bz-text-2)",
+            }}
           >
-            <SelectTrigger className="w-[140px]">
-              <Filter className="w-4 h-4 mr-2" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="NEW">New Only</SelectItem>
-              <SelectItem value="UPDATED">Updated Only</SelectItem>
-              <SelectItem value="critical">Critical Only</SelectItem>
-            </SelectContent>
-          </Select>
+            <Filter
+              className="w-3 h-3 mr-1.5"
+              style={{ color: "var(--bz-text-3)" }}
+            />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value="NEW">New Only</SelectItem>
+            <SelectItem value="UPDATED">Updated Only</SelectItem>
+            <SelectItem value="critical">Critical Only</SelectItem>
+          </SelectContent>
+        </Select>
 
-          <Select
-            value={sortType}
-            onValueChange={(value) => setSortType(value as SortType)}
+        {/* Sort select */}
+        <Select
+          value={sortType}
+          onValueChange={(v) => setSortType(v as SortType)}
+        >
+          <SelectTrigger
+            className="w-[140px] h-8 text-[11px] rounded-xl"
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              borderColor: "rgba(255,255,255,0.07)",
+              color: "var(--bz-text-2)",
+            }}
           >
-            <SelectTrigger className="w-[160px]">
-              <ArrowUpDown className="w-4 h-4 mr-2" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="date-desc">Newest First</SelectItem>
-              <SelectItem value="date-asc">Oldest First</SelectItem>
-              <SelectItem value="title-asc">Title A-Z</SelectItem>
-              <SelectItem value="title-desc">Title Z-A</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+            <ArrowUpDown
+              className="w-3 h-3 mr-1.5"
+              style={{ color: "var(--bz-text-3)" }}
+            />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="date-desc">Newest First</SelectItem>
+            <SelectItem value="date-asc">Oldest First</SelectItem>
+            <SelectItem value="title-asc">Title A-Z</SelectItem>
+            <SelectItem value="title-desc">Title Z-A</SelectItem>
+          </SelectContent>
+        </Select>
 
         {/* Sync button */}
-        <Button
+        <button
           onClick={loadNews}
-          variant="outline"
-          size="sm"
-          className="gap-2 shrink-0"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all hover:bg-white/[0.04]"
+          style={{
+            color: "var(--bz-text-2)",
+            border: "1px solid rgba(255,255,255,0.07)",
+          }}
         >
-          <RefreshCw className="h-4 w-4" />
+          <RefreshCw className="w-3.5 h-3.5" />
           Sync
-        </Button>
-
-        {/* Bulk Actions */}
-        {selectedItems.size > 0 && (
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={toggleSelectAll}
-              className="gap-2"
-            >
-              {selectedItems.size === filteredAndSortedItems.length ? (
-                <>
-                  <CheckSquare className="w-4 h-4" />
-                  Deselect All
-                </>
-              ) : (
-                <>
-                  <Square className="w-4 h-4" />
-                  Select All
-                </>
-              )}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleBulkPublish}
-              className="gap-2 bg-[var(--accent)] hover:bg-[var(--accent)]/90 text-white"
-              disabled={publishingIds.size > 0}
-            >
-              <Sparkles className="w-4 h-4" />
-              Publish ({selectedItems.size})
-            </Button>
-          </div>
-        )}
+        </button>
       </div>
 
       {items.length === 0 || filteredAndSortedItems.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-32 bg-[var(--background-secondary)] rounded-2xl border-2 border-dashed border-[var(--border)]">
-          <div className="bg-[var(--accent)]/10 p-6 rounded-full mb-6">
-            <Sparkles className="h-12 w-12 text-[var(--accent)]" />
+        /* Empty state */
+        <div
+          className="flex flex-col items-center justify-center py-24 rounded-2xl border-2 border-dashed"
+          style={{
+            borderColor: "rgba(255,255,255,0.07)",
+            background: "rgba(255,255,255,0.01)",
+          }}
+        >
+          <div
+            className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
+            style={{
+              background: "rgba(212,132,90,0.08)",
+              border: "1px solid rgba(212,132,90,0.15)",
+            }}
+          >
+            <Sparkles className="w-8 h-8" style={{ color: "var(--bz-accent)" }} />
           </div>
-          <h3 className="text-xl font-semibold mb-2 text-[var(--foreground)]">
-            No Drafts Pending
+          <h3
+            className="text-[15px] font-semibold mb-1"
+            style={{ color: "var(--bz-text-1)" }}
+          >
+            All Caught Up!
           </h3>
-          <p className="text-[var(--foreground-muted)] max-w-md text-center">
+          <p
+            className="text-[12px] text-center max-w-sm mb-6"
+            style={{ color: "var(--bz-text-2)" }}
+          >
             {items.length === 0
               ? "The intelligence scraper hasn't flagged any new items for review. Check back later or run a manual scrape."
               : "No items match your current filters. Try adjusting your search or filters."}
           </p>
+          <button
+            onClick={loadNews}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-medium transition-all hover:bg-white/[0.04]"
+            style={{
+              color: "var(--bz-text-2)",
+              border: "1px solid rgba(255,255,255,0.07)",
+            }}
+          >
+            <RefreshCw className="w-3.5 h-3.5" /> Check Again
+          </button>
         </div>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        /* Article card grid */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredAndSortedItems.map((item) => (
-            <Card
+            <div
               key={item.id}
-              className={cn(
-                "group flex flex-col h-full overflow-hidden hover:shadow-lg transition-all duration-300 border-t-4",
-                selectedItems.has(item.id)
-                  ? "border-t-[var(--accent)] ring-2 ring-[var(--accent)]/20"
-                  : "border-t-transparent hover:border-t-[var(--accent)]",
-              )}
+              className="rounded-2xl border overflow-hidden transition-all duration-200 hover:shadow-lg group relative"
+              style={{
+                background: "rgba(255,255,255,0.03)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+                borderColor: "rgba(255,255,255,0.07)",
+              }}
             >
-              {/* Checkbox */}
+              {/* Critical ribbon */}
+              {item.is_critical && (
+                <div className="absolute top-0 right-0 z-10">
+                  <div
+                    className="flex items-center gap-1 px-2 py-1 text-[9px] font-bold rounded-bl-lg"
+                    style={{ background: "rgba(239,68,68,0.9)", color: "#fff" }}
+                  >
+                    <Flame className="w-3 h-3" /> CRITICAL
+                  </div>
+                </div>
+              )}
+
+              {/* Checkbox overlay (top-left) */}
               <div className="absolute top-2 left-2 z-10">
                 <button
                   onClick={() => toggleSelectItem(item.id)}
-                  className="p-1.5 rounded-full bg-white/90 backdrop-blur-sm hover:bg-white transition-colors shadow-sm"
+                  className="w-6 h-6 rounded-md flex items-center justify-center transition-all"
+                  style={{
+                    background: "rgba(0,0,0,0.5)",
+                    backdropFilter: "blur(4px)",
+                  }}
                   aria-label={`Select ${item.title}`}
                 >
                   {selectedItems.has(item.id) ? (
-                    <CheckSquare className="w-4 h-4 text-[var(--accent)]" />
+                    <CheckSquare
+                      className="w-4 h-4"
+                      style={{ color: "var(--bz-accent)" }}
+                    />
                   ) : (
-                    <Square className="w-4 h-4 text-[var(--foreground-muted)]" />
+                    <Square
+                      className="w-4 h-4 opacity-60"
+                      style={{ color: "#fff" }}
+                    />
                   )}
                 </button>
               </div>
 
-              {/* Header Image (Mandatory) */}
-              <div className="h-40 bg-gradient-to-br from-slate-100 to-slate-200 relative overflow-hidden">
+              {/* Cover image */}
+              <div className="relative aspect-video overflow-hidden">
                 {item.cover_image ? (
                   <img
                     src={item.cover_image}
                     alt={item.title}
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      // Show error placeholder if image fails to load
                       e.currentTarget.style.display = "none";
-                      const placeholder = e.currentTarget
-                        .nextElementSibling as HTMLElement;
-                      if (placeholder) {
-                        placeholder.classList.remove("hidden");
-                        placeholder.innerHTML =
-                          '<div class="flex items-center justify-center h-full"><span class="text-red-500 text-sm">Image failed to load</span></div>';
-                      }
                     }}
                   />
                 ) : (
-                  <div className="absolute inset-0 flex items-center justify-center bg-red-100">
-                    <span className="text-red-500 text-sm font-medium">
-                      ⚠️ Image Missing
-                    </span>
-                  </div>
-                )}
-                <div className="hidden"></div>
-                {item.is_critical && (
-                  <div className="absolute top-3 right-3">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-200 shadow-sm">
-                      <Flame className="w-3 h-3" />
-                      CRITICAL
-                    </span>
-                  </div>
-                )}
-                <div className="absolute top-3 left-3">
-                  <span
-                    className={cn(
-                      "px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide",
-                      "bg-white/90 text-slate-900 shadow-sm backdrop-blur-sm",
-                    )}
+                  <div
+                    className="w-full h-full flex items-center justify-center"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, rgba(212,132,90,0.08) 0%, rgba(99,102,241,0.08) 100%)",
+                    }}
                   >
-                    {item.source || "Unknown Source"}
-                  </span>
+                    <ImageIcon
+                      className="w-8 h-8"
+                      style={{ color: "var(--bz-text-3)" }}
+                    />
+                  </div>
+                )}
+                {/* Hover overlay — desktop */}
+                <div
+                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150 hidden sm:flex items-center justify-center gap-2"
+                  style={{
+                    background: "rgba(0,0,0,0.6)",
+                    backdropFilter: "blur(4px)",
+                  }}
+                >
+                  <button
+                    onClick={() => handlePreview(item)}
+                    className="p-2 rounded-lg transition-all hover:bg-white/[0.1]"
+                    style={{ border: "1px solid rgba(255,255,255,0.15)" }}
+                  >
+                    <Eye className="w-4 h-4 text-white" />
+                  </button>
+                  <button
+                    onClick={() => setEditingItem(item)}
+                    className="p-2 rounded-lg transition-all hover:bg-white/[0.1]"
+                    style={{ border: "1px solid rgba(255,255,255,0.15)" }}
+                  >
+                    <Edit className="w-4 h-4 text-white" />
+                  </button>
+                  <button
+                    onClick={() => setCoverUploadItem(item)}
+                    className="p-2 rounded-lg transition-all hover:bg-white/[0.1]"
+                    style={{ border: "1px solid rgba(255,255,255,0.15)" }}
+                  >
+                    <ImageIcon className="w-4 h-4 text-white" />
+                  </button>
+                </div>
+                {/* Touch fallback — always visible on mobile */}
+                <div className="absolute bottom-2 right-2 flex gap-1 sm:hidden">
+                  <button
+                    onClick={() => setEditingItem(item)}
+                    className="p-1.5 rounded-md"
+                    style={{
+                      background: "rgba(0,0,0,0.7)",
+                      border: "1px solid rgba(255,255,255,0.15)",
+                    }}
+                  >
+                    <Edit className="w-3 h-3 text-white" />
+                  </button>
+                  <button
+                    onClick={() => setCoverUploadItem(item)}
+                    className="p-1.5 rounded-md"
+                    style={{
+                      background: "rgba(0,0,0,0.7)",
+                      border: "1px solid rgba(255,255,255,0.15)",
+                    }}
+                  >
+                    <ImageIcon className="w-3 h-3 text-white" />
+                  </button>
                 </div>
               </div>
 
-              <CardContent className="flex-1 p-5 space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-xs text-[var(--foreground-muted)]">
-                    <Calendar className="h-3 w-3" />
-                    <span>
-                      {new Date(item.detected_at).toLocaleDateString()}
-                    </span>
-                    <span>•</span>
-                    <span className="text-[var(--accent)] font-medium">
-                      {item.detection_type}
-                    </span>
-                  </div>
-                  <h3 className="font-bold text-lg leading-snug group-hover:text-[var(--accent)] transition-colors line-clamp-3 text-[var(--foreground)]">
-                    {item.title}
-                  </h3>
+              {/* Card body */}
+              <div className="p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span
+                    className="text-[9.5px] font-semibold px-2 py-0.5 rounded-full"
+                    style={{
+                      background: "rgba(212,132,90,0.1)",
+                      color: "var(--bz-accent)",
+                      border: "1px solid rgba(212,132,90,0.15)",
+                    }}
+                  >
+                    {item.source && item.source.startsWith("http")
+                      ? (() => {
+                          try {
+                            return new URL(item.source).hostname.replace("www.", "");
+                          } catch {
+                            return item.source;
+                          }
+                        })()
+                      : item.source || "intel"}
+                  </span>
+                  <span
+                    className="text-[10px] flex items-center gap-1"
+                    style={{ color: "var(--bz-text-2)" }}
+                  >
+                    <Calendar className="w-3 h-3" />
+                    {new Date(item.detected_at).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </span>
                 </div>
-                {item.content ? (
-                  <div className="text-sm text-[var(--foreground-muted)] prose prose-sm max-w-none">
-                    <div
-                      className="line-clamp-4"
-                      dangerouslySetInnerHTML={renderMiniMarkdown(item.content)}
-                    />
-                  </div>
-                ) : (
-                  <p className="text-sm text-[var(--foreground-muted)] line-clamp-3">
-                    Pending editorial review. Agent-detected immigration news
-                    awaiting approval.
-                  </p>
-                )}
-              </CardContent>
+                <h3
+                  className="text-[12.5px] font-semibold leading-snug line-clamp-2"
+                  style={{ color: "var(--bz-text-1)" }}
+                >
+                  {item.title}
+                </h3>
+              </div>
 
-              <CardFooter className="p-5 pt-0 mt-auto">
-                <div className="flex flex-wrap gap-2 w-full">
-                  <Select
-                    value={getPosition(item.id)}
-                    onValueChange={(value) =>
-                      setPublishPosition((prev) => ({
-                        ...prev,
-                        [item.id]: value,
-                      }))
-                    }
+              {/* Card footer */}
+              <div className="px-3 pb-3 space-y-2">
+                {/* Position select */}
+                <Select
+                  value={getPosition(item.id)}
+                  onValueChange={(v) =>
+                    setPublishPosition((prev) => ({ ...prev, [item.id]: v }))
+                  }
+                >
+                  <SelectTrigger
+                    className="h-7 text-[10.5px] rounded-lg"
+                    style={{
+                      background: "rgba(255,255,255,0.04)",
+                      borderColor: "rgba(255,255,255,0.07)",
+                      color: "var(--bz-text-2)",
+                    }}
                   >
-                    <SelectTrigger
-                      className="w-[130px] bg-zinc-800 border-zinc-600 text-zinc-100"
-                      title="Homepage position"
-                    >
-                      <MapPin className="w-3 h-3 mr-1 shrink-0" />
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="!bg-zinc-800 !border-zinc-600 !text-zinc-100">
-                      <SelectItem value="latest">Latest</SelectItem>
-                      <SelectItem value="hero_main">Hero Main</SelectItem>
-                      <SelectItem value="hero_2">Hero 2</SelectItem>
-                      <SelectItem value="hero_3">Hero 3</SelectItem>
-                      <SelectItem value="hero_4">Hero 4</SelectItem>
-                      <SelectItem value="hero_5">Hero 5</SelectItem>
-                      <SelectItem value="insight_1">Insight 1</SelectItem>
-                      <SelectItem value="insight_2">Insight 2</SelectItem>
-                      <SelectItem value="insight_3">Insight 3</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    className="flex-1 gap-2 bg-[var(--accent)] hover:bg-[var(--accent)]/90 text-white min-w-[100px]"
-                    size="sm"
-                    onClick={() => handlePublish(item)}
-                    disabled={publishingIds.has(item.id)}
-                  >
-                    {publishingIds.has(item.id) ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Publishing...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-4 w-4" />
-                        Publish
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setEditingItem(item)}
-                    className="gap-2"
-                    title="Edit Article"
-                  >
-                    <Edit className="h-4 w-4" />
-                    Edit
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCoverUploadItem(item)}
-                    className="gap-2"
-                    title="Upload Cover Image"
-                  >
-                    <ImageIcon className="h-4 w-4" />
-                    Cover
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePreview(item)}
-                    disabled={previewLoading}
-                    className="gap-2"
-                    title="View Full Article"
-                  >
-                    {previewLoading && previewItem?.id === item.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <>
-                        <Eye className="h-4 w-4" />
-                        View
-                      </>
-                    )}
-                  </Button>
-                  {item.source && item.source.startsWith("http") && (
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      asChild
-                      title="View Original Source"
-                    >
-                      <a href={item.source} target="_blank" rel="noreferrer">
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
-                    </Button>
+                    <MapPin
+                      className="w-3 h-3 mr-1"
+                      style={{ color: "var(--bz-text-3)" }}
+                    />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="latest">Latest</SelectItem>
+                    <SelectItem value="hero_main">Hero Main</SelectItem>
+                    <SelectItem value="hero_2">Hero 2</SelectItem>
+                    <SelectItem value="hero_3">Hero 3</SelectItem>
+                    <SelectItem value="hero_4">Hero 4</SelectItem>
+                    <SelectItem value="hero_5">Hero 5</SelectItem>
+                    <SelectItem value="insight_1">Insight 1</SelectItem>
+                    <SelectItem value="insight_2">Insight 2</SelectItem>
+                    <SelectItem value="insight_3">Insight 3</SelectItem>
+                  </SelectContent>
+                </Select>
+                {/* Publish button */}
+                <button
+                  onClick={() => handlePublish(item)}
+                  disabled={publishingIds.has(item.id)}
+                  className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-[11px] font-semibold transition-all"
+                  style={{
+                    background: "rgba(212,132,90,0.12)",
+                    color: "var(--bz-accent)",
+                    border: "1px solid rgba(212,132,90,0.2)",
+                  }}
+                >
+                  {publishingIds.has(item.id) ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Publishing...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5" /> Publish
+                    </>
                   )}
-                </div>
-              </CardFooter>
-            </Card>
+                </button>
+              </div>
+            </div>
           ))}
+        </div>
+      )}
+
+      {/* Bulk actions sticky bar */}
+      {selectedItems.size > 0 && (
+        <div
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-2.5 rounded-2xl shadow-2xl z-50"
+          style={{
+            background: "rgba(18,18,20,0.9)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            border: "1px solid rgba(255,255,255,0.1)",
+          }}
+        >
+          <span
+            className="text-[12px] font-semibold"
+            style={{ color: "var(--bz-text-1)" }}
+          >
+            {selectedItems.size} selected
+          </span>
+          <div
+            className="w-px h-4"
+            style={{ background: "rgba(255,255,255,0.1)" }}
+          />
+          <button
+            onClick={handleBulkPublish}
+            className="text-[11px] font-medium px-3 py-1.5 rounded-lg transition-all"
+            style={{
+              background: "rgba(212,132,90,0.12)",
+              color: "var(--bz-accent)",
+              border: "1px solid rgba(212,132,90,0.2)",
+            }}
+          >
+            Publish all
+          </button>
+          <button
+            onClick={() => setSelectedItems(new Set())}
+            className="text-[11px] px-3 py-1.5 rounded-lg transition-all hover:bg-white/[0.04]"
+            style={{ color: "var(--bz-text-2)" }}
+          >
+            Deselect
+          </button>
         </div>
       )}
 
@@ -651,7 +752,7 @@ export default function NewsRoomPage() {
             <DialogTitle className="text-2xl">{previewItem?.title}</DialogTitle>
             <DialogDescription>
               {previewItem && (
-                <div className="flex items-center gap-4 text-sm text-[var(--foreground-muted)] mt-2">
+                <div className="flex items-center gap-4 text-sm mt-2" style={{ color: "var(--bz-text-2)" }}>
                   <span>
                     {new Date(previewItem.detected_at).toLocaleDateString()}
                   </span>
@@ -660,7 +761,7 @@ export default function NewsRoomPage() {
                     {(previewItem as any).source_name || previewItem.source}
                   </span>
                   <span>•</span>
-                  <span className="text-[var(--accent)]">
+                  <span style={{ color: "var(--bz-accent)" }}>
                     {previewItem.detection_type}
                   </span>
                 </div>
@@ -677,7 +778,7 @@ export default function NewsRoomPage() {
             </div>
           )}
           {previewItem?.content && (
-            <div className="prose prose-sm max-w-none text-[var(--foreground)] mt-4">
+            <div className="prose prose-sm max-w-none mt-4" style={{ color: "var(--bz-text-1)" }}>
               <div
                 className="whitespace-pre-wrap"
                 dangerouslySetInnerHTML={renderMiniMarkdown(
@@ -697,11 +798,18 @@ export default function NewsRoomPage() {
                 }))
               }
             >
-              <SelectTrigger className="w-[160px] bg-zinc-800 border-zinc-600 text-zinc-100">
-                <MapPin className="w-3 h-3 mr-1 shrink-0" />
+              <SelectTrigger
+                className="w-[160px] rounded-xl"
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  borderColor: "rgba(255,255,255,0.07)",
+                  color: "var(--bz-text-2)",
+                }}
+              >
+                <MapPin className="w-3 h-3 mr-1 shrink-0" style={{ color: "var(--bz-text-3)" }} />
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="!bg-zinc-800 !border-zinc-600 !text-zinc-100">
+              <SelectContent>
                 <SelectItem value="latest">Latest</SelectItem>
                 <SelectItem value="hero_main">Hero Main</SelectItem>
                 <SelectItem value="hero_2">Hero 2</SelectItem>
@@ -713,8 +821,13 @@ export default function NewsRoomPage() {
                 <SelectItem value="insight_3">Insight 3</SelectItem>
               </SelectContent>
             </Select>
-            <Button
-              className="flex-1 gap-2 bg-[var(--accent)] hover:bg-[var(--accent)]/90 text-white"
+            <button
+              className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-[12px] font-semibold transition-all"
+              style={{
+                background: "rgba(212,132,90,0.12)",
+                color: "var(--bz-accent)",
+                border: "1px solid rgba(212,132,90,0.2)",
+              }}
               onClick={() => previewItem && handlePublish(previewItem)}
               disabled={previewItem ? publishingIds.has(previewItem.id) : false}
             >
@@ -729,19 +842,21 @@ export default function NewsRoomPage() {
                   Publish Article
                 </>
               )}
-            </Button>
+            </button>
             {previewItem?.source && previewItem.source.startsWith("http") && (
-              <Button variant="outline" asChild>
-                <a
-                  href={previewItem.source}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-2"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  View Source
-                </a>
-              </Button>
+              <a
+                href={previewItem.source}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-2 px-3 py-2 rounded-xl text-[12px] font-medium transition-all hover:bg-white/[0.04]"
+                style={{
+                  color: "var(--bz-text-2)",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                }}
+              >
+                <ExternalLink className="h-4 w-4" />
+                View Source
+              </a>
             )}
           </div>
         </DialogContent>

@@ -73,7 +73,7 @@ describe("NewsRoomPage", () => {
 
     await waitFor(() => {
       expect(
-        screen.queryByText("Gathering Global Intelligence..."),
+        screen.queryByText("Gathering Intelligence..."),
       ).not.toBeInTheDocument();
     });
 
@@ -86,7 +86,7 @@ describe("NewsRoomPage", () => {
     render(<NewsRoomPage />);
 
     expect(
-      screen.getByText("Gathering Global Intelligence..."),
+      screen.getByText("Gathering Intelligence..."),
     ).toBeInTheDocument();
   });
 
@@ -117,7 +117,7 @@ describe("NewsRoomPage", () => {
     render(<NewsRoomPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("No Drafts Pending")).toBeInTheDocument();
+      expect(screen.getByText("All Caught Up!")).toBeInTheDocument();
     });
 
     expect(
@@ -167,8 +167,9 @@ describe("NewsRoomPage", () => {
     render(<NewsRoomPage />);
 
     await waitFor(() => {
-      const detectionTypes = screen.getAllByText(/NEW|UPDATED/);
-      expect(detectionTypes.length).toBeGreaterThan(0);
+      // Detection types are shown in the filter Select options
+      // and CRITICAL items show a ribbon badge
+      expect(screen.getByText("CRITICAL")).toBeInTheDocument();
     });
   });
 
@@ -176,8 +177,8 @@ describe("NewsRoomPage", () => {
     render(<NewsRoomPage />);
 
     await waitFor(() => {
-      // Check that dates are formatted (format depends on locale, so just check presence)
-      const dateElements = screen.getAllByText(/2025/);
+      // New design uses short month format (e.g. "Jan 1", "Jan 2", "Jan 3")
+      const dateElements = screen.getAllByText(/Jan/);
       expect(dateElements.length).toBeGreaterThan(0);
     });
   });
@@ -261,7 +262,7 @@ describe("NewsRoomPage", () => {
         ).toBeInTheDocument();
       });
 
-      const searchInput = screen.getByPlaceholderText(/Search by title/i);
+      const searchInput = screen.getByPlaceholderText(/Search articles/i);
       await userEvent.type(searchInput, "Breaking");
 
       await waitFor(() => {
@@ -306,9 +307,9 @@ describe("NewsRoomPage", () => {
       // Click first checkbox
       await userEvent.click(checkboxes[0]);
 
-      // Should show selected count
+      // Should show sticky bar with selection count
       await waitFor(() => {
-        expect(screen.getByText(/Publish \(/)).toBeInTheDocument();
+        expect(screen.getByText(/1 selected/)).toBeInTheDocument();
       });
     });
 
@@ -321,15 +322,15 @@ describe("NewsRoomPage", () => {
         ).toBeInTheDocument();
       });
 
-      // Find Select All button
-      const selectAllButton = screen.queryByText("Select All");
-      if (selectAllButton) {
-        await userEvent.click(selectAllButton);
-
-        await waitFor(() => {
-          expect(screen.getByText(/Publish \(/)).toBeInTheDocument();
-        });
+      // Select all items by clicking each checkbox
+      const checkboxes = screen.getAllByRole("button", { name: /Select/i });
+      for (const checkbox of checkboxes) {
+        await userEvent.click(checkbox);
       }
+
+      await waitFor(() => {
+        expect(screen.getByText(/3 selected/)).toBeInTheDocument();
+      });
     });
 
     it("should show bulk publish button when items are selected", async () => {
@@ -390,13 +391,11 @@ describe("NewsRoomPage", () => {
 
       // Wait for selection UI to update
       await waitFor(() => {
-        expect(screen.getByText(/Publish \(/)).toBeInTheDocument();
+        expect(screen.getByText(/2 selected/)).toBeInTheDocument();
       });
 
-      // Find bulk publish button (should appear with count)
-      const bulkPublishButton =
-        screen.queryByRole("button", { name: /Publish.*\(2\)/i }) ||
-        screen.queryByText(/Publish All/i);
+      // Find bulk publish button in sticky bar
+      const bulkPublishButton = screen.queryByText(/Publish all/i);
 
       if (bulkPublishButton) {
         await userEvent.click(bulkPublishButton);
@@ -412,9 +411,9 @@ describe("NewsRoomPage", () => {
         ).toBeInTheDocument();
       });
 
-      // Bulk actions should not be visible initially
-      const bulkActions = screen.queryAllByText(/Publish \(\d+\)/);
-      expect(bulkActions.length).toBe(0);
+      // Bulk actions sticky bar should not be visible initially
+      expect(screen.queryByText(/selected/)).not.toBeInTheDocument();
+      expect(screen.queryByText("Publish all")).not.toBeInTheDocument();
     });
   });
 });
