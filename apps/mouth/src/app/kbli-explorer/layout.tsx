@@ -1,6 +1,19 @@
 import React from "react";
+import type { Metadata } from "next";
 
 const baseUrl = process.env.NEXT_PUBLIC_PUBLIC_URL || "https://balizero.com";
+
+export const metadata: Metadata = {
+  title: "Zantara AI | KBLI Business Code Guide",
+  description:
+    "Search and explore Indonesian business classification codes (KBLI 2025). Check foreign ownership rules, required licenses, and PMA eligibility for any business activity.",
+  openGraph: {
+    title: "Zantara AI | KBLI Business Code Guide",
+    description:
+      "Describe your business idea in any language — we find the right Indonesian codes, licenses and requirements.",
+    url: `${baseUrl}/kbli-explorer`,
+  },
+};
 
 function KBLIExplorerJsonLd() {
   const schema = {
