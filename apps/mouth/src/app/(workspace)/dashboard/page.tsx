@@ -8,6 +8,7 @@ import {
   LiveActivityFeed,
   RoleWidget,
   DashboardStatCard,
+  ZantaraPortalCard,
 } from "@/components/dashboard";
 import { HeroLiveWindow } from "@/components/workspace/HeroLiveWindow";
 import type { PraticaPreview } from "@/components/dashboard";
@@ -303,6 +304,9 @@ export default function DashboardPage() {
         <div className="p-2.5 space-y-3">
           {/* ── ROW 0: Website Live Cover (Full Width) ── */}
           <HeroLiveWindow />
+
+          {/* ── Zantara AI Portal Card ── */}
+          <ZantaraPortalCard />
 
           <div
             className="grid gap-2"
