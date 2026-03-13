@@ -36,8 +36,16 @@ from backend.services.rag.agentic.graph_tool import GraphTraversalTool
 if TYPE_CHECKING:
     from backend.services.misc.clarification_service import ClarificationService
 
+# Core orchestrators
 from .kg_orchestrator import AgenticResponse, KGAgenticOrchestrator
 from .orchestrator import AgenticRAGOrchestrator
+
+# Submodules (for direct access)
+from . import context_manager
+from . import llm_gateway
+from . import memory_handler
+from . import prompt_builder
+from . import reasoning
 from .pipeline import (
     CitationStage,
     FormatStage,
@@ -66,6 +74,7 @@ __all__ = [
     "AgenticResponse",
     "create_agentic_rag",
     "create_kg_agentic_rag",
+    # Tools
     "TimeSheetTool",
     "VectorSearchTool",
     "CalculatorTool",
@@ -82,6 +91,12 @@ __all__ = [
     "CitationStage",
     "FormatStage",
     "create_default_pipeline",
+    # Submodules (for direct access)
+    "context_manager",
+    "llm_gateway",
+    "memory_handler",
+    "prompt_builder",
+    "reasoning",
 ]
 
 
