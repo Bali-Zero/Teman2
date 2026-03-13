@@ -525,22 +525,15 @@ async def run(
 
     logger.info(f"Generating images for {len(enriched)} enriched articles")
 
-    # Ensure Chrome profile
-    profile_dir = ensure_chrome_profile(force_refresh=refresh_profile)
-
-    # Launch browser
+    # Launch browser via CDP
     async with async_playwright() as p:
-        context = await p.chromium.launch_persistent_context(
-            user_data_dir=str(profile_dir),
-            channel="chrome",
-            headless=headless,
-            viewport={"width": 1280, "height": 900},
-            args=[
-                "--disable-blink-features=AutomationControlled",
-                "--no-first-run",
-                "--no-default-browser-check",
-            ],
-        )
+        try:
+            browser = await p.chromium.connect_over_cdp("http://localhost:9222")
+            context = browser.contexts[0] if browser.contexts else await browser.new_context()
+        except Exception as e:
+            logger.error(f"Failed to connect to Chrome via CDP: {e}")
+            logger.error("Make sure to run: ~/war_room/chrome-debug.sh first")
+            return 1
 
         generated = 0
         failed = 0
