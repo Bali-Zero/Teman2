@@ -205,12 +205,8 @@ const nextConfig: NextConfig = {
         destination: "/kbli/:path*",
         permanent: true,
       },
-      // Zantara AI migrated to dedicated subdomain
-      {
-        source: "/chat",
-        destination: "https://zantara.balizero.com",
-        permanent: false,
-      },
+      // Note: /chat redirect to zantara.balizero.com is handled by middleware
+      // (cannot be here — next.config redirects would conflict with middleware rewrites)
     ];
   },
 
