@@ -37,16 +37,11 @@ CollectionName = Literal[
     "kbli_2025_final",
     "tax_genius",
     "legal_architect",
-    "zantara_books",
+    "legal_unified",
     "tax_updates",
     "tax_knowledge",
-    "property_listings",
-    "property_knowledge",
     "legal_updates",
     "bali_zero_pricing_hybrid",
-    "kb_indonesian",
-    "cultural_insights",
-    "bali_zero_team",
     "training_conversations_hybrid",  # Business setup guides & capital requirements
     "balizero_news",  # Intel articles: immigration, tax, bali news, business regulations
 ]
@@ -479,14 +474,7 @@ class QueryRouter:
         "tax_updates": ["tax_genius", "tax_knowledge", "legal_updates"],
         "legal_architect": ["legal_updates", "kbli_2025_final", "tax_genius"],
         "legal_updates": ["legal_architect", "tax_updates", "visa_oracle"],
-        "property_knowledge": ["property_listings", "legal_architect", "visa_oracle"],
-        "property_listings": ["property_knowledge", "legal_architect", "tax_knowledge"],
-        "zantara_books": ["visa_oracle"],  # Books is standalone, default fallback
-        "bali_zero_team": [
-            "visa_oracle",
-            "legal_architect",
-            "kbli_2025_final",
-        ],  # Team fallback to main company collections
+        "legal_unified": ["legal_architect", "kbli_2025_final", "tax_genius", "visa_oracle"],
         "balizero_news": [
             "visa_oracle",
             "legal_architect",
@@ -584,24 +572,18 @@ class QueryRouter:
 
         # Intelligent sub-routing based on primary domain + modifiers
         if primary_score == 0:
-            # No matches - default to legal_unified_hybrid (Cloud Reality)
-            # FIXED 2026-01-10: legal_unified doesn't exist, using legal_unified_hybrid
-            collection = "legal_unified_hybrid"
+            collection = "legal_unified"
             logger.info(f"🧭 Route: {collection} (default - no keyword matches)")
         elif primary_domain == "tax":
-            # Tax domain: route to tax_genius (Unified in Cloud)
             collection = "tax_genius"
             logger.info(f"🧭 Route: {collection} (tax unified: tax={domain_scores['tax']})")
         elif primary_domain == "legal":
-            # Legal domain: route to legal_unified_hybrid
-            # FIXED 2026-01-10: legal_unified doesn't exist, using legal_unified_hybrid
-            collection = "legal_unified_hybrid"
+            collection = "legal_unified"
             logger.info(f"🧭 Route: {collection} (legal unified: legal={domain_scores['legal']})")
         elif primary_domain == "property":
-            # Property domain: route to property_unified
-            collection = "property_unified"
+            collection = "legal_unified"
             logger.info(
-                f"🧭 Route: {collection} (property unified: property={domain_scores['property']})"
+                f"🧭 Route: {collection} (property fallback: property={domain_scores['property']})"
             )
         elif primary_domain == "business":
             # Business setup & capital requirements: route to training_conversations_hybrid
@@ -628,11 +610,9 @@ class QueryRouter:
             collection = "balizero_news"
             logger.info(f"🧭 Route: {collection} (news: score={domain_scores['news']})")
         elif primary_domain == "team":
-            # FIXED 2026-01-10: bali_zero_team doesn't exist, fallback to bali_zero_pricing
-            # TODO: Recreate bali_zero_team collection or use alternative
-            collection = "bali_zero_pricing_hybrid"  # Temporary fallback
+            collection = "bali_zero_pricing_hybrid"
             logger.warning(
-                f"⚠️ Route: {collection} (team query - bali_zero_team not found, using fallback)"
+                f"⚠️ Route: {collection} (team query fallback - no dedicated live collection)"
             )
         else:  # books
             # Fallback for books if collection missing

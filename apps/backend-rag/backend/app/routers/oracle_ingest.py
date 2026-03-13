@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from backend.app.dependencies import get_search_service
+from backend.core.collection_registry import resolve_collection_name
 from backend.core.embeddings import create_embeddings_generator
 from backend.core.qdrant_db import QdrantClient
 from backend.services.search.search_service import SearchService
@@ -39,7 +40,7 @@ class DocumentChunk(BaseModel):
 class IngestRequest(BaseModel):
     """Bulk ingest request"""
 
-    collection: str = Field("legal_intelligence", description="Target collection name")
+    collection: str = Field("legal_intelligence", description="Target logical collection name")
     documents: list[DocumentChunk] = Field(
         ...,
         description="List of document chunks to ingest",
@@ -88,7 +89,7 @@ async def ingest_documents(
         }
     ]
 
-    response = requests.post(
+    response = httpx.post(
         "https://nuzantara-rag.fly.dev/api/oracle/ingest",
         json={"collection": "legal_intelligence", "documents": chunks}
     )
@@ -100,19 +101,20 @@ async def ingest_documents(
     """
 
     start_time = time.time()
+    target_collection = resolve_collection_name(request.collection)
 
     try:
         # Validate collection exists
         if request.collection not in service.collections:
             # Auto-create collection if legal_intelligence
             if request.collection == "legal_intelligence":
-                logger.info(f"Auto-creating collection: {request.collection}")
-                vector_db = QdrantClient(collection_name=request.collection)
+                logger.info("Auto-creating collection: %s -> %s", request.collection, target_collection)
+                vector_db = QdrantClient(collection_name=target_collection)
                 service.collections[request.collection] = vector_db
             else:
                 return IngestResponse(
                     success=False,
-                    collection=request.collection,
+                    collection=target_collection,
                     documents_ingested=0,
                     execution_time_ms=0,
                     message="Collection not found",
@@ -145,7 +147,7 @@ async def ingest_documents(
             ids.append(doc_id)
 
         # Batch ingest
-        logger.info(f"Ingesting {len(documents)} documents into {request.collection}...")
+        logger.info("Ingesting %s documents into %s...", len(documents), target_collection)
 
         # Qdrant upsert method (async)
         await vector_db.upsert_documents(
@@ -160,7 +162,7 @@ async def ingest_documents(
 
         return IngestResponse(
             success=True,
-            collection=request.collection,
+            collection=target_collection,
             documents_ingested=len(documents),
             execution_time_ms=execution_time,
             message=f"Successfully ingested {len(documents)} documents",
@@ -172,7 +174,7 @@ async def ingest_documents(
 
         return IngestResponse(
             success=False,
-            collection=request.collection,
+            collection=target_collection,
             documents_ingested=0,
             execution_time_ms=execution_time,
             message="Ingest failed",

@@ -16,16 +16,12 @@ CollectionName = Literal[
     "kbli_2025_final",
     "tax_genius",
     "legal_architect",
-    "zantara_books",
+    "legal_unified",
     "tax_updates",
     "tax_knowledge",
-    "property_listings",
-    "property_knowledge",
     "legal_updates",
     "bali_zero_pricing_hybrid",
-    "kb_indonesian",
-    "cultural_insights",
-    "bali_zero_team",
+    "training_conversations_hybrid",
     "balizero_news",
 ]
 
@@ -59,35 +55,27 @@ class FallbackManagerService:
         "tax_updates": ["tax_genius", "tax_knowledge", "legal_updates"],
         "legal_architect": ["legal_updates", "kbli_2025_final", "tax_genius"],
         "legal_updates": ["legal_architect", "tax_updates", "visa_oracle"],
-        "property_knowledge": ["property_listings", "legal_architect", "visa_oracle"],
-        "property_listings": ["property_knowledge", "legal_architect", "tax_knowledge"],
         "training_conversations_hybrid": [
             "legal_architect",
             "tax_genius",
             "kbli_2025_final",
         ],  # Business setup fallback to legal/tax/kbli
-        "zantara_books": ["visa_oracle"],  # Books is standalone, default fallback
-        "bali_zero_team": [
-            "visa_oracle",
-            "legal_architect",
-            "kbli_2025_final",
-        ],  # Team fallback to main company collections
-        "kbli_2025_final": [
-            "training_conversations_hybrid",
-            "legal_architect",
-            "tax_genius",
-        ],  # KBLI 2025 fallback to business setup/legal/tax
-        "legal_unified_hybrid": [
+        "legal_unified": [
             "legal_architect",
             "kbli_2025_final",
             "tax_genius",
             "visa_oracle",
-        ],  # Default collection fallback to specialized oracles
-        "property_unified": [
-            "property_knowledge",
-            "property_listings",
-            "legal_architect",
-        ],  # Property unified fallback
+        ],  # Default legal corpus fallback to specialized oracles
+        "bali_zero_pricing_hybrid": [
+            "legal_unified",
+            "tax_genius",
+            "visa_oracle",
+        ],
+        "balizero_news": [
+            "legal_unified",
+            "visa_oracle",
+            "kbli_2025_final",
+        ],
     }
 
     CONFIDENCE_THRESHOLD_HIGH = RoutingConstants.CONFIDENCE_THRESHOLD_HIGH
