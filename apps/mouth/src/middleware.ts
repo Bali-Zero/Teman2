@@ -177,14 +177,18 @@ export function middleware(request: NextRequest) {
   }
 
   // === ZANTARA DOMAIN (zantara.balizero.com) ===
-  // Dedicated Zantara AI chat webapp — rewrites to /chat
+  // Dedicated Zantara AI chat webapp — rewrites root to /chat,
+  // passes through /login and other routes untouched so auth redirects work.
   if (hostname === ZANTARA_DOMAIN || hostname === `www.${ZANTARA_DOMAIN}`) {
-    const rewritePath = pathname === "/" ? "/chat" : `/chat${pathname}`;
-    const rewriteUrl = request.nextUrl.clone();
-    rewriteUrl.pathname = rewritePath;
-    const rewriteResponse = NextResponse.rewrite(rewriteUrl);
-    rewriteResponse.headers.set("x-pathname", pathname);
-    return rewriteResponse;
+    if (pathname === "/") {
+      const rewriteUrl = request.nextUrl.clone();
+      rewriteUrl.pathname = "/chat";
+      const rewriteResponse = NextResponse.rewrite(rewriteUrl);
+      rewriteResponse.headers.set("x-pathname", pathname);
+      return rewriteResponse;
+    }
+    // All other routes (/login, /api, etc.) pass through as-is
+    return response;
   }
 
   // === PUBLIC DOMAIN (balizero.com) ===
