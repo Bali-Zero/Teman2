@@ -209,14 +209,14 @@ async def redis_listener() -> Any:
     """
     from backend.core.redis_manager import RedisManager
 
-    manager = RedisManager.get_instance()
-    client = manager.get_async_client()
+    redis_mgr = RedisManager.get_instance()
+    client = redis_mgr.get_async_client()
     if client is None:
         logger.warning("Redis not available via RedisManager. WebSocket notifications disabled.")
-        manager.register_component("websocket_pubsub", "disabled")
+        redis_mgr.register_component("websocket_pubsub", "disabled")
         return
 
-    manager.register_component("websocket_pubsub", "active")
+    redis_mgr.register_component("websocket_pubsub", "active")
     redis_client = client
     pubsub = redis_client.pubsub()
 

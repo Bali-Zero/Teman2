@@ -540,10 +540,15 @@ class TestRedisListener:
     """Tests for Redis Pub/Sub listener"""
 
     @pytest.mark.asyncio
-    async def test_redis_listener_disabled_without_url(self, mock_settings_no_redis):
-        """Test that Redis listener is disabled without URL"""
+    async def test_redis_listener_disabled_without_redis(self):
+        """Test that Redis listener is disabled when RedisManager has no client"""
+        mock_manager_instance = MagicMock()
+        mock_manager_instance.get_async_client.return_value = None
+        mock_manager_instance.register_component = MagicMock()
+
         with (
-            patch("backend.app.routers.websocket.settings", mock_settings_no_redis),
+            patch("backend.app.routers.websocket.RedisManager", create=True) as MockRM,
+            patch("backend.core.redis_manager.RedisManager.get_instance", return_value=mock_manager_instance),
             patch("backend.app.routers.websocket.logger") as mock_logger,
         ):
             from backend.app.routers.websocket import redis_listener
@@ -551,52 +556,72 @@ class TestRedisListener:
             await redis_listener()
 
             mock_logger.warning.assert_called()
+            mock_manager_instance.register_component.assert_called_with("websocket_pubsub", "disabled")
+
+    @pytest.fixture
+    def mock_redis_client_with_pubsub(self):
+        """Create a mock Redis client with pubsub support for RedisManager-based tests"""
+        mock_client = MagicMock()
+        mock_pubsub = AsyncMock()
+        mock_pubsub.psubscribe = AsyncMock()
+        mock_pubsub.subscribe = AsyncMock()
+        mock_pubsub.close = AsyncMock()
+        mock_client.pubsub = MagicMock(return_value=mock_pubsub)
+        return mock_client, mock_pubsub
+
+    def _make_redis_manager_mock(self, mock_client):
+        """Helper: create a mock RedisManager that returns given client, installed as singleton"""
+        from backend.core.redis_manager import RedisManager
+        mock_mgr = MagicMock()
+        mock_mgr.get_async_client.return_value = mock_client
+        mock_mgr.register_component = MagicMock()
+        RedisManager._instance = mock_mgr
+        return mock_mgr
+
+    @pytest.fixture(autouse=True)
+    def _patch_redis_manager_singleton(self):
+        """Save/restore RedisManager singleton around each test"""
+        from backend.core.redis_manager import RedisManager
+        original = RedisManager._instance
+        yield
+        RedisManager._instance = original
 
     @pytest.mark.asyncio
-    async def test_redis_listener_handles_user_notification(self, mock_settings):
+    async def test_redis_listener_handles_user_notification(self, mock_redis_client_with_pubsub):
         """Test Redis listener handles USER_NOTIFICATIONS channel"""
-        mock_redis = MagicMock()
-        mock_pubsub = AsyncMock()
+        mock_client, mock_pubsub = mock_redis_client_with_pubsub
 
-        # Simulate a message coming through
         async def mock_listen():
             yield {
                 "type": "pmessage",
                 "channel": "CHANNELS.USER_NOTIFICATIONS:user-123",
                 "data": json.dumps({"text": "New notification"}),
             }
-            # Cancel after first message
             raise asyncio.CancelledError()
 
         mock_pubsub.listen = mock_listen
-        mock_pubsub.psubscribe = AsyncMock()
-        mock_pubsub.subscribe = AsyncMock()
-        mock_pubsub.close = AsyncMock()
-        mock_redis.pubsub = MagicMock(return_value=mock_pubsub)
-        mock_redis.close = AsyncMock()
+        mock_mgr = self._make_redis_manager_mock(mock_client)
 
         with (
-            patch("backend.app.routers.websocket.settings", mock_settings),
-            patch("backend.app.routers.websocket.redis.from_url", return_value=mock_redis),
-            patch("backend.app.routers.websocket.manager") as mock_manager,
+
+            patch("backend.app.routers.websocket.manager", new_callable=AsyncMock) as mock_ws_manager,
             patch("backend.app.routers.websocket.logger"),
         ):
-            mock_manager.send_personal_message = AsyncMock()
+            mock_ws_manager.send_personal_message = AsyncMock()
 
             from backend.app.routers.websocket import redis_listener
 
             await redis_listener()
 
-            mock_manager.send_personal_message.assert_called_once()
-            call_args = mock_manager.send_personal_message.call_args
+            mock_ws_manager.send_personal_message.assert_called_once()
+            call_args = mock_ws_manager.send_personal_message.call_args
             assert call_args[0][0]["type"] == "notification"
             assert call_args[0][1] == "user-123"
 
     @pytest.mark.asyncio
-    async def test_redis_listener_handles_ai_results(self, mock_settings):
+    async def test_redis_listener_handles_ai_results(self, mock_redis_client_with_pubsub):
         """Test Redis listener handles AI_RESULTS channel"""
-        mock_redis = MagicMock()
-        mock_pubsub = AsyncMock()
+        mock_client, mock_pubsub = mock_redis_client_with_pubsub
 
         async def mock_listen():
             yield {
@@ -607,32 +632,26 @@ class TestRedisListener:
             raise asyncio.CancelledError()
 
         mock_pubsub.listen = mock_listen
-        mock_pubsub.psubscribe = AsyncMock()
-        mock_pubsub.subscribe = AsyncMock()
-        mock_pubsub.close = AsyncMock()
-        mock_redis.pubsub = MagicMock(return_value=mock_pubsub)
-        mock_redis.close = AsyncMock()
+        mock_mgr = self._make_redis_manager_mock(mock_client)
 
         with (
-            patch("backend.app.routers.websocket.settings", mock_settings),
-            patch("backend.app.routers.websocket.redis.from_url", return_value=mock_redis),
-            patch("backend.app.routers.websocket.manager") as mock_manager,
+
+            patch("backend.app.routers.websocket.manager", new_callable=AsyncMock) as mock_ws_manager,
             patch("backend.app.routers.websocket.logger"),
         ):
-            mock_manager.send_personal_message = AsyncMock()
+            mock_ws_manager.send_personal_message = AsyncMock()
 
             from backend.app.routers.websocket import redis_listener
 
             await redis_listener()
 
-            call_args = mock_manager.send_personal_message.call_args
+            call_args = mock_ws_manager.send_personal_message.call_args
             assert call_args[0][0]["type"] == "ai-result"
 
     @pytest.mark.asyncio
-    async def test_redis_listener_handles_system_events(self, mock_settings):
+    async def test_redis_listener_handles_system_events(self, mock_redis_client_with_pubsub):
         """Test Redis listener handles SYSTEM_EVENTS channel with broadcast"""
-        mock_redis = MagicMock()
-        mock_pubsub = AsyncMock()
+        mock_client, mock_pubsub = mock_redis_client_with_pubsub
 
         async def mock_listen():
             yield {
@@ -643,84 +662,66 @@ class TestRedisListener:
             raise asyncio.CancelledError()
 
         mock_pubsub.listen = mock_listen
-        mock_pubsub.psubscribe = AsyncMock()
-        mock_pubsub.subscribe = AsyncMock()
-        mock_pubsub.close = AsyncMock()
-        mock_redis.pubsub = MagicMock(return_value=mock_pubsub)
-        mock_redis.close = AsyncMock()
+        mock_mgr = self._make_redis_manager_mock(mock_client)
 
         with (
-            patch("backend.app.routers.websocket.settings", mock_settings),
-            patch("backend.app.routers.websocket.redis.from_url", return_value=mock_redis),
-            patch("backend.app.routers.websocket.manager") as mock_manager,
+
+            patch("backend.app.routers.websocket.manager", new_callable=AsyncMock) as mock_ws_manager,
             patch("backend.app.routers.websocket.logger"),
         ):
-            mock_manager.broadcast = AsyncMock()
+            mock_ws_manager.broadcast = AsyncMock()
 
             from backend.app.routers.websocket import redis_listener
 
             await redis_listener()
 
-            mock_manager.broadcast.assert_called_once()
-            call_args = mock_manager.broadcast.call_args
+            mock_ws_manager.broadcast.assert_called_once()
+            call_args = mock_ws_manager.broadcast.call_args
             assert call_args[0][0]["type"] == "system-event"
 
     @pytest.mark.asyncio
-    async def test_redis_listener_handles_invalid_json(self, mock_settings):
+    async def test_redis_listener_handles_invalid_json(self, mock_redis_client_with_pubsub):
         """Test Redis listener handles invalid JSON gracefully"""
-        mock_redis = MagicMock()
-        mock_pubsub = AsyncMock()
+        mock_client, mock_pubsub = mock_redis_client_with_pubsub
 
         async def mock_listen():
             yield {
                 "type": "pmessage",
                 "channel": "CHANNELS.USER_NOTIFICATIONS:user-123",
-                "data": "not valid json",  # Invalid JSON
+                "data": "not valid json",
             }
             raise asyncio.CancelledError()
 
         mock_pubsub.listen = mock_listen
-        mock_pubsub.psubscribe = AsyncMock()
-        mock_pubsub.subscribe = AsyncMock()
-        mock_pubsub.close = AsyncMock()
-        mock_redis.pubsub = MagicMock(return_value=mock_pubsub)
-        mock_redis.close = AsyncMock()
+        mock_mgr = self._make_redis_manager_mock(mock_client)
 
         with (
-            patch("backend.app.routers.websocket.settings", mock_settings),
-            patch("backend.app.routers.websocket.redis.from_url", return_value=mock_redis),
-            patch("backend.app.routers.websocket.manager") as mock_manager,
+
+            patch("backend.app.routers.websocket.manager", new_callable=AsyncMock) as mock_ws_manager,
             patch("backend.app.routers.websocket.logger"),
         ):
-            mock_manager.send_personal_message = AsyncMock()
+            mock_ws_manager.send_personal_message = AsyncMock()
 
             from backend.app.routers.websocket import redis_listener
 
             await redis_listener()
 
-            # Should still send, but with raw_data wrapper
-            call_args = mock_manager.send_personal_message.call_args
+            call_args = mock_ws_manager.send_personal_message.call_args
             assert "raw_data" in call_args[0][0]["data"]
 
     @pytest.mark.asyncio
-    async def test_redis_listener_handles_connection_error(self, mock_settings):
+    async def test_redis_listener_handles_connection_error(self, mock_redis_client_with_pubsub):
         """Test Redis listener handles connection errors gracefully"""
-        mock_redis = MagicMock()
-        mock_pubsub = AsyncMock()
+        mock_client, mock_pubsub = mock_redis_client_with_pubsub
 
         async def mock_listen():
             raise Exception("Redis connection lost")
 
         mock_pubsub.listen = mock_listen
-        mock_pubsub.psubscribe = AsyncMock()
-        mock_pubsub.subscribe = AsyncMock()
-        mock_pubsub.close = AsyncMock()
-        mock_redis.pubsub = MagicMock(return_value=mock_pubsub)
-        mock_redis.close = AsyncMock()
+        mock_mgr = self._make_redis_manager_mock(mock_client)
 
         with (
-            patch("backend.app.routers.websocket.settings", mock_settings),
-            patch("backend.app.routers.websocket.redis.from_url", return_value=mock_redis),
+
             patch("backend.app.routers.websocket.logger") as mock_logger,
         ):
             from backend.app.routers.websocket import redis_listener
@@ -729,7 +730,6 @@ class TestRedisListener:
 
             mock_logger.error.assert_called()
             mock_pubsub.close.assert_called()
-            mock_redis.close.assert_called()
 
 
 # ============================================================================
