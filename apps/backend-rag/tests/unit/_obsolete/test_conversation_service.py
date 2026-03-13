@@ -19,7 +19,6 @@ Target coverage: 90%+
 
 import json
 from datetime import datetime
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

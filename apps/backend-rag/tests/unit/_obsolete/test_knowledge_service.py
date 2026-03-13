@@ -7,7 +7,6 @@ pytestmark = pytest.mark.skip(reason="Import error - to be fixed")
 Unit tests for Knowledge Service
 """
 
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

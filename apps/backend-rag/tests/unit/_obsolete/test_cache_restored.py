@@ -3,9 +3,7 @@ Unit tests for Cache Service
 100% coverage target with comprehensive mocking
 """
 
-import sys
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -26,13 +24,14 @@ def mock_settings():
 
 @pytest.fixture
 def mock_redis_client():
-    """Mock Redis client"""
+    """Mock Redis client with async support"""
     mock_client = MagicMock()
     mock_client.ping.return_value = True
-    mock_client.get.return_value = None
-    mock_client.setex.return_value = True
-    mock_client.delete.return_value = 1
-    mock_client.keys.return_value = []
+    # Async methods need AsyncMock
+    mock_client.get = AsyncMock(return_value=None)
+    mock_client.setex = AsyncMock(return_value=True)
+    mock_client.delete = AsyncMock(return_value=1)
+    mock_client.keys = AsyncMock(return_value=[])
     return mock_client
 
 

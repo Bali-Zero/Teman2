@@ -12,7 +12,6 @@ The search_service module doesn't import these classes at module level.
 Skipped until patch paths are corrected.
 """
 
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest

@@ -8,7 +8,6 @@ Unit tests for Emotional Attunement Service
 100% coverage target with comprehensive mocking
 """
 
-from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest

@@ -9,7 +9,6 @@ Unit tests for Prompt Injection Detection in SystemPromptBuilder
 Tests the detect_prompt_injection() security gate added for Red Team PI-001 fix.
 """
 
-from pathlib import Path
 
 import pytest
 

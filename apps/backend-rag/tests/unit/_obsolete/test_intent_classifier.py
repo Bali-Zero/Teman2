@@ -8,7 +8,6 @@ Unit tests for Intent Classifier Service
 100% coverage target with comprehensive mocking
 """
 
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest

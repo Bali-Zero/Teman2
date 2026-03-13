@@ -10,7 +10,6 @@ UPDATED: Router now uses SearchService (canonical retriever) instead of Knowledg
 Tests updated to reflect this change.
 """
 
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

@@ -8,12 +8,10 @@ Unit tests for Agents Router
 """
 
 from datetime import datetime
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
-
 
 from backend.app.routers.agents import (
     AddComplianceItemRequest,

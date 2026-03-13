@@ -10,12 +10,10 @@ Tests for AsyncpgJSONEncoder UUID/datetime serialization fix
 
 import json
 from datetime import date, datetime
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID
 
 import pytest
-
 
 from backend.services.crm.ai_crm_extractor import (
     AICRMExtractor,

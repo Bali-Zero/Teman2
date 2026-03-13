@@ -11,7 +11,6 @@ UPDATED 2025-12-23:
 - Updated for new implementation (pollinations.ai fallback, no direct Gemini calls)
 """
 
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest

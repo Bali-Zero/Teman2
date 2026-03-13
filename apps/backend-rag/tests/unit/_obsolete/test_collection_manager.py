@@ -8,7 +8,6 @@ Unit tests for CollectionManager Service
 Tests Qdrant collection lifecycle and access management
 """
 
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest

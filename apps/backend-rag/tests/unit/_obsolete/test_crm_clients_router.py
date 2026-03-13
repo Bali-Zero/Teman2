@@ -15,13 +15,13 @@ Tests all endpoints in backend/app/routers/crm_clients.py:
 import sys
 import types
 from datetime import datetime
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import asyncpg
 import pytest
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
+
 
 @pytest.fixture(autouse=True)
 def mock_dependencies(monkeypatch):

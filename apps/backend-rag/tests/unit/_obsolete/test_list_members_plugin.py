@@ -9,11 +9,9 @@ Coverage target: 95%+ for list_members_plugin.py
 Tests plugin initialization, metadata, schemas, execution, and error handling
 """
 
-from pathlib import Path
 from unittest.mock import MagicMock, Mock
 
 import pytest
-
 
 from backend.core.plugins import PluginCategory
 from backend.plugins.team.list_members_plugin import (
