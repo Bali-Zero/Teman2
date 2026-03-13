@@ -16,6 +16,7 @@ import {
   FinancialRealityWidget,
   CaseDistribution,
   MiniSparkline,
+  ZantaraPortalCard,
 } from "@/components/dashboard";
 import { HeroLiveWindow } from "@/components/workspace/HeroLiveWindow";
 import type { PraticaPreview, WhatsAppMessage } from "@/components/dashboard";
@@ -243,6 +244,9 @@ export default function DashboardPage() {
       <div className="space-y-6 sm:space-y-8">
         {/* Live Homepage Hero — mirrors balizero.com copertina */}
         <HeroLiveWindow />
+
+        {/* Zantara AI Portal Card */}
+        <ZantaraPortalCard />
 
         {/* Real-time Status */}
         {realtime.isConnected && (
