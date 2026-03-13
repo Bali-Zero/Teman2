@@ -65,7 +65,7 @@ class VerificationService:
 
     def __init__(self):
         self._genai_client: GenAIClient | None = None
-        self.model_name = "gemini-2.0-flash-001"
+        self.model_name = "gemini-2.0-flash-lite"
 
     def _get_genai_client(self) -> GenAIClient | None:
         """Lazy load GenAI client."""

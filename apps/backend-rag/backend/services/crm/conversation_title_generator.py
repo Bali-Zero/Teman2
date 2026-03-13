@@ -115,7 +115,7 @@ async def _generate_via_gemini(conversation_id: str, prompt: str, max_length: in
 
         result = await client.generate_content(
             contents=prompt,
-            model="gemini-2.0-flash-001",
+            model="gemini-2.0-flash-lite",
             max_output_tokens=30,
             temperature=0.3,
         )

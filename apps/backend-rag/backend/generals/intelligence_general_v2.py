@@ -495,7 +495,7 @@ class IntelligenceGeneralV2:
             user_prompt += "\n\nPlease provide a comprehensive analysis following the Intelligence General v2 format (Executive Summary, Key Findings, Detailed Analysis, Strategic Recommendations, Sources, Confidence Level)."
 
             # Step 5: Use Gemini for synthesis
-            model_name = payload.get("model") or "gemini-2.0-flash-001"
+            model_name = payload.get("model") or "gemini-2.0-flash-lite"
 
             logger.info(f"🧠 Intelligence General v2: Using model {model_name} for synthesis")
 
