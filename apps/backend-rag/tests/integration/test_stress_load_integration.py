@@ -174,7 +174,7 @@ class TestRateLimitingStressIntegration:
     @pytest.mark.asyncio
     async def test_rate_limiting_under_load(self):
         """Test rate limiting behavior under load"""
-        from middleware.rate_limiter import RateLimiter
+        from backend.middleware.rate_limiter import RateLimiter
 
         rate_limiter = RateLimiter()
 
@@ -195,7 +195,7 @@ class TestRateLimitingStressIntegration:
     @pytest.mark.asyncio
     async def test_concurrent_rate_limit_checks(self):
         """Test concurrent rate limit checks"""
-        from middleware.rate_limiter import RateLimiter
+        from backend.middleware.rate_limiter import RateLimiter
 
         rate_limiter = RateLimiter()
 

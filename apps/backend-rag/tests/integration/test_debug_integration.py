@@ -16,7 +16,7 @@ backend_path = Path(__file__).parent.parent.parent
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from middleware.request_tracing import RequestTracingMiddleware
+from backend.middleware.request_tracing import RequestTracingMiddleware
 
 from backend.app.routers import debug
 
@@ -274,7 +274,7 @@ class TestRequestTracingIntegration:
         assert response.headers["X-Correlation-ID"] == correlation_id
 
         # Verify trace exists
-        from middleware.request_tracing import RequestTracingMiddleware
+        from backend.middleware.request_tracing import RequestTracingMiddleware
 
         trace = RequestTracingMiddleware.get_trace(correlation_id)
         assert trace is not None
@@ -290,7 +290,7 @@ class TestRequestTracingIntegration:
         correlation_id = response.headers["X-Correlation-ID"]
 
         # Add step to trace
-        from middleware.request_tracing import RequestTracingMiddleware
+        from backend.middleware.request_tracing import RequestTracingMiddleware
 
         RequestTracingMiddleware.add_step(
             correlation_id=correlation_id,

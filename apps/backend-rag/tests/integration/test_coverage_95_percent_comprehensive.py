@@ -1125,7 +1125,7 @@ class TestRateLimiter95Percent:
 
     def test_rate_limiter_all_branches(self):
         """Test all branches of rate limiter"""
-        from middleware.rate_limiter import RateLimiter, RateLimitMiddleware, _rate_limit_storage
+        from backend.middleware.rate_limiter import RateLimiter, RateLimitMiddleware, _rate_limit_storage
 
         # Clear storage
         _rate_limit_storage.clear()
