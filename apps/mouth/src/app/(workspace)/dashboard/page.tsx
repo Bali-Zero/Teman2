@@ -9,6 +9,7 @@ import {
   RoleWidget,
   DashboardStatCard,
 } from "@/components/dashboard";
+import { HeroLiveWindow } from "@/components/workspace/HeroLiveWindow";
 import type { PraticaPreview } from "@/components/dashboard";
 import { DashboardErrorBoundary } from "@/components/ErrorBoundary";
 import { useDashboardData } from "@/hooks/useDashboardData";
@@ -263,6 +264,7 @@ export default function DashboardPage() {
   if (isLoading) {
     return (
       <div className="p-2.5 grid grid-cols-4 gap-2">
+        <div className="col-span-4 h-[240px] rounded-xl bg-white/[0.025] animate-pulse mb-2" />
         <div className="col-span-3 h-[240px] rounded-xl bg-white/[0.025] animate-pulse" />
         <div className="col-span-1 h-[240px] rounded-xl bg-white/[0.025] animate-pulse" />
         {[1, 2, 3, 4].map((i) => (
@@ -271,8 +273,6 @@ export default function DashboardPage() {
             className="h-20 rounded-xl bg-white/[0.025] animate-pulse"
           />
         ))}
-        <div className="col-span-3 h-[180px] rounded-xl bg-white/[0.025] animate-pulse" />
-        <div className="col-span-1 h-[180px] rounded-xl bg-white/[0.025] animate-pulse" />
       </div>
     );
   }
@@ -318,62 +318,63 @@ export default function DashboardPage() {
               <DashboardStatCard key={card.label} {...card} />
             ))}
 
-          {/* ── ROW 3: Pratiche (1.6fr) + Health (1fr) + Intel (1fr) ── */}
-          <div
-            className="col-span-4 grid gap-2"
-            style={{ gridTemplateColumns: "1.6fr 1fr 1fr" }}
-          >
-            {/* Pratiche Pipeline */}
-            <PratichePreview
-              pratiche={practices.map(
-                (p): PraticaPreview => ({
-                  id: p.id,
-                  title: p.title || "Unknown",
-                  client: p.client || "Unknown Client",
-                  status: p.status,
-                  daysRemaining: p.daysRemaining,
-                  completedAt:
-                    p.status === "completed"
-                      ? new Date().toLocaleDateString()
-                      : undefined,
-                }),
-              )}
-              isLoading={isLoading}
-            />
+            {/* ── ROW 3: Pratiche (1.6fr) + Health (1fr) + Intel (1fr) ── */}
+            <div
+              className="col-span-4 grid gap-2"
+              style={{ gridTemplateColumns: "1.6fr 1fr 1fr" }}
+            >
+              {/* Pratiche Pipeline */}
+              <PratichePreview
+                pratiche={practices.map(
+                  (p): PraticaPreview => ({
+                    id: p.id,
+                    title: p.title || "Unknown",
+                    client: p.client || "Unknown Client",
+                    status: p.status,
+                    daysRemaining: p.daysRemaining,
+                    completedAt:
+                      p.status === "completed"
+                        ? new Date().toLocaleDateString()
+                        : undefined,
+                  }),
+                )}
+                isLoading={isLoading}
+              />
 
-            {/* Center: System Health for Zero, journey steps for others */}
-            {isZero ? (
-              <NusantaraHealthWidget />
-            ) : (
+              {/* Center: System Health for Zero, journey steps for others */}
+              {isZero ? (
+                <NusantaraHealthWidget />
+              ) : (
+                <div className="glass-base glass-blue p-3.5">
+                  <h4 className="text-[9px] font-bold text-[#4a8ec4]/65 tracking-[.1em] mb-2.5">
+                    PROSSIMI STEP
+                  </h4>
+                  <p className="text-[10px] text-white/35">
+                    Journey steps in arrivo
+                  </p>
+                </div>
+              )}
+
+              {/* Right: Regulatory Intel */}
               <div className="glass-base glass-blue p-3.5">
                 <h4 className="text-[9px] font-bold text-[#4a8ec4]/65 tracking-[.1em] mb-2.5">
-                  PROSSIMI STEP
+                  REGULATORY INTEL
                 </h4>
-                <p className="text-[10px] text-white/35">
-                  Journey steps in arrivo
-                </p>
-              </div>
-            )}
-
-            {/* Right: Regulatory Intel */}
-            <div className="glass-base glass-blue p-3.5">
-              <h4 className="text-[9px] font-bold text-[#4a8ec4]/65 tracking-[.1em] mb-2.5">
-                REGULATORY INTEL
-              </h4>
-              <div className="flex flex-col gap-2">
-                {[
-                  "Nuova circolare Imigrasi KITAS B211A",
-                  "PPh deadline 31 marzo — 8 clienti",
-                  "KBLI 2025 — 3 pratiche da aggiornare",
-                ].map((item) => (
-                  <div
-                    key={item}
-                    className="flex gap-2 text-[10px] text-white/55 leading-snug border-b border-white/[0.04] pb-1.5 last:border-0"
-                  >
-                    <span className="text-[#4a8ec4] flex-shrink-0">📌</span>
-                    <span>{item}</span>
-                  </div>
-                ))}
+                <div className="flex flex-col gap-2">
+                  {[
+                    "Nuova circolare Imigrasi KITAS B211A",
+                    "PPh deadline 31 marzo — 8 clienti",
+                    "KBLI 2025 — 3 pratiche da aggiornare",
+                  ].map((item) => (
+                    <div
+                      key={item}
+                      className="flex gap-2 text-[10px] text-white/55 leading-snug border-b border-white/[0.04] pb-1.5 last:border-0"
+                    >
+                      <span className="text-[#4a8ec4] flex-shrink-0">📌</span>
+                      <span>{item}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
