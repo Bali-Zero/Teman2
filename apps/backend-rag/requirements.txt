@@ -1,7 +1,7 @@
-# ZANTARA RAG Backend Dependencies v5.7 - HTTPX 0.28+ MIGRATION
-# Last updated: 2025-12-29
-# Major upgrades: pydantic 2.12+, mcp 1.25+, anthropic 0.75+, openai 2.14+
-# httpx 0.28+ compatibility: proxies parameter removed, upgraded all dependent packages
+# ZANTARA RAG Backend Dependencies v5.8 - SECURITY + PERFORMANCE UPDATE
+# Last updated: 2026-03-14
+# Major upgrades: certifi 2026.2.25, langchain-core 1.2.19, fastmcp 3.1.0, litellm 1.82.1, sse-starlette 3.3.2
+# Previous: HTTPX 0.28+ MIGRATION (2025-12-29)
 
 # Core Framework
 fastapi>=0.128.0  # Upgraded for starlette 0.50+ compatibility
@@ -48,7 +48,7 @@ python-magic>=0.4.27  # MIME type detection from file content
 # LangChain Ecosystem
 langgraph>=1.0.0
 langgraph-checkpoint-postgres>=2.0.0  # PostgreSQL checkpointing for stateful workflows
-langchain-core>=0.1.0
+langchain-core>=1.2.19  # Updated 2026-03-14: patch fixes for streaming + callbacks
 langchain-anthropic>=1.0.0  # Required for KG LangGraph orchestrator
 langchain-openai>=1.0.0  # Required for KG LangGraph orchestrator fallback
 # langchain-google-genai removed to resolve conflicts
@@ -58,7 +58,7 @@ httpx>=0.28.1,<1.0.0  # Upgraded for google-genai compatibility (requires >=0.28
 requests>=2.32.4  # Security: .netrc credential leak fix
 aiohttp>=3.13.3  # Security: zip bomb, directory traversal, DoS fixes
 urllib3>=2.0.0  # Required by selenium, types-requests
-sse-starlette>=1.8.0  # For Server-Sent Events (Streaming)
+sse-starlette>=3.3.2  # Updated 2026-03-14: SSE disconnect handling improvements
 
 # Web Scraping (Peraturan Spider & Putusan Spider)
 playwright>=1.57.0  # Security and browser updates
@@ -138,5 +138,13 @@ redis>=7.1.0  # Already present, used for caching
 
 # MCP (Model Context Protocol)
 mcp>=1.25.0  # Upgraded for pydantic 2.12+ compatibility
+fastmcp>=3.1.0  # Updated 2026-03-14: new tool decorators + improved transport
 python-json-logger>=2.0.0
+
+# Security & HTTP
+certifi>=2026.2.25  # Updated 2026-03-14: SSL certificates updated Feb 2026
+
+# LLM Routing
+litellm>=1.82.1  # Updated 2026-03-14: Gemini 2.5 + new provider fixes
+
 # Build trigger 1771636448
