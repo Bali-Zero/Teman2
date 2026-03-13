@@ -275,6 +275,27 @@ async def detailed_health(request: Request) -> dict[str, Any]:
     except Exception as e:
         services["rate_limiter"] = {"status": "unavailable", "critical": False, "error": str(e)}
 
+    # Check Redis (via RedisManager)
+    try:
+        redis_manager = getattr(request.app.state, "redis_manager", None)
+        if redis_manager:
+            redis_health = await redis_manager.health_check()
+            services["redis"] = {
+                "status": "healthy" if redis_health.get("connected") else "unavailable",
+                "critical": False,
+                "details": {
+                    "connected": redis_health.get("connected", False),
+                    "latency_ms": redis_health.get("latency_ms", -1),
+                    "keys": redis_health.get("keys", 0),
+                    "memory_used": redis_health.get("memory_used", "0B"),
+                    "components": redis_health.get("components", {}),
+                },
+            }
+        else:
+            services["redis"] = {"status": "unavailable", "critical": False, "details": {"reason": "RedisManager not initialized"}}
+    except Exception as e:
+        services["redis"] = {"status": "error", "critical": False, "error": str(e)}
+
     # Get service registry status if available
     service_registry_status = None
     try:

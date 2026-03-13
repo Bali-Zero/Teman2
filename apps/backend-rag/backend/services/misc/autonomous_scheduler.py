@@ -27,11 +27,6 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-try:
-    import redis.asyncio as aioredis
-except ImportError:
-    aioredis = None
-
 logger = logging.getLogger(__name__)
 
 # Unique ID for this worker instance (machine + process)
@@ -41,16 +36,14 @@ _WORKER_ID = f"{os.getenv('FLY_MACHINE_ID', 'local')}:{os.getpid()}:{uuid.uuid4(
 _LOCK_PREFIX = "nuzantara:scheduler:lock:"
 
 
-async def _get_redis() -> "aioredis.Redis | None":
-    """Get a Redis client for leader election. Returns None if unavailable."""
-    if aioredis is None:
-        return None
-    redis_url = os.getenv("REDIS_URL")
-    if not redis_url:
-        return None
+async def _get_redis() -> Any:
+    """Get a Redis client for leader election via RedisManager. Returns None if unavailable."""
     try:
-        client = await aioredis.from_url(redis_url, decode_responses=True)
-        await client.ping()
+        from backend.core.redis_manager import RedisManager
+        manager = RedisManager.get_instance()
+        client = manager.get_async_client()
+        if client is not None:
+            manager.register_component("scheduler_locks", "active")
         return client
     except Exception as e:
         logger.debug(f"Failed to get Redis client: {e}")
@@ -78,8 +71,6 @@ async def _acquire_task_lock(task_name: str, ttl_seconds: int) -> bool:
     except Exception as e:
         logger.debug(f"Lock acquisition error for {task_name}: {e}")
         return True  # On error, run anyway
-    finally:
-        await client.aclose()
 
 
 @dataclass
