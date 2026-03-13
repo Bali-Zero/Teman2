@@ -9,7 +9,6 @@ Tests timeline event storage, extraction, and retrieval
 """
 
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest

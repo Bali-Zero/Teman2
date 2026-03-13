@@ -4,7 +4,6 @@ Comprehensive tests for Qdrant DB - Target 95% coverage
 
 import os
 import sys
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx

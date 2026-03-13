@@ -8,7 +8,6 @@ Unit tests for Legal Document Refinement Pipeline
 Tests all 4 stages: Cleaner, Metadata Extractor, Structure Parser, Chunker
 """
 
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest

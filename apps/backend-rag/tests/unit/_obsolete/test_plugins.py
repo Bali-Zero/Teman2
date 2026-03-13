@@ -2,7 +2,6 @@
 Unit tests for Plugin System
 """
 
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest

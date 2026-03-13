@@ -9,7 +9,6 @@ Tests team member search plugin functionality with 95%+ coverage
 """
 
 import os
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest

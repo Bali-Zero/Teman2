@@ -3,7 +3,6 @@ Unit tests for Voice Router
 Tests voice endpoint with fast response generation
 """
 
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

@@ -3,7 +3,6 @@ Unit tests for Cross-Oracle Synthesis Service
 100% coverage target with comprehensive mocking
 """
 
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

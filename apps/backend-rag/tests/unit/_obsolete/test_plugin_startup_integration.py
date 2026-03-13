@@ -4,10 +4,10 @@ Tests the initialize_plugins() function integration with FastAPI
 """
 
 import sys
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 
 @pytest.fixture(autouse=True)
 def mock_env(monkeypatch):

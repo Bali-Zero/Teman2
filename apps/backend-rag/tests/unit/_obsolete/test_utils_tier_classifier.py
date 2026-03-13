@@ -8,7 +8,6 @@ Unit tests for Tier Classifier
 Target: 100% coverage for backend/utils/tier_classifier.py
 """
 
-from pathlib import Path
 
 from backend.app.models import TierLevel
 from backend.utils.tier_classifier import TierClassifier, classify_book_tier

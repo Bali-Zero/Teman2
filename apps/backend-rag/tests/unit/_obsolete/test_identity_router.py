@@ -4,7 +4,6 @@ Unit tests for Identity Router
 """
 
 from datetime import datetime, timezone
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
