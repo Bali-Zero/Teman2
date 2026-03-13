@@ -1058,14 +1058,20 @@ def test_get_password_hash_unicode_characters(identity_service):
 
 
 def test_get_password_hash_very_long_password(identity_service):
-    """Test password hashing with very long password"""
-    password = "a" * 1000  # Very long password
+    """Test password hashing with very long password - bcrypt limit is 72 bytes"""
+    # bcrypt has a 72 byte limit, test with password at the limit
+    password = "a" * 72  # Max length for bcrypt
     hashed = identity_service.get_password_hash(password)
     assert hashed is not None
     assert isinstance(hashed, str)
     assert hashed.startswith("$2b$")
-    # Should be able to verify long password
+    # Should be able to verify password at limit
     assert identity_service.verify_password(password, hashed)
+    
+    # Test that password longer than 72 bytes raises ValueError
+    long_password = "a" * 1000
+    with pytest.raises(ValueError, match="password cannot be longer than 72 bytes"):
+        identity_service.get_password_hash(long_password)
 
 
 def test_verify_password_none_hash(identity_service):
