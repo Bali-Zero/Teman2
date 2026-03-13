@@ -111,6 +111,9 @@ vi.mock("@/components/dashboard", () => ({
   MiniSparkline: ({ data }: { data: unknown[] }) => (
     <div data-testid="mini-sparkline">{data?.length ?? 0} points</div>
   ),
+  ZantaraPortalCard: () => (
+    <div data-testid="zantara-portal-card">Zantara AI</div>
+  ),
 }));
 
 // Create a wrapper with QueryClientProvider for tests
