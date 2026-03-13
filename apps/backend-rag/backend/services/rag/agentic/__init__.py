@@ -37,24 +37,22 @@ if TYPE_CHECKING:
 # Lazy import to prevent circular dependencies
 _GraphTraversalTool = None
 
+
 def _get_graph_traversal_tool():
     """Lazy load GraphTraversalTool to prevent circular imports."""
     global _GraphTraversalTool
     if _GraphTraversalTool is None:
         from backend.services.rag.agentic.graph_tool import GraphTraversalTool
+
         _GraphTraversalTool = GraphTraversalTool
     return _GraphTraversalTool
 
+
 # Core orchestrators
+# Submodules (for direct access)
+from . import context_manager, llm_gateway, memory_handler, prompt_builder, reasoning
 from .kg_orchestrator import AgenticResponse, KGAgenticOrchestrator
 from .orchestrator import AgenticRAGOrchestrator
-
-# Submodules (for direct access)
-from . import context_manager
-from . import llm_gateway
-from . import memory_handler
-from . import prompt_builder
-from . import reasoning
 from .pipeline import (
     CitationStage,
     FormatStage,

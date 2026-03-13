@@ -1019,7 +1019,7 @@ async def get_practices_stats(
                 SELECT pt.code, pt.name, COUNT(p.id) as count
                 FROM practices p
                 JOIN practice_types pt ON p.practice_type_id = pt.id
-                WHERE 1=1{rbac_where.replace('assigned_to', 'p.assigned_to')}
+                WHERE 1=1{rbac_where.replace("assigned_to", "p.assigned_to")}
                 GROUP BY pt.code, pt.name
                 ORDER BY count DESC
                 """,

@@ -218,7 +218,9 @@ async def list_recent_episodes(limit: int = 10, agent: str | None = None) -> Lis
     except Exception as e:
         err_str = str(e)
         if "not found" in err_str.lower() or "doesn't exist" in err_str.lower() or "404" in err_str:
-            logger.info(f"LAM list_episodes: collection '{COLLECTION}' not yet created — returning empty")
+            logger.info(
+                f"LAM list_episodes: collection '{COLLECTION}' not yet created — returning empty"
+            )
             return ListEpisodesResponse(episodes=[], total=0)
         logger.error(f"LAM list_episodes failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e

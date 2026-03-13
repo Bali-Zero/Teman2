@@ -36,7 +36,9 @@ class WhatsAppTriageService:
         self.personal_contacts = {phone.strip() for phone in whitelist.split(",") if phone.strip()}
         # Allowed numbers whitelist — if set, all other numbers are silently ignored
         allowed = settings.whatsapp_allowed_numbers or ""
-        self.allowed_numbers: set[str] = {phone.strip() for phone in allowed.split(",") if phone.strip()}
+        self.allowed_numbers: set[str] = {
+            phone.strip() for phone in allowed.split(",") if phone.strip()
+        }
 
     def is_allowed(self, phone: str) -> bool:
         """Return True if the phone number is allowed to interact with the bot.

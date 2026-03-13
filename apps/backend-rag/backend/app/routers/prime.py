@@ -26,7 +26,9 @@ router = APIRouter(prefix="/api/prime", tags=["prime"])
 # =============================================================================
 # BUILDING CODES — loaded once at import time from JSON
 # =============================================================================
-_BUILDING_CODES_PATH = Path(__file__).parent.parent.parent / "data" / "master_building_codes_complete.json"
+_BUILDING_CODES_PATH = (
+    Path(__file__).parent.parent.parent / "data" / "master_building_codes_complete.json"
+)
 try:
     with open(_BUILDING_CODES_PATH, encoding="utf-8") as _f:
         _BUILDING_CODES: dict[str, dict[str, str]] = json.load(_f)
@@ -41,20 +43,21 @@ def _calculate_building_yield(zone_code: str) -> dict[str, Any] | None:
     data = _BUILDING_CODES.get(zone_code)
     if not data:
         return None
+
     # KLB uses Indonesian comma decimal ("1,8") — normalise to dot
     def _parse_pct(val: str) -> float:
         return float(val.replace(",", ".").replace("%", "").strip())
 
     try:
         return {
-            "zone_name_id":   data.get("name", ""),
-            "kdb_pct":        _parse_pct(data.get("KDB", "0")),   # max building coverage %
-            "klb_ratio":      _parse_pct(data.get("KLB", "0")),   # floor area ratio
-            "kdh_pct":        _parse_pct(data.get("KDH", "0")),   # min green area %
-            "ktb_pct":        _parse_pct(data.get("KTB", "0")),   # basement coverage %
-            "height_limit":   data.get("TB", "—"),                 # max height (string, e.g. "15 Meter")
-            "setback":        data.get("GSB", "—"),                # building setback
-            "notes":          data.get("note", ""),
+            "zone_name_id": data.get("name", ""),
+            "kdb_pct": _parse_pct(data.get("KDB", "0")),  # max building coverage %
+            "klb_ratio": _parse_pct(data.get("KLB", "0")),  # floor area ratio
+            "kdh_pct": _parse_pct(data.get("KDH", "0")),  # min green area %
+            "ktb_pct": _parse_pct(data.get("KTB", "0")),  # basement coverage %
+            "height_limit": data.get("TB", "—"),  # max height (string, e.g. "15 Meter")
+            "setback": data.get("GSB", "—"),  # building setback
+            "notes": data.get("note", ""),
         }
     except Exception as exc:
         logger.warning(f"⚠️ [Prime] Building codes parse error for {zone_code}: {exc}")
@@ -95,52 +98,202 @@ _BATARA_API_URL = "https://secure.pelayanan-dpupr.badungkab.go.id/api/certificat
 # Activities to skip — non investor-relevant (residential, infrastructure, local-only)
 # Uses word-boundary matching: "road" won't match "abroad"
 _SKIP_PATTERNS = [
-    "local resident", "employee", "official residence", "boarding house",
-    "single house", "cluster house", "coupled house", "dormitory", "townhouse",
-    "septic tank", "wastewater", "irrigation", "cleanwater", "trash can",
-    "toilet facility", "parking area", "pedestrian lane", "disability access",
-    "loading unloading", "road network", "road complete", "bike lane",
-    "public road access", "pavement area", "lot area", "building height",
-    "minimum gsb", "minimum kdh", "maximum kdb", "maximum klb", "maximum ktb",
-    "road dimension", "road equipment", "trash", "zone_requirement",
-    "car trading", "car spare parts", "motorcycle trade", "motorcycle maintenance",
-    "wholesale trade of fishery", "wholesale of motor vehicle",
-    "wholesale trade of food", "wholesale of household",
-    "wholesale of machinery", "wholesale of building material",
-    "wholesale of agricultural", "wholesale of fuel",
-    "village government", "government service", "public service office",
-    "fire station", "police", "military", "cemetery", "funeral",
-    "religious", "worship", "mosque", "temple", "church",
+    "local resident",
+    "employee",
+    "official residence",
+    "boarding house",
+    "single house",
+    "cluster house",
+    "coupled house",
+    "dormitory",
+    "townhouse",
+    "septic tank",
+    "wastewater",
+    "irrigation",
+    "cleanwater",
+    "trash can",
+    "toilet facility",
+    "parking area",
+    "pedestrian lane",
+    "disability access",
+    "loading unloading",
+    "road network",
+    "road complete",
+    "bike lane",
+    "public road access",
+    "pavement area",
+    "lot area",
+    "building height",
+    "minimum gsb",
+    "minimum kdh",
+    "maximum kdb",
+    "maximum klb",
+    "maximum ktb",
+    "road dimension",
+    "road equipment",
+    "trash",
+    "zone_requirement",
+    "car trading",
+    "car spare parts",
+    "motorcycle trade",
+    "motorcycle maintenance",
+    "wholesale trade of fishery",
+    "wholesale of motor vehicle",
+    "wholesale trade of food",
+    "wholesale of household",
+    "wholesale of machinery",
+    "wholesale of building material",
+    "wholesale of agricultural",
+    "wholesale of fuel",
+    "village government",
+    "government service",
+    "public service office",
+    "fire station",
+    "police",
+    "military",
+    "cemetery",
+    "funeral",
+    "religious",
+    "worship",
+    "mosque",
+    "temple",
+    "church",
     "television broadcasting",  # not relevant for most investors
 ]
 
 # Investor-relevant category mapping — use word-boundary checks to avoid false matches
 # e.g. "spa" must not match "spare parts"
 _ACTIVITY_CATEGORIES: list[tuple[list[str], str]] = [
-    (["hotel", "resort", "villa", "guesthouse", "penginapan", "lodging (≥", "lodging (<"], "Hospitality"),
-    (["restaurant", "café", "cafe", " bar ", "bakery", "catering", "food court",
-      "food, beverage, and tobacco trade in shop",
-      "trade of various goods in a store"], "F&B"),
-    (["spa ", "beauty salon", "beauty center", "beauty treatment", "wellness center",
-      "yoga", "fitness center", "gym", "massage"], "Wellness"),
-    (["boutique ", "retail of", "specialty store", "fashion", "jewelry", "artisan craft",
-      "souvenir", "art gallery", "gallery"], "Retail"),
-    (["consulting", "consultant", "law firm", "notary", "accounting firm",
-      "financial advisor", "professional service"], "Services"),
-    (["real estate", "property development", "land development", "co-working space",
-      "serviced apartment"], "Property"),
-    (["software", "information technology", "it service", "digital", "programming",
-      "data center", "startup"], "Technology"),
-    (["school", "international school", "university", "college", "training center",
-      "language course", "vocational"], "Education"),
-    (["hospital", "clinic", "medical center", "dental", "healthcare facility",
-      "pharmaceutical"], "Healthcare"),
-    (["food processing", "garment", "handicraft", "artisan manufacturing",
-      "waste management", "recycling"], "Industry"),
-    (["design studio", "creative agency", "photography studio", "film production",
-      "music studio", "architecture"], "Creative"),
-    (["restaurant and café", "café and restaurant", "coffee shop", "juice bar",
-      "fine dining", "bistro", "lounge"], "F&B"),
+    (
+        ["hotel", "resort", "villa", "guesthouse", "penginapan", "lodging (≥", "lodging (<"],
+        "Hospitality",
+    ),
+    (
+        [
+            "restaurant",
+            "café",
+            "cafe",
+            " bar ",
+            "bakery",
+            "catering",
+            "food court",
+            "food, beverage, and tobacco trade in shop",
+            "trade of various goods in a store",
+        ],
+        "F&B",
+    ),
+    (
+        [
+            "spa ",
+            "beauty salon",
+            "beauty center",
+            "beauty treatment",
+            "wellness center",
+            "yoga",
+            "fitness center",
+            "gym",
+            "massage",
+        ],
+        "Wellness",
+    ),
+    (
+        [
+            "boutique ",
+            "retail of",
+            "specialty store",
+            "fashion",
+            "jewelry",
+            "artisan craft",
+            "souvenir",
+            "art gallery",
+            "gallery",
+        ],
+        "Retail",
+    ),
+    (
+        [
+            "consulting",
+            "consultant",
+            "law firm",
+            "notary",
+            "accounting firm",
+            "financial advisor",
+            "professional service",
+        ],
+        "Services",
+    ),
+    (
+        [
+            "real estate",
+            "property development",
+            "land development",
+            "co-working space",
+            "serviced apartment",
+        ],
+        "Property",
+    ),
+    (
+        [
+            "software",
+            "information technology",
+            "it service",
+            "digital",
+            "programming",
+            "data center",
+            "startup",
+        ],
+        "Technology",
+    ),
+    (
+        [
+            "school",
+            "international school",
+            "university",
+            "college",
+            "training center",
+            "language course",
+            "vocational",
+        ],
+        "Education",
+    ),
+    (
+        ["hospital", "clinic", "medical center", "dental", "healthcare facility", "pharmaceutical"],
+        "Healthcare",
+    ),
+    (
+        [
+            "food processing",
+            "garment",
+            "handicraft",
+            "artisan manufacturing",
+            "waste management",
+            "recycling",
+        ],
+        "Industry",
+    ),
+    (
+        [
+            "design studio",
+            "creative agency",
+            "photography studio",
+            "film production",
+            "music studio",
+            "architecture",
+        ],
+        "Creative",
+    ),
+    (
+        [
+            "restaurant and café",
+            "café and restaurant",
+            "coffee shop",
+            "juice bar",
+            "fine dining",
+            "bistro",
+            "lounge",
+        ],
+        "F&B",
+    ),
 ]
 
 
@@ -163,7 +316,14 @@ def _is_investor_relevant(name: str) -> bool:
     if lower.startswith("wholesale") and "fuel" not in lower:
         return False
     # Skip construction/infrastructure specifics
-    infra_kw = ["road network", "road dimension", "pavement", "minimum jb", "minimum jbs", "minimum gsb"]
+    infra_kw = [
+        "road network",
+        "road dimension",
+        "pavement",
+        "minimum jb",
+        "minimum jbs",
+        "minimum gsb",
+    ]
     return not any(kw in lower for kw in infra_kw)
 
 
@@ -182,58 +342,162 @@ def _rgb_string_to_hex(rgb_str: str) -> str:
 # FALLBACK: Zone labels for PostGIS-only path (no BATARA)
 # =============================================================================
 _ZONE_LABELS: dict[str, dict[str, str]] = {
-    "K-1": {"label_en": "City Commercial Zone",        "desc_en": "Large-scale commerce — shopping centers, hotels, offices"},
-    "K-2": {"label_en": "District Commercial Zone",    "desc_en": "Mid-scale commerce — restaurants, retail, professional services"},
-    "K-3": {"label_en": "Neighborhood Commercial Zone","desc_en": "Small-scale commerce — cafés, boutiques, studios, wellness"},
-    "C-1": {"label_en": "High-Density Mixed-Use Zone", "desc_en": "Hotels + residences + offices in the same area"},
-    "C-2": {"label_en": "Medium Mixed-Use Zone",       "desc_en": "Villas, cafés, and wellness businesses side by side"},
-    "W":   {"label_en": "Tourism Zone",                "desc_en": "Hotels, resorts, restaurants, entertainment — tourism focus"},
-    "W-1": {"label_en": "Tourism Zone (Type 1)",       "desc_en": "Primary tourism area — resorts and large hotels"},
-    "W-2": {"label_en": "Tourism Zone (Type 2)",       "desc_en": "Secondary tourism area — boutique stays, restaurants"},
-    "R-2": {"label_en": "High-Density Residential",    "desc_en": "Dense housing — limited commercial activity permitted"},
-    "R-3": {"label_en": "Medium-Density Residential",  "desc_en": "Suburban housing — villa rentals and homestays possible"},
-    "R-4": {"label_en": "Low-Density Residential",     "desc_en": "Spacious housing — luxury villas and land investment"},
-    "KPI": {"label_en": "Industrial Zone",             "desc_en": "Manufacturing, food processing, craft production"},
-    "KT":  {"label_en": "Office / Business Park Zone", "desc_en": "Professional offices — consulting, tech, finance"},
-    "SPU-1": {"label_en": "City Public Facility Zone", "desc_en": "Major public services — hospitals, universities"},
-    "SPU-2": {"label_en": "District Public Facility",  "desc_en": "District services — clinics, schools"},
-    "SPU-3": {"label_en": "Village Public Facility",   "desc_en": "Local services — community centers, worship"},
-    "SPU-4": {"label_en": "Neighborhood Facility",     "desc_en": "Smallest-scale public facilities"},
-    "P-1": {"label_en": "Crop Farming Zone",           "desc_en": "Protected agricultural land — no development permitted"},
-    "P-2": {"label_en": "Horticulture Zone",           "desc_en": "Fruit & vegetable farming — no development"},
-    "P-3": {"label_en": "Plantation Zone",             "desc_en": "Estate crops — no development"},
-    "P-4": {"label_en": "Livestock Zone",              "desc_en": "Animal husbandry — no development"},
-    "HL":  {"label_en": "Protected Forest",            "desc_en": "⛔ Conservation forest — strictly no development"},
-    "PS":  {"label_en": "Riparian Buffer Zone",        "desc_en": "⛔ Riverbank protection — no development"},
-    "SS":  {"label_en": "River Buffer Zone",           "desc_en": "⛔ Streamside protection — no development"},
-    "SP":  {"label_en": "Coastal Buffer Zone",         "desc_en": "⛔ Beachfront protection — no development"},
-    "CB":  {"label_en": "Cultural Heritage Zone",      "desc_en": "⛔ Historical & cultural protection — strictly regulated"},
-    "LS":  {"label_en": "Spiritual & Sacred Zone",     "desc_en": "⛔ Balinese sacred sites — no commercial activity"},
-    "EM":  {"label_en": "Mangrove Ecosystem",          "desc_en": "⛔ Mangrove forest — protected, no development"},
-    "TWA": {"label_en": "Nature Tourism Reserve",      "desc_en": "⛔ Wildlife area — restricted access"},
-    "THR": {"label_en": "City Forest Park",            "desc_en": "⛔ Protected urban forest"},
-    "KS-4":{"label_en": "Forest Reserve Park",        "desc_en": "⛔ Protected nature reserve"},
-    "BA":  {"label_en": "Water Body",                  "desc_en": "⛔ River, lake, or sea — no development"},
-    "BJ":  {"label_en": "Road Infrastructure",         "desc_en": "⛔ Public road right-of-way"},
-    "TR":  {"label_en": "Transportation Zone",         "desc_en": "Airports, ports, terminals"},
-    "RTH-2": {"label_en": "City Park",                 "desc_en": "Public green space — parks and gardens"},
-    "RTH-3": {"label_en": "District Park",             "desc_en": "Neighborhood green space"},
-    "RTH-4": {"label_en": "Village Park",              "desc_en": "Local green space"},
-    "RTH-5": {"label_en": "Block Park",                "desc_en": "Small local green space"},
-    "RTH-7": {"label_en": "Cemetery",                  "desc_en": "Public cemetery"},
-    "RTH-8": {"label_en": "Green Corridor",            "desc_en": "Roadside or canal green strip"},
-    "RTNH": {"label_en": "Non-Green Open Space",       "desc_en": "Plazas, parking, paved open areas"},
-    "HK":  {"label_en": "Defense & Security Zone",    "desc_en": "Military / government security area"},
-    "PL-3":{"label_en": "Water Treatment Facility",   "desc_en": "Public infrastructure — no development"},
-    "PL-4":{"label_en": "Wastewater Facility",        "desc_en": "Public infrastructure — no development"},
-    "PTL": {"label_en": "Power Generation Zone",      "desc_en": "Energy infrastructure — no development"},
-    "IK-1":{"label_en": "Capture Fishery Zone",       "desc_en": "Coastal fishing zone — no land development"},
+    "K-1": {
+        "label_en": "City Commercial Zone",
+        "desc_en": "Large-scale commerce — shopping centers, hotels, offices",
+    },
+    "K-2": {
+        "label_en": "District Commercial Zone",
+        "desc_en": "Mid-scale commerce — restaurants, retail, professional services",
+    },
+    "K-3": {
+        "label_en": "Neighborhood Commercial Zone",
+        "desc_en": "Small-scale commerce — cafés, boutiques, studios, wellness",
+    },
+    "C-1": {
+        "label_en": "High-Density Mixed-Use Zone",
+        "desc_en": "Hotels + residences + offices in the same area",
+    },
+    "C-2": {
+        "label_en": "Medium Mixed-Use Zone",
+        "desc_en": "Villas, cafés, and wellness businesses side by side",
+    },
+    "W": {
+        "label_en": "Tourism Zone",
+        "desc_en": "Hotels, resorts, restaurants, entertainment — tourism focus",
+    },
+    "W-1": {
+        "label_en": "Tourism Zone (Type 1)",
+        "desc_en": "Primary tourism area — resorts and large hotels",
+    },
+    "W-2": {
+        "label_en": "Tourism Zone (Type 2)",
+        "desc_en": "Secondary tourism area — boutique stays, restaurants",
+    },
+    "R-2": {
+        "label_en": "High-Density Residential",
+        "desc_en": "Dense housing — limited commercial activity permitted",
+    },
+    "R-3": {
+        "label_en": "Medium-Density Residential",
+        "desc_en": "Suburban housing — villa rentals and homestays possible",
+    },
+    "R-4": {
+        "label_en": "Low-Density Residential",
+        "desc_en": "Spacious housing — luxury villas and land investment",
+    },
+    "KPI": {
+        "label_en": "Industrial Zone",
+        "desc_en": "Manufacturing, food processing, craft production",
+    },
+    "KT": {
+        "label_en": "Office / Business Park Zone",
+        "desc_en": "Professional offices — consulting, tech, finance",
+    },
+    "SPU-1": {
+        "label_en": "City Public Facility Zone",
+        "desc_en": "Major public services — hospitals, universities",
+    },
+    "SPU-2": {
+        "label_en": "District Public Facility",
+        "desc_en": "District services — clinics, schools",
+    },
+    "SPU-3": {
+        "label_en": "Village Public Facility",
+        "desc_en": "Local services — community centers, worship",
+    },
+    "SPU-4": {"label_en": "Neighborhood Facility", "desc_en": "Smallest-scale public facilities"},
+    "P-1": {
+        "label_en": "Crop Farming Zone",
+        "desc_en": "Protected agricultural land — no development permitted",
+    },
+    "P-2": {
+        "label_en": "Horticulture Zone",
+        "desc_en": "Fruit & vegetable farming — no development",
+    },
+    "P-3": {"label_en": "Plantation Zone", "desc_en": "Estate crops — no development"},
+    "P-4": {"label_en": "Livestock Zone", "desc_en": "Animal husbandry — no development"},
+    "HL": {
+        "label_en": "Protected Forest",
+        "desc_en": "⛔ Conservation forest — strictly no development",
+    },
+    "PS": {
+        "label_en": "Riparian Buffer Zone",
+        "desc_en": "⛔ Riverbank protection — no development",
+    },
+    "SS": {"label_en": "River Buffer Zone", "desc_en": "⛔ Streamside protection — no development"},
+    "SP": {
+        "label_en": "Coastal Buffer Zone",
+        "desc_en": "⛔ Beachfront protection — no development",
+    },
+    "CB": {
+        "label_en": "Cultural Heritage Zone",
+        "desc_en": "⛔ Historical & cultural protection — strictly regulated",
+    },
+    "LS": {
+        "label_en": "Spiritual & Sacred Zone",
+        "desc_en": "⛔ Balinese sacred sites — no commercial activity",
+    },
+    "EM": {
+        "label_en": "Mangrove Ecosystem",
+        "desc_en": "⛔ Mangrove forest — protected, no development",
+    },
+    "TWA": {
+        "label_en": "Nature Tourism Reserve",
+        "desc_en": "⛔ Wildlife area — restricted access",
+    },
+    "THR": {"label_en": "City Forest Park", "desc_en": "⛔ Protected urban forest"},
+    "KS-4": {"label_en": "Forest Reserve Park", "desc_en": "⛔ Protected nature reserve"},
+    "BA": {"label_en": "Water Body", "desc_en": "⛔ River, lake, or sea — no development"},
+    "BJ": {"label_en": "Road Infrastructure", "desc_en": "⛔ Public road right-of-way"},
+    "TR": {"label_en": "Transportation Zone", "desc_en": "Airports, ports, terminals"},
+    "RTH-2": {"label_en": "City Park", "desc_en": "Public green space — parks and gardens"},
+    "RTH-3": {"label_en": "District Park", "desc_en": "Neighborhood green space"},
+    "RTH-4": {"label_en": "Village Park", "desc_en": "Local green space"},
+    "RTH-5": {"label_en": "Block Park", "desc_en": "Small local green space"},
+    "RTH-7": {"label_en": "Cemetery", "desc_en": "Public cemetery"},
+    "RTH-8": {"label_en": "Green Corridor", "desc_en": "Roadside or canal green strip"},
+    "RTNH": {"label_en": "Non-Green Open Space", "desc_en": "Plazas, parking, paved open areas"},
+    "HK": {"label_en": "Defense & Security Zone", "desc_en": "Military / government security area"},
+    "PL-3": {
+        "label_en": "Water Treatment Facility",
+        "desc_en": "Public infrastructure — no development",
+    },
+    "PL-4": {
+        "label_en": "Wastewater Facility",
+        "desc_en": "Public infrastructure — no development",
+    },
+    "PTL": {
+        "label_en": "Power Generation Zone",
+        "desc_en": "Energy infrastructure — no development",
+    },
+    "IK-1": {
+        "label_en": "Capture Fishery Zone",
+        "desc_en": "Coastal fishing zone — no land development",
+    },
 }
 
 _RESTRICTED_ZONES = {
-    "HL", "PS", "CB", "LS", "EM", "BA", "BJ", "HK",
-    "RTH-2", "RTH-3", "RTH-4", "KS-4", "IK-1",
-    "P-1", "P-2", "P-3", "P-4", "PL-3", "PL-4", "PTL",
+    "HL",
+    "PS",
+    "CB",
+    "LS",
+    "EM",
+    "BA",
+    "BJ",
+    "HK",
+    "RTH-2",
+    "RTH-3",
+    "RTH-4",
+    "KS-4",
+    "IK-1",
+    "P-1",
+    "P-2",
+    "P-3",
+    "P-4",
+    "PL-3",
+    "PL-4",
+    "PTL",
 }
 
 
@@ -323,10 +587,18 @@ async def _query_batara(lat: float, lng: float) -> dict[str, Any] | None:
             if teb_val and "tidak" not in teb_val.lower():
                 overlays["evac_center"] = teb_val
 
-            label_info = _ZONE_LABELS.get(zone_code, {"label_en": zone_name, "desc_en": zone_definition[:120] if zone_definition else ""})
+            label_info = _ZONE_LABELS.get(
+                zone_code,
+                {
+                    "label_en": zone_name,
+                    "desc_en": zone_definition[:120] if zone_definition else "",
+                },
+            )
             building_codes = _calculate_building_yield(zone_code)
 
-            logger.info(f"✅ [Prime/BATARA] {zone_code} '{zone_name}' @ {lat},{lng} — {len(businesses)} businesses")
+            logger.info(
+                f"✅ [Prime/BATARA] {zone_code} '{zone_name}' @ {lat},{lng} — {len(businesses)} businesses"
+            )
             return {
                 "zone_code": zone_code,
                 "zone_name": zone_name,
@@ -371,6 +643,7 @@ _INTEL_COLLECTION = "balizero_news"
 
 # Module-level embedder (lazy-init on first call, reused thereafter)
 _embedder = None
+
 
 def _get_embedder():
     global _embedder
@@ -434,18 +707,22 @@ async def _search_local_intel(
             source_url = payload.get("source_url", "")
             if not title or not source_url:
                 continue
-            articles.append({
-                "title": title,
-                "source_url": source_url,
-                "category": payload.get("category", ""),
-                "source_name": payload.get("source_name", ""),
-                "published_at": payload.get("published_at", ""),
-                "relevance_score": round(score, 3),
-            })
+            articles.append(
+                {
+                    "title": title,
+                    "source_url": source_url,
+                    "category": payload.get("category", ""),
+                    "source_name": payload.get("source_name", ""),
+                    "published_at": payload.get("published_at", ""),
+                    "relevance_score": round(score, 3),
+                }
+            )
             if len(articles) >= limit:
                 break
 
-        logger.info(f"[Prime/Intel] {len(articles)} articles found for {zone_code} in {subdistrict}")
+        logger.info(
+            f"[Prime/Intel] {len(articles)} articles found for {zone_code} in {subdistrict}"
+        )
         return articles
 
     except Exception as exc:
@@ -505,7 +782,9 @@ async def get_zoning(
         zone_code = zone_type.split(":")[0].strip()
         zone_name = zone_type.split(":", 1)[1].strip() if ":" in zone_type else zone_type
 
-        label_info = _ZONE_LABELS.get(zone_code, {"label_en": zone_name, "desc_en": "Contact local authorities for details"})
+        label_info = _ZONE_LABELS.get(
+            zone_code, {"label_en": zone_name, "desc_en": "Contact local authorities for details"}
+        )
         is_restricted = zone_code in _RESTRICTED_ZONES
         building_codes = _calculate_building_yield(zone_code)
 
@@ -550,25 +829,52 @@ async def get_zoning(
 _ZONES_GEOJSON_CACHE: dict[str, Any] | None = None
 
 _ZONE_COLORS_MAP: dict[str, str] = {
-    "K-1": "#E8472A", "K-2": "#E8472A", "K-3": "#E8472A",
-    "C-1": "#F0826E", "C-2": "#F0826E",
-    "W": "#FFA5FF", "W-1": "#FFA5FF", "W-2": "#FF85F5",
-    "R-2": "#FF7D00", "R-3": "#FF9D30", "R-4": "#FFB860",
-    "P-1": "#C8C83C", "P-2": "#D4D44A", "P-3": "#C8C83C", "P-4": "#BEB82E",
+    "K-1": "#E8472A",
+    "K-2": "#E8472A",
+    "K-3": "#E8472A",
+    "C-1": "#F0826E",
+    "C-2": "#F0826E",
+    "W": "#FFA5FF",
+    "W-1": "#FFA5FF",
+    "W-2": "#FF85F5",
+    "R-2": "#FF7D00",
+    "R-3": "#FF9D30",
+    "R-4": "#FFB860",
+    "P-1": "#C8C83C",
+    "P-2": "#D4D44A",
+    "P-3": "#C8C83C",
+    "P-4": "#BEB82E",
     "KT": "#A855F7",
     "KPI": "#690000",
-    "SPU-1": "#D4845A", "SPU-2": "#D4845A", "SPU-3": "#D4845A", "SPU-4": "#D4845A",
-    "HL": "#224027", "KS-4": "#224027", "THR": "#224027", "TWA": "#224027",
+    "SPU-1": "#D4845A",
+    "SPU-2": "#D4845A",
+    "SPU-3": "#D4845A",
+    "SPU-4": "#D4845A",
+    "HL": "#224027",
+    "KS-4": "#224027",
+    "THR": "#224027",
+    "TWA": "#224027",
     "EM": "#2D966E",
-    "PS": "#05D7D7", "SS": "#05D7D7", "SP": "#05D7D7",
-    "LS": "#F59E0B", "CB": "#B45309",
-    "RTH-2": "#3BA062", "RTH-3": "#3BA062", "RTH-4": "#3BA062",
-    "RTH-5": "#3BA062", "RTH-7": "#6B7280", "RTH-8": "#3BA062",
+    "PS": "#05D7D7",
+    "SS": "#05D7D7",
+    "SP": "#05D7D7",
+    "LS": "#F59E0B",
+    "CB": "#B45309",
+    "RTH-2": "#3BA062",
+    "RTH-3": "#3BA062",
+    "RTH-4": "#3BA062",
+    "RTH-5": "#3BA062",
+    "RTH-7": "#6B7280",
+    "RTH-8": "#3BA062",
     "RTNH": "#9CA3AF",
     "BA": "#97DBF2",
-    "BJ": "#9CA3AF", "TR": "#6B7280",
+    "BJ": "#9CA3AF",
+    "TR": "#6B7280",
     "HK": "#9B00FF",
-    "PL-3": "#6B7280", "PL-4": "#6B7280", "PTL": "#6B7280", "IK-1": "#507DD2",
+    "PL-3": "#6B7280",
+    "PL-4": "#6B7280",
+    "PTL": "#6B7280",
+    "IK-1": "#507DD2",
 }
 
 _ZONES_GEOJSON_QUERY = """
@@ -616,15 +922,17 @@ async def get_zones_geojson() -> dict[str, Any]:
             zone_code = zone_type.split(":")[0].strip()
             color = _ZONE_COLORS_MAP.get(zone_code, "#6B7280")
 
-            features.append({
-                "type": "Feature",
-                "geometry": geom,
-                "properties": {
-                    "zone_code": zone_code,
-                    "zone_type": zone_type,
-                    "color": color,
-                },
-            })
+            features.append(
+                {
+                    "type": "Feature",
+                    "geometry": geom,
+                    "properties": {
+                        "zone_code": zone_code,
+                        "zone_type": zone_type,
+                        "color": color,
+                    },
+                }
+            )
 
         result: dict[str, Any] = {"type": "FeatureCollection", "features": features}
         _ZONES_GEOJSON_CACHE = result
