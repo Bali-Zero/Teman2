@@ -4,18 +4,12 @@ Tests cultural RAG service functionality
 """
 
 import os
-import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 os.environ.setdefault("JWT_SECRET_KEY", "test_jwt_secret_key_for_testing_only_min_32_chars")
-
-backend_path = Path(__file__).parent.parent.parent
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
-
 
 class TestCulturalRAGService:
     """Unit tests for CulturalRAGService"""

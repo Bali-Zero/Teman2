@@ -4,7 +4,6 @@ Tests for AsyncpgJSONEncoder UUID/datetime serialization fix
 """
 
 import json
-import sys
 from datetime import date, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -12,10 +11,6 @@ from uuid import UUID
 
 import pytest
 
-# Ensure backend is in path
-backend_path = Path(__file__).parent.parent.parent.parent
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
 
 from backend.services.crm.ai_crm_extractor import (
     AICRMExtractor,

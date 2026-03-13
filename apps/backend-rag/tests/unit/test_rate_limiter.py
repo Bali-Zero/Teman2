@@ -11,11 +11,6 @@ from unittest.mock import MagicMock, patch
 os.environ.setdefault("JWT_SECRET_KEY", "test_jwt_secret_key_for_testing_only_min_32_chars")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 
-backend_path = Path(__file__).parent.parent.parent
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
-
-
 class TestRateLimiter:
     """Unit tests for RateLimiter"""
 

@@ -12,18 +12,12 @@ Total test cases: 32
 Missing lines: 71-72 (debug logging when client not found)
 """
 
-import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import asyncpg
 import pytest
-
-# Add backend directory to Python path
-backend_path = Path(__file__).parent.parent.parent.parent.parent
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
 
 from backend.agents.services.client_scoring import ClientScoringService
 

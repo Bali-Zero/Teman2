@@ -3,17 +3,11 @@ Unit tests for API Key Authentication Service
 100% coverage target with comprehensive mocking
 """
 
-import sys
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-
-# Ensure backend is in path
-backend_path = Path(__file__).parent.parent.parent
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
 
 from backend.app.services.api_key_auth import APIKeyAuth
 

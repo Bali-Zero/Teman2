@@ -13,17 +13,11 @@ Target coverage: 90%+
 """
 
 import json
-import sys
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
-# Ensure backend is in path
-backend_path = Path(__file__).parent.parent.parent.parent
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
 
 from backend.services.misc.conversation_service import ConversationService
 

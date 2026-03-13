@@ -5,7 +5,6 @@ Tests all endpoints with success, failure, and edge cases.
 Uses dataclasses for mock return values and proper dependency overrides.
 """
 
-import sys
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -17,12 +16,6 @@ import asyncpg
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
-# Ensure backend is in path
-backend_path = Path(__file__).parent.parent.parent.parent
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
-
 
 # ============================================================================
 # MOCK DATA CLASSES

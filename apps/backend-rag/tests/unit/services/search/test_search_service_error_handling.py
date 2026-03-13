@@ -12,16 +12,12 @@ The search_service module doesn't import these classes at module level.
 Skipped until patch paths are corrected.
 """
 
-import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 
 # Add backend to path
-backend_path = Path(__file__).parent.parent.parent.parent.parent.parent
-sys.path.insert(0, str(backend_path))
-
 from backend.app.core.error_classification import ErrorCategory, ErrorClassifier
 
 # Skip all tests in this module until patch paths are corrected

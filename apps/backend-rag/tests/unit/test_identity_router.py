@@ -3,7 +3,6 @@ Unit tests for Identity Router
 100% coverage target with comprehensive mocking
 """
 
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
@@ -12,10 +11,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 # Ensure backend is in path (conftest.py should handle this, but ensure it here too)
-backend_path = Path(__file__).parent.parent.parent
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
-
 from backend.app.modules.identity.models import User
 from backend.app.modules.identity.router import (
     LoginRequest,

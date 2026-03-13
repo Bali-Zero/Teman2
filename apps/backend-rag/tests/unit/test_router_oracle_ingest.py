@@ -2,18 +2,12 @@
 Unit tests for Oracle Ingest Router
 """
 
-import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
 from pydantic import ValidationError
-
-# Ensure backend is in path
-backend_path = Path(__file__).parent.parent.parent
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
 
 from backend.app.routers.oracle_ingest import (
     DocumentChunk,

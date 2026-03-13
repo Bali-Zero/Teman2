@@ -1,5 +1,4 @@
 import os
-import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -11,11 +10,6 @@ os.environ["OPENAI_API_KEY"] = "test_openai_api_key_for_testing"
 os.environ["QDRANT_URL"] = "http://localhost:6333"
 os.environ["DATABASE_URL"] = "postgresql://test:test@localhost:5432/test"
 os.environ["GOOGLE_API_KEY"] = "test_google_api_key"
-
-backend_path = Path(__file__).parent.parent.parent
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
-
 
 @pytest.mark.asyncio
 async def test_user_context_loaded_before_greeting(monkeypatch):

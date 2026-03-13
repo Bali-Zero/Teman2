@@ -6,15 +6,9 @@ Tests the detection of explanation level (simple/expert/standard) and alternativ
 Note: Uses try/except for imports to gracefully handle conflicts with other tests.
 """
 
-import sys
 from pathlib import Path
 
 import pytest
-
-# Ensure backend is in path
-backend_path = Path(__file__).parent.parent.parent.parent
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
 
 # Attempt to import communication utilities
 try:

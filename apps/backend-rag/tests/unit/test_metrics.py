@@ -4,15 +4,9 @@ Tests observability and metrics collection
 """
 
 import os
-import sys
 from pathlib import Path
 
 os.environ.setdefault("JWT_SECRET_KEY", "test_jwt_secret_key_for_testing_only_min_32_chars")
-
-backend_path = Path(__file__).parent.parent.parent
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
-
 
 class TestMetrics:
     """Unit tests for metrics module"""
