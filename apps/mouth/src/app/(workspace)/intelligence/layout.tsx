@@ -48,6 +48,7 @@ export default function IntelligenceLayout({
           {/* Back to Intelligence Center link */}
           <Link
             href="/intelligence"
+            aria-label="Back to Intelligence Center"
             className="text-[11px] font-medium transition-colors"
             style={{ color: "var(--bz-text-3)" }}
             onMouseEnter={(e) =>
@@ -57,7 +58,7 @@ export default function IntelligenceLayout({
               (e.currentTarget.style.color = "var(--bz-text-3)")
             }
           >
-            ← Intelligence Center
+            <span aria-hidden="true">←</span> Intelligence Center
           </Link>
 
           {/* Tab Pills */}
@@ -75,6 +76,7 @@ export default function IntelligenceLayout({
                 <Link
                   key={tab.href}
                   href={tab.href}
+                  aria-current={isActive ? "page" : undefined}
                   className={cn(
                     "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11.5px] font-medium transition-all duration-150",
                     isActive ? "shadow-sm" : "hover:bg-white/[0.04]",
@@ -97,8 +99,9 @@ export default function IntelligenceLayout({
           </div>
 
           {/* Status indicator */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5" aria-label="Intelligence services: Active">
             <div
+              aria-hidden="true"
               className="w-[6px] h-[6px] rounded-full animate-pulse"
               style={{
                 background: "var(--bz-green)",
