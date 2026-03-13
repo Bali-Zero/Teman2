@@ -177,11 +177,10 @@ export function middleware(request: NextRequest) {
   }
 
   // === ZANTARA DOMAIN (zantara.balizero.com) ===
-  // Dedicated Zantara AI chat — rewrites everything to /kbli-explorer
+  // Dedicated Zantara AI chat webapp — rewrites to /chat
   if (hostname === ZANTARA_DOMAIN || hostname === `www.${ZANTARA_DOMAIN}`) {
-    // Allow static/API routes through
     const rewritePath =
-      pathname === "/" ? "/kbli-explorer" : `/kbli-explorer${pathname}`;
+      pathname === "/" ? "/chat" : `/chat${pathname}`;
     const rewriteUrl = request.nextUrl.clone();
     rewriteUrl.pathname = rewritePath;
     const rewriteResponse = NextResponse.rewrite(rewriteUrl);
