@@ -40,7 +40,7 @@ class PDFVisionService:
         self.ai_client = ai_client
         self.api_key = api_key or settings.google_api_key
         self._genai_client: GenAIClient | None = None
-        self.model_name = "gemini-2.0-flash-001"
+        self.model_name = "gemini-2.0-flash-lite"
         self.ollama_model = "qwen2.5vl:7b"  # confirmed working for vision OCR
 
     def _get_genai_client(self) -> GenAIClient | None:

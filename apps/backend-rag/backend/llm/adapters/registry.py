@@ -8,7 +8,7 @@ class ModelType(Enum):
     """Active models only - updated 2026-02-09 (Vertex AI stable models)"""
 
     GEMINI_FLASH = "gemini-2.5-flash"  # Primary tier (latest stable, June 2025)
-    GEMINI_FLASH_FALLBACK = "gemini-2.0-flash-001"  # Fallback tier
+    GEMINI_FLASH_FALLBACK = "gemini-2.0-flash-lite"  # Fallback tier
 
 
 ADAPTER_REGISTRY = {

@@ -113,7 +113,7 @@ def intelligence_general(mock_db):
         mock_client.generate_content = AsyncMock(
             return_value={
                 "text": "Test analysis with key insights and important findings.",
-                "model": "gemini-2.0-flash-001",
+                "model": "gemini-2.0-flash-lite",
                 "usage": {"input_tokens": 100, "output_tokens": 200},
             }
         )

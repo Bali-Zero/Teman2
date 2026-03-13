@@ -42,11 +42,11 @@ def is_crm_admin(user: dict) -> bool:
     email = user.get("email", "").lower()
     role = user.get("role", "").lower()
 
-    # Check by email or role
-    result = email in CRM_ADMIN_EMAILS or role == "admin"
+    # All team members have full CRM access (only portal "client" users are excluded)
+    result = role != "client"
 
     if result:
-        logger.debug(f"RBAC: User {email} granted CRM admin access (role={role})")
+        logger.debug(f"RBAC: User {email} granted CRM access (role={role})")
 
     return result
 

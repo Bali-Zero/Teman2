@@ -120,7 +120,7 @@ def orchestrator_setup(mock_tools, mock_db_pool, mock_retriever, mock_semantic_c
         mock_state.final_answer = "Test answer"
         mock_state.steps = []
         mock_reasoning_instance.execute_react_loop = AsyncMock(
-            return_value=(mock_state, "gemini-2.0-flash-001", [], TokenUsage())
+            return_value=(mock_state, "gemini-2.0-flash-lite", [], TokenUsage())
         )
 
         # Mock execute_react_loop_stream for stream_query tests
@@ -660,7 +660,7 @@ class TestProcessQueryGates:
         mocks["reasoning"].execute_react_loop = AsyncMock(
             return_value=(
                 mock_state,
-                "gemini-2.0-flash-001",
+                "gemini-2.0-flash-lite",
                 [],
                 TokenUsage(prompt_tokens=100, completion_tokens=50),
             )
@@ -733,7 +733,7 @@ class TestProcessQueryGates:
         mock_state.evidence_score = 0.7
 
         mocks["reasoning"].execute_react_loop = AsyncMock(
-            return_value=(mock_state, "gemini-2.0-flash-001", [], TokenUsage())
+            return_value=(mock_state, "gemini-2.0-flash-lite", [], TokenUsage())
         )
 
         with patch(
@@ -780,7 +780,7 @@ class TestProcessQueryGates:
         mock_state.steps = [mock_step]
 
         mocks["reasoning"].execute_react_loop = AsyncMock(
-            return_value=(mock_state, "gemini-2.0-flash-001", [], TokenUsage())
+            return_value=(mock_state, "gemini-2.0-flash-lite", [], TokenUsage())
         )
 
         with patch(

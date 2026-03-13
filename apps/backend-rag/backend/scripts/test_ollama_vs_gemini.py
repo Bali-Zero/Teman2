@@ -129,7 +129,7 @@ Return ONLY the title text, nothing else."""
         try:
             result = await client.generate_content(
                 contents=prompt,
-                model="gemini-2.0-flash-001",
+                model="gemini-2.0-flash-lite",
                 max_output_tokens=30,
                 temperature=0.3,
             )

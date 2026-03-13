@@ -6,6 +6,7 @@ for PostgreSQL database operations.
 """
 
 import asyncio
+import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Optional, List, Any, Dict
 
@@ -65,18 +66,29 @@ class DatabaseManager:
             )
 
             try:
-                self._pool = await asyncpg.create_pool(
-                    host=self._config.host,
-                    port=self._config.port,
-                    database=self._config.name,
-                    user=self._config.user,
-                    password=self._config.password,
-                    min_size=self._config.pool_size,
-                    max_size=self._config.pool_size + self._config.max_overflow,
-                    command_timeout=self._config.pool_timeout,
-                    max_inactive_connection_lifetime=self._config.pool_recycle,
-                    init=self._init_connection,
-                )
+                dsn = os.getenv("DATABASE_URL")
+                if dsn:
+                    self._pool = await asyncpg.create_pool(
+                        dsn=dsn,
+                        min_size=self._config.pool_size,
+                        max_size=self._config.pool_size + self._config.max_overflow,
+                        command_timeout=self._config.pool_timeout,
+                        max_inactive_connection_lifetime=self._config.pool_recycle,
+                        init=self._init_connection,
+                    )
+                else:
+                    self._pool = await asyncpg.create_pool(
+                        host=self._config.host,
+                        port=self._config.port,
+                        database=self._config.name,
+                        user=self._config.user,
+                        password=self._config.password,
+                        min_size=self._config.pool_size,
+                        max_size=self._config.pool_size + self._config.max_overflow,
+                        command_timeout=self._config.pool_timeout,
+                        max_inactive_connection_lifetime=self._config.pool_recycle,
+                        init=self._init_connection,
+                    )
 
                 logger.info(
                     "Database connection pool initialized",

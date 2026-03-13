@@ -211,7 +211,7 @@ async def smart_oracle(query, best_filename_from_qdrant) -> str:
                         },
                         {"text": f"User Query: {query}"},
                     ],
-                    model="gemini-2.0-flash-001",
+                    model="gemini-2.0-flash-lite",
                     max_output_tokens=8192,
                 )
 

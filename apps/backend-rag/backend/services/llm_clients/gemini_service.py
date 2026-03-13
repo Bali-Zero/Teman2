@@ -1,7 +1,7 @@
 """
 Gemini Zantara Service (Italian Strategic Persona) with OpenRouter Fallback
 
-Primary: Google Gemini API (gemini-2.0-flash-001)
+Primary: Google Gemini API (gemini-2.0-flash-lite)
 Fallback: OpenRouter free models when quota exceeded (429)
 
 UPDATED 2025-12-23:
@@ -22,12 +22,12 @@ logger = logging.getLogger(__name__)
 
 
 class GeminiJakselService:
-    def __init__(self, model_name: str = "gemini-2.0-flash-001"):
+    def __init__(self, model_name: str = "gemini-2.0-flash-lite"):
         """
         Initialize Gemini Service with Jaksel Persona and OpenRouter fallback.
 
         Args:
-            model_name: "gemini-2.0-flash-001" (Fast/Medium thinking) or "gemini-2.0-pro-exp" (High thinking)
+            model_name: "gemini-2.0-flash-lite" (Fast/Medium thinking) or "gemini-2.0-pro-exp" (High thinking)
 
         Note:
             - Primary: 3 Flash Preview (fast, cost-effective)
