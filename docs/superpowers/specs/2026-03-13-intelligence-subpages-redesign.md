@@ -14,16 +14,19 @@
 
 ### Tokens (replace all old `var(--background*)`, `var(--foreground*)`, `var(--accent)`)
 
-| Old token | New token |
-|-----------|-----------|
-| `var(--background)` | `var(--bz-base)` |
-| `var(--background-elevated)` | `var(--bz-elevated)` |
-| `var(--background-secondary)` | `var(--bz-surface)` |
-| `var(--foreground)` | `var(--bz-text-1)` |
-| `var(--foreground-muted)` | `var(--bz-text-2)` |
-| `var(--accent)` | `var(--bz-accent)` |
-| `var(--border)` | `var(--bz-border)` |
-| `var(--bz-green)` | `var(--bz-green)` (same) |
+All `--bz-*` tokens are defined in `packages/core/styles/bz-tokens.css`.
+
+| Old token | New token | Purpose |
+|-----------|-----------|---------|
+| `var(--background)` | `var(--bz-base)` | Page background (`#0c0c0e`) |
+| `var(--background-elevated)` | `var(--bz-elevated)` | Sidebar/elevated surfaces |
+| `var(--background-secondary)` | `var(--bz-surface)` | Secondary surfaces |
+| `var(--foreground)` | `var(--bz-text-1)` | Primary text |
+| `var(--foreground-muted)` | `var(--bz-text-2)` | Secondary text |
+| *(none — new)* | `var(--bz-text-3)` | Tertiary/hint text (muted labels, timestamps) |
+| `var(--accent)` | `var(--bz-accent)` | Brand accent (`#d4845a`) |
+| `var(--border)` | `var(--bz-border)` | Borders |
+| `var(--bz-green)` | `var(--bz-green)` | Success green (`#4db87a`) |
 
 ### Glassmorphism card base (used throughout)
 ```css
@@ -119,10 +122,50 @@ border-radius: 14px;
       }}
     />
   </div>
-  {/* Shadcn Select components — keep existing, just update trigger className/style */}
-  {/* Filter type select */}
-  {/* Sort select */}
-  {/* Bulk actions — only when selectedItems.size > 0 */}
+  {/* Shadcn Select components — keep existing, just update SelectTrigger className/style */}
+  <Select value={filterType} onValueChange={(v) => setFilterType(v as FilterType)}>
+    <SelectTrigger className="w-[130px] h-8 text-[11px] rounded-xl" style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.07)", color: "var(--bz-text-2)" }}>
+      <Filter className="w-3 h-3 mr-1.5" style={{ color: "var(--bz-text-3)" }} />
+      <SelectValue />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="all">All Types</SelectItem>
+      <SelectItem value="NEW">New Only</SelectItem>
+      <SelectItem value="UPDATED">Updated Only</SelectItem>
+    </SelectContent>
+  </Select>
+  {/* Sort select — same SelectTrigger style */}
+
+  {/* Bulk actions inline — only when selectedItems.size > 0 */}
+  {selectedItems.size > 0 && (
+    <div className="flex gap-2 ml-auto">
+      <button
+        onClick={toggleSelectAll}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-medium transition-all hover:bg-white/[0.04]"
+        style={{ color: "var(--bz-text-2)", border: "1px solid rgba(255,255,255,0.07)" }}
+      >
+        {selectedItems.size === filteredAndSortedItems.length
+          ? <><CheckSquare className="w-3.5 h-3.5" /> Deselect All</>
+          : <><Square className="w-3.5 h-3.5" /> Select All</>}
+      </button>
+      <button
+        onClick={handleBulkApprove}
+        disabled={!!processing}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all"
+        style={{ background: "rgba(77,184,122,0.12)", color: "var(--bz-green)", border: "1px solid rgba(77,184,122,0.2)" }}
+      >
+        <Check className="w-3.5 h-3.5" /> Approve ({selectedItems.size})
+      </button>
+      <button
+        onClick={handleBulkReject}
+        disabled={!!processing}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all"
+        style={{ background: "rgba(239,68,68,0.08)", color: "rgba(239,68,68,0.8)", border: "1px solid rgba(239,68,68,0.2)" }}
+      >
+        <X className="w-3.5 h-3.5" /> Reject ({selectedItems.size})
+      </button>
+    </div>
+  )}
 </div>
 ```
 
@@ -314,22 +357,22 @@ Same glassmorphism structure as Visa Oracle filter bar. Includes search + type f
     </button>
   </div>
 
-  {/* Cover image */}
+  {/* Cover image — use item.cover_image (NOT cover_image_url, which doesn't exist on StagingItem) */}
   <div className="relative aspect-video overflow-hidden">
-    {item.cover_image_url ? (
+    {item.cover_image ? (
       <img
-        src={item.cover_image_url}
+        src={item.cover_image}
         alt={item.title}
         className="w-full h-full object-cover"
         onError={(e) => { e.currentTarget.style.display = "none"; }}
       />
     ) : (
       <div className="w-full h-full flex items-center justify-center"
-        style={{ background: "linear-gradient(135deg, rgba(212,132,90,0.1) 0%, rgba(99,102,241,0.1) 100%)" }}>
+        style={{ background: "linear-gradient(135deg, rgba(212,132,90,0.08) 0%, rgba(99,102,241,0.08) 100%)" }}>
         <ImageIcon className="w-8 h-8" style={{ color: "var(--bz-text-3)" }} />
       </div>
     )}
-    {/* Hover overlay with actions */}
+    {/* Hover overlay with actions — shown on hover (desktop) and always-visible on touch */}
     <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center gap-2"
       style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}>
       <button onClick={() => handlePreview(item)} className="p-2 rounded-lg transition-all hover:bg-white/[0.1]" style={{ border: "1px solid rgba(255,255,255,0.15)" }}>
@@ -340,6 +383,15 @@ Same glassmorphism structure as Visa Oracle filter bar. Includes search + type f
       </button>
       <button onClick={() => setCoverUploadItem(item)} className="p-2 rounded-lg transition-all hover:bg-white/[0.1]" style={{ border: "1px solid rgba(255,255,255,0.15)" }}>
         <ImageIcon className="w-4 h-4 text-white" />
+      </button>
+    </div>
+    {/* Touch fallback: small icon buttons always visible bottom-right */}
+    <div className="absolute bottom-2 right-2 flex gap-1 sm:hidden">
+      <button onClick={() => setEditingItem(item)} className="p-1.5 rounded-md" style={{ background: "rgba(0,0,0,0.7)", border: "1px solid rgba(255,255,255,0.15)" }}>
+        <Edit className="w-3 h-3 text-white" />
+      </button>
+      <button onClick={() => setCoverUploadItem(item)} className="p-1.5 rounded-md" style={{ background: "rgba(0,0,0,0.7)", border: "1px solid rgba(255,255,255,0.15)" }}>
+        <ImageIcon className="w-3 h-3 text-white" />
       </button>
     </div>
   </div>
@@ -385,9 +437,9 @@ Same glassmorphism structure as Visa Oracle filter bar. Includes search + type f
       </SelectContent>
     </Select>
 
-    {/* Publish button */}
+    {/* Publish button — handlePublish takes the full StagingItem object, not (id, position) */}
     <button
-      onClick={() => handlePublish(item.id, getPosition(item.id))}
+      onClick={() => handlePublish(item)}
       disabled={publishingIds.has(item.id)}
       className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-[11px] font-semibold transition-all"
       style={{ background: "rgba(212,132,90,0.12)", color: "var(--bz-accent)", border: "1px solid rgba(212,132,90,0.2)" }}
@@ -428,6 +480,16 @@ Same glassmorphism structure as Visa Oracle filter bar. Includes search + type f
 )}
 ```
 
+### Loading State
+```tsx
+<div className="flex flex-col items-center justify-center h-64 gap-4">
+  <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--bz-accent)" }} />
+  <p className="text-[12px] animate-pulse" style={{ color: "var(--bz-text-3)" }}>
+    Gathering Intelligence...
+  </p>
+</div>
+```
+
 ### Empty State
 Same glassmorphism empty state pattern as Visa Oracle, with `Sparkles` icon and `--bz-accent` colors.
 
@@ -439,19 +501,44 @@ Same glassmorphism empty state pattern as Visa Oracle, with `Sparkles` icon and 
 
 **Layout:** 50/50 split panel (side-by-side on desktop, stacked on mobile via flex-col breakpoint).
 
-### Page wrapper
+### Structural changes
+
+**Remove the sticky `<header>` top bar** (lines 367–390 in source) — it duplicates the workspace layout nav. Replace it with just the left panel header (see below).
+
+**Remove the `<main>` wrapper and the `<h1>Article Composer</h1>` subtitle** (lines 393–407) — the workspace layout already provides page context.
+
+**Remove the `<style>` tag** with custom scrollbar CSS (lines 353–365) — no longer needed.
+
+**Replace `min-h-screen bg-[#111111]`** outer wrapper with clean `space-y-0` or nothing — content fits workspace scroll.
+
+### statusLoading state
 ```tsx
-<div className="flex gap-5 h-full min-h-0">
+if (statusLoading) {
+  return (
+    <div className="flex flex-col items-center justify-center h-64 gap-4">
+      <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--bz-accent)" }} />
+      <p className="text-[12px] animate-pulse" style={{ color: "var(--bz-text-3)" }}>
+        Initializing Intelligence Center...
+      </p>
+    </div>
+  );
+}
+```
+
+### Page wrapper (split panel)
+```tsx
+{/* Mobile: stacked. Desktop (lg+): side by side */}
+<div className="flex flex-col lg:flex-row gap-5 min-h-0">
   {/* Left panel */}
   <div className="flex-1 flex flex-col gap-4 min-w-0">
     {/* ... input panel ... */}
   </div>
 
-  {/* Divider */}
-  <div className="w-px self-stretch" style={{ background: "rgba(255,255,255,0.06)" }} />
+  {/* Divider — hidden on mobile */}
+  <div className="hidden lg:block w-px self-stretch" style={{ background: "rgba(255,255,255,0.06)" }} />
 
   {/* Right panel */}
-  <div className="flex-1 flex flex-col gap-4 min-w-0 overflow-auto">
+  <div className="flex-1 flex flex-col gap-4 min-w-0">
     {/* ... preview panel ... */}
   </div>
 </div>
@@ -549,22 +636,53 @@ const inputFocusStyle = {
 </div>
 ```
 
+### Left Panel — Error state
+Shown when `error` is non-null (after a failed compose attempt):
+```tsx
+{error && (
+  <div className="px-3 py-2.5 rounded-xl text-[12px]"
+    style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "rgba(239,68,68,0.9)" }}>
+    {error}
+  </div>
+)}
+```
+
 ### Right Panel — Result sections
-Each result section (Headline, TL;DR, The Facts, Bali Zero Take, Next Steps, Tags) wrapped in a glassmorphism card with a small header label + content. Edit mode: replace content with textarea, show Save/Cancel buttons.
+The source uses a **single global `isEditing` boolean** (not per-section). Keep that exact logic. The Edit button calls `startEditing()` (no arguments) and puts the entire preview into edit mode. Save calls `saveEdits()`, Cancel calls `cancelEditing()`.
+
+All result sections (Headline, TL;DR, The Facts, Bali Zero Take, Next Steps, Tags) are wrapped in glassmorphism section cards. In view mode: rendered content. In edit mode: textarea with `updateEditedField(path, value)`.
 
 ```tsx
-// Section card pattern:
-<div className="rounded-xl border p-4 space-y-2"
-  style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.07)" }}>
-  <div className="flex items-center justify-between">
-    <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--bz-text-3)" }}>
-      {sectionLabel}
-    </span>
-    <button onClick={() => startEditing(sectionKey)} className="p-1 rounded-md hover:bg-white/[0.04] transition-colors">
-      <Pencil className="w-3 h-3" style={{ color: "var(--bz-text-3)" }} />
+{/* Single "Edit Article" button — top of right panel, only when result exists and not editing */}
+{result && !isEditing && (
+  <div className="flex justify-end">
+    <button
+      onClick={startEditing}
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-medium transition-all hover:bg-white/[0.04]"
+      style={{ color: "var(--bz-text-2)", border: "1px solid rgba(255,255,255,0.07)" }}
+    >
+      <Pencil className="w-3.5 h-3.5" /> Edit Article
     </button>
   </div>
-  {/* content or textarea */}
+)}
+{isEditing && (
+  <div className="flex gap-2 justify-end">
+    <button onClick={cancelEditing} className="px-3 py-1.5 rounded-xl text-[11px]" style={{ color: "var(--bz-text-3)" }}>Cancel</button>
+    <button onClick={saveEdits} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold"
+      style={{ background: "rgba(77,184,122,0.12)", color: "var(--bz-green)", border: "1px solid rgba(77,184,122,0.2)" }}>
+      <Save className="w-3.5 h-3.5" /> Save Changes
+    </button>
+  </div>
+)}
+
+{/* Section card pattern (view mode example): */}
+<div className="rounded-xl border p-4 space-y-2"
+  style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.07)" }}>
+  <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--bz-text-3)" }}>
+    {sectionLabel}
+  </span>
+  {/* view mode: rendered content */}
+  {/* edit mode: textarea with updateEditedField(path, value) */}
 </div>
 ```
 
@@ -623,11 +741,23 @@ Replace every occurrence in all three files:
 | `border-[var(--border)]` | inline style `borderColor: "var(--bz-border)"` |
 | `text-[var(--accent)]` | inline style `color: "var(--bz-accent)"` |
 | `bg-[var(--accent)]/10` | inline style `background: "rgba(212,132,90,0.1)"` |
+| `bg-[var(--accent)]/20` | inline style `background: "rgba(212,132,90,0.2)"` |
+| `border-[var(--accent)]/20` | inline style `borderColor: "rgba(212,132,90,0.2)"` |
+| `border-[var(--accent)]/30` | inline style `borderColor: "rgba(212,132,90,0.3)"` |
+| `text-[var(--accent)]/90` | inline style `color: "rgba(212,132,90,0.9)"` |
 | `border border-[#27272a]` | inline style `border: "1px solid rgba(255,255,255,0.07)"` |
+| `bg-[#111]` / `bg-[#111111]` | inline style `background: "var(--bz-base)"` |
 | `bg-[#181818]` | inline style `background: "rgba(255,255,255,0.03)"` |
 | `bg-[#262626]` | inline style `background: "rgba(255,255,255,0.04)"` |
+| `bg-[#101010]` | inline style `background: "var(--bz-elevated)"` |
 | `text-[#f5f5f5]` | inline style `color: "var(--bz-text-1)"` |
 | `text-[#737373]` | inline style `color: "var(--bz-text-3)"` |
+| `text-[#a3a3a3]` | inline style `color: "var(--bz-text-2)"` |
+| `border-[#27272a]` | inline style `borderColor: "rgba(255,255,255,0.07)"` |
+| `text-[#6366f1]` (indigo accent in composer) | inline style `color: "var(--bz-accent)"` |
+| `focus:border-[#6366f1]` | use `onFocus`/`onBlur` with `borderColor: "var(--bz-accent)"` |
+| `text-green-500` / `bg-green-500/10` | inline style `color: "var(--bz-green)"` / `background: "rgba(77,184,122,0.1)"` |
+| `border-green-500/40` | inline style `borderColor: "rgba(77,184,122,0.4)"` |
 | Shadcn `<Card>/<CardHeader>/<CardContent>` | plain `<div>` with glassmorphism inline styles |
 | Shadcn `<Button>` (where replaceable) | plain `<button>` with inline styles |
 
