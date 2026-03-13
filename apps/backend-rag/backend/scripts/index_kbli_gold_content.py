@@ -32,11 +32,13 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+from backend.core.collection_registry import resolve_collection_name
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
 # --- Config ---
-COLLECTION_NAME = "kbli_2025_final"
+COLLECTION_NAME = resolve_collection_name("kbli_2025_final")
 EMBEDDING_MODEL = "text-embedding-3-small"
 EMBED_BATCH_SIZE = 20
 BATCH_SIZE = 20
@@ -224,26 +226,30 @@ def build_embedding_text(code: str, gold: dict, base: dict) -> str:
 
 def build_payload(code: str, gold: dict, base: dict, embedding_text: str) -> dict:
     """Build Qdrant payload matching existing kbli_2025_final schema."""
+    description = gold.get("whatItMeans") or base.get("uraian", "")
     return {
         "text": embedding_text,
-        "metadata": {
-            "kode": code,
-            "judul": base.get("judul", ""),
-            "prefix_2": code[:2],
-            "prefix_3": code[:3],
-            "digit_count": len(code),
-            "sources": ["GOLD_EDITORIAL", "BPS_7_2025", "PP_28_2025"],
-            "doc_type": "kbli_gold",
-            "version": "GOLD_2026",
-            "sektor": base.get("sektor_id", ""),
-            "pma_status": base.get("pma_status", ""),
-            "pma_max_asing": base.get("pma_max_asing", ""),
-            "has_gold_content": True,
-            "gold_fields": [k for k in gold if k not in ("tka_positions",)],
-            "has_tka_info": bool(gold.get("tka_positions")),
-            "tka_position_count": len(gold.get("tka_positions", [])),
-            "indexed_at": "",  # filled at upsert time
-        },
+        "content": embedding_text,
+        "kode": code,
+        "kode_kbli": code,
+        "kode_kbli_2025": code,
+        "judul": base.get("judul", ""),
+        "description": description,
+        "prefix_2": code[:2],
+        "prefix_3": code[:3],
+        "digit_count": len(code),
+        "sources": ["GOLD_EDITORIAL", "BPS_7_2025", "PP_28_2025"],
+        "doc_type": "kbli_gold",
+        "version": "GOLD_2026",
+        "sektor": base.get("sektor_id", ""),
+        "section": base.get("sektor_id", ""),
+        "pma_status": base.get("pma_status", ""),
+        "pma_max_asing": base.get("pma_max_asing", ""),
+        "has_gold_content": True,
+        "gold_fields": [k for k in gold if k not in ("tka_positions",)],
+        "has_tka_info": bool(gold.get("tka_positions")),
+        "tka_position_count": len(gold.get("tka_positions", [])),
+        "indexed_at": "",  # filled at upsert time
     }
 
 
