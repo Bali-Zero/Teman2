@@ -18,7 +18,6 @@ from typing import Any
 import asyncpg
 import httpx
 import psutil
-import redis
 
 from backend.app.core.config import settings
 from backend.app.core.service_health import ServiceStatus, service_registry
@@ -65,7 +64,7 @@ class UnifiedHealthService:
         self.service_registry = service_registry
         self.start_time = time.time()
         self.http_client: httpx.AsyncClient | None = None
-        self.redis_client: redis.Redis | None = None
+        self.redis_client: Any | None = None
         self._check_cache: dict[str, tuple[float, HealthCheckResult]] = {}
         self._cache_ttl = 5.0  # Cache results for 5 seconds
 
@@ -73,13 +72,17 @@ class UnifiedHealthService:
         """Initialize HTTP and Redis clients"""
         self.http_client = httpx.AsyncClient(timeout=10.0)
 
-        # Initialize Redis if available
-        if settings.redis_url:
-            try:
-                self.redis_client = redis.from_url(settings.redis_url)
-                self.redis_client.ping()
-            except Exception as e:
-                logger.warning(f"Redis not available for health checks: {e}")
+        # Get Redis client from centralized RedisManager
+        from backend.core.redis_manager import RedisManager
+
+        manager = RedisManager.get_instance()
+        client = manager.get_sync_client()
+        if client is not None:
+            self.redis_client = client
+            manager.register_component("health_service", "active")
+        else:
+            manager.register_component("health_service", "no_redis")
+            logger.warning("Redis not available for health checks")
 
     async def close(self) -> None:
         """Cleanup resources"""
@@ -165,16 +168,18 @@ class UnifiedHealthService:
         """Check Redis cache connection"""
         start = time.time()
         try:
-            if not settings.redis_url:
-                return HealthCheckResult(
-                    name="redis",
-                    status="skipped",
-                    message="REDIS_URL not set",
-                    timestamp=time.time(),
-                )
-
             if not self.redis_client:
-                self.redis_client = redis.from_url(settings.redis_url)
+                # Try to get from RedisManager if not yet initialized
+                from backend.core.redis_manager import RedisManager
+                client = RedisManager.get_instance().get_sync_client()
+                if client is None:
+                    return HealthCheckResult(
+                        name="redis",
+                        status="skipped",
+                        message="Redis not available via RedisManager",
+                        timestamp=time.time(),
+                    )
+                self.redis_client = client
 
             self.redis_client.ping()
             latency = (time.time() - start) * 1000

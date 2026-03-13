@@ -1010,6 +1010,17 @@ async def initialize_services(app: FastAPI) -> None:
 
     logger.info("🚀 Initializing ZANTARA RAG services...")
 
+    # 0. RedisManager (must be first — all Redis consumers depend on it)
+    try:
+        from backend.core.redis_manager import RedisManager
+
+        redis_manager = RedisManager.get_instance()
+        redis_manager.initialize()
+        app.state.redis_manager = redis_manager
+        logger.info(f"RedisManager initialized (available={redis_manager.available})")
+    except Exception as e:
+        logger.warning(f"RedisManager initialization failed: {e} — Redis features disabled")
+
     # 1. Critical services (fail-fast)
     search_service, ai_client = await _init_critical_services(app)
 

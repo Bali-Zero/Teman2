@@ -12,6 +12,7 @@ import json
 import logging
 import uuid
 from datetime import timedelta
+from typing import Any
 
 import redis.asyncio as redis
 
@@ -29,27 +30,62 @@ class SessionService:
     - Automatic cleanup of expired sessions
     """
 
-    def __init__(self, redis_url: str, ttl_hours: int = 24):
+    def __init__(self, redis_url: str | None = None, ttl_hours: int = 24, redis_client: Any | None = None):
         """
         Initialize SessionService
 
         Args:
-            redis_url: Redis connection URL (e.g., redis://host:port)
+            redis_url: Redis connection URL (deprecated, use redis_client or RedisManager)
             ttl_hours: Session expiry time in hours (default: 24)
+            redis_client: Pre-configured async Redis client (from RedisManager)
         """
+        self.ttl = timedelta(hours=ttl_hours)
+
+        if redis_client is not None:
+            self.redis = redis_client
+            self._register_component("active")
+            logger.info(f"SessionService initialized via RedisManager ({ttl_hours}h TTL)")
+            return
+
+        # Fallback: get from RedisManager
         try:
-            self.redis = redis.from_url(
-                redis_url,
-                decode_responses=True,
-                encoding="utf-8",
-                socket_connect_timeout=5,
-                socket_timeout=5,
-            )
-            self.ttl = timedelta(hours=ttl_hours)
-            logger.info(f"✅ SessionService initialized with {ttl_hours}h TTL")
-        except Exception as e:
-            logger.error(f"❌ Failed to initialize SessionService: {e}")
-            raise
+            from backend.core.redis_manager import RedisManager
+            manager = RedisManager.get_instance()
+            client = manager.get_async_client()
+            if client is not None:
+                self.redis = client
+                self._register_component("active")
+                logger.info(f"SessionService initialized via RedisManager ({ttl_hours}h TTL)")
+                return
+        except Exception:
+            pass
+
+        # Legacy fallback: create own connection
+        if redis_url:
+            try:
+                self.redis = redis.from_url(
+                    redis_url,
+                    decode_responses=True,
+                    encoding="utf-8",
+                    socket_connect_timeout=5,
+                    socket_timeout=5,
+                )
+                self._register_component("active_legacy")
+                logger.info(f"SessionService initialized with direct URL ({ttl_hours}h TTL)")
+                return
+            except Exception as e:
+                logger.error(f"Failed to initialize SessionService: {e}")
+                raise
+
+        raise ValueError("SessionService requires redis_client, RedisManager, or redis_url")
+
+    @staticmethod
+    def _register_component(status: str) -> None:
+        try:
+            from backend.core.redis_manager import RedisManager
+            RedisManager.get_instance().register_component("session_service", status)
+        except Exception:
+            pass
 
     async def health_check(self) -> bool:
         """Check if Redis connection is healthy"""

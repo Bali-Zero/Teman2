@@ -31,22 +31,19 @@ class RateLimiter:
         self.redis_available = False
         self.redis_client = None
 
-        # Try to connect to Redis
-        from backend.app.core.config import settings
+        # Get sync Redis client from centralized RedisManager
+        from backend.core.redis_manager import RedisManager
 
-        redis_url = settings.redis_url
-        if redis_url:
-            try:
-                import redis
-
-                self.redis_client = redis.from_url(redis_url, decode_responses=True)
-                self.redis_client.ping()
-                self.redis_available = True
-                logger.info("✅ Rate limiter using Redis")
-            except Exception as e:
-                logger.warning(f"⚠️ Rate limiter using memory: {e}")
+        manager = RedisManager.get_instance()
+        client = manager.get_sync_client()
+        if client is not None:
+            self.redis_client = client
+            self.redis_available = True
+            manager.register_component("rate_limiter", "active")
+            logger.info("Rate limiter using Redis via RedisManager")
         else:
-            logger.info("ℹ️ Rate limiter using in-memory storage")
+            manager.register_component("rate_limiter", "fallback_memory")
+            logger.info("Rate limiter using in-memory storage")
 
     def is_allowed(self, key: str, limit: int, window: int) -> tuple[bool, dict]:
         """
