@@ -31,9 +31,9 @@ primary_region = 'sin'
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = false
+  auto_stop_machines = 'stop'
   auto_start_machines = true
-  min_machines_running = 1
+  min_machines_running = 0
   kill_timeout = 300
 
   [http_service.concurrency]
@@ -49,6 +49,6 @@ primary_region = 'sin'
     path = '/health'
 
 [[vm]]
-  memory = '4gb'
+  memory = '2gb'
   cpu_kind = 'shared'
   cpus = 2
