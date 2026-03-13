@@ -3,7 +3,7 @@ from collections.abc import AsyncGenerator
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from backend.services.misc.clarification_service import ClarificationService
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +49,7 @@ class IntelligentRouter:
 
         # Lazy import to avoid circular dependency
         from backend.services.rag.agentic import create_agentic_rag
+
         self.orchestrator = create_agentic_rag(
             retriever=search_service,
             db_pool=db_pool,

@@ -14,8 +14,8 @@ if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 from backend.app.models import TierLevel
-from backend.core.collection_registry import resolve_collection_name
 from backend.app.modules.knowledge.service import KnowledgeService
+from backend.core.collection_registry import resolve_collection_name
 
 
 @pytest.fixture
