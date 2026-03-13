@@ -83,13 +83,13 @@ export default function DashboardPage() {
         text: `${p.client} · ${p.title || p.status}`,
         tag:
           p.status === "completed"
-            ? "COMPLETATA"
+            ? "COMPLETED"
             : p.daysRemaining !== undefined && p.daysRemaining < 7
-              ? "URGENTE"
+              ? "URGENT"
               : p.status === "documents"
-                ? "DOCUMENTI"
+                ? "DOCUMENTS"
                 : undefined,
-        timestamp: new Date().toLocaleTimeString("it-IT", {
+        timestamp: new Date().toLocaleTimeString("en-US", {
           hour: "2-digit",
           minute: "2-digit",
         }),
@@ -105,28 +105,28 @@ export default function DashboardPage() {
         {
           icon: "📁",
           value: stats.activeCases,
-          label: "Pratiche Attive",
+          label: "Active Cases",
           trend: "▲ team",
           colorVariant: "green",
         },
         {
           icon: "⏰",
           value: stats.criticalDeadlines,
-          label: "Scadenze Critiche",
-          trend: "alert attivi",
+          label: "Critical Deadlines",
+          trend: "active alerts",
           colorVariant: "red",
         },
         {
           icon: "💰",
           value: "—",
-          label: "Fatture Pending",
-          trend: "vedi accounting",
+          label: "Pending Invoices",
+          trend: "see accounting",
           colorVariant: "yellow",
         },
         {
           icon: "🤖",
           value: "46",
-          label: "Agenti AI",
+          label: "AI Agents",
           trend: "100% uptime",
           colorVariant: "blue",
         },
@@ -137,29 +137,29 @@ export default function DashboardPage() {
         {
           icon: "✅",
           value: "—",
-          label: "Pagate MTD",
-          trend: "vedi metriche",
+          label: "Paid MTD",
+          trend: "see metrics",
           colorVariant: "green",
         },
         {
           icon: "🔴",
           value: "—",
           label: "Overdue",
-          trend: "urgente",
+          trend: "urgent",
           colorVariant: "red",
         },
         {
           icon: "⏳",
           value: "—",
           label: "Pending",
-          trend: "in attesa",
+          trend: "awaiting",
           colorVariant: "yellow",
         },
         {
           icon: "💶",
           value: "—",
-          label: "Ricavi MTD",
-          trend: "mese corrente",
+          label: "Revenue MTD",
+          trend: "current month",
           colorVariant: "blue",
         },
       ];
@@ -169,29 +169,29 @@ export default function DashboardPage() {
         {
           icon: "✅",
           value: "—",
-          label: "Clienti Compliant",
-          trend: "aggiornato",
+          label: "Compliant Clients",
+          trend: "up to date",
           colorVariant: "green",
         },
         {
           icon: "⏰",
           value: "—",
-          label: "Scadenze <7gg",
-          trend: "urgente",
+          label: "Due <7 days",
+          trend: "urgent",
           colorVariant: "red",
         },
         {
           icon: "📋",
           value: "—",
-          label: "Dichiarazioni Pending",
-          trend: "in coda",
+          label: "Pending Filings",
+          trend: "queued",
           colorVariant: "yellow",
         },
         {
           icon: "📌",
           value: "—",
-          label: "Alert Pajak",
-          trend: "da verificare",
+          label: "Tax Alerts",
+          trend: "to verify",
           colorVariant: "blue",
         },
       ];
@@ -201,29 +201,29 @@ export default function DashboardPage() {
         {
           icon: "📝",
           value: "—",
-          label: "Articoli Pubblicati",
-          trend: "questo mese",
+          label: "Published Articles",
+          trend: "this month",
           colorVariant: "green",
         },
         {
           icon: "✍️",
           value: "—",
           label: "In Review",
-          trend: "in coda",
+          trend: "queued",
           colorVariant: "red",
         },
         {
           icon: "📧",
           value: "—",
-          label: "Iscritti Newsletter",
+          label: "Newsletter Subs",
           trend: "delta",
           colorVariant: "yellow",
         },
         {
           icon: "🎯",
           value: "—",
-          label: "Lead Nuovi",
-          trend: "questa settimana",
+          label: "New Leads",
+          trend: "this week",
           colorVariant: "blue",
         },
       ];
@@ -233,29 +233,29 @@ export default function DashboardPage() {
       {
         icon: "📁",
         value: stats.activeCases,
-        label: "Mie Pratiche",
-        trend: "assegnate",
+        label: "My Cases",
+        trend: "assigned",
         colorVariant: "green",
       },
       {
         icon: "⏰",
         value: stats.criticalDeadlines,
-        label: "Stalled >14gg",
-        trend: "da sbloccare",
+        label: "Stalled >14d",
+        trend: "to unblock",
         colorVariant: "red",
       },
       {
         icon: "📄",
         value: "—",
-        label: "Doc Mancanti",
-        trend: "da caricare",
+        label: "Missing Docs",
+        trend: "to upload",
         colorVariant: "yellow",
       },
       {
         icon: "👥",
         value: "—",
-        label: "Clienti Assegnati",
-        trend: "attivi",
+        label: "Assigned Clients",
+        trend: "active",
         colorVariant: "blue",
       },
     ];
@@ -282,16 +282,16 @@ export default function DashboardPage() {
   if (isError) {
     return (
       <div className="p-4 rounded-xl border border-[#c45c78]/25 bg-[rgba(196,92,120,0.06)]">
-        <h3 className="font-semibold text-[#c45c78]">Errore Dashboard</h3>
+        <h3 className="font-semibold text-[#c45c78]">Dashboard Error</h3>
         <p className="text-sm text-[#c45c78]/70 mt-1">
-          Impossibile caricare i dati della dashboard.
+          Failed to load dashboard data.
         </p>
         <button
           onClick={() => refetch()}
           className="mt-3 px-4 py-2 bg-[#c45c78] text-white rounded-lg hover:opacity-90 transition-opacity inline-flex items-center gap-2 text-sm"
         >
           <RefreshCw className="w-4 h-4" />
-          Riprova
+          Retry
         </button>
       </div>
     );
@@ -332,8 +332,8 @@ export default function DashboardPage() {
                 pratiche={practices.map(
                   (p): PraticaPreview => ({
                     id: p.id,
-                    title: p.title || "Sconosciuto",
-                    client: p.client || "Cliente Sconosciuto",
+                    title: p.title || "Unknown",
+                    client: p.client || "Unknown Client",
                     status: p.status,
                     daysRemaining: p.daysRemaining,
                     completedAt:
@@ -348,13 +348,13 @@ export default function DashboardPage() {
               {/* Right: Intel Normativo */}
               <div className="glass-base glass-blue p-3.5">
                 <h4 className="text-[9px] font-bold text-[#4a8ec4]/65 tracking-[.1em] mb-2.5">
-                  INTEL NORMATIVO
+                  REGULATORY INTEL
                 </h4>
                 <div className="flex flex-col gap-2">
                   {[
-                    "Nuova circolare Imigrasi KITAS B211A",
-                    "PPh deadline 31 marzo — 8 clienti",
-                    "KBLI 2025 — 3 pratiche da aggiornare",
+                    "New immigration circular KITAS B211A",
+                    "PPh deadline March 31 — 8 clients",
+                    "KBLI 2025 — 3 cases to update",
                   ].map((item) => (
                     <div
                       key={item}
