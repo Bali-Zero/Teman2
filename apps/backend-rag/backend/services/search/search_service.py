@@ -63,11 +63,14 @@ from backend.services.search.search_filters import build_search_filter
 # Collections that use named vectors ("dense" + "bm25") instead of unnamed vectors.
 # When doing dense-only fallback, these require vector_name="dense".
 NAMED_VECTOR_COLLECTIONS = {
+    "legal_unified",
+    "tax_genius",
     "tax_genius_hybrid",
     "training_conversations_hybrid",
     "legal_unified_hybrid",
+    "legal_unified_hybrid_hybrid",
     "kbli_2025_final",
-    "kbli_unified",
+    "kbli_2025_final_hybrid",
     "visa_oracle",
 }
 

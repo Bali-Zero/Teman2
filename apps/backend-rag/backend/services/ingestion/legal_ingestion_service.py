@@ -11,6 +11,7 @@ from typing import Any
 from backend.app.metrics import metrics_collector
 from backend.app.models import TierLevel
 from backend.core.bm25_vectorizer import BM25Vectorizer
+from backend.core.collection_registry import resolve_collection_name
 from backend.core.embeddings import create_embeddings_generator
 from backend.core.legal import (
     HierarchicalIndexer,
@@ -46,7 +47,8 @@ class LegalIngestionService:
         self.chunker = LegalChunker()
         self.sparse_vectorizer = BM25Vectorizer()
         self.embedder = create_embeddings_generator()
-        self.vector_db = QdrantClient(collection_name=collection_name)
+        resolved_collection_name = resolve_collection_name(collection_name)
+        self.vector_db = QdrantClient(collection_name=resolved_collection_name)
         self.classifier = TierClassifier()
 
         # Initialize Hierarchical Indexer
@@ -62,7 +64,11 @@ class LegalIngestionService:
         self.kg_extractor = None
         self.kg_enabled = True  # Always enabled per documenti legali
 
-        logger.info(f"LegalIngestionService initialized (collection: {collection_name})")
+        logger.info(
+            "LegalIngestionService initialized (collection: %s -> %s)",
+            collection_name,
+            resolved_collection_name,
+        )
 
     async def ingest_legal_document(
         self,
@@ -102,9 +108,11 @@ class LegalIngestionService:
             )
 
             # Override collection if specified
-            target_collection = collection_name or self.vector_db.collection_name
+            target_collection = resolve_collection_name(
+                collection_name or self.vector_db.collection_name
+            )
             if collection_name:
-                self.vector_db = QdrantClient(collection_name=collection_name)
+                self.vector_db = QdrantClient(collection_name=target_collection)
                 # CRITICAL: Update indexer's client reference too!
                 if self.indexer:
                     self.indexer.qdrant = self.vector_db

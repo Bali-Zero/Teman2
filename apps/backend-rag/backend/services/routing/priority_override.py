@@ -13,16 +13,11 @@ CollectionName = Literal[
     "kbli_2025_final",
     "tax_genius",
     "legal_architect",
-    "zantara_books",
+    "legal_unified",
     "tax_updates",
     "tax_knowledge",
-    "property_listings",
-    "property_knowledge",
     "legal_updates",
     "bali_zero_pricing_hybrid",
-    "kb_indonesian",
-    "cultural_insights",
-    "bali_zero_team",
     "balizero_news",
 ]
 

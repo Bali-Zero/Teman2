@@ -18,12 +18,13 @@ import redis.asyncio as aioredis
 import structlog
 
 from nuzantara_graph.config import Settings
+from nuzantara_graph.services.collection_registry import resolve_collection_name
 
 logger = structlog.get_logger()
 
 KEY_PREFIX = "v6:cache:"
 STREAM_PREFIX = "v6:stream:"
-SEMANTIC_COLLECTION = "v6_cache_vectors"
+SEMANTIC_COLLECTION = resolve_collection_name("v6_cache_vectors")
 SEMANTIC_SIMILARITY_THRESHOLD = 0.92  # cosine similarity — higher = stricter matching
 
 

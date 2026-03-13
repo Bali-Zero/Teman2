@@ -141,7 +141,8 @@ TOOL_USAGE_POLICY: str = """\
 **NEWS & INTEL (BaliZero Articles):**
 For questions about recent regulation changes, news updates, or intel briefings:
 → CALL vector_search(query="...", collection="balizero_news")
-→ The collection has 175+ curated intel articles covering: immigration updates, tax changes, bali news, business regulations, property market, events
+→ `balizero_news` is the canonical logical name; the runtime registry resolves it to the live intel collection automatically
+→ The collection has curated intel articles covering: immigration updates, tax changes, bali news, business regulations, property market, events
 → Example: "Ci sono novità sulle regole di immigrazione?" → CALL vector_search(query="immigration regulation update", collection="balizero_news")
 → Example: "What changed recently for property investors?" → CALL vector_search(query="property investment regulation changes", collection="balizero_news")
 

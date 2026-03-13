@@ -13,13 +13,13 @@ from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import Filter, FieldCondition, MatchValue, ScoredPoint
 
 from nuzantara_graph.config import Settings
+from nuzantara_graph.services.collection_registry import (
+    DEFAULT_COLLECTION,
+    resolve_collection_name,
+)
 from nuzantara_schemas.state import RetrievedDocument
 
 logger = structlog.get_logger()
-
-# Default collection for general documents
-DEFAULT_COLLECTION = "nuzantara_docs"
-
 
 class VectorStore:
     """Qdrant vector search with embedding-based and text-based retrieval.
@@ -68,9 +68,10 @@ class VectorStore:
         client = await self._get_client()
 
         qdrant_filter = _build_filter(filters) if filters else None
+        resolved_collection = resolve_collection_name(collection)
 
         results: list[ScoredPoint] = await client.search(
-            collection_name=collection,
+            collection_name=resolved_collection,
             query_vector=query_embedding,
             limit=top_k,
             query_filter=qdrant_filter,

@@ -127,9 +127,9 @@ class KGAgenticOrchestrator:
         self.collection_routing = {
             "visa": ["visa_oracle"],
             "immigration": ["visa_oracle"],
-            "company": ["legal_unified_hybrid", "kbli_2025_final"],
-            "business": ["legal_unified_hybrid", "kbli_2025_final"],
-            "tax": ["tax_genius_hybrid"],
+            "company": ["legal_unified", "kbli_2025_final"],
+            "business": ["legal_unified", "kbli_2025_final"],
+            "tax": ["tax_genius"],
             "kbli": ["kbli_2025_final"],
             "pricing": ["bali_zero_pricing_hybrid"],
         }
@@ -457,15 +457,15 @@ class KGAgenticOrchestrator:
             elif entity_type in ["kbli", "nib", "oss"]:
                 collections.add("kbli_2025_final")
             elif entity_type in ["pph", "ppn", "pbb", "npwp", "tax"]:
-                collections.add("tax_genius_hybrid")
+                collections.add("tax_genius")
             elif entity_type in ["pt_pma", "pt_pmdn", "badan_usaha", "undang_undang"]:
-                collections.add("legal_unified_hybrid")
+                collections.add("legal_unified")
 
         # If golden route matched, add relevant collections
         if kg_context.golden_route:
             route_id = kg_context.golden_route.route_id
             if "restaurant" in route_id or "company" in route_id:
-                collections.update(["legal_unified_hybrid", "kbli_2025_final", "visa_oracle"])
+                collections.update(["legal_unified", "kbli_2025_final", "visa_oracle"])
             elif "work" in route_id or "kitas" in route_id:
                 collections.add("visa_oracle")
 

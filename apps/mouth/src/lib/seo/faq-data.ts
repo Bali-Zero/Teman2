@@ -15,7 +15,7 @@ export const HOMEPAGE_FAQS: FAQItem[] = [
     question:
       "What is PT PMA and how much does it cost to set up in Indonesia?",
     answer:
-      "PT PMA (Penanaman Modal Asing) is a foreign-owned limited liability company in Indonesia. The minimum investment requirement is IDR 10 billion (~$620,000 USD), with paid-up capital of IDR 2.5 billion per shareholder. Bali Zero charges from IDR 20,000,000 for PT PMA registration, which includes NIB, business licenses, and bank account setup. The process takes 4-8 weeks.",
+      "PT PMA (Penanaman Modal Asing) is a foreign-owned limited liability company in Indonesia. Capital requirements, ownership rules, timelines, and service pricing depend on the business activity and current regulations. For live pricing or current setup requirements, use the official pricing and advisory flow rather than static website copy.",
     category: "business",
   },
   {
@@ -34,19 +34,19 @@ export const HOMEPAGE_FAQS: FAQItem[] = [
   {
     question: "What is the Golden Visa Indonesia and who qualifies?",
     answer:
-      "Golden Visa is a premium 5-10 year residence permit launched in 2024 for high-net-worth individuals. Categories include: Investors ($350,000+ investment), Second Home Buyers ($350,000+ property), Directors of companies with $2.5M+ investment, and Specialists. Benefits include multiple entry, long-term stay, and family inclusion. Bali Zero charges IDR 50,000,000 for Golden Visa processing.",
+      "Golden Visa is a long-stay residence pathway for qualifying investors and high-net-worth individuals. Eligibility, investment thresholds, and processing rules can change, so qualification should always be checked against the current immigration framework and the latest Bali Zero service guidance.",
     category: "immigration",
   },
   {
     question: "How long can I stay in Bali on a tourist visa?",
     answer:
-      "Visa on Arrival (VOA) allows 30 days, extendable once for 30 more days (60 total). C1 Tourism visa allows 60 days. For longer stays, you need KITAS (work permit), retirement visa (55+), Second Home Visa (proof of $130,000+), or Golden Visa. Digital nomads can use VOA with extensions or apply for E33G Digital Nomad KITAS.",
+      "Short-stay options depend on your nationality and the visa class you use. Entry periods, extension rules, and long-stay alternatives should always be checked against the current immigration rules before travel.",
     category: "immigration",
   },
   {
     question: "What are the tax obligations for expats living in Indonesia?",
     answer:
-      "If you spend 183+ days in Indonesia within 12 months, you become a tax resident. You must: register for NPWP (tax ID), file annual SPT by March 31, and pay progressive income tax (5-35%). Indonesia has tax treaties with many countries. The new Coretax digital platform (2025-2026) modernizes tax registration and filing.",
+      "Tax obligations depend on residency status, income source, treaty position, and the current tax platform rules. Residency thresholds and filing duties should be verified against the latest tax guidance before acting.",
     category: "tax",
   },
   {
@@ -58,7 +58,7 @@ export const HOMEPAGE_FAQS: FAQItem[] = [
   {
     question: "What is the Second Home Visa for Indonesia?",
     answer:
-      "Second Home Visa is a 5-10 year residence permit for wealthy individuals. Requirements: proof of $130,000+ in bank accounts (not investment required), health insurance, and clean criminal record. Unlike Golden Visa, you don't need to invest in Indonesia - just prove you have funds. Bali Zero charges IDR 25,000,000 for processing.",
+      "Second Home Visa is a long-stay residence option aimed at financially established applicants. Financial proof, eligibility rules, and processing standards should be checked against the latest immigration policy before applying.",
     category: "immigration",
   },
 ];
@@ -74,13 +74,13 @@ export const IMMIGRATION_FAQS: FAQItem[] = [
   {
     question: "How long does KITAS processing take?",
     answer:
-      "KITAS processing typically takes 3-6 weeks depending on type: Employee KITAS (C314) is fastest at 3-4 weeks, Director/Investor KITAS (C312/C313) takes 4-6 weeks, and Retirement KITAS takes 3-4 weeks. Processing includes RPTKA approval (for work permits), ITAS application, and biometric registration.",
+      "KITAS processing time depends on the visa type, sponsor readiness, document quality, and current immigration workload. Exact timelines should be treated as operational estimates, not fixed promises.",
     category: "immigration",
   },
   {
     question: "What is KITAP and how do I qualify?",
     answer:
-      "KITAP (Kartu Izin Tinggal Tetap) is a Permanent Stay Permit. To qualify, you must hold KITAS continuously for 5 years, have Indonesian spouse (for marriage KITAP), or meet special criteria. KITAP is valid for 5 years and renewable indefinitely. It allows you to work without RPTKA renewal. Bali Zero charges IDR 25,000,000 for KITAP processing.",
+      "KITAP (Kartu Izin Tinggal Tetap) is a permanent stay permit for applicants who meet the relevant long-stay or family-based eligibility rules. Qualification pathways and operational requirements should be checked against the current immigration framework.",
     category: "immigration",
   },
 ];
@@ -102,7 +102,7 @@ export const BUSINESS_FAQS: FAQItem[] = [
   {
     question: "Do I need a local partner for PT PMA?",
     answer:
-      "Most PT PMA businesses can be 100% foreign-owned. However, some sectors have restrictions: media (max 49% foreign), recruitment agencies (partner required), certain retail/distribution (size limits). The current regulation (PP 10/2021 and updates) allows most services and trading to be 100% foreign-owned.",
+      "Some PT PMA businesses can be fully foreign-owned, while others have ownership caps, licensing gates, or sector-specific restrictions. The answer depends on the exact KBLI code and current investment rules, so it should be checked case by case.",
     category: "business",
   },
 ];

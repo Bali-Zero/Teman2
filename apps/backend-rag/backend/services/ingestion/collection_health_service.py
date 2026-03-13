@@ -18,6 +18,11 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
+from backend.core.collection_registry import (
+    canonicalize_collection_name,
+    get_canonical_collection_names,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -84,23 +89,9 @@ class CollectionHealthService:
         """
         self.search_service = search_service
 
-        # Per-collection metrics tracking
         self.metrics = {
-            # Initialize 14 collections
-            "bali_zero_pricing_hybrid": self._init_metrics("bali_zero_pricing_hybrid"),
-            "visa_oracle": self._init_metrics("visa_oracle"),
-            "kbli_2025_final": self._init_metrics("kbli_2025_final"),
-            "tax_genius": self._init_metrics("tax_genius"),
-            "legal_architect": self._init_metrics("legal_architect"),
-            "kb_indonesian": self._init_metrics("kb_indonesian"),
-            "balizero_news": self._init_metrics("balizero_news"),
-            "zantara_books": self._init_metrics("zantara_books"),
-            "cultural_insights": self._init_metrics("cultural_insights"),
-            "tax_updates": self._init_metrics("tax_updates"),
-            "tax_knowledge": self._init_metrics("tax_knowledge"),
-            "property_listings": self._init_metrics("property_listings"),
-            "property_knowledge": self._init_metrics("property_knowledge"),
-            "legal_updates": self._init_metrics("legal_updates"),
+            collection_name: self._init_metrics(collection_name)
+            for collection_name in get_canonical_collection_names()
         }
 
         # Staleness thresholds (in days)
@@ -137,11 +128,12 @@ class CollectionHealthService:
             result_count: Number of results returned
             avg_score: Average confidence score of results
         """
-        if collection_name not in self.metrics:
+        canonical_name = canonicalize_collection_name(collection_name)
+        if canonical_name not in self.metrics:
             logger.warning(f"Unknown collection: {collection_name}")
             return
 
-        metrics = self.metrics[collection_name]
+        metrics = self.metrics[canonical_name]
         metrics["query_count"] += 1
         metrics["last_queried"] = datetime.now().isoformat()
 
@@ -171,11 +163,12 @@ class CollectionHealthService:
 
         for metric in health_metrics:
             collection_name = metric.get("collection_name")
-            if not collection_name or collection_name not in self.metrics:
+            canonical_name = canonicalize_collection_name(collection_name or "")
+            if not collection_name or canonical_name not in self.metrics:
                 logger.warning(f"Unknown collection in batch: {collection_name}")
                 continue
 
-            metrics = self.metrics[collection_name]
+            metrics = self.metrics[canonical_name]
             metrics["query_count"] += 1
             metrics["last_queried"] = timestamp
 

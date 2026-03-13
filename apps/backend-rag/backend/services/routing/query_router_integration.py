@@ -116,12 +116,11 @@ class QueryRouterIntegration:
         # Detect pricing query
         is_pricing = self.is_pricing_query(query)
         if is_pricing:
-            # Route to bali_zero_pricing_hybrid (29 docs) with legal_unified_hybrid as fallback
             collection_name = "bali_zero_pricing_hybrid"
             logger.info("💰 PRICING QUERY DETECTED → Routing to bali_zero_pricing_hybrid (primary)")
             return {
                 "collection_name": collection_name,
-                "collections": ["bali_zero_pricing_hybrid", "legal_unified_hybrid"],
+                "collections": ["bali_zero_pricing_hybrid", "legal_unified"],
                 "confidence": 0.95,
                 "is_pricing": True,
             }
@@ -148,11 +147,11 @@ class QueryRouterIntegration:
                     "visa": "visa_oracle",
                     "kbli": "kbli_2025_final",
                     "tax": "tax_genius",
-                    "legal": "legal_unified_hybrid",
-                    "property": "property_unified",
+                    "legal": "legal_unified",
+                    "property": "legal_unified",
                     "business": "training_conversations_hybrid",
                     "circular": "immigration_circulars",
-                    "books": "zantara_books",
+                    "books": "visa_oracle",
                     "news": "balizero_news",
                 }
                 for domain in active_domains:
