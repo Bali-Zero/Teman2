@@ -2,7 +2,6 @@
 Unit tests for team_activity router - targeting 90% coverage
 """
 
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -43,11 +42,11 @@ class TestVerifyAdmin:
         assert verify_admin({"email": "Admin@Zantara.IO"}) is True
 
     def test_verify_admin_invalid_email(self):
-        """Test admin verification with non-admin email"""
+        """Test admin verification with non-admin email (role=client)"""
         from backend.app.routers.team_activity import verify_admin
 
-        assert verify_admin({"email": "user@example.com"}) is False
-        assert verify_admin({"email": "notadmin@balizero.com"}) is False
+        assert verify_admin({"email": "user@example.com", "role": "client"}) is False
+        assert verify_admin({"email": "notadmin@balizero.com", "role": "client"}) is False
 
 
 # ============================================================================
@@ -519,8 +518,9 @@ class TestTeamStatusEndpoint:
         assert data[1]["is_online"] is False
 
     def test_get_team_status_forbidden_non_admin(self, client, test_app, mock_timesheet_service):
-        """Test team status with non-admin user"""
-        test_app.state.admin_user = {"email": "user@example.com", "role": "user"}
+        """Test team status with non-admin user (role=client)"""
+        test_app.state.current_user = {"email": "user@example.com", "role": "client"}
+        test_app.state.admin_user = {"email": "user@example.com", "role": "client"}
         with patch(
             "backend.services.analytics.team_timesheet_service.get_timesheet_service",
             return_value=mock_timesheet_service,
@@ -641,8 +641,9 @@ class TestDailyHoursEndpoint:
         assert "Invalid date format" in response.json()["detail"]
 
     def test_get_daily_hours_forbidden_non_admin(self, client, test_app, mock_timesheet_service):
-        """Test daily hours with non-admin user"""
-        test_app.state.admin_user = {"email": "user@example.com", "role": "user"}
+        """Test daily hours with non-admin user (role=client)"""
+        test_app.state.current_user = {"email": "user@example.com", "role": "client"}
+        test_app.state.admin_user = {"email": "user@example.com", "role": "client"}
         with patch(
             "backend.services.analytics.team_timesheet_service.get_timesheet_service",
             return_value=mock_timesheet_service,
@@ -747,8 +748,9 @@ class TestWeeklySummaryEndpoint:
         assert "Invalid date format" in response.json()["detail"]
 
     def test_get_weekly_summary_forbidden(self, client, test_app, mock_timesheet_service):
-        """Test weekly summary with non-admin user"""
-        test_app.state.admin_user = {"email": "user@example.com", "role": "user"}
+        """Test weekly summary with non-admin user (role=client)"""
+        test_app.state.current_user = {"email": "user@example.com", "role": "client"}
+        test_app.state.admin_user = {"email": "user@example.com", "role": "client"}
         with patch(
             "backend.services.analytics.team_timesheet_service.get_timesheet_service",
             return_value=mock_timesheet_service,
@@ -853,8 +855,9 @@ class TestMonthlySummaryEndpoint:
         assert "Invalid date format" in response.json()["detail"]
 
     def test_get_monthly_summary_forbidden(self, client, test_app, mock_timesheet_service):
-        """Test monthly summary with non-admin user"""
-        test_app.state.admin_user = {"email": "user@example.com", "role": "user"}
+        """Test monthly summary with non-admin user (role=client)"""
+        test_app.state.current_user = {"email": "user@example.com", "role": "client"}
+        test_app.state.admin_user = {"email": "user@example.com", "role": "client"}
         with patch(
             "backend.services.analytics.team_timesheet_service.get_timesheet_service",
             return_value=mock_timesheet_service,
@@ -976,8 +979,9 @@ class TestExportTimesheetEndpoint:
         assert response.status_code == 422  # Validation error
 
     def test_export_timesheet_forbidden(self, client, test_app, mock_timesheet_service):
-        """Test export timesheet with non-admin user"""
-        test_app.state.admin_user = {"email": "user@example.com", "role": "user"}
+        """Test export timesheet with non-admin user (role=client)"""
+        test_app.state.current_user = {"email": "user@example.com", "role": "client"}
+        test_app.state.admin_user = {"email": "user@example.com", "role": "client"}
         with patch(
             "backend.services.analytics.team_timesheet_service.get_timesheet_service",
             return_value=mock_timesheet_service,
