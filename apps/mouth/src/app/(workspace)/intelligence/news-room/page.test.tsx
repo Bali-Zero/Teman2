@@ -215,7 +215,7 @@ describe("NewsRoomPage", () => {
       ).toBeInTheDocument();
     });
 
-    const syncButton = screen.getByText("Sync Sources");
+    const syncButton = screen.getByText("Sync");
     await userEvent.click(syncButton);
 
     expect(intelligenceApi.getPendingItems).toHaveBeenCalledTimes(2);
@@ -308,7 +308,7 @@ describe("NewsRoomPage", () => {
 
       // Should show selected count
       await waitFor(() => {
-        expect(screen.getByText(/selected/i)).toBeInTheDocument();
+        expect(screen.getByText(/Publish \(/)).toBeInTheDocument();
       });
     });
 
@@ -327,7 +327,7 @@ describe("NewsRoomPage", () => {
         await userEvent.click(selectAllButton);
 
         await waitFor(() => {
-          expect(screen.getByText(/selected/i)).toBeInTheDocument();
+          expect(screen.getByText(/Publish \(/)).toBeInTheDocument();
         });
       }
     });
@@ -390,7 +390,7 @@ describe("NewsRoomPage", () => {
 
       // Wait for selection UI to update
       await waitFor(() => {
-        expect(screen.getByText(/selected/i)).toBeInTheDocument();
+        expect(screen.getByText(/Publish \(/)).toBeInTheDocument();
       });
 
       // Find bulk publish button (should appear with count)
