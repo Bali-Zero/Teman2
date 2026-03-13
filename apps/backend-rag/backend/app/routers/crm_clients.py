@@ -10,7 +10,7 @@ from datetime import date, datetime
 from typing import Any
 
 import asyncpg
-from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel, EmailStr, field_validator
 
 from backend.app.dependencies import get_current_user, get_database_pool
@@ -268,6 +268,7 @@ class ClientResponse(BaseModel):
 @audit_change(entity_type="client", change_type="create")
 async def create_client(
     client: ClientCreate,
+    background_tasks: BackgroundTasks,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ) -> ClientResponse:
@@ -369,23 +370,20 @@ async def create_client(
 
                     # 🚀 Auto-create Google Drive folder for new client
                     try:
-                        import asyncio
-
                         from backend.services.integrations.service_account_drive_service import (
                             ServiceAccountDriveService,
                         )
 
                         drive_service = ServiceAccountDriveService()
-                        asyncio.create_task(
-                            drive_service.create_client_folder(
-                                client_id=new_client["id"],
-                                client_name=client.full_name,
-                                client_type=client.client_type,
-                                db_pool=db_pool,
-                            )
+                        background_tasks.add_task(
+                            drive_service.create_client_folder,
+                            client_id=new_client["id"],
+                            client_name=client.full_name,
+                            client_type=client.client_type,
+                            db_pool=db_pool,
                         )
                         logger.info(
-                            f"🚀 Drive folder creation initiated for client {new_client['id']}"
+                            f"🚀 Drive folder creation queued for client {new_client['id']}"
                         )
                     except Exception as e:
                         logger.error(f"Drive folder creation failed: {e}")
