@@ -9,7 +9,6 @@ import json
 import logging
 from typing import Any
 
-import redis.asyncio as redis
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from jose import JWTError, jwt
 
@@ -208,11 +207,17 @@ async def redis_listener() -> Any:
     """
     Background task to listen for Redis Pub/Sub events and forward to WebSockets
     """
-    if not settings.redis_url:
-        logger.warning("⚠️ Redis URL not set. WebSocket notifications disabled.")
+    from backend.core.redis_manager import RedisManager
+
+    manager = RedisManager.get_instance()
+    client = manager.get_async_client()
+    if client is None:
+        logger.warning("Redis not available via RedisManager. WebSocket notifications disabled.")
+        manager.register_component("websocket_pubsub", "disabled")
         return
 
-    redis_client = redis.from_url(settings.redis_url, decode_responses=True)
+    manager.register_component("websocket_pubsub", "active")
+    redis_client = client
     pubsub = redis_client.pubsub()
 
     # Subscribe to channels
@@ -283,4 +288,4 @@ async def redis_listener() -> Any:
         logger.error(f"❌ Redis listener error: {e}")
     finally:
         await pubsub.close()
-        await redis_client.close()
+        # Don't close redis_client — it's shared via RedisManager

@@ -147,21 +147,19 @@ class CacheService:
         # Instance-level in-memory cache
         self._memory_cache = LRUCache()
 
-        # Try to connect to Redis
-        from backend.app.core.config import settings
+        # Get Redis client from centralized RedisManager
+        from backend.core.redis_manager import RedisManager
 
-        redis_url = settings.redis_url
-        if redis_url:
-            try:
-                import redis.asyncio as aioredis
-
-                self.redis_client = aioredis.from_url(redis_url, decode_responses=True)
-                self.redis_available = True
-                logger.info("✅ Redis cache connected (async)")
-            except Exception as e:
-                logger.warning(f"⚠️ Redis not available, using memory cache: {e}")
+        manager = RedisManager.get_instance()
+        client = manager.get_async_client()
+        if client is not None:
+            self.redis_client = client
+            self.redis_available = True
+            manager.register_component("cache_service", "active")
+            logger.info("Redis cache connected via RedisManager (async)")
         else:
-            logger.info("ℹ️ No REDIS_URL, using in-memory cache")
+            manager.register_component("cache_service", "fallback_memory")
+            logger.info("No Redis available, using in-memory cache")
 
     def _is_serializable(self, obj: Any) -> bool:
         """Check if an object is JSON serializable."""
@@ -227,8 +225,14 @@ class CacheService:
             self.stats["errors"] += 1
             return None
 
-    async def set(self, key: str, value: Any, ttl: int = DEFAULT_CACHE_TTL) -> bool:
-        """Set value in cache with TTL (seconds)"""
+    async def set(self, key: str, value: Any, ttl: int | None = None) -> bool:
+        """Set value in cache with TTL (seconds). Uses RedisManager TTL strategy if ttl not provided."""
+        if ttl is None:
+            # Extract prefix from key format "zantara:{prefix}:{hash}"
+            from backend.core.redis_manager import get_ttl
+            parts = key.split(":")
+            prefix = parts[1] if len(parts) >= 3 else "default"
+            ttl = get_ttl(prefix)
         try:
             if self.redis_available and self.redis_client:
                 await self.redis_client.setex(key, ttl, json.dumps(value, cls=DecimalEncoder))

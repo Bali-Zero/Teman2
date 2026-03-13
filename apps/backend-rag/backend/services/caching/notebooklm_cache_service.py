@@ -16,9 +16,6 @@ Expected savings: ~80% API calls
 import hashlib
 import json
 import logging
-import os
-
-import redis.asyncio as redis
 
 logger = logging.getLogger(__name__)
 
@@ -41,36 +38,34 @@ class NotebookLMCacheService:
         await cache.set(question, answer)
     """
 
-    def __init__(self, redis_url: str | None = None):
-        """
-        Initialize cache service.
-
-        Args:
-            redis_url: Redis connection URL (defaults to env var REDIS_URL)
-        """
-        self.redis_url = redis_url or os.getenv("REDIS_URL", "redis://localhost:6379")
-        self.redis_client: redis.Redis | None = None
+    def __init__(self) -> None:
+        """Initialize cache service. Redis client obtained from RedisManager."""
+        self.redis_client = None
         self.ttl_seconds = 30 * 24 * 60 * 60  # 30 days
         self.cache_prefix = "notebooklm:qa:"
 
     async def initialize(self) -> None:
-        """Initialize Redis connection."""
+        """Initialize Redis connection via RedisManager."""
         try:
-            self.redis_client = await redis.from_url(
-                self.redis_url, encoding="utf-8", decode_responses=True
-            )
-            # Test connection
-            await self.redis_client.ping()
-            logger.info("✅ NotebookLM cache initialized (Redis connected)")
+            from backend.core.redis_manager import RedisManager
+
+            manager = RedisManager.get_instance()
+            client = manager.get_async_client()
+            if client is not None:
+                self.redis_client = client
+                manager.register_component("notebooklm_cache", "active")
+                logger.info("NotebookLM cache initialized via RedisManager")
+            else:
+                manager.register_component("notebooklm_cache", "disabled")
+                logger.warning("Redis not available for NotebookLM cache")
         except Exception as e:
-            logger.error(f"❌ Redis connection failed: {e}")
+            logger.error(f"NotebookLM cache init failed: {e}")
             self.redis_client = None
 
     async def close(self) -> None:
-        """Close Redis connection."""
-        if self.redis_client:
-            await self.redis_client.close()
-            logger.info("✅ NotebookLM cache closed")
+        """Close Redis connection. No-op — connection managed by RedisManager."""
+        # Don't close the shared RedisManager client
+        pass
 
     def _hash_question(self, question: str) -> str:
         """
