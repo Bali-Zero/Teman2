@@ -41,6 +41,19 @@ class GeminiJakselService:
         # Initialize GenAI client lazily to avoid gRPC fork issues
         self._genai_client = None
 
+        # Pre-compute history from examples for "Few-Shot" prompting
+        self.few_shot_history = []
+        for ex in FEW_SHOT_EXAMPLES:
+            self.few_shot_history.append(
+                {
+                    "role": ex["role"],
+                    "content": ex["content"],
+                }
+            )
+
+        # OpenRouter client for fallback (lazy loaded)
+        self._openrouter_client = None
+
     def _get_genai_client(self) -> Any:
         """Lazy load GenAI client to ensure process safety (gRPC fork safety)."""
         if self._genai_client is None:
@@ -62,19 +75,6 @@ class GeminiJakselService:
         """Check availability dynamically."""
         client = self._get_genai_client()
         return client.is_available if client else False
-
-        # Pre-compute history from examples for "Few-Shot" prompting
-        self.few_shot_history = []
-        for ex in FEW_SHOT_EXAMPLES:
-            self.few_shot_history.append(
-                {
-                    "role": ex["role"],
-                    "content": ex["content"],
-                }
-            )
-
-        # OpenRouter client for fallback (lazy loaded)
-        self._openrouter_client = None
 
     def _get_openrouter_client(self) -> Any:
         """Lazy load OpenRouter client"""
