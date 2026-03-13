@@ -521,8 +521,8 @@ class TestFinalAnswerGeneration:
             tool_execution_counter={},
         )
 
-        # Stub response should be replaced
-        assert "Mi dispiace" in result_state.final_answer
+        # Stub response should be replaced with fallback (in English)
+        assert "sorry" in result_state.final_answer.lower() or "understand" in result_state.final_answer.lower()
 
 
 # ============================================================================
