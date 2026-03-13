@@ -12,12 +12,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import asyncpg
 import pytest
 
-# Ensure backend is in path
 backend_path = Path(__file__).resolve().parents[2]
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
-
-
 # Aggressively mock problematic modules before any backend imports
 def mock_problematic_modules():
     # Mock PIL only (numpy 1.26.4 is installed, use real numpy)

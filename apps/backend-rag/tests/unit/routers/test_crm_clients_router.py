@@ -23,12 +23,6 @@ import pytest
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
-# Ensure backend is in path
-backend_path = Path(__file__).parent.parent.parent.parent
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
-
-
 @pytest.fixture(autouse=True)
 def mock_dependencies(monkeypatch):
     """Aggressively mock problematic dependencies to prevent import errors"""

@@ -3,7 +3,6 @@ Unit tests for Identity Service
 100% coverage target with comprehensive mocking
 """
 
-import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
@@ -11,11 +10,6 @@ from unittest.mock import AsyncMock, patch
 import bcrypt
 import pytest
 from jose import jwt
-
-# Ensure backend is in path
-backend_path = Path(__file__).parent.parent.parent
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
 
 from backend.app.modules.identity.models import User
 from backend.app.modules.identity.service import IdentityService

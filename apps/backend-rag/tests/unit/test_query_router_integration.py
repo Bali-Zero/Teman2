@@ -11,29 +11,11 @@ from unittest.mock import MagicMock, Mock
 
 import pytest
 
-# Ensure backend is in path
 backend_path = Path(__file__).resolve().parents[2]
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
-
-
-# Aggressively mock problematic modules before any backend imports
+# Minimal mocking - only mock modules that cause import errors
+# The routing modules only depend on backend.app.core.constants
 def mock_problematic_modules():
-    # Mock PIL only (numpy 1.26.4 is installed, use real numpy)
-    sys.modules["numpy._typing"] = MagicMock()
-    sys.modules["numpy._typing._char_codes"] = MagicMock()
-
-    # Mock scipy
-    scipy_mock = types.ModuleType("scipy")
-    sys.modules["scipy"] = scipy_mock
-    sys.modules["scipy.sparse"] = MagicMock()
-
-    # Mock sklearn
-    sklearn_mock = types.ModuleType("sklearn")
-    sys.modules["sklearn"] = sklearn_mock
-    sys.modules["sklearn.metrics"] = MagicMock()
-    sys.modules["sklearn.metrics.pairwise"] = MagicMock()
-
+    # Mock PIL to avoid import issues
     for m in ["PIL", "PIL.Image", "PIL.ImageMode"]:
         mock = types.ModuleType(m)
         if m == "PIL":
@@ -41,39 +23,6 @@ def mock_problematic_modules():
             mock.Image = types.ModuleType("PIL.Image")
             mock.Image.Image = MagicMock
         sys.modules[m] = mock
-
-    # Mock backend services to avoid cascade
-    for m in [
-        "backend.services.oracle",
-        "backend.services.search",
-        "backend.services.rag",
-        "backend.services.rag.agentic",
-        "backend.services.ingestion",
-        "backend.services.analytics",
-        "backend.services.llm_clients",
-        "backend.services.pricing",
-        "qdrant_client",
-    ]:
-        sys.modules[m] = MagicMock()
-
-    # Special handling for monitoring to allow submodule imports
-    monitoring_mock = types.ModuleType("backend.services.monitoring")
-    monitoring_mock.__path__ = []
-    sys.modules["backend.services.monitoring"] = monitoring_mock
-
-    # Special handling for misc to allow submodule imports
-    misc_mock = types.ModuleType("backend.services.misc")
-    misc_mock.__path__ = []
-    sys.modules["backend.services.misc"] = misc_mock
-    sys.modules["backend.services.misc.clarification_service"] = MagicMock()
-    sys.modules["backend.services.misc.context_suggestion_service"] = MagicMock()
-    sys.modules["backend.services.misc.followup_service"] = MagicMock()
-
-    # Special handling for routing to allow submodule imports
-    routing_mock = types.ModuleType("backend.services.routing")
-    routing_mock.__path__ = []
-    sys.modules["backend.services.routing"] = routing_mock
-    sys.modules["backend.services.routing.intelligent_router"] = MagicMock()
 
 
 mock_problematic_modules()
@@ -90,6 +39,9 @@ class TestQueryRouterIntegration:
         router = Mock()
         router.route.return_value = "visa_oracle"
         router.route_with_confidence.return_value = ("visa_oracle", 0.85, ["visa_oracle"])
+        # Mock keyword_matcher.detect_multi_domain to return a list (not a Mock)
+        router.keyword_matcher = Mock()
+        router.keyword_matcher.detect_multi_domain.return_value = ["visa"]
         return router
 
     @pytest.fixture

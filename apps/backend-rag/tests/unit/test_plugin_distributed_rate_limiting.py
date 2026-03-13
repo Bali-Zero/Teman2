@@ -3,16 +3,10 @@ Unit tests for Distributed Rate Limiting with Redis
 Tests Redis-based rate limiting in PluginExecutor
 """
 
-import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
-# Ensure backend is in path
-backend_path = Path(__file__).parent.parent.parent
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
 
 from backend.core.plugins.executor import PluginExecutor
 from backend.core.plugins.plugin import (
