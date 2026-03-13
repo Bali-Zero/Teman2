@@ -14,7 +14,7 @@ import math
 from i18n_dashboard import T, set_language, get_language
 
 API_URL = os.environ.get("PRIME_API_URL", "https://nuzantara-rag.fly.dev")
-GMAPS_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "AIzaSyCWPZb1_aSV_NVvS9ZSR0Mlq9El8qO8uLQ")
+GMAPS_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "")
 
 st.set_page_config(page_title="Nuzantara Prime", layout="wide", page_icon="💎")
 
@@ -2411,4 +2411,3 @@ elif mode == "📌 Saved Parcels":
                                 st.rerun()
                             finally:
                                 conn_d.close()
-

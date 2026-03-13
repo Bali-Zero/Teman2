@@ -14,6 +14,7 @@ if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 from backend.app.models import TierLevel
+from backend.core.collection_registry import resolve_collection_name
 from backend.app.modules.knowledge.service import KnowledgeService
 
 
@@ -64,6 +65,29 @@ def knowledge_service(mock_qdrant_client, mock_router):
 
 class TestKnowledgeService:
     """Tests for KnowledgeService"""
+
+    def test_init_uses_resolved_collection_names(self, mock_qdrant_client, mock_router):
+        """KnowledgeService should bind logical collection keys to live Qdrant names."""
+        with (
+            patch("backend.app.modules.knowledge.service.QdrantClient") as mock_qdrant,
+            patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder,
+            patch("backend.app.modules.knowledge.service.QueryRouter", return_value=mock_router),
+        ):
+            mock_qdrant.return_value = mock_qdrant_client
+            mock_embedder_instance = MagicMock()
+            mock_embedder_instance.provider = "test"
+            mock_embedder_instance.dimensions = 384
+            mock_embedder_instance.generate_query_embedding = MagicMock(return_value=[0.1] * 384)
+            mock_embedder.return_value = mock_embedder_instance
+
+            KnowledgeService()
+
+        requested_collection_names = {
+            call.kwargs["collection_name"] for call in mock_qdrant.call_args_list
+        }
+        assert resolve_collection_name("kbli_2025_final") in requested_collection_names
+        assert resolve_collection_name("legal_unified") in requested_collection_names
+        assert "kbli_2025_final" not in requested_collection_names
 
     def test_init(self, knowledge_service):
         """Test initialization"""

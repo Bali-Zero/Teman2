@@ -11,7 +11,7 @@
 
 ```bash
 # Google API Key (for Imagen 4 image generation)
-GOOGLE_API_KEY=AIzaSyDWakPSp-49nGIGAjJmAp_YpgZ06Ve_04Q
+GOOGLE_API_KEY=<REDACTED_GOOGLE_API_KEY>
 
 # Backend API (se necessario)
 NUZANTARA_API_KEY=your_internal_api_key
@@ -54,7 +54,7 @@ python3 -c "import os; print('GOOGLE_API_KEY:', 'SET' if os.getenv('GOOGLE_API_K
 
 ```bash
 cd apps/bali-intel-scraper
-export GOOGLE_API_KEY="AIzaSyDWakPSp-49nGIGAjJmAp_YpgZ06Ve_04Q"
+export GOOGLE_API_KEY="<REDACTED_GOOGLE_API_KEY>"
 python3 -c "
 from scripts.gemini_api_image_generator import GeminiAPIImageGenerator
 import asyncio

@@ -19,6 +19,7 @@ from typing import Any
 from backend.app.core.config import settings
 from backend.app.models import TierLevel
 from backend.core.cache import cached
+from backend.core.collection_registry import resolve_collection_name
 from backend.core.qdrant_db import QdrantClient
 from backend.services.routing.query_router import QueryRouter
 
@@ -67,34 +68,75 @@ class KnowledgeService:
 
         # Initialize collections pointing to Qdrant
         logger.info("🔄 Initializing Qdrant collection clients...")
+        resolved_collections = {
+            "bali_zero_pricing_hybrid": resolve_collection_name("bali_zero_pricing_hybrid"),
+            "visa_oracle": resolve_collection_name("visa_oracle"),
+            "kbli_2025_final": resolve_collection_name("kbli_2025_final"),
+            "tax_genius": resolve_collection_name("tax_genius"),
+            "legal_architect": resolve_collection_name("legal_architect"),
+            "legal_unified": resolve_collection_name("legal_unified"),
+            "kb_indonesian": resolve_collection_name("kb_indonesian"),
+            "balizero_news": resolve_collection_name("balizero_news"),
+            "zantara_books": resolve_collection_name("zantara_books"),
+            "cultural_insights": resolve_collection_name("cultural_insights"),
+            "tax_updates": resolve_collection_name("tax_updates"),
+            "tax_knowledge": resolve_collection_name("tax_knowledge"),
+            "property_listings": resolve_collection_name("property_listings"),
+            "property_knowledge": resolve_collection_name("property_knowledge"),
+            "legal_updates": resolve_collection_name("legal_updates"),
+            "legal_intelligence": resolve_collection_name("legal_intelligence"),
+        }
         self.collections = {
             "bali_zero_pricing_hybrid": QdrantClient(
-                qdrant_url=qdrant_url, collection_name="bali_zero_pricing_hybrid"
+                qdrant_url=qdrant_url,
+                collection_name=resolved_collections["bali_zero_pricing_hybrid"],
             ),
-            "visa_oracle": QdrantClient(qdrant_url=qdrant_url, collection_name="visa_oracle"),
+            "visa_oracle": QdrantClient(
+                qdrant_url=qdrant_url, collection_name=resolved_collections["visa_oracle"]
+            ),
             "kbli_2025_final": QdrantClient(
-                qdrant_url=qdrant_url, collection_name="kbli_2025_final"
+                qdrant_url=qdrant_url, collection_name=resolved_collections["kbli_2025_final"]
             ),
-            "tax_genius": QdrantClient(qdrant_url=qdrant_url, collection_name="tax_genius"),
-            "legal_architect": QdrantClient(qdrant_url=qdrant_url, collection_name="legal_unified"),
-            "legal_unified": QdrantClient(qdrant_url=qdrant_url, collection_name="legal_unified"),
-            "kb_indonesian": QdrantClient(qdrant_url=qdrant_url, collection_name="knowledge_base"),
-            "balizero_news": QdrantClient(qdrant_url=qdrant_url, collection_name="balizero_news"),
-            "zantara_books": QdrantClient(qdrant_url=qdrant_url, collection_name="knowledge_base"),
+            "tax_genius": QdrantClient(
+                qdrant_url=qdrant_url, collection_name=resolved_collections["tax_genius"]
+            ),
+            "legal_architect": QdrantClient(
+                qdrant_url=qdrant_url, collection_name=resolved_collections["legal_architect"]
+            ),
+            "legal_unified": QdrantClient(
+                qdrant_url=qdrant_url, collection_name=resolved_collections["legal_unified"]
+            ),
+            "kb_indonesian": QdrantClient(
+                qdrant_url=qdrant_url, collection_name=resolved_collections["kb_indonesian"]
+            ),
+            "balizero_news": QdrantClient(
+                qdrant_url=qdrant_url, collection_name=resolved_collections["balizero_news"]
+            ),
+            "zantara_books": QdrantClient(
+                qdrant_url=qdrant_url, collection_name=resolved_collections["zantara_books"]
+            ),
             "cultural_insights": QdrantClient(
-                qdrant_url=qdrant_url, collection_name="knowledge_base"
+                qdrant_url=qdrant_url, collection_name=resolved_collections["cultural_insights"]
             ),
-            "tax_updates": QdrantClient(qdrant_url=qdrant_url, collection_name="tax_genius"),
-            "tax_knowledge": QdrantClient(qdrant_url=qdrant_url, collection_name="tax_genius"),
+            "tax_updates": QdrantClient(
+                qdrant_url=qdrant_url, collection_name=resolved_collections["tax_updates"]
+            ),
+            "tax_knowledge": QdrantClient(
+                qdrant_url=qdrant_url, collection_name=resolved_collections["tax_knowledge"]
+            ),
             "property_listings": QdrantClient(
-                qdrant_url=qdrant_url, collection_name="property_unified"
+                qdrant_url=qdrant_url, collection_name=resolved_collections["property_listings"]
             ),
             "property_knowledge": QdrantClient(
-                qdrant_url=qdrant_url, collection_name="property_unified"
+                qdrant_url=qdrant_url,
+                collection_name=resolved_collections["property_knowledge"],
             ),
-            "legal_updates": QdrantClient(qdrant_url=qdrant_url, collection_name="legal_unified"),
+            "legal_updates": QdrantClient(
+                qdrant_url=qdrant_url, collection_name=resolved_collections["legal_updates"]
+            ),
             "legal_intelligence": QdrantClient(
-                qdrant_url=qdrant_url, collection_name="legal_unified"
+                qdrant_url=qdrant_url,
+                collection_name=resolved_collections["legal_intelligence"],
             ),
         }
         logger.info("✅ All Qdrant collection clients initialized")

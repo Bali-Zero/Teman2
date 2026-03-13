@@ -14,6 +14,7 @@ if str(backend_root) not in sys.path:
     sys.path.insert(0, str(backend_root))
 
 from fastapi.testclient import TestClient
+from fastapi.routing import APIRoute
 
 # Import app after path setup
 try:
@@ -101,6 +102,28 @@ def test_router_registration():
     assert "/" in routes
     assert "/api/csrf-token" in routes
     assert "/api/dashboard/stats" in routes
+
+
+def test_router_registration_has_no_duplicate_path_method_pairs():
+    """Route registry should not contain duplicated path/method combinations."""
+    seen: set[tuple[str, tuple[str, ...]]] = set()
+    duplicates: list[tuple[str, tuple[str, ...]]] = []
+
+    for route in app.routes:
+        if not isinstance(route, APIRoute):
+            continue
+
+        methods = set(route.methods or set())
+        if "GET" in methods and "HEAD" in methods:
+            methods.remove("HEAD")
+
+        signature = (route.path, tuple(sorted(methods)))
+        if signature in seen:
+            duplicates.append(signature)
+            continue
+        seen.add(signature)
+
+    assert duplicates == []
 
 
 def test_health_endpoint(client):
