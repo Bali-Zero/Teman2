@@ -926,6 +926,28 @@ async def get_client_profile(
             client_id,
         )
 
+        # Get company documents via company_links
+        company_documents = await conn.fetch(
+            """
+            SELECT
+                cd.id, cd.uuid, cd.company_id, cd.document_type, cd.document_subtype,
+                cd.document_number, cd.document_title, cd.description,
+                cd.issue_date, cd.expiry_date, cd.status,
+                cd.google_drive_file_id, cd.google_drive_file_url,
+                cd.file_name, cd.file_size_kb, cd.mime_type,
+                cd.is_verified, cd.created_at, cd.updated_at,
+                c.company_name
+            FROM company_documents cd
+            JOIN companies c ON cd.company_id = c.id
+            WHERE cd.company_id IN (
+                SELECT company_id FROM client_company_links WHERE client_id = $1
+            )
+            AND cd.status = 'active'
+            ORDER BY c.company_name, cd.document_type, cd.created_at DESC
+            """,
+            client_id,
+        )
+
         return {
             "client": dict(client),
             "family_members": [dict(fm) for fm in family_members],
@@ -933,11 +955,13 @@ async def get_client_profile(
             "expiry_alerts": [dict(a) for a in expiry_alerts],
             "practices": [dict(p) for p in practices],
             "company_links": [dict(cl) for cl in company_links],
+            "company_documents": [dict(cd) for cd in company_documents],
             "stats": {
                 "family_count": len(family_members),
                 "documents_count": len(documents),
                 "practices_count": len(practices),
                 "company_count": len(company_links),
+                "company_documents_count": len(company_documents),
                 "expired_count": sum(1 for a in expiry_alerts if a["alert_color"] == "expired"),
                 "red_alerts": sum(1 for a in expiry_alerts if a["alert_color"] == "red"),
                 "yellow_alerts": sum(1 for a in expiry_alerts if a["alert_color"] == "yellow"),
