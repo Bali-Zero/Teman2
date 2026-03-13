@@ -238,11 +238,22 @@ async def get_dashboard_summary(
                 return fallback
 
         # Parallel fetch all data with per-task timeouts
+        # RBAC: non-admins see only their own assigned practices/stats
         tasks = [
-            _with_timeout(get_practices_stats(user_id, db_pool), DEFAULT_PRACTICE_STATS),
+            _with_timeout(
+                get_practices_stats(user_id=user_id, pool=db_pool, is_admin=is_admin),
+                DEFAULT_PRACTICE_STATS,
+            ),
             _with_timeout(get_interactions_stats(user_id, db_pool), DEFAULT_INTERACTION_STATS),
             _with_timeout(
-                list_practices(status="in_progress", limit=5, user_id=user_id, pool=db_pool), []
+                list_practices(
+                    status="in_progress",
+                    limit=5,
+                    user_id=user_id,
+                    pool=db_pool,
+                    assigned_to=None if is_admin else user_id,
+                ),
+                [],
             ),
             _with_timeout(
                 list_interactions(

@@ -348,15 +348,6 @@ async def list_practices(
     offset = resolve_query_param(offset, 0)
 
     try:
-        # If called directly, we might not have current_user, but we have user_id
-        # If called directly with user_id, we use that (ignoring current_user which might be a Depends object)
-        if user_id or isinstance(current_user, dict):
-            # All users can see all practices (no RBAC filtering)
-            pass
-        else:
-            # All users can see all practices (no RBAC filtering)
-            pass
-
         async with db_pool.acquire() as conn:
             # Build query dynamically
             query_parts = [
@@ -973,6 +964,7 @@ async def get_practices_stats(
     # Support for direct calls from dashboard_summary.py
     user_id: str | None = None,
     pool: Any | None = None,
+    is_admin: bool = False,
 ) -> dict[str, Any]:
     """
     Get overall practice statistics
@@ -981,6 +973,10 @@ async def get_practices_stats(
     - Counts by practice type
     - Revenue metrics
 
+    Access Control:
+    - Admin: sees global stats across all practices
+    - Team member: sees only stats for practices assigned to them
+
     Performance: Cached for 5 minutes to reduce database load.
     """
     # Use provided pool if called directly
@@ -988,59 +984,69 @@ async def get_practices_stats(
         db_pool = pool
 
     try:
-        # If called directly with user_id, we use that (ignoring current_user which might be a Depends object)
+        # Resolve effective user and admin status
+        effective_user: str | None = None
         if user_id:
-            user_id.lower()
+            effective_user = user_id.lower()
         elif isinstance(current_user, dict):
-            # API Call
-            current_user.get("email", "").lower()
-            is_crm_admin(current_user)
+            effective_user = current_user.get("email", "").lower()
+            is_admin = is_admin or is_crm_admin(current_user)
         else:
-            # Fallback
             logger.debug("get_practices_stats called without user context (internal call)")
 
+        # Build RBAC filter: non-admins see only their assigned practices
+        rbac_where = ""
+        rbac_params: list[Any] = []
+        if not is_admin and effective_user:
+            rbac_where = " AND assigned_to = $1"
+            rbac_params = [effective_user]
+
         async with db_pool.acquire() as conn:
-            # Stats are currently global but we could filter by team_member
-            # For now, following existing logic but with pool support
-            # By status
+            # By status (filtered by user for non-admins)
             by_status_rows = await conn.fetch(
-                """
+                f"""
                 SELECT status, COUNT(*) as count
                 FROM practices
+                WHERE 1=1{rbac_where}
                 GROUP BY status
-                """
+                """,
+                *rbac_params,
             )
 
-            # By practice type
+            # By practice type (filtered by user for non-admins)
             by_type_rows = await conn.fetch(
-                """
+                f"""
                 SELECT pt.code, pt.name, COUNT(p.id) as count
                 FROM practices p
                 JOIN practice_types pt ON p.practice_type_id = pt.id
+                WHERE 1=1{rbac_where.replace('assigned_to', 'p.assigned_to')}
                 GROUP BY pt.code, pt.name
                 ORDER BY count DESC
-                """
+                """,
+                *rbac_params,
             )
 
-            # Revenue stats
+            # Revenue stats (filtered by user for non-admins)
             revenue_row = await conn.fetchrow(
-                """
+                f"""
                 SELECT
                     SUM(actual_price) as total_revenue,
                     SUM(CASE WHEN payment_status = 'paid' THEN actual_price ELSE 0 END) as paid_revenue,
                     SUM(CASE WHEN payment_status IN ('unpaid', 'partial') THEN actual_price - COALESCE(paid_amount, 0) ELSE 0 END) as outstanding_revenue
                 FROM practices
-                WHERE actual_price IS NOT NULL
-                """
+                WHERE actual_price IS NOT NULL{rbac_where}
+                """,
+                *rbac_params,
             )
 
-            # Active practices count
+            # Active practices count (filtered by user for non-admins)
             active_row = await conn.fetchrow(
-                """
+                f"""
                 SELECT COUNT(*) as count
                 FROM practices
-                WHERE status IN ('inquiry', 'waiting_documents', 'sending_invoice', 'on_process')
-                """
+                WHERE status IN ('inquiry', 'waiting_documents', 'sending_invoice', 'on_process'){rbac_where}
+                """,
+                *rbac_params,
             )
 
             by_status = {row["status"]: row["count"] for row in by_status_rows}
