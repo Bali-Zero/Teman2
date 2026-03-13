@@ -15,3 +15,4 @@ export {
 export { MiniBarChart } from "./MiniBarChart";
 export { MiniSparkline } from "./MiniSparkline";
 export { CaseDistribution } from "./CaseDistribution";
+export { ZantaraPortalCard } from "./ZantaraPortalCard";
