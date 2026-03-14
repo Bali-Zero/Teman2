@@ -1,5 +1,6 @@
 import os
 import json
+import argparse
 import asyncio
 import logging
 from typing import List, Dict, Any, Optional
@@ -225,7 +226,102 @@ class NuzantaraSEOGuardian:
         logger.info("=== SEO Cycle Complete ===")
         return plan
 
+    async def run_report(self, output_path: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Run the guardian and output structured JSON report.
+        Used by the autonomous agent system.
+        """
+        logger.info("=== SEO Guardian: REPORT MODE ===")
+        plan = await self.run()
+
+        # Enrich with indexing state
+        indexing_state_path = PROJECT_ROOT / "apps" / "evaluator" / "indexing_state.json"
+        indexing_state = {}
+        if indexing_state_path.exists():
+            with open(indexing_state_path) as f:
+                raw = json.load(f)
+                indexing_state = {
+                    "total_submitted": raw.get("total_submitted", 0),
+                    "failed_count": len(raw.get("failed", [])),
+                    "last_run": raw.get("last_run"),
+                }
+
+        report = {
+            "timestamp": date.today().isoformat(),
+            "mode": "report",
+            "seo_plan": plan,
+            "indexing_state": indexing_state,
+            "opportunities": self._extract_opportunities(plan),
+        }
+
+        if output_path:
+            out = Path(output_path)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            with open(out, "w") as f:
+                json.dump(report, f, indent=2, ensure_ascii=False)
+            logger.info("Report saved to %s", out)
+
+        return report
+
+    def _extract_opportunities(self, plan: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Extract actionable opportunities from the SEO plan."""
+        opportunities = []
+
+        # High-impression zero-click pages
+        for gap in plan.get("critical_gaps", []):
+            opportunities.append({
+                "type": "ctr_optimization",
+                "risk": "LOW",
+                "query": gap.get("query", ""),
+                "impressions": gap.get("impressions", 0),
+                "current_ctr": gap.get("ctr", 0),
+                "current_position": gap.get("position", 0),
+                "suggested_action": "update_meta_description",
+            })
+
+        # Indexing gaps
+        indexing_state_path = PROJECT_ROOT / "apps" / "evaluator" / "indexing_state.json"
+        if indexing_state_path.exists():
+            with open(indexing_state_path) as f:
+                state = json.load(f)
+            pending = 1563 - state.get("total_submitted", 0)
+            if pending > 0:
+                opportunities.append({
+                    "type": "indexing_submission",
+                    "risk": "LOW",
+                    "pending_urls": pending,
+                    "suggested_action": "submit_indexing_batch",
+                    "batch_size": min(pending, 50),
+                })
+
+        return opportunities
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Nuzantara SEO Guardian")
+    parser.add_argument(
+        "--mode",
+        choices=["run", "report"],
+        default="run",
+        help="run: standard execution. report: structured JSON output for agent system.",
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default=None,
+        help="Output path for report mode (default: stdout as JSON)",
+    )
+    args = parser.parse_args()
+
+    guardian = NuzantaraSEOGuardian()
+
+    if args.mode == "report":
+        report = asyncio.run(guardian.run_report(output_path=args.output))
+        if not args.output:
+            print(json.dumps(report, indent=2, ensure_ascii=False))
+    else:
+        asyncio.run(guardian.run())
+
 
 if __name__ == "__main__":
-    guardian = NuzantaraSEOGuardian()
-    asyncio.run(guardian.run())
+    main()
