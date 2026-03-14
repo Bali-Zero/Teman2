@@ -5,7 +5,7 @@ import asyncio
 import logging
 from typing import List, Dict, Any, Optional
 from pathlib import Path
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -247,11 +247,11 @@ class NuzantaraSEOGuardian:
                 }
 
         report = {
-            "timestamp": date.today().isoformat(),
+            "timestamp": datetime.now().isoformat(),
             "mode": "report",
             "seo_plan": plan,
             "indexing_state": indexing_state,
-            "opportunities": self._extract_opportunities(plan),
+            "opportunities": self._extract_opportunities(plan, indexing_state),
         }
 
         if output_path:
@@ -263,7 +263,7 @@ class NuzantaraSEOGuardian:
 
         return report
 
-    def _extract_opportunities(self, plan: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _extract_opportunities(self, plan: Dict[str, Any], indexing_state: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """Extract actionable opportunities from the SEO plan."""
         opportunities = []
 
@@ -279,20 +279,23 @@ class NuzantaraSEOGuardian:
                 "suggested_action": "update_meta_description",
             })
 
-        # Indexing gaps
-        indexing_state_path = PROJECT_ROOT / "apps" / "evaluator" / "indexing_state.json"
-        if indexing_state_path.exists():
-            with open(indexing_state_path) as f:
-                state = json.load(f)
-            pending = 1563 - state.get("total_submitted", 0)
-            if pending > 0:
-                opportunities.append({
-                    "type": "indexing_submission",
-                    "risk": "LOW",
-                    "pending_urls": pending,
-                    "suggested_action": "submit_indexing_batch",
-                    "batch_size": min(pending, 50),
-                })
+        # Indexing gaps — use pre-loaded state to avoid double file read
+        total_submitted = (indexing_state or {}).get("total_submitted", 0)
+        if not indexing_state:
+            indexing_state_path = PROJECT_ROOT / "apps" / "evaluator" / "indexing_state.json"
+            if indexing_state_path.exists():
+                with open(indexing_state_path) as f:
+                    total_submitted = json.load(f).get("total_submitted", 0)
+
+        pending = 1563 - total_submitted
+        if pending > 0:
+            opportunities.append({
+                "type": "indexing_submission",
+                "risk": "LOW",
+                "pending_urls": pending,
+                "suggested_action": "submit_indexing_batch",
+                "batch_size": min(pending, 50),
+            })
 
         return opportunities
 
