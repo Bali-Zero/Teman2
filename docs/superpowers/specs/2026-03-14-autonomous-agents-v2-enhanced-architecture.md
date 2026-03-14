@@ -110,6 +110,10 @@ CREATE INDEX idx_agent_events_pending ON agent_events (status, source_domain) WH
 
 **Why not A2A, Kafka, or Redis Streams**: A2A adoption is too early (no mature Python library). Kafka/Redis add infrastructure we don't need at our scale (<100 events/day). PostgreSQL LISTEN/NOTIFY provides real-time if needed later.
 
+**Event polling mechanism**: Commanders poll for events on their cron schedule (daily for most, every 6h for compliance). At <100 events/day, cron-schedule polling is sufficient. No dedicated event dispatcher needed until event volume exceeds ~500/day.
+
+**Note on `consumed_by TEXT[]`**: PostgreSQL array columns work well at low scale. If cross-domain flows grow beyond ~500 events/day, refactor to a normalized `agent_event_consumers` join table for better queryability.
+
 ---
 
 ## 2. Pillar 1: Multi-Agent Orchestration (LangGraph 1.0)
@@ -203,11 +207,15 @@ general_graph.add_node("consolidate", consolidate_results)
 
 **Why wrapper function pattern**: Direct `add_node("name", compiled_subgraph)` has known bugs with state sharing across parent-child boundaries (Issues #4748, #4182). The wrapper function gives explicit control over state transformation.
 
+**Implementation note**: The `revision_count` reducer (`Annotated[int, operator.add]`) increments on ANY state return containing a value — ensure only the validate→decide retry path returns `{"revision_count": 1}`. All other nodes should omit it.
+
+**Session safety guards** (from VIGIL pattern, Section 5.3) must be embedded in the Commander graph as a conditional edge before `act`: `max_actions: 50`, `max_runtime: 600s`. When limits are reached, route to END with a status report instead of continuing.
+
 ### 2.4 Checkpointing Strategy for 2GB RAM
 
 | Context | Checkpointer | Rationale |
 |---------|-------------|-----------|
-| Production (Fly.io) | `AsyncPostgresSaver` | Uses existing nuzantara-postgres. Connection pool via `asyncpg(min_size=2, max_size=10)` |
+| Production (Fly.io) | `AsyncPostgresSaver` | Uses existing nuzantara-postgres. Connection pool via `asyncpg(min_size=2, max_size=10)`. Note: existing KG LangGraph uses sync `PostgresSaver` — migrate to async during Phase 2. |
 | Local dev (Pro) | `SqliteSaver` | Zero network latency, single writer is fine for dev |
 | Cron jobs (OpenClaw) | File-based (`state.json`) | Agents run as scripts, not as persistent services. No need for DB checkpointing |
 
@@ -395,7 +403,7 @@ Based on Paul Iusztin's framework (Dec 2025) and IBM's Trajectory-Informed Memor
 | **Working** | In-memory (LangGraph state) | Current cycle's observations | Per-cycle |
 | **Episodic** | JSONL (`memory.jsonl`) | "Submitted 30 URLs, 28 OK, 2 rate limited" | Permanent, with decay |
 | **Semantic** | Qdrant (`agent_learnings` collection) | "Batch sizes >50 cause rate limiting after 3pm WITA" | Extracted from episodic |
-| **Procedural** | YAML (`corrections.jsonl`) | "Never touch /lifestyle/* pages" | Manual + auto-discovered |
+| **Procedural** | JSONL (`corrections.jsonl`) | "Never touch /lifestyle/* pages" | Manual + auto-discovered |
 
 ### 4.3 Episodic → Semantic Consolidation (LEARN Phase)
 
@@ -593,7 +601,7 @@ Additional for 2GB:
 
 **Cross-domain value**: SEO Guardian → publishes `{keyword_opportunity}` → Content Creator generates article brief → Editorial Review validates → Distribution publishes → SEO Guardian submits to indexing.
 
-### G4: SEO & Growth (IMPLEMENTED — SEO Guardian v1.0)
+### G4: SEO & Growth (V1 IMPLEMENTED — 5-phase loop, V2 adds VALIDATE gate)
 
 | Commander | Captains | Autonomy |
 |-----------|----------|----------|
@@ -667,6 +675,7 @@ Additional for 2GB:
 - [ ] Weekly coordination across all 6 Generals
 - [ ] Cross-domain pattern learning
 - [ ] Autonomy graduation tracking
+- **Note**: This phase is intentionally under-specified. It depends on learnings from Phases 1-5 and will require its own dedicated spec before implementation.
 
 ---
 
