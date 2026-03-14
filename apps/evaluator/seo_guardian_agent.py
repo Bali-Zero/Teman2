@@ -128,7 +128,7 @@ def execute_indexing_batch(batch_size: int, dry_run: bool = False) -> dict:
         cmd.append("--dry-run")
 
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, cwd=str(PROJECT_ROOT))
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=900, cwd=str(PROJECT_ROOT))
         return {
             "success": result.returncode == 0,
             "stdout": result.stdout[-500:] if result.stdout else "",
