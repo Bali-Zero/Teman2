@@ -64,7 +64,7 @@ observe:
     - type: "script" # Python script with structured JSON output
       path: "<path>"
       args: ["--mode", "report"]
-    - type: "mcp" # MCP tool call via mcporter
+    - type: "mcp" # MCP tool called by Claude inside the cron prompt (not shell CLI)
       call: "nuzantara-mcp.<tool>"
     - type: "file" # Read state from file
       path: "<path>"
@@ -80,7 +80,7 @@ decide:
 
 act:
   tools:
-    - "<script or mcporter call>"
+    - "<Python script (shell) or MCP tool (called by Claude in cron prompt)>"
   dry_run: false # Set true for testing
 
 measure:
@@ -118,13 +118,13 @@ delivery:
 
 ### Data Sources
 
-| Source                    | Access Method                             | Frequency |
-| ------------------------- | ----------------------------------------- | --------- |
-| **Google Search Console** | `seo_guardian_core.py` (SA as siteOwner)  | Daily     |
-| **GA4**                   | Analytics Data API (property `505466833`) | Daily     |
-| **KBLI Indexing State**   | `apps/evaluator/indexing_state.json`      | On-demand |
-| **Articles Published**    | `published_articles.json` + git log       | On-demand |
-| **Qdrant KBLI**           | MCP `search_kbli` for content validation  | On-demand |
+| Source                    | Access Method                                                    | Frequency |
+| ------------------------- | ---------------------------------------------------------------- | --------- |
+| **Google Search Console** | `seo_guardian_core.py` (SA as siteOwner)                         | Daily     |
+| **GA4**                   | Analytics Data API (property `505466833`)                        | Daily     |
+| **KBLI Indexing State**   | `apps/evaluator/indexing_state.json`                             | On-demand |
+| **Articles Published**    | `apps/bali-intel-scraper/data/published_articles.json` + git log | On-demand |
+| **Qdrant KBLI**           | MCP `search_kbli` for content validation                         | On-demand |
 
 ### OBSERVE (daily 07:00 WITA)
 
@@ -152,9 +152,9 @@ delivery:
 
 - `apps/evaluator/kbli_indexing_submit.py` — batch Google Indexing API submission
 - `apps/evaluator/articles_indexing_submit.py` — articles submission
-- MCP `compose_article` / `publish_article` — new content
+- MCP `compose_article` / `publish_article` — new content (called by Claude inside cron prompt)
+- MCP `search_kbli` — content validation (called by Claude inside cron prompt)
 - Git commit on `apps/mouth/` — metadata/schema changes
-- `mcporter call nuzantara-mcp.search_kbli` — content validation
 
 ### MEASURE (48h post-action)
 
@@ -212,12 +212,14 @@ Each agent follows the same pattern and directory structure. New agents are adde
 - Write `config.yaml`, initial `state.json`, empty `patterns.json`
 - Create `corrections.jsonl` with base rules
 
-### Phase 2: OBSERVE Script (45 min)
+### Phase 2: OBSERVE Script (60 min)
 
-- Extend `seo_guardian_core.py` with structured JSON output mode
-- Add GA4 metrics (bounce rate, session duration per page)
+- Refactor `seo_guardian_core.py`: add `argparse` CLI with `--mode report` flag
+- Add structured JSON output serialization (currently only logger output)
+- Add GA4 metrics via Analytics Data API (bounce rate, session duration per page)
+- Fix `published_articles.json` path to `apps/bali-intel-scraper/data/published_articles.json`
 - Output → updated `state.json` + `opportunities.json`
-- Test: manual run, verify output
+- Test: manual run, verify JSON output
 
 ### Phase 3: DECIDE + ACT Logic (45 min)
 
@@ -259,10 +261,10 @@ Each agent follows the same pattern and directory structure. New agents are adde
 
 ## Rollback
 
-| Component                      | How to undo                                                 |
-| ------------------------------ | ----------------------------------------------------------- |
-| Agent directory                | `rm -rf ~/.openclaw/workspace/autonomous/seo-guardian/`     |
-| Cron jobs                      | Disable 3 jobs in `jobs.json` (`enabled: false`)            |
-| Agent script                   | `seo_guardian_agent.py` is new, just don't execute it       |
-| SEO changes made by agent      | Every action in `memory.jsonl` has `git_sha` → `git revert` |
-| `seo_guardian_core.py` changes | Additive (new output mode), backward compatible             |
+| Component                      | How to undo                                                       |
+| ------------------------------ | ----------------------------------------------------------------- |
+| Agent directory                | `rm -rf ~/.openclaw/workspace/autonomous/seo-guardian/`           |
+| Cron jobs                      | Disable 3 jobs in `~/.openclaw/cron/jobs.json` (`enabled: false`) |
+| Agent script                   | `seo_guardian_agent.py` is new, just don't execute it             |
+| SEO changes made by agent      | Every action in `memory.jsonl` has `git_sha` → `git revert`       |
+| `seo_guardian_core.py` changes | Additive (new output mode), backward compatible                   |
