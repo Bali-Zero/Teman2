@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from backend.app.dependencies import get_current_user, get_database_pool
 
-router = APIRouter(prefix="/crm/companies", tags=["CRM Companies"])
+router = APIRouter(prefix="/api/crm/companies", tags=["CRM Companies"])
 
 
 # ========== HELPER FUNCTIONS ==========
