@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Loader2, Send, ArrowLeft, Search, User } from "lucide-react";
+import { Loader2, Send, ArrowLeft, Search, Building2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -19,12 +19,14 @@ const INVESTMENT_CATEGORIES = [
 
 const QUARTERS = ["Q1", "Q2", "Q3", "Q4"] as const;
 
-interface CRMClient {
+interface CRMCompany {
   id: number;
-  full_name: string;
-  email?: string;
-  phone?: string;
-  nationality?: string;
+  company_name: string;
+  company_type?: string;
+  nib?: string;
+  npwp_company?: string;
+  status?: string;
+  associates_count?: number;
 }
 
 export default function WorkspaceLKPMSubmitPage() {
@@ -33,12 +35,13 @@ export default function WorkspaceLKPMSubmitPage() {
   const searchRef = useRef<HTMLDivElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Client selection — same pattern as process/new
-  const [clients, setClients] = useState<CRMClient[]>([]);
-  const [selectedClient, setSelectedClient] = useState<CRMClient | null>(null);
-  const [clientSearch, setClientSearch] = useState("");
-  const [isSearchingClients, setIsSearchingClients] = useState(false);
-  const [showClientDropdown, setShowClientDropdown] = useState(false);
+  // Company selection
+  const [companies, setCompanies] = useState<CRMCompany[]>([]);
+  const [selectedCompany, setSelectedCompany] = useState<CRMCompany | null>(null);
+  const [companySearch, setCompanySearch] = useState("");
+  const [isSearchingCompanies, setIsSearchingCompanies] = useState(false);
+  const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
+  const [resolvingClient, setResolvingClient] = useState(false);
 
   // Period
   const currentYear = new Date().getFullYear();
@@ -62,36 +65,35 @@ export default function WorkspaceLKPMSubmitPage() {
   const [obstacles, setObstacles] = useState("");
   const [plans, setPlans] = useState("");
 
-  // Debounced client search — same as process/new
+  // Debounced company search
   useEffect(() => {
-    const searchClients = async () => {
-      if (!clientSearch.trim()) {
-        setClients([]);
+    const searchCompanies = async () => {
+      if (!companySearch.trim()) {
+        setCompanies([]);
         return;
       }
-      setIsSearchingClients(true);
+      setIsSearchingCompanies(true);
       try {
-        const results = await api.crm.getClients({
-          search: clientSearch,
-          limit: 20,
-        });
-        setClients(results);
+        const results = await api.get<CRMCompany[]>(
+          `/api/crm/companies?search=${encodeURIComponent(companySearch)}&limit=20`
+        );
+        setCompanies(results);
       } catch (err) {
-        logger.error("Failed to search clients for LKPM", {}, err as Error);
+        logger.error("Failed to search companies for LKPM", {}, err as Error);
       } finally {
-        setIsSearchingClients(false);
+        setIsSearchingCompanies(false);
       }
     };
 
-    const debounce = setTimeout(searchClients, 300);
+    const debounce = setTimeout(searchCompanies, 300);
     return () => clearTimeout(debounce);
-  }, [clientSearch]);
+  }, [companySearch]);
 
   // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
-        setShowClientDropdown(false);
+        setShowCompanyDropdown(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -109,13 +111,34 @@ export default function WorkspaceLKPMSubmitPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!selectedClient) {
-      error("Missing Client", "Please select a client to submit LKPM data for.");
+    if (!selectedCompany) {
+      error("Missing Company", "Please select a company to submit LKPM data for.");
       return;
     }
 
     setIsSubmitting(true);
     try {
+      // Resolve primary client_id for this company
+      setResolvingClient(true);
+      const companyDetail = await api.get<{
+        id: number;
+        associates: Array<{
+          client_id: number;
+          is_primary: boolean;
+          role: string;
+        }>;
+      }>(`/api/crm/companies/${selectedCompany.id}`);
+      setResolvingClient(false);
+
+      const primaryLink = companyDetail.associates?.find((a) => a.is_primary)
+        ?? companyDetail.associates?.[0];
+
+      if (!primaryLink) {
+        error("No Client Linked", "This company has no linked clients. Please link a client first.");
+        setIsSubmitting(false);
+        return;
+      }
+
       const result = await api.post<{
         success: boolean;
         draft_id: number;
@@ -123,7 +146,7 @@ export default function WorkspaceLKPMSubmitPage() {
         year: number;
         realized_total: number;
       }>("/api/v1/lkpm/submit-data", {
-        client_id: selectedClient.id,
+        client_id: primaryLink.client_id,
         quarter,
         year,
         investment,
@@ -135,7 +158,7 @@ export default function WorkspaceLKPMSubmitPage() {
       });
       success(
         "Data submitted",
-        `Draft created for ${selectedClient.full_name} — ${result.quarter} ${result.year}`,
+        `Draft created for ${selectedCompany.company_name} — ${result.quarter} ${result.year}`,
       );
       router.push("/lkpm");
     } catch (err) {
@@ -143,6 +166,7 @@ export default function WorkspaceLKPMSubmitPage() {
       logger.error("LKPM workspace submission failed", {}, err as Error);
     } finally {
       setIsSubmitting(false);
+      setResolvingClient(false);
     }
   };
 
@@ -156,23 +180,23 @@ export default function WorkspaceLKPMSubmitPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Submit LKPM Data</h1>
           <p style={{ color: "var(--bz-text-2)" }}>
-            Enter quarterly investment data on behalf of a client
+            Enter quarterly investment data for a company
           </p>
         </div>
       </section>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Client Selection — same UX as process/new */}
+        {/* Company Selection */}
         <section
           className="rounded-xl border p-6 space-y-4"
           style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
         >
           <h2 className="text-lg font-semibold">
-            Client <span className="text-red-500">*</span>
+            Company <span className="text-red-500">*</span>
           </h2>
 
           <div className="relative" ref={searchRef}>
-            {selectedClient ? (
+            {selectedCompany ? (
               <div
                 className="flex items-center justify-between p-3 rounded-lg border"
                 style={{ background: "rgba(201,169,110,0.1)", borderColor: "rgba(201,169,110,0.3)" }}
@@ -182,20 +206,22 @@ export default function WorkspaceLKPMSubmitPage() {
                     className="w-8 h-8 rounded-full flex items-center justify-center"
                     style={{ background: "rgba(201,169,110,0.2)" }}
                   >
-                    <User className="w-4 h-4" style={{ color: "var(--bz-accent-warm)" }} />
+                    <Building2 className="w-4 h-4" style={{ color: "var(--bz-accent-warm)" }} />
                   </div>
                   <div>
-                    <p className="text-sm font-medium">{selectedClient.full_name}</p>
+                    <p className="text-sm font-medium">{selectedCompany.company_name}</p>
                     <p className="text-xs" style={{ color: "var(--bz-text-2)" }}>
-                      {selectedClient.email || selectedClient.phone || "No contact info"}
+                      {[selectedCompany.company_type, selectedCompany.nib ? `NIB: ${selectedCompany.nib}` : null]
+                        .filter(Boolean)
+                        .join(" · ") || "No details"}
                     </p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => {
-                    setSelectedClient(null);
-                    setClientSearch("");
+                    setSelectedCompany(null);
+                    setCompanySearch("");
                   }}
                   className="text-xs px-2 py-1 rounded"
                   style={{ color: "var(--bz-text-2)" }}
@@ -211,20 +237,20 @@ export default function WorkspaceLKPMSubmitPage() {
                 />
                 <input
                   type="text"
-                  value={clientSearch}
+                  value={companySearch}
                   onChange={(e) => {
-                    setClientSearch(e.target.value);
-                    setShowClientDropdown(true);
+                    setCompanySearch(e.target.value);
+                    setShowCompanyDropdown(true);
                   }}
-                  onFocus={() => setShowClientDropdown(true)}
-                  placeholder="Search client by name or email..."
+                  onFocus={() => setShowCompanyDropdown(true)}
+                  placeholder="Search company by name, NIB, or NPWP..."
                   className="w-full rounded-lg border pl-9 pr-3 py-2 text-sm"
                   style={{
                     background: "var(--bz-surface)",
                     borderColor: "var(--bz-border)",
                   }}
                 />
-                {isSearchingClients && (
+                {isSearchingCompanies && (
                   <Loader2
                     className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin"
                     style={{ color: "var(--bz-text-2)" }}
@@ -232,45 +258,47 @@ export default function WorkspaceLKPMSubmitPage() {
                 )}
 
                 {/* Search Results Dropdown */}
-                {showClientDropdown && clientSearch && (
+                {showCompanyDropdown && companySearch && (
                   <div
                     className="absolute z-10 w-full mt-1 rounded-lg border shadow-lg max-h-60 overflow-y-auto"
                     style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
                   >
-                    {clients.length > 0 ? (
-                      clients.map((client) => (
+                    {companies.length > 0 ? (
+                      companies.map((company) => (
                         <button
-                          key={client.id}
+                          key={company.id}
                           type="button"
                           onClick={() => {
-                            setSelectedClient(client);
-                            setShowClientDropdown(false);
+                            setSelectedCompany(company);
+                            setShowCompanyDropdown(false);
                           }}
                           className="w-full text-left px-4 py-3 transition-colors flex items-center justify-between border-b last:border-0 hover:bg-[var(--bz-surface)]"
                           style={{ borderColor: "var(--bz-border)" }}
                         >
                           <div>
-                            <p className="text-sm font-medium">{client.full_name}</p>
+                            <p className="text-sm font-medium">{company.company_name}</p>
                             <p className="text-xs" style={{ color: "var(--bz-text-2)" }}>
-                              {client.email || client.phone || "No contact info"}
+                              {[company.company_type, company.nib ? `NIB: ${company.nib}` : null]
+                                .filter(Boolean)
+                                .join(" · ") || "No details"}
                             </p>
                           </div>
-                          {client.nationality && (
+                          {company.associates_count != null && company.associates_count > 0 && (
                             <span
                               className="text-xs px-2 py-0.5 rounded"
                               style={{ background: "var(--bz-surface)", color: "var(--bz-text-2)" }}
                             >
-                              {client.nationality}
+                              {company.associates_count} shareholder{company.associates_count > 1 ? "s" : ""}
                             </span>
                           )}
                         </button>
                       ))
                     ) : (
                       <div className="p-4 text-center text-sm" style={{ color: "var(--bz-text-2)" }}>
-                        {isSearchingClients ? "Searching..." : "No clients found"}
+                        {isSearchingCompanies ? "Searching..." : "No companies found"}
                       </div>
                     )}
-                    {clients.length === 20 && (
+                    {companies.length === 20 && (
                       <div
                         className="px-4 py-2 text-xs border-t"
                         style={{ color: "var(--bz-text-2)", borderColor: "var(--bz-border)" }}
@@ -490,7 +518,7 @@ export default function WorkspaceLKPMSubmitPage() {
         <div className="flex justify-end">
           <button
             type="submit"
-            disabled={isSubmitting || !selectedClient}
+            disabled={isSubmitting || !selectedCompany}
             className="px-6 py-2.5 rounded-lg text-sm font-medium text-white flex items-center gap-2 disabled:opacity-50"
             style={{ background: "var(--bz-accent-warm)" }}
           >
@@ -499,7 +527,11 @@ export default function WorkspaceLKPMSubmitPage() {
             ) : (
               <Send className="w-4 h-4" />
             )}
-            {isSubmitting ? "Submitting..." : "Submit Data"}
+            {resolvingClient
+              ? "Resolving company..."
+              : isSubmitting
+                ? "Submitting..."
+                : "Submit Data"}
           </button>
         </div>
       </form>
