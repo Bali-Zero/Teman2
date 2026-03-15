@@ -714,6 +714,8 @@ Additional for 2GB:
 | Kill switch | `state.json` → `paused: true` stops all Commanders |
 | Retry cap | `revision_count < 3` on every LangGraph retry loop |
 | Session limits | `max_actions: 50`, `max_runtime: 600s` per Commander run |
+| Latency budget (p95 < 3s) | OBSERVE: ~500ms (API calls) → DECIDE: ~1000ms (LLM) → VALIDATE: ~50ms (Pydantic) → ACT: ~500ms (MCP tools) → buffer: ~950ms |
+| MCP integration | Captains call Soldiers via existing 96 MCP tools. No new tool framework — `mcporter call` for cron, direct Python import for in-process |
 
 ---
 
