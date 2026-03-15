@@ -26,7 +26,7 @@ async def get_featured_articles() -> dict:
                 "category": "LIFESTYLE",
                 "categoryColor": "text-red-400",
                 "imageUrl": "/static/news/suwung-landfill.jpg",
-                "href": "https://balizero.com/lifestyle/suwung-landfill-crisis",
+                "href": "https://balizero.com/articles/lifestyle/suwung-landfill-crisis",
             },
             {
                 "id": "2",
@@ -34,7 +34,7 @@ async def get_featured_articles() -> dict:
                 "category": "PROPERTY",
                 "categoryColor": "text-amber-400",
                 "imageUrl": "/static/news/property-green-zone.jpg",
-                "href": "https://balizero.com/property/property-green-zone-alert",
+                "href": "https://balizero.com/articles/property/property-green-zone-alert",
             },
             {
                 "id": "3",
@@ -42,7 +42,7 @@ async def get_featured_articles() -> dict:
                 "category": "LIFESTYLE",
                 "categoryColor": "text-red-400",
                 "imageUrl": "/static/news/dengue-alert.jpg",
-                "href": "https://balizero.com/lifestyle/dengue-alert-2026",
+                "href": "https://balizero.com/articles/lifestyle/dengue-alert-2026",
             },
             {
                 "id": "4",
@@ -50,7 +50,7 @@ async def get_featured_articles() -> dict:
                 "category": "TAX & LEGAL",
                 "categoryColor": "text-cyan-400",
                 "imageUrl": "/static/news/pajak-hiburan.jpg",
-                "href": "https://balizero.com/tax-legal/pajak-hiburan-tax-shock",
+                "href": "https://balizero.com/articles/tax-legal/pajak-hiburan-tax-shock",
             },
             {
                 "id": "5",
@@ -58,7 +58,7 @@ async def get_featured_articles() -> dict:
                 "category": "IMMIGRATION",
                 "categoryColor": "text-blue-400",
                 "imageUrl": "/static/news/constitutional-clash-koster.jpg",
-                "href": "https://balizero.com/immigration/constitutional-clash-bank-statements",
+                "href": "https://balizero.com/articles/immigration/constitutional-clash-bank-statements",
                 "isFeatured": True,
             },
         ],

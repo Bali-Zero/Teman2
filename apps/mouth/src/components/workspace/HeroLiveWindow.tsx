@@ -132,19 +132,21 @@ function HeroCard({
   isMain?: boolean;
   style?: React.CSSProperties;
 }) {
-  const href =
+  const rawHref =
     article?.href ||
     (article
       ? `https://balizero.com/articles/${article.category}/${article.slug}`
       : "#");
+  // Ensure relative paths from API are resolved to balizero.com
+  const href = rawHref.startsWith("/")
+    ? `https://balizero.com${rawHref}`
+    : rawHref;
 
   return (
     <a
       href={article ? href : undefined}
-      target={article?.href?.startsWith("http") ? "_blank" : undefined}
-      rel={
-        article?.href?.startsWith("http") ? "noopener noreferrer" : undefined
-      }
+      target={article ? "_blank" : undefined}
+      rel={article ? "noopener noreferrer" : undefined}
       className="relative overflow-hidden block"
       style={{ ...style, background: gradient }}
     >
