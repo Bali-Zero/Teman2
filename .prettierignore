@@ -12,6 +12,9 @@ node_modules/
 .venv/
 venv/
 
+# MCP server installations (third-party code)
+.mcp-servers/
+
 # Logs
 *.log
 

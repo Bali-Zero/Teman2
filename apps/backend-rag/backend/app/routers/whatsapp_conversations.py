@@ -1,17 +1,45 @@
 """
 WhatsApp Conversations API - Final Stabilized Version
+
+Outbound /send endpoint re-enabled 2026-03-15 with safety gates:
+- Rate limit: max 20 outbound messages per phone per hour
+- CRM validation: recipient must exist in clients table
+- Auth required: only authenticated users can send
 """
 
 import json
 import logging
+import time
+from collections import defaultdict
 from typing import Any
 
 from asyncpg import Pool
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 
 from backend.app.dependencies import get_current_user, get_optional_database_pool
+from backend.services.integrations.whatsapp_service import whatsapp_service
 
 logger = logging.getLogger(__name__)
+
+# Rate limiting: per-phone outbound message tracking
+_outbound_rate: dict[str, list[float]] = defaultdict(list)
+_RATE_LIMIT_MAX = 20  # messages per phone per hour
+_RATE_LIMIT_WINDOW = 3600  # 1 hour in seconds
+
+
+class SendWhatsAppRequest(BaseModel):
+    """Validated request for outbound WhatsApp messages."""
+    phone: str = Field(..., description="Recipient phone with country code, e.g. +6281234567890")
+    message: str = Field(..., min_length=1, max_length=4096, description="Message text")
+
+
+def _check_rate_limit(phone: str) -> bool:
+    """Check if phone has exceeded outbound rate limit. Returns True if allowed."""
+    now = time.time()
+    # Clean old entries
+    _outbound_rate[phone] = [t for t in _outbound_rate[phone] if now - t < _RATE_LIMIT_WINDOW]
+    return len(_outbound_rate[phone]) < _RATE_LIMIT_MAX
 
 router = APIRouter(prefix="/api/whatsapp", tags=["whatsapp"])
 
@@ -114,7 +142,7 @@ async def get_whatsapp_messages(
     phone: str,
     limit: int = 100,
     db: Pool | None = Depends(get_optional_database_pool),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),  # noqa: ARG001 — auth gate
 ) -> Any:
     if not db:
         return []
@@ -174,5 +202,50 @@ async def get_whatsapp_messages(
 
 
 @router.post("/send")
-async def send_whatsapp_message(request: Request) -> dict[str, Any]:
-    return {"success": False, "detail": "Sending disabled temporarily during stabilization"}
+async def send_whatsapp_message(
+    body: SendWhatsAppRequest,
+    db: Pool | None = Depends(get_optional_database_pool),
+    current_user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """
+    Send an outbound WhatsApp message via Meta Cloud API.
+
+    Safety gates:
+    - Auth required (JWT)
+    - Rate limit: 20 msgs/phone/hour
+    - CRM validation: recipient must exist in clients table
+    """
+    phone = body.phone.lstrip("+")
+
+    # Gate 1: Rate limit
+    if not _check_rate_limit(phone):
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit exceeded: max {_RATE_LIMIT_MAX} messages per phone per hour",
+        )
+
+    # Gate 2: CRM validation — recipient must be a known client
+    if db:
+        async with db.acquire() as conn:
+            client_exists = await conn.fetchval(
+                "SELECT EXISTS(SELECT 1 FROM clients WHERE phone LIKE $1 AND deleted_at IS NULL)",
+                f"%{phone[-10:]}%",
+            )
+            if not client_exists:
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Phone {body.phone} not found in CRM. Cannot send to unknown contacts.",
+                )
+
+    # Send via Meta WhatsApp Cloud API
+    try:
+        result = await whatsapp_service.send_message(phone=phone, text=body.message)
+        _outbound_rate[phone].append(time.time())
+        logger.info(f"Outbound WA sent to {phone} by {current_user.get('email', 'unknown')}")
+        return {"success": True, "data": result}
+    except ValueError as e:
+        logger.error(f"WhatsApp send failed: {e}")
+        raise HTTPException(status_code=502, detail=str(e)) from e
+    except Exception as e:
+        logger.error(f"WhatsApp send error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to send WhatsApp message") from e

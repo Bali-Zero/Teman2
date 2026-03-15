@@ -20,6 +20,30 @@
     "nuzantara-fetch": {
       "command": "uvx",
       "args": ["mcp-server-fetch"]
+    },
+    "ga4-analytics": {
+      "command": "/Users/nuzantara/Desktop/nuzantara/.mcp-servers/ga4-analytics/.venv/bin/ga4-mcp-server",
+      "env": {
+        "GOOGLE_APPLICATION_CREDENTIALS": "/Users/nuzantara/Desktop/nuzantara/.secrets/google-credentials.json",
+        "GA4_PROPERTY_ID": "505466833"
+      }
+    },
+    "google-search-console": {
+      "command": "/Users/nuzantara/Desktop/nuzantara/.mcp-servers/gsc/.venv/bin/python",
+      "args": [
+        "/Users/nuzantara/Desktop/nuzantara/.mcp-servers/gsc/gsc_server.py"
+      ],
+      "env": {
+        "GSC_CREDENTIALS_PATH": "/Users/nuzantara/Desktop/nuzantara/.secrets/google-credentials.json",
+        "GSC_SKIP_OAUTH": "true",
+        "GSC_DATA_STATE": "all"
+      }
+    },
+    "ocr-tesseract": {
+      "command": "/Users/nuzantara/Desktop/nuzantara/.mcp-servers/ocr/.venv/bin/mcp-ocr",
+      "env": {
+        "TESSDATA_PREFIX": "/opt/homebrew/share/tessdata"
+      }
     }
   }
 }
