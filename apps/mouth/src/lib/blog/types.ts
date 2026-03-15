@@ -105,6 +105,7 @@ export interface ArticleListItem {
   featured: boolean;
   trending: boolean;
   aiGenerated: boolean;
+  locale?: "en" | "id";
 }
 
 // ============================================================================
