@@ -19,6 +19,8 @@ import type {
   CompleteRegistrationRequest,
   RegistrationResponse,
   PortalApiResponse,
+  LKPMDraftSummary,
+  LKPMDraft,
 } from "./portal.types";
 import type { TimelineResponse } from "../types/timeline.types";
 
@@ -220,6 +222,58 @@ export class PortalApi {
       body: JSON.stringify(preferences),
     });
     return response.data!;
+  }
+
+  // ============================================================================
+  // LKPM (Investment Reports)
+  // ============================================================================
+
+  async getLKPMHistory(clientId: number): Promise<LKPMDraftSummary[]> {
+    const response = await this.client.request<
+      PortalApiResponse<{ items: LKPMDraftSummary[] }>
+    >(`/api/v1/lkpm/history/${clientId}`, { method: "GET" });
+    return response.data?.items ?? [];
+  }
+
+  async getLKPMDraft(
+    clientId: number,
+    quarter: string,
+    year: number,
+  ): Promise<LKPMDraft> {
+    const response = await this.client.request<
+      PortalApiResponse<{ draft: LKPMDraft }>
+    >(`/api/v1/lkpm/draft/${clientId}/${quarter}?year=${year}`, {
+      method: "GET",
+    });
+    return response.data!.draft;
+  }
+
+  async submitLKPMData(data: {
+    client_id: number;
+    quarter: string;
+    year: number;
+    investment: Record<string, number>;
+    employment: { tki: number; tka: number };
+    revenue_quarterly?: number;
+    revenue_annual?: number;
+    obstacles?: string;
+    plans?: string;
+  }): Promise<{ draft_id: number; quarter: string; year: number; realized_total: number }> {
+    const response = await this.client.request<
+      PortalApiResponse<{ draft_id: number; quarter: string; year: number; realized_total: number }>
+    >("/api/v1/lkpm/submit-data", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return response.data!;
+  }
+
+  async approveLKPMDraft(draftId: number): Promise<{ success: boolean }> {
+    const response = await this.client.request<PortalApiResponse<void>>(
+      `/api/v1/lkpm/approve/${draftId}`,
+      { method: "POST" },
+    );
+    return { success: response.success };
   }
 
   // ============================================================================

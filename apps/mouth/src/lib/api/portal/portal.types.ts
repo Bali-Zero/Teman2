@@ -235,6 +235,106 @@ export interface RegistrationResponse {
 }
 
 // ============================================================================
+// LKPM Types (Investment Activity Reports)
+// ============================================================================
+
+export interface LKPMInvestmentRealization {
+  land_building_domestic: number;
+  land_building_import: number;
+  machinery_domestic: number;
+  machinery_import: number;
+  equipment_domestic: number;
+  equipment_import: number;
+  vehicles_domestic: number;
+  vehicles_import: number;
+  other_fixed_domestic: number;
+  other_fixed_import: number;
+  working_capital_domestic: number;
+  working_capital_import: number;
+  grand_total: number;
+}
+
+export interface LKPMEmploymentData {
+  tki: number;
+  tka: number;
+  total: number;
+}
+
+export interface LKPMValidationAlert {
+  field: string;
+  severity: "red" | "yellow" | "green";
+  message: string;
+  details?: string;
+}
+
+export interface LKPMDraftSummary {
+  id: number;
+  quarter: string;
+  year: number;
+  status: "draft" | "validated" | "approved" | "submitted";
+  realized_total: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LKPMDraft {
+  id: number;
+  client_id: number;
+  quarter: string;
+  year: number;
+  status: "draft" | "validated" | "approved" | "submitted";
+  realized: LKPMInvestmentRealization;
+  cumulative: LKPMInvestmentRealization;
+  employment: LKPMEmploymentData;
+  revenue_quarterly?: number;
+  revenue_annual?: number;
+  obstacles?: string;
+  plans?: string;
+  validation_alerts: LKPMValidationAlert[];
+  data_source: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LKPMReadyPack {
+  draft_id: number;
+  company_name: string;
+  quarter: string;
+  year: number;
+  realized: LKPMInvestmentRealization;
+  cumulative: LKPMInvestmentRealization;
+  employment: LKPMEmploymentData;
+  validation_summary: {
+    is_valid: boolean;
+    red_count: number;
+    yellow_count: number;
+    green_count: number;
+  };
+  html_content: string;
+}
+
+export interface LKPMBatchItem {
+  id: number;
+  client_id: number;
+  company_name: string;
+  quarter: string;
+  year: number;
+  status: "draft" | "validated" | "approved" | "submitted";
+  realized_total: number;
+  red_alerts: number;
+  yellow_alerts: number;
+  updated_at: string;
+}
+
+export interface LKPMDeadline {
+  quarter: string;
+  year: number;
+  deadline: string;
+  days_remaining: number;
+  is_overdue: boolean;
+}
+
+// ============================================================================
 // API Response Types
 // ============================================================================
 

@@ -175,13 +175,23 @@ async def get_oauth_token() -> str:
 
 
 async def download_from_drive(file_id: str, token: str) -> bytes | None:
-    """Download a file from Google Drive by file ID."""
+    """Download a file from Google Drive by file ID. Auto-refreshes token on 401."""
     url = f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media&supportsAllDrives=true"
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             resp = await client.get(url, headers={"Authorization": f"Bearer {token}"})
             if resp.status_code == 200:
                 return resp.content
+            if resp.status_code == 401:
+                # Token expired — force refresh and retry
+                global _oauth_access_token, _oauth_token_expiry
+                _oauth_access_token = None
+                _oauth_token_expiry = 0.0
+                logger.info("    Token expired, refreshing...")
+                new_token = await get_oauth_token()
+                resp = await client.get(url, headers={"Authorization": f"Bearer {new_token}"})
+                if resp.status_code == 200:
+                    return resp.content
             logger.warning(f"Drive download failed: HTTP {resp.status_code} for {file_id}")
             return None
     except Exception as e:

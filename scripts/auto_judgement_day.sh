@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration
-PROJECT_DIR="/Users/antonellosiano/Desktop/nuzantara"
+PROJECT_DIR="/Users/antonellosiano/Projects/nuzantara"
 PYTHON_EXEC="/Users/antonellosiano/.pyenv/shims/python3"
 EVAL_DIR="$PROJECT_DIR/apps/evaluator"
 LOG_FILE="$PROJECT_DIR/logs/judgement_day.log"
