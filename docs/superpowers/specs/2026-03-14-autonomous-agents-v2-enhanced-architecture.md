@@ -14,13 +14,13 @@ This document enhances the V1 "Military-Grade" Agent Architecture with findings 
 
 **Key architectural decisions validated by research:**
 
-| Decision | Framework | Evidence |
-|----------|-----------|----------|
-| LangGraph 1.0 as orchestration backbone | StateGraph + subgraph composition | 91% task completion, native async, PostgreSQL checkpointing, deterministic+LLM nodes first-class |
-| Hybrid Loop pattern (not pure agent chains) | 12-Factor Agents + STAC Research | "Let code own safety and execution. Let LLM own reasoning at key points." |
-| JSONL + Qdrant dual memory | IBM Trajectory-Informed Memory | +14.3pp goal completion with learned patterns. JSONL for audit, Qdrant for semantic retrieval |
-| Graduated autonomy with earned trust | Feng et al. L1-L5 + Earned Autonomy | Track record-based graduation, not binary permissions |
-| Stage-gated self-healing (VIGIL pattern) | VIGIL + LogicMonitor L0-L5 | Illegal transitions produce errors, not improvisation |
+| Decision                                    | Framework                           | Evidence                                                                                         |
+| ------------------------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------ |
+| LangGraph 1.0 as orchestration backbone     | StateGraph + subgraph composition   | 91% task completion, native async, PostgreSQL checkpointing, deterministic+LLM nodes first-class |
+| Hybrid Loop pattern (not pure agent chains) | 12-Factor Agents + STAC Research    | "Let code own safety and execution. Let LLM own reasoning at key points."                        |
+| JSONL + Qdrant dual memory                  | IBM Trajectory-Informed Memory      | +14.3pp goal completion with learned patterns. JSONL for audit, Qdrant for semantic retrieval    |
+| Graduated autonomy with earned trust        | Feng et al. L1-L5 + Earned Autonomy | Track record-based graduation, not binary permissions                                            |
+| Stage-gated self-healing (VIGIL pattern)    | VIGIL + LogicMonitor L0-L5          | Illegal transitions produce errors, not improvisation                                            |
 
 ---
 
@@ -32,14 +32,14 @@ The V1 design specified OBSERVE→DECIDE→ACT→MEASURE→LEARN. Research revea
 
 This maps to the OODA loop (Col. John Boyd) with two Zantara innovations:
 
-| OODA | Zantara Order | Powered By | Rationale |
-|------|--------------|------------|-----------|
-| Observe | **OBSERVE** | LLM | Interpret heterogeneous signals (APIs, logs, GSC data) |
-| Orient | **DECIDE** | LLM + Rules | Generate constrained action plan |
-| — | **VALIDATE** | 100% Deterministic | Pydantic + rule engine VETO gate |
-| Decide+Act | **ACT** | 100% Deterministic | Execute approved actions via typed tool calls |
-| — | **MEASURE** | 100% Deterministic | Collect metrics, check thresholds |
-| (loop) | **LEARN** | LLM | Synthesize patterns from outcomes |
+| OODA       | Zantara Order | Powered By         | Rationale                                              |
+| ---------- | ------------- | ------------------ | ------------------------------------------------------ |
+| Observe    | **OBSERVE**   | LLM                | Interpret heterogeneous signals (APIs, logs, GSC data) |
+| Orient     | **DECIDE**    | LLM + Rules        | Generate constrained action plan                       |
+| —          | **VALIDATE**  | 100% Deterministic | Pydantic + rule engine VETO gate                       |
+| Decide+Act | **ACT**       | 100% Deterministic | Execute approved actions via typed tool calls          |
+| —          | **MEASURE**   | 100% Deterministic | Collect metrics, check thresholds                      |
+| (loop)     | **LEARN**     | LLM                | Synthesize patterns from outcomes                      |
 
 **Source**: STAC Research "Stop Building Agent Chains. Start Building Hybrid Loops" (Jan 2026); 12-Factor Agents (HumanLayer, 18.6k stars).
 
@@ -73,12 +73,12 @@ Research validates the General→Commander→Captain hierarchy but limits nestin
 
 **Grade definitions (research-enhanced):**
 
-| Grade | LangGraph Mapping | Autonomy Level | Loop Frequency | State |
-|-------|-------------------|----------------|----------------|-------|
-| **General** | Parent StateGraph | L4-L5 (Approver/Observer) | Weekly | PostgreSQL checkpoint |
-| **Commander** | Subgraph (via wrapper function) | L3-L4 (Consultant/Approver) | Daily | JSONL + state.json |
-| **Captain** | Node within Commander graph | L2-L3 (Collaborator/Consultant) | Per-trigger | In-memory |
-| **Soldier** | MCP tool call | L1 (Operator) | Per-call | Stateless |
+| Grade         | LangGraph Mapping               | Autonomy Level                  | Loop Frequency | State                 |
+| ------------- | ------------------------------- | ------------------------------- | -------------- | --------------------- |
+| **General**   | Parent StateGraph               | L4-L5 (Approver/Observer)       | Weekly         | PostgreSQL checkpoint |
+| **Commander** | Subgraph (via wrapper function) | L3-L4 (Consultant/Approver)     | Daily          | JSONL + state.json    |
+| **Captain**   | Node within Commander graph     | L2-L3 (Collaborator/Consultant) | Per-trigger    | In-memory             |
+| **Soldier**   | MCP tool call                   | L1 (Operator)                   | Per-call       | Stateless             |
 
 ### 1.3 Cross-Domain Coordination: The Event Bus
 
@@ -103,6 +103,7 @@ CREATE INDEX idx_agent_events_pending ON agent_events (status, source_domain) WH
 ```
 
 **Example cross-domain flow:**
+
 1. SEO Guardian discovers keyword gap → writes `{event_type: "keyword_opportunity", payload: {keyword: "KBLI 2025 changes", volume: 1200}}`
 2. Content Commander polls for `keyword_opportunity` events → generates article brief
 3. Publishing Captain checks article quality → writes `{event_type: "article_published", payload: {url, keyword}}`
@@ -120,15 +121,15 @@ CREATE INDEX idx_agent_events_pending ON agent_events (status, source_domain) WH
 
 ### 2.1 Why LangGraph — Mathematical Justification
 
-| Requirement | LangGraph 1.0 | CrewAI | AutoGen |
-|-------------|---------------|--------|---------|
-| Deterministic + LLM nodes mixed | First-class. Any node = pure function or LLM call | Everything through LLM | Everything = conversation |
-| Async-first | Native `ainvoke`, `astream`, async checkpointers | Thread-pool wrapping | Good in v0.4 |
-| PostgreSQL checkpoint | `AsyncPostgresSaver` built-in | None | None |
-| Retry with validation | Conditional edges + revision counter (4h to implement) | 2 days of framework fighting | Possible but fragile |
-| Task completion (12+ steps) | 85% | 61% (degrades past 8 steps) | 88% |
-| Memory footprint | Lightweight core. Cost = state size. | Higher base (role metadata, backstories) | Moderate |
-| Subgraph composition | `add_node("name", compiled_subgraph)` | N/A | Nested group chat (limited) |
+| Requirement                     | LangGraph 1.0                                          | CrewAI                                   | AutoGen                     |
+| ------------------------------- | ------------------------------------------------------ | ---------------------------------------- | --------------------------- |
+| Deterministic + LLM nodes mixed | First-class. Any node = pure function or LLM call      | Everything through LLM                   | Everything = conversation   |
+| Async-first                     | Native `ainvoke`, `astream`, async checkpointers       | Thread-pool wrapping                     | Good in v0.4                |
+| PostgreSQL checkpoint           | `AsyncPostgresSaver` built-in                          | None                                     | None                        |
+| Retry with validation           | Conditional edges + revision counter (4h to implement) | 2 days of framework fighting             | Possible but fragile        |
+| Task completion (12+ steps)     | 85%                                                    | 61% (degrades past 8 steps)              | 88%                         |
+| Memory footprint                | Lightweight core. Cost = state size.                   | Higher base (role metadata, backstories) | Moderate                    |
+| Subgraph composition            | `add_node("name", compiled_subgraph)`                  | N/A                                      | Nested group chat (limited) |
 
 **Source**: agent-harness.ai production benchmark (2026).
 
@@ -213,21 +214,21 @@ general_graph.add_node("consolidate", consolidate_results)
 
 ### 2.4 Checkpointing Strategy for 2GB RAM
 
-| Context | Checkpointer | Rationale |
-|---------|-------------|-----------|
-| Production (Fly.io) | `AsyncPostgresSaver` | Uses existing nuzantara-postgres. Connection pool via `asyncpg(min_size=2, max_size=10)`. Note: existing KG LangGraph uses sync `PostgresSaver` — migrate to async during Phase 2. |
-| Local dev (Pro) | `SqliteSaver` | Zero network latency, single writer is fine for dev |
-| Cron jobs (OpenClaw) | File-based (`state.json`) | Agents run as scripts, not as persistent services. No need for DB checkpointing |
+| Context              | Checkpointer              | Rationale                                                                                                                                                                          |
+| -------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Production (Fly.io)  | `AsyncPostgresSaver`      | Uses existing nuzantara-postgres. Connection pool via `asyncpg(min_size=2, max_size=10)`. Note: existing KG LangGraph uses sync `PostgresSaver` — migrate to async during Phase 2. |
+| Local dev (Pro)      | `SqliteSaver`             | Zero network latency, single writer is fine for dev                                                                                                                                |
+| Cron jobs (OpenClaw) | File-based (`state.json`) | Agents run as scripts, not as persistent services. No need for DB checkpointing                                                                                                    |
 
 **Memory budget analysis** (validated by research):
 
-| Component | Estimated RAM | Notes |
-|-----------|---------------|-------|
-| Python process | ~150MB | FastAPI + dependencies |
-| LangGraph graph objects | ~5MB | Compiled graphs are lightweight data structures |
-| Checkpoint state (active) | ~10-50MB | Depends on message history length. Cap with list-limiting reducers |
-| Qdrant client | ~50MB | Connection pool + in-flight vectors |
-| Remaining for workload | ~1.7GB | Ample headroom |
+| Component                 | Estimated RAM | Notes                                                              |
+| ------------------------- | ------------- | ------------------------------------------------------------------ |
+| Python process            | ~150MB        | FastAPI + dependencies                                             |
+| LangGraph graph objects   | ~5MB          | Compiled graphs are lightweight data structures                    |
+| Checkpoint state (active) | ~10-50MB      | Depends on message history length. Cap with list-limiting reducers |
+| Qdrant client             | ~50MB         | Connection pool + in-flight vectors                                |
+| Remaining for workload    | ~1.7GB        | Ample headroom                                                     |
 
 **Graph compilation is NOT the cold start bottleneck**. `StateGraph.compile()` takes milliseconds. The bottleneck is checkpoint backend initialization (asyncpg pool creation: ~1-2s). Strategy: pre-compile graphs at module level, lazy-init checkpoint pool on first request.
 
@@ -385,10 +386,10 @@ class VetoRecord:
 
 Research validates a two-tier memory architecture:
 
-| Store | Purpose | Query Pattern | Scale |
-|-------|---------|--------------|-------|
-| **JSONL** (file) | Action log, audit trail, source of truth | Append-only, full scan, git-trackable | < 1,000 entries per agent |
-| **Qdrant** (vector) | Semantic retrieval of patterns, cross-agent learning | "Find similar past situations" | Consolidated patterns |
+| Store               | Purpose                                              | Query Pattern                         | Scale                     |
+| ------------------- | ---------------------------------------------------- | ------------------------------------- | ------------------------- |
+| **JSONL** (file)    | Action log, audit trail, source of truth             | Append-only, full scan, git-trackable | < 1,000 entries per agent |
+| **Qdrant** (vector) | Semantic retrieval of patterns, cross-agent learning | "Find similar past situations"        | Consolidated patterns     |
 
 **Why not SQLite**: For < 1,000 entries, JSONL is simpler (no schema migrations, human-readable, git-trackable). SQLite adds value at > 5,000 structured records where indexed queries matter.
 
@@ -398,12 +399,12 @@ Research validates a two-tier memory architecture:
 
 Based on Paul Iusztin's framework (Dec 2025) and IBM's Trajectory-Informed Memory:
 
-| Type | Storage | Example | Lifecycle |
-|------|---------|---------|-----------|
-| **Working** | In-memory (LangGraph state) | Current cycle's observations | Per-cycle |
-| **Episodic** | JSONL (`memory.jsonl`) | "Submitted 30 URLs, 28 OK, 2 rate limited" | Permanent, with decay |
-| **Semantic** | Qdrant (`agent_learnings` collection) | "Batch sizes >50 cause rate limiting after 3pm WITA" | Extracted from episodic |
-| **Procedural** | JSONL (`corrections.jsonl`) | "Never touch /lifestyle/* pages" | Manual + auto-discovered |
+| Type           | Storage                               | Example                                              | Lifecycle                |
+| -------------- | ------------------------------------- | ---------------------------------------------------- | ------------------------ |
+| **Working**    | In-memory (LangGraph state)           | Current cycle's observations                         | Per-cycle                |
+| **Episodic**   | JSONL (`memory.jsonl`)                | "Submitted 30 URLs, 28 OK, 2 rate limited"           | Permanent, with decay    |
+| **Semantic**   | Qdrant (`agent_learnings` collection) | "Batch sizes >50 cause rate limiting after 3pm WITA" | Extracted from episodic  |
+| **Procedural** | JSONL (`corrections.jsonl`)           | "Never touch /lifestyle/\* pages"                    | Manual + auto-discovered |
 
 ### 4.3 Episodic → Semantic Consolidation (LEARN Phase)
 
@@ -431,13 +432,13 @@ Semantic (Qdrant agent_learnings):
 
 **Memory budget** (9 existing collections + 1 new `agent_learnings`):
 
-| Component | Size | Notes |
-|-----------|------|-------|
-| 67K existing vectors × 6KB | ~402MB | `text-embedding-3-small` (1536 dims) |
-| HNSW indexes | ~600MB | ~1.5x vector size |
-| Payloads + metadata | ~50MB | Flat payloads, small |
-| Per-collection overhead × 10 | ~200MB | WAL, segments, metadata |
-| **Total without quantization** | **~1.25GB** | Leaves ~750MB for Qdrant process |
+| Component                      | Size        | Notes                                |
+| ------------------------------ | ----------- | ------------------------------------ |
+| 67K existing vectors × 6KB     | ~402MB      | `text-embedding-3-small` (1536 dims) |
+| HNSW indexes                   | ~600MB      | ~1.5x vector size                    |
+| Payloads + metadata            | ~50MB       | Flat payloads, small                 |
+| Per-collection overhead × 10   | ~200MB      | WAL, segments, metadata              |
+| **Total without quantization** | **~1.25GB** | Leaves ~750MB for Qdrant process     |
 
 **Optimization for 2GB**:
 
@@ -474,13 +475,13 @@ Semantic (Qdrant agent_learnings):
 
 Based on LogicMonitor's Agentic AI Maturity Model (March 2026):
 
-| Level | Trigger | Action | Confidence | Reversible |
-|-------|---------|--------|------------|------------|
-| **L1: Alert** | Any anomaly | Log + Telegram | Any | N/A |
-| **L2: Auto-restart** | Health check fails 3x | Fly.io Machines API `POST /stop` → `/start` | > 80% | Yes |
-| **L3: Scale** | Memory > 85% sustained | Machines API: increase RAM temporarily | > 90% | Yes |
-| **L4: Rollback** | Error rate > 5x baseline post-deploy | `fly deploy --image <last_known_good>` | > 95% | Yes |
-| **L5: Escalate** | L2-L4 failed OR unknown pattern | Pause all automation, context dump, human required | < threshold | N/A |
+| Level                | Trigger                              | Action                                             | Confidence  | Reversible |
+| -------------------- | ------------------------------------ | -------------------------------------------------- | ----------- | ---------- |
+| **L1: Alert**        | Any anomaly                          | Log + Telegram                                     | Any         | N/A        |
+| **L2: Auto-restart** | Health check fails 3x                | Fly.io Machines API `POST /stop` → `/start`        | > 80%       | Yes        |
+| **L3: Scale**        | Memory > 85% sustained               | Machines API: increase RAM temporarily             | > 90%       | Yes        |
+| **L4: Rollback**     | Error rate > 5x baseline post-deploy | `fly deploy --image <last_known_good>`             | > 95%       | Yes        |
+| **L5: Escalate**     | L2-L4 failed OR unknown pattern      | Pause all automation, context dump, human required | < threshold | N/A        |
 
 ### 5.2 Infrastructure Captain: Health Monitor
 
@@ -525,6 +526,7 @@ detect → eb_updated → diagnosed → prompt_done → diff_done
 ```
 
 **Safety constraints**:
+
 - `max_retries_per_task: 3`
 - `cooldown_on_failure: 60s`
 - `session_max_actions: 50`
@@ -566,22 +568,23 @@ The two metrics that predict **every** PostgreSQL outage (Philip McClarence, Mar
 2. **Vacuum lag**: `SELECT relname, n_dead_tup FROM pg_stat_user_tables WHERE n_dead_tup > 1000;`
 
 Additional for 2GB:
+
 - Connection count: `SELECT count(*) FROM pg_stat_activity;` (max ~100 on 2GB)
 - Pool exhaustion: `SELECT state, count(*) FROM pg_stat_activity GROUP BY state;`
 
 ### 5.6 Single Points of Failure — Degraded Mode Map
 
-*Integrated from adversarial architecture review (ChatGPT/Kimi findings).*
+_Integrated from adversarial architecture review (ChatGPT/Kimi findings)._
 
-| SPOF | Detection | Degraded Mode | Recovery |
-|------|-----------|---------------|----------|
-| **Qdrant down** | `/readyz` check fails for Qdrant | Fall back to PostgreSQL full-text search (`pg_trgm`) | L2: auto-restart Qdrant container |
-| **PostgreSQL down** | Connection pool exhaustion / timeout | Return cached responses (Redis), refuse writes | L2: auto-restart + L5: escalate if persistent |
-| **Redis down** | PING timeout | Skip cache layer, direct DB queries (slower but functional) | L2: auto-restart |
-| **LLM API down** | HTTP 5xx or timeout from provider | Queue requests, return "service temporarily limited" | L1: alert, wait for provider recovery |
-| **Fly.io region outage** | External health check from Air fails | Air standby cron jobs activate (4 business jobs) | Documented in Pro-Air Orchestration |
-| **OpenClaw crash** | Watchdog (`ai.openclaw.watchdog`) | Cron jobs pause, Telegram alert | Watchdog auto-restarts within 60s |
-| **Agent graph compilation failure** | Exception in `StateGraph.compile()` | Fall back to linear chain (sequential function calls) | L1: alert + investigate |
+| SPOF                                | Detection                            | Degraded Mode                                               | Recovery                                      |
+| ----------------------------------- | ------------------------------------ | ----------------------------------------------------------- | --------------------------------------------- |
+| **Qdrant down**                     | `/readyz` check fails for Qdrant     | Fall back to PostgreSQL full-text search (`pg_trgm`)        | L2: auto-restart Qdrant container             |
+| **PostgreSQL down**                 | Connection pool exhaustion / timeout | Return cached responses (Redis), refuse writes              | L2: auto-restart + L5: escalate if persistent |
+| **Redis down**                      | PING timeout                         | Skip cache layer, direct DB queries (slower but functional) | L2: auto-restart                              |
+| **LLM API down**                    | HTTP 5xx or timeout from provider    | Queue requests, return "service temporarily limited"        | L1: alert, wait for provider recovery         |
+| **Fly.io region outage**            | External health check from Air fails | Air standby cron jobs activate (4 business jobs)            | Documented in Pro-Air Orchestration           |
+| **OpenClaw crash**                  | Watchdog (`ai.openclaw.watchdog`)    | Cron jobs pause, Telegram alert                             | Watchdog auto-restarts within 60s             |
+| **Agent graph compilation failure** | Exception in `StateGraph.compile()`  | Fall back to linear chain (sequential function calls)       | L1: alert + investigate                       |
 
 ---
 
@@ -589,70 +592,70 @@ Additional for 2GB:
 
 ### G1: CRM & Client Operations
 
-| Commander | Captains | Autonomy |
-|-----------|----------|----------|
-| **Client Intake** | Lead scorer, Onboarding trigger, Drive folder creator | L3 (auto + confirm) |
-| **Practice Manager** | Renewal tracker, Document reminder, Escalation handler | L3 |
-| **Compliance Watch** | Expiry scanner, KITAS deadline checker, Tax filing reminder | L4 (auto, alert critical) |
-| **Client Health** | Churn predictor, Re-engagement trigger, Satisfaction surveyor | L3 |
-| **Portal Sync** | Profile updater, Document ingester, Timeline builder | L2 (supervised) |
+| Commander            | Captains                                                      | Autonomy                  |
+| -------------------- | ------------------------------------------------------------- | ------------------------- |
+| **Client Intake**    | Lead scorer, Onboarding trigger, Drive folder creator         | L3 (auto + confirm)       |
+| **Practice Manager** | Renewal tracker, Document reminder, Escalation handler        | L3                        |
+| **Compliance Watch** | Expiry scanner, KITAS deadline checker, Tax filing reminder   | L4 (auto, alert critical) |
+| **Client Health**    | Churn predictor, Re-engagement trigger, Satisfaction surveyor | L3                        |
+| **Portal Sync**      | Profile updater, Document ingester, Timeline builder          | L2 (supervised)           |
 
 **Cross-domain value**: Compliance Watch → publishes `{compliance_alert}` events → Comms Commander sends WhatsApp reminder. Client Health → publishes `{churn_risk}` → CRM Intake triggers re-engagement journey.
 
 ### G2: Intelligence & Knowledge
 
-| Commander | Captains | Autonomy |
-|-----------|----------|----------|
-| **RAG Orchestrator** | Query router, Context retriever, Answer synthesizer | L4 |
-| **Knowledge Graph** | Entity extractor, Relation builder, Graph traverser | L3 |
-| **Intel Gatherer** | Unified scraper, News enricher, Regulatory monitor | L4 |
-| **Legal Analyst** | Legal doc ingester, Regulation classifier, Compliance mapper | L3 |
-| **Memory Curator** | Episodic consolidator, Semantic extractor, Cross-agent publisher | L4 |
+| Commander            | Captains                                                         | Autonomy |
+| -------------------- | ---------------------------------------------------------------- | -------- |
+| **RAG Orchestrator** | Query router, Context retriever, Answer synthesizer              | L4       |
+| **Knowledge Graph**  | Entity extractor, Relation builder, Graph traverser              | L3       |
+| **Intel Gatherer**   | Unified scraper, News enricher, Regulatory monitor               | L4       |
+| **Legal Analyst**    | Legal doc ingester, Regulation classifier, Compliance mapper     | L3       |
+| **Memory Curator**   | Episodic consolidator, Semantic extractor, Cross-agent publisher | L4       |
 
 **Cross-domain value**: Intel Gatherer → publishes `{regulation_change}` → Legal Analyst classifies impact → CRM Compliance Watch alerts affected clients.
 
 ### G3: Content & Media
 
-| Commander | Captains | Autonomy |
-|-----------|----------|----------|
-| **Content Creator** | Article composer, Image generator, SEO optimizer | L3 |
-| **Distribution** | Blog publisher, Newsletter builder, Social poster | L3 |
-| **Editorial Review** | Quality checker, Fact validator, Tone analyzer | L2 (human review) |
-| **Media Manager** | Asset uploader, Image optimizer, Audio transcriber | L4 |
+| Commander            | Captains                                           | Autonomy          |
+| -------------------- | -------------------------------------------------- | ----------------- |
+| **Content Creator**  | Article composer, Image generator, SEO optimizer   | L3                |
+| **Distribution**     | Blog publisher, Newsletter builder, Social poster  | L3                |
+| **Editorial Review** | Quality checker, Fact validator, Tone analyzer     | L2 (human review) |
+| **Media Manager**    | Asset uploader, Image optimizer, Audio transcriber | L4                |
 
 **Cross-domain value**: SEO Guardian → publishes `{keyword_opportunity}` → Content Creator generates article brief → Editorial Review validates → Distribution publishes → SEO Guardian submits to indexing.
 
 ### G4: SEO & Growth (V1 IMPLEMENTED — 5-phase loop, V2 adds VALIDATE gate)
 
-| Commander | Captains | Autonomy |
-|-----------|----------|----------|
-| **SEO Guardian** (live) | OBSERVE+DECIDE+ACT agent | L4 |
-| **Indexing Commander** | KBLI submitter, Articles submitter, Coverage monitor | L4 |
-| **CTR Optimizer** | Meta description updater, Title optimizer, Schema enhancer | L3 |
-| **Technical SEO** | Sitemap validator, Core Web Vitals checker, Redirect manager | L3 |
-| **Analytics** | GSC reporter, GA4 tracker, Ranking monitor | L4 |
+| Commander               | Captains                                                     | Autonomy |
+| ----------------------- | ------------------------------------------------------------ | -------- |
+| **SEO Guardian** (live) | OBSERVE+DECIDE+ACT agent                                     | L4       |
+| **Indexing Commander**  | KBLI submitter, Articles submitter, Coverage monitor         | L4       |
+| **CTR Optimizer**       | Meta description updater, Title optimizer, Schema enhancer   | L3       |
+| **Technical SEO**       | Sitemap validator, Core Web Vitals checker, Redirect manager | L3       |
+| **Analytics**           | GSC reporter, GA4 tracker, Ranking monitor                   | L4       |
 
 ### G5: Communications & Outreach
 
-| Commander | Captains | Autonomy |
-|-----------|----------|----------|
-| **WhatsApp Agent** | Context builder, Onboarding detector, Response handler | L3 |
-| **Telegram Agent** | Alert dispatcher, Report formatter, Command handler | L4 |
-| **Email Agent** | Composer, Template selector, Send scheduler | L3 |
-| **Social Monitor** | Twitter/X listener, Instagram handler, Sentiment tracker | L3 |
-| **Drive/Sheets Ops** | File organizer, Sheet updater, Template filler | L4 |
+| Commander            | Captains                                                 | Autonomy |
+| -------------------- | -------------------------------------------------------- | -------- |
+| **WhatsApp Agent**   | Context builder, Onboarding detector, Response handler   | L3       |
+| **Telegram Agent**   | Alert dispatcher, Report formatter, Command handler      | L4       |
+| **Email Agent**      | Composer, Template selector, Send scheduler              | L3       |
+| **Social Monitor**   | Twitter/X listener, Instagram handler, Sentiment tracker | L3       |
+| **Drive/Sheets Ops** | File organizer, Sheet updater, Template filler           | L4       |
 
 **Cross-domain value**: CRM Client Health → publishes `{birthday_greeting}` → WhatsApp Agent sends personalized message. Intel Gatherer → publishes `{breaking_regulation}` → Telegram Agent alerts team.
 
 ### G6: Infrastructure & DevOps
 
-| Commander | Captains | Autonomy |
-|-----------|----------|----------|
-| **Health Monitor** | Fly.io checker, PostgreSQL monitor, Qdrant monitor, Redis pinger | L4 |
-| **Code Quality** | Linter, Type checker, Test runner, Auto-fixer | L4 |
-| **Deployment** | Readiness checker, Rolling deployer, Rollback handler | L3 |
-| **Backup & Recovery** | PG dumper, Restore verifier, Tigris uploader | L4 |
-| **Security** | Dep auditor, Vulnerability scanner, Secret detector | L3 |
+| Commander             | Captains                                                         | Autonomy |
+| --------------------- | ---------------------------------------------------------------- | -------- |
+| **Health Monitor**    | Fly.io checker, PostgreSQL monitor, Qdrant monitor, Redis pinger | L4       |
+| **Code Quality**      | Linter, Type checker, Test runner, Auto-fixer                    | L4       |
+| **Deployment**        | Readiness checker, Rolling deployer, Rollback handler            | L3       |
+| **Backup & Recovery** | PG dumper, Restore verifier, Tigris uploader                     | L4       |
+| **Security**          | Dep auditor, Vulnerability scanner, Secret detector              | L3       |
 
 **Cross-domain value**: Health Monitor detects Qdrant memory pressure → auto-triggers scalar quantization on largest collection. Code Quality finds broken test → Auto-fixer generates patch → Deployment handles rollout.
 
@@ -661,12 +664,14 @@ Additional for 2GB:
 ## 7. Implementation Roadmap
 
 ### Phase 0: Foundation (Current State — DONE)
+
 - [x] SEO Guardian v1.0 (OBSERVE→DECIDE→ACT→MEASURE→LEARN)
 - [x] 3 OpenClaw cron jobs (daily observe, daily measure, weekly learn)
 - [x] 41 unit tests
 - [x] File-based state (config.yaml, state.json, corrections.jsonl, memory.jsonl, patterns.json)
 
 ### Phase 1: Validation Layer + Concurrency Safeguards (Next)
+
 - [ ] Scale Fly.io nuzantara-rag to 4GB RAM ($48/mo)
 - [ ] Add VALIDATE gate (Gate 1-3) to SEO Guardian (Pydantic ActionPlan model)
 - [ ] Add Gate 0: Data Sanity Validator (pre-DECIDE baseline comparison)
@@ -676,12 +681,14 @@ Additional for 2GB:
 - [ ] Add `zantara_trace_id` (UUID) for cross-agent observability
 
 ### Phase 2: CRM General (G1) — Revenue-Critical, Best Testing Ground
+
 - [ ] Client Health Commander (upgrade existing cron to LangGraph agent)
 - [ ] Compliance Watch Commander
 - [ ] Earned autonomy tracking (trust_modifier from LEARN phase)
 - **Why G1 first**: 984 clients = immediate ROI. Existing deterministic cron → autonomous agent.
 
 ### Phase 3: Intelligence General (G2) + Event Bus
+
 - [ ] Intel Gatherer Commander (upgrade bali-intel-scraper cron)
 - [ ] Memory Curator Commander (JSONL → Qdrant consolidation)
 - [ ] Create `agent_events` PostgreSQL table (just-in-time: G2 broadcasts to G1)
@@ -689,17 +696,20 @@ Additional for 2GB:
 - **Why event bus here**: First cross-domain flow: G2 intel → G1 compliance alerts.
 
 ### Phase 4: Content General (G3) + Comms General (G5)
+
 - [ ] Content Creator Commander
 - [ ] SEO→Content event flow (keyword opportunity → article)
 - [ ] WhatsApp/Telegram agent upgrade
 
 ### Phase 5: Infrastructure General (G6)
+
 - [ ] Health Monitor Commander (Fly.io Machines API integration)
 - [ ] Code Quality Commander (upgrade existing nightly cron to LangGraph)
 - [ ] Graduated response L1-L5
 - **Why G6 last**: Stable bash scripts work fine. AI infra monitoring only justified when AI fleet is large enough.
 
 ### Phase 6: General-of-Generals (Supreme Command)
+
 - [ ] Weekly coordination across all 6 Generals
 - [ ] Cross-domain pattern learning
 - [ ] Autonomy graduation tracking
@@ -709,35 +719,36 @@ Additional for 2GB:
 
 ## 8. Constraints & Safety Checklist
 
-| Constraint | Enforcement |
-|-----------|-------------|
-| Fly.io RAM scaling | Phase 0-2: 4GB shared-cpu-2x ($48/mo). Phase 3+: 4GB performance-1x ($64/mo). Scale to 8GB perf-2x ($99/mo) only if monitoring shows pressure. |
-| Async-first | `httpx` only, `ainvoke`/`astream` for LangGraph, `asyncpg` for checkpointing |
-| Python 3.11+ | Type hints required, `TypedDict` for graph state, `match` statements |
-| No hardcoded secrets | Environment variables only, `.secrets/` in `.gitignore` |
-| KBLI 2025 compliance | Flat payload, `text-embedding-3-small` frozen, PricingTool for all prices |
-| Zero Hallucination | 3-gate validation pipeline, ABSTAIN below 0.15 confidence |
-| Audit trail | Every VALIDATE decision logged with input_hash + rule_id + timestamp |
-| Kill switch | `state.json` → `paused: true` stops all Commanders |
-| Retry cap | `revision_count < 3` on every LangGraph retry loop |
-| Session limits | `max_actions: 50`, `max_runtime: 600s` per Commander run |
-| Latency budget (p95 < 3s) | OBSERVE: ~500ms (API calls) → DECIDE: ~1000ms (LLM) → VALIDATE: ~50ms (Pydantic) → ACT: ~500ms (MCP tools) → buffer: ~950ms |
-| MCP integration | Captains call Soldiers via existing 96 MCP tools. No new tool framework — `mcporter call` for cron, direct Python import for in-process |
-| Tool count per Captain | Max 7 MCP tools per Captain. LLMs degrade with >7 tools. Group tightly by domain. |
-| Subgraph timeout | Every Commander `.ainvoke()` wrapped in `asyncio.wait_for(..., timeout=300)`. Timeout returns `{"cycle_status": "timeout_aborted"}` gracefully. |
-| File I/O safety | `fcntl.flock(LOCK_EX)` on all JSONL writes. Atomic swap (`write tmp → fsync → os.replace`) for state.json. |
-| Blocking I/O in async | Use `asyncio.to_thread()` for `json.dump`, `yaml.safe_load`, `subprocess.run` inside async LangGraph nodes. Never block the event loop. |
-| LangGraph state reducers | All list fields use length-capping reducers (`(existing + new)[-10:]`), never unbounded `operator.add`. |
-| Gate 0: Data Sanity | Pre-DECIDE validator compares OBSERVE output against 7-day rolling baseline in state.json. Variance >50% → ABSTAIN + L1 alert. Never pass garbage to LLM. |
-| Event bus atomicity | Use `FOR UPDATE SKIP LOCKED` for event consumption. Nightly cleanup: `DELETE WHERE status='consumed' AND created_at < NOW() - INTERVAL '7 days'`. |
-| General routing | Deterministic triage (regex + Pydantic), never LLM-based. LLM routing is the #1 cause of flaky multi-agent systems. |
-| Service injection | Pass services via LangGraph `config["configurable"]`, never module-level setters. Module-level breaks under concurrency. |
+| Constraint                | Enforcement                                                                                                                                               |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fly.io RAM scaling        | Phase 0-2: 4GB shared-cpu-2x ($48/mo). Phase 3+: 4GB performance-1x ($64/mo). Scale to 8GB perf-2x ($99/mo) only if monitoring shows pressure.            |
+| Async-first               | `httpx` only, `ainvoke`/`astream` for LangGraph, `asyncpg` for checkpointing                                                                              |
+| Python 3.11+              | Type hints required, `TypedDict` for graph state, `match` statements                                                                                      |
+| No hardcoded secrets      | Environment variables only, `.secrets/` in `.gitignore`                                                                                                   |
+| KBLI 2025 compliance      | Flat payload, `text-embedding-3-small` frozen, PricingTool for all prices                                                                                 |
+| Zero Hallucination        | 3-gate validation pipeline, ABSTAIN below 0.15 confidence                                                                                                 |
+| Audit trail               | Every VALIDATE decision logged with input_hash + rule_id + timestamp                                                                                      |
+| Kill switch               | `state.json` → `paused: true` stops all Commanders                                                                                                        |
+| Retry cap                 | `revision_count < 3` on every LangGraph retry loop                                                                                                        |
+| Session limits            | `max_actions: 50`, `max_runtime: 600s` per Commander run                                                                                                  |
+| Latency budget (p95 < 3s) | OBSERVE: ~500ms (API calls) → DECIDE: ~1000ms (LLM) → VALIDATE: ~50ms (Pydantic) → ACT: ~500ms (MCP tools) → buffer: ~950ms                               |
+| MCP integration           | Captains call Soldiers via existing 96 MCP tools. No new tool framework — `mcporter call` for cron, direct Python import for in-process                   |
+| Tool count per Captain    | Max 7 MCP tools per Captain. LLMs degrade with >7 tools. Group tightly by domain.                                                                         |
+| Subgraph timeout          | Every Commander `.ainvoke()` wrapped in `asyncio.wait_for(..., timeout=300)`. Timeout returns `{"cycle_status": "timeout_aborted"}` gracefully.           |
+| File I/O safety           | `fcntl.flock(LOCK_EX)` on all JSONL writes. Atomic swap (`write tmp → fsync → os.replace`) for state.json.                                                |
+| Blocking I/O in async     | Use `asyncio.to_thread()` for `json.dump`, `yaml.safe_load`, `subprocess.run` inside async LangGraph nodes. Never block the event loop.                   |
+| LangGraph state reducers  | All list fields use length-capping reducers (`(existing + new)[-10:]`), never unbounded `operator.add`.                                                   |
+| Gate 0: Data Sanity       | Pre-DECIDE validator compares OBSERVE output against 7-day rolling baseline in state.json. Variance >50% → ABSTAIN + L1 alert. Never pass garbage to LLM. |
+| Event bus atomicity       | Use `FOR UPDATE SKIP LOCKED` for event consumption. Nightly cleanup: `DELETE WHERE status='consumed' AND created_at < NOW() - INTERVAL '7 days'`.         |
+| General routing           | Deterministic triage (regex + Pydantic), never LLM-based. LLM routing is the #1 cause of flaky multi-agent systems.                                       |
+| Service injection         | Pass services via LangGraph `config["configurable"]`, never module-level setters. Module-level breaks under concurrency.                                  |
 
 ---
 
 ## References
 
 ### Multi-Agent Orchestration
+
 1. LangGraph 1.0 GA — https://changelog.langchain.com/announcements/langgraph-1-0-is-now-generally-available
 2. agent-harness.ai Framework Benchmark — https://agent-harness.ai/blog/agentic-ai-frameworks-2026
 3. LangGraph Deep Dive (Mager) — https://www.mager.co/blog/2026-03-12-langgraph-deep-dive/
@@ -748,6 +759,7 @@ Additional for 2GB:
 8. Multi-Agent Communication (MarkTechPost) — https://www.marktechpost.com/2026/03/01/how-to-design-a-production-grade-multi-agent-communication-system
 
 ### Deterministic Validation
+
 9. 12-Factor Agents — https://github.com/humanlayer/12-factor-agents
 10. STAC Hybrid Loops — https://stacresearch.com/news/stop-building-agent-chains-start-building-hybrid-loops/
 11. Instructor Library — https://python.useinstructor.com/concepts/validation/
@@ -757,6 +769,7 @@ Additional for 2GB:
 15. Vectara HHEM v2.1 — https://www.vectara.com/blog/hhem-2-1
 
 ### Agent Memory
+
 16. Empirica Memory with Qdrant — https://dev.to/soulentheo/why-your-ai-agent-needs-memory-that-decays
 17. IBM Trajectory-Informed Memory — https://arxiv.org/html/2603.10600v1
 18. Position: Episodic Memory (Pink et al.) — https://arxiv.org/pdf/2502.06975
@@ -765,6 +778,7 @@ Additional for 2GB:
 21. Qdrant Resource Optimization — https://qdrant.tech/articles/vector-search-resource-optimization
 
 ### Self-Healing Systems
+
 22. VIGIL Self-Healing Runtime — https://arxiv.org/abs/2512.07094
 23. LogicMonitor Agentic Maturity Model — https://www.logicmonitor.com/blog/agentic-ai-maturity-model-itops
 24. LLM Patching Architectures (Texas A&M) — https://arxiv.org/abs/2603.01257

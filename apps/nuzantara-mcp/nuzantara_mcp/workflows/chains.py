@@ -385,7 +385,8 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
         }
 
         try:
-            practices_resp = await _call_safe("/api/crm/practices", params={"status": "active", "limit": 200})
+            # Fetching all practices (limit 500) to ensure we check completed/active ones that need renewal
+            practices_resp = await _call_safe("/api/crm/practices", params={"limit": 500})
             practices = practices_resp.get("practices") or practices_resp.get("data") or []
         except Exception as e:
             return {"chain": "practice_lifecycle", "error": str(e)}
