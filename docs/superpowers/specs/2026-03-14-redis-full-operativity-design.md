@@ -34,6 +34,7 @@ class RedisManager:
 ```
 
 **Connection config:**
+
 - `socket_connect_timeout=5`
 - `socket_timeout=5`
 - `max_connections=10` (enough for 7 components + headroom)
@@ -46,16 +47,16 @@ class RedisManager:
 
 Each component stops doing `redis.from_url()` and imports from RedisManager.
 
-| Component | File | Change |
-|-----------|------|--------|
-| CacheService | `backend/core/cache.py` | Replace `aioredis.from_url()` with `RedisManager.get_async_client()` |
-| RateLimiter | `backend/middleware/rate_limiter.py` | Replace `redis.from_url()` with `RedisManager.get_sync_client()` |
-| SessionService | `backend/services/misc/session_service.py` | Accept Redis client via constructor instead of URL |
-| WebSocket | `backend/app/routers/websocket.py` | Replace `redis.from_url()` with `RedisManager.get_async_client()` |
-| AutonomousScheduler | `backend/services/misc/autonomous_scheduler.py` | Replace `aioredis.from_url()` with `RedisManager.get_async_client()` |
-| FAQ Cache | via `service_initializer.py` | Pass RedisManager client to CacheService |
-| NotebookLM Cache | `backend/services/caching/notebooklm_cache_service.py` | Replace `redis.from_url()` with `RedisManager.get_async_client()` |
-| HealthService | `backend/services/monitoring/unified_health_service.py` | Replace `redis.from_url()` with `RedisManager.get_sync_client()` |
+| Component           | File                                                    | Change                                                               |
+| ------------------- | ------------------------------------------------------- | -------------------------------------------------------------------- |
+| CacheService        | `backend/core/cache.py`                                 | Replace `aioredis.from_url()` with `RedisManager.get_async_client()` |
+| RateLimiter         | `backend/middleware/rate_limiter.py`                    | Replace `redis.from_url()` with `RedisManager.get_sync_client()`     |
+| SessionService      | `backend/services/misc/session_service.py`              | Accept Redis client via constructor instead of URL                   |
+| WebSocket           | `backend/app/routers/websocket.py`                      | Replace `redis.from_url()` with `RedisManager.get_async_client()`    |
+| AutonomousScheduler | `backend/services/misc/autonomous_scheduler.py`         | Replace `aioredis.from_url()` with `RedisManager.get_async_client()` |
+| FAQ Cache           | via `service_initializer.py`                            | Pass RedisManager client to CacheService                             |
+| NotebookLM Cache    | `backend/services/caching/notebooklm_cache_service.py`  | Replace `redis.from_url()` with `RedisManager.get_async_client()`    |
+| HealthService       | `backend/services/monitoring/unified_health_service.py` | Replace `redis.from_url()` with `RedisManager.get_sync_client()`     |
 
 **No behavioral changes.** Same logic, same fallbacks, different connection source.
 
@@ -117,18 +118,18 @@ Component status is registered during `service_initializer.py` startup. Each com
 
 ## Files Changed
 
-| Action | File |
-|--------|------|
-| **NEW** | `backend/core/redis_manager.py` |
-| **EDIT** | `backend/core/cache.py` |
-| **EDIT** | `backend/middleware/rate_limiter.py` |
-| **EDIT** | `backend/services/misc/session_service.py` |
-| **EDIT** | `backend/app/routers/websocket.py` |
-| **EDIT** | `backend/services/misc/autonomous_scheduler.py` |
-| **EDIT** | `backend/services/caching/notebooklm_cache_service.py` |
+| Action   | File                                                    |
+| -------- | ------------------------------------------------------- |
+| **NEW**  | `backend/core/redis_manager.py`                         |
+| **EDIT** | `backend/core/cache.py`                                 |
+| **EDIT** | `backend/middleware/rate_limiter.py`                    |
+| **EDIT** | `backend/services/misc/session_service.py`              |
+| **EDIT** | `backend/app/routers/websocket.py`                      |
+| **EDIT** | `backend/services/misc/autonomous_scheduler.py`         |
+| **EDIT** | `backend/services/caching/notebooklm_cache_service.py`  |
 | **EDIT** | `backend/services/monitoring/unified_health_service.py` |
-| **EDIT** | `backend/app/setup/service_initializer.py` |
-| **EDIT** | `backend/app/routers/health.py` (or equivalent) |
+| **EDIT** | `backend/app/setup/service_initializer.py`              |
+| **EDIT** | `backend/app/routers/health.py` (or equivalent)         |
 
 ## What This Does NOT Do
 

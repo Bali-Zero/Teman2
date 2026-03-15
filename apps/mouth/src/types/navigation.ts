@@ -88,9 +88,7 @@ export const navigation: NavSection[] = [
   {
     title: "System",
     // Block 4: Admin
-    items: [
-      { title: "Settings", href: "/settings", icon: "Settings" },
-    ],
+    items: [{ title: "Settings", href: "/settings", icon: "Settings" }],
   },
 ];
 
