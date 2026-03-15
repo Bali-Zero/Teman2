@@ -10,6 +10,7 @@ import {
   Eye,
   Calendar,
   Filter,
+  Plus,
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/toast";
@@ -127,6 +128,14 @@ export default function LKPMBatchPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Link
+            href="/lkpm/submit"
+            className="px-4 py-2 rounded-lg text-sm font-medium text-white flex items-center gap-2"
+            style={{ background: "var(--bz-accent-warm)" }}
+          >
+            <Plus className="w-4 h-4" />
+            Submit Data
+          </Link>
           <select
             value={quarter}
             onChange={(e) => setQuarter(e.target.value)}
