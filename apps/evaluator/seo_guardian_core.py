@@ -84,6 +84,40 @@ class NuzantaraSEOGuardian:
             logger.error("GSC unexpected error: %s", e)
             return []
 
+    async def analyze_ai_seo(self) -> Dict[str, Any]:
+        """
+        Monitora l'integrità e la freschezza dei file di ingestione AI (llms.txt, etc.).
+        Verifica la presenza di istruzioni di citazione e master data KBLI.
+        """
+        public_dir = PROJECT_ROOT / "apps" / "mouth" / "public"
+        files_to_check = [
+            "llms.txt",
+            "llms-full.txt",
+            "llms-id.txt",
+            "llms-kbli.txt",
+            "sitemap-ai.xml"
+        ]
+        
+        results = {}
+        for filename in files_to_check:
+            file_path = public_dir / filename
+            if not file_path.exists():
+                results[filename] = {"status": "MISSING", "error": "File not found"}
+                continue
+            
+            stats = file_path.stat()
+            content = file_path.read_text(errors='ignore')
+            
+            results[filename] = {
+                "status": "OK",
+                "size": stats.st_size,
+                "last_modified": datetime.fromtimestamp(stats.st_mtime).isoformat(),
+                "has_citation_guard": "AI-CITATION-INSTRUCTION" in content,
+                "is_empty": stats.st_size < 100
+            }
+
+        return results
+
     async def fetch_analytics_data(self) -> Optional[Dict[str, Any]]:
         """
         Recupera metriche da Google Analytics (fonte secondaria, opzionale).
@@ -216,15 +250,17 @@ class NuzantaraSEOGuardian:
         logger.info("=== Nuzantara SEO Guardian: ACTIVE ===")
         logger.info("Site: %s | Period: %s → %s", self.site_url, START_DATE, END_DATE)
 
-        gsc_data, kbli_codes, analytics_data, geo_audit = await asyncio.gather(
+        gsc_data, kbli_codes, analytics_data, geo_audit, ai_ingestion = await asyncio.gather(
             self.fetch_gsc_data(),
             self.audit_kbli_indexing(),
             self.fetch_analytics_data(),
             self.audit_geo_aeo(),
+            self.analyze_ai_seo(),
         )
 
         plan = await self.generate_action_plan(gsc_data, kbli_codes, analytics_data)
         plan["geo_aeo_audit"] = geo_audit
+        plan["ai_ingestion_audit"] = ai_ingestion
 
         # Add GEO-specific action items
         if geo_audit["coverage_percent"] < 80:
@@ -233,6 +269,24 @@ class NuzantaraSEOGuardian:
                 "action": f"Add AI SEO metadata to {geo_audit['missing_ai_seo_count']} articles missing aiOptimization",
                 "reason": f"Only {geo_audit['coverage_percent']}% of articles have AI-citable answerSnippet + entityMentions",
             })
+        
+        # Add AI Ingestion-specific action items
+        missing_ai_files = [f for f, res in ai_ingestion.items() if res["status"] == "MISSING"]
+        if missing_ai_files:
+            plan["action_items"].insert(0, {
+                "priority": "CRITICAL",
+                "action": f"Restore missing AI ingestion files: {', '.join(missing_ai_files)}",
+                "reason": "AI Bots (GPT, Perplexity) cannot ingest Bali Zero intelligence without these files",
+            })
+        
+        missing_citation = [f for f, res in ai_ingestion.items() if res["status"] == "OK" and not res["has_citation_guard"]]
+        if missing_citation:
+            plan["action_items"].append({
+                "priority": "HIGH",
+                "action": f"Add Citation Guard to: {', '.join(missing_citation)}",
+                "reason": "Ensure LLMs attribute Bali Zero when summarizing these intelligence assets",
+            })
+
         if not geo_audit["llms_txt"]["fresh"]:
             plan["action_items"].append({
                 "priority": "HIGH",
@@ -267,6 +321,7 @@ class NuzantaraSEOGuardian:
             "mode": "report",
             "seo_plan": plan,
             "geo_aeo_audit": plan.get("geo_aeo_audit", {}),
+            "ai_ingestion_audit": plan.get("ai_ingestion_audit", {}),
             "indexing_state": indexing_state,
             "opportunities": self._extract_opportunities(plan, indexing_state),
         }
@@ -393,6 +448,26 @@ class NuzantaraSEOGuardian:
                 "suggested_action": "submit_indexing_batch",
                 "batch_size": min(pending, 50),
             })
+
+        # AI Ingestion Gaps
+        ai_ingestion = plan.get("ai_ingestion_audit", {})
+        for filename, res in ai_ingestion.items():
+            if res.get("status") == "MISSING":
+                opportunities.append({
+                    "type": "ai_visibility",
+                    "risk": "MEDIUM",
+                    "file": filename,
+                    "suggested_action": "generate_ai_ingestion_files",
+                    "reason": f"Critical AI ingestion file {filename} is missing",
+                })
+            elif not res.get("has_citation_guard"):
+                opportunities.append({
+                    "type": "ai_branding",
+                    "risk": "LOW",
+                    "file": filename,
+                    "suggested_action": "add_citation_guard",
+                    "reason": f"File {filename} is missing AI-CITATION-INSTRUCTION",
+                })
 
         return opportunities
 
