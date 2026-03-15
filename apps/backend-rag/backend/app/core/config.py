@@ -752,6 +752,15 @@ class Settings(BaseSettings):
     jaksel_local_url: str = "http://127.0.0.1:11434"  # Local development only
 
     # ========================================
+    # JURNAL.ID INTEGRATION (LKPM)
+    # ========================================
+    jurnal_api_key: str | None = None  # Set via JURNAL_API_KEY env var
+    jurnal_api_url: str = Field(
+        default="https://api.jurnal.id/core/api/v1",
+        description="Jurnal.id API base URL. Set via JURNAL_API_URL env var",
+    )
+
+    # ========================================
     # FLY.IO DEPLOYMENT
     # ========================================
     fly_app_name: str | None = None  # Set via FLY_APP_NAME env var

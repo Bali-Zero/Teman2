@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration
-PROJECT_DIR="/Users/antonellosiano/Desktop/nuzantara"
+PROJECT_DIR="/Users/antonellosiano/Projects/nuzantara"
 LOG_FILE="$PROJECT_DIR/logs/sentinel_nightly.log"
 DATE=$(date "+%Y-%m-%d %H:%M:%S")
 
