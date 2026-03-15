@@ -1,15 +1,23 @@
 """
 🤖 AUTONOMOUS SCHEDULER SERVICE
-Centralizes scheduling of all autonomous agents and background tasks.
+Background tasks that run while the backend is active on Fly.io.
 
-Managed Services:
-1. Auto-Ingestion Orchestrator - Daily regulatory updates (every 24h)
-2. Backend Self-Healing Agent - Health monitoring and auto-fix (every 5min)
-3. Conversation Trainer Agent - Learn from successful conversations (every 6h)
-4. Client Value Predictor Agent - Nurture high-value clients (every 12h)
-5. Golden Routes Seeder - Seed common query patterns (one-time at startup)
-6. Renewal Alerts Checker - Visa/permit expiry alerts 90/60/30 days (every 12h)
-7. Knowledge Graph Builder Agent - Build knowledge graphs (every 4h)
+⚠️ AUDIT 2026-03-16: With auto_stop=true (min_machines=0), the backend shuts
+down after ~5min of inattivity. Only short-interval tasks (<=5min) survive.
+All long-interval tasks (>=6h) have been migrated to OpenClaw cron on Pro (H24).
+
+Active Tasks (survive auto_stop):
+- Backend Self-Healing Agent: health monitoring (every 5min)
+- Golden Routes Seeder: seed query patterns (one-time at startup)
+
+Disabled Tasks (migrated to OpenClaw cron):
+- Conversation Trainer: git subprocess won't work on Fly.io
+- Daily Ops Autopilot: BUG (localhost:8000 = self), OpenClaw handles correctly
+- Renewal Alerts: 12h interval, covered by practice-lifecycle-check cron
+- Birthday Notifier: 24h interval, covered by client-health-monitor cron
+- Conversation Cleanup: 24h interval, migrated to OpenClaw cron
+- Auto-Ingestion: handled by bali-intel-scraper on Pro
+- Drive Changes Polling: migrated to OpenClaw cron
 
 Leader Election:
 - Uses Redis SET NX EX to ensure only one instance executes each task
@@ -281,10 +289,10 @@ async def create_and_start_scheduler(
     db_pool,
     ai_client,
     search_service,
-    auto_ingestion_enabled: bool = False,  # Disabled - handled by bali-intel-scraper
-    self_healing_enabled: bool = True,  # Active - health monitoring
-    conversation_trainer_enabled: bool = True,  # Active - learns from conversations
-    conversation_cleanup_enabled: bool = True,  # Active - cleans old data
+    auto_ingestion_enabled: bool = False,  # Disabled - handled by bali-intel-scraper on Pro
+    self_healing_enabled: bool = True,  # Active - health monitoring (5min, survives cold start)
+    conversation_trainer_enabled: bool = False,  # DISABLED (audit 2026-03-16): git subprocess on Fly.io ephemeral container
+    conversation_cleanup_enabled: bool = False,  # DISABLED (audit 2026-03-16): 24h > auto_stop uptime. Migrated to OpenClaw cron.
 ) -> AutonomousScheduler:
     """
     Create and start the autonomous scheduler with all agents.
@@ -403,9 +411,9 @@ async def create_and_start_scheduler(
                 name="conversation_trainer",
                 task_func=run_conversation_trainer,
                 interval_seconds=21600,  # 6 hours
-                enabled=True,
+                enabled=False,  # DISABLED (audit 2026-03-16): git subprocess on Fly.io ephemeral container
             )
-            logger.info("✅ Conversation Trainer Agent registered (6h interval)")
+            logger.info("⏸️ Conversation Trainer registered but DISABLED (migrated to OpenClaw)")
         except Exception as e:
             logger.error(f"❌ Failed to register Conversation Trainer: {e}")
 
@@ -574,9 +582,9 @@ async def create_and_start_scheduler(
                 name="renewal_alerts",
                 task_func=run_renewal_alerts_checker,
                 interval_seconds=43200,  # 12 hours
-                enabled=True,
+                enabled=False,  # DISABLED (audit 2026-03-16): 12h > auto_stop uptime. Covered by OpenClaw practice-lifecycle-check.
             )
-            logger.info("✅ Renewal Alerts Checker registered (12h interval)")
+            logger.info("⏸️ Renewal Alerts registered but DISABLED (migrated to OpenClaw)")
         except Exception as e:
             logger.error(f"❌ Failed to register Renewal Alerts: {e}")
 
@@ -633,9 +641,9 @@ async def create_and_start_scheduler(
             name="birthday_notifier",
             task_func=run_birthday_notifier,
             interval_seconds=86400,  # 24 hours
-            enabled=True,
+            enabled=False,  # DISABLED (audit 2026-03-16): 24h > auto_stop uptime. Covered by OpenClaw client-health-monitor.
         )
-        logger.info("✅ Birthday Notifier registered (24h interval)")
+        logger.info("⏸️ Birthday Notifier registered but DISABLED (migrated to OpenClaw)")
     except Exception as e:
         logger.error(f"❌ Failed to register Birthday Notifier: {e}")
 
@@ -712,9 +720,9 @@ async def create_and_start_scheduler(
             name="daily_ops_autopilot",
             task_func=run_daily_ops_autopilot,
             interval_seconds=86400,  # 24 hours
-            enabled=True,
+            enabled=False,  # DISABLED (audit 2026-03-16): BUG (calls localhost:8000 = itself). OpenClaw daily-ops-autopilot handles correctly.
         )
-        logger.info("✅ Daily Ops Autopilot registered (24h interval, runs at 08:00 WITA)")
+        logger.info("⏸️ Daily Ops Autopilot registered but DISABLED (migrated to OpenClaw)")
     except Exception as e:
         logger.error(f"❌ Failed to register Daily Ops Autopilot: {e}")
 
@@ -739,9 +747,9 @@ async def create_and_start_scheduler(
             name="drive_changes_poll",
             task_func=run_drive_poll,
             interval_seconds=300,  # 5 minutes
-            enabled=True,
+            enabled=False,  # DISABLED (audit 2026-03-16): loses change_token on restart. Migrated to OpenClaw.
         )
-        logger.info("Drive Changes Polling registered (5min interval)")
+        logger.info("⏸️ Drive Changes Polling registered but DISABLED (migrated to OpenClaw)")
     except Exception as e:
         logger.error(f"Failed to register Drive Changes Polling: {e}")
 
