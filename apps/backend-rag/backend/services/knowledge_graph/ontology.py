@@ -679,9 +679,9 @@ def get_extraction_schema_prompt() -> str:
 
     relation_lines = []
     for rt in RelationType:
-        schema = RELATION_SCHEMAS.get(rt)
-        if schema:
-            relation_lines.append(f"- {rt.value}: {schema.description}")
+        relation_schema = RELATION_SCHEMAS.get(rt)
+        if relation_schema:
+            relation_lines.append(f"- {rt.value}: {relation_schema.description}")
         else:
             relation_lines.append(f"- {rt.value}")
 

@@ -1,11 +1,10 @@
 import logging
+import re
 from typing import Any
 
 import asyncpg
 
 logger = logging.getLogger(__name__)
-
-import re
 
 
 class GraphPathfinder:
@@ -26,8 +25,8 @@ class GraphPathfinder:
             # 1. Get Workflow Header
             workflow = await conn.fetchrow(
                 """
-                SELECT entity_id, name, description 
-                FROM kg_nodes 
+                SELECT entity_id, name, description
+                FROM kg_nodes
                 WHERE entity_id = $1 AND entity_type = 'workflow'
             """,
                 workflow_id,
@@ -42,8 +41,8 @@ class GraphPathfinder:
             # 2. Find Start Node
             start_edge = await conn.fetchrow(
                 """
-                SELECT target_entity_id 
-                FROM kg_edges 
+                SELECT target_entity_id
+                FROM kg_edges
                 WHERE source_entity_id = $1 AND relationship_type = 'STARTS_WITH'
             """,
                 workflow_id,
@@ -61,7 +60,7 @@ class GraphPathfinder:
                 step_node = await conn.fetchrow(
                     """
                     SELECT entity_id, name, description, entity_type
-                    FROM kg_nodes 
+                    FROM kg_nodes
                     WHERE entity_id = $1
                 """,
                     current_step_id,
@@ -76,7 +75,7 @@ class GraphPathfinder:
                     SELECT e.relationship_type, n.name, n.entity_type
                     FROM kg_edges e
                     JOIN kg_nodes n ON e.target_entity_id = n.entity_id
-                    WHERE e.source_entity_id = $1 
+                    WHERE e.source_entity_id = $1
                       AND e.relationship_type IN ('REQUIRES', 'PRODUCES', 'USES', 'CONSULTS')
                 """,
                     current_step_id,
@@ -96,8 +95,8 @@ class GraphPathfinder:
                 # Find next step
                 next_edge = await conn.fetchrow(
                     """
-                    SELECT target_entity_id 
-                    FROM kg_edges 
+                    SELECT target_entity_id
+                    FROM kg_edges
                     WHERE source_entity_id = $1 AND relationship_type = 'NEXT_STEP'
                 """,
                     current_step_id,
@@ -113,7 +112,7 @@ class GraphPathfinder:
             }
 
     async def find_workflow_for_query(
-        self, query: str, user_context: dict[str, Any] = None
+        self, query: str, user_context: dict[str, Any] | None = None
     ) -> dict[str, Any] | None:
         """
         Semantic search for the right workflow based on user query AND context.
