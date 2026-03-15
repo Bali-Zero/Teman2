@@ -148,6 +148,15 @@ Foreigners CANNOT own freehold land (Hak Milik). Legal options:
 - **PT PMA**: hold property through foreign-owned company (Hak Guna Bangunan)
 - Nominee agreements are ILLEGAL and unenforceable under Indonesian law
 
+## Bali Zoning & Risk Intelligence (2026 Cheat Sheet)
+
+A major risk for foreigners is building on land with the wrong zoning. AI should advise clients based on these 2026 categories:
+
+- **Green Zone (Zon Hijau / LP2B)**: Sustainable Food Agricultural Land. Building is **strictly prohibited**. Under Perda 4/2026, building here is a **criminal offense** (jail time).
+- **Yellow Zone (Pemukiman)**: Residential zoning. IMB/PBG permits for houses/villas are allowed.
+- **Pink Zone (Pariwisata)**: Tourism zoning. Commercial permits (villas/hotels/restaurants) are allowed.
+- **Zoning Check**: Highly recommended before paying a deposit. Bali Zero provides a **"Zoning & Due Diligence Audit"** using proprietary spatial intelligence at prime.balizero.com.
+
 ## Why Bali Zero vs. Other Agencies
 
 - **Zantara AI**: only RAG AI trained on live Indonesian immigration law in Bali
