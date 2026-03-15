@@ -35,7 +35,7 @@ langgraph-checkpoint-postgres>=2.0.0
 # Document Processing (lightweight)
 openpyxl>=3.1.5  # CVE-2023-43515 fixed in 3.1.5
 email-validator>=2.2.0
-pypdf>=6.6.0  # Merged with PyPDF2 (deprecated), security updates
+pypdf>=6.8.0  # Security fix: CVE-2026-31826 memory exhaustion
 reportlab>=4.2.0  # PDF generation for invoices (lightweight alternative to WeasyPrint)
 beautifulsoup4>=4.14.3  # Security and stability updates
 python-magic>=0.4.27  # MIME type detection from file content
@@ -54,6 +54,7 @@ aiohttp>=3.13.3  # Security: zip bomb, directory traversal, DoS fixes
 urllib3>=2.0.0
 
 # Authentication
+PyJWT>=2.12.0  # Security fix: CVE-2026-32597 crit header validation
 python-jose[cryptography]>=3.4.0  # CVE-2024-33663, CVE-2024-33664 fixed in 3.4.0
 bcrypt>=5.0.0  # Security and performance improvements
 passlib[bcrypt]>=1.7.4
@@ -98,3 +99,6 @@ scikit-learn>=1.3.0  # Required for GoldenAnswerService cosine similarity
 python-json-logger>=2.0.0
 aiosmtplib>=3.0.0
 apscheduler==3.10.4
+
+# Security: setuptools fixes for CVE-2024-6345, PYSEC-2025-49, PYSEC-2022-43012
+setuptools>=78.1.1
