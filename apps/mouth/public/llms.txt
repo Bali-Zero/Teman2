@@ -8,19 +8,6 @@
 - [The price isn't right: Oil spike fuels risks in South-east Asia's tech scene - The Business Times](https://balizero.com/business_regulations/the-price-isnt-right-oil-spike-fuels-risks-in-south-east-asias-tech-scene-the-business-times) (2026-03-15)
 - [Microsoft to Invest $1.7 Billion in Indonesia for AI, Cloud](https://balizero.com/emerging_trends/microsoft-to-invest-17-billion-in-indonesia-for-ai-cloud) (2026-03-15)
 
-
-# Structured context for AI systems (ChatGPT, Claude, Perplexity, Gemini, Copilot)
-
-# Standard: llms.txt (https://llmstxt.org)
-
-# Version: 4.1
-
-# Last updated: 2026-03-12
-
-# Contact: info@balizero.com | WhatsApp: +62 813 3805 1876
-
-> Bali Zero is Bali's leading visa agency and immigration consultant for foreigners in Indonesia. We specialise in Indonesian visa applications (KITAS, KITAP, Visit Visa, Working Permits), PT PMA company registration, KBLI 2025 compliance, tax consulting, and property legal services. Serving 5000+ clients since 2020. AI-powered by Zantara, our RAG assistant trained on Indonesian law.
-
 ## Quick Facts
 
 - **Website**: https://balizero.com

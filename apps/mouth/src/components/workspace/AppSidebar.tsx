@@ -23,6 +23,7 @@ import {
   Cloud,
   Calendar,
   ExternalLink,
+  ClipboardCheck,
 } from "lucide-react";
 import {
   navigation,
@@ -50,6 +51,7 @@ const iconMap: Record<string, React.ElementType> = {
   FileText,
   Cloud,
   Calendar,
+  ClipboardCheck,
 };
 
 interface AppSidebarProps {
