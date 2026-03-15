@@ -650,6 +650,22 @@ def generate_mdx_content(article: EnrichedArticle, slug: str, cover_image_path: 
 />
 """
 
+    # AI SEO optimization fields
+    ai_confidence = getattr(article, "ai_confidence_score", 0.85)
+    answer_snippet = getattr(article, "answer_snippet", article.ai_summary)
+    primary_question = getattr(article, "primary_question", f"What does {article.headline} mean for expats in Bali?")
+
+    # Entity mentions from enrichment
+    entity_mentions_yaml = ""
+    entities = getattr(article, "entity_mentions", [])
+    if entities:
+        entity_lines = []
+        for ent in entities[:5]:
+            name = ent.get("name", "") if isinstance(ent, dict) else str(ent)
+            etype = ent.get("type", "Organization") if isinstance(ent, dict) else "Organization"
+            entity_lines.append(f'    - name: {name}\n      type: {etype}')
+        entity_mentions_yaml = "  entityMentions:\n" + "\n".join(entity_lines)
+
     mdx_content = f'''---
 title: "{article.headline}"
 slug: "{slug}"
@@ -659,13 +675,21 @@ coverImageAlt: "{article.headline}"
 category: "{category_slug}"
 tags: [{tags_str}]
 publishedAt: "{datetime.utcnow().strftime("%Y-%m-%d")}"
-author: "{article.source}"
+author:
+  name: "{article.source}"
+  avatar: /static/zantara-avatar.png
 trending: {str(article.priority == "high").lower()}
 featured: false
 readingTime: {reading_time}
 difficulty: "intermediate"
 seoTitle: "{article.headline}"
 seoDescription: "{article.ai_summary}"
+aiGenerated: true
+aiConfidenceScore: {ai_confidence}
+aiOptimization:
+  answerSnippet: "{answer_snippet}"
+  primaryQuestion: "{primary_question}"
+{entity_mentions_yaml}
 ---
 
 ## TL;DR
