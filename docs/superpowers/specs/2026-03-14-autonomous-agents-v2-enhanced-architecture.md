@@ -485,8 +485,13 @@ Based on LogicMonitor's Agentic AI Maturity Model (March 2026):
 ### 5.2 Infrastructure Captain: Health Monitor
 
 ```python
-# Health check tiers (from OneUptime best practices)
+# Health check tiers (from OneUptime best practices + adversarial review findings)
 HEALTH_CHECKS = {
+    "startup": {
+        "endpoint": "/startupz",
+        "check": "Initialization complete (graph compiled, DB pool created)",
+        "action_on_fail": "Block traffic until ready (critical for 35s cold start)",
+    },
     "liveness": {
         "endpoint": "/healthz",
         "interval": "60s",
@@ -494,8 +499,8 @@ HEALTH_CHECKS = {
     },
     "readiness": {
         "endpoint": "/readyz",
-        "check": "DB pool + Qdrant + Redis",
-        "action_on_fail": "L1_alert",
+        "check": "DB pool + Qdrant + Redis + memory < 1.5GB",
+        "action_on_fail": "L1_alert, refuse traffic if memory > 1.5GB (OOM prevention buffer)",
     },
     "deep": {
         "endpoint": "/health/deep",
@@ -504,6 +509,8 @@ HEALTH_CHECKS = {
     },
 }
 ```
+
+**Memory budget in readiness probe**: On a 2GB container, refuse traffic above 1.5GB to prevent OOM. This gives ~500MB buffer for spikes before the OOM killer fires.
 
 ### 5.3 Stage-Gated Self-Healing (VIGIL Pattern)
 
@@ -561,6 +568,20 @@ The two metrics that predict **every** PostgreSQL outage (Philip McClarence, Mar
 Additional for 2GB:
 - Connection count: `SELECT count(*) FROM pg_stat_activity;` (max ~100 on 2GB)
 - Pool exhaustion: `SELECT state, count(*) FROM pg_stat_activity GROUP BY state;`
+
+### 5.6 Single Points of Failure — Degraded Mode Map
+
+*Integrated from adversarial architecture review (ChatGPT/Kimi findings).*
+
+| SPOF | Detection | Degraded Mode | Recovery |
+|------|-----------|---------------|----------|
+| **Qdrant down** | `/readyz` check fails for Qdrant | Fall back to PostgreSQL full-text search (`pg_trgm`) | L2: auto-restart Qdrant container |
+| **PostgreSQL down** | Connection pool exhaustion / timeout | Return cached responses (Redis), refuse writes | L2: auto-restart + L5: escalate if persistent |
+| **Redis down** | PING timeout | Skip cache layer, direct DB queries (slower but functional) | L2: auto-restart |
+| **LLM API down** | HTTP 5xx or timeout from provider | Queue requests, return "service temporarily limited" | L1: alert, wait for provider recovery |
+| **Fly.io region outage** | External health check from Air fails | Air standby cron jobs activate (4 business jobs) | Documented in Pro-Air Orchestration |
+| **OpenClaw crash** | Watchdog (`ai.openclaw.watchdog`) | Cron jobs pause, Telegram alert | Watchdog auto-restarts within 60s |
+| **Agent graph compilation failure** | Exception in `StateGraph.compile()` | Fall back to linear chain (sequential function calls) | L1: alert + investigate |
 
 ---
 
