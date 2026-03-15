@@ -178,7 +178,25 @@ export default function RootLayout({
           rel="alternate"
           type="text/plain"
           href="/llms.txt"
-          title="LLM Context"
+          title="LLM Quick Guide"
+        />
+        <link
+          rel="alternate"
+          type="text/plain"
+          href="/llms-full.txt"
+          title="LLM Full Context (EN)"
+        />
+        <link
+          rel="alternate"
+          type="text/plain"
+          href="/llms-id.txt"
+          title="LLM Full Context (ID)"
+        />
+        <link
+          rel="alternate"
+          type="application/xml"
+          href="/sitemap-ai.xml"
+          title="AI Sitemap"
         />
         <link
           rel="alternate"
