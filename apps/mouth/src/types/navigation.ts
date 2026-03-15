@@ -53,6 +53,7 @@ export const navigation: NavSection[] = [
     items: [
       { title: "Clients", href: "/clients", icon: "Users" },
       { title: "Process", href: "/process", icon: "FolderKanban" },
+      { title: "LKPM", href: "/lkpm", icon: "ClipboardCheck" },
       {
         title: "Documents",
         href: "https://drive.balizero.com",
@@ -107,6 +108,7 @@ export const portalNavigation: NavSection[] = [
       { title: "Companies", href: "/portal/companies", icon: "Building2" },
       { title: "Visa", href: "/portal/visa", icon: "Briefcase" },
       { title: "Taxes", href: "/portal/taxes", icon: "FileText" },
+      { title: "LKPM", href: "/portal/lkpm", icon: "ClipboardCheck" },
     ],
   },
   {
@@ -150,4 +152,6 @@ export const routeTitles: Record<string, string> = {
   "/portal/taxes": "Taxes",
   "/portal/profile": "Profile",
   "/portal/settings": "Settings",
+  "/lkpm": "LKPM Reports",
+  "/portal/lkpm": "Investment Reports",
 };

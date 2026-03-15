@@ -213,6 +213,7 @@ class HttpTimeoutConstants:
     DISCORD_WEBHOOK_TIMEOUT = 5.0  # Discord webhook
     INTEL_SCRAPER_TIMEOUT = 30.0  # Intel scraper submissions
     GUARDIAN_AGENT_TIMEOUT = 120.0  # Guardian agent operations
+    JURNAL_TIMEOUT = 30.0  # Jurnal.id API calls
 
     # Circuit breaker timeout
     CIRCUIT_BREAKER_TIMEOUT = 60.0  # Circuit breaker reset timeout

@@ -64,6 +64,7 @@ def include_routers(api: FastAPI) -> None:
         knowledge_visa,
         lam_memory,  # [LAM] Episodic memory for agent layer
         legal_ingest,
+        lkpm,
         media,
         messaging_identity,
         monitoring_rag,  # [NEW] RAG Retrieval Quality Monitoring
@@ -153,6 +154,9 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(portal_invite.router)
     api.include_router(portal_taxes.router)
     api.include_router(portal_visa.router)
+
+    # Compliance routers
+    api.include_router(lkpm.router)  # LKPM Investment Activity Reports
 
     # Analytics routers (Admin/reporting)
     api.include_router(analytics.router)
