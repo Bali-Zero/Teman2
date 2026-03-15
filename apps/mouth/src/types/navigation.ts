@@ -32,9 +32,10 @@ export interface BreadcrumbItem {
   href?: string;
 }
 
-// Navigation configuration
+// Navigation configuration — Military-Grade 4-Block Layout
 export const navigation: NavSection[] = [
   {
+    // Block 1: Core
     items: [
       { title: "Dashboard", href: "/dashboard", icon: "Home" },
       { title: "Intelligence Center", href: "/intelligence", icon: "Activity" },
@@ -44,16 +45,11 @@ export const navigation: NavSection[] = [
         icon: "MessageSquare",
         external: true,
       },
-      {
-        title: "Email",
-        href: "https://mail.balizero.com",
-        icon: "Mail",
-        external: true,
-      },
     ],
   },
   {
     title: "Work",
+    // Block 2: Operations
     items: [
       { title: "Clients", href: "/clients", icon: "Users" },
       { title: "Process", href: "/process", icon: "FolderKanban" },
@@ -61,6 +57,24 @@ export const navigation: NavSection[] = [
         title: "Documents",
         href: "https://drive.balizero.com",
         icon: "FolderOpen",
+        external: true,
+      },
+    ],
+  },
+  {
+    title: "Kita-Space",
+    // Block 3: Collaborative
+    items: [
+      {
+        title: "Email",
+        href: "https://mail.balizero.com",
+        icon: "Mail",
+        external: true,
+      },
+      {
+        title: "Calendar",
+        href: "https://calendar.balizero.com",
+        icon: "Calendar",
         external: true,
       },
       {
@@ -73,13 +87,8 @@ export const navigation: NavSection[] = [
   },
   {
     title: "System",
+    // Block 4: Admin
     items: [
-      {
-        title: "Calendar",
-        href: "https://calendar.balizero.com",
-        icon: "Calendar",
-        external: true,
-      },
       { title: "Settings", href: "/settings", icon: "Settings" },
     ],
   },
