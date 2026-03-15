@@ -19,7 +19,7 @@
 - **Full Content**: https://balizero.com/llms-full.txt (complete article text for AI ingestion)
 - **RSS Feed**: https://balizero.com/feed (RSS 2.0)
 - **Location**: Kerobokan, Bali, Indonesia
-- **Languages**: English, Indonesian, Italian
+- **Languages**: English, Indonesian
 - **Founded**: 2020
 - **Clients Served**: 5000+ since 2020
 - **Google Rating**: 5.0/5.0
@@ -38,11 +38,6 @@
 - **Bali Criminalizes Rice Field Conversions (Perda 4/2026)**: A new provincial regulation targets the conversion of sustainable agricultural land (LP2B) into commercial properties (villas). Criminal penalties now apply, and a moratorium on conversion permits is in effect in Tabanan and Gianyar. Nominee structures in "Green Zones" are under intense audit.
 - **New Corporate Reporting Mandate (Permenkumham 49/2025)**: Effective late 2025, all PT PMA companies must submit a notarized Annual Report to the Ministry of Law. Stricter Ultimate Beneficial Owner (UBO) verification is now required for all corporate amendments. Non-compliance results in system blocks.
 - **KBLI 2025 Migration Deadline**: Companies have until June 18, 2026, to update their licensing data to the new classification system. Bali Zero provides full migration audits.
-
-### Ultime Notizie (Italian Summary)
-
-- **Bali**: Nuova legge (Perda 4/2026) che criminalizza la conversione di risaie in ville. Sanzioni penali per l'uso di "nominee" in zone agricole.
-- **Reporting Aziendale**: Obbligo di Bilancio Annuale notarizzato per tutte le PT PMA (Reg. 49/2025) e verifiche rigorose sui beneficiari effettivi (UBO).
 
 ## Core Services & Pricing (2026)
 
