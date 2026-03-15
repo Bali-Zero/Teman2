@@ -9,7 +9,7 @@ import logging
 from typing import Any
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.models.lkpm import (
@@ -227,6 +227,33 @@ async def upload_receipt(
         return await service.upload_receipt(draft_id, receipt_number, receipt_file_url)
     except Exception as e:
         logger.error(f"Receipt upload failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ------------------------------------------------------------------
+# Portal: Shareholder History
+# ------------------------------------------------------------------
+
+@router.get("/history/me", response_model=dict)
+async def get_my_history(
+    request: Request,
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+) -> dict:
+    """Get LKPM reports for the authenticated portal client (all shareholder companies)."""
+    from backend.app.routers.portal import get_current_client
+
+    client = await get_current_client(request, db_pool)
+    service = _get_service(db_pool)
+    try:
+        items = await service.get_history_for_portal_client(client["client_id"])
+        return {
+            "success": True,
+            "client_id": client["client_id"],
+            "count": len(items),
+            "items": [item.model_dump() for item in items],
+        }
+    except Exception as e:
+        logger.error(f"Failed to get LKPM history for portal client: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
