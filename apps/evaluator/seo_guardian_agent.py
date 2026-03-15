@@ -286,6 +286,43 @@ async def run_agent(dry_run: bool = False, observe_first: bool = False) -> dict:
                 actions_taken.append(entry)
                 low_count += 1
 
+            elif action_type == "add_citation_guard":
+                # Citation guard is fixed by running the generator
+                action_type = "generate_ai_ingestion_files"
+
+            if action_type == "generate_ai_ingestion_files":
+                log_decision(f"  ACT [LOW]: Running AI Ingestion Generator...")
+                mouth_dir = PROJECT_ROOT / "apps" / "mouth"
+                # Use npx tsx to run the script
+                cmd = ["npx", "tsx", "scripts/generate-llms-full.ts"]
+                
+                if dry_run:
+                    result = {"success": True, "dry_run": True}
+                else:
+                    try:
+                        res = subprocess.run(cmd, capture_output=True, text=True, cwd=str(mouth_dir), timeout=120)
+                        result = {
+                            "success": res.returncode == 0,
+                            "stdout": res.stdout[-500:],
+                            "stderr": res.stderr[-500:]
+                        }
+                    except Exception as e:
+                        result = {"success": False, "error": str(e)}
+
+                entry = {
+                    "timestamp": datetime.now().isoformat(),
+                    "action": "generate_ai_ingestion_files",
+                    "risk": "LOW",
+                    "params": {},
+                    "dry_run": dry_run,
+                    "result": result,
+                    "git_sha": None,
+                    "measured": False,
+                }
+                append_jsonl(MEMORY_PATH, entry)
+                actions_taken.append(entry)
+                low_count += 1
+
         elif risk == "MEDIUM":
             # MEDIUM: log for Telegram confirmation
             entry = {
