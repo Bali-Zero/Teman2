@@ -1,6 +1,9 @@
 /**
  * Workspace LKPM API
  * Team-side endpoints for batch management, alerts, ready packs
+ *
+ * NOTE: Backend LKPM endpoints return flat responses like {success, items, ...}
+ * NOT wrapped in PortalApiResponse {success, data: {...}}
  */
 
 import { api } from "@/lib/api";
@@ -9,7 +12,6 @@ import type {
   LKPMValidationAlert,
   LKPMDeadline,
   LKPMReadyPack,
-  PortalApiResponse,
 } from "../portal/portal.types";
 
 export const lkpmApi = {
@@ -17,27 +19,31 @@ export const lkpmApi = {
     quarter: string,
     year: number,
   ): Promise<{ count: number; items: LKPMBatchItem[] }> {
-    return api.get<PortalApiResponse<{ count: number; items: LKPMBatchItem[] }>>(
+    const r = await api.get<{ success: boolean; count: number; items: LKPMBatchItem[] }>(
       `/api/v1/lkpm/batch/${quarter}?year=${year}`,
-    ).then((r) => r.data!);
+    );
+    return { count: r.count ?? 0, items: r.items ?? [] };
   },
 
   async getAlerts(): Promise<LKPMValidationAlert[]> {
-    return api.get<PortalApiResponse<{ alerts: LKPMValidationAlert[] }>>(
+    const r = await api.get<{ success: boolean; alerts: LKPMValidationAlert[] }>(
       "/api/v1/lkpm/alerts",
-    ).then((r) => r.data?.alerts ?? []);
+    );
+    return r.alerts ?? [];
   },
 
   async getDeadlines(daysAhead: number = 30): Promise<LKPMDeadline[]> {
-    return api.get<PortalApiResponse<{ deadlines: LKPMDeadline[] }>>(
+    const r = await api.get<{ success: boolean; deadlines: LKPMDeadline[] }>(
       `/api/v1/lkpm/deadlines?days_ahead=${daysAhead}`,
-    ).then((r) => r.data?.deadlines ?? []);
+    );
+    return r.deadlines ?? [];
   },
 
   async getReadyPack(draftId: number): Promise<LKPMReadyPack> {
-    return api.get<PortalApiResponse<{ ready_pack: LKPMReadyPack }>>(
+    const r = await api.get<{ success: boolean; ready_pack: LKPMReadyPack }>(
       `/api/v1/lkpm/ready-pack/${draftId}`,
-    ).then((r) => r.data!.ready_pack);
+    );
+    return r.ready_pack;
   },
 
   async validateDraft(draftId: number): Promise<{
@@ -47,29 +53,30 @@ export const lkpmApi = {
     green_count: number;
     alerts: LKPMValidationAlert[];
   }> {
-    return api.post<PortalApiResponse<{
+    return api.post<{
+      success: boolean;
       is_valid: boolean;
       red_count: number;
       yellow_count: number;
       green_count: number;
       alerts: LKPMValidationAlert[];
-    }>>(`/api/v1/lkpm/validate/${draftId}`).then((r) => r.data!);
+    }>(`/api/v1/lkpm/validate/${draftId}`);
   },
 
   async markSubmitted(draftId: number): Promise<{ success: boolean }> {
-    return api.post<PortalApiResponse<void>>(
+    return api.post<{ success: boolean }>(
       `/api/v1/lkpm/mark-submitted/${draftId}`,
-    ).then((r) => ({ success: r.success }));
+    );
   },
 
   async uploadReceipt(
     draftId: number,
     receiptNumber: string,
   ): Promise<{ success: boolean }> {
-    return api.post<PortalApiResponse<void>>(
+    return api.post<{ success: boolean }>(
       `/api/v1/lkpm/upload-receipt/${draftId}`,
       { receipt_number: receiptNumber },
-    ).then((r) => ({ success: r.success }));
+    );
   },
 
   async syncJurnal(
@@ -77,9 +84,9 @@ export const lkpmApi = {
     quarter: string,
     year: number,
   ): Promise<{ draft_id: number; realized_total: number }> {
-    return api.post<PortalApiResponse<{ draft_id: number; realized_total: number }>>(
+    return api.post<{ success: boolean; draft_id: number; realized_total: number }>(
       `/api/v1/lkpm/sync-jurnal/${clientId}`,
       { quarter, year },
-    ).then((r) => r.data!);
+    );
   },
 };
