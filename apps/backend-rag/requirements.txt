@@ -35,7 +35,7 @@ tiktoken>=0.5.0  # For accurate token estimation (optional, has fallback)
 # Document Processing
 openpyxl>=3.1.5  # CVE-2023-43515 fixed in 3.1.5
 email-validator>=2.2.0
-pypdf>=6.6.0  # Merged with PyPDF2 (deprecated), security updates
+pypdf>=6.8.0  # Security fix: CVE-2026-31826 memory exhaustion
 Pillow>=10.0.0  # Required for PDF/vision (pdf_vision_service, vision_rag)
 EbookLib>=0.18
 beautifulsoup4>=4.14.3  # Security and stability updates
@@ -67,6 +67,7 @@ selenium>=4.15.0
 webdriver-manager>=4.0.0
 
 # Authentication
+PyJWT>=2.12.0  # Security fix: CVE-2026-32597 crit header validation
 python-jose[cryptography]>=3.4.0  # CVE-2024-33663, CVE-2024-33664 fixed in 3.4.0
 bcrypt>=5.0.0  # Security and performance improvements
 passlib[bcrypt]>=1.7.4
@@ -148,3 +149,6 @@ certifi>=2026.2.25  # Updated 2026-03-14: SSL certificates updated Feb 2026
 litellm>=1.82.1  # Updated 2026-03-14: Gemini 2.5 + new provider fixes
 
 # Build trigger 1771636448
+
+# Security: setuptools fixes for CVE-2024-6345, PYSEC-2025-49, PYSEC-2022-43012
+setuptools>=78.1.1
