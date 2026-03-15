@@ -18,9 +18,10 @@ export function OrganizationJsonLd() {
     url: baseUrl,
     logo: `${baseUrl}/static/balizero-logo-clean.png`,
     sameAs: [
-      "https://instagram.com/balizero0",
-      "https://linkedin.com/company/balizero",
-      "https://wa.me/6285904369574",
+      "https://www.linkedin.com/company/balizero",
+      "https://www.instagram.com/balizero",
+      "https://www.facebook.com/balizero",
+      "https://wa.me/6281338051876",
     ],
     contactPoint: {
       "@type": "ContactPoint",
