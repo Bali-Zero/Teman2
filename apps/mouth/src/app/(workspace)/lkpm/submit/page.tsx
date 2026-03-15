@@ -75,7 +75,7 @@ export default function WorkspaceLKPMSubmitPage() {
       setIsSearchingCompanies(true);
       try {
         const results = await api.get<CRMCompany[]>(
-          `/crm/companies?search=${encodeURIComponent(companySearch)}&limit=20`
+          `/api/crm/companies?search=${encodeURIComponent(companySearch)}&limit=20`
         );
         setCompanies(results);
       } catch (err) {
@@ -127,7 +127,7 @@ export default function WorkspaceLKPMSubmitPage() {
           is_primary: boolean;
           role: string;
         }>;
-      }>(`/crm/companies/${selectedCompany.id}`);
+      }>(`/api/crm/companies/${selectedCompany.id}`);
       setResolvingClient(false);
 
       const primaryLink = companyDetail.associates?.find((a) => a.is_primary)
