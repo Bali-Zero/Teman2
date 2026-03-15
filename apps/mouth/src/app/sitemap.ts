@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { getAllArticles } from "@/lib/blog/articles";
+import { getAllArticles, getNoIndexSlugs } from "@/lib/blog/articles";
 import { getAllCodes, getSections } from "@/lib/kbli-data.server";
 import { logger } from "@/lib/logger";
 
@@ -116,7 +116,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "property",
     "lifestyle",
     "tech",
-    "digital-nomad",
   ];
 
   const newsCategoryPages = categories.map((category) => ({
@@ -128,18 +127,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   routes.push(...newsCategoryPages);
 
-  // 4. Blog articles (from local MDX content)
+  // 4. Blog articles (from local MDX content, excluding noIndex articles)
   try {
-    const { articles } = await getAllArticles({ limit: 500 });
+    const [{ articles }, noIndexSlugs] = await Promise.all([
+      getAllArticles({ limit: 500 }),
+      getNoIndexSlugs(),
+    ]);
 
-    const articlePages = articles.map((article) => ({
-      url: `${baseUrl}/${article.category}/${article.slug}`,
-      lastModified: article.publishedAt
-        ? new Date(article.publishedAt)
-        : new Date(),
-      changeFrequency: "monthly" as const,
-      priority: 0.8,
-    }));
+    const articlePages = articles
+      .filter((article) => !noIndexSlugs.has(article.slug))
+      .map((article) => ({
+        url: `${baseUrl}/${article.category}/${article.slug}`,
+        lastModified: article.publishedAt
+          ? new Date(article.publishedAt)
+          : new Date(),
+        changeFrequency: "monthly" as const,
+        priority: 0.8,
+      }));
 
     routes.push(...articlePages);
   } catch (error) {
