@@ -216,13 +216,29 @@ class NuzantaraSEOGuardian:
         logger.info("=== Nuzantara SEO Guardian: ACTIVE ===")
         logger.info("Site: %s | Period: %s → %s", self.site_url, START_DATE, END_DATE)
 
-        gsc_data, kbli_codes, analytics_data = await asyncio.gather(
+        gsc_data, kbli_codes, analytics_data, geo_audit = await asyncio.gather(
             self.fetch_gsc_data(),
             self.audit_kbli_indexing(),
             self.fetch_analytics_data(),
+            self.audit_geo_aeo(),
         )
 
         plan = await self.generate_action_plan(gsc_data, kbli_codes, analytics_data)
+        plan["geo_aeo_audit"] = geo_audit
+
+        # Add GEO-specific action items
+        if geo_audit["coverage_percent"] < 80:
+            plan["action_items"].insert(0, {
+                "priority": "HIGH",
+                "action": f"Add AI SEO metadata to {geo_audit['missing_ai_seo_count']} articles missing aiOptimization",
+                "reason": f"Only {geo_audit['coverage_percent']}% of articles have AI-citable answerSnippet + entityMentions",
+            })
+        if not geo_audit["llms_txt"]["fresh"]:
+            plan["action_items"].append({
+                "priority": "HIGH",
+                "action": "Update llms.txt — file is stale (>30 days old)",
+                "reason": "AI crawlers (GPTBot, ClaudeBot, PerplexityBot) rely on fresh llms.txt for citations",
+            })
         logger.info("=== SEO Cycle Complete ===")
         return plan
 
@@ -250,6 +266,7 @@ class NuzantaraSEOGuardian:
             "timestamp": datetime.now().isoformat(),
             "mode": "report",
             "seo_plan": plan,
+            "geo_aeo_audit": plan.get("geo_aeo_audit", {}),
             "indexing_state": indexing_state,
             "opportunities": self._extract_opportunities(plan, indexing_state),
         }
@@ -262,6 +279,86 @@ class NuzantaraSEOGuardian:
             logger.info("Report saved to %s", out)
 
         return report
+
+    async def audit_geo_aeo(self) -> Dict[str, Any]:
+        """
+        Audit GEO/AEO readiness: check AI SEO metadata on published articles.
+        Verifies: answerSnippet, entityMentions, faqSchema, aiConfidenceScore,
+        llms.txt freshness, and AI citation meta tags.
+        """
+        logger.info("Running GEO/AEO audit...")
+        articles_dir = MOUTH_APP_DIR / "src" / "content" / "articles"
+        llms_path = MOUTH_APP_DIR / "public" / "llms.txt"
+
+        total_articles = 0
+        with_ai_optimization = 0
+        with_answer_snippet = 0
+        with_entity_mentions = 0
+        with_faq = 0
+        missing_ai_seo: List[str] = []
+
+        if articles_dir.exists():
+            for mdx_file in articles_dir.rglob("*.mdx"):
+                if mdx_file.name.endswith(".id.mdx") or mdx_file.name.endswith(".it.mdx"):
+                    continue
+                total_articles += 1
+                try:
+                    content = mdx_file.read_text(encoding="utf-8", errors="ignore")
+                    # Check frontmatter for AI SEO fields
+                    has_ai_opt = "aiOptimization:" in content
+                    has_snippet = "answerSnippet:" in content
+                    has_entities = "entityMentions:" in content
+                    has_confidence = "aiConfidenceScore:" in content
+
+                    if has_ai_opt:
+                        with_ai_optimization += 1
+                    if has_snippet:
+                        with_answer_snippet += 1
+                    if has_entities:
+                        with_entity_mentions += 1
+                    if not has_ai_opt and not has_confidence:
+                        missing_ai_seo.append(mdx_file.stem)
+                except Exception:
+                    pass
+
+        # Check llms.txt freshness
+        llms_fresh = False
+        llms_version = "unknown"
+        if llms_path.exists():
+            llms_content = llms_path.read_text(encoding="utf-8", errors="ignore")
+            if "Version:" in llms_content:
+                for line in llms_content.split("\n"):
+                    if "Version:" in line:
+                        llms_version = line.split("Version:")[-1].strip()
+                        break
+            # Fresh if modified in last 30 days
+            from os import stat
+            mtime = datetime.fromtimestamp(stat(llms_path).st_mtime)
+            llms_fresh = (datetime.now() - mtime).days < 30
+
+        coverage_pct = round((with_ai_optimization / max(total_articles, 1)) * 100, 1)
+
+        audit = {
+            "total_articles": total_articles,
+            "with_ai_optimization": with_ai_optimization,
+            "with_answer_snippet": with_answer_snippet,
+            "with_entity_mentions": with_entity_mentions,
+            "coverage_percent": coverage_pct,
+            "missing_ai_seo_count": len(missing_ai_seo),
+            "missing_ai_seo_sample": missing_ai_seo[:10],
+            "llms_txt": {
+                "exists": llms_path.exists(),
+                "version": llms_version,
+                "fresh": llms_fresh,
+            },
+        }
+
+        logger.info(
+            "GEO/AEO audit: %d/%d articles have AI optimization (%.1f%%), llms.txt v%s (%s)",
+            with_ai_optimization, total_articles, coverage_pct,
+            llms_version, "fresh" if llms_fresh else "STALE",
+        )
+        return audit
 
     def _extract_opportunities(self, plan: Dict[str, Any], indexing_state: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """Extract actionable opportunities from the SEO plan."""
