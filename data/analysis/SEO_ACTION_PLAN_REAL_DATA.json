@@ -1,86 +1,23 @@
 {
-  "generated_at": "2026-03-11",
+  "generated_at": "2026-03-16",
   "date_range": {
-    "start": "2026-03-04",
-    "end": "2026-03-11"
+    "start": "2026-03-09",
+    "end": "2026-03-16"
   },
   "site_url": "https://balizero.com",
   "data_sources": {
-    "gsc": "real",
-    "analytics": "real"
+    "gsc": "demo",
+    "analytics": "skipped"
   },
   "gsc_summary": {
-    "total_queries": 29,
+    "total_queries": 1,
     "top_queries": [
       {
-        "query": "bali zero",
-        "clicks": 7,
-        "impressions": 27,
-        "ctr": 0.2593,
-        "position": 1.9
-      },
-      {
-        "query": "balazuocom",
-        "clicks": 1,
-        "impressions": 5,
-        "ctr": 0.2,
-        "position": 1.2
-      },
-      {
-        "query": "zero bali",
-        "clicks": 1,
-        "impressions": 6,
-        "ctr": 0.1667,
-        "position": 2.7
-      },
-      {
-        "query": "\"constitutional ai 2.0\"",
-        "clicks": 0,
-        "impressions": 1,
-        "ctr": 0,
-        "position": 8
-      },
-      {
-        "query": "\"constitutional ai 2.0\" anthropic",
-        "clicks": 0,
-        "impressions": 6,
-        "ctr": 0,
-        "position": 4.2
-      },
-      {
-        "query": "airbnb",
-        "clicks": 0,
-        "impressions": 1,
-        "ctr": 0,
-        "position": 11
-      },
-      {
-        "query": "bali 3 months bank statements",
-        "clicks": 0,
-        "impressions": 1,
-        "ctr": 0,
-        "position": 13
-      },
-      {
-        "query": "bali dengue outbreak 2026",
-        "clicks": 0,
-        "impressions": 1,
-        "ctr": 0,
-        "position": 3
-      },
-      {
-        "query": "bali requiring bank statements",
-        "clicks": 0,
-        "impressions": 1,
-        "ctr": 0,
-        "position": 13
-      },
-      {
-        "query": "bali tourist bank statement check",
-        "clicks": 0,
-        "impressions": 1,
-        "ctr": 0,
-        "position": 1
+        "query": "bali company registration",
+        "clicks": 120,
+        "impressions": 800,
+        "ctr": 0.15,
+        "position": 3.2
       }
     ],
     "kbli_related_queries": []
@@ -95,43 +32,7 @@
       "01115"
     ]
   },
-  "critical_gaps": [
-    {
-      "query": "airbnb",
-      "clicks": 0,
-      "impressions": 1,
-      "ctr": 0,
-      "position": 11
-    },
-    {
-      "query": "bali 3 months bank statements",
-      "clicks": 0,
-      "impressions": 1,
-      "ctr": 0,
-      "position": 13
-    },
-    {
-      "query": "bali requiring bank statements",
-      "clicks": 0,
-      "impressions": 1,
-      "ctr": 0,
-      "position": 13
-    },
-    {
-      "query": "bali visa agency",
-      "clicks": 0,
-      "impressions": 2,
-      "ctr": 0,
-      "position": 18.5
-    },
-    {
-      "query": "ota share house",
-      "clicks": 0,
-      "impressions": 6,
-      "ctr": 0,
-      "position": 39.5
-    }
-  ],
+  "critical_gaps": [],
   "action_items": [
     {
       "priority": "HIGH",
@@ -145,7 +46,7 @@
     },
     {
       "priority": "MEDIUM",
-      "action": "Fix 5 queries with position >10 and 0 clicks",
+      "action": "Fix 0 queries with position >10 and 0 clicks",
       "reason": "High impression / zero click = metadata or content gap"
     },
     {
@@ -153,27 +54,5 @@
       "action": "Update llms.txt with latest service pricing",
       "reason": "AI crawlers (GPT, Gemini) reference llms.txt for structured answers"
     }
-  ],
-  "analytics_data": {
-    "dimensionHeaders": [
-      {
-        "name": "pagePath"
-      }
-    ],
-    "metricHeaders": [
-      {
-        "name": "sessions",
-        "type": "TYPE_INTEGER"
-      },
-      {
-        "name": "bounceRate",
-        "type": "TYPE_FLOAT"
-      }
-    ],
-    "metadata": {
-      "currencyCode": "USD",
-      "timeZone": "Etc/GMT-8"
-    },
-    "kind": "analyticsData#runReport"
-  }
+  ]
 }
