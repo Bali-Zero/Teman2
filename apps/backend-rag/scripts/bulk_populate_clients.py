@@ -5,6 +5,11 @@ Per ogni client con google_drive_folder_id:
   1. Legge Alamat.txt → clients.address
   2. Trova foto (jpg/png/jpeg nella root) → clients.avatar_url (Drive webViewLink)
   3. Trova 02_Company/ → crea companies + client_company_links + company_documents
+  4. Trova 01_Immigration/ → personal docs (passport, KITAS, visa) → documents table
+  5. Trova 03_Tax/ → personal docs (NPWP, SPT, LKPM) → documents table
+  6. Trova 04_Family/ → family docs → documents table
+  7. Trova 99_Misc/ → misc docs → documents table
+  8. File sciolti nella root (PDF, images) → documents table
 
 Run:
     cd apps/backend-rag
@@ -63,7 +68,67 @@ DOC_CATEGORY_MAP = {
 }
 
 PHOTO_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+DOC_EXTENSIONS = {".pdf", ".docx", ".doc", ".jpg", ".jpeg", ".png", ".xlsx", ".xls"}
 COMPANY_FOLDER_NAMES = {"02_company", "company", "02 company"}
+FOLDER_MIME = "application/vnd.google-apps.folder"
+
+# Personal document mapping: keyword → (document_type, document_category)
+PERSONAL_DOC_MAP = {
+    # Immigration
+    "passport": ("passport", "immigration"),
+    "kitas": ("kitas", "immigration"),
+    "kitap": ("kitap", "immigration"),
+    "visa": ("visa", "immigration"),
+    "e-visa": ("evisa", "immigration"),
+    "evisa": ("evisa", "immigration"),
+    "imta": ("work_permit", "immigration"),
+    "itas": ("kitas", "immigration"),
+    "telex": ("telex_visa", "immigration"),
+    "approval": ("approval_letter", "immigration"),
+    "stay_permit": ("stay_permit", "immigration"),
+    "exit_permit": ("exit_permit", "immigration"),
+    # Tax
+    "npwp": ("npwp_personal", "tax"),
+    "lkpm": ("lkpm", "tax"),
+    "spt": ("spt_personal", "tax"),
+    # Personal
+    "selfie": ("photo", "personal"),
+    "photo": ("photo", "personal"),
+    "foto": ("photo", "personal"),
+    "ktp": ("ktp", "personal"),
+    "cv": ("cv", "personal"),
+    "resume": ("cv", "personal"),
+    # Financial
+    "bank": ("bank_statement", "financial"),
+    "statement": ("bank_statement", "financial"),
+    "rekening": ("bank_statement", "financial"),
+    # Other
+    "invitation": ("invitation_letter", "other"),
+    "domicile": ("domicile_letter", "other"),
+    "domisili": ("domicile_letter", "other"),
+    "surat": ("letter", "other"),
+    "contract": ("contract", "other"),
+    "kontrak": ("contract", "other"),
+}
+
+# Folder name → default category override
+FOLDER_CATEGORY_MAP = {
+    "01_immigration": "immigration",
+    "01immigration": "immigration",
+    "immigration": "immigration",
+    "03_tax": "tax",
+    "03tax": "tax",
+    "tax": "tax",
+    "04_family": "family",
+    "04family": "family",
+    "family": "family",
+    "00_profile": "personal",
+    "00profile": "personal",
+    "profile": "personal",
+    "99_misc": "other",
+    "99misc": "other",
+    "misc": "other",
+}
 
 
 async def get_drive_access_token(conn: asyncpg.Connection) -> str:
@@ -159,7 +224,13 @@ def build_drive_service(_access_token: str | None = None) -> Any:
     """Build Drive service — OAuth primary (can access all team folders), SA fallback."""
     try:
         token = _get_oauth_access_token()
-        creds = Credentials(token=token)
+        creds = Credentials(
+            token=token,
+            refresh_token=OAUTH_REFRESH_TOKEN,
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=OAUTH_CLIENT_ID,
+            client_secret=OAUTH_CLIENT_SECRET,
+        )
         return build("drive", "v3", credentials=creds, cache_discovery=False)
     except Exception as e:
         logger.warning(f"  OAuth failed ({e}), falling back to SA")
@@ -208,12 +279,47 @@ def read_text_file(service: Any, file_id: str) -> str | None:
 
 
 def guess_category(name: str) -> str:
+    """Guess company document category from filename."""
     name_lower = name.lower().replace("-", "_").replace(" ", "_")
     for key, cat in DOC_CATEGORY_MAP.items():
         key_norm = key.lower().replace("-", "_").replace(" ", "_")
         if key_norm in name_lower:
             return cat
     return "other"
+
+
+def guess_personal_category(filename: str, parent_folder: str = "") -> tuple[str, str]:
+    """Guess personal document (type, category) from filename and parent folder.
+
+    Returns (document_type, document_category).
+    """
+    name_lower = filename.lower().replace("-", "_").replace(" ", "_")
+    folder_lower = parent_folder.lower().replace("-", "_").replace(" ", "_")
+
+    # 1. Try folder name as category context (e.g. "KITAS" subfolder inside 01_Immigration)
+    for key, (doc_type, doc_cat) in PERSONAL_DOC_MAP.items():
+        key_norm = key.lower().replace("-", "_").replace(" ", "_")
+        if key_norm in folder_lower:
+            # Subfolder name matches — use it as type, refine from filename if possible
+            # But check filename too for more specific match
+            for fkey, (ftype, fcat) in PERSONAL_DOC_MAP.items():
+                fkey_norm = fkey.lower().replace("-", "_").replace(" ", "_")
+                if fkey_norm in name_lower and fkey_norm != key_norm:
+                    return ftype, fcat
+            return doc_type, doc_cat
+
+    # 2. Try filename matching
+    for key, (doc_type, doc_cat) in PERSONAL_DOC_MAP.items():
+        key_norm = key.lower().replace("-", "_").replace(" ", "_")
+        if key_norm in name_lower:
+            return doc_type, doc_cat
+
+    # 3. Infer from parent section folder
+    parent_cat = FOLDER_CATEGORY_MAP.get(folder_lower, "")
+    if parent_cat:
+        return "other", parent_cat
+
+    return "other", "other"
 
 
 def is_photo(file: dict) -> bool:
@@ -252,7 +358,7 @@ async def process_client(
     cid = client["id"]
     name = client["full_name"]
     folder_id = client["google_drive_folder_id"]
-    result = {"id": cid, "name": name, "address": False, "photo": False, "company": False, "docs": 0}
+    result = {"id": cid, "name": name, "address": False, "photo": False, "company": False, "docs": 0, "personal_docs": 0}
 
     logger.info(f"[{cid}] {name} — folder {folder_id}")
 
@@ -260,6 +366,10 @@ async def process_client(
     if not files:
         logger.info(f"  ⚠️  Empty or inaccessible folder")
         return result
+
+    folders_count = sum(1 for f in files if f["mimeType"] == FOLDER_MIME)
+    files_count = len(files) - folders_count
+    logger.info(f"  📂 {folders_count} folders, {files_count} files in root")
 
     address_updated = False
     photo_updated = False
@@ -333,7 +443,167 @@ async def process_client(
             conn, service, client, company_folder, dry_run, result
         )
 
+    # 4. Personal docs from standard subfolders
+    personal_folders = {
+        "01_Immigration": ("01_Immigration", "01Immigration"),
+        "03_Tax": ("03_Tax", "03Tax"),
+        "04_Family": ("04_Family", "04Family"),
+        "99_Misc": ("99_Misc", "99Misc"),
+    }
+    for section, name_variants in personal_folders.items():
+        folder = next(
+            (f for f in files if f["mimeType"] == FOLDER_MIME and f["name"].strip() in name_variants),
+            None,
+        )
+        if folder:
+            folder_files = list_folder(service, folder["id"])
+            if folder_files:
+                added = await ingest_personal_docs(
+                    conn, service, cid, folder["id"], section, folder_files, dry_run,
+                )
+                result["personal_docs"] += added
+
+    # 5. Personal docs from 00_Profile/ (non-photo, non-alamat files)
+    if profile_folder:
+        profile_files = list_folder(service, profile_folder["id"])
+        for f in profile_files:
+            if f["mimeType"] == FOLDER_MIME:
+                sub = list_folder(service, f["id"])
+                added = await ingest_personal_docs(
+                    conn, service, cid, f["id"], f["name"], sub, dry_run,
+                )
+                result["personal_docs"] += added
+                continue
+            fname_lower = f["name"].lower()
+            ext = Path(f["name"]).suffix.lower()
+            # Skip already-handled alamat/photo and non-doc files
+            if fname_lower.startswith("alamat") or ext not in DOC_EXTENSIONS:
+                continue
+            if is_photo(f):
+                continue  # photos handled above
+            # Ingest as personal doc
+            existing = await conn.fetchval(
+                "SELECT id FROM documents WHERE client_id = $1 AND file_name = $2",
+                cid, f["name"],
+            )
+            if not existing:
+                doc_type, doc_cat = guess_personal_category(f["name"], "00_Profile")
+                file_id = f.get("id", "")
+                url = f.get("webViewLink") or f.get("webContentLink", "")
+                logger.info(f"      + doc (profile): {f['name']} [{doc_type}/{doc_cat}]")
+                if not dry_run:
+                    await conn.execute(
+                        """INSERT INTO documents (
+                            client_id, document_type, document_category,
+                            file_name, file_id, google_drive_file_url,
+                            storage_type, uploaded_by, status, created_at
+                        ) VALUES ($1, $2, $3, $4, $5, $6, 'google_drive', 'bulk_population', 'active', NOW())
+                        ON CONFLICT DO NOTHING""",
+                        cid, doc_type, doc_cat, f["name"], file_id, url,
+                    )
+                result["personal_docs"] += 1
+
+    # 6. Loose root files (not folders, not alamat, not already-handled photos)
+    for f in files:
+        if f["mimeType"] == FOLDER_MIME:
+            continue
+        fname = f["name"]
+        fname_lower = fname.lower()
+        ext = Path(fname).suffix.lower()
+        if ext not in DOC_EXTENSIONS:
+            continue
+        if fname_lower in ("alamat.txt", "alamat.md", "address.txt"):
+            continue
+        # Check if already ingested
+        existing = await conn.fetchval(
+            "SELECT id FROM documents WHERE client_id = $1 AND file_name = $2",
+            cid, fname,
+        )
+        if existing:
+            continue
+        doc_type, doc_cat = guess_personal_category(fname, "")
+        file_id = f.get("id", "")
+        url = f.get("webViewLink") or f.get("webContentLink", "")
+        logger.info(f"      + doc (root): {fname} [{doc_type}/{doc_cat}]")
+        if not dry_run:
+            await conn.execute(
+                """INSERT INTO documents (
+                    client_id, document_type, document_category,
+                    file_name, file_id, google_drive_file_url,
+                    storage_type, uploaded_by, status, created_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, 'google_drive', 'bulk_population', 'active', NOW())
+                ON CONFLICT DO NOTHING""",
+                cid, doc_type, doc_cat, fname, file_id, url,
+            )
+        result["personal_docs"] += 1
+
     return result
+
+
+async def ingest_personal_docs(
+    conn: asyncpg.Connection,
+    service: Any,
+    client_id: int,
+    folder_id: str,
+    section_folder: str,
+    files: list[dict],
+    dry_run: bool,
+    depth: int = 0,
+) -> int:
+    """Ingest personal documents into the `documents` table.
+
+    Recursively scans subfolders. Uses parent folder name for category inference.
+    """
+    if depth > 3:
+        return 0
+
+    added = 0
+
+    for f in files:
+        if f["mimeType"] == FOLDER_MIME:
+            sub_files = list_folder(service, f["id"])
+            added += await ingest_personal_docs(
+                conn, service, client_id, f["id"],
+                f["name"],  # pass subfolder name as context
+                sub_files, dry_run, depth + 1,
+            )
+            continue
+
+        name = f["name"]
+        ext = Path(name).suffix.lower()
+        if ext not in DOC_EXTENSIONS:
+            continue
+
+        # Skip alamat text files (handled separately)
+        if name.lower() in ("alamat.txt", "alamat.md", "address.txt"):
+            continue
+
+        # Dedup check
+        existing = await conn.fetchval(
+            "SELECT id FROM documents WHERE client_id = $1 AND file_name = $2",
+            client_id, name,
+        )
+        if existing:
+            continue
+
+        doc_type, doc_category = guess_personal_category(name, section_folder)
+        file_id = f.get("id", "")
+        url = f.get("webViewLink") or f.get("webContentLink", "")
+
+        logger.info(f"      + doc: {name} [{doc_type}/{doc_category}]")
+        if not dry_run:
+            await conn.execute(
+                """INSERT INTO documents (
+                    client_id, document_type, document_category,
+                    file_name, file_id, google_drive_file_url,
+                    storage_type, uploaded_by, status, created_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, 'google_drive', 'bulk_population', 'active', NOW())
+                ON CONFLICT DO NOTHING""",
+                client_id, doc_type, doc_category, name, file_id, url,
+            )
+        added += 1
+
+    return added
 
 
 async def process_company(
@@ -396,14 +666,8 @@ async def process_company(
         )
 
     if not company_id:
-        logger.info(f"    creating new company: {pt_name}")
-        if not dry_run:
-            company_id = await conn.fetchval(
-                "INSERT INTO companies (company_name, company_type, created_at) VALUES ($1, 'PT', NOW()) RETURNING id",
-                pt_name,
-            )
-        else:
-            company_id = -1  # placeholder for dry run
+        logger.info(f"    ⚠️  no matching company found for '{pt_name}' — skipping (not creating placeholder)")
+        return False
     else:
         logger.info(f"    found existing company id={company_id}")
 
@@ -443,7 +707,6 @@ async def ingest_company_docs(
         return 0
 
     added = 0
-    FOLDER_MIME = "application/vnd.google-apps.folder"
 
     for f in files:
         if f["mimeType"] == FOLDER_MIME:
@@ -457,7 +720,7 @@ async def ingest_company_docs(
         # Skip non-documents
         name = f["name"]
         ext = Path(name).suffix.lower()
-        if ext not in {".pdf", ".docx", ".doc", ".jpg", ".jpeg", ".png", ".xlsx", ".xls"}:
+        if ext not in DOC_EXTENSIONS:
             continue
 
         url = f.get("webViewLink") or f.get("webContentLink", "")
@@ -521,7 +784,7 @@ async def main(dry_run: bool, limit: int, client_id: int | None, min_id: int = 0
 
         logger.info(f"Processing {len(clients)} clients")
 
-        stats = {"address": 0, "photo": 0, "company": 0, "docs": 0, "errors": 0}
+        stats = {"address": 0, "photo": 0, "company": 0, "docs": 0, "personal_docs": 0, "errors": 0}
 
         for client in clients:
             try:
@@ -533,16 +796,18 @@ async def main(dry_run: bool, limit: int, client_id: int | None, min_id: int = 0
                 if r["company"]:
                     stats["company"] += 1
                 stats["docs"] += r["docs"]
+                stats["personal_docs"] += r["personal_docs"]
             except Exception as e:
                 logger.error(f"  ERROR client {client['id']}: {e}", exc_info=True)
                 stats["errors"] += 1
 
         logger.info("\n=== SUMMARY ===")
-        logger.info(f"  Addresses updated : {stats['address']}")
-        logger.info(f"  Photos updated    : {stats['photo']}")
-        logger.info(f"  Companies linked  : {stats['company']}")
-        logger.info(f"  Company docs added: {stats['docs']}")
-        logger.info(f"  Errors            : {stats['errors']}")
+        logger.info(f"  Addresses updated  : {stats['address']}")
+        logger.info(f"  Photos updated     : {stats['photo']}")
+        logger.info(f"  Companies linked   : {stats['company']}")
+        logger.info(f"  Company docs added : {stats['docs']}")
+        logger.info(f"  Personal docs added: {stats['personal_docs']}")
+        logger.info(f"  Errors             : {stats['errors']}")
         if dry_run:
             logger.info("  (DRY RUN — no DB changes made)")
 
