@@ -189,6 +189,57 @@ class LKPMService:
         logger.info(f"Draft created: id={draft_id}")
         return draft
 
+    async def _ensure_client_config(self, client_id: int) -> None:
+        """Auto-create lkpm_client_config from CRM company data if missing."""
+        async with self.db_pool.acquire() as conn:
+            existing = await conn.fetchval(
+                "SELECT id FROM lkpm_client_config WHERE client_id = $1", client_id
+            )
+            if existing:
+                return
+
+            # Resolve company from CRM
+            row = await conn.fetchrow("""
+                SELECT c.company_name, c.npwp_company, c.nib, c.kbli_code
+                FROM client_company_links ccl
+                JOIN companies c ON c.id = ccl.company_id
+                WHERE ccl.client_id = $1 AND ccl.status = 'active'
+                ORDER BY ccl.is_primary DESC NULLS LAST
+                LIMIT 1
+            """, client_id)
+
+            if row:
+                kbli = row["kbli_code"] or ""
+                await conn.execute("""
+                    INSERT INTO lkpm_client_config (client_id, company_name, npwp, nib, kbli_codes)
+                    VALUES ($1, $2, $3, $4, ARRAY[$5])
+                    ON CONFLICT (client_id) DO NOTHING
+                """, client_id, row["company_name"], row["npwp_company"], row["nib"], kbli)
+                logger.info(f"Auto-created lkpm_client_config for client {client_id}: {row['company_name']}")
+            else:
+                logger.warning(f"No active company found for client {client_id}, cannot auto-create config")
+
+    async def get_history_for_portal_client(self, client_id: int) -> list[LKPMBatchItem]:
+        """Get LKPM reports visible to a portal client (all shareholders of same companies)."""
+        async with self.db_pool.acquire() as conn:
+            # Find all companies this client belongs to, then find all client_ids
+            # linked to those companies, and return all their LKPM reports
+            rows = await conn.fetch("""
+                SELECT DISTINCT r.*, c.company_name
+                FROM lkpm_reports r
+                JOIN lkpm_client_config c ON r.client_id = c.client_id
+                WHERE r.client_id IN (
+                    SELECT DISTINCT ccl2.client_id
+                    FROM client_company_links ccl1
+                    JOIN client_company_links ccl2 ON ccl2.company_id = ccl1.company_id
+                    WHERE ccl1.client_id = $1
+                      AND ccl1.status = 'active'
+                      AND ccl2.status = 'active'
+                )
+                ORDER BY r.year DESC, r.quarter DESC
+            """, client_id)
+        return [self._row_to_batch_item(row) for row in rows]
+
     async def submit_form_data(
         self, submission: LKPMClientSubmission
     ) -> LKPMDraft:
@@ -197,6 +248,9 @@ class LKPMService:
             f"Processing form submission: client={submission.client_id}, "
             f"{submission.quarter} {submission.year}"
         )
+
+        # Auto-create config from CRM if missing
+        await self._ensure_client_config(submission.client_id)
 
         draft = self.data_collector.collect_from_form(submission)
 
