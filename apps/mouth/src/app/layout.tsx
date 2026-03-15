@@ -46,7 +46,7 @@ export const metadata: Metadata = {
     template: "%s | Bali Zero",
   },
   description:
-    "Expert visa, immigration & company setup services in Bali. PT PMA, KITAS, Golden Visa, tax compliance. Trusted by 1000+ expats.",
+    "Bali's #1 AI-powered visa agency. KITAS, KITAP, PT PMA company setup, Golden Visa, KBLI 2025 compliance, tax consulting. Transparent pricing. Trusted by 5000+ clients since 2020.",
   keywords: [
     // Primary keywords
     "bali visa",
@@ -89,7 +89,7 @@ export const metadata: Metadata = {
     url: appUrl,
     title: "Bali Zero | #1 Visa & Business Experts in Bali, Indonesia",
     description:
-      "Expert visa, immigration & company setup services in Bali. PT PMA, KITAS, Golden Visa, tax compliance. Trusted by 1000+ expats.",
+      "Bali's #1 AI-powered visa agency. KITAS, KITAP, PT PMA, Golden Visa, KBLI 2025, tax consulting. 5000+ clients since 2020.",
     siteName: "Bali Zero",
     images: [
       {
@@ -105,7 +105,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Bali Zero | Visa & Business Experts in Bali",
     description:
-      "Expert visa, immigration, company setup services in Bali. Trusted by 1000+ expats.",
+      "Expert visa, immigration, company setup services in Bali. Trusted by 5000+ clients.",
     images: ["/static/og-image.jpg"],
     creator: "@balizero",
     site: "@balizero",

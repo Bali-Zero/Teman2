@@ -187,8 +187,17 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-      // Note: Font and CSS preloading handled automatically by next/font/google
-      // and Next.js build pipeline (filenames are content-hashed)
+      // Preconnect to external domains for Core Web Vitals (LCP/FCP improvement)
+      {
+        source: "/:path*",
+        headers: [
+          {
+            key: "Link",
+            value:
+              "<https://fonts.googleapis.com>; rel=preconnect, <https://fonts.gstatic.com>; rel=preconnect; crossorigin",
+          },
+        ],
+      },
     ];
   },
 

@@ -495,6 +495,31 @@ export async function getCategoryCounts(): Promise<
 }
 
 /**
+ * Get set of slugs marked as noIndex (for sitemap exclusion)
+ * Only checks MDX articles since backend articles don't have noIndex
+ */
+export async function getNoIndexSlugs(): Promise<Set<string>> {
+  const noIndexSlugs = new Set<string>();
+  const allSlugs = await getAllMdxSlugs();
+
+  for (const { folderCategory, slug } of allSlugs) {
+    try {
+      const filePath = path.join(ARTICLES_PATH, folderCategory, `${slug}.mdx`);
+      if (!fs.existsSync(filePath)) continue;
+      const fileContents = fs.readFileSync(filePath, "utf8");
+      const { data: frontmatter } = matter(fileContents);
+      if (frontmatter.noIndex) {
+        noIndexSlugs.add(slug);
+      }
+    } catch {
+      // Skip articles that can't be read
+    }
+  }
+
+  return noIndexSlugs;
+}
+
+/**
  * Search articles by query
  * Tries backend search first, then falls back to in-memory filtering
  */
