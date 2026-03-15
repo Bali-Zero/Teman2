@@ -69,14 +69,18 @@ def register(mcp, _call, _call_safe):
     @mcp.tool()
     async def send_whatsapp(phone: str, message: str) -> dict:
         """
-        Send a WhatsApp message via Twilio integration.
+        Send a WhatsApp message via Meta WhatsApp Cloud API.
 
         Args:
             phone: Recipient phone number with country code (e.g. "+62812345678")
-            message: Message text
+            message: Message text (max 4096 chars)
 
         Returns:
-            Delivery status with message SID.
+            Delivery status from Meta API.
+
+        Note:
+            Requires auth. Rate limited to 20 msgs/phone/hour.
+            Recipient must exist in CRM clients table.
         """
         return await _call(
             "/api/whatsapp/send",
