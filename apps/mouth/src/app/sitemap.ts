@@ -74,6 +74,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly" as const,
       priority: 0.8,
     },
+    {
+      url: `${baseUrl}/llms.txt`,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 1.0,
+    },
+    {
+      url: `${baseUrl}/llms-full.txt`,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/llms-id.txt`,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 0.9,
+    },
   ];
 
   routes.push(...staticPages);
@@ -137,7 +155,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const articlePages = articles
       .filter((article) => !noIndexSlugs.has(article.slug))
       .map((article) => ({
-        url: `${baseUrl}/${article.category}/${article.slug}`,
+        url: `${baseUrl}/${article.category}/${article.slug}${article.locale === "id" ? ".id" : ""}`,
         lastModified: article.publishedAt
           ? new Date(article.publishedAt)
           : new Date(),
