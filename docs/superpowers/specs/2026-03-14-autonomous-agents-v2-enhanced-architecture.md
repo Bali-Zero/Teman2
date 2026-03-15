@@ -666,31 +666,38 @@ Additional for 2GB:
 - [x] 41 unit tests
 - [x] File-based state (config.yaml, state.json, corrections.jsonl, memory.jsonl, patterns.json)
 
-### Phase 1: Validation Layer + Event Bus (Next)
-- [ ] Add VALIDATE gate to SEO Guardian (Pydantic ActionPlan model)
-- [ ] Create `agent_events` PostgreSQL table
+### Phase 1: Validation Layer + Concurrency Safeguards (Next)
+- [ ] Scale Fly.io nuzantara-rag to 4GB RAM ($48/mo)
+- [ ] Add VALIDATE gate (Gate 1-3) to SEO Guardian (Pydantic ActionPlan model)
+- [ ] Add Gate 0: Data Sanity Validator (pre-DECIDE baseline comparison)
+- [ ] File I/O safety: `fcntl.flock` + atomic swap for state.json
+- [ ] Length-capping LangGraph state reducers
 - [ ] Implement VETO audit trail (VetoRecord dataclass)
-- [ ] Add evidence scoring to DECIDE step
+- [ ] Add `zantara_trace_id` (UUID) for cross-agent observability
 
-### Phase 2: Second General — Infrastructure (G6)
-- [ ] Health Monitor Commander (Fly.io Machines API integration)
-- [ ] Code Quality Commander (upgrade existing nightly cron to LangGraph)
-- [ ] Graduated response L1-L5
+### Phase 2: CRM General (G1) — Revenue-Critical, Best Testing Ground
+- [ ] Client Health Commander (upgrade existing cron to LangGraph agent)
+- [ ] Compliance Watch Commander
+- [ ] Earned autonomy tracking (trust_modifier from LEARN phase)
+- **Why G1 first**: 984 clients = immediate ROI. Existing deterministic cron → autonomous agent.
 
-### Phase 3: Intelligence General (G2)
+### Phase 3: Intelligence General (G2) + Event Bus
 - [ ] Intel Gatherer Commander (upgrade bali-intel-scraper cron)
 - [ ] Memory Curator Commander (JSONL → Qdrant consolidation)
-- [ ] Cross-domain event bus integration
+- [ ] Create `agent_events` PostgreSQL table (just-in-time: G2 broadcasts to G1)
+- [ ] Scale to performance-1x 4GB if monitoring shows CPU pressure ($64/mo)
+- **Why event bus here**: First cross-domain flow: G2 intel → G1 compliance alerts.
 
 ### Phase 4: Content General (G3) + Comms General (G5)
 - [ ] Content Creator Commander
 - [ ] SEO→Content event flow (keyword opportunity → article)
 - [ ] WhatsApp/Telegram agent upgrade
 
-### Phase 5: CRM General (G1)
-- [ ] Client Health Commander
-- [ ] Compliance Watch Commander
-- [ ] Full cross-domain orchestration
+### Phase 5: Infrastructure General (G6)
+- [ ] Health Monitor Commander (Fly.io Machines API integration)
+- [ ] Code Quality Commander (upgrade existing nightly cron to LangGraph)
+- [ ] Graduated response L1-L5
+- **Why G6 last**: Stable bash scripts work fine. AI infra monitoring only justified when AI fleet is large enough.
 
 ### Phase 6: General-of-Generals (Supreme Command)
 - [ ] Weekly coordination across all 6 Generals
@@ -704,7 +711,7 @@ Additional for 2GB:
 
 | Constraint | Enforcement |
 |-----------|-------------|
-| 2GB RAM Fly.io | Scalar quantization on Qdrant, list-capping reducers in LangGraph state, lazy-init |
+| Fly.io RAM scaling | Phase 0-2: 4GB shared-cpu-2x ($48/mo). Phase 3+: 4GB performance-1x ($64/mo). Scale to 8GB perf-2x ($99/mo) only if monitoring shows pressure. |
 | Async-first | `httpx` only, `ainvoke`/`astream` for LangGraph, `asyncpg` for checkpointing |
 | Python 3.11+ | Type hints required, `TypedDict` for graph state, `match` statements |
 | No hardcoded secrets | Environment variables only, `.secrets/` in `.gitignore` |
@@ -716,6 +723,15 @@ Additional for 2GB:
 | Session limits | `max_actions: 50`, `max_runtime: 600s` per Commander run |
 | Latency budget (p95 < 3s) | OBSERVE: ~500ms (API calls) → DECIDE: ~1000ms (LLM) → VALIDATE: ~50ms (Pydantic) → ACT: ~500ms (MCP tools) → buffer: ~950ms |
 | MCP integration | Captains call Soldiers via existing 96 MCP tools. No new tool framework — `mcporter call` for cron, direct Python import for in-process |
+| Tool count per Captain | Max 7 MCP tools per Captain. LLMs degrade with >7 tools. Group tightly by domain. |
+| Subgraph timeout | Every Commander `.ainvoke()` wrapped in `asyncio.wait_for(..., timeout=300)`. Timeout returns `{"cycle_status": "timeout_aborted"}` gracefully. |
+| File I/O safety | `fcntl.flock(LOCK_EX)` on all JSONL writes. Atomic swap (`write tmp → fsync → os.replace`) for state.json. |
+| Blocking I/O in async | Use `asyncio.to_thread()` for `json.dump`, `yaml.safe_load`, `subprocess.run` inside async LangGraph nodes. Never block the event loop. |
+| LangGraph state reducers | All list fields use length-capping reducers (`(existing + new)[-10:]`), never unbounded `operator.add`. |
+| Gate 0: Data Sanity | Pre-DECIDE validator compares OBSERVE output against 7-day rolling baseline in state.json. Variance >50% → ABSTAIN + L1 alert. Never pass garbage to LLM. |
+| Event bus atomicity | Use `FOR UPDATE SKIP LOCKED` for event consumption. Nightly cleanup: `DELETE WHERE status='consumed' AND created_at < NOW() - INTERVAL '7 days'`. |
+| General routing | Deterministic triage (regex + Pydantic), never LLM-based. LLM routing is the #1 cause of flaky multi-agent systems. |
+| Service injection | Pass services via LangGraph `config["configurable"]`, never module-level setters. Module-level breaks under concurrency. |
 
 ---
 
