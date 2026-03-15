@@ -30,7 +30,7 @@ export async function GET() {
         title: found.title,
         category: found.category,
         cover_image: found.coverImage || null,
-        href: `/articles/${found.category}/${found.slug}`,
+        href: `https://balizero.com/articles/${found.category}/${found.slug}`,
       };
     });
 

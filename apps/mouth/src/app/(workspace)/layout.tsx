@@ -214,7 +214,6 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
             onToggleClock={toggleClock}
             onMobileMenuToggle={handleMobileMenuToggle}
             isMobileMenuOpen={isMobileMenuOpen}
-            notificationCount={0}
             whatsappUnread={0}
           />
 
