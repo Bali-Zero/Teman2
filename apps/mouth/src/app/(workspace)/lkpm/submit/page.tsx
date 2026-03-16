@@ -10,16 +10,16 @@ import { logger } from "@/lib/logger";
 
 // Keys match backend LKPMClientSubmission fields exactly
 const INVESTMENT_CATEGORIES = [
-  { key: "equipment", label: "Equipment & Machinery" },
-  { key: "building", label: "Building & Construction" },
-  { key: "vehicle", label: "Vehicles" },
-  { key: "working_capital", label: "Working Capital", domesticOnly: true },
+  { key: "equipment", label: "Equipment & Machinery", hint: "Computers, machinery, furniture..." },
+  { key: "building", label: "Building & Construction", hint: "Construction, renovation, office setup..." },
+  { key: "vehicle", label: "Vehicles", hint: "Company cars, motorbikes..." },
+  { key: "working_capital", label: "Working Capital", domesticOnly: true, hint: "Salaries, rent, bank deposits..." },
 ] as const;
 
 // These backend fields have no domestic/import split
 const SINGLE_FIELDS = [
-  { key: "land", label: "Land (Hak Pakai / HGB)" },
-  { key: "other", label: "Other Assets" },
+  { key: "land", label: "Land (Hak Pakai / HGB)", hint: "Land lease, Hak Pakai, HGB..." },
+  { key: "other", label: "Other Assets", hint: "Pre-operational, licensing costs..." },
 ] as const;
 
 const QUARTERS = ["Q1", "Q2", "Q3", "Q4"] as const;
@@ -385,7 +385,10 @@ export default function WorkspaceLKPMSubmitPage() {
 
             {INVESTMENT_CATEGORIES.map((cat) => (
               <div key={cat.key} className="grid grid-cols-3 gap-3 items-center">
-                <span className="text-sm">{cat.label}</span>
+                <div>
+                  <span className="text-sm">{cat.label}</span>
+                  <p className="text-[10px] mt-0.5" style={{ color: "var(--bz-text-2)" }}>{cat.hint}</p>
+                </div>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -403,7 +406,7 @@ export default function WorkspaceLKPMSubmitPage() {
                     inputMode="numeric"
                     value={formatNumber(investment[`${cat.key}_import`])}
                     onChange={(e) => updateInvestment(`${cat.key}_import`, e.target.value)}
-                    placeholder="0"
+                    placeholder="Imported"
                     className="w-full rounded-lg border px-3 py-2 text-sm text-right"
                     style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}
                   />
@@ -414,7 +417,10 @@ export default function WorkspaceLKPMSubmitPage() {
             {/* Single fields (no domestic/import split) */}
             {SINGLE_FIELDS.map((field) => (
               <div key={field.key} className="grid grid-cols-3 gap-3 items-center">
-                <span className="text-sm">{field.label}</span>
+                <div>
+                  <span className="text-sm">{field.label}</span>
+                  <p className="text-[10px] mt-0.5" style={{ color: "var(--bz-text-2)" }}>{field.hint}</p>
+                </div>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -445,7 +451,7 @@ export default function WorkspaceLKPMSubmitPage() {
                 min="0"
                 value={tki || ""}
                 onChange={(e) => setTki(Number(e.target.value) || 0)}
-                placeholder="0"
+                placeholder="Indonesian employees"
                 className="w-full rounded-lg border px-3 py-2 text-sm"
                 style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}
               />
@@ -459,7 +465,7 @@ export default function WorkspaceLKPMSubmitPage() {
                 min="0"
                 value={tka || ""}
                 onChange={(e) => setTka(Number(e.target.value) || 0)}
-                placeholder="0"
+                placeholder="KITAS holders"
                 className="w-full rounded-lg border px-3 py-2 text-sm"
                 style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}
               />
@@ -523,7 +529,7 @@ export default function WorkspaceLKPMSubmitPage() {
               <textarea
                 value={obstacles}
                 onChange={(e) => setObstacles(e.target.value)}
-                placeholder="Describe any obstacles encountered during this period..."
+                placeholder="e.g. permit delays, supply chain issues, construction delays..."
                 rows={3}
                 className="w-full rounded-lg border px-3 py-2 text-sm resize-none"
                 style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}
@@ -536,7 +542,7 @@ export default function WorkspaceLKPMSubmitPage() {
               <textarea
                 value={plans}
                 onChange={(e) => setPlans(e.target.value)}
-                placeholder="Describe plans for the next period..."
+                placeholder="e.g. hire 2 TKI, complete renovation, expand operations..."
                 rows={3}
                 className="w-full rounded-lg border px-3 py-2 text-sm resize-none"
                 style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}
