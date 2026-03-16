@@ -8,13 +8,18 @@ import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { logger } from "@/lib/logger";
 
+// Keys match backend LKPMClientSubmission fields exactly
 const INVESTMENT_CATEGORIES = [
-  { key: "land_building", label: "Land & Building" },
-  { key: "machinery", label: "Machinery & Equipment" },
-  { key: "equipment", label: "Tools & Equipment" },
-  { key: "vehicles", label: "Vehicles" },
-  { key: "other_fixed", label: "Other Fixed Assets" },
-  { key: "working_capital", label: "Working Capital" },
+  { key: "equipment", label: "Equipment & Machinery", hint: "Computers, machinery, furniture..." },
+  { key: "building", label: "Building & Construction", hint: "Construction, renovation, office setup..." },
+  { key: "vehicle", label: "Vehicles", hint: "Company cars, motorbikes..." },
+  { key: "working_capital", label: "Working Capital", domesticOnly: true, hint: "Salaries, rent, bank deposits..." },
+] as const;
+
+// These backend fields have no domestic/import split
+const SINGLE_FIELDS = [
+  { key: "land", label: "Land (Hak Pakai / HGB)", hint: "Land lease, Hak Pakai, HGB..." },
+  { key: "other", label: "Other Assets", hint: "Pre-operational, licensing costs..." },
 ] as const;
 
 const QUARTERS = ["Q1", "Q2", "Q3", "Q4"] as const;
@@ -28,13 +33,17 @@ export default function LKPMSubmitPage() {
   const [quarter, setQuarter] = useState<string>(QUARTERS[0]);
   const [year, setYear] = useState<number>(currentYear);
 
-  const [investment, setInvestment] = useState<Record<string, number>>(() => {
-    const init: Record<string, number> = {};
-    for (const cat of INVESTMENT_CATEGORIES) {
-      init[`${cat.key}_domestic`] = 0;
-      init[`${cat.key}_import`] = 0;
-    }
-    return init;
+  // Investment data — flat keys matching backend LKPMClientSubmission
+  const [investment, setInvestment] = useState<Record<string, number>>({
+    equipment_domestic: 0,
+    equipment_import: 0,
+    building_domestic: 0,
+    building_import: 0,
+    vehicle_domestic: 0,
+    vehicle_import: 0,
+    land: 0,
+    working_capital: 0,
+    other: 0,
   });
 
   const [tki, setTki] = useState(0);
@@ -57,16 +66,24 @@ export default function LKPMSubmitPage() {
     setIsSubmitting(true);
 
     try {
-      const result = await api.portal.submitLKPMData({
+      const result = await api.post<{
+        success: boolean;
+        draft_id: number;
+        quarter: string;
+        year: number;
+        realized_total: number;
+      }>("/api/v1/lkpm/submit-data", {
         client_id: 0, // Backend resolves from auth context
         quarter,
         year,
-        investment,
-        employment: { tki, tka },
-        revenue_quarterly: revenueQuarterly || undefined,
-        revenue_annual: revenueAnnual || undefined,
-        obstacles: obstacles || undefined,
-        plans: plans || undefined,
+        // Flat investment fields matching LKPMClientSubmission
+        ...investment,
+        tki,
+        tka,
+        quarterly_revenue: revenueQuarterly || 0,
+        annual_revenue: revenueAnnual || 0,
+        narrative_obstacles: obstacles || undefined,
+        narrative_plans: plans || undefined,
       });
       success(
         "Data submitted successfully",
@@ -150,7 +167,7 @@ export default function LKPMSubmitPage() {
         >
           <h2 className="text-lg font-semibold">Investment Realization (IDR)</h2>
           <div className="grid grid-cols-1 gap-4">
-            {/* Header */}
+            {/* Categories with domestic/import split */}
             <div className="grid grid-cols-3 gap-3 text-xs font-medium" style={{ color: "var(--bz-text-2)" }}>
               <span>Category</span>
               <span>Domestic</span>
@@ -159,30 +176,50 @@ export default function LKPMSubmitPage() {
 
             {INVESTMENT_CATEGORIES.map((cat) => (
               <div key={cat.key} className="grid grid-cols-3 gap-3 items-center">
-                <span className="text-sm">{cat.label}</span>
+                <div>
+                  <span className="text-sm">{cat.label}</span>
+                  <p className="text-[10px] mt-0.5" style={{ color: "var(--bz-text-2)" }}>{cat.hint}</p>
+                </div>
                 <input
                   type="text"
                   inputMode="numeric"
-                  value={formatNumber(investment[`${cat.key}_domestic`])}
-                  onChange={(e) => updateInvestment(`${cat.key}_domestic`, e.target.value)}
+                  value={formatNumber(investment[cat.key === "working_capital" ? "working_capital" : `${cat.key}_domestic`])}
+                  onChange={(e) => updateInvestment(cat.key === "working_capital" ? "working_capital" : `${cat.key}_domestic`, e.target.value)}
                   placeholder="0"
                   className="w-full rounded-lg border px-3 py-2 text-sm text-right"
-                  style={{
-                    background: "var(--bz-surface)",
-                    borderColor: "var(--bz-border)",
-                  }}
+                  style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}
                 />
+                {"domesticOnly" in cat && cat.domesticOnly ? (
+                  <span className="text-xs text-center" style={{ color: "var(--bz-text-2)" }}>—</span>
+                ) : (
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={formatNumber(investment[`${cat.key}_import`])}
+                    onChange={(e) => updateInvestment(`${cat.key}_import`, e.target.value)}
+                    placeholder="Imported"
+                    className="w-full rounded-lg border px-3 py-2 text-sm text-right"
+                    style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}
+                  />
+                )}
+              </div>
+            ))}
+
+            {/* Single fields (no domestic/import split) */}
+            {SINGLE_FIELDS.map((field) => (
+              <div key={field.key} className="grid grid-cols-3 gap-3 items-center">
+                <div>
+                  <span className="text-sm">{field.label}</span>
+                  <p className="text-[10px] mt-0.5" style={{ color: "var(--bz-text-2)" }}>{field.hint}</p>
+                </div>
                 <input
                   type="text"
                   inputMode="numeric"
-                  value={formatNumber(investment[`${cat.key}_import`])}
-                  onChange={(e) => updateInvestment(`${cat.key}_import`, e.target.value)}
+                  value={formatNumber(investment[field.key])}
+                  onChange={(e) => updateInvestment(field.key, e.target.value)}
                   placeholder="0"
-                  className="w-full rounded-lg border px-3 py-2 text-sm text-right"
-                  style={{
-                    background: "var(--bz-surface)",
-                    borderColor: "var(--bz-border)",
-                  }}
+                  className="w-full rounded-lg border px-3 py-2 text-sm text-right col-span-2"
+                  style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}
                 />
               </div>
             ))}
@@ -205,12 +242,9 @@ export default function LKPMSubmitPage() {
                 min="0"
                 value={tki || ""}
                 onChange={(e) => setTki(Number(e.target.value) || 0)}
-                placeholder="0"
+                placeholder="Indonesian employees"
                 className="w-full rounded-lg border px-3 py-2 text-sm"
-                style={{
-                  background: "var(--bz-surface)",
-                  borderColor: "var(--bz-border)",
-                }}
+                style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}
               />
             </div>
             <div>
@@ -222,12 +256,9 @@ export default function LKPMSubmitPage() {
                 min="0"
                 value={tka || ""}
                 onChange={(e) => setTka(Number(e.target.value) || 0)}
-                placeholder="0"
+                placeholder="KITAS holders"
                 className="w-full rounded-lg border px-3 py-2 text-sm"
-                style={{
-                  background: "var(--bz-surface)",
-                  borderColor: "var(--bz-border)",
-                }}
+                style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}
               />
             </div>
           </div>
@@ -253,10 +284,7 @@ export default function LKPMSubmitPage() {
                 }
                 placeholder="0"
                 className="w-full rounded-lg border px-3 py-2 text-sm text-right"
-                style={{
-                  background: "var(--bz-surface)",
-                  borderColor: "var(--bz-border)",
-                }}
+                style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}
               />
             </div>
             <div>
@@ -272,10 +300,7 @@ export default function LKPMSubmitPage() {
                 }
                 placeholder="0"
                 className="w-full rounded-lg border px-3 py-2 text-sm text-right"
-                style={{
-                  background: "var(--bz-surface)",
-                  borderColor: "var(--bz-border)",
-                }}
+                style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}
               />
             </div>
           </div>
@@ -295,13 +320,10 @@ export default function LKPMSubmitPage() {
               <textarea
                 value={obstacles}
                 onChange={(e) => setObstacles(e.target.value)}
-                placeholder="Describe any obstacles encountered during this period..."
+                placeholder="e.g. permit delays, supply chain issues, construction delays..."
                 rows={3}
                 className="w-full rounded-lg border px-3 py-2 text-sm resize-none"
-                style={{
-                  background: "var(--bz-surface)",
-                  borderColor: "var(--bz-border)",
-                }}
+                style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}
               />
             </div>
             <div>
@@ -311,13 +333,10 @@ export default function LKPMSubmitPage() {
               <textarea
                 value={plans}
                 onChange={(e) => setPlans(e.target.value)}
-                placeholder="Describe plans for the next period..."
+                placeholder="e.g. hire 2 TKI, complete renovation, expand operations..."
                 rows={3}
                 className="w-full rounded-lg border px-3 py-2 text-sm resize-none"
-                style={{
-                  background: "var(--bz-surface)",
-                  borderColor: "var(--bz-border)",
-                }}
+                style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}
               />
             </div>
           </div>
