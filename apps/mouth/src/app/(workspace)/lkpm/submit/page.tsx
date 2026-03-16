@@ -8,13 +8,18 @@ import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { logger } from "@/lib/logger";
 
+// Keys match backend LKPMClientSubmission fields exactly
 const INVESTMENT_CATEGORIES = [
-  { key: "land_building", label: "Land & Building" },
-  { key: "machinery", label: "Machinery & Equipment" },
-  { key: "equipment", label: "Tools & Equipment" },
-  { key: "vehicles", label: "Vehicles" },
-  { key: "other_fixed", label: "Other Fixed Assets" },
-  { key: "working_capital", label: "Working Capital" },
+  { key: "equipment", label: "Equipment & Machinery" },
+  { key: "building", label: "Building & Construction" },
+  { key: "vehicle", label: "Vehicles" },
+  { key: "working_capital", label: "Working Capital", domesticOnly: true },
+] as const;
+
+// These backend fields have no domestic/import split
+const SINGLE_FIELDS = [
+  { key: "land", label: "Land (Hak Pakai / HGB)" },
+  { key: "other", label: "Other Assets" },
 ] as const;
 
 const QUARTERS = ["Q1", "Q2", "Q3", "Q4"] as const;
@@ -48,14 +53,17 @@ export default function WorkspaceLKPMSubmitPage() {
   const [quarter, setQuarter] = useState<string>(QUARTERS[0]);
   const [year, setYear] = useState<number>(currentYear);
 
-  // Investment data
-  const [investment, setInvestment] = useState<Record<string, number>>(() => {
-    const init: Record<string, number> = {};
-    for (const cat of INVESTMENT_CATEGORIES) {
-      init[`${cat.key}_domestic`] = 0;
-      init[`${cat.key}_import`] = 0;
-    }
-    return init;
+  // Investment data — flat keys matching backend LKPMClientSubmission
+  const [investment, setInvestment] = useState<Record<string, number>>({
+    equipment_domestic: 0,
+    equipment_import: 0,
+    building_domestic: 0,
+    building_import: 0,
+    vehicle_domestic: 0,
+    vehicle_import: 0,
+    land: 0,
+    working_capital: 0,
+    other: 0,
   });
 
   const [tki, setTki] = useState(0);
@@ -149,12 +157,14 @@ export default function WorkspaceLKPMSubmitPage() {
         client_id: primaryLink.client_id,
         quarter,
         year,
-        investment,
-        employment: { tki, tka },
-        revenue_quarterly: revenueQuarterly || undefined,
-        revenue_annual: revenueAnnual || undefined,
-        obstacles: obstacles || undefined,
-        plans: plans || undefined,
+        // Flat investment fields matching LKPMClientSubmission
+        ...investment,
+        tki,
+        tka,
+        quarterly_revenue: revenueQuarterly || 0,
+        annual_revenue: revenueAnnual || 0,
+        narrative_obstacles: obstacles || undefined,
+        narrative_plans: plans || undefined,
       });
       success(
         "Data submitted",
@@ -366,6 +376,7 @@ export default function WorkspaceLKPMSubmitPage() {
         >
           <h2 className="text-lg font-semibold">Investment Realization (IDR)</h2>
           <div className="grid grid-cols-1 gap-4">
+            {/* Categories with domestic/import split */}
             <div className="grid grid-cols-3 gap-3 text-xs font-medium" style={{ color: "var(--bz-text-2)" }}>
               <span>Category</span>
               <span>Domestic</span>
@@ -378,19 +389,39 @@ export default function WorkspaceLKPMSubmitPage() {
                 <input
                   type="text"
                   inputMode="numeric"
-                  value={formatNumber(investment[`${cat.key}_domestic`])}
-                  onChange={(e) => updateInvestment(`${cat.key}_domestic`, e.target.value)}
+                  value={formatNumber(investment[cat.key === "working_capital" ? "working_capital" : `${cat.key}_domestic`])}
+                  onChange={(e) => updateInvestment(cat.key === "working_capital" ? "working_capital" : `${cat.key}_domestic`, e.target.value)}
                   placeholder="0"
                   className="w-full rounded-lg border px-3 py-2 text-sm text-right"
                   style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}
                 />
+                {"domesticOnly" in cat && cat.domesticOnly ? (
+                  <span className="text-xs text-center" style={{ color: "var(--bz-text-2)" }}>—</span>
+                ) : (
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={formatNumber(investment[`${cat.key}_import`])}
+                    onChange={(e) => updateInvestment(`${cat.key}_import`, e.target.value)}
+                    placeholder="0"
+                    className="w-full rounded-lg border px-3 py-2 text-sm text-right"
+                    style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}
+                  />
+                )}
+              </div>
+            ))}
+
+            {/* Single fields (no domestic/import split) */}
+            {SINGLE_FIELDS.map((field) => (
+              <div key={field.key} className="grid grid-cols-3 gap-3 items-center">
+                <span className="text-sm">{field.label}</span>
                 <input
                   type="text"
                   inputMode="numeric"
-                  value={formatNumber(investment[`${cat.key}_import`])}
-                  onChange={(e) => updateInvestment(`${cat.key}_import`, e.target.value)}
+                  value={formatNumber(investment[field.key])}
+                  onChange={(e) => updateInvestment(field.key, e.target.value)}
                   placeholder="0"
-                  className="w-full rounded-lg border px-3 py-2 text-sm text-right"
+                  className="w-full rounded-lg border px-3 py-2 text-sm text-right col-span-2"
                   style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}
                 />
               </div>
