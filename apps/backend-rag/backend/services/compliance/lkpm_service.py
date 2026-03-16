@@ -28,16 +28,16 @@ from backend.services.compliance.lkpm_validator import LKPMValidator
 
 logger = logging.getLogger(__name__)
 
-# LKPM quarterly deadlines: days after quarter end
-# Q1 (Jan-Mar) → due April 10
-# Q2 (Apr-Jun) → due July 10
-# Q3 (Jul-Sep) → due October 10
-# Q4 (Oct-Dec) → due January 10 (next year)
+# LKPM quarterly deadlines (PerBKPM 5/2025 — extended from 10th to 15th)
+# Q1 (Jan-Mar) → due April 15
+# Q2 (Apr-Jun) → due July 15
+# Q3 (Jul-Sep) → due October 15
+# Q4 (Oct-Dec) → due January 15 (next year)
 QUARTER_DEADLINES = {
-    "Q1": (4, 10),   # April 10
-    "Q2": (7, 10),   # July 10
-    "Q3": (10, 10),  # October 10
-    "Q4": (1, 10),   # January 10 next year
+    "Q1": (4, 15),   # April 15
+    "Q2": (7, 15),   # July 15
+    "Q3": (10, 15),  # October 15
+    "Q4": (1, 15),   # January 15 next year
 }
 
 
