@@ -303,6 +303,7 @@ class LKPMBatchItem(BaseModel):
     year: int
     status: LKPMStatus
     validation_status: str = "pending"
+    realized_total: int = 0
     red_alerts: int = 0
     yellow_alerts: int = 0
     oss_submitted: bool = False

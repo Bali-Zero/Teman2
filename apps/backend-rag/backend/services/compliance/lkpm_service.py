@@ -812,6 +812,19 @@ class LKPMService:
         red_count = sum(1 for a in validation_alerts if a.get("severity") == "red")
         yellow_count = sum(1 for a in validation_alerts if a.get("severity") == "yellow")
 
+        # Compute realized_total from individual columns
+        realized_total = sum([
+            row.get("realized_equipment_domestic", 0) or 0,
+            row.get("realized_equipment_import", 0) or 0,
+            row.get("realized_building_domestic", 0) or 0,
+            row.get("realized_building_import", 0) or 0,
+            row.get("realized_vehicle_domestic", 0) or 0,
+            row.get("realized_vehicle_import", 0) or 0,
+            row.get("realized_land", 0) or 0,
+            row.get("realized_working_capital", 0) or 0,
+            row.get("realized_other", 0) or 0,
+        ])
+
         return LKPMBatchItem(
             id=row["id"],
             client_id=row["client_id"],
@@ -820,6 +833,7 @@ class LKPMService:
             year=row["year"],
             status=LKPMStatus(row["status"]),
             validation_status=row.get("validation_status", "pending"),
+            realized_total=realized_total,
             red_alerts=red_count,
             yellow_alerts=yellow_count,
             oss_submitted=row["oss_submitted"],
