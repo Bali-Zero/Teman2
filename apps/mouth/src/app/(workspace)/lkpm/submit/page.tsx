@@ -8,18 +8,18 @@ import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { logger } from "@/lib/logger";
 
-// Keys match backend LKPMClientSubmission fields exactly
-const INVESTMENT_CATEGORIES = [
-  { key: "equipment", label: "Equipment & Machinery", hint: "Computers, machinery, furniture..." },
-  { key: "building", label: "Building & Construction", hint: "Construction, renovation, office setup..." },
-  { key: "vehicle", label: "Vehicles", hint: "Company cars, motorbikes..." },
-  { key: "working_capital", label: "Working Capital", domesticOnly: true, hint: "Salaries, rent, bank deposits..." },
+// Kategori sesuai format OSS (PerBKPM 5/2025)
+// Backend keys: equipment, building, vehicle — each with _domestic/_import
+const MODAL_TETAP = [
+  { key: "building", label: "Bangunan / Gedung", hint: "Konstruksi, renovasi, pembangunan kantor" },
+  { key: "equipment", label: "Mesin / Peralatan", hint: "Komputer, mesin, furnitur, perlengkapan kantor" },
+  { key: "vehicle", label: "Kendaraan", hint: "Mobil, motor, kendaraan operasional" },
 ] as const;
 
-// These backend fields have no domestic/import split
-const SINGLE_FIELDS = [
-  { key: "land", label: "Land (Hak Pakai / HGB)", hint: "Land lease, Hak Pakai, HGB..." },
-  { key: "other", label: "Other Assets", hint: "Pre-operational, licensing costs..." },
+// Kategori tanpa split domestik/impor
+const MODAL_TETAP_SINGLE = [
+  { key: "land", label: "Pembelian / Pematangan Tanah", hint: "Hak Pakai, HGB, sewa tanah" },
+  { key: "other", label: "Lain-lain", hint: "Biaya pra-operasional, perizinan, studi kelayakan" },
 ] as const;
 
 const QUARTERS = ["Q1", "Q2", "Q3", "Q4"] as const;
@@ -188,9 +188,9 @@ export default function WorkspaceLKPMSubmitPage() {
           <ArrowLeft className="w-5 h-5" style={{ color: "var(--bz-text-2)" }} />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Submit LKPM Data</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Submit Data LKPM</h1>
           <p style={{ color: "var(--bz-text-2)" }}>
-            Enter quarterly investment data for a company
+            Input data realisasi investasi triwulanan
           </p>
         </div>
       </section>
@@ -328,11 +328,11 @@ export default function WorkspaceLKPMSubmitPage() {
           className="rounded-xl border p-6 space-y-4"
           style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
         >
-          <h2 className="text-lg font-semibold">Reporting Period</h2>
+          <h2 className="text-lg font-semibold">Periode Pelaporan</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>
-                Quarter
+                Triwulan
               </label>
               <select
                 value={quarter}
@@ -350,7 +350,7 @@ export default function WorkspaceLKPMSubmitPage() {
             </div>
             <div>
               <label className="block text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>
-                Year
+                Tahun
               </label>
               <select
                 value={year}
@@ -369,21 +369,20 @@ export default function WorkspaceLKPMSubmitPage() {
           </div>
         </section>
 
-        {/* Investment Realization */}
+        {/* Realisasi Modal Tetap */}
         <section
           className="rounded-xl border p-6 space-y-4"
           style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
         >
-          <h2 className="text-lg font-semibold">Investment Realization (IDR)</h2>
+          <h2 className="text-lg font-semibold">Realisasi Modal Tetap (Rp)</h2>
           <div className="grid grid-cols-1 gap-4">
-            {/* Categories with domestic/import split */}
             <div className="grid grid-cols-3 gap-3 text-xs font-medium" style={{ color: "var(--bz-text-2)" }}>
-              <span>Category</span>
-              <span>Domestic</span>
-              <span>Import</span>
+              <span>Komponen</span>
+              <span>Domestik</span>
+              <span>Impor</span>
             </div>
 
-            {INVESTMENT_CATEGORIES.map((cat) => (
+            {MODAL_TETAP.map((cat) => (
               <div key={cat.key} className="grid grid-cols-3 gap-3 items-center">
                 <div>
                   <span className="text-sm">{cat.label}</span>
@@ -392,30 +391,25 @@ export default function WorkspaceLKPMSubmitPage() {
                 <input
                   type="text"
                   inputMode="numeric"
-                  value={formatNumber(investment[cat.key === "working_capital" ? "working_capital" : `${cat.key}_domestic`])}
-                  onChange={(e) => updateInvestment(cat.key === "working_capital" ? "working_capital" : `${cat.key}_domestic`, e.target.value)}
+                  value={formatNumber(investment[`${cat.key}_domestic`])}
+                  onChange={(e) => updateInvestment(`${cat.key}_domestic`, e.target.value)}
                   placeholder="0"
                   className="w-full rounded-lg border px-3 py-2 text-sm text-right"
                   style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}
                 />
-                {"domesticOnly" in cat && cat.domesticOnly ? (
-                  <span className="text-xs text-center" style={{ color: "var(--bz-text-2)" }}>—</span>
-                ) : (
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={formatNumber(investment[`${cat.key}_import`])}
-                    onChange={(e) => updateInvestment(`${cat.key}_import`, e.target.value)}
-                    placeholder="Imported"
-                    className="w-full rounded-lg border px-3 py-2 text-sm text-right"
-                    style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}
-                  />
-                )}
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={formatNumber(investment[`${cat.key}_import`])}
+                  onChange={(e) => updateInvestment(`${cat.key}_import`, e.target.value)}
+                  placeholder="0"
+                  className="w-full rounded-lg border px-3 py-2 text-sm text-right"
+                  style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}
+                />
               </div>
             ))}
 
-            {/* Single fields (no domestic/import split) */}
-            {SINGLE_FIELDS.map((field) => (
+            {MODAL_TETAP_SINGLE.map((field) => (
               <div key={field.key} className="grid grid-cols-3 gap-3 items-center">
                 <div>
                   <span className="text-sm">{field.label}</span>
@@ -435,37 +429,59 @@ export default function WorkspaceLKPMSubmitPage() {
           </div>
         </section>
 
-        {/* Employment */}
+        {/* Modal Kerja */}
         <section
           className="rounded-xl border p-6 space-y-4"
           style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
         >
-          <h2 className="text-lg font-semibold">Employment</h2>
+          <div>
+            <h2 className="text-lg font-semibold">Modal Kerja — 1 Turnover (Rp)</h2>
+            <p className="text-[10px] mt-1" style={{ color: "var(--bz-text-2)" }}>
+              Bahan baku, gaji/upah, listrik-air-telepon, suku cadang, overhead
+            </p>
+          </div>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={formatNumber(investment.working_capital)}
+            onChange={(e) => updateInvestment("working_capital", e.target.value)}
+            placeholder="Total modal kerja untuk 1 siklus operasional"
+            className="w-full rounded-lg border px-3 py-2 text-sm text-right"
+            style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}
+          />
+        </section>
+
+        {/* Tenaga Kerja */}
+        <section
+          className="rounded-xl border p-6 space-y-4"
+          style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+        >
+          <h2 className="text-lg font-semibold">Realisasi Tenaga Kerja</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>
-                Indonesian Workers (TKI)
+                TKI (Tenaga Kerja Indonesia)
               </label>
               <input
                 type="number"
                 min="0"
                 value={tki || ""}
                 onChange={(e) => setTki(Number(e.target.value) || 0)}
-                placeholder="Indonesian employees"
+                placeholder="Jumlah karyawan lokal"
                 className="w-full rounded-lg border px-3 py-2 text-sm"
                 style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}
               />
             </div>
             <div>
               <label className="block text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>
-                Foreign Workers (TKA)
+                TKA (Tenaga Kerja Asing)
               </label>
               <input
                 type="number"
                 min="0"
                 value={tka || ""}
                 onChange={(e) => setTka(Number(e.target.value) || 0)}
-                placeholder="KITAS holders"
+                placeholder="Pemegang KITAS"
                 className="w-full rounded-lg border px-3 py-2 text-sm"
                 style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}
               />
@@ -473,16 +489,16 @@ export default function WorkspaceLKPMSubmitPage() {
           </div>
         </section>
 
-        {/* Revenue */}
+        {/* Pendapatan */}
         <section
           className="rounded-xl border p-6 space-y-4"
           style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
         >
-          <h2 className="text-lg font-semibold">Revenue (IDR)</h2>
+          <h2 className="text-lg font-semibold">Pendapatan (Rp)</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>
-                Quarterly Revenue
+                Pendapatan Triwulan
               </label>
               <input
                 type="text"
@@ -498,7 +514,7 @@ export default function WorkspaceLKPMSubmitPage() {
             </div>
             <div>
               <label className="block text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>
-                Annual Revenue
+                Pendapatan Tahunan
               </label>
               <input
                 type="text"
@@ -515,21 +531,21 @@ export default function WorkspaceLKPMSubmitPage() {
           </div>
         </section>
 
-        {/* Narrative */}
+        {/* Kendala & Rencana */}
         <section
           className="rounded-xl border p-6 space-y-4"
           style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
         >
-          <h2 className="text-lg font-semibold">Narrative</h2>
+          <h2 className="text-lg font-semibold">Kendala & Rencana</h2>
           <div className="space-y-4">
             <div>
               <label className="block text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>
-                Obstacles Encountered (optional)
+                Permasalahan yang Dihadapi
               </label>
               <textarea
                 value={obstacles}
                 onChange={(e) => setObstacles(e.target.value)}
-                placeholder="e.g. permit delays, supply chain issues, construction delays..."
+                placeholder="Contoh: keterlambatan perizinan, gangguan rantai pasokan, kendala konstruksi..."
                 rows={3}
                 className="w-full rounded-lg border px-3 py-2 text-sm resize-none"
                 style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}
@@ -537,12 +553,12 @@ export default function WorkspaceLKPMSubmitPage() {
             </div>
             <div>
               <label className="block text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>
-                Future Plans (optional)
+                Rencana Kegiatan Berikutnya
               </label>
               <textarea
                 value={plans}
                 onChange={(e) => setPlans(e.target.value)}
-                placeholder="e.g. hire 2 TKI, complete renovation, expand operations..."
+                placeholder="Contoh: penambahan 2 TKI, penyelesaian renovasi, ekspansi operasional..."
                 rows={3}
                 className="w-full rounded-lg border px-3 py-2 text-sm resize-none"
                 style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}
@@ -565,10 +581,10 @@ export default function WorkspaceLKPMSubmitPage() {
               <Send className="w-4 h-4" />
             )}
             {resolvingClient
-              ? "Resolving company..."
+              ? "Memproses..."
               : isSubmitting
-                ? "Submitting..."
-                : "Submit Data"}
+                ? "Mengirim..."
+                : "Kirim Data"}
           </button>
         </div>
       </form>
