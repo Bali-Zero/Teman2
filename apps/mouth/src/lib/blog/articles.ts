@@ -224,6 +224,9 @@ async function getAllMdxSlugs(): Promise<
         (file) =>
           file.endsWith(".mdx") &&
           !file.endsWith(".id.mdx") &&
+          !file.endsWith(".it.mdx") &&
+          !file.endsWith(".ru.mdx") &&
+          !file.endsWith(".fr.mdx") &&
           !file.includes(".sync-conflict-"),
       );
 
@@ -356,6 +359,125 @@ export async function getArticleBySlug(
 
   // Fallback to local MDX
   return getMdxArticleBySlug(category, slug);
+}
+
+/**
+ * Get an article in a specific locale.
+ * Looks for {slug}.{locale}.mdx, falls back to {slug}.mdx (English).
+ */
+export async function getArticleByLocale(
+  category: string,
+  slug: string,
+  locale: string,
+): Promise<Article | null> {
+  if (!locale || locale === "en") {
+    return getArticleBySlug(category, slug);
+  }
+
+  // Try locale-specific MDX file
+  const normalizedCategory = normalizeCategory(category);
+  const possibleFolders = CATEGORY_FOLDERS[normalizedCategory] || [category];
+
+  for (const folder of possibleFolders) {
+    const localePath = path.join(
+      ARTICLES_PATH,
+      folder,
+      `${slug}.${locale}.mdx`,
+    );
+    if (fs.existsSync(localePath)) {
+      const fileContents = fs.readFileSync(localePath, "utf8");
+      const { data: frontmatter, content } = matter(fileContents);
+
+      const author =
+        typeof frontmatter.author === "object"
+          ? frontmatter.author
+          : {
+              id: "zantara-ai",
+              name: "Zantara AI",
+              avatar: "/static/zantara-avatar.png",
+              role: "AI Research Assistant",
+              isAI: true,
+            };
+
+      return {
+        id: frontmatter.id || slug,
+        slug: frontmatter.slug || slug,
+        title: frontmatter.title || "Untitled",
+        subtitle: frontmatter.subtitle,
+        excerpt: frontmatter.excerpt || "",
+        content,
+        coverImage:
+          frontmatter.coverImage ||
+          frontmatter.image?.src ||
+          `/static/blog/${folder}/${slug}.jpg`,
+        coverImageAlt:
+          frontmatter.coverImageAlt ||
+          frontmatter.image?.alt ||
+          frontmatter.title,
+        category: normalizeCategory(frontmatter.category || category),
+        tags: frontmatter.tags || [],
+        author,
+        createdAt: new Date(frontmatter.publishedAt || Date.now()),
+        updatedAt: new Date(
+          frontmatter.updatedAt || frontmatter.publishedAt || Date.now(),
+        ),
+        publishedAt: frontmatter.publishedAt
+          ? new Date(frontmatter.publishedAt)
+          : undefined,
+        status: frontmatter.status || "published",
+        featured: frontmatter.featured || false,
+        trending: frontmatter.trending || false,
+        seoTitle: frontmatter.seoTitle,
+        seoDescription: frontmatter.seoDescription,
+        readingTime:
+          frontmatter.readingTime ||
+          Math.ceil(content.split(/\s+/).length / 200),
+        viewCount: frontmatter.viewCount || 0,
+        shareCount: frontmatter.shareCount || 0,
+        likeCount: frontmatter.likeCount || 0,
+        commentCount: frontmatter.commentCount || 0,
+        aiGenerated: frontmatter.aiGenerated || false,
+        aiConfidenceScore: frontmatter.aiConfidenceScore,
+        aiOptimization: frontmatter.aiOptimization || undefined,
+        faq: frontmatter.faq || undefined,
+        contentStructure: frontmatter.contentStructure || undefined,
+        relatedArticleIds: frontmatter.relatedArticles || [],
+        locale:
+          (frontmatter.locale as "en" | "id" | "it" | "ru" | "fr") ||
+          (locale as "en" | "id" | "it" | "ru" | "fr"),
+        noIndex: frontmatter.noIndex || false,
+      };
+    }
+  }
+
+  // Fallback to English
+  return getArticleBySlug(category, slug);
+}
+
+/**
+ * Check which locales are available for a given article slug.
+ * Returns an array of available locale codes.
+ */
+export function getAvailableLocales(category: string, slug: string): string[] {
+  const locales = ["en"]; // English always available
+  const normalizedCategory = normalizeCategory(category);
+  const possibleFolders = CATEGORY_FOLDERS[normalizedCategory] || [category];
+
+  for (const locale of ["id", "it", "ru", "fr"] as const) {
+    for (const folder of possibleFolders) {
+      const localePath = path.join(
+        ARTICLES_PATH,
+        folder,
+        `${slug}.${locale}.mdx`,
+      );
+      if (fs.existsSync(localePath)) {
+        locales.push(locale);
+        break;
+      }
+    }
+  }
+
+  return locales;
 }
 
 /**

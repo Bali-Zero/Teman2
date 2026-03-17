@@ -31,3 +31,19 @@ lampiran/
 source_documents/
 data/
 archives/kbli-feb2026/KBLI_2025_*.json
+
+# Mypy cache
+**/.mypy_cache/
+
+# War room outputs (raw AI dumps)
+apps/war-room/output/
+
+# Auto-generated LLMs files
+apps/mouth/scripts/generate-llms-full.ts
+
+# Workspace API files (auto-generated or third-party)
+apps/mouth/src/lib/api/portal/portal.api.ts
+apps/mouth/src/lib/api/workspace/lkpm.api.ts
+
+# Session summaries (docs)
+SESSION_SUMMARY_MARCH_2026.md

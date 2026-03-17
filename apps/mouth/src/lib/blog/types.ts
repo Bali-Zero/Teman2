@@ -77,7 +77,7 @@ export interface Article {
   contentStructure?: ContentStructure;
 
   // Multilingual
-  locale: "en" | "id";
+  locale: "en" | "id" | "it" | "ru" | "fr";
   translations?: ArticleTranslation[];
 
   // Zantara Integration
@@ -87,7 +87,7 @@ export interface Article {
 }
 
 export interface ArticleTranslation {
-  locale: "en" | "id";
+  locale: "en" | "id" | "it" | "ru" | "fr";
   articleId: string;
 }
 
@@ -105,7 +105,7 @@ export interface ArticleListItem {
   featured: boolean;
   trending: boolean;
   aiGenerated: boolean;
-  locale?: "en" | "id";
+  locale?: "en" | "id" | "it" | "ru" | "fr";
 }
 
 // ============================================================================
@@ -138,7 +138,7 @@ export interface NewsletterSubscriber {
   name?: string;
   categories: ArticleCategory[]; // Interessi
   frequency: "daily" | "weekly" | "monthly";
-  language: "en" | "id";
+  language: "en" | "id" | "it" | "ru" | "fr";
   subscribedAt: Date;
   confirmed: boolean;
   zohoContactId?: string; // Link a Zoho
@@ -149,7 +149,7 @@ export interface NewsletterSubscribeRequest {
   name?: string;
   categories: ArticleCategory[];
   frequency: "daily" | "weekly" | "monthly";
-  language: "en" | "id";
+  language: "en" | "id" | "it" | "ru" | "fr";
 }
 
 export interface NewsletterLog {
@@ -208,7 +208,7 @@ export interface ArticleSearchParams {
   featured?: boolean;
   trending?: boolean;
   aiGenerated?: boolean;
-  locale?: "en" | "id";
+  locale?: "en" | "id" | "it" | "ru" | "fr" | "it";
   dateFrom?: Date;
   dateTo?: Date;
   limit?: number;
