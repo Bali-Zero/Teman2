@@ -15,6 +15,7 @@ backend_rag_root = script_dir.parent
 sys.path.insert(0, str(backend_rag_root / "backend"))
 
 from dotenv import load_dotenv
+
 load_dotenv(backend_rag_root / ".env")
 
 COLLECTION_NAME = "training_conversations_hybrid"

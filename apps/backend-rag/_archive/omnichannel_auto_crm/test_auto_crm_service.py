@@ -5,7 +5,6 @@ Tests for AutoCRMService
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from backend.services.crm.auto_crm_service import AutoCRMService
 
 

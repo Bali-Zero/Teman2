@@ -555,7 +555,7 @@ IMPORTANT - Answer Structure for Business Queries:
    - PMA status (TERBUKA/TERBATAS/TERTUTUP) and what it means
    - Capital requirements if PMA relevant
    - Licensing requirements by business scale
-   
+
 2. THEN address visa/immigration constraints if relevant to the query
 
 3. THEN explain practical options/solutions (PT PMA, PT biasa with partner, etc.)

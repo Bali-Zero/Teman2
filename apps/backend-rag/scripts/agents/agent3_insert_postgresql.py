@@ -311,7 +311,7 @@ async def main():
         )
 
         # Insert
-        stats = await insert_kg_entities(pool, kg_entities)
+        await insert_kg_entities(pool, kg_entities)
 
         # After stats
         after = await verify_insertion(pool)

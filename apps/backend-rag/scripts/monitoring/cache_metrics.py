@@ -5,6 +5,7 @@ Tracks hit rate, size, and performance of the embedding cache
 """
 
 import json
+import logging
 import sys
 import time
 from typing import Any
@@ -13,6 +14,8 @@ from typing import Any
 sys.path.insert(0, "/Users/antonellosiano/Projects/nuzantara/apps/backend-rag")
 
 from backend.core.embeddings import _global_embedding_cache
+
+logger = logging.getLogger(__name__)
 
 
 class CacheMetricsExporter:

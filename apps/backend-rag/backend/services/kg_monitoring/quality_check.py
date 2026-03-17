@@ -241,20 +241,20 @@ class QualityCheckService:
 
         # Check required fields
         missing_required = []
-        for field in self.REQUIRED_FIELDS:
-            value = getattr(doc, field, None)
+        for field_name in self.REQUIRED_FIELDS:
+            value = getattr(doc, field_name, None)
             if not value or (isinstance(value, str) and len(value.strip()) < 3):
-                missing_required.append(field)
+                missing_required.append(field_name)
 
         if missing_required:
             issues.append(f"Missing required fields: {', '.join(missing_required)}")
 
         # Check recommended fields
         missing_recommended = []
-        for field in self.RECOMMENDED_FIELDS:
-            value = getattr(doc, field, None)
+        for field_name in self.RECOMMENDED_FIELDS:
+            value = getattr(doc, field_name, None)
             if not value or (isinstance(value, str) and len(value.strip()) < 2):
-                missing_recommended.append(field)
+                missing_recommended.append(field_name)
 
         if missing_recommended:
             notes.append(f"Missing recommended fields: {', '.join(missing_recommended)}")

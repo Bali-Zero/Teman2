@@ -155,7 +155,7 @@ class TestUnifiedLLMClient:
         client = UnifiedLLMClient([mock_provider])
 
         messages = [LLMMessage(role="user", content="Test")]
-        response = await client.generate(messages, temperature=0.5, max_tokens=2048)
+        await client.generate(messages, temperature=0.5, max_tokens=2048)
 
         call_args = mock_provider.generate.call_args
         assert call_args.kwargs["temperature"] == 0.5

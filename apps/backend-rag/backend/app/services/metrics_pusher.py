@@ -10,6 +10,7 @@ Date: 2026-01-01
 
 import asyncio
 import base64
+import contextlib
 import logging
 import re
 import struct
@@ -310,10 +311,8 @@ class MetricsPusher:
         self._running = False
         if self._task:
             self._task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._task
-            except asyncio.CancelledError:
-                pass
 
         logger.info("MetricsPusher stopped")
 

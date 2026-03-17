@@ -424,9 +424,11 @@ def should_use_cross_encoder() -> bool:
 
     # Check if sentence-transformers is available
     try:
-        import sentence_transformers
+        import importlib.util
 
-        return True
+        if importlib.util.find_spec("sentence_transformers") is not None:
+            return True
+        raise ImportError("sentence_transformers not found")
     except ImportError:
         logger.warning(
             "sentence-transformers not installed. Cross-encoder reranking will be disabled."

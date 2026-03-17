@@ -3,7 +3,6 @@ Unit tests for FastAPI dependency injection
 Target: 90%+ coverage
 """
 
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

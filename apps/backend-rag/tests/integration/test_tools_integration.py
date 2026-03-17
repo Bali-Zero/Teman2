@@ -141,8 +141,8 @@ class TestZantaraToolsIntegration:
     async def test_zantara_tools_initialization(self):
         """Test ZantaraTools initialization"""
         with (
-            patch("backend.services.zantara_tools.get_pricing_service") as mock_pricing,
-            patch("backend.services.zantara_tools.CollaboratorService") as mock_collaborator,
+            patch("backend.services.zantara_tools.get_pricing_service"),
+            patch("backend.services.zantara_tools.CollaboratorService"),
         ):
             from backend.services.zantara_tools import ZantaraTools
 
@@ -157,7 +157,7 @@ class TestZantaraToolsIntegration:
         """Test get_pricing tool execution"""
         with (
             patch("backend.services.zantara_tools.get_pricing_service") as mock_pricing,
-            patch("backend.services.zantara_tools.CollaboratorService") as mock_collaborator,
+            patch("backend.services.zantara_tools.CollaboratorService"),
         ):
             mock_pricing_instance = MagicMock()
             mock_pricing_instance.get_pricing = AsyncMock(
@@ -178,7 +178,7 @@ class TestZantaraToolsIntegration:
     async def test_search_team_member_tool(self):
         """Test search_team_member tool execution"""
         with (
-            patch("backend.services.zantara_tools.get_pricing_service") as mock_pricing,
+            patch("backend.services.zantara_tools.get_pricing_service"),
             patch("backend.services.zantara_tools.CollaboratorService") as mock_collaborator,
         ):
             mock_collaborator_instance = MagicMock()
@@ -199,7 +199,7 @@ class TestZantaraToolsIntegration:
     async def test_get_team_members_list_tool(self):
         """Test get_team_members_list tool execution"""
         with (
-            patch("backend.services.zantara_tools.get_pricing_service") as mock_pricing,
+            patch("backend.services.zantara_tools.get_pricing_service"),
             patch("backend.services.zantara_tools.CollaboratorService") as mock_collaborator,
         ):
             mock_collaborator_instance = MagicMock()
@@ -223,8 +223,8 @@ class TestZantaraToolsIntegration:
     async def test_unknown_tool_error(self):
         """Test error handling for unknown tool"""
         with (
-            patch("backend.services.zantara_tools.get_pricing_service") as mock_pricing,
-            patch("backend.services.zantara_tools.CollaboratorService") as mock_collaborator,
+            patch("backend.services.zantara_tools.get_pricing_service"),
+            patch("backend.services.zantara_tools.CollaboratorService"),
         ):
             from backend.services.zantara_tools import ZantaraTools
 

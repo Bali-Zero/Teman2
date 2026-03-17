@@ -25,7 +25,7 @@ class TestMonitoringPipeline:
     async def test_full_pipeline_new_document(self):
         """Test full pipeline with a new document"""
         # Setup components
-        scraper = LegalScraper()
+        LegalScraper()
         detector = ChangeDetector(alert_on_change=False)
         quality = QualityCheckService()
         ingestion = AutoIngestionService(quality_service=quality)
@@ -96,7 +96,7 @@ class TestMonitoringPipeline:
     @pytest.mark.asyncio
     async def test_scraper_to_detector_integration(self):
         """Test scraper output works with detector"""
-        scraper = LegalScraper()
+        LegalScraper()
         detector = ChangeDetector(alert_on_change=False)
 
         # Mock scraping to return test documents

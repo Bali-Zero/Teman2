@@ -182,7 +182,7 @@ async def test_parallel_loading_logs_timing(
     mock_get_cache.return_value = mock_cache
 
     with caplog.at_level(logging.INFO):
-        result = await get_user_context(
+        await get_user_context(
             db_pool=mock_db_pool,
             user_id="test@example.com",
             memory_orchestrator=mock_memory_orchestrator,

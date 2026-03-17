@@ -6,9 +6,12 @@ Tests: health, embeddings, reasoning utils
 
 import argparse
 import asyncio
+import logging
 import sys
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 
 async def test_health(endpoint: str) -> bool:

@@ -344,7 +344,7 @@ async def main():
 
     # Build final Qdrant points
     qdrant_points = []
-    for point, embedding in zip(all_points, embeddings):
+    for point, embedding in zip(all_points, embeddings, strict=False):
         qdrant_points.append(
             {
                 "id": point["id"],

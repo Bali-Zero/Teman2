@@ -472,7 +472,6 @@ class TestSendMessageFunctionality:
     async def test_send_message_quota_exhausted_fallback(self, llm_gateway):
         """Test fallback when quota exhausted."""
         # Mock the _call_model to raise ResourceExhausted for first model
-        original_call_model = llm_gateway._send_with_fallback
 
         async def mock_send_with_fallback(*args, **kwargs):
             # This is a simplified mock - in real implementation this would be more complex

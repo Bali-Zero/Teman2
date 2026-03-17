@@ -162,12 +162,20 @@ class IntelPipeline:
             exa_stats = {}
             if os.environ.get('EXA_API_KEY'):
                 try:
+                    import concurrent.futures
                     from exa_scraper import ExaScraper
                     # Note: ExaScraper categories (immigration, business, tax, emerging_trends,
                     # lifestyle, business_regulations) differ from pipeline categories.
                     # Pass None to run all Exa queries — filtering happens at validation.
                     exa = ExaScraper()
-                    exa_articles = exa.search_all()
+                    # Wrap in thread with 10min timeout to prevent hanging on slow/stuck Exa API
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                        future = executor.submit(exa.search_all)
+                        try:
+                            exa_articles = future.result(timeout=600)  # 10min max
+                        except concurrent.futures.TimeoutError:
+                            self.log('Exa augmentation timed out after 10min — skipping', 'WARN')
+                            exa_articles = []
                     existing_urls = {a.get('url', '') for a in articles}
                     new_exa = [a for a in exa_articles if a['url'] not in existing_urls]
                     articles.extend(new_exa)

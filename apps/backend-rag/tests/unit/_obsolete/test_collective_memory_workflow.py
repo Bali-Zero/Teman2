@@ -444,7 +444,7 @@ async def test_store_collective_memory_success(base_state, mock_memory_service):
 async def test_store_collective_memory_no_memory(base_state, mock_memory_service):
     """Test store_collective_memory without memory to store"""
     base_state["memory_to_store"] = None
-    result = await store_collective_memory(base_state, mock_memory_service)
+    await store_collective_memory(base_state, mock_memory_service)
 
     mock_memory_service.add_fact.assert_not_called()
 

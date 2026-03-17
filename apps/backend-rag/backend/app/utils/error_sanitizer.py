@@ -84,7 +84,7 @@ def sanitize_error_message(
 
 def safe_log_message(
     message: str,
-    level: int = logging.INFO,
+    _level: int = logging.INFO,
     **kwargs: Any,
 ) -> str:
     """
@@ -134,10 +134,7 @@ def create_safe_error_response(
     """
     error_type = type(error).__name__ if include_type else "Error"
 
-    if generic_message:
-        detail = generic_message
-    else:
-        detail = sanitize_error_message(error, allow_type=False)
+    detail = generic_message or sanitize_error_message(error, allow_type=False)
 
     response: dict[str, Any] = {
         "detail": detail,

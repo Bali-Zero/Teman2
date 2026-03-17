@@ -502,36 +502,36 @@ class TestCompleteCRMWorkflowIntegration:
 
         # 1. Create client family member
         family_data = {"full_name": "Jane Doe", "relationship": "spouse"}
-        response = client.post("/api/crm/clients/123/family", json=family_data)
+        client.post("/api/crm/clients/123/family", json=family_data)
         # Will fail due to auth, but endpoint exists
 
         # 2. Create client document
         doc_data = {"client_id": 123, "title": "Contract", "category": "legal"}
-        response = client.post("/api/crm/clients/123/documents", json=doc_data)
+        client.post("/api/crm/clients/123/documents", json=doc_data)
         # Will fail due to auth, but endpoint exists
 
         # 3. Create expiry alert
         alert_data = {"client_id": 123, "document_id": 456, "alert_type": "expiry"}
-        response = client.post("/api/crm/expiry-alerts", json=alert_data)
+        client.post("/api/crm/expiry-alerts", json=alert_data)
         # Will fail due to auth, but endpoint exists
 
         # 4. Send portal invite
         invite_data = {"client_id": 123, "email": "client@example.com"}
-        response = client.post("/api/crm/portal/clients/123/invite", json=invite_data)
+        client.post("/api/crm/portal/clients/123/invite", json=invite_data)
         # Will fail due to auth, but endpoint exists
 
         # 5. Check portal status
-        response = client.get("/api/crm/portal/clients/123/status")
+        client.get("/api/crm/portal/clients/123/status")
         # Will fail due to auth, but endpoint exists
 
         # 6. Create agent for client
         agent_data = {"name": "Client Service Agent", "type": "customer_service"}
-        response = client.post("/api/agents", json=agent_data)
+        client.post("/api/agents", json=agent_data)
         # Will fail due to auth, but endpoint exists
 
         # 7. Analyze client personality
         personality_data = {"user_id": "user_123", "text_samples": ["Sample text for analysis"]}
-        response = client.post("/api/personality/analyze", json=personality_data)
+        client.post("/api/personality/analyze", json=personality_data)
         # Will fail due to ML setup, but endpoint exists
 
 

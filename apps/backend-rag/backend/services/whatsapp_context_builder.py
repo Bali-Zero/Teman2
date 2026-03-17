@@ -183,7 +183,7 @@ def get_time_of_day() -> str:
 def infer_client_type(profile: dict[str, Any]) -> str:
     """Infer client type from their interests and discussions."""
     interests = set(profile.get("interests", []))
-    visas = set(v.lower() for v in profile.get("visa_discussed", []))
+    visas = {v.lower() for v in profile.get("visa_discussed", [])}
 
     if "retirement" in interests or "retirement" in visas:
         return "retiree"

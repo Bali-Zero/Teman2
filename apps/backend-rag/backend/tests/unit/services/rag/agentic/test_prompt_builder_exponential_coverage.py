@@ -534,7 +534,7 @@ class TestBuildSystemPromptCaching:
         context = {"facts": ["Fact 1"]}
 
         # First call
-        prompt1 = builder.build_system_prompt(
+        builder.build_system_prompt(
             user_id="test@example.com", context=context, query="Test"
         )
 

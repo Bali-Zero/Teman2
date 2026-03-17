@@ -3,9 +3,10 @@
 Migration runner for 054_practice_required_documents
 """
 import asyncio
-import asyncpg
 import os
 import sys
+
+import asyncpg
 
 # Migration SQL
 MIGRATION_SQL = """
@@ -17,36 +18,36 @@ CREATE TABLE IF NOT EXISTS practice_required_documents (
     document_label VARCHAR(100) NOT NULL,
     description TEXT,
     is_required BOOLEAN DEFAULT TRUE,
-    
+
     -- Upload tracking
     uploaded_by_client BOOLEAN DEFAULT FALSE,
     uploaded_file_id INTEGER REFERENCES documents(id) ON DELETE SET NULL,
     uploaded_at TIMESTAMP,
-    
+
     -- Notes
     client_notes TEXT,
     team_member_notes TEXT,
-    
+
     -- Status: pending, uploaded, verified, rejected
     status VARCHAR(20) DEFAULT 'pending',
-    
+
     -- Audit
     created_by VARCHAR(255),
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
-    
+
     -- Constraints
     UNIQUE(practice_id, document_type),
     CONSTRAINT valid_status CHECK (status IN ('pending', 'uploaded', 'verified', 'rejected'))
 );
 
 -- Indexes for performance
-CREATE INDEX IF NOT EXISTS idx_practice_required_docs_practice_id 
+CREATE INDEX IF NOT EXISTS idx_practice_required_docs_practice_id
     ON practice_required_documents(practice_id);
-CREATE INDEX IF NOT EXISTS idx_practice_required_docs_status 
+CREATE INDEX IF NOT EXISTS idx_practice_required_docs_status
     ON practice_required_documents(status);
-CREATE INDEX IF NOT EXISTS idx_practice_required_docs_uploaded 
-    ON practice_required_documents(uploaded_by_client) 
+CREATE INDEX IF NOT EXISTS idx_practice_required_docs_uploaded
+    ON practice_required_documents(uploaded_by_client)
     WHERE uploaded_by_client = TRUE;
 
 -- Trigger to update updated_at
@@ -58,7 +59,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trigger_update_practice_required_docs_timestamp 
+DROP TRIGGER IF EXISTS trigger_update_practice_required_docs_timestamp
     ON practice_required_documents;
 
 CREATE TRIGGER trigger_update_practice_required_docs_timestamp
@@ -70,7 +71,7 @@ CREATE TRIGGER trigger_update_practice_required_docs_timestamp
 DO $$
 BEGIN
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
+        SELECT 1 FROM information_schema.columns
         WHERE table_name = 'practices' AND column_name = 'client_notification_sent'
     ) THEN
         ALTER TABLE practices ADD COLUMN client_notification_sent BOOLEAN DEFAULT FALSE;
@@ -88,23 +89,23 @@ async def run_migration():
     if not database_url:
         print("ERROR: DATABASE_URL not set")
         sys.exit(1)
-    
+
     print("Connecting to database...")
     conn = await asyncpg.connect(database_url)
-    
+
     try:
         print("Running migration 054...")
         await conn.execute(MIGRATION_SQL)
         print("✅ Migration 054 completed successfully!")
-        
+
         # Verify table was created
         row = await conn.fetchrow("""
-            SELECT COUNT(*) as count 
-            FROM information_schema.tables 
+            SELECT COUNT(*) as count
+            FROM information_schema.tables
             WHERE table_name = 'practice_required_documents'
         """)
         print(f"Table practice_required_documents exists: {row['count'] > 0}")
-        
+
     except Exception as e:
         print(f"❌ Migration failed: {e}")
         sys.exit(1)

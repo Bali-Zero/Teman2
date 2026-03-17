@@ -30,9 +30,7 @@
     },
     "google-search-console": {
       "command": "/Users/nuzantara/Desktop/nuzantara/.mcp-servers/gsc/.venv/bin/python",
-      "args": [
-        "/Users/nuzantara/Desktop/nuzantara/.mcp-servers/gsc/gsc_server.py"
-      ],
+      "args": ["/Users/nuzantara/Desktop/nuzantara/.mcp-servers/gsc/gsc_server.py"],
       "env": {
         "GSC_CREDENTIALS_PATH": "/Users/nuzantara/Desktop/nuzantara/.secrets/google-credentials.json",
         "GSC_SKIP_OAUTH": "true",
@@ -43,6 +41,14 @@
       "command": "/Users/nuzantara/Desktop/nuzantara/.mcp-servers/ocr/.venv/bin/mcp-ocr",
       "env": {
         "TESSDATA_PREFIX": "/opt/homebrew/share/tessdata"
+      }
+    },
+    "langsmith": {
+      "command": "uvx",
+      "args": ["langsmith-mcp-server"],
+      "env": {
+        "LANGSMITH_API_KEY": "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",
+        "LANGSMITH_PROJECT": "nuzantara-rag"
       }
     }
   }

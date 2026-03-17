@@ -86,7 +86,7 @@ async def test_notification(
             if request.client_id:
                 row = await conn.fetchrow(
                     """
-                    SELECT 
+                    SELECT
                         c.id,
                         c.email,
                         c.full_name,
@@ -99,7 +99,7 @@ async def test_notification(
                         v.visa_type
                     FROM clients c
                     LEFT JOIN (
-                        SELECT DISTINCT ON (client_id) 
+                        SELECT DISTINCT ON (client_id)
                             client_id, expiry_date, document_type as visa_type
                         FROM client_documents
                         WHERE document_category = 'immigration'
@@ -119,7 +119,7 @@ async def test_notification(
                 # Get clients with expiring documents for testing
                 rows = await conn.fetch(
                     """
-                    SELECT 
+                    SELECT
                         c.id,
                         c.email,
                         c.full_name,
@@ -132,7 +132,7 @@ async def test_notification(
                         v.visa_type
                     FROM clients c
                     LEFT JOIN (
-                        SELECT DISTINCT ON (client_id) 
+                        SELECT DISTINCT ON (client_id)
                             client_id, expiry_date, document_type as visa_type
                         FROM client_documents
                         WHERE document_category = 'immigration'
@@ -277,7 +277,7 @@ async def list_testable_clients(
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """
-            SELECT 
+            SELECT
                 c.id,
                 c.full_name,
                 c.email,
@@ -286,7 +286,7 @@ async def list_testable_clients(
                 v.expiry_date as visa_expiry
             FROM clients c
             LEFT JOIN (
-                SELECT DISTINCT ON (client_id) 
+                SELECT DISTINCT ON (client_id)
                     client_id, expiry_date
                 FROM client_documents
                 WHERE document_category = 'immigration'

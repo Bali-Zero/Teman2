@@ -99,7 +99,7 @@ async def test_database_init_retries_on_transient_error(mock_app):
                         "backend.app.setup.service_initializer._database_health_check_loop",
                         new_callable=AsyncMock,
                     ):
-                        pool = await initialize_database_services(mock_app)
+                        await initialize_database_services(mock_app)
 
                     # Should have retried (with sleep being called for backoff)
                     assert call_count == 3

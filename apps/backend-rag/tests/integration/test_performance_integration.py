@@ -108,7 +108,7 @@ class TestDatabasePerformance:
 
             # Measure indexed query
             start_time = time.time()
-            result = await conn.fetchval(
+            await conn.fetchval(
                 "SELECT COUNT(*) FROM test_indexed_perf WHERE indexed_field = $1",
                 "indexed_500",
             )
@@ -116,7 +116,7 @@ class TestDatabasePerformance:
 
             # Measure non-indexed query
             start_time = time.time()
-            result2 = await conn.fetchval(
+            await conn.fetchval(
                 "SELECT COUNT(*) FROM test_indexed_perf WHERE non_indexed_field = $1",
                 "non_indexed_500",
             )
@@ -272,12 +272,12 @@ class TestCachingPerformance:
 
         # First call - cache miss
         start_time = time.time()
-        result1 = await expensive_operation("test_key")
+        await expensive_operation("test_key")
         first_call_time = time.time() - start_time
 
         # Second call - cache hit
         start_time = time.time()
-        result2 = await expensive_operation("test_key")
+        await expensive_operation("test_key")
         second_call_time = time.time() - start_time
 
         # Cache hit should be much faster

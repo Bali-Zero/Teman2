@@ -27,7 +27,7 @@ def generate_facts_for_member(member: dict) -> list[dict]:
     Returns list of fact dictionaries with: content, fact_type, confidence, source
     """
     facts = []
-    email = member["email"]
+    member["email"]
     name = member["name"]
     role = member["role"]
     department = member.get("department", "general")
@@ -41,7 +41,7 @@ def generate_facts_for_member(member: dict) -> list[dict]:
     )
 
     # 2. Language preferences
-    languages = member.get("languages", [])
+    member.get("languages", [])
     preferred = member.get("preferred_language", "id")
     lang_names = {
         "it": "italiano",
@@ -66,7 +66,7 @@ def generate_facts_for_member(member: dict) -> list[dict]:
     # 3. Emotional preferences / communication style
     emo_prefs = member.get("emotional_preferences", {})
     if emo_prefs:
-        tone = emo_prefs.get("tone", "").replace("_", " ")
+        emo_prefs.get("tone", "").replace("_", " ")
         formality = emo_prefs.get("formality", "medium")
         humor = emo_prefs.get("humor", "light")
 

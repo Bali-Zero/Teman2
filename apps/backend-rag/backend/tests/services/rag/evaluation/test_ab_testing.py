@@ -179,7 +179,7 @@ class TestVariantAssignment:
         """Test variant assignment for all predefined experiments."""
         user_id = "test_user"
 
-        for experiment_name in DEFAULT_EXPERIMENTS.keys():
+        for experiment_name in DEFAULT_EXPERIMENTS:
             variant = ab_manager.assign_variant(user_id, experiment_name)
             config = ab_manager.experiments[experiment_name]
             assert variant in config.variants
@@ -306,10 +306,6 @@ class TestStatisticalSignificance:
 
     def test_calculate_significance_large_difference(self, ab_manager):
         """Test significance with large difference."""
-        control = [0.5] * 100  # 50% success rate
-        treatment = [
-            0.8
-        ] * 100  # 80% success rate - but this has 0 variance, so let's use binary data
 
         # Use binary data with some variance
         control_binary = [1.0] * 50 + [0.0] * 50  # 50% CTR

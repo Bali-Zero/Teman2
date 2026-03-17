@@ -60,7 +60,7 @@ class TestUltraComplexScenarios:
                 # Create 2-3 practices per client
                 practice_types = ["KITAS", "PT", "Visa"]
                 for j, practice_type in enumerate(practice_types[: 2 + (i % 2)]):
-                    practice_id = await conn.fetchval(
+                    await conn.fetchval(
                         """
                         INSERT INTO practices (
                             client_id, practice_type, status, priority, created_by, created_at, updated_at

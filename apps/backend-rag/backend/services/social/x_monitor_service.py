@@ -7,6 +7,7 @@ Every 3 hours, posts a digest tweet from @balizerobot with relevant findings.
 """
 
 import asyncio
+import contextlib
 import logging
 from datetime import datetime, timezone
 from typing import Any
@@ -480,10 +481,8 @@ class XMonitorService:
         for task in (self._task, self._digest_task):
             if task and not task.done():
                 task.cancel()
-                try:
+                with contextlib.suppress(asyncio.CancelledError):
                     await task
-                except asyncio.CancelledError:
-                    pass
         if self._client and not self._client.is_closed:
             await self._client.aclose()
         logger.info("🐦 X Monitor stopped")

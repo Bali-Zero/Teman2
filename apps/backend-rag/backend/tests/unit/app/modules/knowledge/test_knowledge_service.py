@@ -147,7 +147,7 @@ class TestKnowledgeService:
     @pytest.mark.asyncio
     async def test_search_with_reranking(self, knowledge_service, mock_qdrant_client):
         """Test search with reranking"""
-        with patch.object(knowledge_service, "_init_reranker") as mock_init:
+        with patch.object(knowledge_service, "_init_reranker"):
             mock_reranker = MagicMock()
             mock_reranker.enabled = True
             mock_reranker.rerank = AsyncMock(
@@ -164,7 +164,7 @@ class TestKnowledgeService:
     @pytest.mark.asyncio
     async def test_search_with_reranking_disabled(self, knowledge_service, mock_qdrant_client):
         """Test search with reranking disabled"""
-        with patch.object(knowledge_service, "_init_reranker") as mock_init:
+        with patch.object(knowledge_service, "_init_reranker"):
             mock_reranker = MagicMock()
             mock_reranker.enabled = False
             knowledge_service.reranker = mock_reranker

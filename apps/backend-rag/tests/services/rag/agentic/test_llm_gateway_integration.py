@@ -287,7 +287,6 @@ class TestAPICompatibility:
 
     def test_backward_compatibility(self, api_gateway):
         """Test backward compatibility."""
-        gateway = api_gateway
 
         # Mock API endpoints for different versions
         def handle_v1_request(request_data):
@@ -343,7 +342,6 @@ class TestAPICompatibility:
 
     def test_request_response_format_compatibility(self, api_gateway):
         """Test request/response format compatibility."""
-        gateway = api_gateway
 
         # Define compatible request formats
         request_formats = {
@@ -639,7 +637,7 @@ class TestDatabaseIntegration:
 
         # Test delete
         assert redis_connection.delete("test_key")
-        assert redis_connection.get("test_key") == None
+        assert redis_connection.get("test_key") is None
         assert not redis_connection.exists("test_key")
 
 

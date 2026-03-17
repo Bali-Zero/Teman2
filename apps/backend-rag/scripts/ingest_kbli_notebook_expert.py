@@ -1,17 +1,16 @@
+import asyncio
 import os
 import sys
-import asyncio
-from typing import List, Dict, Any
-from pathlib import Path
 
 # Add backend to path
 sys.path.append(os.path.join(os.getcwd(), "apps/backend-rag"))
 
-from backend.app.core.config import settings
-from backend.services.qdrant_service import QdrantService
-from backend.services.embeddings import EmbeddingService
-from qdrant_client.http import models
+import contextlib
+
 import fitz  # PyMuPDF
+from backend.services.embeddings import EmbeddingService
+from backend.services.qdrant_service import QdrantService
+from qdrant_client.http import models
 
 # Paths (Corrected with spaces)
 BASE_PATH = "/Users/nuzantara/Desktop/KBLI-Navigator-2025 "
@@ -35,7 +34,7 @@ FILES = [
 
 COLLECTION_NAME = "kbli_notebook_expert"
 
-async def process_pdf(file_info: Dict) -> List[Dict]:
+async def process_pdf(file_info: dict) -> list[dict]:
     """Extracts text from PDF with semantic chunking for regulations."""
     print(f"Processing PDF: {file_info['name']}")
     try:
@@ -45,18 +44,19 @@ async def process_pdf(file_info: Dict) -> List[Dict]:
         return []
 
     chunks = []
-    
+
     current_chunk = ""
     current_pasal = "General"
-    
+
     for page in doc:
         text = page.get_text()
         lines = text.split('\n')
-        
+
         for line in lines:
             line = line.strip()
-            if not line: continue
-            
+            if not line:
+                continue
+
             # Simple heuristic for Pasal detection
             if line.lower().startswith("pasal") and len(line) < 20:
                 # Save previous chunk
@@ -74,7 +74,7 @@ async def process_pdf(file_info: Dict) -> List[Dict]:
                 current_chunk = line + "\n"
             else:
                 current_chunk += line + "\n"
-                
+
     # Last chunk
     if current_chunk:
         chunks.append({
@@ -86,25 +86,26 @@ async def process_pdf(file_info: Dict) -> List[Dict]:
                 "page": -1
             }
         })
-        
+
     return chunks
 
-async def process_txt(file_info: Dict) -> List[Dict]:
+async def process_txt(file_info: dict) -> list[dict]:
     """Process KBLI text database."""
     print(f"Processing TXT: {file_info['name']}")
     try:
-        with open(file_info['path'], 'r', encoding='utf-8') as f:
+        with open(file_info['path'], encoding='utf-8') as f:
             content = f.read()
     except Exception as e:
         print(f"Error reading TXT {file_info['path']}: {e}")
         return []
-    
+
     # Split by double newline usually separates entries in clean dumps
     raw_entries = content.split('\n\n')
     chunks = []
-    
+
     for entry in raw_entries:
-        if len(entry) < 10: continue
+        if len(entry) < 10:
+            continue
         chunks.append({
             "content": entry,
             "metadata": {
@@ -117,17 +118,15 @@ async def process_txt(file_info: Dict) -> List[Dict]:
 
 async def ingest():
     print(f"🚀 Starting Expert Ingestion for {COLLECTION_NAME}...")
-    
+
     qdrant = QdrantService()
     embedding_service = EmbeddingService()
-    
+
     # 1. Recreate Collection
     print("Recreating collection...")
-    try:
+    with contextlib.suppress(BaseException):
         await qdrant.client.delete_collection(COLLECTION_NAME)
-    except:
-        pass
-        
+
     await qdrant.client.create_collection(
         collection_name=COLLECTION_NAME,
         vectors_config=models.VectorParams(
@@ -135,9 +134,9 @@ async def ingest():
             distance=models.Distance.COSINE
         )
     )
-    
+
     all_docs = []
-    
+
     # 2. Process Files
     for file_info in FILES:
         if file_info['path'].endswith('.pdf'):
@@ -155,15 +154,15 @@ async def ingest():
     batch_size = 100
     total = len(all_docs)
     print(f"Total chunks to ingest: {total}")
-    
+
     for i in range(0, total, batch_size):
         batch = all_docs[i:i+batch_size]
         texts = [d['content'] for d in batch]
-        
+
         try:
             # Embed
             embeddings = await embedding_service.get_embeddings(texts)
-            
+
             points = [
                 models.PointStruct(
                     id=i + idx,
@@ -173,9 +172,9 @@ async def ingest():
                         "metadata": doc['metadata']
                     }
                 )
-                for idx, (doc, emb) in enumerate(zip(batch, embeddings))
+                for idx, (doc, emb) in enumerate(zip(batch, embeddings, strict=False))
             ]
-            
+
             await qdrant.client.upsert(
                 collection_name=COLLECTION_NAME,
                 points=points

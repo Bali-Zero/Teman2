@@ -245,7 +245,7 @@ class CodingGeneral:
         """
         task_id = task["id"]
         title = task["title"]
-        description = task.get("description", "")
+        task.get("description", "")
         payload = task.get("payload") or {}
         if isinstance(payload, str):
             payload = json.loads(payload)
@@ -291,7 +291,7 @@ class CodingGeneral:
             script_path = payload.get("script_path")
             code = payload.get("code")
             working_dir = payload.get("working_dir")
-            env_vars = payload.get("env_vars", {})
+            payload.get("env_vars", {})
 
             if not any([command, script_path, code]):
                 raise ValueError("Task payload must contain 'command', 'script_path', or 'code'")

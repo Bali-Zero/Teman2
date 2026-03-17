@@ -235,7 +235,7 @@ class TestFeedbackP1Endpoints:
             if response.status_code == 200:
                 # Verify that the INSERT query was called with combined feedback_text
                 # The correction_text should be appended to feedback_text
-                call_args = conn.fetchval.call_args_list[0]
+                conn.fetchval.call_args_list[0]
                 # The INSERT should include the combined text
                 assert conn.fetchval.called
         finally:

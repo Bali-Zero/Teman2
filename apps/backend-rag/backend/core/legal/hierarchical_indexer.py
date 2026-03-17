@@ -291,7 +291,7 @@ class HierarchicalIndexer:
         metadatas = []
         ids = []
 
-        for chunk, embedding in zip(chunks, embeddings, strict=False):
+        for chunk, _embedding in zip(chunks, embeddings, strict=False):
             payload = {
                 **chunk.metadata,
                 # Campi gerarchici critici

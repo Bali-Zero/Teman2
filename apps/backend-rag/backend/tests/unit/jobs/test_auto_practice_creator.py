@@ -176,7 +176,7 @@ async def test_create_renewal_practice_priority_high():
     mock_conn.fetchrow.return_value = {"id": 999, "uuid": "test-uuid"}
 
     with patch("backend.jobs.auto_practice_creator.get_practice_type_id", return_value=42):
-        result = await create_renewal_practice(
+        await create_renewal_practice(
             db_pool=mock_pool,
             client_id=123,
             client_name="John Doe",
@@ -203,7 +203,7 @@ async def test_create_renewal_practice_priority_normal():
     mock_conn.fetchrow.return_value = {"id": 999, "uuid": "test-uuid"}
 
     with patch("backend.jobs.auto_practice_creator.get_practice_type_id", return_value=42):
-        result = await create_renewal_practice(
+        await create_renewal_practice(
             db_pool=mock_pool,
             client_id=123,
             client_name="John Doe",

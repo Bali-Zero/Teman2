@@ -130,11 +130,8 @@ class LegalChunker:
 
         # Check if we actually found Pasals (if only 1 chunk and it doesn't match pattern, likely unstructured)
         has_pasal_structure = False
-        if len(pasal_chunks) > 1:
+        if len(pasal_chunks) > 1 or len(pasal_chunks) == 1 and PASAL_PATTERN.match(pasal_chunks[0]):
             has_pasal_structure = True
-        elif len(pasal_chunks) == 1:
-            if PASAL_PATTERN.match(pasal_chunks[0]):
-                has_pasal_structure = True
 
         if not has_pasal_structure:
             logger.info("No Pasal structure detected, using fallback semantic chunking")
@@ -288,7 +285,7 @@ class LegalChunker:
             return [pasal_text]
 
         ayat_chunks = []
-        for i, match in enumerate(ayat_matches):
+        for _i, match in enumerate(ayat_matches):
             ayat_num = match.group(1)
             ayat_text = match.group(2).strip()
 

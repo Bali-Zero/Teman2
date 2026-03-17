@@ -7,7 +7,6 @@ Supports: Semantic Chunks, BM25, BAB Structure, and Knowledge Graph.
 
 import asyncio
 import logging
-import os
 import sys
 import time
 from pathlib import Path
@@ -21,6 +20,7 @@ sys.path.insert(0, str(BACKEND_PATH / "backend"))
 
 # Load environment
 from dotenv import load_dotenv
+
 load_dotenv(BACKEND_PATH / ".env", override=True)
 
 # Configure logging
@@ -37,7 +37,6 @@ logger = logging.getLogger("ingest_desktop_laws")
 async def run_ingestion():
     try:
         from backend.services.ingestion.legal_ingestion_service import LegalIngestionService
-        from backend.app.models import TierLevel
         from backend.services.rag.hybrid_search import HybridSearchService
         from backend.services.rag.reranker import CrossEncoderReranker
     except ImportError as e:
@@ -52,20 +51,20 @@ async def run_ingestion():
         logger.error(f"Directory not found: {DESKTOP_PATH}")
         return
 
-    files = sorted(list(DESKTOP_PATH.glob("*.pdf")))
+    files = sorted(DESKTOP_PATH.glob("*.pdf"))
     logger.info(f"🚀 Starting ingestion of {len(files)} PDF files from {DESKTOP_PATH}")
     logger.info(f"Target Collection: {COLLECTION_NAME}")
-    logger.info(f"Features: Semantic Chunking, BM25 Sparse Vectors, BAB Parsing, KG Extraction")
+    logger.info("Features: Semantic Chunking, BM25 Sparse Vectors, BAB Parsing, KG Extraction")
 
     service = LegalIngestionService(collection_name=COLLECTION_NAME)
-    
+
     # Ensure collection exists with hybrid support
     logger.info(f"Ensuring collection '{COLLECTION_NAME}' exists...")
     await service.vector_db.create_collection(
         vector_size=1536, # OpenAI
         enable_sparse=True
     )
-    
+
     results = []
     start_all = time.time()
 
@@ -77,7 +76,7 @@ async def run_ingestion():
                 file_path=str(file_path),
                 category="peraturan_2026",
             )
-            
+
             if result["success"]:
                 kg_stats = result.get("kg_extraction", {})
                 success_msg = (
@@ -90,7 +89,7 @@ async def run_ingestion():
                 logger.info(success_msg)
             else:
                 logger.error(f"❌ Failed: {file_path.name} - {result['error']}")
-            
+
             results.append(result)
         except Exception as e:
             logger.error(f"💥 Fatal error processing {file_path.name}: {e}", exc_info=True)
@@ -98,9 +97,9 @@ async def run_ingestion():
 
     total_duration = time.time() - start_all
     success_count = sum(1 for r in results if r.get("success"))
-    
+
     logger.info("=" * 50)
-    logger.info(f"🏁 Ingestion Summary")
+    logger.info("🏁 Ingestion Summary")
     logger.info(f"Total Files: {len(files)}")
     logger.info(f"Successful: {success_count}")
     logger.info(f"Failed: {len(files) - success_count}")
@@ -113,14 +112,14 @@ async def run_ingestion():
         try:
             hybrid_service = HybridSearchService()
             reranker = CrossEncoderReranker()
-            
+
             test_query = "peraturan terbaru tahun 2026"
             search_results = await hybrid_service.search_hybrid(
                 query=test_query,
                 collection=COLLECTION_NAME,
                 limit=10
             )
-            
+
             if search_results["results"]:
                 logger.info(f"   Found {len(search_results['results'])} candidates via Hybrid Search (BM25 + Dense)")
                 reranked = await reranker.rerank(

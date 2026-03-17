@@ -170,7 +170,7 @@ def main():
 
     # Build points array
     print("\n📦 Building Qdrant points...")
-    for idx, (item, text, embedding) in enumerate(zip(items, texts, all_embeddings)):
+    for idx, (item, text, embedding) in enumerate(zip(items, texts, all_embeddings, strict=False)):
         item_name = item["name"]
         category = item["category"]
         item_data = item["data"]

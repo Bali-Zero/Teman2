@@ -188,7 +188,7 @@ class CollectionManager:
             Dictionary mapping collection names to clients
         """
         collections = {}
-        for name in self.collection_definitions.keys():
+        for name in self.collection_definitions:
             client = self.get_collection(name)
             if client:
                 collections[name] = client

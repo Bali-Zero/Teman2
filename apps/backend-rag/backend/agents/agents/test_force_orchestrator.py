@@ -204,7 +204,7 @@ class TestForceOrchestrator:
                     task_results = await asyncio.gather(
                         *[task[1] for task in tasks], return_exceptions=True
                     )
-                    for (agent_name, _), result in zip(tasks, task_results):
+                    for (agent_name, _), result in zip(tasks, task_results, strict=False):
                         if isinstance(result, Exception):
                             logger.error(f"❌ {agent_name} failed: {result}")
                             results["agent_results"][agent_name] = {

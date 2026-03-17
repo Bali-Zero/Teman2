@@ -27,9 +27,9 @@ async def test_zoho_status():
 
         # Check which Zoho tables exist
         tables = await pool.fetch("""
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_schema = 'public' 
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
             AND table_name LIKE '%zoho%'
         """)
 

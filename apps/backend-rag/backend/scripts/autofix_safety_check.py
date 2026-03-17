@@ -118,9 +118,9 @@ def check_safety(staged: bool = False, commit: str | None = None) -> list[str]:
     if len(changed_files) > MAX_FILES_CHANGED:
         violations.append(f"TOO_MANY_FILES: {len(changed_files)} changed (max {MAX_FILES_CHANGED})")
 
-    added_count = sum(1 for l in diff.splitlines() if l.startswith("+") and not l.startswith("+++"))
+    added_count = sum(1 for line in diff.splitlines() if line.startswith("+") and not line.startswith("+++"))
     removed_count = sum(
-        1 for l in diff.splitlines() if l.startswith("-") and not l.startswith("---")
+        1 for line in diff.splitlines() if line.startswith("-") and not line.startswith("---")
     )
     total_changed = added_count + removed_count
     if total_changed > MAX_DIFF_LINES:

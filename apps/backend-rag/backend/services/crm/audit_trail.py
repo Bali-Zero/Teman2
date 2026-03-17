@@ -342,9 +342,9 @@ CREATE TABLE IF NOT EXISTS crm_audit_log (
     ip_address INET,
     user_agent TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    
+
     -- Indici per query frequenti
-    CONSTRAINT idx_crm_audit_entity 
+    CONSTRAINT idx_crm_audit_entity
         UNIQUE (entity_type, entity_id, created_at)
 );
 

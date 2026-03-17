@@ -106,7 +106,7 @@ class TestDependencyInjection:
         token = jwt.encode({"sub": "123", "email": "test@example.com"}, secret, algorithm="HS256")
 
         # Mock request with credentials
-        mock_request = MagicMock()
+        MagicMock()
         mock_credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
 
         # Mock security dependency

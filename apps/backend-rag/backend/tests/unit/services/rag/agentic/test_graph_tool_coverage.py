@@ -139,7 +139,7 @@ class TestGraphTraversalToolExecute:
         mock_graph_service.traverse = AsyncMock(return_value=mock_subgraph)
 
         tool = GraphTraversalTool(mock_graph_service)
-        result = await tool.execute("PT PMA", depth=3)
+        await tool.execute("PT PMA", depth=3)
 
         # Should cap depth at 3
         mock_graph_service.traverse.assert_called_once_with("entity_123", max_depth=3)
@@ -160,7 +160,7 @@ class TestGraphTraversalToolExecute:
         mock_graph_service.traverse = AsyncMock(return_value=mock_subgraph)
 
         tool = GraphTraversalTool(mock_graph_service)
-        result = await tool.execute("Test Entity", depth=5)
+        await tool.execute("Test Entity", depth=5)
 
         # Should cap at 3 even if depth=5
         mock_graph_service.traverse.assert_called_once_with("entity_123", max_depth=3)
@@ -181,7 +181,7 @@ class TestGraphTraversalToolExecute:
         mock_graph_service.traverse = AsyncMock(return_value=mock_subgraph)
 
         tool = GraphTraversalTool(mock_graph_service)
-        result = await tool.execute("Test Entity")  # No depth specified
+        await tool.execute("Test Entity")  # No depth specified
 
         # Should use default depth=1
         mock_graph_service.traverse.assert_called_once_with("entity_123", max_depth=1)

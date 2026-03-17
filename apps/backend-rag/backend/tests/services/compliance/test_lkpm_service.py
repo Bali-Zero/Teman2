@@ -5,9 +5,7 @@ Covers: models, validator, data collector, service, ready pack.
 All business logic is deterministic — same input = same output.
 """
 
-import json
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -15,19 +13,16 @@ from backend.app.models.lkpm import (
     DataSource,
     EmploymentData,
     InvestmentRealization,
-    LKPMBatchItem,
     LKPMClientConfig,
     LKPMClientSubmission,
     LKPMDeadline,
     LKPMDraft,
     LKPMReadyPack,
-    LKPMStatus,
     LKPMValidationResult,
     TransactionCategorization,
     ValidationAlert,
     ValidationSeverity,
 )
-
 
 # =====================================================================
 # Model Tests
@@ -230,8 +225,9 @@ class TestDataCollector:
         assert result.grand_total == 600
 
     def test_quarter_dates(self) -> None:
-        from backend.services.compliance.lkpm_data_collector import LKPMDataCollector
         from datetime import date
+
+        from backend.services.compliance.lkpm_data_collector import LKPMDataCollector
 
         start, end = LKPMDataCollector._quarter_dates("Q1", 2026)
         assert start == date(2026, 1, 1)

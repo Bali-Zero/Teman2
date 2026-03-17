@@ -194,7 +194,7 @@ async def test_save_conversation_with_metadata(
         "backend.services.misc.conversation_service.get_memory_cache",
         return_value=mock_memory_cache,
     ):
-        result = await conversation_service.save_conversation(
+        await conversation_service.save_conversation(
             user_email="test@example.com",
             messages=sample_messages,
             metadata=metadata,
@@ -334,7 +334,7 @@ async def test_get_history_from_db_without_session_id(conversation_service, mock
 
     conn.fetchrow.return_value = {"messages": stored_messages}
 
-    result = await conversation_service.get_history(
+    await conversation_service.get_history(
         user_email="test@example.com",
     )
 

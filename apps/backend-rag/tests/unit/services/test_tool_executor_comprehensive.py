@@ -404,7 +404,7 @@ class TestToolExecutorEdgeCases:
         tool_use.name = "get_pricing"
         tool_use.input = None  # None input
 
-        result = await executor.execute_tool_calls([tool_use])
+        await executor.execute_tool_calls([tool_use])
 
         # Should handle None input as empty dict
         mock_tools.execute_tool.assert_called_once()
@@ -469,7 +469,7 @@ class TestToolExecutorEdgeCases:
             {"id": "tool_no_input", "name": "get_pricing"}  # No "input" key
         ]
 
-        result = await executor.execute_tool_calls(tool_uses)
+        await executor.execute_tool_calls(tool_uses)
 
         # Should use empty dict for input
         call_args = mock_tools.execute_tool.call_args
