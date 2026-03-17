@@ -54,7 +54,11 @@ const categoryStyles: Record<
 // Category badge component
 function CategoryBadge({ category }: { category: ArticleCategory }) {
   const styles = categoryStyles[category];
-  const label = category === "tax-legal" ? "Tax & Legal" : category;
+  const labelMap: Record<string, string> = {
+    "tax-legal": "Tax & Legal",
+    bali_news: "Bali News",
+  };
+  const label = labelMap[category] ?? category;
 
   return (
     <span
