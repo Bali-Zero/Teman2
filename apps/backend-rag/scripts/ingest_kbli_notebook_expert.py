@@ -7,7 +7,7 @@ from pathlib import Path
 # Add backend to path
 sys.path.append(os.path.join(os.getcwd(), "apps/backend-rag"))
 
-from backend.core.config import settings
+from backend.app.core.config import settings
 from backend.services.qdrant_service import QdrantService
 from backend.services.embeddings import EmbeddingService
 from qdrant_client.http import models

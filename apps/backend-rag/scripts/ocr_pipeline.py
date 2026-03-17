@@ -361,7 +361,6 @@ def get_prompt_for_type(doc_type: str) -> str:
 async def process_document(
     conn: asyncpg.Connection,
     doc: dict,
-    token: str,
     table: str,
     dry_run: bool,
 ) -> bool:
@@ -380,7 +379,8 @@ async def process_document(
             doc_id,
         )
 
-    # 2. Download from Drive
+    # 2. Download from Drive (always get fresh token)
+    token = await get_oauth_token()
     file_bytes = await download_from_drive(drive_file_id, token)
     if not file_bytes:
         if not dry_run:
@@ -598,8 +598,8 @@ async def main(
         # Ensure OCR columns exist
         await ensure_ocr_columns(conn, table)
 
-        # Get OAuth token
-        token = await get_oauth_token()
+        # Warm-up OAuth token
+        await get_oauth_token()
 
         # Build query
         conditions = [
@@ -629,7 +629,7 @@ async def main(
 
         for doc in docs:
             try:
-                success = await process_document(conn, dict(doc), token, table, dry_run)
+                success = await process_document(conn, dict(doc), table, dry_run)
                 stats["processed"] += 1
                 if success:
                     stats["success"] += 1
