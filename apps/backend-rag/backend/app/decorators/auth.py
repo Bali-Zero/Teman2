@@ -247,7 +247,6 @@ ENDPOINT_CLASSIFICATION = {
         "/api/auth/*",
         "/api/team-activity/*",
         "/api/conversations/*",
-        "/api/autonomous-agents/*",
     ],
     # Hybrid endpoints (accept both API Key and JWT)
     "hybrid": [
@@ -256,6 +255,7 @@ ENDPOINT_CLASSIFICATION = {
         "/api/ingest/*",
         "/api/intel/*",
         "/api/memory-vector/*",
+        "/api/autonomous-agents/*",
     ],
     # Admin only endpoints
     "admin_only": ["/api/auth/profile", "/api/admin/*"],
