@@ -233,7 +233,16 @@
       "business": "Business",
       "taxLegal": "Tax & Legal",
       "property": "Property",
-      "lifestyle": "Lifestyle"
+      "lifestyle": "Lifestyle",
+      "tech": "Tech"
+    },
+    "categoryDescriptions": {
+      "immigration": "Visas, permits, and everything you need to know about relocating to Indonesia.",
+      "business": "Company setup, licensing, KBLI codes, and doing business in Indonesia.",
+      "taxLegal": "Tax obligations, legal compliance, and regulatory updates.",
+      "property": "Real estate, property ownership, and investment opportunities in Bali.",
+      "lifestyle": "Living in Bali, culture, community, and quality of life.",
+      "tech": "Digital nomad life, tech industry, and remote work in Indonesia."
     }
   }
 }

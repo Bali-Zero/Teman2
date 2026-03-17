@@ -12,56 +12,48 @@ import {
 } from "@/components/blog";
 import type { ArticleCategory, ArticleListItem } from "@/lib/blog/types";
 import { logger } from "@/lib/logger";
+import { useTranslation } from "@/i18n";
 
-// Category metadata
-const CATEGORY_META: Record<
+// Category visual metadata (non-translated)
+const CATEGORY_VISUAL: Record<
   ArticleCategory,
-  {
-    title: string;
-    description: string;
-    icon: React.ElementType;
-    gradient: string;
-  }
+  { icon: React.ElementType; gradient: string; titleKey: string; descKey: string }
 > = {
   immigration: {
-    title: "Immigration",
-    description:
-      "Visas, permits, and everything you need to know about relocating to Indonesia.",
     icon: Plane,
     gradient: "from-blue-500/20 via-cyan-500/10 to-transparent",
+    titleKey: "news.categories.immigration",
+    descKey: "news.categoryDescriptions.immigration",
   },
   business: {
-    title: "Business",
-    description:
-      "Company setup, licensing, KBLI codes, and doing business in Indonesia.",
     icon: Building2,
     gradient: "from-emerald-500/20 via-teal-500/10 to-transparent",
+    titleKey: "news.categories.business",
+    descKey: "news.categoryDescriptions.business",
   },
   "tax-legal": {
-    title: "Tax & Legal",
-    description: "Tax obligations, legal compliance, and regulatory updates.",
     icon: Scale,
     gradient: "from-amber-500/20 via-orange-500/10 to-transparent",
+    titleKey: "news.categories.taxLegal",
+    descKey: "news.categoryDescriptions.taxLegal",
   },
   property: {
-    title: "Property",
-    description:
-      "Real estate, property ownership, and investment opportunities in Bali.",
     icon: Home,
     gradient: "from-rose-500/20 via-pink-500/10 to-transparent",
+    titleKey: "news.categories.property",
+    descKey: "news.categoryDescriptions.property",
   },
   lifestyle: {
-    title: "Lifestyle",
-    description: "Living in Bali, culture, community, and quality of life.",
     icon: Sun,
     gradient: "from-violet-500/20 via-purple-500/10 to-transparent",
+    titleKey: "news.categories.lifestyle",
+    descKey: "news.categoryDescriptions.lifestyle",
   },
   tech: {
-    title: "Tech",
-    description:
-      "Digital nomad life, tech industry, and remote work in Indonesia.",
     icon: Cpu,
     gradient: "from-fuchsia-500/20 via-pink-500/10 to-transparent",
+    titleKey: "news.categories.tech",
+    descKey: "news.categoryDescriptions.tech",
   },
 };
 
@@ -70,6 +62,7 @@ export default function CategoryPage() {
   const category = (params?.category ?? "") as ArticleCategory;
   const [articles, setArticles] = React.useState<ArticleListItem[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const { t } = useTranslation();
 
   // Reserved workspace paths - redirect to workspace if accessed
   const RESERVED_PATHS = [
@@ -92,8 +85,8 @@ export default function CategoryPage() {
     }
   }, [category]);
 
-  const meta = CATEGORY_META[category];
-  const Icon = meta?.icon || Plane;
+  const visual = CATEGORY_VISUAL[category];
+  const Icon = visual?.icon || Plane;
 
   // Fetch articles for category
   React.useEffect(() => {
@@ -114,13 +107,13 @@ export default function CategoryPage() {
       }
     }
 
-    if (category && meta) {
+    if (category && visual) {
       fetchArticles();
     }
-  }, [category, meta]);
+  }, [category, visual]);
 
   // Handle invalid category
-  if (!meta) {
+  if (!visual) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -139,7 +132,7 @@ export default function CategoryPage() {
     <div className="min-h-screen">
       {/* Hero section */}
       <section
-        className={`relative py-16 md:py-20 bg-gradient-to-b ${meta.gradient}`}
+        className={`relative py-16 md:py-20 bg-gradient-to-b ${visual.gradient}`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
@@ -153,12 +146,12 @@ export default function CategoryPage() {
 
             {/* Title */}
             <h1 className="font-serif text-4xl md:text-5xl font-bold text-white mb-4">
-              {meta.title}
+              {t(visual.titleKey)}
             </h1>
 
             {/* Description */}
             <p className="text-lg text-white/60 max-w-2xl mb-8">
-              {meta.description}
+              {t(visual.descKey)}
             </p>
 
             {/* Category nav */}
@@ -208,7 +201,7 @@ export default function CategoryPage() {
               {/* Popular in category */}
               <div className="p-6 rounded-2xl bg-white/5 border border-white/10">
                 <h3 className="font-medium text-white mb-4">
-                  Popular in {meta.title}
+                  Popular in {t(visual.titleKey)}
                 </h3>
                 <div className="space-y-4">
                   {articles.slice(0, 3).map((article) => (
