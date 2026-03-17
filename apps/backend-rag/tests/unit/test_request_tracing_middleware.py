@@ -3,7 +3,6 @@ Unit tests for Request Tracing Middleware
 Tests correlation ID generation and trace storage
 """
 
-from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -22,7 +21,7 @@ def app():
     async def test_endpoint(request: Request):
         return {"message": "test"}
 
-    middleware = RequestTracingMiddleware(app, max_traces=10)
+    RequestTracingMiddleware(app, max_traces=10)
     app.add_middleware(RequestTracingMiddleware, max_traces=10)
     return app
 

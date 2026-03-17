@@ -17,6 +17,21 @@ from typing import Any
 import asyncpg
 from langgraph.graph import END, StateGraph
 
+from backend.services.rag.kg_graph_nodes import (
+    kg_checkpoint_operations_total,
+    kg_langgraph_queries_total,
+    reason_over_graph_node,
+    resolve_entities_node,
+    synthesize_workflow_node,
+    traverse_graph_node,
+    understand_query_node,
+)
+from backend.services.rag.kg_graph_state import KGAgentState
+from backend.services.rag.kg_subgraph_company import build_company_subgraph
+from backend.services.rag.kg_subgraph_property import build_property_subgraph
+from backend.services.rag.kg_subgraph_tax import build_tax_subgraph
+from backend.services.rag.kg_subgraph_visa import build_visa_subgraph
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -36,23 +51,6 @@ try:
 except ImportError:
     ChatOpenAI = None  # type: ignore[assignment,misc]
     logger.warning("langchain-openai not installed, OpenAI reasoning unavailable")
-
-from backend.services.rag.kg_graph_nodes import (
-    kg_checkpoint_operations_total,
-    kg_langgraph_queries_total,
-    reason_over_graph_node,
-    resolve_entities_node,
-    synthesize_workflow_node,
-    traverse_graph_node,
-    understand_query_node,
-)
-from backend.services.rag.kg_graph_state import KGAgentState
-
-# Import subgraphs (Phase 3)
-from backend.services.rag.kg_subgraph_company import build_company_subgraph
-from backend.services.rag.kg_subgraph_property import build_property_subgraph
-from backend.services.rag.kg_subgraph_tax import build_tax_subgraph
-from backend.services.rag.kg_subgraph_visa import build_visa_subgraph
 
 # ============================================================================
 # LLM Configuration

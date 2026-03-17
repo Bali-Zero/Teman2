@@ -932,7 +932,7 @@ async def test_authenticate_user_execute_fails_on_failed_attempt_increment(
     # Mock password verification to return False (triggering failed attempt increment)
     with patch.object(identity_service, "verify_password", return_value=False):
         with patch("asyncpg.connect", return_value=mock_asyncpg_connection):
-            with patch("backend.app.modules.identity.service.logger") as mock_logger:
+            with patch("backend.app.modules.identity.service.logger"):
                 user = await identity_service.authenticate_user("test@example.com", "1234")
 
                 assert user is None
@@ -972,7 +972,7 @@ async def test_authenticate_user_pin_hash_none(
     mock_asyncpg_connection.execute = AsyncMock()
 
     with patch("asyncpg.connect", return_value=mock_asyncpg_connection):
-        with patch("backend.app.modules.identity.service.logger") as mock_logger:
+        with patch("backend.app.modules.identity.service.logger"):
             # verify_password should handle None gracefully
             result = identity_service.verify_password("1234", None)
             assert result is False
@@ -1009,7 +1009,7 @@ async def test_authenticate_user_locked_until_exact_current_time(
     mock_asyncpg_connection.fetchrow = AsyncMock(return_value=sample_db_row)
 
     with patch("asyncpg.connect", return_value=mock_asyncpg_connection):
-        with patch("backend.app.modules.identity.service.logger") as mock_logger:
+        with patch("backend.app.modules.identity.service.logger"):
             # Mock verify_password to avoid bcrypt issues with invalid hash
             with patch.object(identity_service, "verify_password", return_value=True):
                 user = await identity_service.authenticate_user("test@example.com", "1234")

@@ -78,7 +78,7 @@ async def test_concurrent_contribution_same_fact(test_db_pool):
     """Test that concurrent contributions to same fact don't create duplicates."""
     service = CollectiveMemoryService(pool=test_db_pool)
     content = "Existing fact"
-    content_hash = service._hash_content(content)
+    service._hash_content(content)
 
     # Mock existing fact
     conn = AsyncMock()

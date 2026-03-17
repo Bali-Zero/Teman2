@@ -711,7 +711,6 @@ class QdrantClient:
                 # Build points array for this batch
                 # Try to detect if collection uses named vectors
                 points = []
-                use_named_vectors = False
 
                 for j in range(len(batch_chunks)):
                     # Default: simple vector format

@@ -166,7 +166,7 @@ class TestCRMPortalIntegrationIntegration:
         """Test getting recent portal activity"""
         async with db_pool.acquire() as conn:
             # Create test client
-            client_id = await conn.fetchval(
+            await conn.fetchval(
                 """
                 INSERT INTO clients (full_name, email, status, created_by)
                 VALUES ($1, $2, $3, $4)

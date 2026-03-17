@@ -35,9 +35,8 @@ def test_app():
 
     with patch("backend.services.rag.agentic.AgenticRAGOrchestrator"):
         # Patch API key validation to always accept test key
-        from backend.middleware.hybrid_auth import HybridAuthMiddleware
-
         from backend.app.main_cloud import app
+        from backend.middleware.hybrid_auth import HybridAuthMiddleware
 
         # Store original method
         original_authenticate = HybridAuthMiddleware.authenticate_request

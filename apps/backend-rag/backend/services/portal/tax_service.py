@@ -51,13 +51,13 @@ class TaxService:
         """
         query = """
             SELECT
-                COALESCE(SUM(CASE WHEN status IN ('upcoming', 'pending', 'overdue') 
+                COALESCE(SUM(CASE WHEN status IN ('upcoming', 'pending', 'overdue')
                     THEN amount_due ELSE 0 END), 0) as total_due,
-                MIN(CASE WHEN status IN ('upcoming', 'pending') 
+                MIN(CASE WHEN status IN ('upcoming', 'pending')
                     THEN due_date END) as next_deadline,
-                COUNT(CASE WHEN status IN ('upcoming', 'pending') 
+                COUNT(CASE WHEN status IN ('upcoming', 'pending')
                     THEN 1 END) as pending_count,
-                COUNT(CASE WHEN status = 'overdue' 
+                COUNT(CASE WHEN status = 'overdue'
                     THEN 1 END) as overdue_count
             FROM tax_obligations
             WHERE client_id = $1
@@ -105,7 +105,7 @@ class TaxService:
             row = await conn.fetchrow(
                 """
                     INSERT INTO tax_obligations
-                    (client_id, tax_type, name, frequency, period_start, 
+                    (client_id, tax_type, name, frequency, period_start,
                      period_end, due_date, amount_due, status)
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'upcoming')
                     RETURNING *
@@ -149,7 +149,7 @@ class TaxService:
             row = await conn.fetchrow(
                 """
                     UPDATE tax_obligations
-                    SET status = $2, amount_paid = COALESCE($3, amount_paid), 
+                    SET status = $2, amount_paid = COALESCE($3, amount_paid),
                         updated_at = NOW()
                     WHERE id = $1
                     RETURNING *

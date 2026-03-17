@@ -42,7 +42,7 @@ class TestCitationServiceIntegration:
     @pytest.mark.asyncio
     async def test_citation_generation(self, qdrant_client):
         """Test citation generation from search results"""
-        with patch("backend.services.search_service.SearchService") as mock_search:
+        with patch("backend.services.search_service.SearchService"):
             mock_search_instance = MagicMock()
             mock_search_instance.search = AsyncMock(
                 return_value={
@@ -144,7 +144,7 @@ class TestClarificationServiceIntegration:
     @pytest.mark.asyncio
     async def test_clarification_request_generation(self):
         """Test clarification request generation"""
-        with patch("backend.services.clarification_service.ZantaraAIClient") as mock_ai:
+        with patch("backend.services.clarification_service.ZantaraAIClient"):
             mock_ai_instance = MagicMock()
             mock_ai_instance.generate_clarification = AsyncMock(
                 return_value={

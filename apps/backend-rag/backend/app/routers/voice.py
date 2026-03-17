@@ -7,8 +7,11 @@ Skips complex agentic reasoning for speed.
 Pipeline: Query → Vector Search → Fast LLM → Response (~5-8s instead of 40s)
 """
 
+import hashlib
+import hmac
 import logging
 import os
+import re
 import time
 from typing import Any
 
@@ -16,6 +19,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel
 
 from backend.app.core.config import settings
+from backend.services.kbli_eye import KBLIEye
 
 logger = logging.getLogger(__name__)
 
@@ -202,10 +206,6 @@ async def voice_query(
         raise HTTPException(status_code=500, detail="Voice query failed")
 
 
-import re
-
-from backend.services.kbli_eye import KBLIEye
-
 kbli_eye = KBLIEye("source_documents/KBLI_2025_FINAL_CLEAN.json")
 
 
@@ -214,12 +214,6 @@ class ElevenLabsRequest(BaseModel):
 
     query: str | None = None
     conversation: list[dict] | None = None
-
-
-import hashlib
-import hmac
-
-from fastapi import Header
 
 
 @router.post("/elevenlabs/kbli-audit")
@@ -260,7 +254,7 @@ async def elevenlabs_kbli_audit(
         }
 
     state = decision["audit"]["state"]
-    reason = decision["audit"]["reason_code"]
+    decision["audit"]["reason_code"]
     title = decision["title"]
 
     if state == "APPROVED":

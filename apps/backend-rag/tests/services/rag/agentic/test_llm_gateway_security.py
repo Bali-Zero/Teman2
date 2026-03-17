@@ -223,7 +223,6 @@ class TestDataEncryptionAndPrivacy:
 
     def test_data_encryption_decryption(self, encryption_gateway):
         """Test data encryption and decryption."""
-        gateway = encryption_gateway
 
         def encrypt_data(data, key):
             """Simple encryption simulation."""
@@ -258,7 +257,6 @@ class TestDataEncryptionAndPrivacy:
 
     def test_data_masking_and_anonymization(self, encryption_gateway):
         """Test data masking and anonymization."""
-        gateway = encryption_gateway
 
         def mask_pii_data(data):
             """Mask personally identifiable information."""
@@ -290,7 +288,6 @@ class TestDataEncryptionAndPrivacy:
 
     def test_privacy_policy_compliance(self, encryption_gateway):
         """Test privacy policy compliance."""
-        gateway = encryption_gateway
 
         privacy_requirements = {
             "data_minimization": True,
@@ -376,7 +373,6 @@ class TestSecurityVulnerabilityAssessment:
 
     def test_sql_injection_prevention(self, vuln_gateway):
         """Test SQL injection prevention."""
-        gateway = vuln_gateway
 
         def sanitize_input(user_input):
             """Sanitize user input to prevent SQL injection."""
@@ -423,7 +419,6 @@ class TestSecurityVulnerabilityAssessment:
 
     def test_xss_prevention(self, vuln_gateway):
         """Test Cross-Site Scripting (XSS) prevention."""
-        gateway = vuln_gateway
 
         def sanitize_html(user_input):
             """Sanitize HTML to prevent XSS."""
@@ -465,7 +460,6 @@ class TestSecurityVulnerabilityAssessment:
 
     def test_csrf_protection(self, vuln_gateway):
         """Test Cross-Site Request Forgery (CSRF) protection."""
-        gateway = vuln_gateway
 
         def generate_csrf_token():
             """Generate CSRF token."""
@@ -490,7 +484,6 @@ class TestSecurityVulnerabilityAssessment:
 
     def test_security_headers_implementation(self, vuln_gateway):
         """Test security headers implementation."""
-        gateway = vuln_gateway
 
         def get_security_headers():
             """Get security headers for HTTP responses."""
@@ -533,7 +526,6 @@ class TestRegulatoryCompliance:
 
     def test_gdpr_compliance(self, compliance_gateway):
         """Test GDPR compliance validation."""
-        gateway = compliance_gateway
 
         gdpr_requirements = {
             "lawful_basis": True,
@@ -574,7 +566,6 @@ class TestRegulatoryCompliance:
 
     def test_hipaa_compliance(self, compliance_gateway):
         """Test HIPAA compliance validation."""
-        gateway = compliance_gateway
 
         hipaa_requirements = {
             "administrative_safeguards": True,
@@ -608,7 +599,6 @@ class TestRegulatoryCompliance:
 
     def test_soc2_compliance(self, compliance_gateway):
         """Test SOC 2 compliance validation."""
-        gateway = compliance_gateway
 
         soc2_trust_services = {
             "security": {"controls": 50, "implemented": 48},
@@ -641,7 +631,6 @@ class TestRegulatoryCompliance:
 
     def test_audit_trail_implementation(self, compliance_gateway):
         """Test audit trail implementation."""
-        gateway = compliance_gateway
 
         audit_log = []
 

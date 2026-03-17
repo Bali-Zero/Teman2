@@ -55,11 +55,7 @@ def detect_placeholders(text: str) -> bool:
         r"_{4,}",  # ____
     ]
 
-    for pattern in placeholder_patterns:
-        if re.search(pattern, text):
-            return True
-
-    return False
+    return any(re.search(pattern, text) for pattern in placeholder_patterns)
 
 
 def count_broken_words(text: str) -> int:

@@ -171,7 +171,8 @@ def main():
 
     # Validate token format
     if not token.startswith("eyJ"):
-        print(f"{colorize('⚠️  Warning: Token doesn\\'t look like a JWT', 'yellow')}")
+        warning_msg = "⚠️  Warning: Token doesn't look like a JWT"
+        print(f"{colorize(warning_msg, 'yellow')}")
         print("JWT tokens typically start with 'eyJ'")
         proceed = input("\nContinue anyway? (y/n): ")
         if proceed.lower() != "y":

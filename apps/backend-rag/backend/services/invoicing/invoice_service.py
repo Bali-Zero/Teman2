@@ -309,7 +309,7 @@ A new invoice has just been generated and sent to our client. Here's everything 
 2. Keep an eye on our bank account
 3. Once payment comes through, update the status to "ON PROCESS"
 
-As always, you're doing an amazing job keeping everything running smoothly! 
+As always, you're doing an amazing job keeping everything running smoothly!
 
 If you need any help with this client or have questions, just give me a shout.
 

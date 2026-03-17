@@ -155,9 +155,8 @@ def is_noise_entity(name: str, entity_type: str) -> tuple[bool, str]:
         return True, "ocr_error"
 
     # Check regulation types without numbers
-    if entity_type in REGULATION_TYPES:
-        if not re.search(r"\d", name) and len(name) < 20:
-            return True, "generic_regulation"
+    if entity_type in REGULATION_TYPES and not re.search(r"\d", name) and len(name) < 20:
+        return True, "generic_regulation"
 
     return False, ""
 
@@ -200,7 +199,7 @@ async def find_duplicates(
         by_type.setdefault(row["entity_type"], []).append((row["entity_id"], row["name"]))
 
     duplicates = []
-    for entity_type, entities in by_type.items():
+    for _entity_type, entities in by_type.items():
         if len(entities) < 2:
             continue
 
@@ -212,7 +211,7 @@ async def find_duplicates(
             if id1 in used:
                 continue
 
-            for j, (id2, name2) in enumerate(entities[i + 1 :], start=i + 1):
+            for _j, (id2, name2) in enumerate(entities[i + 1 :], start=i + 1):
                 if id2 in used:
                     continue
 
@@ -326,7 +325,7 @@ async def run_cleanup(
                         stats.duplicates_merged += 1
                     logger.info(f"Merged {stats.duplicates_merged} duplicates")
                 else:
-                    for can_id, dup_id, can_name, dup_name in duplicates[:10]:
+                    for _can_id, dup_id, can_name, dup_name in duplicates[:10]:
                         logger.info(f"  [DUP] '{dup_name}' -> '{can_name}'")
 
             # Step 4: Remove orphan nodes (optional)

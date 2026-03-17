@@ -1,11 +1,13 @@
 import asyncio
-import asyncpg
 import json
+
+import asyncpg
+
 
 async def run():
     # Database connection using provided credentials
     conn = await asyncpg.connect('postgresql://nuzantara:nuzantara_local_2024@localhost:5432/nuzantara')
-    
+
     hospitality_data = [
         {'code': '55101', 'name': 'Hotel Bintang Lima', 'desc': 'Aktivitas Hotel Bintang Lima (5 Stars)'},
         {'code': '55102', 'name': 'Hotel Bintang Empat', 'desc': 'Aktivitas Hotel Bintang Empat (4 Stars)'},
@@ -14,7 +16,7 @@ async def run():
         {'code': '55105', 'name': 'Hotel Bintang Satu', 'desc': 'Aktivitas Hotel Bintang Satu (1 Star)'},
         {'code': '55106', 'name': 'Aparthotel', 'desc': 'Aktivitas Apartemen Hotel'}
     ]
-    
+
     expert_legal = {
         'regulation': 'PP 28/2025',
         'bab': 'IV (Sektor Pariwisata)',
@@ -36,7 +38,7 @@ async def run():
     sql = """
         INSERT INTO kg_nodes (entity_id, entity_type, name, description, properties)
         VALUES ($1, $2, $3, $4, $5)
-        ON CONFLICT (entity_id) DO UPDATE 
+        ON CONFLICT (entity_id) DO UPDATE
         SET properties = EXCLUDED.properties, description = EXCLUDED.description, updated_at = CURRENT_TIMESTAMP
     """
 
@@ -47,7 +49,7 @@ async def run():
             'pma_status': 'TERBUKA',
             'expert_legal': expert_legal
         }
-        
+
         await conn.execute(sql, entity_id, 'kbli', f"KBLI {item['code']}", item['desc'], json.dumps(props))
         print(f"✅ Populated and Enriched: {entity_id}")
 

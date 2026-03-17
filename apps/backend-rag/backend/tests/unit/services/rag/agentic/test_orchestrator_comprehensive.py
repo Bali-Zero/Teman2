@@ -92,7 +92,7 @@ class TestAgenticRAGOrchestrator:
     ):
         """Test initialization with all services"""
         with (
-            patch("backend.services.rag.agentic.orchestrator.LLMGateway") as mock_gateway,
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
             patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
             patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
             patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder"),

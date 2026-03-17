@@ -1,6 +1,8 @@
-import os
 import asyncio
+import os
+
 from google import genai
+
 
 async def test_key():
     key = os.environ.get("GEMINI_API_KEY")

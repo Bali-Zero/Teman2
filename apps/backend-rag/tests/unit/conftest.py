@@ -5,10 +5,10 @@ ZANTARA Backend Test Configuration
 This conftest.py provides common fixtures used across all unit tests.
 """
 
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+
 
 @pytest.fixture
 def mock_settings():

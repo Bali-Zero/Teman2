@@ -32,7 +32,7 @@ class TestTeamTimesheetServiceIntegration:
     @pytest.mark.asyncio
     async def test_timesheet_service_initialization(self, db_pool):
         """Test TeamTimesheetService initialization"""
-        with patch("backend.services.team_timesheet_service.asyncpg") as mock_asyncpg:
+        with patch("backend.services.team_timesheet_service.asyncpg"):
             from backend.services.team_timesheet_service import TeamTimesheetService
 
             service = TeamTimesheetService(db_pool=db_pool)

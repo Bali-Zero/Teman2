@@ -1,10 +1,12 @@
 import asyncio
-import asyncpg
 import json
+
+import asyncpg
+
 
 async def run():
     conn = await asyncpg.connect('postgresql://nuzantara:nuzantara_local_2024@localhost:5432/nuzantara')
-    
+
     trade_data = [
         {"code": "46100", "name": "Intermediazione all'ingrosso", "pb_umku": ["Registrazione intermediario commerciale (Ministero Commercio)"]},
         {"code": "46333", "name": "Wholesale Alcolici", "risk": "Tinggi", "pb_umku": ["SIUP-MB (Bevande Alcoliche)", "Licenza distribuzione NPPBKC", "NIB con validazione speciale"]},
@@ -26,9 +28,9 @@ async def run():
     for item in trade_data:
         entity_id = f"kbli:{item['code']}"
         row = await conn.fetchrow("SELECT properties, name FROM kg_nodes WHERE entity_id = $1", entity_id)
-        
+
         current_props = json.loads(row['properties']) if row and row['properties'] else {"kode": item['code']}
-        
+
         # Expert Legal Enrichment
         current_props['expert_legal'] = {
             "regulation": "PP 28/2025",
@@ -48,12 +50,12 @@ async def run():
         sql = """
             INSERT INTO kg_nodes (entity_id, entity_type, name, description, properties)
             VALUES ($1, $2, $3, $4, $5)
-            ON CONFLICT (entity_id) DO UPDATE 
+            ON CONFLICT (entity_id) DO UPDATE
             SET properties = EXCLUDED.properties, updated_at = CURRENT_TIMESTAMP
         """
         name = row['name'] if row else f"KBLI {item['code']}: {item['name']}"
         desc = f"Attività di {item['name']} secondo standard 2025"
-        
+
         await conn.execute(sql, entity_id, 'kbli', name, desc, json.dumps(current_props))
         print(f"✅ Arricchito {entity_id}: Trade Expert Data")
 

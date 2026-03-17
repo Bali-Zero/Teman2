@@ -1,22 +1,24 @@
 import asyncio
-import asyncpg
 import json
+
+import asyncpg
+
 
 async def run():
     conn = await asyncpg.connect('postgresql://nuzantara:nuzantara_local_2024@localhost:5432/nuzantara')
-    
+
     # 1. ZONA ROSSA (Moratoria Bali INGUB 6/2025)
     red_zone = ["47111", "47112", "47191", "47192", "47221", "47711", "56102"]
-    
+
     # 2. TRAPPOLA UMKM (Vietati PMA)
     umkm_trap = ["55201", "13133", "47811", "47812", "47813", "01131", "96210", "10792", "56306"]
-    
+
     # 3. HIGH STAKES (PMA > 10B IDR)
     high_stakes = ["55101", "55203", "56101", "56301", "56302", "56303", "68111", "68112", "68210", "41011", "41017", "96101", "86103", "85491", "85492"]
-    
+
     # 4. TECH & NEW ECONOMY (Virtual Office Allowed)
     tech_economy = ["62019", "62194", "63122", "70209", "74201", "64995", "66123"]
-    
+
     # 5. TERTUTUP (Closed / Blacklist)
     closed_sectors = ["92000", "11031", "01285", "32401"]
 
@@ -26,13 +28,14 @@ async def run():
             row = await conn.fetchrow("SELECT properties FROM kg_nodes WHERE entity_id = $1", entity_id)
             if row:
                 props = json.loads(row['properties']) if isinstance(row['properties'], str) else row['properties']
-                if 'expert_legal' not in props: props['expert_legal'] = {}
-                
+                if 'expert_legal' not in props:
+                    props['expert_legal'] = {}
+
                 props['expert_legal']['strategic_group'] = group_name
                 props['expert_legal']['bali_alert'] = alert_msg
                 if pma_status_override:
                     props['pma_status'] = pma_status_override
-                
+
                 await conn.execute("UPDATE kg_nodes SET properties = $1 WHERE entity_id = $2", json.dumps(props), entity_id)
                 print(f"✅ Intelligence Iniettata per {entity_id} ({group_name})")
             else:

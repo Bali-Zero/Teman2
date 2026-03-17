@@ -66,10 +66,9 @@ class SheetsService:
                 pass
 
         if creds_json:
-            temp_file = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
-            temp_file.write(creds_json)
-            temp_file.close()
-            return temp_file.name
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as temp_file:
+                temp_file.write(creds_json)
+                return temp_file.name
 
         return None
 

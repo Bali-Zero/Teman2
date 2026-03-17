@@ -150,7 +150,7 @@ def extract_root_exception(longrepr: str) -> str:
         return fail_lines[0].strip()[:300]
 
     # Fallback: last non-empty line
-    lines = [l.strip() for l in longrepr.strip().splitlines() if l.strip()]
+    lines = [line.strip() for line in longrepr.strip().splitlines() if line.strip()]
     return lines[-1][:300] if lines else ""
 
 

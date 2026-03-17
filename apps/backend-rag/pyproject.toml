@@ -293,12 +293,60 @@ exclude = [
     "migrations",
     "build",
     "dist",
+    "_archive",
+    "tests/unit/_obsolete/**",
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]  # Allow unused imports
-"tests/*" = ["S101", "ARG", "SIM", "B", "UP"]  # Allow assert, unused args, and don't simplify test mocks
-"tests/**/*" = ["S101", "ARG", "SIM", "B", "UP"]  # Same for nested test dirs
+"tests/*" = ["S101", "ARG", "SIM", "B", "UP", "F403", "F811", "E402"]  # Allow assert, unused args, simplifications, star imports, redefinitions, late imports in tests
+"tests/**/*" = ["S101", "ARG", "SIM", "B", "UP", "F403", "F811", "E402"]  # Same for nested test dirs
+"backend/tests/**/*" = ["F403", "F811", "SIM", "ARG", "E402", "B017"]  # Allow star imports, redefinitions, simplifications, unused args, late imports, assert exceptions in backend tests
+"scripts/*.py" = ["E402", "SIM", "B007", "B904", "ARG001", "ARG002", "B005"]  # Scripts may have non-standard patterns
+"backend/app/routers/*.py" = ["ARG001", "B904", "SIM"]  # FastAPI routers: dependency injection + error handling + cosmetic simplifications
+"backend/app/**/*.py" = ["SIM"]  # App modules - cosmetic simplifications
+"backend/app/modules/**/router*.py" = ["ARG001", "B904"]  # Same for module routers
+"backend/app/modules/**/*router*.py" = ["ARG001", "B904"]  # Module routers with different naming
+"backend/app/modules/**/test_*.py" = ["ARG001", "B904"]  # Test files in modules
+"backend/agents/**/test_*.py" = ["ARG001"]  # Test files in agents
+"backend/generals/tests/*.py" = ["ARG002"]  # General test files
+"backend/migrations/*.py" = ["ARG001", "E402"]  # Migration scripts with placeholder params and late imports
+"backend/cli/*.py" = ["E402"]  # CLI scripts with late imports
+"backend/app/routers/agents.py" = ["E402"]  # Lazy imports
+"backend/app/routers/monitoring_rag.py" = ["E402"]  # Lazy imports
+"backend/jobs/*.py" = ["ARG001"]  # Job scripts with placeholder params
+"backend/scripts/*.py" = ["ARG001", "E402", "SIM"]  # Utility scripts
+"backend/verify_soul_persona.py" = ["E402"]  # Verification script with late imports
+"add_docstrings.py" = ["ARG001"]  # Root level script
+"_archive/**/*.py" = ["ARG", "E402", "B904"]  # Archived code
+"backend/services/rag/kg_*.py" = ["ARG001"]  # KG subgraph modules with placeholder params
+"backend/services/knowledge_graph/*.py" = ["ARG001"]  # KG services
+"backend/app/setup/*.py" = ["ARG001"]  # Setup/initialization modules
+"backend/services/rag/agentic/__init__.py" = ["E402"]  # Lazy imports to avoid circular dependencies
+"backend/services/rag/agentic/context_manager.py" = ["ARG001"]  # Future feature params
+"backend/agents/**/*.py" = ["ARG002", "SIM", "B904"]  # Agent adapters with interface patterns and cosmetic simplifications
+"backend/channels/**/*.py" = ["ARG002"]  # Channel adapters with interface patterns
+"backend/conversation/*.py" = ["ARG002"]  # Conversation engine with interface patterns
+"backend/db/*.py" = ["ARG002", "B904"]  # Database migration base classes
+"backend/llm/**/*.py" = ["ARG002", "B904"]  # LLM providers with interface patterns
+"backend/core/*.py" = ["ARG001", "B904"]  # Core modules with __getattr__ patterns
+"backend/generals/*.py" = ["ARG001", "B904"]  # Signal handlers and general utilities
+"backend/services/**/*.py" = ["SIM", "B904", "ARG002", "ARG004"]  # Services - cosmetic simplifications, error handling, interface params
+"backend/services/rag/reranker.py" = ["ARG001"]  # __getattr__ pattern
+"backend/services/memory/memory_fallback.py" = ["ARG004"]  # Static method pattern
+"backend/services/oracle/oracle_service.py" = ["E402"]  # Optional dependency imports
+"backend/app/main_cloud.py" = ["E402"]  # App initialization order matters
+"backend/core/chunker.py" = ["E402"]  # Optional dependency imports
+"backend/services/memory/models.py" = ["E402"]  # Optional dependency imports
+"backend/services/misc/proactive_compliance_monitor.py" = ["E402"]  # Optional dependency imports
+"backend/app/modules/notifications/router.py" = ["E402"]  # Optional dependency imports
+"backend/app/routers/conversations.py" = ["F823"]  # False positive - asyncio is imported globally
+"backend/channels/web/adapter.py" = ["SIM116"]  # Consecutive if pattern is intentional
+"backend/channels/instagram/adapter.py" = ["SIM105"]  # Intentional try-except-pass pattern
+"backend/services/autonomous_agents/knowledge_graph_builder.py" = ["B007"]  # Intentional loop pattern
+"backend/tests/services/rag/evaluation/test_monitoring.py" = ["B007"]  # Test loop pattern
+"backend/tests/services/rag/evaluation/test_ragas_evaluator.py" = ["B015"]  # Test assertion pattern
+"tests/unit/test_conversation_trainer.py" = ["E402"]  # Must patch settings before importing
 "prompts/*.py" = ["E501"]  # Prompt strings can be long
 
 [tool.ruff.lint.isort]

@@ -251,7 +251,7 @@ class TestOracleComprehensiveIntegration:
         from backend.services.search.search_service import SearchService
 
         # Initialize services
-        search_service = SearchService()
+        SearchService()
         query_router = QueryRouter()
 
         # Mock embedding

@@ -210,7 +210,6 @@ class TestE2EKnowledgeGraphFlow:
     @pytest.mark.asyncio
     async def test_graph_traversal_query(self, kg_pipeline, mock_db_pool):
         """Test querying the knowledge graph for entity relationships"""
-        query = "Chi ha fondato Bali Tech Solutions?"
 
         # Mock graph query
         mock_result = MagicMock()

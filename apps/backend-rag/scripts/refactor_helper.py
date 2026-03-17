@@ -164,16 +164,15 @@ class RefactoringAnalyzer:
                         # Check for magic numbers (long numeric strings)
                         elif isinstance(node, ast.Constant) and isinstance(
                             node.value, (int, float)
-                        ):
-                            if abs(node.value) > 1000:  # Large numbers might be magic
-                                hardcoded.append(
-                                    {
-                                        "file": str(file_path),
-                                        "line": node.lineno,
-                                        "type": "Magic Number",
-                                        "value": str(node.value),
-                                    }
-                                )
+                        ) and abs(node.value) > 1000:  # Large numbers might be magic
+                            hardcoded.append(
+                                {
+                                    "file": str(file_path),
+                                    "line": node.lineno,
+                                    "type": "Magic Number",
+                                    "value": str(node.value),
+                                }
+                            )
             except Exception as e:
                 logger.warning(f"Error analyzing {file_path}: {e}")
 

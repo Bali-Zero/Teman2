@@ -697,7 +697,6 @@ class LKPMService:
     ) -> InvestmentRealization:
         """Sum all previous quarters' realization for cumulative total."""
         # Quarter ordering for comparison
-        q_order = {"Q1": 1, "Q2": 2, "Q3": 3, "Q4": 4}
 
         async with self.db_pool.acquire() as conn:
             rows = await conn.fetch(

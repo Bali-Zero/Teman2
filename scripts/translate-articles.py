@@ -95,7 +95,7 @@ def patch_frontmatter_locale(fm_block: str, locale: str) -> str:
     return fm_block.rstrip().rsplit("---", 1)[0] + f'locale: "{locale}"\n---\n'
 
 
-def call_ollama(prompt: str, timeout: float = 1200) -> str:
+def call_ollama(prompt: str, timeout: float = None) -> str:
     """Call Ollama chat API. Returns the generated text."""
     payload = {
         "model": MODEL,
@@ -106,7 +106,7 @@ def call_ollama(prompt: str, timeout: float = 1200) -> str:
             "num_predict": 16384,
         },
     }
-    with httpx.Client(timeout=httpx.Timeout(timeout, connect=30)) as client:
+    with httpx.Client(timeout=httpx.Timeout(timeout, connect=30) if timeout else None) as client:
         resp = client.post(f"{OLLAMA_URL}/api/chat", json=payload)
         resp.raise_for_status()
         data = resp.json()

@@ -8,6 +8,7 @@ Graceful degradation: if Redis is unavailable, all consumers fall back to
 their existing in-memory alternatives.
 """
 
+import contextlib
 import logging
 import time
 from typing import Any
@@ -204,17 +205,13 @@ class RedisManager:
     def _close_sync(self) -> None:
         """Close sync client (for cleanup)."""
         if self._sync_client is not None:
-            try:
+            with contextlib.suppress(Exception):
                 self._sync_client.close()
-            except Exception:
-                pass
 
     async def close(self) -> None:
         """Close all connections."""
         self._close_sync()
         if self._async_client is not None:
-            try:
+            with contextlib.suppress(Exception):
                 await self._async_client.close()
-            except Exception:
-                pass
         logger.info("RedisManager connections closed")

@@ -143,7 +143,7 @@ class TestDisasterRecoveryPlanning:
             }
 
         # Create DR plan
-        dr_plan = create_dr_plan("primary_site_failure", 30, 15)
+        create_dr_plan("primary_site_failure", 30, 15)
 
         # Add recovery steps
         add_recovery_step("primary_site_failure", "detect_failure", lambda: None, 1)
@@ -161,7 +161,6 @@ class TestDisasterRecoveryPlanning:
 
     def test_recovery_time_objective_compliance(self, dr_gateway):
         """Test Recovery Time Objective (RTO) compliance."""
-        gateway = dr_gateway
 
         def simulate_disaster_recovery(scenario_name, complexity_factor=1.0):
             """Simulate disaster recovery scenario."""
@@ -197,7 +196,7 @@ class TestDisasterRecoveryPlanning:
             # Simulate recovery steps
             for step in scenario["steps"]:
                 # Each step takes different amount of time
-                step_time = len(step) * complexity_factor
+                len(step) * complexity_factor
                 time.sleep(0.01)  # Minimal sleep for testing
 
             end_time = time.time()
@@ -230,7 +229,6 @@ class TestDisasterRecoveryPlanning:
 
     def test_recovery_point_objective_validation(self, dr_gateway):
         """Test Recovery Point Objective (RPO) validation."""
-        gateway = dr_gateway
 
         def simulate_data_backup_and_recovery(rpo_target_minutes, backup_frequency_minutes):
             """Simulate data backup and recovery with RPO validation."""
@@ -916,8 +914,8 @@ class TestHighAvailabilityAndFailover:
 
         # Check site connectivity
         east_health = check_site_connectivity("us-east-1")
-        west_health = check_site_connectivity("us-west-2")
-        eu_health = check_site_connectivity("eu-west-1")
+        check_site_connectivity("us-west-2")
+        check_site_connectivity("eu-west-1")
 
         assert "healthy" in east_health
         assert "latency_ms" in east_health

@@ -6,6 +6,7 @@ Provides high-level API for ZANTARA to submit tasks and monitor execution.
 """
 
 import asyncio
+import contextlib
 import json
 import logging
 from datetime import datetime, timedelta, timezone
@@ -127,10 +128,8 @@ class TaskCoordinator:
         for field in ("payload", "result", "metadata"):
             val = record.get(field)
             if isinstance(val, str):
-                try:
+                with contextlib.suppress(json.JSONDecodeError, TypeError):
                     record[field] = json.loads(val)
-                except (json.JSONDecodeError, TypeError):
-                    pass
         return record
 
     async def get_task(self, task_id: int) -> dict[str, Any] | None:
@@ -295,10 +294,8 @@ class TaskCoordinator:
 
         result = task.get("result")
         if result and isinstance(result, str):
-            try:
+            with contextlib.suppress(json.JSONDecodeError):
                 result = json.loads(result)
-            except json.JSONDecodeError:
-                pass
 
         return {
             "task_id": task_id,
@@ -382,10 +379,8 @@ class TaskCoordinator:
 
                 value = row["value"]
                 if isinstance(value, str):
-                    try:
+                    with contextlib.suppress(json.JSONDecodeError):
                         value = json.loads(value)
-                    except json.JSONDecodeError:
-                        pass
 
                 return {
                     "key": key,
@@ -770,7 +765,7 @@ class TaskCoordinator:
                 # Task statistics
                 task_stats = await conn.fetchrow(
                     """
-                    SELECT 
+                    SELECT
                         COUNT(*) as total_tasks,
                         COUNT(*) FILTER (WHERE status = 'pending') as pending_tasks,
                         COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress_tasks,
@@ -785,7 +780,7 @@ class TaskCoordinator:
                 # Memory statistics
                 memory_stats = await conn.fetchrow(
                     """
-                    SELECT 
+                    SELECT
                         COUNT(*) as total_memories,
                         COUNT(*) FILTER (WHERE expires_at IS NOT NULL AND expires_at < NOW()) as expired_memories
                     FROM generals_memory
@@ -795,7 +790,7 @@ class TaskCoordinator:
                 # Activity statistics
                 activity_stats = await conn.fetchrow(
                     """
-                    SELECT 
+                    SELECT
                         COUNT(*) as total_activities,
                         COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '1 hour') as recent_activities
                     FROM generals_activity

@@ -262,7 +262,7 @@ class FinancialAgent:
             service_type = self._extract_service_type(query)
 
             # Get official Bali Zero pricing (NEVER generate prices)
-            pricing_data = self.pricing_service.get_pricing(service_type)
+            self.pricing_service.get_pricing(service_type)
             pricing_context = self.pricing_service.format_for_llm_context(service_type)
 
             prompt = (

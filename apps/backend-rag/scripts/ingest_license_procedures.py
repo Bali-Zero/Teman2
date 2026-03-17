@@ -85,7 +85,7 @@ def upsert_point(
 async def search_test(query: str, embedder, bm25) -> dict:
     """Test a search query against the collection."""
     dense_vector = await embedder.generate_query_embedding(query)
-    sparse_result = bm25.generate_sparse_vector(query)
+    bm25.generate_sparse_vector(query)
 
     url = f"{QDRANT_URL}/collections/{COLLECTION_NAME}/points/query"
     headers = {"Content-Type": "application/json", "api-key": QDRANT_API_KEY}
@@ -207,7 +207,7 @@ async def ingest_files():
             total_chunks += 1
             time.sleep(0.3)  # Small delay between requests
 
-        logger.info(f"  ✅ File complete")
+        logger.info("  ✅ File complete")
 
     logger.info(f"\n{'=' * 60}")
     logger.info(f"INGESTION COMPLETE: {total_upserted}/{total_chunks} chunks upserted")

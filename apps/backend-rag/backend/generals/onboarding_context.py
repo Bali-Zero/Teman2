@@ -245,7 +245,7 @@ def get_intelligence_system_instruction_v2() -> str:
         v2_prompt = """You are Intelligence General v2 - a hybrid strategist combining internal data with live web search."""
 
     # Append Golden Rules reminder
-    onboarding_doc = load_onboarding_document()
+    load_onboarding_document()
 
     golden_rules_summary = """
 

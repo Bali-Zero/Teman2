@@ -129,7 +129,7 @@ class TestEmbeddingsGenerator:
         def create_batch_response(batch_size):
             mock_response = MagicMock()
             mock_items = []
-            for i in range(batch_size):
+            for _i in range(batch_size):
                 mock_item = MagicMock()
                 mock_item.embedding = [0.1] * 1536
                 mock_items.append(mock_item)

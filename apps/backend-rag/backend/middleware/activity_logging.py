@@ -55,11 +55,7 @@ class ActivityLoggingMiddleware(BaseHTTPMiddleware):
             return False
 
         # Skip if path starts with excluded prefix
-        for excluded in self.excluded_paths:
-            if path.startswith(excluded):
-                return False
-
-        return True
+        return all(not path.startswith(excluded) for excluded in self.excluded_paths)
 
     def _get_user_email(self, request: Request) -> str | None:
         """Extract user email from request"""

@@ -89,13 +89,13 @@ class TestInitialization:
         """Test that random seed is set during initialization."""
         import random
 
-        builder = DatasetBuilder(llm_client=mock_llm_client, seed=42)
+        DatasetBuilder(llm_client=mock_llm_client, seed=42)
 
         # Generate a few random numbers
         nums1 = [random.random() for _ in range(5)]
 
         # Create new builder with same seed
-        builder2 = DatasetBuilder(llm_client=mock_llm_client, seed=42)
+        DatasetBuilder(llm_client=mock_llm_client, seed=42)
         nums2 = [random.random() for _ in range(5)]
 
         assert nums1 == nums2
@@ -373,7 +373,7 @@ class TestDatasetBuilding:
         """Test that all categories are represented in dataset."""
         dataset = await dataset_builder.build_dataset(target_size=40)
 
-        categories = set(s.category for s in dataset)
+        categories = {s.category for s in dataset}
         assert "visa" in categories
         assert "business" in categories
         assert "tax" in categories

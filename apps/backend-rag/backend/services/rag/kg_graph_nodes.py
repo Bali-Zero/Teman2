@@ -339,10 +339,7 @@ def _is_non_kbli_entity(entity_str: str, entity_type: str | None = None) -> bool
 
     # Check for property-related entities
     property_patterns = ["hak_pakai", "hgb", "hak_milik", "property_", "shm_"]
-    if any(pattern in entity_lower for pattern in property_patterns):
-        return True
-
-    return False
+    return bool(any(pattern in entity_lower for pattern in property_patterns))
 
 
 def _get_entity_type_filter(entity_str: str) -> list[str] | None:

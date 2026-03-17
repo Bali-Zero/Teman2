@@ -73,7 +73,7 @@ class TestNusantaraHealthRouter:
         data = response.json()
 
         # Check island structure
-        for island_name, island_data in data["islands"].items():
+        for _island_name, island_data in data["islands"].items():
             assert "name" in island_data
             assert "label" in island_data
             assert "health_score" in island_data

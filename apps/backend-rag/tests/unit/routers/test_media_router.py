@@ -9,7 +9,6 @@ Tests cover:
 
 import tempfile
 from io import BytesIO
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -239,7 +238,7 @@ class TestUploadFileEndpoint:
         file_content = b"test image content"
         files = {"file": ("test_image.jpg", BytesIO(file_content), "image/jpeg")}
 
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory():
             # Mock Path class to return proper extension
             mock_path_instance = MagicMock()
             mock_path_instance.suffix = ".jpg"
@@ -264,7 +263,7 @@ class TestUploadFileEndpoint:
                 with patch("backend.app.routers.media.uuid.uuid4") as mock_uuid:
                     mock_uuid.return_value = "test-uuid"
                     with patch("builtins.open", create=True) as mock_open:
-                        with patch("backend.app.routers.media.shutil.copyfileobj") as mock_copy:
+                        with patch("backend.app.routers.media.shutil.copyfileobj"):
                             mock_file = MagicMock()
                             mock_open.return_value.__enter__ = MagicMock(return_value=mock_file)
                             mock_open.return_value.__exit__ = MagicMock(return_value=False)

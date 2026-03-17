@@ -72,7 +72,7 @@ async def identify_visa_type_node(state: VisaState, llm) -> VisaState:
     logger.info("🛂 [Visa Subgraph] Identifying visa type...")
 
     query = state["query"]
-    user_context = state.get("user_context", {})
+    state.get("user_context", {})
 
     query_lower = query.lower()
 
@@ -302,7 +302,7 @@ async def synthesize_visa_workflow_node(state: VisaState) -> VisaState:
 
     visa_type = state.get("visa_type", "unknown")
     requires_rptka = state.get("requires_rptka", False)
-    purpose = state.get("purpose", "unknown")
+    state.get("purpose", "unknown")
 
     steps = []
 

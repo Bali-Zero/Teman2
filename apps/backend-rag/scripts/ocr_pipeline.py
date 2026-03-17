@@ -17,12 +17,9 @@ Run:
 import argparse
 import asyncio
 import base64
-import io
 import json
 import logging
 import os
-import sys
-import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -222,7 +219,6 @@ def pdf_to_images(pdf_bytes: bytes, max_pages: int = 5) -> list[str]:
     """
     try:
         import fitz
-        from PIL import Image as PILImage
 
         doc = fitz.open(stream=pdf_bytes, filetype="pdf")
 
@@ -333,7 +329,7 @@ def parse_json_response(text: str) -> dict | None:
     if cleaned.startswith("```"):
         lines = cleaned.split("\n")
         # Remove first and last lines (```json and ```)
-        lines = [l for l in lines if not l.strip().startswith("```")]
+        lines = [line for line in lines if not line.strip().startswith("```")]
         cleaned = "\n".join(lines)
 
     try:
@@ -388,7 +384,7 @@ async def process_document(
                 f"UPDATE {table} SET ocr_status = 'failed', updated_at = NOW() WHERE id = $1",
                 doc_id,
             )
-        logger.warning(f"    ✗ Download failed")
+        logger.warning("    ✗ Download failed")
         return False
 
     logger.info(f"    Downloaded: {len(file_bytes)} bytes")
@@ -419,7 +415,7 @@ async def process_document(
                 ocr_result = parse_json_response(llm_response)
         else:
             # Scanned PDF — Tier 2: Vision OCR
-            logger.info(f"    Scanned PDF — using vision OCR")
+            logger.info("    Scanned PDF — using vision OCR")
             images = pdf_to_images(file_bytes, max_pages=3)
             for i, img_b64 in enumerate(images):
                 logger.info(f"    Processing page {i + 1}/{len(images)}...")
@@ -431,7 +427,7 @@ async def process_document(
 
     elif is_image:
         # Direct image OCR
-        logger.info(f"    Image file — using vision OCR")
+        logger.info("    Image file — using vision OCR")
         img_b64 = image_to_base64(file_bytes)
         response = await ocr_via_ollama(prompt, img_b64)
         ocr_result = parse_json_response(response)
@@ -471,7 +467,7 @@ async def process_document(
 
         return True
     else:
-        logger.warning(f"    ✗ OCR failed to extract structured data")
+        logger.warning("    ✗ OCR failed to extract structured data")
         if not dry_run:
             await conn.execute(
                 f"UPDATE {table} SET ocr_status = 'failed', updated_at = NOW() WHERE id = $1",

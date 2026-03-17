@@ -140,7 +140,7 @@ class LegalScraper:
 
         logger.info("✅ LegalScraper initialized")
         logger.info(f"   Sources configured: {len(self.sources)}")
-        for src_id, src in self.sources.items():
+        for _src_id, src in self.sources.items():
             status = "✅ enabled" if src.enabled else "❌ disabled"
             logger.info(f"   - {src.name}: {status}")
 

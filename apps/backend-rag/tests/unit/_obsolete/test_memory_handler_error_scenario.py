@@ -93,7 +93,7 @@ async def test_save_memory_timing_metrics_recorded(memory_handler, mock_metrics_
         answer="Test answer",
         metrics_collector=mock_metrics_collector,
     )
-    elapsed_time = time.time() - start_time
+    time.time() - start_time
 
     # Verify orchestrator was called
     mock_orchestrator.process_conversation.assert_called_once()

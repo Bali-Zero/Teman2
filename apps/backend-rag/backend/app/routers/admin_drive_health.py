@@ -1,10 +1,13 @@
 """
-Admin endpoint per verificare stato Google Drive.
+Admin endpoint per verificare stato Google Drive e triggerare drive poll.
 """
 
+import logging
 from typing import Any
 
 from fastapi import APIRouter, Request
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/admin/drive", tags=["admin"])
 
@@ -20,7 +23,7 @@ async def drive_health(request: Request) -> dict[str, Any]:
         # Check table exists
         table_exists = await conn.fetchval(
             """SELECT EXISTS (
-                SELECT FROM information_schema.tables 
+                SELECT FROM information_schema.tables
                 WHERE table_name = 'google_drive_tokens'
             )"""
         )
@@ -73,3 +76,22 @@ async def drive_health(request: Request) -> dict[str, Any]:
             "time_left_human": str(time_left),
             "api_working": api_working,
         }
+
+
+@router.post("/poll")
+async def trigger_drive_poll(request: Request) -> dict[str, Any]:
+    """Trigger Google Drive changes poll (for cron jobs / OpenClaw automation)."""
+    try:
+        from backend.services.crm.drive_poll_service import poll_drive_changes
+
+        result = await poll_drive_changes()
+        processed = result.get("processed", 0)
+        logger.info(f"Drive poll triggered via API: {processed} new files processed")
+        return {
+            "status": "ok",
+            "processed": processed,
+            "result": result,
+        }
+    except Exception as e:
+        logger.error(f"Drive poll failed: {e}", exc_info=True)
+        return {"status": "error", "message": str(e)}

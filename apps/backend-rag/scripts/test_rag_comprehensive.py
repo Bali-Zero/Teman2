@@ -96,7 +96,7 @@ async def test_vector_search_tool():
                 result_data = json.loads(result)
 
                 sources = result_data.get("sources", [])
-                collections = set(s.get("collection", "unknown") for s in sources)
+                collections = {s.get("collection", "unknown") for s in sources}
                 scores = [s.get("score", 0) for s in sources]
                 max_score = max(scores) if scores else 0
 

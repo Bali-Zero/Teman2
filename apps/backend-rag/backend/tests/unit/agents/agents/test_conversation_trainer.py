@@ -79,14 +79,14 @@ class TestConversationTrainer:
                 mock_client_class.return_value = mock_client
                 conversation_trainer.zantara_client = mock_client
 
-                result = await conversation_trainer.analyze_winning_patterns(days_back=7)
+                await conversation_trainer.analyze_winning_patterns(days_back=7)
                 # Result can be None if analysis fails, but we check it's called
                 assert mock_conn.fetch.called
         else:
             with patch.object(conversation_trainer.zantara_client, "generate") as mock_gen:
                 mock_gen.return_value = "Pattern analysis"
 
-                result = await conversation_trainer.analyze_winning_patterns(days_back=7)
+                await conversation_trainer.analyze_winning_patterns(days_back=7)
                 # Result can be None, but we verify the method was called
                 assert mock_conn.fetch.called
 

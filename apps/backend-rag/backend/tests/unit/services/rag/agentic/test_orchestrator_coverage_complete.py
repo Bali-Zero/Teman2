@@ -75,18 +75,18 @@ def mock_db_pool():
 def orchestrator(mock_db_pool):
     """Create AgenticRAGOrchestrator instance with all dependencies mocked"""
     with (
-        patch("backend.services.rag.agentic.orchestrator.IntentClassifier") as mock_intent,
+        patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
         patch(
             "backend.services.rag.agentic.orchestrator.EmotionalAttunementService"
-        ) as mock_emotional,
+        ),
         patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_prompt,
-        patch("backend.services.rag.agentic.orchestrator.create_default_pipeline") as mock_pipeline,
-        patch("backend.services.rag.agentic.orchestrator.LLMGateway") as mock_gateway,
-        patch("backend.services.rag.agentic.orchestrator.ReasoningEngine") as mock_reasoning,
-        patch("backend.services.rag.agentic.orchestrator.EntityExtractionService") as mock_entity,
+        patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+        patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+        patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+        patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
         patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as mock_context,
-        patch("backend.services.rag.agentic.orchestrator.FollowupService") as mock_followup,
-        patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService") as mock_golden,
+        patch("backend.services.rag.agentic.orchestrator.FollowupService"),
+        patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
         patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
     ):
         # Setup mocks
@@ -413,7 +413,7 @@ class TestStreamQueryRouting:
                 "backend.services.rag.agentic.orchestrator._is_conversation_recall_query",
                 return_value=True,
             ),
-            patch.object(orchestrator.llm_gateway, "create_chat_with_history") as mock_chat,
+            patch.object(orchestrator.llm_gateway, "create_chat_with_history"),
             patch.object(
                 orchestrator.llm_gateway, "send_message", new_callable=AsyncMock
             ) as mock_send,

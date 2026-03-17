@@ -353,7 +353,7 @@ class TestMetricsCollector:
 <body>
     <h1>🤖 Test Force Metrics Report</h1>
     <p>Generated: {summary["timestamp"]}</p>
-    
+
     <h2>📊 Test Generation</h2>
     <div class="metric">
         <strong>Tests Generated:</strong> {summary["test_generation"]["tests_generated"]}<br>
@@ -363,7 +363,7 @@ class TestMetricsCollector:
             <div class="progress-fill" style="width: {summary["test_generation"]["success_rate"]}%"></div>
         </div>
     </div>
-    
+
     <h2>📈 Coverage</h2>
     <div class="metric">
         <strong>Current Coverage:</strong> {summary["coverage"]["current_coverage"]:.1f}%<br>
@@ -373,7 +373,7 @@ class TestMetricsCollector:
             <div class="progress-fill" style="width: {summary["coverage"]["current_coverage"]}%"></div>
         </div>
     </div>
-    
+
     <h2>💻 System Resources</h2>
     <div class="metric">
         <strong>CPU Usage:</strong> {summary["system"]["cpu_usage"]:.1f}%<br>
@@ -381,7 +381,7 @@ class TestMetricsCollector:
         <strong>Active Agents:</strong> {summary["system"]["active_agents"]}<br>
         <strong>Uptime:</strong> {summary["system"]["uptime"]:.0f}s
     </div>
-    
+
     <h2>🤖 Agents</h2>
 """
 

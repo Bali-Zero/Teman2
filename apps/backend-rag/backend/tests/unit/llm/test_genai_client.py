@@ -22,7 +22,7 @@ def genai_client():
     """Create GenAI client instance"""
     with (
         patch("backend.llm.genai_client.genai") as mock_genai,
-        patch("backend.llm.genai_client.types") as mock_types,
+        patch("backend.llm.genai_client.types"),
         patch("backend.llm.genai_client.GENAI_AVAILABLE", True),
     ):
         mock_client = MagicMock()

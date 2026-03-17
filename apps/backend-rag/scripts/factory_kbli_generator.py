@@ -79,7 +79,7 @@ Add these fields specifically for a Visual Presentation Deck:
 - img_roadmap: Image prompt for roadmap slide (e.g., "winding road in bali rice fields, drone shot, progress").
 - slide_opportunity_text: A concise, punchy paragraph (max 40 words) about the investment opportunity.
 - slide_requirements_bullets: HTML <li> elements (3-4 max) summarizing key requirements. Short and impactful.
-- slide_roadmap_steps: HTML <div> elements representing 3-4 major steps. Use this format: 
+- slide_roadmap_steps: HTML <div> elements representing 3-4 major steps. Use this format:
   <div style="flex: 1; background: rgba(0,0,0,0.8); padding: 30px; border-top: 5px solid #D4AF37;">
      <h3 style="color: #D4AF37; margin-top: 0;">Step 1</h3>
      <p style="font-size: 24px;">Step Title</p>

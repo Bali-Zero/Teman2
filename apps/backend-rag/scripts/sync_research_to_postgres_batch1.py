@@ -1,5 +1,6 @@
 import asyncio
 import logging
+
 from backend.services.knowledge_graph.kbli_enricher_symmetric import KBLIEnricher
 
 logging.basicConfig(level=logging.INFO)
