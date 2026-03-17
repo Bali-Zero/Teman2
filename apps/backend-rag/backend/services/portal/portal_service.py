@@ -111,12 +111,12 @@ class VirusScanner:
                 )
 
         # Check for executable magic bytes
-        executable_magics = [
-            b"MZ",  # Windows executable
-            b"\x7fELF",  # Linux executable
-            b"#!",  # Shebang script
-            b"%PDF",  # PDF (allowed but flagged if combined with other threats)
-        ]
+        # executable_magics = [
+        #     b"MZ",  # Windows executable
+        #     b"\x7fELF",  # Linux executable
+        #     b"#!",  # Shebang script
+        #     b"%PDF",  # PDF (allowed but flagged if combined with other threats)
+        # ]
 
         # Future: Integrate with ClamAV or cloud virus scanning service
         # Example:
@@ -389,7 +389,6 @@ class ExpiryDetector:
         if not text or len(text.strip()) < 10:
             return result
 
-        text_lower = text.lower()
         lines = text.split("\n")
 
         # Extract all dates
@@ -1387,9 +1386,8 @@ class PortalService:
             logger.warning(f"File too large for OCR ({file_size_kb}KB), skipping: {file_name}")
 
         # Calculate file hash for deduplication
-        import hashlib
-
-        file_hash = hashlib.sha256(file_content).hexdigest()[:32]
+        # import hashlib
+        # file_hash = hashlib.sha256(file_content).hexdigest()[:32]
 
         # =========================================================================
         # STEP 0: RATE LIMITING & VALIDATION
@@ -1758,7 +1756,6 @@ class PortalService:
             # Upload file with retry logic
             max_retries = 3
             upload_result = None
-            last_error = None
 
             for attempt in range(max_retries):
                 try:
@@ -1771,7 +1768,6 @@ class PortalService:
                     )
                     break  # Success, exit retry loop
                 except Exception as e:
-                    last_error = e
                     if attempt < max_retries - 1:
                         wait_time = 2**attempt  # Exponential backoff: 1s, 2s, 4s
                         logger.warning(

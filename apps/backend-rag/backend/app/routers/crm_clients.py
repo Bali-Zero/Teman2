@@ -1859,4 +1859,4 @@ async def get_client_required_documents(
         raise
     except Exception as e:
         logger.error(f"Failed to get client required documents: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to get documents: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get documents: {str(e)}") from e
