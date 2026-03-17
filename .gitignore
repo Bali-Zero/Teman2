@@ -6,6 +6,9 @@
 .cursor/
 .idea/
 
+# MCP config (contains API keys)
+.mcp.json
+
 # VSCode (allow settings.json for team, exclude personal files)
 .vscode/*
 !.vscode/settings.json
