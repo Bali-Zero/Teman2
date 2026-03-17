@@ -82,7 +82,7 @@ Creates standardized folder structure in Google Drive:
 ### 5. Auto-CRM Extraction
 
 **Trigger:** End of chat conversation  
-**File:** `services/crm/auto_crm_service.py`  
+**File:** `services/crm/ai_crm_extractor.py`  
 **What it does:**
 
 1. Uses AI to extract client data from conversation
