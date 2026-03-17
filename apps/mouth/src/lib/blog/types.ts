@@ -20,7 +20,8 @@ export type ArticleCategory =
   | "tax-legal"
   | "property"
   | "lifestyle"
-  | "tech";
+  | "tech"
+  | "bali_news";
 
 export type ArticleTone = "professional" | "casual" | "urgent";
 export type ArticleLength = "short" | "medium" | "long";
@@ -424,6 +425,13 @@ export const CATEGORY_METADATA: Record<
     icon: "Cpu",
     color: "fuchsia",
     gradient: "from-fuchsia-500/20 to-pink-500/20",
+  },
+  bali_news: {
+    label: "Bali News",
+    description: "Breaking news, culture, and stories from Bali",
+    icon: "Newspaper",
+    color: "orange",
+    gradient: "from-orange-500/20 to-amber-500/20",
   },
 };
 

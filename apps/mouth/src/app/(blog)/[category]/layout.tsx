@@ -6,10 +6,7 @@ const baseUrl = process.env.NEXT_PUBLIC_PUBLIC_URL || "https://balizero.com";
  * SEO-optimized metadata for each category page.
  * Unique titles, descriptions, and canonicals per category.
  */
-const CATEGORY_SEO: Record<
-  string,
-  { title: string; description: string }
-> = {
+const CATEGORY_SEO: Record<string, { title: string; description: string }> = {
   immigration: {
     title: "Immigration & Visa Guides Bali 2026",
     description:
@@ -39,6 +36,11 @@ const CATEGORY_SEO: Record<
     title: "Tech & Digital Nomad Life in Indonesia 2026",
     description:
       "Digital nomad guides for Bali: visa options, coworking spaces, internet, remote work tips. Stay connected and productive in paradise.",
+  },
+  bali_news: {
+    title: "Bali News & Indonesia Updates 2026",
+    description:
+      "Breaking news, culture, events, and stories from Bali and Indonesia. Stay informed with the latest updates from the Island of the Gods.",
   },
 };
 

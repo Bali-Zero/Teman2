@@ -3,7 +3,15 @@
 import * as React from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { Plane, Building2, Scale, Home, Sun, Cpu } from "lucide-react";
+import {
+  Plane,
+  Building2,
+  Scale,
+  Home,
+  Sun,
+  Cpu,
+  Newspaper,
+} from "lucide-react";
 import {
   ArticleGrid,
   ArticleGridSkeleton,
@@ -17,7 +25,12 @@ import { useTranslation } from "@/i18n";
 // Category visual metadata (non-translated)
 const CATEGORY_VISUAL: Record<
   ArticleCategory,
-  { icon: React.ElementType; gradient: string; titleKey: string; descKey: string }
+  {
+    icon: React.ElementType;
+    gradient: string;
+    titleKey: string;
+    descKey: string;
+  }
 > = {
   immigration: {
     icon: Plane,
@@ -54,6 +67,12 @@ const CATEGORY_VISUAL: Record<
     gradient: "from-fuchsia-500/20 via-pink-500/10 to-transparent",
     titleKey: "news.categories.tech",
     descKey: "news.categoryDescriptions.tech",
+  },
+  bali_news: {
+    icon: Newspaper,
+    gradient: "from-orange-500/20 via-amber-500/10 to-transparent",
+    titleKey: "news.categories.baliNews",
+    descKey: "news.categoryDescriptions.baliNews",
   },
 };
 
@@ -101,7 +120,11 @@ export default function CategoryPage() {
           setArticles(data.articles || []);
         }
       } catch (error) {
-        logger.error("Failed to fetch articles", {}, error instanceof Error ? error : new Error(String(error)));
+        logger.error(
+          "Failed to fetch articles",
+          {},
+          error instanceof Error ? error : new Error(String(error)),
+        );
       } finally {
         setLoading(false);
       }
