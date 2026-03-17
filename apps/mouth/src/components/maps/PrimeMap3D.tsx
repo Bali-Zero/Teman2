@@ -264,7 +264,7 @@ export default function PrimeMap3D() {
   const [showFilters, setShowFilters] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<"data" | "chat">("data");
   const [layers, setLayers] = useState<MapLayers>({
-    zoneColors: false,
+    zoneColors: true,
     extrusion: false,
     kkop: false,
     lp2b: false,
@@ -549,6 +549,12 @@ export default function PrimeMap3D() {
   );
 
   // ── Init 3D map ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (map3DElement && layers.zoneColors) {
+      toggleZoneColors(true, layers.extrusion, highlightedZones);
+    }
+  }, [map3DElement, toggleZoneColors, layers.extrusion, layers.zoneColors, highlightedZones]);
+
   useEffect(() => {
     if (!isLoaded || !mapContainerRef.current) return;
 
@@ -1179,8 +1185,9 @@ export default function PrimeMap3D() {
                       Outside coverage area
                     </div>
                     <div className="text-xs text-slate-400 leading-relaxed">
-                      GISTARU data covers Kabupaten Badung only (Kuta, Seminyak,
-                      Canggu, Jimbaran, Uluwatu).
+                      This specific spot doesn't have detailed RDTR zoning data
+                      yet. We currently cover most of Badung, Gianyar, Tabanan,
+                      Denpasar, Bangli, Buleleng, Karangasem, and Jembrana.
                     </div>
                   </div>
                 ) : (
