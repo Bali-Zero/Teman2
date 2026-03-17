@@ -233,7 +233,16 @@
       "business": "Business",
       "taxLegal": "Fiscalité et droit",
       "property": "Immobilier",
-      "lifestyle": "Lifestyle"
+      "lifestyle": "Lifestyle",
+      "tech": "Tech"
+    },
+    "categoryDescriptions": {
+      "immigration": "Visas, permis et tout ce que vous devez savoir pour vous installer en Indonésie.",
+      "business": "Création d'entreprise, licences, codes KBLI et commerce en Indonésie.",
+      "taxLegal": "Obligations fiscales, conformité juridique et mises à jour réglementaires.",
+      "property": "Immobilier, propriété et opportunités d'investissement à Bali.",
+      "lifestyle": "Vivre à Bali, culture, communauté et qualité de vie.",
+      "tech": "Vie de nomade numérique, industrie technologique et travail à distance en Indonésie."
     }
   }
 }

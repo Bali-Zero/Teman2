@@ -233,7 +233,16 @@
       "business": "Bisnis",
       "taxLegal": "Pajak & Hukum",
       "property": "Properti",
-      "lifestyle": "Gaya Hidup"
+      "lifestyle": "Gaya Hidup",
+      "tech": "Teknologi"
+    },
+    "categoryDescriptions": {
+      "immigration": "Visa, izin tinggal, dan semua yang perlu Anda ketahui tentang pindah ke Indonesia.",
+      "business": "Pendirian perusahaan, perizinan, kode KBLI, dan berbisnis di Indonesia.",
+      "taxLegal": "Kewajiban pajak, kepatuhan hukum, dan pembaruan regulasi.",
+      "property": "Properti, kepemilikan tanah, dan peluang investasi di Bali.",
+      "lifestyle": "Kehidupan di Bali, budaya, komunitas, dan kualitas hidup.",
+      "tech": "Kehidupan digital nomad, industri teknologi, dan kerja remote di Indonesia."
     }
   }
 }

@@ -233,7 +233,16 @@
       "business": "Business",
       "taxLegal": "Fisco e Legale",
       "property": "Immobiliare",
-      "lifestyle": "Lifestyle"
+      "lifestyle": "Lifestyle",
+      "tech": "Tech"
+    },
+    "categoryDescriptions": {
+      "immigration": "Visti, permessi e tutto quello che devi sapere per trasferirti in Indonesia.",
+      "business": "Costituzione societaria, licenze, codici KBLI e fare business in Indonesia.",
+      "taxLegal": "Obblighi fiscali, conformità legale e aggiornamenti normativi.",
+      "property": "Immobili, proprietà e opportunità di investimento a Bali.",
+      "lifestyle": "Vivere a Bali, cultura, comunità e qualità della vita.",
+      "tech": "Vita da nomade digitale, industria tech e lavoro da remoto in Indonesia."
     }
   }
 }
