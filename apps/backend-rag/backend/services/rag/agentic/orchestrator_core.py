@@ -15,9 +15,12 @@ Mantiene il flusso principale pulito e leggibile (target: 300-400 righe).
 
 import asyncio
 import logging
+import os
 import time
 import uuid
 from typing import Any
+
+from langsmith import traceable
 
 from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
 from backend.db.repositories.query_analytics_repository import QueryAnalyticsRepository
@@ -525,6 +528,7 @@ class OrchestratorCore:
         except Exception as e:
             logger.warning(f"Failed to track workflow analytics: {e}")
 
+    @traceable(run_type="chain", name="ReAct Loop", tags=["nuzantara", "react"])
     async def execute_react_loop(
         self,
         state: AgentState,
@@ -599,6 +603,7 @@ class OrchestratorCore:
                 set_span_status("error", f"unexpected:{type(unexpected_error).__name__}")
                 raise RuntimeError(f"ReAct loop failed: {unexpected_error}") from unexpected_error
 
+    @traceable(run_type="chain", name="Agentic RAG Query", tags=["nuzantara", "rag", "production"])
     async def process_query_core(
         self,
         query: str,
