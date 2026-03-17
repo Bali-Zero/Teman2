@@ -388,11 +388,14 @@ def step_translate(slug: str, category: str, lang: str, model: str, force: bool,
 
     log.info(f"Translating to: {lang} ...")
     try:
-        result = subprocess.run(cmd, capture_output=False, text=True)
+        result = subprocess.run(cmd, capture_output=False, text=True, timeout=3600)
         if result.returncode != 0:
             log.warning(f"Translation exited with code {result.returncode}")
             return False
         return True
+    except subprocess.TimeoutExpired:
+        log.warning("Translation timed out after 1h")
+        return False
     except Exception as e:
         log.warning(f"Translation failed: {e}")
         return False

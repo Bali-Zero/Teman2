@@ -95,7 +95,7 @@ def patch_frontmatter_locale(fm_block: str, locale: str) -> str:
     return fm_block.rstrip().rsplit("---", 1)[0] + f'locale: "{locale}"\n---\n'
 
 
-def call_ollama(prompt: str, timeout: float = 600) -> str:
+def call_ollama(prompt: str, timeout: float = 1200) -> str:
     """Call Ollama chat API. Returns the generated text."""
     payload = {
         "model": MODEL,
