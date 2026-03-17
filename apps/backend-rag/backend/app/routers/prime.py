@@ -10,6 +10,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -18,10 +19,59 @@ import httpx
 from fastapi import APIRouter, Query
 
 from backend.core.embeddings import create_embeddings_generator
+from backend.services.rag.hybrid_search import HybridSearchService
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/prime", tags=["prime"])
+
+# Patterns for extracting zone codes from text
+_ZONE_CODE_PATTERN = re.compile(r"\b([RTHWPKSB]-\d+)\b", re.IGNORECASE)
+
+
+@router.get("/search-kbli")
+async def search_kbli(q: str = Query(..., min_length=2)) -> dict[str, Any]:
+    """
+    Search for allowed zones for a business type using RAG logic.
+    Returns a list of matching zone codes.
+    """
+    try:
+        search_service = HybridSearchService()
+        
+        # Search legal documents for business activity + zone mapping
+        results = await search_service.search_hybrid(
+            query=f"zonasi peruntukan bisnis {q}",
+            collection="legal_unified_hybrid_hybrid",
+            limit=5,
+            alpha=0.5
+        )
+        
+        matching_zones = set()
+        for res in results:
+            text = res.get("text", "")
+            matches = _ZONE_CODE_PATTERN.findall(text)
+            for m in matches:
+                matching_zones.add(m.upper())
+        
+        # Fallback: if searching for "Hotel" or "Villa", add common tourism zones
+        q_lower = q.lower()
+        if any(x in q_lower for x in ["hotel", "villa", "pariwisata", "resort"]):
+            matching_zones.add("W-1")
+            matching_zones.add("W-2")
+        elif any(x in q_lower for x in ["gym", "fitness", "toko", "shop", "commercial", "restoran", "restaurant"]):
+            matching_zones.add("K-1")
+            matching_zones.add("K-2")
+            matching_zones.add("K-3")
+            
+        logger.info(f"🔍 [Prime/KBLI] Search for '{q}' returned zones: {list(matching_zones)}")
+        return {
+            "query": q,
+            "matching_zone_codes": list(matching_zones),
+            "status": "success"
+        }
+    except Exception as e:
+        logger.error(f"❌ [Prime/KBLI] Search failed: {e}", exc_info=True)
+        return {"status": "error", "message": str(e), "matching_zone_codes": []}
 
 # =============================================================================
 # BUILDING CODES — loaded once at import time from JSON
@@ -879,10 +929,15 @@ _ZONE_COLORS_MAP: dict[str, str] = {
 
 _ZONES_GEOJSON_QUERY = """
     SELECT
-        ST_AsGeoJSON(ST_Simplify(boundary, 0.0001)) AS geometry,
-        zoning_type
-    FROM bali_zoning_layers
-    WHERE boundary IS NOT NULL
+        ST_AsGeoJSON(ST_Simplify(l.boundary, 0.0001)) AS geometry,
+        l.zoning_type,
+        l.kodszn,
+        m.max_floors,
+        m.max_height_meters,
+        m.kdb as master_kdb
+    FROM bali_zoning_layers l
+    LEFT JOIN master_building_codes m ON l.kodszn = m.kodszn AND l.district_name = m.district_name
+    WHERE l.boundary IS NOT NULL
 """
 
 
@@ -919,8 +974,13 @@ async def get_zones_geojson() -> dict[str, Any]:
                 continue
 
             zone_type: str = row["zoning_type"] or ""
-            zone_code = zone_type.split(":")[0].strip()
+            zone_code = row["kodszn"] or zone_type.split(":")[0].strip()
             color = _ZONE_COLORS_MAP.get(zone_code, "#6B7280")
+            
+            # 3D parameters
+            max_floors = row["max_floors"]
+            max_height = float(row["max_height_meters"]) if row["max_height_meters"] else 15.0
+            kdb = float(row["master_kdb"]) if row["master_kdb"] else 50.0
 
             features.append(
                 {
@@ -930,6 +990,9 @@ async def get_zones_geojson() -> dict[str, Any]:
                         "zone_code": zone_code,
                         "zone_type": zone_type,
                         "color": color,
+                        "max_floors": max_floors,
+                        "max_height_meters": max_height,
+                        "kdb": kdb
                     },
                 }
             )
