@@ -10,6 +10,7 @@ import {
   Sun,
   Cpu,
   LayoutGrid,
+  Newspaper,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ArticleCategory, CategoryNavProps } from "@/lib/blog/types";
@@ -23,6 +24,7 @@ const categoryIcons: Record<ArticleCategory | "all", React.ElementType> = {
   property: Home,
   lifestyle: Sun,
   tech: Cpu,
+  bali_news: Newspaper,
 };
 
 // Category labels
@@ -34,6 +36,7 @@ const categoryLabels: Record<ArticleCategory | "all", string> = {
   property: "Property",
   lifestyle: "Lifestyle",
   tech: "Tech",
+  bali_news: "Bali News",
 };
 
 // Category colors
@@ -79,6 +82,11 @@ const categoryColors: Record<
     active: "bg-fuchsia-500/20 text-fuchsia-400",
     inactive: "text-white/50 hover:text-fuchsia-400 hover:bg-fuchsia-500/10",
     gradient: "from-fuchsia-500/20 to-pink-500/20",
+  },
+  bali_news: {
+    active: "bg-orange-500/20 text-orange-400",
+    inactive: "text-white/50 hover:text-orange-400 hover:bg-orange-500/10",
+    gradient: "from-orange-500/20 to-amber-500/20",
   },
 };
 

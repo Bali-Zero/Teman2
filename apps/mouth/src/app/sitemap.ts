@@ -138,6 +138,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "property",
     "lifestyle",
     "tech",
+    "bali_news",
   ];
 
   const newsCategoryPages = categories.map((category) => ({

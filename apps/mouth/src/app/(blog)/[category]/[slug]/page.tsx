@@ -53,6 +53,7 @@ const VALID_CATEGORIES = [
   "lifestyle",
   "digital-nomad",
   "tech",
+  "bali_news",
 ];
 
 /**
@@ -135,6 +136,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   lifestyle: "Lifestyle",
   "digital-nomad": "Digital Nomad",
   tech: "Tech",
+  bali_news: "Bali News",
 };
 
 /**

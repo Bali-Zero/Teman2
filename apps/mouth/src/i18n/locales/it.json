@@ -234,7 +234,8 @@
       "taxLegal": "Fisco e Legale",
       "property": "Immobiliare",
       "lifestyle": "Lifestyle",
-      "tech": "Tech"
+      "tech": "Tech",
+      "baliNews": "Notizie Bali"
     },
     "categoryDescriptions": {
       "immigration": "Visti, permessi e tutto quello che devi sapere per trasferirti in Indonesia.",
@@ -242,7 +243,8 @@
       "taxLegal": "Obblighi fiscali, conformità legale e aggiornamenti normativi.",
       "property": "Immobili, proprietà e opportunità di investimento a Bali.",
       "lifestyle": "Vivere a Bali, cultura, comunità e qualità della vita.",
-      "tech": "Vita da nomade digitale, industria tech e lavoro da remoto in Indonesia."
+      "tech": "Vita da nomade digitale, industria tech e lavoro da remoto in Indonesia.",
+      "baliNews": "Notizie, cultura, eventi e storie da Bali e dall'Indonesia."
     }
   }
 }

@@ -35,6 +35,8 @@ const CATEGORY_MAP: Record<string, ArticleCategory> = {
   tech: "tech",
   general: "business", // Backend may use "general"
   legal: "tax-legal", // news_items table uses "legal"
+  bali_news: "bali_news",
+  "bali-news": "bali_news",
 };
 
 function normalizeCategory(rawCategory: string): ArticleCategory {
@@ -198,6 +200,7 @@ const CATEGORY_FOLDERS: Record<ArticleCategory, string[]> = {
   property: ["property"],
   lifestyle: ["lifestyle", "digital-nomad"],
   tech: ["tech"],
+  bali_news: ["bali_news"],
 };
 
 async function getAllMdxSlugs(): Promise<

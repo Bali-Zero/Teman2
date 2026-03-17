@@ -341,6 +341,8 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
       property: "luxury villa, Bali architecture, real estate, tropical home",
       lifestyle: "Bali sunset, rice terraces, beach, tropical paradise",
       tech: "laptop, digital nomad workspace, modern technology, coworking",
+      bali_news:
+        "Bali street scene, temple ceremony, Balinese culture, island life",
     };
 
     try {
@@ -387,6 +389,7 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
       property: "/static/blog/default-property.jpg",
       lifestyle: "/static/blog/default-lifestyle.jpg",
       tech: "/static/blog/default-tech.jpg",
+      bali_news: "/static/blog/default-lifestyle.jpg",
     };
     return defaults[category];
   }

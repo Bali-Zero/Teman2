@@ -234,7 +234,8 @@
       "taxLegal": "Fiscalité et droit",
       "property": "Immobilier",
       "lifestyle": "Lifestyle",
-      "tech": "Tech"
+      "tech": "Tech",
+      "baliNews": "Actualités Bali"
     },
     "categoryDescriptions": {
       "immigration": "Visas, permis et tout ce que vous devez savoir pour vous installer en Indonésie.",
@@ -242,7 +243,8 @@
       "taxLegal": "Obligations fiscales, conformité juridique et mises à jour réglementaires.",
       "property": "Immobilier, propriété et opportunités d'investissement à Bali.",
       "lifestyle": "Vivre à Bali, culture, communauté et qualité de vie.",
-      "tech": "Vie de nomade numérique, industrie technologique et travail à distance en Indonésie."
+      "tech": "Vie de nomade numérique, industrie technologique et travail à distance en Indonésie.",
+      "baliNews": "Actualités, culture, événements et histoires de Bali et d'Indonésie."
     }
   }
 }
