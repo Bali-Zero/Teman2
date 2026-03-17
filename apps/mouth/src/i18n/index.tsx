@@ -5,8 +5,17 @@ import type { Locale } from "./types";
 import { DEFAULT_LOCALE, LOCALES } from "./types";
 import en from "./locales/en.json";
 import id from "./locales/id.json";
+import it from "./locales/it.json";
+import ru from "./locales/ru.json";
+import fr from "./locales/fr.json";
 
-const messages: Record<Locale, Record<string, unknown>> = { en, id };
+const messages: Record<Locale, Record<string, unknown>> = {
+  en,
+  id,
+  it,
+  ru,
+  fr,
+};
 
 type TranslationFn = (key: string, params?: Record<string, string>) => string;
 

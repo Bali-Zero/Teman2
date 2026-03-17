@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { serialize } from "next-mdx-remote/serialize";
 import remarkGfm from "remark-gfm";
-import { getArticleBySlug } from "@/lib/blog/articles";
+import {
+  getArticleBySlug,
+  getArticleByLocale,
+  getAvailableLocales,
+} from "@/lib/blog/articles";
 import { generateArticleMetadata } from "@/lib/blog/metadata";
 import { ArticleClient } from "./ArticleClient";
 import {
@@ -17,6 +21,7 @@ interface PageProps {
     category: string;
     slug: string;
   }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 // Static file paths that should NOT be handled by this route
@@ -67,8 +72,11 @@ function isStaticFilePath(category: string, slug: string): boolean {
  */
 export async function generateMetadata({
   params,
+  searchParams,
 }: PageProps): Promise<Metadata> {
   const { category, slug } = await params;
+  const sp = await searchParams;
+  const lang = typeof sp.lang === "string" ? sp.lang : undefined;
 
   // Reject static file paths - let Next.js serve them from /public
   if (isStaticFilePath(category, slug)) {
@@ -76,10 +84,32 @@ export async function generateMetadata({
   }
 
   try {
-    const article = await getArticleBySlug(category, slug);
+    const article = lang
+      ? await getArticleByLocale(category, slug, lang)
+      : await getArticleBySlug(category, slug);
 
     if (article) {
-      return generateArticleMetadata(article);
+      const baseMetadata = generateArticleMetadata(article);
+
+      // Build hreflang alternates for available translations
+      const availableLocales = getAvailableLocales(category, slug);
+      const baseUrl = "https://balizero.com";
+      const languages: Record<string, string> = {
+        en: `${baseUrl}/${category}/${slug}`,
+        "x-default": `${baseUrl}/${category}/${slug}`,
+      };
+      for (const loc of availableLocales) {
+        if (loc === "en") continue;
+        languages[loc] = `${baseUrl}/${category}/${slug}?lang=${loc}`;
+      }
+
+      return {
+        ...baseMetadata,
+        alternates: {
+          ...baseMetadata.alternates,
+          languages,
+        },
+      };
     }
   } catch (err) {
     logger.error(
@@ -121,16 +151,20 @@ function stripImports(content: string): string {
  * Article page - Server component that renders the client component
  * Serializes MDX server-side and passes it as a prop for SSR (Google sees full content)
  */
-export default async function ArticlePage({ params }: PageProps) {
+export default async function ArticlePage({ params, searchParams }: PageProps) {
   const { category, slug } = await params;
+  const sp = await searchParams;
+  const lang = typeof sp.lang === "string" ? sp.lang : undefined;
 
   // Reject static file paths - return 404 so Next.js can serve from /public
   if (isStaticFilePath(category, slug)) {
     notFound();
   }
 
-  // Fetch article for JSON-LD injection AND SSR content (server-side)
-  const article = await getArticleBySlug(category, slug);
+  // Fetch article (locale-aware) for JSON-LD injection AND SSR content
+  const article = lang
+    ? await getArticleByLocale(category, slug, lang)
+    : await getArticleBySlug(category, slug);
 
   const breadcrumbItems = [
     { name: "Home", url: "/" },
