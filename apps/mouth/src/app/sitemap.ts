@@ -1,5 +1,9 @@
 import type { MetadataRoute } from "next";
-import { getAllArticles, getNoIndexSlugs } from "@/lib/blog/articles";
+import {
+  getAllArticles,
+  getNoIndexSlugs,
+  getAvailableLocales,
+} from "@/lib/blog/articles";
 import { getAllCodes, getSections } from "@/lib/kbli-data.server";
 import { logger } from "@/lib/logger";
 
@@ -154,14 +158,31 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     const articlePages = articles
       .filter((article) => !noIndexSlugs.has(article.slug))
-      .map((article) => ({
-        url: `${baseUrl}/${article.category}/${article.slug}${article.locale === "id" ? ".id" : ""}`,
-        lastModified: article.publishedAt
-          ? new Date(article.publishedAt)
-          : new Date(),
-        changeFrequency: "monthly" as const,
-        priority: 0.8,
-      }));
+      .map((article) => {
+        const locales = getAvailableLocales(article.category, article.slug);
+        const entry: MetadataRoute.Sitemap[number] = {
+          url: `${baseUrl}/${article.category}/${article.slug}`,
+          lastModified: article.publishedAt
+            ? new Date(article.publishedAt)
+            : new Date(),
+          changeFrequency: "monthly" as const,
+          priority: 0.8,
+        };
+
+        // Add hreflang alternates if translations exist
+        if (locales.length > 1) {
+          const languages: Record<string, string> = {};
+          for (const loc of locales) {
+            languages[loc] =
+              loc === "en"
+                ? `${baseUrl}/${article.category}/${article.slug}`
+                : `${baseUrl}/${article.category}/${article.slug}?lang=${loc}`;
+          }
+          entry.alternates = { languages };
+        }
+
+        return entry;
+      });
 
     routes.push(...articlePages);
   } catch (error) {
