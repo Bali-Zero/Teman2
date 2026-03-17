@@ -44,6 +44,11 @@ const categoryStyles: Record<
     text: "text-fuchsia-400",
     gradient: "from-fuchsia-500/20 to-pink-500/20",
   },
+  bali_news: {
+    bg: "bg-orange-500/10",
+    text: "text-orange-400",
+    gradient: "from-orange-500/20 to-amber-500/20",
+  },
 };
 
 // Category badge component
