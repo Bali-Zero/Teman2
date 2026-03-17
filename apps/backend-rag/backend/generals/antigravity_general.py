@@ -115,8 +115,8 @@ class AntigravityGeneral:
                     """
                     INSERT INTO generals_memory (general_name, key, value, category)
                     VALUES ($1, $2, $3, $4)
-                    ON CONFLICT (key) 
-                    DO UPDATE SET 
+                    ON CONFLICT (key)
+                    DO UPDATE SET
                         value = EXCLUDED.value,
                         category = EXCLUDED.category,
                         updated_at = CURRENT_TIMESTAMP
@@ -270,7 +270,7 @@ class AntigravityGeneral:
         """Process a single orchestration task."""
         task_id = task_row["id"]
         title = task_row["title"]
-        description = task_row["description"] or ""
+        task_row["description"] or ""
         payload_str = task_row["payload"]
 
         logger.info(f"🌐 Antigravity General: Processing task {task_id}: {title}")
@@ -377,7 +377,7 @@ class AntigravityGeneral:
                         """
                         SELECT id, title, description, payload, created_at
                         FROM generals_tasks
-                        WHERE task_type = 'orchestration' 
+                        WHERE task_type = 'orchestration'
                           AND status = 'pending'
                         ORDER BY priority DESC, created_at ASC
                         LIMIT 5

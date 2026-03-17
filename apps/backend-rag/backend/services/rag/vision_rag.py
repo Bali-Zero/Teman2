@@ -92,7 +92,7 @@ class VisionRAGService:
 
             # Estrai immagini
             images = page.get_images(full=True)
-            for img_idx, img in enumerate(images):
+            for _img_idx, img in enumerate(images):
                 xref = img[0]
                 base_image = doc.extract_image(xref)
                 image_bytes = base_image["image"]
@@ -246,7 +246,7 @@ Output JSON:
         try:
             page_tables = page.find_tables()
 
-            for i, table in enumerate(page_tables):
+            for _i, table in enumerate(page_tables):
                 # Converti tabella in markdown
                 markdown = self._table_to_markdown(table)
 
@@ -321,7 +321,7 @@ Output JSON:
         ]
 
         # Aggiungi descrizioni elementi visuali
-        for i, visual in enumerate(relevant_visuals[:5]):  # Max 5 immagini
+        for _i, visual in enumerate(relevant_visuals[:5]):  # Max 5 immagini
             prompt_parts.append("\n\nVisual {i+1} ({visual.element_type}):")
             prompt_parts.append("Description: {visual.description}")
             prompt_parts.append("Extracted Text: {visual.extracted_text[:500]}")

@@ -4,8 +4,6 @@ Tests rate limiting functionality
 """
 
 import os
-import sys
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 os.environ.setdefault("JWT_SECRET_KEY", "test_jwt_secret_key_for_testing_only_min_32_chars")

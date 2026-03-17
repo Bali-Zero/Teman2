@@ -867,7 +867,7 @@ async def initialize_channel_router(
 
             # Get retriever (search_service) and db_pool for orchestrator
             search_service = getattr(app.state, "search_service", None)
-            tool_executor_instance = getattr(app.state, "tool_executor", None)
+            getattr(app.state, "tool_executor", None)
 
             # Create tools list from ZantaraTools or use default tools
             tools = create_default_tools(search_service=search_service)

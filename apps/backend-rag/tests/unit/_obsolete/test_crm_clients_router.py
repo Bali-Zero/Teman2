@@ -936,7 +936,6 @@ class TestUpdateClient:
 
     def test_update_client_no_fields(self, client, mock_db_pool):
         """Test updating with no fields returns 400"""
-        mock_conn = mock_db_pool.acquire.return_value.__aenter__.return_value
 
         response = client.patch("/api/crm/clients/1", json={})
 
@@ -1376,7 +1375,7 @@ class TestEdgeCases:
         mock_conn.execute.return_value = None
 
         # Only full_name should be updated, None values should be ignored
-        response = client.patch(
+        client.patch(
             "/api/crm/clients/1",
             json={"full_name": "Jane Doe", "email": None},
         )
@@ -1433,7 +1432,6 @@ class TestEdgeCases:
         """Test that custom_fields dict is properly handled"""
         mock_conn = mock_db_pool.acquire.return_value.__aenter__.return_value
 
-        custom_fields = {"referral_source": "website", "preferred_language": "en"}
         row = {
             "id": 1,
             "uuid": "550e8400-e29b-41d4-a716-446655440000",

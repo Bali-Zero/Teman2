@@ -223,7 +223,7 @@ class TestStreamingRAGIntegration:
                 chunks.append(chunk)
 
             # Should have citations in stream
-            full_text = "".join(str(c) for c in chunks)
+            "".join(str(c) for c in chunks)
             assert len(chunks) > 0
 
 
@@ -285,7 +285,7 @@ class TestGoldenRouterIntegration:
 
         with (
             patch("backend.services.golden_router_service.SearchService") as mock_search,
-            patch("backend.services.golden_router_service.ZantaraAIClient") as mock_ai,
+            patch("backend.services.golden_router_service.ZantaraAIClient"),
         ):
             mock_search_instance = MagicMock()
             mock_search_instance.search = AsyncMock(
@@ -316,7 +316,7 @@ class TestGoldenRouterIntegration:
 
         with (
             patch("backend.services.golden_router_service.SearchService") as mock_search,
-            patch("backend.services.golden_router_service.ZantaraAIClient") as mock_ai,
+            patch("backend.services.golden_router_service.ZantaraAIClient"),
         ):
             mock_search_instance = MagicMock()
             mock_search_instance.search = AsyncMock(

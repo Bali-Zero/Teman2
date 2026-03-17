@@ -120,7 +120,6 @@ async def run_controlled_extraction(
     # Extract entities
     all_entities = {}
     all_relationships = []
-    chunk_sources = {}  # Track which chunks mention which entities
 
     for i, chunk in enumerate(chunks):
         text = chunk.payload.get("text", "") or chunk.payload.get("content", "")

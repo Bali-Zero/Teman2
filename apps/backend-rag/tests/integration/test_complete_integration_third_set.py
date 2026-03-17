@@ -516,7 +516,7 @@ class TestCompleteKnowledgeWorkflowIntegration:
 
         # 1. Create knowledge graph entities
         entity_data = {"type": "Company", "properties": {"name": "PT Example", "type": "PT"}}
-        response = client.post("/api/kg/entities", json=entity_data)
+        client.post("/api/kg/entities", json=entity_data)
         # Will fail due to auth, but endpoint exists
 
         # 2. Extract entities from document
@@ -524,7 +524,7 @@ class TestCompleteKnowledgeWorkflowIntegration:
             "text": "PT Example signed a contract with Global Tech",
             "extraction_types": ["entities", "relations"],
         }
-        response = client.post("/api/extractor/entities", json=extract_data)
+        client.post("/api/extractor/entities", json=extract_data)
         # Will fail due to ML setup, but endpoint exists
 
         # 3. Reason about extracted information
@@ -532,7 +532,7 @@ class TestCompleteKnowledgeWorkflowIntegration:
             "query": "What are the implications of this contract?",
             "context": {"entities": ["PT Example", "Global Tech"]},
         }
-        response = client.post("/api/reasoning/analyze", json=reasoning_data)
+        client.post("/api/reasoning/analyze", json=reasoning_data)
         # Will fail due to ML setup, but endpoint exists
 
         # 4. Store in collective memory
@@ -541,7 +541,7 @@ class TestCompleteKnowledgeWorkflowIntegration:
             "content": "Analysis of contract between PT Example and Global Tech",
             "type": "analysis",
         }
-        response = client.post("/api/collective-memory/memories", json=memory_data)
+        client.post("/api/collective-memory/memories", json=memory_data)
         # Will fail due to auth, but endpoint exists
 
         # 5. Create auto ingestion job for similar documents
@@ -550,7 +550,7 @@ class TestCompleteKnowledgeWorkflowIntegration:
             "source": {"type": "s3", "bucket": "contracts"},
             "processor": "legal_ingest",
         }
-        response = client.post("/api/orchestrator/ingestion-jobs", json=job_data)
+        client.post("/api/orchestrator/ingestion-jobs", json=job_data)
         # Will fail due to auth, but endpoint exists
 
         # 6. Register the processing service
@@ -559,7 +559,7 @@ class TestCompleteKnowledgeWorkflowIntegration:
             "type": "processor",
             "endpoint": "http://localhost:8003",
         }
-        response = client.post("/api/registry/services", json=service_data)
+        client.post("/api/registry/services", json=service_data)
         # Will fail due to auth, but endpoint exists
 
 

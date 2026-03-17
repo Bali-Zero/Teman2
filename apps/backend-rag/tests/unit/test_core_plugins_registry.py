@@ -295,7 +295,7 @@ async def test_register_duplicate_same_version(registry):
 async def test_register_duplicate_different_version(registry):
     """Test registering plugin with different version"""
     await registry.register(MockPlugin)
-    plugin_v2 = await registry.register(MockPluginV2)
+    await registry.register(MockPluginV2)
 
     # Should register new version
     assert "test.plugin" in registry._plugins
@@ -725,7 +725,7 @@ async def test_discover_plugins_registration_error(registry):
 @pytest.mark.asyncio
 async def test_reload_plugin(registry):
     """Test reloading plugin"""
-    plugin = await registry.register(MockPlugin, {"key": "value"})
+    await registry.register(MockPlugin, {"key": "value"})
 
     await registry.reload_plugin("test.plugin")
 

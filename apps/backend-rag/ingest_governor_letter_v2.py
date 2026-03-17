@@ -1,8 +1,8 @@
 
 import asyncio
-import os
-import sys
 import logging
+import os
+
 from dotenv import load_dotenv
 
 # Load .env file
@@ -79,11 +79,11 @@ Tembusan:
     }
 
     try:
+        from backend.app.models import TierLevel
+        from backend.core.bm25_vectorizer import BM25Vectorizer
+        from backend.core.embeddings import create_embeddings_generator
         from backend.core.legal import HierarchicalIndexer, LegalChunker, LegalStructureParser
         from backend.core.qdrant_db import QdrantClient
-        from backend.core.embeddings import create_embeddings_generator
-        from backend.core.bm25_vectorizer import BM25Vectorizer
-        from backend.app.models import TierLevel
     except ImportError as e:
         logger.error(f"Import error: {e}")
         return
@@ -93,7 +93,7 @@ Tembusan:
     embedder = create_embeddings_generator()
     chunker = LegalChunker()
     sparse_vectorizer = BM25Vectorizer()
-    
+
     indexer = HierarchicalIndexer(
         structure_parser=LegalStructureParser(),
         qdrant_client=vector_db,
@@ -124,25 +124,26 @@ Tembusan:
     }
 
     logger.info(f"Starting manual ingestion for doc_id: {doc_id}")
-    
+
     result = await indexer.index_legal_document(
         document_text=text,
         document_id=doc_id,
         metadata=base_metadata
     )
-    
+
     if result.get("chunks_indexed") > 0:
         logger.info(f"✅ Successfully ingested {result['chunks_indexed']} chunks!")
-        
+
         # Trigger KG extraction manually for these chunks
         try:
             # We need to import the script correctly
             import sys
             sys.path.append(os.path.join(os.getcwd(), "scripts"))
-            from kg_incremental_extraction import KGIncrementalExtractor
             import asyncpg
+            from kg_incremental_extraction import KGIncrementalExtractor
+
             from backend.app.core.config import settings
-            
+
             db_pool = await asyncpg.create_pool(settings.database_url)
             kg_extractor = KGIncrementalExtractor(
                 db_pool=db_pool,
@@ -150,7 +151,7 @@ Tembusan:
                 qdrant_api_key=settings.qdrant_api_key,
                 gemini_client=None # Will use pattern-based if Gemini not configured
             )
-            
+
             logger.info("Extracting Knowledge Graph entities...")
             kg_result = await kg_extractor.extract_from_collection(
                 collection_name="legal_unified",

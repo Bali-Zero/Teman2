@@ -141,7 +141,7 @@ async def get_kg_orchestrator(
     summary="Process query with KG-enhanced reasoning",
     description="""
     Process a user query using the KG-Agentic orchestrator.
-    
+
     This endpoint:
     1. Classifies query intent
     2. Extracts entities and traverses the Knowledge Graph
@@ -149,7 +149,7 @@ async def get_kg_orchestrator(
     4. Executes vector search on relevant collections
     5. Synthesizes answer with LLM
     6. Returns reasoning trace for explainability
-    
+
     **Example queries:**
     - "How to open a restaurant in Bali as a foreigner?"
     - "What's the process to convert KITAS to KITAP?"
@@ -349,7 +349,7 @@ async def find_kg_path(
             paths = await conn.fetch(
                 """
                 WITH RECURSIVE path_finder AS (
-                    SELECT 
+                    SELECT
                         e.source_entity_id,
                         e.target_entity_id,
                         e.relationship_type,
@@ -358,10 +358,10 @@ async def find_kg_path(
                         1 as depth
                     FROM kg_edges e
                     WHERE e.source_entity_id = $1
-                    
+
                     UNION ALL
-                    
-                    SELECT 
+
+                    SELECT
                         e.source_entity_id,
                         e.target_entity_id,
                         e.relationship_type,

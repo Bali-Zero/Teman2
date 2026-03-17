@@ -176,7 +176,7 @@ class TestArticleComposerIntegration:
             responses.append(response)
 
         # At least one should be rate limited (429)
-        status_codes = [r.status_code for r in responses]
+        [r.status_code for r in responses]
         # Note: Rate limiting might not trigger in test environment
         # This test documents expected behavior
 

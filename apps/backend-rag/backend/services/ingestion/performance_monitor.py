@@ -242,7 +242,7 @@ class PerformanceMonitor:
             return
 
         # Analyze each metric
-        for metric_name in set(m.metric_name for m in recent_metrics):
+        for metric_name in {m.metric_name for m in recent_metrics}:
             metric_values = [m.value for m in recent_metrics if m.metric_name == metric_name]
 
             if len(metric_values) < 3:
@@ -384,7 +384,7 @@ class PerformanceMonitor:
         }
 
         # Calculate performance for each metric
-        for metric_name in set(m.metric_name for m in recent_metrics):
+        for metric_name in {m.metric_name for m in recent_metrics}:
             values = [m.value for m in recent_metrics if m.metric_name == metric_name]
 
             if values:

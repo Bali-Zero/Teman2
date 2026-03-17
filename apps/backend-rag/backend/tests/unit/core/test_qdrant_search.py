@@ -75,7 +75,7 @@ class TestQdrantClientSearch:
         mock_response.raise_for_status = MagicMock()
 
         with (
-            patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
+            patch.object(client, "_get_client", return_value=AsyncMock()),
             patch("time.time", return_value=0.0),
             patch(
                 "backend.core.qdrant_db._retry_with_backoff", new_callable=AsyncMock
@@ -101,7 +101,7 @@ class TestQdrantClientSearch:
         mock_response.raise_for_status = MagicMock()
 
         with (
-            patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
+            patch.object(client, "_get_client", return_value=AsyncMock()),
             patch("time.time", return_value=0.0),
             patch(
                 "backend.core.qdrant_db._retry_with_backoff", new_callable=AsyncMock
@@ -137,7 +137,7 @@ class TestQdrantClientSearch:
         timeout_error = httpx.TimeoutException("Request timeout")
 
         with (
-            patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
+            patch.object(client, "_get_client", return_value=AsyncMock()),
             patch("time.time", return_value=0.0),
             patch(
                 "backend.core.qdrant_db._retry_with_backoff", new_callable=AsyncMock
@@ -157,10 +157,10 @@ class TestQdrantClientSearch:
         mock_response = MagicMock()
         mock_response.status_code = 500
         mock_response.text = "Server error"
-        error = httpx.HTTPStatusError("Server error", request=MagicMock(), response=mock_response)
+        httpx.HTTPStatusError("Server error", request=MagicMock(), response=mock_response)
 
         with (
-            patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
+            patch.object(client, "_get_client", return_value=AsyncMock()),
             patch("time.time", return_value=0.0),
             patch(
                 "backend.core.qdrant_db._retry_with_backoff", new_callable=AsyncMock
@@ -188,7 +188,7 @@ class TestQdrantClientSearch:
         error = httpx.HTTPStatusError("Bad request", request=MagicMock(), response=mock_response)
 
         with (
-            patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
+            patch.object(client, "_get_client", return_value=AsyncMock()),
             patch("time.time", return_value=0.0),
             patch(
                 "backend.core.qdrant_db._retry_with_backoff", new_callable=AsyncMock
@@ -258,7 +258,7 @@ class TestQdrantClientSearch:
         connection_error = httpx.ConnectError("Connection failed")
 
         with (
-            patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
+            patch.object(client, "_get_client", return_value=AsyncMock()),
             patch("time.time", return_value=0.0),
             patch(
                 "backend.core.qdrant_db._retry_with_backoff", new_callable=AsyncMock

@@ -181,12 +181,12 @@ class ChangeDetector:
                 """)
 
                 await conn.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_kg_monitored_source 
+                    CREATE INDEX IF NOT EXISTS idx_kg_monitored_source
                     ON kg_monitored_documents(source_id)
                 """)
 
                 await conn.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_kg_monitored_active 
+                    CREATE INDEX IF NOT EXISTS idx_kg_monitored_active
                     ON kg_monitored_documents(is_active)
                 """)
 
@@ -208,12 +208,12 @@ class ChangeDetector:
                 """)
 
                 await conn.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_kg_changes_document 
+                    CREATE INDEX IF NOT EXISTS idx_kg_changes_document
                     ON kg_change_events(document_id)
                 """)
 
                 await conn.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_kg_changes_detected 
+                    CREATE INDEX IF NOT EXISTS idx_kg_changes_detected
                     ON kg_change_events(detected_at)
                 """)
 
@@ -562,11 +562,10 @@ class ChangeDetector:
         try:
             async with self.db_pool.acquire() as conn:
                 query = (
-                    """
+                    f"""
                     SELECT * FROM kg_change_events
-                    WHERE detected_at > NOW() - INTERVAL '%s hours'
+                    WHERE detected_at > NOW() - INTERVAL '{hours} hours'
                 """
-                    % hours
                 )
 
                 params = []

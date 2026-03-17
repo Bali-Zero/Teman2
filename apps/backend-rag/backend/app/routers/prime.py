@@ -37,7 +37,7 @@ async def search_kbli(q: str = Query(..., min_length=2)) -> dict[str, Any]:
     """
     try:
         search_service = HybridSearchService()
-        
+
         # Search legal documents for business activity + zone mapping
         results = await search_service.search_hybrid(
             query=f"zonasi peruntukan bisnis {q}",
@@ -45,14 +45,14 @@ async def search_kbli(q: str = Query(..., min_length=2)) -> dict[str, Any]:
             limit=5,
             alpha=0.5
         )
-        
+
         matching_zones = set()
         for res in results:
             text = res.get("text", "")
             matches = _ZONE_CODE_PATTERN.findall(text)
             for m in matches:
                 matching_zones.add(m.upper())
-        
+
         # Fallback: if searching for "Hotel" or "Villa", add common tourism zones
         q_lower = q.lower()
         if any(x in q_lower for x in ["hotel", "villa", "pariwisata", "resort"]):
@@ -62,7 +62,7 @@ async def search_kbli(q: str = Query(..., min_length=2)) -> dict[str, Any]:
             matching_zones.add("K-1")
             matching_zones.add("K-2")
             matching_zones.add("K-3")
-            
+
         logger.info(f"🔍 [Prime/KBLI] Search for '{q}' returned zones: {list(matching_zones)}")
         return {
             "query": q,
@@ -976,7 +976,7 @@ async def get_zones_geojson() -> dict[str, Any]:
             zone_type: str = row["zoning_type"] or ""
             zone_code = row["kodszn"] or zone_type.split(":")[0].strip()
             color = _ZONE_COLORS_MAP.get(zone_code, "#6B7280")
-            
+
             # 3D parameters
             max_floors = row["max_floors"]
             max_height = float(row["max_height_meters"]) if row["max_height_meters"] else 15.0

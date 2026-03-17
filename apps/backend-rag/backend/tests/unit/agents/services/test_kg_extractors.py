@@ -78,7 +78,7 @@ class TestEntityExtractor:
     async def test_extract_entities_long_text(self, entity_extractor, mock_ai_client):
         """Test extracting entities from long text"""
         long_text = "A" * 5000
-        result = await entity_extractor.extract_entities(long_text)
+        await entity_extractor.extract_entities(long_text)
         # Should truncate to MAX_TEXT_LENGTH
         call_args = mock_ai_client.generate_text.call_args
         if call_args:

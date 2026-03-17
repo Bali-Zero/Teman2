@@ -184,22 +184,22 @@ class MetricsTracker:
 
                 # Indexes for efficient querying
                 await conn.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_ab_metrics_experiment_variant 
+                    CREATE INDEX IF NOT EXISTS idx_ab_metrics_experiment_variant
                     ON ab_test_metrics(experiment, variant)
                 """)
 
                 await conn.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_ab_metrics_query_id 
+                    CREATE INDEX IF NOT EXISTS idx_ab_metrics_query_id
                     ON ab_test_metrics(query_id)
                 """)
 
                 await conn.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_ab_metrics_timestamp 
+                    CREATE INDEX IF NOT EXISTS idx_ab_metrics_timestamp
                     ON ab_test_metrics(timestamp)
                 """)
 
                 await conn.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_ab_metrics_user_experiment 
+                    CREATE INDEX IF NOT EXISTS idx_ab_metrics_user_experiment
                     ON ab_test_metrics(user_id, experiment)
                 """)
 
@@ -279,7 +279,7 @@ class MetricsTracker:
             async with pool.acquire() as conn:
                 await conn.execute(
                     """
-                    INSERT INTO ab_test_metrics 
+                    INSERT INTO ab_test_metrics
                     (query_id, user_id, experiment, variant, metric, value, timestamp, metadata)
                     VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)
                     """,
@@ -295,10 +295,10 @@ class MetricsTracker:
                 # Update summary table
                 await conn.execute(
                     """
-                    INSERT INTO ab_test_summaries 
+                    INSERT INTO ab_test_summaries
                     (experiment, variant, metric, count, sum_values, sum_squares, min_value, max_value, last_updated)
                     VALUES ($1, $2, $3, 1, $4, $5, $4, $4, NOW())
-                    ON CONFLICT (experiment, variant, metric) 
+                    ON CONFLICT (experiment, variant, metric)
                     DO UPDATE SET
                         count = ab_test_summaries.count + 1,
                         sum_values = ab_test_summaries.sum_values + $4,
@@ -372,7 +372,7 @@ class MetricsTracker:
                     for metric_name, value in metrics.items():
                         await conn.execute(
                             """
-                            INSERT INTO ab_test_metrics 
+                            INSERT INTO ab_test_metrics
                             (query_id, user_id, experiment, variant, metric, value, timestamp, metadata)
                             VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)
                             """,
@@ -388,10 +388,10 @@ class MetricsTracker:
                         # Update summary
                         await conn.execute(
                             """
-                            INSERT INTO ab_test_summaries 
+                            INSERT INTO ab_test_summaries
                             (experiment, variant, metric, count, sum_values, sum_squares, min_value, max_value, last_updated)
                             VALUES ($1, $2, $3, 1, $4, $5, $4, $4, NOW())
-                            ON CONFLICT (experiment, variant, metric) 
+                            ON CONFLICT (experiment, variant, metric)
                             DO UPDATE SET
                                 count = ab_test_summaries.count + 1,
                                 sum_values = ab_test_summaries.sum_values + $4,
@@ -463,7 +463,7 @@ class MetricsTracker:
                 # Get aggregates from summary table
                 rows = await conn.fetch(
                     f"""
-                    SELECT 
+                    SELECT
                         variant,
                         metric,
                         count,
@@ -572,7 +572,7 @@ class MetricsTracker:
             async with pool.acquire() as conn:
                 rows = await conn.fetch(
                     """
-                    SELECT 
+                    SELECT
                         query_id,
                         user_id,
                         experiment,
@@ -630,7 +630,7 @@ class MetricsTracker:
                 if experiment:
                     rows = await conn.fetch(
                         """
-                        SELECT DISTINCT 
+                        SELECT DISTINCT
                             experiment,
                             variant,
                             MIN(timestamp) as first_exposure,
@@ -647,7 +647,7 @@ class MetricsTracker:
                 else:
                     rows = await conn.fetch(
                         """
-                        SELECT DISTINCT 
+                        SELECT DISTINCT
                             experiment,
                             variant,
                             MIN(timestamp) as first_exposure,
@@ -691,7 +691,7 @@ class MetricsTracker:
             async with pool.acquire() as conn:
                 rows = await conn.fetch(
                     """
-                    SELECT 
+                    SELECT
                         query_id,
                         user_id,
                         experiment,
@@ -750,7 +750,7 @@ class MetricsTracker:
             async with pool.acquire() as conn:
                 rows = await conn.fetch(
                     """
-                    SELECT 
+                    SELECT
                         experiment,
                         variant,
                         COUNT(*) as query_count,

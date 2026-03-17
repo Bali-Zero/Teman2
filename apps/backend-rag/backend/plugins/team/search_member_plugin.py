@@ -73,9 +73,7 @@ class TeamMemberSearchPlugin(Plugin):
 
     async def validate(self, input_data: TeamSearchInput) -> bool:
         """Validate input"""
-        if not input_data.query or not input_data.query.strip():
-            return False
-        return True
+        return not (not input_data.query or not input_data.query.strip())
 
     async def execute(self, input_data: TeamSearchInput) -> TeamSearchOutput:
         """Execute team member search"""

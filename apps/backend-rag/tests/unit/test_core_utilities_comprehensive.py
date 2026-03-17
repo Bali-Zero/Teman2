@@ -3,7 +3,7 @@ Comprehensive Tests for Core Utilities
 Tests embeddings, chunker, parsers, qdrant_db, cache
 """
 
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import numpy as np
 import pytest

@@ -13,8 +13,8 @@ backend_root = Path(__file__).parent.parent.parent / "backend"
 if str(backend_root) not in sys.path:
     sys.path.insert(0, str(backend_root))
 
-from fastapi.testclient import TestClient
 from fastapi.routing import APIRoute
+from fastapi.testclient import TestClient
 
 # Import app after path setup
 try:

@@ -22,6 +22,7 @@ if str(backend_dir) not in sys.path:
     sys.path.insert(0, str(backend_dir))
 
 import asyncpg  # noqa: E402
+
 from backend.app.core.config import settings  # noqa: E402
 
 

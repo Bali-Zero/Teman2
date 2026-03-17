@@ -82,7 +82,6 @@ class TestDisasterRecovery:
         gateway = disaster_gateway
 
         failure_count = 0
-        original_call = gateway._send_with_fallback
 
         async def cascading_failure(*args, **kwargs):
             nonlocal failure_count
@@ -158,7 +157,6 @@ class TestScalabilityTesting:
 
     async def test_horizontal_scaling_simulation(self, scalable_gateway):
         """Test horizontal scaling simulation with multiple instances."""
-        gateway = scalable_gateway
 
         # Simulate multiple gateway instances
         instances = [MinimalLLMGateway() for _ in range(5)]
@@ -237,7 +235,6 @@ class TestScalabilityTesting:
             model_usage[model] = model_usage.get(model, 0) + 1
             return ("Load balanced response", model, Mock(), MockTokenUsage())
 
-        original_call = gateway._send_with_fallback
         gateway._send_with_fallback = tracked_call
 
         # Send many requests
@@ -381,7 +378,6 @@ class TestComplianceAndAudit:
 
     def test_data_privacy_compliance(self, compliance_gateway):
         """Test data privacy compliance features."""
-        gateway = compliance_gateway
 
         # Test PII redaction
         sensitive_message = "My email is user@example.com and phone is 555-1234"

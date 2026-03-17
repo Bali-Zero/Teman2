@@ -165,7 +165,7 @@ async def test_pipeline(sample_size: int = 10, persist: bool = False, clear_old:
 
         # Show unique entities
         print(f"\n📋 Unique Entities ({len(pipeline.entity_registry)}):")
-        for eid, entity in list(pipeline.entity_registry.items())[:20]:
+        for _eid, entity in list(pipeline.entity_registry.items())[:20]:
             print(f"  [{entity.type.value}] {entity.name}")
 
         if len(pipeline.entity_registry) > 20:

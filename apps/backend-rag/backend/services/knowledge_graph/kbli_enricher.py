@@ -32,7 +32,7 @@ class KBLIEnricher:
 
         # Search filter: code starts with prefix AND discursive_content is null/empty
         # Note: We assume 'discursive_content' or similar field indicates enrichment
-        search_filter = models.Filter(
+        models.Filter(
             must=[
                 models.FieldCondition(
                     key="kode_kbli",

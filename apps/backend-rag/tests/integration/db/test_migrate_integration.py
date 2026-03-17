@@ -229,7 +229,7 @@ class TestMigrateIntegration:
         from backend.db.migrate import main
 
         with patch("sys.argv", ["migrate"]):
-            with patch("argparse.ArgumentParser.print_help") as mock_help:
+            with patch("argparse.ArgumentParser.print_help"):
                 try:
                     main()
                 except SystemExit:

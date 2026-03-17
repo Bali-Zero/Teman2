@@ -12,14 +12,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import asyncpg
 import pytest
 
-# Patch settings BEFORE importing any modules that use it
-from tests.conftest import create_mock_settings
 import backend.app.core.config
+from tests.conftest import create_mock_settings
 
-# Replace settings with a proper test instance
+# Patch settings BEFORE importing any modules that use it
 backend.app.core.config.settings = create_mock_settings()
 
-# Import the class to test
 from backend.agents.agents.conversation_trainer import ConversationTrainer
 
 

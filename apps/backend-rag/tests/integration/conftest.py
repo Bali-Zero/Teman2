@@ -106,7 +106,7 @@ def qdrant_container():
                 try:
                     with DockerCompose(
                         str(compose_file.parent), compose_file_name="docker-compose.test.yml"
-                    ) as compose:
+                    ):
                         # Wait for Qdrant to be ready (using port 6334 from docker-compose.test.yml)
                         import time
 
@@ -804,7 +804,7 @@ def redis_container():
                 try:
                     with DockerCompose(
                         str(compose_file.parent), compose_file_name="docker-compose.test.yml"
-                    ) as compose:
+                    ):
                         # Wait for Redis to be ready (using port 6380 from docker-compose.test.yml)
                         import time
 

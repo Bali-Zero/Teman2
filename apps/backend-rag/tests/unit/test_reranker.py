@@ -2,7 +2,6 @@
 Unit tests for Semantic Re-ranker (Ze-Rank 2 API)
 """
 
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

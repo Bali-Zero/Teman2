@@ -97,7 +97,7 @@ async def get_dashboard(
         # Get statistics
         stats_row = await conn.fetchrow(
             """
-            SELECT 
+            SELECT
                 COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '24 hours') as total_24h,
                 COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '7 days') as total_7d,
                 COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '30 days') as total_30d,
@@ -131,7 +131,7 @@ async def get_dashboard(
         # Get top clients with most alerts
         top_clients = await conn.fetch(
             """
-            SELECT 
+            SELECT
                 c.id,
                 c.full_name,
                 c.email,
@@ -148,7 +148,7 @@ async def get_dashboard(
         # Get recent alerts
         recent = await conn.fetch(
             """
-            SELECT 
+            SELECT
                 na.id,
                 na.client_id,
                 c.full_name as client_name,
@@ -265,7 +265,7 @@ async def list_alerts(
     async with pool.acquire() as conn:
         # Get total count
         count_sql = f"""
-            SELECT COUNT(*) 
+            SELECT COUNT(*)
             FROM notification_alerts na
             WHERE {where_sql}
         """
@@ -273,7 +273,7 @@ async def list_alerts(
 
         # Get alerts
         query_sql = f"""
-            SELECT 
+            SELECT
                 na.id,
                 na.client_id,
                 c.full_name as client_name,

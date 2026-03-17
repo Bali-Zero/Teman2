@@ -187,7 +187,7 @@ class KnowledgeGraphBuilder:
 
                 query = """
                     INSERT INTO kg_nodes (
-                        entity_id, entity_type, name, description, properties, 
+                        entity_id, entity_type, name, description, properties,
                         confidence, source_collection, source_chunk_ids, updated_at
                     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
                     ON CONFLICT (entity_id) DO UPDATE SET
@@ -224,7 +224,7 @@ class KnowledgeGraphBuilder:
 
                 query = """
                     INSERT INTO kg_edges (
-                        relationship_id, source_entity_id, target_entity_id, 
+                        relationship_id, source_entity_id, target_entity_id,
                         relationship_type, properties, confidence, source_collection, source_chunk_ids
                     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                     ON CONFLICT (relationship_id) DO UPDATE SET

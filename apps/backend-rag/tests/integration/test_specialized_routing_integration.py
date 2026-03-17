@@ -60,7 +60,7 @@ class TestSpecializedServiceRouterIntegration:
         """Test autonomous research query detection"""
         from backend.services.routing.specialized_service_router import SpecializedServiceRouter
 
-        router = SpecializedServiceRouter()
+        SpecializedServiceRouter()
 
         # Test ambiguous queries
         ambiguous_queries = [
@@ -88,7 +88,7 @@ class TestSpecializedServiceRouterIntegration:
         """Test cross-oracle synthesis detection"""
         from backend.services.routing.specialized_service_router import SpecializedServiceRouter
 
-        router = SpecializedServiceRouter()
+        SpecializedServiceRouter()
 
         # Test business setup queries
         business_queries = [
@@ -117,7 +117,7 @@ class TestSpecializedServiceRouterIntegration:
         """Test client journey keyword detection"""
         from backend.services.routing.specialized_service_router import SpecializedServiceRouter
 
-        router = SpecializedServiceRouter()
+        SpecializedServiceRouter()
 
         # Test journey queries
         journey_queries = [
@@ -148,10 +148,10 @@ class TestSpecializedServiceRouterIntegration:
             ) as mock_research,
             patch(
                 "backend.services.routing.specialized_service_router.CrossOracleSynthesisService"
-            ) as mock_synthesis,
+            ),
             patch(
                 "backend.services.routing.specialized_service_router.ClientJourneyOrchestrator"
-            ) as mock_journey,
+            ),
         ):
             mock_research_instance = MagicMock()
             mock_research_instance.research = AsyncMock(
@@ -187,7 +187,7 @@ class TestSpecializedServiceRouterIntegration:
             ) as mock_synthesis,
             patch(
                 "backend.services.routing.specialized_service_router.SearchService"
-            ) as mock_search,
+            ),
         ):
             mock_synthesis_instance = MagicMock()
             mock_synthesis_instance.synthesize = AsyncMock(

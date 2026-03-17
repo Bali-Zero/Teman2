@@ -113,7 +113,7 @@ class SMTPProvider(EmailProvider):
                 for attachment in attachments:
                     filename = attachment.get("filename", "attachment")
                     content = attachment.get("content")
-                    content_type = attachment.get("content_type", "application/octet-stream")
+                    attachment.get("content_type", "application/octet-stream")
 
                     if content:
                         part = MIMEBase("application", "octet-stream")
@@ -355,7 +355,7 @@ class NotificationService:
         async with self.db_pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
-                SELECT u.email 
+                SELECT u.email
                 FROM users u
                 JOIN clients c ON c.assigned_to = u.email
                 WHERE c.id = $1
@@ -375,8 +375,8 @@ class NotificationService:
             if alert.id:
                 await conn.execute(
                     """
-                    UPDATE notification_alerts 
-                    SET status = $1, 
+                    UPDATE notification_alerts
+                    SET status = $1,
                         sent_at = CASE WHEN $1 = 'sent' THEN NOW() ELSE sent_at END,
                         error_message = $2
                     WHERE id = $3
@@ -389,7 +389,7 @@ class NotificationService:
                 # Insert new alert record
                 row = await conn.fetchrow(
                     """
-                    INSERT INTO notification_alerts 
+                    INSERT INTO notification_alerts
                     (client_id, alert_type, status, message, email_subject, email_body, created_at, sent_at, error_message)
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                     RETURNING id
@@ -411,7 +411,7 @@ class NotificationService:
         async with self.db_pool.acquire() as conn:
             rows = await conn.fetch(
                 """
-                SELECT * FROM notification_alerts 
+                SELECT * FROM notification_alerts
                 WHERE status = 'pending'
                 AND created_at > NOW() - INTERVAL '7 days'
                 ORDER BY created_at ASC

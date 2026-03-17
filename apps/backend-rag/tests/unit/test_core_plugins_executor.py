@@ -6,7 +6,6 @@ Tests execution, caching, rate limiting, circuit breakers, and metrics
 
 import asyncio
 import time
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest

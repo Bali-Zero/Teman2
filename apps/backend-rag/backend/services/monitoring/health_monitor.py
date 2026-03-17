@@ -478,15 +478,13 @@ class HealthMonitor:
         if self.app_state:
             db_pool = getattr(self.app_state, "db_pool", None)
             if db_pool:
-                try:
+                with contextlib.suppress(Exception):
                     pool_info = {
                         "size": db_pool.get_size(),
                         "min_size": db_pool.get_min_size(),
                         "max_size": db_pool.get_max_size(),
                         "idle": db_pool.get_idle_size(),
                     }
-                except Exception:
-                    pass
 
         return {
             "running": self.running and is_task_alive,

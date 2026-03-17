@@ -7,14 +7,14 @@ Usage:
     source .venv/bin/activate
     PYTHONPATH=. python scripts/scrape_rdtr_gistaru.py [--dry-run] [--district tabanan|denpasar|all]
 """
+import argparse
 import asyncio
 import json
 import logging
-import argparse
 import urllib.parse
-from typing import Any
-import httpx
+
 import asyncpg
+import httpx
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -358,7 +358,7 @@ async def scrape_layer(layer: dict, dry_run: bool, db_pool) -> int:
         logger.info(f"  Total features: {total}")
 
         if total == 0:
-            logger.warning(f"  No features found, skipping")
+            logger.warning("  No features found, skipping")
             return 0
 
         all_features = []

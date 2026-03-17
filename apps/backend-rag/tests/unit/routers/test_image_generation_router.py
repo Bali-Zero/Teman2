@@ -3,7 +3,6 @@ Unit tests for image_generation router - targeting 90% coverage
 """
 
 from contextlib import contextmanager
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx

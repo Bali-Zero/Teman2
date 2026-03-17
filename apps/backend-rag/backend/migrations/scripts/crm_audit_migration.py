@@ -151,7 +151,7 @@ async def create_crm_procedures():
                     INSERT INTO crm_audit_summary (
                         date, entity_type, change_type, total_changes, unique_entities, active_users
                     )
-                    SELECT 
+                    SELECT
                         DATE(Timestamp),
                         entity_type,
                         change_type,
@@ -169,7 +169,7 @@ async def create_crm_procedures():
                         unique_entities = EXCLUDED.unique_entities,
                         active_users = EXCLUDED.active_users,
                         created_at = NOW();
-                    
+
                     RETURN NEW;
                 END;
                 $$ LANGUAGE plpgsql;
@@ -197,7 +197,7 @@ async def create_crm_procedures():
                             duration_seconds = EXTRACT(EPOCH FROM (NOW() - stage_start_date))::INTEGER
                         WHERE client_id = NEW.id
                         AND stage_end_date IS NULL;
-                        
+
                         -- Start new stage
                         INSERT INTO crm_client_lifecycle (
                             client_id, lifecycle_stage, stage_start_date, created_by
@@ -205,7 +205,7 @@ async def create_crm_procedures():
                             NEW.id, NEW.status, NOW(), NEW.updated_by
                         );
                     END IF;
-                    
+
                     -- For new clients, start initial stage
                     IF TG_OP = 'INSERT' THEN
                         INSERT INTO crm_client_lifecycle (
@@ -214,7 +214,7 @@ async def create_crm_procedures():
                             NEW.id, NEW.status, NOW(), NEW.created_by
                         );
                     END IF;
-                    
+
                     RETURN COALESCE(NEW, OLD);
                 END;
                 $$ LANGUAGE plpgsql;

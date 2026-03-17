@@ -304,7 +304,7 @@ async def test_legal_ingestion_service_full_pipeline():
 def test_ingestion_service_routes_to_legal():
     """Test that IngestionService routes legal documents to LegalIngestionService"""
     # Mock create_embeddings_generator to avoid API key requirement
-    with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
+    with patch("backend.core.embeddings.create_embeddings_generator"):
         from backend.services.ingestion.ingestion_service import IngestionService
 
         service = IngestionService()

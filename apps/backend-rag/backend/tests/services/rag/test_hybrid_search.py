@@ -408,7 +408,7 @@ class TestHybridSearchIntegration:
                 return_value=[0.1] * 1536
             )
 
-            result = await hybrid_service.search_hybrid(
+            await hybrid_service.search_hybrid(
                 query="visa KITAS",
                 collection="legal_unified_hybrid",
                 limit=5,
@@ -548,7 +548,7 @@ class TestServiceInitialization:
     def test_init_with_defaults(self, mock_settings):
         """Test initialization with default dependencies."""
         with (
-            patch("backend.services.rag.hybrid_search.CollectionManager") as mock_cm,
+            patch("backend.services.rag.hybrid_search.CollectionManager"),
             patch("backend.services.rag.hybrid_search.get_bm25_vectorizer") as mock_get_bm25,
         ):
             mock_get_bm25.return_value = MagicMock()
@@ -739,7 +739,7 @@ class TestPerformanceAndKeywordQueries:
                 collection="test_collection",
                 limit=5,
             )
-            duration1 = __import__("time").time() - start
+            __import__("time").time() - start
 
             # Second call (should be cached)
             start = __import__("time").time()
@@ -748,7 +748,7 @@ class TestPerformanceAndKeywordQueries:
                 collection="test_collection",
                 limit=5,
             )
-            duration2 = __import__("time").time() - start
+            __import__("time").time() - start
 
             # Both should return same results
             assert result1["query"] == result2["query"]

@@ -32,6 +32,7 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from backend.core.semantic_cache import SemanticCache
     from backend.services.misc.clarification_service import ClarificationService
 
 # Lazy import to prevent circular dependencies
@@ -110,7 +111,7 @@ __all__ = [
 def create_agentic_rag(
     retriever,
     db_pool,
-    web_search_client=None,
+    _web_search_client=None,
     semantic_cache: "SemanticCache" = None,
     clarification_service: "ClarificationService" = None,
 ) -> AgenticRAGOrchestrator:

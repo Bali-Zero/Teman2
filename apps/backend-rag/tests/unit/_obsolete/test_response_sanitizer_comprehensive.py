@@ -233,7 +233,7 @@ class TestEnforceSantaiMode:
         """Test greeting responses truncate to 3 sentences"""
         response = "Hello! How are you? Great to meet you! I hope you're doing well. This is extra."
         result = enforce_santai_mode(response, "greeting")
-        sentences = [s for s in result.split() if s.endswith((".", "!", "?"))]
+        [s for s in result.split() if s.endswith((".", "!", "?"))]
         assert len(result.split(".")) <= 4  # Max 3 sentences
 
     def test_casual_truncates_sentences(self):

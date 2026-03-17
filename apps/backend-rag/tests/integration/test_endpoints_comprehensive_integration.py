@@ -77,7 +77,7 @@ class TestEndToEndWorkflows:
             )
 
             # Step 3: Create interaction linked to conversation
-            interaction_id = await conn.fetchval(
+            await conn.fetchval(
                 """
                 INSERT INTO interactions (
                     client_id, interaction_type, summary, created_by, created_at
@@ -93,7 +93,7 @@ class TestEndToEndWorkflows:
             )
 
             # Step 4: Store memory facts from conversation
-            memory_id = await conn.fetchval(
+            await conn.fetchval(
                 """
                 INSERT INTO memory_facts (
                     user_id, content, fact_type, confidence, source, created_at
@@ -160,7 +160,7 @@ class TestEndToEndWorkflows:
             )
 
             # Step 2: Store feedback
-            feedback_id = await conn.fetchval(
+            await conn.fetchval(
                 """
                 INSERT INTO oracle_feedback (
                     query_id, user_id, rating, feedback_text, created_at
@@ -233,7 +233,6 @@ class TestEndToEndWorkflows:
             # Step 3: Skip documents (table not created in test schema)
             # Documents are stored in practices.documents JSONB field in real schema
             # For test purposes, we'll skip document insertion
-            doc_id = None
 
             # Step 4: Update practice status
             await conn.execute(

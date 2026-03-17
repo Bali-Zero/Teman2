@@ -367,7 +367,7 @@ class TestMiddlewareChain:
         handler = mock_handler
 
         # Execute chain
-        response1 = await mock_middleware_1(request, mock_middleware_2)
-        response2 = await mock_middleware_2(request, handler)
+        await mock_middleware_1(request, mock_middleware_2)
+        await mock_middleware_2(request, handler)
 
         assert len(execution_order) >= 2
