@@ -53,7 +53,8 @@ from backend.services.rag.agentic.query_helpers import (
     is_conversation_recall_query,
     wrap_query_with_language_instruction,
 )
-from backend.services.rag.agentic.reasoning import ReasoningEngine, detect_team_query
+from backend.services.rag.agentic.reasoning import ReasoningEngine
+from backend.services.rag.agentic.reasoning_utils import detect_team_query
 from backend.services.rag.agentic.schema import CoreResult
 from backend.services.rag.agentic.tool_executor import execute_tool
 from backend.services.rag.kg_enhanced_retrieval import KGEnhancedRetrieval
