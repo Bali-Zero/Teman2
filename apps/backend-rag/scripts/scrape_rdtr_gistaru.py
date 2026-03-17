@@ -25,6 +25,165 @@ PAGE_SIZE = 500
 
 # Official RDTR layers per district
 LAYERS = {
+
+    "bangli": [
+        {
+            "service": "_RDTR_51C3_WP_GEOPARK_BATUR",
+            "district": "Bangli",
+            "subdistrict": "Kintamani (Geopark Batur)",
+            "perda": "2023",
+        }
+    ],
+    "buleleng": [
+        {
+            "service": "_RDTR__51A2_KAWASAN_PERKOTAAN_SINGARAJA_2023",
+            "district": "Buleleng",
+            "subdistrict": "Singaraja",
+            "perda": "2023",
+        },
+        {
+            "service": "_RDTR_51C9_KAWASAN_PERKOTAAN_GEROKGAK",
+            "district": "Buleleng",
+            "subdistrict": "Gerokgak",
+            "perda": "2023",
+        },
+        {
+            "service": "_RDTR_51B8_KAWASAN_TERPADU_BATUAMPAR",
+            "district": "Buleleng",
+            "subdistrict": "Batuampar",
+            "perda": "2023",
+        }
+    ],
+    "karangasem": [
+        {
+            "service": "_RDTR_51B5_KAWASAN_PERKOTAAN_AMLAPURA",
+            "district": "Karangasem",
+            "subdistrict": "Amlapura",
+            "perda": "2023",
+        },
+        {
+            "service": "_RDTR_51C5_WILAYAH_PERENCANAAN_KARANGASEM",
+            "district": "Karangasem",
+            "subdistrict": "WP Karangasem",
+            "perda": "2023",
+        },
+        {
+            "service": "_RDTR_51D4_KECAMATAN_SIDEMEN",
+            "district": "Karangasem",
+            "subdistrict": "Sidemen",
+            "perda": "2023",
+        },
+        {
+            "service": "_RDTR_51D5_WP_KECAMATAN_ABANG",
+            "district": "Karangasem",
+            "subdistrict": "Abang",
+            "perda": "2023",
+        }
+    ],
+    "jembrana": [
+        {
+            "service": "_RDTR_51A7_KAWASAN_PERKOTAAN_NEGARA",
+            "district": "Jembrana",
+            "subdistrict": "Negara",
+            "perda": "2023",
+        },
+        {
+            "service": "_RDTR_51C4_KAWASAN_PERKOTAAN_MELAYA",
+            "district": "Jembrana",
+            "subdistrict": "Melaya",
+            "perda": "2023",
+        },
+        {
+            "service": "_RDTR_51D2_KAWASAN_PERKOTAAN_PEKUTATAN",
+            "district": "Jembrana",
+            "subdistrict": "Pekutatan",
+            "perda": "2023",
+        },
+        {
+            "service": "_RDTR_51D3_KAWASAN_PERKOTAAN_PENGAMBENGAN",
+            "district": "Jembrana",
+            "subdistrict": "Pengambengan",
+            "perda": "2023",
+        },
+        {
+            "service": "_RDTR_51D7_KAWASAN_EFEKTIF_PARIWISATA_PERANCAK",
+            "district": "Jembrana",
+            "subdistrict": "Perancak",
+            "perda": "2023",
+        }
+    ],
+
+    "badung": [
+        {
+            "service": "_RDTR_51A1_KECAMATAN_KUTA_SELATAN_2023",
+            "district": "Badung",
+            "subdistrict": "Kuta Selatan",
+            "perda": "2023",
+        },
+        {
+            "service": "_RDTR_51A3_KECAMATAN_KUTA_2023",
+            "district": "Badung",
+            "subdistrict": "Kuta",
+            "perda": "2023",
+        },
+        {
+            "service": "_RDTR_51A4_KECAMATAN_KUTA_UTARA",
+            "district": "Badung",
+            "subdistrict": "Kuta Utara",
+            "perda": "2023",
+        },
+        {
+            "service": "_RDTR_51A6_WILAYAH_PERENCANAAN_MENGWI_2023",
+            "district": "Badung",
+            "subdistrict": "Mengwi",
+            "perda": "2023",
+        }
+    ],
+
+    "gianyar": [
+        {
+            "service": "_RDTR_51B1_KECAMATAN_UBUD",
+            "district": "Gianyar",
+            "subdistrict": "Ubud",
+            "perda": "2023",
+        },
+        {
+            "service": "_RDTR_51B6_KECAMATAN_PAYANGAN",
+            "district": "Gianyar",
+            "subdistrict": "Payangan",
+            "perda": "2023",
+        },
+        {
+            "service": "_RDTR_51B7_KECAMATAN_SUKAWATI",
+            "district": "Gianyar",
+            "subdistrict": "Sukawati",
+            "perda": "2023",
+        },
+        {
+            "service": "_RDTR_51C2_KECAMATAN_TEGALLALANG",
+            "district": "Gianyar",
+            "subdistrict": "Tegallalang",
+            "perda": "2023",
+        },
+        {
+            "service": "_RDTR_51C7_KECAMATAN_GIANYAR",
+            "district": "Gianyar",
+            "subdistrict": "Gianyar",
+            "perda": "2023",
+        },
+        {
+            "service": "_RDTR_51C8_KECAMATAN_BLAHBATUH",
+            "district": "Gianyar",
+            "subdistrict": "Blahbatuh",
+            "perda": "2023",
+        },
+        {
+            "service": "_RDTR_51D1_KECAMATAN_TAMPAKSIRING",
+            "district": "Gianyar",
+            "subdistrict": "Tampaksiring",
+            "perda": "2023",
+        }
+    ],
     "tabanan": [
         {
             "service": "_RDTR_51B9_KAWASAN_PERKOTAAN_TABANAN",
@@ -271,7 +430,7 @@ async def scrape_layer(layer: dict, dry_run: bool, db_pool) -> int:
 
 
 async def main(districts: list[str], dry_run: bool):
-    db_url = "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag"
+    db_url = "postgresql://nuzantara:nuzantara_local_2024@localhost:5432/nuzantara"
 
     if dry_run:
         logger.info("DRY RUN mode — no DB writes")
@@ -297,7 +456,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--district",
         default="all",
-        choices=["tabanan", "denpasar", "all"],
+        choices=["badung", "gianyar", "tabanan", "denpasar", "bangli", "buleleng", "karangasem", "jembrana", "all"],
         help="Which district to scrape",
     )
     args = parser.parse_args()
