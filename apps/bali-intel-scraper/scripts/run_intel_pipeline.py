@@ -1078,10 +1078,18 @@ IMPORTANT:
         )
 
         if result.returncode != 0:
-            self.log(f'Image generation failed: {result.stderr[:300]}', 'ERROR')
-            if result.stdout:
-                self.log(f'stdout: {result.stdout[-300:]}')
-            self.update_step_status('8_images', 'failed', {'error': result.stderr[:300]})
+            stderr_full = result.stderr
+            stdout_full = result.stdout
+            # If Chrome CDP is not running (nighttime, Mac asleep), treat as skipped
+            cdp_error = 'Failed to connect to Chrome via CDP' in stderr_full or 'connect_over_cdp' in stderr_full
+            if cdp_error:
+                self.log('Chrome not running with CDP — images skipped (expected during nightly run)', 'WARN')
+                self.update_step_status('8_images', 'skipped', {'reason': 'chrome_not_running'})
+                return True
+            self.log(f'Image generation failed (exit {result.returncode}): {stderr_full[-500:]}', 'ERROR')
+            if stdout_full:
+                self.log(f'stdout: {stdout_full[-300:]}')
+            self.update_step_status('8_images', 'failed', {'error': stderr_full[-500:]})
             return self.config.get('continue_on_error', False)
 
         # Reload state (image generator updates it with image_path/image_url)
