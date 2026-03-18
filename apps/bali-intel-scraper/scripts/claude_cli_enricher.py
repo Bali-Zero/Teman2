@@ -16,7 +16,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 
-ENRICHMENT_PROMPT_TEMPLATE = """Analyze this article and provide structured enrichment:
+ENRICHMENT_PROMPT_TEMPLATE = """You are a senior editor at Bali Zero, a business consultancy for foreigners in Bali/Indonesia.
+
+Enrich this article for our intelligence news room. Write in English, editorial style.
 
 ARTICLE:
 Title: {title}
@@ -25,21 +27,36 @@ Category: {category}
 Published: {published_date}
 Content: {content}
 
-TASK:
-1. Executive Brief (max 200 words): High-level summary for decision-makers
-2. Key Facts (5-7 bullets): Core information extracted
-3. Actionable Insights (3-5 points): What readers should do with this information
-4. Legal Analysis (if applicable): Legal implications or compliance notes
-
 OUTPUT FORMAT (strict JSON only, no markdown):
 {{
-  "executive_brief": "...",
-  "key_facts": ["fact 1", "fact 2", "..."],
-  "insights": ["insight 1", "insight 2", "..."],
-  "legal_analysis": "..." 
+  "headline": "Punchy editorial headline (max 80 chars, no source name)",
+  "thirty_second_brief": {{
+    "what": "1 sentence: what happened",
+    "why_it_matters": "1 sentence: why it matters to expats/investors in Bali",
+    "who": "who is affected",
+    "risk_level": "low|medium|high"
+  }},
+  "the_facts": "3-5 paragraphs of pure journalism. Facts only, no opinion. 400-500 words.",
+  "bali_zero_take": "2-3 paragraphs: Bali Zero editorial perspective. What does this mean for our clients? 150-200 words.",
+  "in_practice": "Practical implications for expats/investors in Bali. Bullet-point style converted to prose. 150-200 words.",
+  "next_steps": "Concrete action items for readers. What should they do NOW? 100-150 words.",
+  "faq": [
+    {{"question": "...", "answer": "..."}},
+    {{"question": "...", "answer": "..."}}
+  ],
+  "metadata": {{
+    "suggested_slug": "url-friendly-slug-max-60-chars",
+    "tags": ["tag1", "tag2", "tag3"],
+    "priority": "high|medium|low",
+    "reading_time_minutes": 3
+  }}
 }}
 
-IMPORTANT: Output ONLY valid JSON, no explanations or markdown code blocks.
+RULES:
+- headline: never include the source name, make it punchy and specific
+- the_facts: journalism only, no Bali Zero branding, no "our clients"
+- bali_zero_take: this is where we add our expert spin
+- Output ONLY valid JSON, no explanations or markdown code blocks
 """
 
 
@@ -62,7 +79,7 @@ def enrich_article_claude_cli(article: Dict[str, Any]) -> Dict[str, Any]:
         source=article.get('source', 'Unknown'),
         category=article.get('category', 'general'),
         published_date=article.get('published_date', 'Unknown'),
-        content=article.get('content', '')[:2000]  # Limit content length
+        content=article.get('content', '')[:4000]  # Enough for quality enrichment
     )
     
     try:
