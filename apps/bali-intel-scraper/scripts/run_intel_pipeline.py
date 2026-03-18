@@ -1071,8 +1071,10 @@ IMPORTANT:
         # Save current state so the image generator can read articles
         self.save_state()
 
+        # Pass --headless so the Playwright fallback runs without display (nightly cron).
+        # When Chrome CDP is available (manual run / desktop session), it takes priority anyway.
         result = subprocess.run(
-            [sys.executable, str(script), str(self.state_file)],
+            [sys.executable, str(script), str(self.state_file), '--headless'],
             capture_output=True, text=True, timeout=1800,  # 30min for ~15 images × 90s each
             cwd=str(self.script_dir),
         )
@@ -1080,12 +1082,6 @@ IMPORTANT:
         if result.returncode != 0:
             stderr_full = result.stderr
             stdout_full = result.stdout
-            # If Chrome CDP is not running (nighttime, Mac asleep), treat as skipped
-            cdp_error = 'Failed to connect to Chrome via CDP' in stderr_full or 'connect_over_cdp' in stderr_full
-            if cdp_error:
-                self.log('Chrome not running with CDP — images skipped (expected during nightly run)', 'WARN')
-                self.update_step_status('8_images', 'skipped', {'reason': 'chrome_not_running'})
-                return True
             self.log(f'Image generation failed (exit {result.returncode}): {stderr_full[-500:]}', 'ERROR')
             if stdout_full:
                 self.log(f'stdout: {stdout_full[-300:]}')
