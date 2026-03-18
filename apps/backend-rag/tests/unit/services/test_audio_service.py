@@ -119,12 +119,14 @@ async def test_transcribe_audio_exception_closes_file():
     error = RuntimeError("api error")
     service = _build_service(openai_key="test-key", openai_client=_make_openai_client(error=error))
 
-    mock_file = MagicMock()
-    with patch("builtins.open", return_value=mock_file):
+    m = mock_open()
+    with patch("builtins.open", m):
         with pytest.raises(RuntimeError, match="api error"):
             await service.transcribe_audio("/path/to/audio.mp3")
 
-    mock_file.close.assert_called_once()
+    # The `with open(...)` context manager calls __exit__ on exception,
+    # guaranteeing the file handle is released even when the API raises.
+    m.return_value.__exit__.assert_called_once()
 
 
 @pytest.mark.asyncio
