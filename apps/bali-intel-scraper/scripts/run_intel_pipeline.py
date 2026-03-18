@@ -1046,7 +1046,8 @@ IMPORTANT:
             return None
 
     def step_images(self) -> bool:
-        """Step 8: Generate images with Gemini Imagen 3 via browser automation"""
+        """Step 8: Generate cover images via ComfyUI/Flux (local, no browser needed).
+        Only processes articles that were actually published (have _published_item_id)."""
         self.log('Generating images...')
 
         if self.config.get('skip_images'):
@@ -1054,34 +1055,39 @@ IMPORTANT:
             self.update_step_status('8_images', 'skipped', {'reason': 'config'})
             return True
 
-        # Check published articles exist
-        # Now it takes from enriched list, but ideally after publishing
-        enriched = [a for a in self.state.get('articles', []) if a.get('enrichment')]
-        if not enriched:
-            self.log('No enriched articles for image generation', 'WARN')
-            self.update_step_status('8_images', 'skipped', {'reason': 'no_enriched_articles'})
+        # Only generate for articles that were actually published
+        published = [a for a in self.state.get('articles', []) if a.get('_published_item_id') and a.get('enrichment')]
+        if not published:
+            self.log('No published articles for image generation', 'WARN')
+            self.update_step_status('8_images', 'skipped', {'reason': 'no_published_articles'})
             return True
 
-        script = self.script_dir / 'gemini_image_generator.py'
+        self.log(f'Generating images for {len(published)} published articles')
+
+        # Prefer ComfyUI/Flux (local, no browser, always works)
+        script = self.script_dir / 'comfyui_image_generator.py'
         if not script.exists():
-            self.log('gemini_image_generator.py not found', 'WARN')
+            self.log('comfyui_image_generator.py not found — skipping images', 'WARN')
             self.update_step_status('8_images', 'skipped', {'reason': 'script_missing'})
             return True
 
         # Save current state so the image generator can read articles
         self.save_state()
 
-        # Pass --headless so the Playwright fallback runs without display (nightly cron).
-        # When Chrome CDP is available (manual run / desktop session), it takes priority anyway.
         result = subprocess.run(
-            [sys.executable, str(script), str(self.state_file), '--headless'],
-            capture_output=True, text=True, timeout=1800,  # 30min for ~15 images × 90s each
+            [sys.executable, str(script), str(self.state_file)],
+            capture_output=True, text=True, timeout=1800,  # 30min max (~2min/image × 15)
             cwd=str(self.script_dir),
         )
 
         if result.returncode != 0:
             stderr_full = result.stderr
             stdout_full = result.stdout
+            # ComfyUI not running is expected — treat as skipped, not failed
+            if 'ComfyUI not running' in stderr_full or 'Connection refused' in stderr_full:
+                self.log('ComfyUI not running — images skipped', 'WARN')
+                self.update_step_status('8_images', 'skipped', {'reason': 'comfyui_not_running'})
+                return True
             self.log(f'Image generation failed (exit {result.returncode}): {stderr_full[-500:]}', 'ERROR')
             if stdout_full:
                 self.log(f'stdout: {stdout_full[-300:]}')
