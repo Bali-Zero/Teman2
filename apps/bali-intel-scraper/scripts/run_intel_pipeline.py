@@ -46,7 +46,7 @@ PIPELINE_STEPS = [
     '5_seo',             # Gemini SEO optimization
     '6_approval',        # Telegram notification + review file
     '7_publishing',
-    '8_images'           # Gemini Imagen 3 cover images (spostato dopo publishing)
+    '8_images'           # Cover images: ComfyUI/Flux local (fallback: Pollinations.ai)
 ]
 
 class IntelPipeline:
@@ -1083,11 +1083,6 @@ IMPORTANT:
         if result.returncode != 0:
             stderr_full = result.stderr
             stdout_full = result.stdout
-            # ComfyUI not running is expected — treat as skipped, not failed
-            if 'ComfyUI not running' in stderr_full or 'Connection refused' in stderr_full:
-                self.log('ComfyUI not running — images skipped', 'WARN')
-                self.update_step_status('8_images', 'skipped', {'reason': 'comfyui_not_running'})
-                return True
             self.log(f'Image generation failed (exit {result.returncode}): {stderr_full[-500:]}', 'ERROR')
             if stdout_full:
                 self.log(f'stdout: {stdout_full[-300:]}')
