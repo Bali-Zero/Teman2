@@ -210,10 +210,11 @@ def main():
     state_file = Path(sys.argv[1])
     state = json.loads(state_file.read_text())
     articles = state.get("articles", [])
-    enriched = [a for a in articles if a.get("enrichment")]
+    # Only generate covers for articles that were actually published
+    targets = [a for a in articles if a.get("_published_item_id") and a.get("enrichment")]
 
-    if not enriched:
-        print("No enriched articles", file=sys.stderr)
+    if not targets:
+        print("No published articles with enrichment — nothing to do", file=sys.stderr)
         sys.exit(0)
 
     if not check_comfyui():
@@ -224,7 +225,7 @@ def main():
     output_dir.mkdir(exist_ok=True)
     generated = 0
 
-    for i, art in enumerate(enriched):
+    for i, art in enumerate(targets):
         enr = art.get("enrichment", {})
         title = enr.get("headline", art.get("title", ""))
         category = art.get("category", "general")
@@ -233,8 +234,9 @@ def main():
         from bz_image_style import build_cover_prompt
         prompt = build_cover_prompt(title, category)
 
-        img_path = output_dir / f"cover_{i+1:03d}.png"
-        print(f"\n[{i+1}/{len(enriched)}] {title[:60]}...", file=sys.stderr)
+        item_id = art.get("_published_item_id", f"article_{i}")
+        img_path = output_dir / f"cover_{item_id}.png"
+        print(f"\n[{i+1}/{len(targets)}] {title[:60]}...", file=sys.stderr)
 
         # First image takes ~5min (model load), subsequent ~30s
         img_timeout = 600 if i == 0 else 180
@@ -248,7 +250,7 @@ def main():
 
     # Update state file
     state_file.write_text(json.dumps(state, ensure_ascii=False, indent=2))
-    print(f"\nGenerated {generated}/{len(enriched)} cover images", file=sys.stderr)
+    print(f"\nGenerated {generated}/{len(targets)} cover images", file=sys.stderr)
 
 
 if __name__ == "__main__":
