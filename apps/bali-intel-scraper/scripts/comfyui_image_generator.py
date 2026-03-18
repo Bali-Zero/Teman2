@@ -269,8 +269,10 @@ def main():
         category = art.get("category", "general")
 
         # Build editorial prompt using Bali Zero brand style
+        # Pass summary so Claude can generate symbolic (not literal) visuals
         from bz_image_style import build_cover_prompt
-        prompt = build_cover_prompt(title, category)
+        summary = enr.get("the_facts", enr.get("bali_zero_take", ""))
+        prompt = build_cover_prompt(title, category, summary=summary or None)
 
         item_id = art.get("_published_item_id", f"article_{i}")
         img_path = output_dir / f"cover_{item_id}.png"
