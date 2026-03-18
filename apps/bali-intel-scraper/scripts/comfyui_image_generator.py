@@ -2,6 +2,7 @@
 """
 ComfyUI Flux Image Generator — replaces gemini_image_generator.py
 Generates cover images via ComfyUI API (localhost:8000) using Flux.1 Dev Q8.
+Falls back to Pollinations.ai (free, no auth) if ComfyUI is unavailable.
 Used by both intel scraper (step 8) and war-room (step 3).
 """
 import json
@@ -10,10 +11,12 @@ import time
 import uuid
 import urllib.request
 import urllib.error
+import urllib.parse
 from pathlib import Path
 from typing import Optional
 
 COMFYUI_URL = "http://127.0.0.1:8000"
+POLLINATIONS_URL = "https://image.pollinations.ai/prompt"
 
 # Flux.1 Dev GGUF workflow — minimal text-to-image
 WORKFLOW_TEMPLATE = {
@@ -197,6 +200,39 @@ def generate_image(prompt: str, output_path: Path,
     return False
 
 
+# ── Pollinations.ai fallback ──
+
+def generate_image_pollinations(prompt: str, output_path: Path,
+                                width: int = 1200, height: int = 630) -> bool:
+    """Fallback: generate via Pollinations.ai (free, no auth).
+    Tries each available model in order until one succeeds.
+    Used when ComfyUI is not available (e.g. machine off, cold start)."""
+    # Models in preference order (quality → speed)
+    models = ["sana", "turbo", "zimage"]
+    encoded = urllib.parse.quote(prompt)
+    seed = int(time.time()) % 99999
+
+    for model in models:
+        url = f"{POLLINATIONS_URL}/{encoded}?width={width}&height={height}&seed={seed}&nologo=true&model={model}"
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "BaliZero-IntelScraper/1.0"})
+            resp = urllib.request.urlopen(req, timeout=90)
+            if resp.status != 200:
+                print(f"  Pollinations [{model}]: HTTP {resp.status}", file=sys.stderr)
+                continue
+            data = resp.read()
+            if len(data) < 5000:
+                print(f"  Pollinations [{model}]: response too small ({len(data)} bytes)", file=sys.stderr)
+                continue
+            output_path.write_bytes(data)
+            print(f"  Saved via Pollinations [{model}]: {output_path} ({len(data) // 1024}KB)", file=sys.stderr)
+            return True
+        except Exception as e:
+            print(f"  Pollinations [{model}] error: {e}", file=sys.stderr)
+
+    return False
+
+
 # ── CLI entrypoint for intel scraper step 8 ──
 def main():
     """
@@ -217,9 +253,11 @@ def main():
         print("No published articles with enrichment — nothing to do", file=sys.stderr)
         sys.exit(0)
 
-    if not check_comfyui():
-        print("ComfyUI not running on port 8000", file=sys.stderr)
-        sys.exit(1)
+    use_comfyui = check_comfyui()
+    if use_comfyui:
+        print("ComfyUI available — using local Flux", file=sys.stderr)
+    else:
+        print("ComfyUI not running — falling back to Pollinations.ai", file=sys.stderr)
 
     output_dir = state_file.parent / "images"
     output_dir.mkdir(exist_ok=True)
@@ -238,10 +276,19 @@ def main():
         img_path = output_dir / f"cover_{item_id}.png"
         print(f"\n[{i+1}/{len(targets)}] {title[:60]}...", file=sys.stderr)
 
-        # First image takes ~5min (model load), subsequent ~30s
-        img_timeout = 600 if i == 0 else 180
-        if generate_image(prompt, img_path, width=1200, height=630, timeout=img_timeout):
+        if use_comfyui:
+            # First image takes ~5min (model load), subsequent ~30s
+            img_timeout = 600 if i == 0 else 180
+            ok = generate_image(prompt, img_path, width=1200, height=630, timeout=img_timeout)
+            if not ok:
+                print(f"  ComfyUI failed — trying Pollinations fallback", file=sys.stderr)
+                ok = generate_image_pollinations(prompt, img_path)
+        else:
+            ok = generate_image_pollinations(prompt, img_path)
+
+        if ok:
             art["image_path"] = str(img_path)
+            art["image_source"] = "comfyui" if use_comfyui else "pollinations"
             generated += 1
         else:
             print(f"  Failed — skipping", file=sys.stderr)
