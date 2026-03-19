@@ -13,6 +13,7 @@ Provides client-scoped data access for:
 
 import asyncio
 import io
+import json
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -1020,7 +1021,7 @@ class PortalService:
                     "name": c["company_name"],
                     "type": c["company_type"],
                     "role": c["role"],
-                    "is_primary": c["is_primary"],
+                    "isPrimary": c["is_primary"],
                     "ownership_pct": float(c["ownership_percentage"])
                     if c["ownership_percentage"]
                     else None,
@@ -1116,6 +1117,16 @@ class PortalService:
                 company_id,
             )
 
+            # Parse custom_fields safely
+            custom = company["custom_fields"] or {}
+            if isinstance(custom, str):
+                try:
+                    custom = json.loads(custom)
+                except Exception:
+                    custom = {}
+            if not isinstance(custom, dict):
+                custom = {}
+
             return {
                 "id": company["id"],
                 "name": company["company_name"],
@@ -1124,6 +1135,16 @@ class PortalService:
                 "npwp": company["npwp_company"],
                 "kbli": company["kbli_code"],
                 "status": company["status"],
+                "address": company["registered_address"],
+                "email": company["company_email"],
+                "phone": company["company_phone"],
+                "akta_no": company["akta_pendirian_no"],
+                "akta_date": company["akta_pendirian_date"].isoformat() if company["akta_pendirian_date"] else None,
+                "sk_number": company["sk_menhumkam_no"],
+                "tax_office": custom.get("tax_office"),
+                "company_status": custom.get("company_status"),
+                "investment_type": custom.get("investment_type"),
+                "authorized_capital": custom.get("authorized_capital"),
                 "ownership": {
                     "role": ownership["role"],
                     "is_primary": ownership["is_primary"],
