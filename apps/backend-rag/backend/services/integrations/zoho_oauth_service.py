@@ -151,7 +151,7 @@ class ZohoOAuthService:
 
         except httpx.RequestError as e:
             logger.error(f"Zoho OAuth network error: {type(e).__name__}: {e}")
-            raise ValueError(f"Network error during token exchange: {e}")
+            raise ValueError(f"Network error during token exchange: {e}") from e
 
     async def _get_account_info(self, access_token: str) -> dict[str, str]:
         """
@@ -304,6 +304,10 @@ class ZohoOAuthService:
             expires_at = row["token_expires_at"]
             now = datetime.now(timezone.utc)
 
+            # If token is marked as permanently invalid (> 6 months ago), skip refresh attempt
+            if expires_at <= now - timedelta(days=180):
+                raise ValueError("Zoho token invalidated — reconnect required at /admin/zoho/auth")
+
             # Check if token is expired or about to expire
             if expires_at <= now + self.TOKEN_EXPIRY_BUFFER:
                 logger.info(f"Refreshing Zoho token for user {user_id}")
@@ -353,7 +357,19 @@ class ZohoOAuthService:
 
             if "error" in token_data:
                 logger.error(f"Token refresh error: {token_data}")
-                raise ValueError(f"Refresh error: {token_data.get('error')}")
+                # Invalidate stored token so we stop retrying on every request
+                async with self.db_pool.acquire() as conn:
+                    await conn.execute(
+                        """
+                        UPDATE zoho_email_tokens
+                        SET token_expires_at = NOW() - INTERVAL '1 year',
+                            updated_at = NOW()
+                        WHERE user_id = $1 AND account_id = $2
+                        """,
+                        user_id,
+                        account_id,
+                    )
+                raise ValueError(f"Refresh error: {token_data.get('error')} — reconnect required")
 
             # Update stored token
             expires_at = datetime.now(timezone.utc) + timedelta(
