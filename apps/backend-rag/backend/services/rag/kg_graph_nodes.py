@@ -19,6 +19,7 @@ from typing import Any
 
 import asyncpg
 from langchain_core.messages import HumanMessage, SystemMessage
+from langsmith import traceable
 from prometheus_client import Counter, Histogram
 
 from backend.services.rag.kg_graph_state import KGAgentState
@@ -66,6 +67,7 @@ kg_checkpoint_operations_total = Counter(
 # ============================================================================
 
 
+@traceable(run_type="chain", name="KG: Understand Query", tags=["nuzantara", "kg"])
 async def understand_query_node(
     state: KGAgentState,
     llm: Any,  # LangChain LLM instance
@@ -372,6 +374,7 @@ def _get_entity_type_filter(entity_str: str) -> list[str] | None:
     return None
 
 
+@traceable(run_type="retriever", name="KG: Resolve Entities", tags=["nuzantara", "kg"])
 async def resolve_entities_node(
     state: KGAgentState,
     db_pool: asyncpg.Pool,
@@ -514,6 +517,7 @@ async def resolve_entities_node(
 # ============================================================================
 
 
+@traceable(run_type="retriever", name="KG: Graph Traversal", tags=["nuzantara", "kg"])
 async def traverse_graph_node(
     state: KGAgentState,
     db_pool: asyncpg.Pool,
@@ -659,6 +663,7 @@ async def traverse_graph_node(
 # ============================================================================
 
 
+@traceable(run_type="llm", name="KG: LLM Reasoning", tags=["nuzantara", "kg"])
 async def reason_over_graph_node(
     state: KGAgentState,
     llm: Any,
@@ -736,6 +741,7 @@ Provide:
 # ============================================================================
 
 
+@traceable(run_type="chain", name="KG: Synthesize Workflow", tags=["nuzantara", "kg"])
 async def synthesize_workflow_node(
     state: KGAgentState,
     db_pool: asyncpg.Pool,

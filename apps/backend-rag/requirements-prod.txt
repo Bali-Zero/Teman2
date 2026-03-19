@@ -102,3 +102,4 @@ apscheduler==3.10.4
 
 # Security: setuptools fixes for CVE-2024-6345, PYSEC-2025-49, PYSEC-2022-43012
 setuptools>=78.1.1
+langsmith>=0.4.0  # Observability: @traceable on RAG nodes + KG nodes

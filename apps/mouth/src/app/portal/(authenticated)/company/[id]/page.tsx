@@ -13,6 +13,12 @@ import {
   Clock,
   ChevronLeft,
   Shield,
+  MapPin,
+  Mail,
+  Phone,
+  Hash,
+  Briefcase,
+  FileText,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
@@ -126,6 +132,9 @@ export default function CompanyDetailPage() {
         )}
       </section>
 
+      {/* Business Details Section */}
+      <BusinessDetailsSection company={company} />
+
       {/* Licenses Section */}
       <section className="rounded-xl border p-6 space-y-4" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
         <div className="flex items-center gap-2">
@@ -209,6 +218,45 @@ export default function CompanyDetailPage() {
 }
 
 // Sub-components
+
+function BusinessDetailsSection({ company }: { company: PortalCompany }) {
+  const fields = [
+    { icon: Hash, label: "NIB", value: company.nib },
+    { icon: Hash, label: "NPWP", value: company.npwp },
+    { icon: Briefcase, label: "KBLI", value: company.kbli },
+    { icon: MapPin, label: "Registered Address", value: company.address },
+    { icon: Mail, label: "Email", value: company.email },
+    { icon: Phone, label: "Phone", value: company.phone },
+    { icon: FileText, label: "Akta No.", value: company.aktaNo ? `${company.aktaNo}${company.aktaDate ? ` (${new Date(company.aktaDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })})` : ""}` : undefined },
+    { icon: FileText, label: "SK Kemenkumham", value: company.skNumber },
+    { icon: MapPin, label: "Tax Office (KPP)", value: company.taxOffice },
+    { icon: Briefcase, label: "Investment Type", value: company.investmentType },
+    { icon: Briefcase, label: "Company Status", value: company.companyStatus },
+  ].filter((f) => f.value);
+
+  if (fields.length === 0) return null;
+
+  return (
+    <section className="rounded-xl border p-6 space-y-4" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
+      <div className="flex items-center gap-2">
+        <Building2 className="w-5 h-5" style={{ color: "var(--bz-accent-warm)" }} />
+        <h2 className="text-lg font-semibold">Business Details</h2>
+      </div>
+
+      <div className="grid gap-3">
+        {fields.map((field) => (
+          <div key={field.label} className="flex items-start gap-3 p-3 rounded-lg" style={{ background: "var(--bz-surface)" }}>
+            <field.icon className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: "var(--bz-accent-warm)" }} />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium" style={{ color: "var(--bz-text-3)" }}>{field.label}</p>
+              <p className="text-sm mt-0.5 break-words">{field.value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 function StatusBadge({ status }: { status: "active" | "pending" }) {
   const config: Record<string, { icon: React.ElementType; label: string; style: React.CSSProperties }> = {
