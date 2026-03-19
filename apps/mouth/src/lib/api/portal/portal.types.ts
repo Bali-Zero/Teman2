@@ -9,18 +9,18 @@
 
 export interface PortalDashboard {
   visa: {
-    status: 'active' | 'pending' | 'warning' | 'expired' | 'none';
+    status: "active" | "pending" | "warning" | "expired" | "none";
     type: string | null;
     expiryDate: string | null;
     daysRemaining: number | null;
   };
   company: {
-    status: 'active' | 'pending' | 'none';
+    status: "active" | "pending" | "none";
     primaryCompanyName: string | null;
     totalCompanies: number;
   };
   taxes: {
-    status: 'compliant' | 'attention' | 'overdue';
+    status: "compliant" | "attention" | "overdue";
     nextDeadline: string | null;
     daysToDeadline: number | null;
   };
@@ -38,7 +38,7 @@ export interface PortalAction {
   id: string;
   title: string;
   description: string;
-  priority: 'high' | 'medium' | 'low';
+  priority: "high" | "medium" | "low";
   type: string;
   href: string;
 }
@@ -50,7 +50,7 @@ export interface PortalAction {
 export interface VisaInfo {
   current: {
     type: string;
-    status: 'active' | 'pending' | 'expired';
+    status: "active" | "pending" | "expired";
     issueDate: string;
     expiryDate: string;
     daysRemaining: number;
@@ -65,7 +65,7 @@ export interface VisaHistoryItem {
   id: string;
   type: string;
   period: string;
-  status: 'completed' | 'expired';
+  status: "completed" | "expired";
 }
 
 // ============================================================================
@@ -76,7 +76,7 @@ export interface PortalCompany {
   id: number;
   name: string;
   type: string;
-  status: 'active' | 'pending';
+  status: "active" | "pending";
   isPrimary: boolean;
   address?: string;
   nib?: string;
@@ -100,7 +100,7 @@ export interface PortalCompany {
 export interface CompanyLicense {
   id: string;
   name: string;
-  status: 'active' | 'expiring' | 'expired';
+  status: "active" | "expiring" | "expired";
   expiryDate: string;
   daysRemaining?: number;
 }
@@ -109,7 +109,7 @@ export interface ComplianceItem {
   id: string;
   name: string;
   dueDate: string;
-  status: 'upcoming' | 'overdue' | 'completed';
+  status: "upcoming" | "overdue" | "completed";
 }
 
 // ============================================================================
@@ -118,7 +118,7 @@ export interface ComplianceItem {
 
 export interface TaxOverview {
   summary: {
-    status: 'compliant' | 'attention' | 'overdue';
+    status: "compliant" | "attention" | "overdue";
     totalDue: number;
     nextDeadline: string | null;
     daysToDeadline: number | null;
@@ -133,7 +133,7 @@ export interface TaxObligation {
   type: string;
   period: string;
   dueDate: string;
-  status: 'pending' | 'filed' | 'overdue';
+  status: "pending" | "filed" | "overdue";
   amount?: number;
 }
 
@@ -154,7 +154,7 @@ export interface PortalDocument {
   name: string;
   type: string;
   category: string;
-  status: 'verified' | 'pending' | 'expired';
+  status: "verified" | "pending" | "expired";
   uploadDate: string;
   expiryDate?: string;
   size: string;
@@ -168,7 +168,7 @@ export interface PortalDocument {
 export interface PortalMessage {
   id: string;
   content: string;
-  direction: 'client_to_team' | 'team_to_client';
+  direction: "client_to_team" | "team_to_client";
   sentBy: string;
   subject?: string;
   practiceId?: number;
@@ -215,7 +215,7 @@ export interface PortalProfile {
   passportNumber?: string;
   passportExpiry?: string;
   dateOfBirth?: string;
-  gender?: 'M' | 'F';
+  gender?: "M" | "F";
   address?: string;
   memberSince: string;
   assignedTo?: AssignedTeamMember;
@@ -275,7 +275,7 @@ export interface LKPMEmploymentData {
 
 export interface LKPMValidationAlert {
   field: string;
-  severity: 'red' | 'yellow' | 'green';
+  severity: "red" | "yellow" | "green";
   message: string;
   details?: string;
 }
@@ -284,7 +284,7 @@ export interface LKPMDraftSummary {
   id: number;
   quarter: string;
   year: number;
-  status: 'draft' | 'validated' | 'approved' | 'submitted';
+  status: "draft" | "validated" | "approved" | "submitted";
   realized_total: number;
   created_at: string;
   updated_at: string;
@@ -295,7 +295,7 @@ export interface LKPMDraft {
   client_id: number;
   quarter: string;
   year: number;
-  status: 'draft' | 'validated' | 'approved' | 'submitted';
+  status: "draft" | "validated" | "approved" | "submitted";
   realized: LKPMInvestmentRealization;
   cumulative: LKPMInvestmentRealization;
   employment: LKPMEmploymentData;
@@ -332,7 +332,7 @@ export interface LKPMBatchItem {
   company_name: string;
   quarter: string;
   year: number;
-  status: 'draft' | 'validated' | 'approved' | 'submitted';
+  status: "draft" | "validated" | "approved" | "submitted";
   realized_total: number;
   red_alerts: number;
   yellow_alerts: number;

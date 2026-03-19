@@ -235,7 +235,11 @@ export default function NewsRoomPage() {
     setPreviewLoading(true);
     try {
       const fullItem = await intelligenceApi.getPreview(item.type, item.id);
-      setPreviewItem(fullItem);
+      setPreviewItem({
+        ...fullItem,
+        id: fullItem.id ?? item.id,
+        type: fullItem.type ?? item.type,
+      });
     } catch (error) {
       logger.error(
         "Failed to load preview",
@@ -440,7 +444,10 @@ export default function NewsRoomPage() {
               border: "1px solid rgba(212,132,90,0.15)",
             }}
           >
-            <Sparkles className="w-8 h-8" style={{ color: "var(--bz-accent)" }} />
+            <Sparkles
+              className="w-8 h-8"
+              style={{ color: "var(--bz-accent)" }}
+            />
           </div>
           <h3
             className="text-[15px] font-semibold mb-1"
@@ -612,7 +619,10 @@ export default function NewsRoomPage() {
                     {item.source && item.source.startsWith("http")
                       ? (() => {
                           try {
-                            return new URL(item.source).hostname.replace("www.", "");
+                            return new URL(item.source).hostname.replace(
+                              "www.",
+                              "",
+                            );
                           } catch {
                             return item.source;
                           }
@@ -686,7 +696,8 @@ export default function NewsRoomPage() {
                 >
                   {publishingIds.has(item.id) ? (
                     <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Publishing...
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />{" "}
+                      Publishing...
                     </>
                   ) : (
                     <>
@@ -752,7 +763,10 @@ export default function NewsRoomPage() {
             <DialogTitle className="text-2xl">{previewItem?.title}</DialogTitle>
             <DialogDescription>
               {previewItem && (
-                <div className="flex items-center gap-4 text-sm mt-2" style={{ color: "var(--bz-text-2)" }}>
+                <div
+                  className="flex items-center gap-4 text-sm mt-2"
+                  style={{ color: "var(--bz-text-2)" }}
+                >
                   <span>
                     {new Date(previewItem.detected_at).toLocaleDateString()}
                   </span>
@@ -778,7 +792,10 @@ export default function NewsRoomPage() {
             </div>
           )}
           {previewItem?.content && (
-            <div className="prose prose-sm max-w-none mt-4" style={{ color: "var(--bz-text-1)" }}>
+            <div
+              className="prose prose-sm max-w-none mt-4"
+              style={{ color: "var(--bz-text-1)" }}
+            >
               <div
                 className="whitespace-pre-wrap"
                 dangerouslySetInnerHTML={renderMiniMarkdown(
@@ -806,7 +823,10 @@ export default function NewsRoomPage() {
                   color: "var(--bz-text-2)",
                 }}
               >
-                <MapPin className="w-3 h-3 mr-1 shrink-0" style={{ color: "var(--bz-text-3)" }} />
+                <MapPin
+                  className="w-3 h-3 mr-1 shrink-0"
+                  style={{ color: "var(--bz-text-3)" }}
+                />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
