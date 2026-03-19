@@ -274,10 +274,7 @@ class CalculatorTool(BaseTool):
 
             # Format nicely
             if isinstance(result, float):
-                if result == int(result):
-                    result = int(result)
-                else:
-                    result = round(result, 2)
+                result = int(result) if result == int(result) else round(result, 2)
 
             return (
                 f"Result: {result:,}" if isinstance(result, (int, float)) else f"Result: {result}"

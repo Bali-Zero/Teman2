@@ -638,7 +638,7 @@ async def get_client_companies(
     async with db.acquire() as conn:
         rows = await conn.fetch(
             """
-            SELECT 
+            SELECT
                 c.id as company_id, c.company_name, c.company_type, c.nib,
                 c.npwp_company, c.kbli_code, c.status, c.setup_progress,
                 ccl.id as link_id, ccl.role, ccl.is_primary, ccl.ownership_percentage,

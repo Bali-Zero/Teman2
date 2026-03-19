@@ -206,10 +206,7 @@ class QueryBuilder:
 
     def build(self) -> QueryResult:
         """Build the WHERE clause and return a QueryResult."""
-        if self._conditions:
-            where = "WHERE " + " AND ".join(self._conditions)
-        else:
-            where = ""
+        where = "WHERE " + " AND ".join(self._conditions) if self._conditions else ""
         return QueryResult(
             where_clause=where,
             params=list(self._params),

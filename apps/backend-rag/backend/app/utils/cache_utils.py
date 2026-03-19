@@ -91,8 +91,8 @@ def cached(
 
 
 def cached_sync(
-    ttl: int = 300,
-    key_prefix: str = "",
+    _ttl: int = 300,
+    _key_prefix: str = "",
     maxsize: int = 128,
 ) -> Any:
     """

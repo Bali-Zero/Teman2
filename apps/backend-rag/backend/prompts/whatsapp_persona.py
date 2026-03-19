@@ -24,7 +24,8 @@ def _load_full_pricing() -> str:
     try:
         if not pricing_file.exists():
             return ""
-        data = json.load(open(pricing_file, encoding="utf-8"))
+        with open(pricing_file, encoding="utf-8") as f:
+            data = json.load(f)
         services = data.get("services", {})
 
         sections = []
@@ -74,7 +75,7 @@ def build_system_prompt(
     client_profile: dict | None = None,
     is_first_message: bool = False,
     detected_language: str | None = None,
-    time_of_day: str | None = None,
+    _time_of_day: str | None = None,
 ) -> str:
     """
     Build a dynamic system prompt for each WhatsApp message.

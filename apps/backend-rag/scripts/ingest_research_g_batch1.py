@@ -1,18 +1,17 @@
 import asyncio
 import logging
 import time
-import os
-from typing import Dict, Any
+
+# Carica variabili d'ambiente prima di tutto
+from pathlib import Path
+
 from dotenv import load_dotenv
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 
-# Carica variabili d'ambiente prima di tutto
-from pathlib import Path
 env_path = Path(__file__).parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
-from backend.app.core.config import settings
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("KBLI-Fusion-G1")
@@ -61,11 +60,11 @@ async def fuse_intelligence():
     # FORZATURA CREDENZIALI PRODUZIONE (Pragmatic Fix)
     qdr_url = "https://5575d2b7-d895-4697-86e5-5c7ceae3ca74.us-east4-0.gcp.cloud.qdrant.io:6333"
     qdr_api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.2GbFS6QDLq-6pbM9yrvhndsWwtEiCY0iueNvPNKjj1k"
-    
+
     logger.info("Connecting to production Qdrant Cloud...")
     qdrant = QdrantClient(url=qdr_url, api_key=qdr_api_key)
     collection = "kbli_2025_final"
-    
+
     # 0. Creazione indice se mancante
     try:
         qdrant.create_payload_index(
@@ -76,10 +75,10 @@ async def fuse_intelligence():
         logger.info("✅ Created keyword index for kode_kbli_2025")
     except Exception as e:
         logger.info(f"ℹ️ Index might already exist: {e}")
-    
+
     for code, intel in ENRICHED_DATA.items():
         logger.info(f"🚀 Fusing Intelligence for KBLI {code}...")
-        
+
         # 1. Find all points for this KBLI code
         search_result = qdrant.scroll(
             collection_name=collection,
@@ -89,16 +88,16 @@ async def fuse_intelligence():
             limit=10, # Potrebbero esserci più chunk per lo stesso codice
             with_payload=True
         )
-        
+
         points = search_result[0]
         if not points:
             logger.warning(f"⚠️ KBLI {code} not found in database. Skipping.")
             continue
-            
+
         for point in points:
             point_id = point.id
             existing_payload = point.payload
-            
+
             # 2. Prepare Enriched Payload (Flat)
             updated_payload = {
                 **existing_payload,
@@ -112,14 +111,14 @@ async def fuse_intelligence():
                 "evidence_score": 0.98,
                 "source": "Gemini 3 PRO Deep Research"
             }
-            
+
             # 3. Overwrite Payload
             qdrant.overwrite_payload(
                 collection_name=collection,
                 payload=updated_payload,
                 points=[point_id]
             )
-        
+
         logger.info(f"✅ KBLI {code} successfully enriched ({len(points)} chunks).")
 
 if __name__ == "__main__":

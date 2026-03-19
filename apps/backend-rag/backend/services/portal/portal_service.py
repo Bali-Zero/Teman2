@@ -928,10 +928,7 @@ class PortalService:
                 period = f"{start} - {end}" if start and end else start or end or "-"
 
                 # Map status to frontend expected values
-                if v["status"] == "completed":
-                    hist_status = "completed"
-                else:
-                    hist_status = "expired"
+                hist_status = "completed" if v["status"] == "completed" else "expired"
 
                 history.append(
                     {
@@ -1436,12 +1433,12 @@ class PortalService:
             # Check for duplicate file (same hash, same client, last 1 hour)
             duplicate = await conn.fetchrow(
                 """
-                SELECT id, file_name, created_at 
-                FROM documents 
-                WHERE client_id = $1 
-                AND file_name LIKE $2 
+                SELECT id, file_name, created_at
+                FROM documents
+                WHERE client_id = $1
+                AND file_name LIKE $2
                 AND created_at > NOW() - INTERVAL '1 hour'
-                ORDER BY created_at DESC 
+                ORDER BY created_at DESC
                 LIMIT 1
                 """,
                 client_id,
@@ -1596,10 +1593,10 @@ class PortalService:
                 await conn.execute(
                     """
                     INSERT INTO timeline_events (
-                        client_id, practice_id, event_type, title, 
+                        client_id, practice_id, event_type, title,
                         description, event_date, client_visible, color
                     )
-                    VALUES ($1, $2, 'document_received', 'Document received', 
+                    VALUES ($1, $2, 'document_received', 'Document received',
                             $3, NOW(), true, 'success')
                     """,
                     client_id,
@@ -2165,7 +2162,7 @@ Questa è una notifica automatica da Bali Zero CRM.
                 "timezone": str,
             }
 
-            for field, field_type in allowed_fields.items():
+            for field, _field_type in allowed_fields.items():
                 if field in preferences:
                     updates.append(f"{field} = ${param_idx}")
                     params.append(preferences[field])
@@ -2589,7 +2586,7 @@ Questa è una notifica automatica da Bali Zero CRM.
             # Get DB stats
             stats = await conn.fetchrow(
                 """
-                SELECT 
+                SELECT
                     COUNT(*) as total_docs,
                     COUNT(*) FILTER (WHERE storage_type = 'google_drive') as drive_uploads,
                     COUNT(*) FILTER (WHERE expiry_date IS NOT NULL) as with_expiry,

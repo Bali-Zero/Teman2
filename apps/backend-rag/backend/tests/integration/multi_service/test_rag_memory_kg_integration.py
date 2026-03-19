@@ -158,7 +158,6 @@ class TestRAGMemoryKGIntegration:
         self, mock_search_service, mock_db_pool, mock_episodic_memory
     ):
         """Test that RAG results create Episodic Memory events"""
-        query = "Ho completato la domanda per E33G"
         user_id = "marco@example.com"
 
         # Mock RAG response
@@ -233,7 +232,6 @@ class TestRAGMemoryKGIntegration:
     async def test_kg_entities_enhance_rag_search(self, mock_search_service, mock_db_pool):
         """Test that Knowledge Graph entities enhance RAG search queries"""
         query = "Informazioni su Marco Verdi"
-        user_id = "marco@example.com"
 
         # Mock KG entity lookup
         kg_entities = [
@@ -307,16 +305,13 @@ class TestRAGMemoryKGIntegration:
         self, mock_search_service, mock_db_pool, mock_memory_orchestrator
     ):
         """Test multi-turn conversation that updates Knowledge Graph incrementally"""
-        user_id = "marco@example.com"
         session_id = "test-session"
 
         # Turn 1: User mentions entity
         turn1_query = "Mi chiamo Marco Verdi"
-        turn1_response = "Ciao Marco! Piacere di conoscerti."
 
         # Turn 2: User mentions relationship
         turn2_query = "Voglio aprire una PT PMA"
-        turn2_response = "Ti aiuto con la PT PMA!"
 
         # Mock KG updates
         with patch("backend.services.knowledge_graph.pipeline.KGPipeline") as mock_kg:

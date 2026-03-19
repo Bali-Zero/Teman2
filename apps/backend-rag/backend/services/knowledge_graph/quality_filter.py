@@ -272,10 +272,7 @@ class KGQualityFilter:
                     return False
 
         # Check for OCR errors (contains ! or weird characters)
-        if re.search(r"[!@#$%^&*()\[\]{}|\\<>]", name):
-            return False
-
-        return True
+        return not re.search(r"[!@#$%^&*()\[\]{}|\\<>]", name)
 
     def _correct_entity_type(self, entity: ExtractedEntity) -> ExtractedEntity:
         """Correct misclassified entity types"""
@@ -313,7 +310,7 @@ class KGQualityFilter:
             by_type.setdefault(entity.type, []).append(entity)
 
         merged = []
-        for entity_type, type_entities in by_type.items():
+        for _entity_type, type_entities in by_type.items():
             merged.extend(self._merge_entities_of_type(type_entities))
 
         return merged
@@ -450,7 +447,6 @@ class KGQualityFilter:
                     if targets:
                         # Use the first target (most specific)
                         target = targets[0]
-                        rel_id = f"{orphan.id}_{rel_type.value}_{target.id}"
 
                         # Check if relation already exists
                         exists = any(

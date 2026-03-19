@@ -132,7 +132,7 @@ async def test_discover_plugins_skips_private_files():
         with patch("backend.core.plugins.registry.importlib.import_module") as mock_import:
             mock_import.side_effect = Exception("Should not be called for private files")
 
-            result = await registry.discover_plugins(plugins_dir, package_prefix="", strict=False)
+            await registry.discover_plugins(plugins_dir, package_prefix="", strict=False)
 
             # Should not raise because private files are skipped before import
 

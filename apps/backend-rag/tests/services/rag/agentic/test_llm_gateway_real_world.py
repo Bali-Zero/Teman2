@@ -490,12 +490,6 @@ class TestHealthcareCompliance:
         gateway = healthcare_gateway
 
         # Test PHI (Protected Health Information) detection
-        phi_patterns = [
-            r"\d{3}-\d{2}-\d{4}",  # SSN pattern
-            r"\d{3}-\d{3}-\d{4}",  # Phone pattern
-            r"\b\d{1,2}/\d{1,2}/\d{4}\b",  # Date pattern
-            r"\b[A-Z]{2}\d{4}\b",  # Medical record pattern
-        ]
 
         def phi_compliant_call(*args, **kwargs):
             message = kwargs.get("message", "")

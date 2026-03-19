@@ -749,7 +749,7 @@ Jawaban (maksimal 3 paragraf, dalam Bahasa Indonesia):"""
         data = {
             "metadata": {
                 "total_samples": len(dataset),
-                "categories": list(set(s.category for s in dataset)),
+                "categories": list({s.category for s in dataset}),
                 "difficulty_distribution": {
                     "easy": len([s for s in dataset if s.difficulty == "easy"]),
                     "medium": len([s for s in dataset if s.difficulty == "medium"]),

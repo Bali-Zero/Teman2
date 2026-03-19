@@ -216,12 +216,12 @@ Return ONLY the JSON object, no other text."""
                 """)
 
                 await conn.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_kg_ingestion_status 
+                    CREATE INDEX IF NOT EXISTS idx_kg_ingestion_status
                     ON kg_ingestion_results(status)
                 """)
 
                 await conn.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_kg_ingestion_source 
+                    CREATE INDEX IF NOT EXISTS idx_kg_ingestion_source
                     ON kg_ingestion_results(source_id)
                 """)
 
@@ -596,11 +596,10 @@ Full Text:
         try:
             async with self.db_pool.acquire() as conn:
                 query = (
-                    """
+                    f"""
                     SELECT * FROM kg_ingestion_results
-                    WHERE started_at > NOW() - INTERVAL '%s hours'
+                    WHERE started_at > NOW() - INTERVAL '{hours} hours'
                 """
-                    % hours
                 )
 
                 if status:

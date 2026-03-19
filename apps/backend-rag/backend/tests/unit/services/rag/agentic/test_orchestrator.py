@@ -756,7 +756,7 @@ class TestProcessQueryBranches:
 
             orch.core.context_manager.get_full_context = mock_get_full_context
 
-            result = await orch.process_query("ciao", user_id="test")
+            await orch.process_query("ciao", user_id="test")
 
             # Verify summarization was called (triggered by apply_context_window_management)
             mock_cwm_instance.generate_summary.assert_called_once()
@@ -884,7 +884,7 @@ class TestProcessQueryAdvanced:
                 "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
             patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
-            patch("backend.services.rag.agentic.orchestrator.metrics_collector") as mock_metrics,
+            patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
                 "needs_summarization": False,
@@ -1026,7 +1026,7 @@ class TestProcessQueryAdvanced:
             orch = AgenticRAGOrchestrator(tools=tools, db_pool=mock_db_pool)
             orch.semantic_cache = None
 
-            result = await orch.process_query("What is KITAS?", user_id="test")
+            await orch.process_query("What is KITAS?", user_id="test")
 
             # Verify KG was queried
             mock_kg_instance.get_context_for_query.assert_called_once()
@@ -1595,7 +1595,7 @@ class TestStreamQuery:
                 "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
             patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
-            patch("backend.services.rag.agentic.orchestrator.metrics_collector") as mock_metrics,
+            patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
                 "needs_summarization": False,
@@ -1923,7 +1923,7 @@ class TestStreamQuery:
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
         ):
             tools = [MockTool()]
-            orch = AgenticRAGOrchestrator(tools=tools, db_pool=mock_db_pool)
+            AgenticRAGOrchestrator(tools=tools, db_pool=mock_db_pool)
 
             # Empty string user_id - validation happens BUT empty string is valid for anonymous
             # The validation at lines 856-858 only checks for non-string or len < 1
@@ -1972,7 +1972,7 @@ class TestOrchestratorKGToolInjection:
             mock_llm_instance = mock_llm.return_value
 
             # Create orchestrator with KG tool
-            orch = AgenticRAGOrchestrator(tools=[mock_kg_tool], db_pool=mock_db_pool)
+            AgenticRAGOrchestrator(tools=[mock_kg_tool], db_pool=mock_db_pool)
 
             # Verify LLM Gateway was injected into kg_builder
             assert mock_kg_tool.kg_builder.llm_gateway == mock_llm_instance
@@ -2087,7 +2087,7 @@ class TestMemoryLockTimeout:
             patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
             patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
             patch("backend.services.rag.agentic.orchestrator.ContextWindowManager"),
-            patch("backend.services.rag.agentic.orchestrator.metrics_collector") as mock_metrics,
+            patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
         ):
             mock_result = AsyncMock()
             mock_result.success = True
@@ -2412,7 +2412,7 @@ class TestEventValidationErrors:
             error_count = [0]
 
             async def mock_react_stream_with_errors(*args, **kwargs):
-                for i in range(15):  # More than max_event_errors (10)
+                for _i in range(15):  # More than max_event_errors (10)
                     error_count[0] += 1
                     # Yield dict that will cause exception during processing
                     yield {"type": "token", "data": object()}  # Non-serializable will cause issues
@@ -2749,7 +2749,7 @@ class TestSaveConversationMemoryEdgeCases:
             patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
             patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
             patch("backend.services.rag.agentic.orchestrator.ContextWindowManager"),
-            patch("backend.services.rag.agentic.orchestrator.metrics_collector") as mock_metrics,
+            patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
         ):
             mock_mem_instance = AsyncMock()
             mock_mem_instance.initialize = AsyncMock()
@@ -2784,9 +2784,9 @@ class TestStreamQueryEdgeCases:
             patch("backend.services.rag.agentic.orchestrator.IntentClassifier") as mock_ic,
             patch(
                 "backend.services.rag.agentic.orchestrator.EmotionalAttunementService"
-            ) as mock_es,
+            ),
             patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_spb,
-            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline") as mock_pipe,
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
             patch("backend.services.rag.agentic.orchestrator.LLMGateway") as mock_llm,
             patch("backend.services.rag.agentic.orchestrator.ReasoningEngine") as mock_re,
             patch("backend.services.rag.agentic.orchestrator.EntityExtractionService") as mock_ee,

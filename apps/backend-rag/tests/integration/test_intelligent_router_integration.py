@@ -89,7 +89,7 @@ class TestIntelligentRouterIntegration:
         with (
             patch("backend.services.intelligent_router.create_agentic_rag") as mock_create_rag,
             patch("backend.services.search_service.SearchService") as mock_search,
-            patch("backend.services.memory_service_postgres.MemoryServicePostgres") as mock_memory,
+            patch("backend.services.memory_service_postgres.MemoryServicePostgres"),
         ):
             mock_orchestrator = MagicMock()
             mock_orchestrator.process_query = AsyncMock(

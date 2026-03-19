@@ -20,7 +20,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 def parse_log_line(line: str) -> dict | None:
     """Parse a log line and extract relevant information."""
     # Pattern per log con timing
-    timing_pattern = r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}).*?(\d+\.\d+)ms"
     memory_pattern = r"(Memory|memory|orchestrator|Orchestrator)"
     error_pattern = r"(ERROR|WARNING|Failed|failed|unavailable|degraded)"
     lock_pattern = r"(lock|Lock|timeout|Timeout|contention)"

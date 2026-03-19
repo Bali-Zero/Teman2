@@ -4,7 +4,6 @@ Tests work session tracking functionality
 """
 
 import os
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

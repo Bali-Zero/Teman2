@@ -66,12 +66,12 @@ async def extract_blueprint_data(pdf_path):
 
     print(f"🧠 Extracting intelligence from {pdf_path.name}...")
     prompt = f"""
-    You are an expert Indonesian Regulatory Analyst. 
+    You are an expert Indonesian Regulatory Analyst.
     Analyze this KBLI Blueprint and extract structured information.
-    
+
     TEXT:
     {text[:30000]}
-    
+
     OUTPUT JSON FORMAT:
     {{
         "kbli_code": "string (e.g. 55110)",

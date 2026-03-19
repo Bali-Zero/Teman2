@@ -178,10 +178,7 @@ class GitHubPublisher:
         url = f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/contents/{path}"
 
         # Encode content to base64
-        if isinstance(content, str):
-            content_bytes = content.encode("utf-8")
-        else:
-            content_bytes = content
+        content_bytes = content.encode("utf-8") if isinstance(content, str) else content
         content_base64 = base64.b64encode(content_bytes).decode("utf-8")
         content_size_kb = len(content_bytes) / 1024
 

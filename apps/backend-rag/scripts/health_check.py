@@ -39,7 +39,7 @@ async def check_search_service_initialization() -> dict[str, Any]:
     try:
         from services.search_service import SearchService
 
-        service = SearchService()
+        SearchService()
         return {
             "status": "ok",
             "message": "SearchService initialized successfully",

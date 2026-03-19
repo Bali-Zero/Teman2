@@ -161,7 +161,7 @@ class TestGraphExtractorExtractFromText:
         mock_ai_client.generate_response.return_value = json.dumps(response_data)
 
         context = "This is about visa regulations"
-        result = await extractor.extract_from_text("Legal text", context=context)
+        await extractor.extract_from_text("Legal text", context=context)
 
         # Verify context was included in prompt
         call_kwargs = mock_ai_client.generate_response.call_args.kwargs
@@ -176,7 +176,7 @@ class TestGraphExtractorExtractFromText:
         # Create text longer than 2000 chars
         long_text = "A" * 3000
 
-        result = await extractor.extract_from_text(long_text)
+        await extractor.extract_from_text(long_text)
 
         # Verify truncation occurred
         call_kwargs = mock_ai_client.generate_response.call_args.kwargs
@@ -476,7 +476,7 @@ class TestGraphExtractorExtractFromText:
         mock_ai_client.generate_response.side_effect = Exception("Test error")
 
         with patch("backend.services.misc.graph_extractor.logger") as mock_logger:
-            result = await extractor.extract_from_text("Test text")
+            await extractor.extract_from_text("Test text")
 
             # Verify error was logged
             mock_logger.error.assert_called_once()
@@ -520,7 +520,7 @@ class TestGraphExtractorExtractFromText:
         response_data = {"entities": [], "relationships": []}
         mock_ai_client.generate_response.return_value = json.dumps(response_data)
 
-        result = await extractor.extract_from_text("Test text", context="")
+        await extractor.extract_from_text("Test text", context="")
 
         call_kwargs = mock_ai_client.generate_response.call_args.kwargs
         assert "Context: " in call_kwargs["prompt"]

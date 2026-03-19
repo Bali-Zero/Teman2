@@ -280,10 +280,7 @@ async def main():
     logger.info(f"Generating weekly report for last {args.days} days...")
     report = await generate_weekly_report(database_url, days=args.days)
 
-    if args.text:
-        output = format_report_text(report)
-    else:
-        output = json.dumps(report, indent=2, default=str)
+    output = format_report_text(report) if args.text else json.dumps(report, indent=2, default=str)
 
     if args.output:
         with open(args.output, "w") as f:

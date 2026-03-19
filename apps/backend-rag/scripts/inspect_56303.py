@@ -1,6 +1,8 @@
 import asyncio
-import asyncpg
 import json
+
+import asyncpg
+
 
 async def inspect():
     conn = await asyncpg.connect('postgresql://nuzantara:nuzantara_local_2024@localhost:5432/nuzantara')

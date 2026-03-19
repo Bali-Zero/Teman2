@@ -6,7 +6,6 @@ Processes backend/services/ directory systematically.
 
 import re
 from pathlib import Path
-from typing import List, Tuple
 
 
 def analyze_method_signature(line: str) -> dict:
@@ -14,14 +13,14 @@ def analyze_method_signature(line: str) -> dict:
     match = re.match(r'^\s+def ([a-z][a-z0-9_]*)\s*\((.*?)\)\s*(?:->.*?)?:', line)
     if not match:
         return None
-    
+
     method_name = match.group(1)
     params = match.group(2).strip()
-    
+
     # Skip __init__ and private methods
     if method_name.startswith('_'):
         return None
-    
+
     return {
         'name': method_name,
         'params': params,
@@ -114,46 +113,46 @@ def generate_docstring(method_name: str, params: str) -> str:
         obj = method_name[8:].replace('_', ' ')
         return f'"""Disable {obj}."""'
     elif 'status' in method_name:
-        return f'"""Return status information."""'
+        return '"""Return status information."""'
     elif 'stats' in method_name:
-        return f'"""Return statistics."""'
+        return '"""Return statistics."""'
     elif 'count' in method_name:
-        return f'"""Count items."""'
+        return '"""Count items."""'
     elif 'metrics' in method_name:
-        return f'"""Return metrics."""'
+        return '"""Return metrics."""'
     else:
         # Generic fallback
         readable = method_name.replace('_', ' ').capitalize()
         return f'"""{readable}."""'
 
 
-def process_file(file_path: Path, dry_run: bool = False) -> Tuple[int, List[str]]:
+def process_file(file_path: Path, dry_run: bool = False) -> tuple[int, list[str]]:
     """Process a single Python file and add missing docstrings."""
     try:
-        with open(file_path, 'r') as f:
+        with open(file_path) as f:
             lines = f.readlines()
     except Exception as e:
         return 0, [f"Error reading {file_path}: {e}"]
-    
+
     modified_lines = []
     changes = []
     i = 0
     added_count = 0
-    
+
     while i < len(lines):
         line = lines[i]
         modified_lines.append(line)
-        
+
         # Check if this is a public method definition
         method_info = analyze_method_signature(line)
-        
+
         if method_info:
             # Check if next non-empty line is a docstring
             j = i + 1
             while j < len(lines) and not lines[j].strip():
                 modified_lines.append(lines[j])
                 j += 1
-            
+
             if j < len(lines):
                 next_line = lines[j].strip()
                 if not (next_line.startswith('"""') or next_line.startswith("'''")):
@@ -163,12 +162,12 @@ def process_file(file_path: Path, dry_run: bool = False) -> Tuple[int, List[str]
                     modified_lines.append(f"{indent}{docstring}\n")
                     added_count += 1
                     changes.append(f"  L{i+1}: Added docstring to {method_info['name']}()")
-            
+
             i = j
             continue
-        
+
         i += 1
-    
+
     # Write back if changes were made
     if added_count > 0 and not dry_run:
         try:
@@ -176,32 +175,32 @@ def process_file(file_path: Path, dry_run: bool = False) -> Tuple[int, List[str]
                 f.writelines(modified_lines)
         except Exception as e:
             return 0, [f"Error writing {file_path}: {e}"]
-    
+
     return added_count, changes
 
 
 def main():
     """Main entry point."""
     import sys
-    
+
     dry_run = '--dry-run' in sys.argv
     base_dir = Path('backend/services')
-    
+
     if not base_dir.exists():
         print(f"Error: {base_dir} not found")
         return 1
-    
+
     total_added = 0
     total_files = 0
-    
+
     print(f"{'DRY RUN - ' if dry_run else ''}Processing backend/services/...\n")
-    
+
     for py_file in sorted(base_dir.rglob('*.py')):
         if '__pycache__' in str(py_file) or '__init__' in py_file.name:
             continue
-        
+
         added, changes = process_file(py_file, dry_run=dry_run)
-        
+
         if added > 0:
             total_files += 1
             total_added += added
@@ -211,12 +210,12 @@ def main():
                 print(change)
             if len(changes) > 5:
                 print(f"  ... and {len(changes) - 5} more")
-    
+
     print(f"\n{'Would add' if dry_run else 'Added'} {total_added} docstrings across {total_files} files")
-    
+
     if dry_run:
         print("\nRun without --dry-run to apply changes")
-    
+
     return 0
 
 

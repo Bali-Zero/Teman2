@@ -591,7 +591,7 @@ async def test_execute_with_special_characters_in_query(plugin_with_mock_service
     """Test execute handles special characters in query"""
     input_data = TeamSearchInput(query="O'Brien")
 
-    result = await plugin_with_mock_service.execute(input_data)
+    await plugin_with_mock_service.execute(input_data)
 
     plugin_with_mock_service.collaborator_service.search_members.assert_called_once_with("o'brien")
 
@@ -601,7 +601,7 @@ async def test_execute_with_unicode_query(plugin_with_mock_service):
     """Test execute handles unicode characters"""
     input_data = TeamSearchInput(query="José")
 
-    result = await plugin_with_mock_service.execute(input_data)
+    await plugin_with_mock_service.execute(input_data)
 
     plugin_with_mock_service.collaborator_service.search_members.assert_called_once_with("josé")
 
@@ -611,7 +611,7 @@ async def test_execute_with_numbers_in_query(plugin_with_mock_service):
     """Test execute handles numbers in query"""
     input_data = TeamSearchInput(query="Dev123")
 
-    result = await plugin_with_mock_service.execute(input_data)
+    await plugin_with_mock_service.execute(input_data)
 
     plugin_with_mock_service.collaborator_service.search_members.assert_called_once_with("dev123")
 

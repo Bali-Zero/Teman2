@@ -125,7 +125,7 @@ def mock_memory_orchestrator():
 def orchestrator(mock_search_service, mock_db_pool, mock_memory_orchestrator):
     """Create AgenticRAGOrchestrator with mocked dependencies"""
     with (
-        patch("backend.services.rag.agentic.create_agentic_rag") as mock_create,
+        patch("backend.services.rag.agentic.create_agentic_rag"),
         patch("backend.services.memory.MemoryOrchestrator", return_value=mock_memory_orchestrator),
     ):
         orchestrator = AgenticRAGOrchestrator(

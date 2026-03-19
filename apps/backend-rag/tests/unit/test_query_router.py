@@ -4,7 +4,6 @@ Tests query routing functionality
 """
 
 import os
-from pathlib import Path
 
 os.environ.setdefault("JWT_SECRET_KEY", "test_jwt_secret_key_for_testing_only_min_32_chars")
 

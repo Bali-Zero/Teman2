@@ -57,7 +57,7 @@ async def get_clients_from_db(pool, client_id: int | None = None) -> list[Client
         if client_id:
             rows = await conn.fetch(
                 """
-                SELECT 
+                SELECT
                     c.id,
                     c.email,
                     c.full_name,
@@ -70,7 +70,7 @@ async def get_clients_from_db(pool, client_id: int | None = None) -> list[Client
                     v.visa_type
                 FROM clients c
                 LEFT JOIN (
-                    SELECT DISTINCT ON (client_id) 
+                    SELECT DISTINCT ON (client_id)
                         client_id, expiry_date, document_type as visa_type
                     FROM client_documents
                     WHERE document_category = 'immigration'
@@ -84,7 +84,7 @@ async def get_clients_from_db(pool, client_id: int | None = None) -> list[Client
         else:
             rows = await conn.fetch(
                 """
-                SELECT 
+                SELECT
                     c.id,
                     c.email,
                     c.full_name,
@@ -97,7 +97,7 @@ async def get_clients_from_db(pool, client_id: int | None = None) -> list[Client
                     v.visa_type
                 FROM clients c
                 LEFT JOIN (
-                    SELECT DISTINCT ON (client_id) 
+                    SELECT DISTINCT ON (client_id)
                         client_id, expiry_date, document_type as visa_type
                     FROM client_documents
                     WHERE document_category = 'immigration'
@@ -153,10 +153,10 @@ async def run_expiry_check(
             for alert in alerts:
                 await conn.execute(
                     """
-                    INSERT INTO notification_alerts 
+                    INSERT INTO notification_alerts
                     (client_id, alert_type, status, message, email_subject, email_body, created_at)
                     VALUES ($1, $2, $3, $4, $5, $6, $7)
-                    ON CONFLICT (client_id, alert_type, DATE(created_at)) 
+                    ON CONFLICT (client_id, alert_type, DATE(created_at))
                     DO NOTHING
                     """,
                     alert.client_id,

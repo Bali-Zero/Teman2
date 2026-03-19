@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import json
 import logging
 import os
@@ -1623,10 +1624,8 @@ async def seed_visa_types():
         await conn.execute(
             "CREATE TABLE IF NOT EXISTS visa_types (code TEXT PRIMARY KEY, name TEXT, category TEXT, description TEXT, duration TEXT, cost_visa TEXT, requirements TEXT[], metadata JSONB, created_at TIMESTAMP DEFAULT NOW(), last_updated TIMESTAMP DEFAULT NOW());"
         )
-        try:
+        with contextlib.suppress(BaseException):
             await conn.execute("ALTER TABLE visa_types ADD COLUMN IF NOT EXISTS description TEXT;")
-        except:
-            pass
         for visa in VISA_TYPES:
             exists = await conn.fetchval("SELECT 1 FROM visa_types WHERE code = $1", visa["code"])
             if exists:

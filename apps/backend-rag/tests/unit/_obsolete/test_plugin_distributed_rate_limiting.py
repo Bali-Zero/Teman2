@@ -58,7 +58,7 @@ async def test_rate_limiting_with_redis():
     executor = PluginExecutor(redis_client=mock_redis)
     registry = PluginRegistry()
 
-    plugin = MockRateLimitedPlugin()
+    MockRateLimitedPlugin()
     await registry.register(MockRateLimitedPlugin)
 
     with patch("backend.core.plugins.executor.registry", registry):

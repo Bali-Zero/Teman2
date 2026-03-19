@@ -126,7 +126,7 @@ async def test_semantic_search_invalid_level(mock_search_service, mock_request):
     # Pydantic will validate level before reaching the endpoint
     # So we test that Pydantic validation works
     with pytest.raises(Exception):  # Pydantic validation error
-        invalid_query = SearchQuery(query="test", level=5, limit=5)  # level > 3
+        SearchQuery(query="test", level=5, limit=5)  # level > 3
 
 
 @pytest.mark.asyncio

@@ -21,16 +21,15 @@ import argparse
 import asyncio
 import logging
 import os
-import sys
 from pathlib import Path
 from typing import Any
 
 import asyncpg
 import httpx
+from google.oauth2 import service_account
+from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from google.oauth2.credentials import Credentials
-from google.oauth2 import service_account
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -133,7 +132,7 @@ FOLDER_CATEGORY_MAP = {
 
 async def get_drive_access_token(conn: asyncpg.Connection) -> str:
     """Get a valid Drive access token, refreshing if needed."""
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timedelta, timezone
 
     row = await conn.fetchrow(
         "SELECT access_token, refresh_token, expires_at FROM google_drive_tokens WHERE user_id = $1",
@@ -189,10 +188,10 @@ _oauth_token_expiry: float = 0.0
 
 def _get_oauth_access_token() -> str:
     """Get OAuth access token, refreshing if expired."""
-    import time
-    import urllib.request
-    import urllib.parse
     import json as _json
+    import time
+    import urllib.parse
+    import urllib.request
 
     global _oauth_access_token, _oauth_token_expiry
 
@@ -268,7 +267,6 @@ def list_folder(service: Any, folder_id: str) -> list[dict]:
 def read_text_file(service: Any, file_id: str) -> str | None:
     """Download and read a small text file from Drive."""
     try:
-        import io
         content = service.files().get_media(fileId=file_id).execute()
         if isinstance(content, bytes):
             return content.decode("utf-8", errors="replace").strip()
@@ -364,7 +362,7 @@ async def process_client(
 
     files = list_folder(service, folder_id)
     if not files:
-        logger.info(f"  ⚠️  Empty or inaccessible folder")
+        logger.info("  ⚠️  Empty or inaccessible folder")
         return result
 
     folders_count = sum(1 for f in files if f["mimeType"] == FOLDER_MIME)

@@ -423,19 +423,19 @@ import json
 
 class Test{context["module_name"].title()}:
     \"\"\"Comprehensive tests for {context["module_name"]}\"\"\"
-    
+
     # Setup and teardown
     @pytest.fixture
     def sample_data(self):
         \"\"\"Sample data for testing\"\"\"
         return {{}}
-    
+
     @pytest.fixture
     def mock_external_deps(self):
         \"\"\"Mock external dependencies\"\"\"
         with patch('module.external_dependency') as mock:
             yield mock
-    
+
     # Test new functions
     {self._generate_test_skeleton(changes, context)}
 ```
@@ -486,7 +486,7 @@ Return ONLY the complete Python test code. No explanations, no markdown formatti
         )
 
         # Module imports
-        module_name = context["module_name"]
+        context["module_name"]
         if context["imports"]:
             for imp in context["imports"][:5]:  # Limit to avoid too many imports
                 if not imp.startswith("unittest."):  # Skip test imports
@@ -526,7 +526,7 @@ from unittest.mock import MagicMock
 
 class Test{context["module_name"].title()}:
     \"\"\"Mock tests for {context["module_name"]}\"\"\"
-    
+
     def test_mock_placeholder(self):
         \"\"\"Placeholder test - LLM generation unavailable\"\"\"
         mock = MagicMock()

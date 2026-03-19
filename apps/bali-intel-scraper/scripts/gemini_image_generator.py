@@ -525,15 +525,30 @@ async def run(
 
     logger.info(f"Generating images for {len(enriched)} enriched articles")
 
-    # Launch browser via CDP
+    # Launch browser — prefer CDP (real Chrome, best compatibility), fallback to
+    # Playwright persistent context with copied Chrome profile (works headless/nightly)
     async with async_playwright() as p:
+        use_cdp = True
         try:
             browser = await p.chromium.connect_over_cdp("http://localhost:9222")
             context = browser.contexts[0] if browser.contexts else await browser.new_context()
+            logger.info("Connected to Chrome via CDP")
         except Exception as e:
-            logger.error(f"Failed to connect to Chrome via CDP: {e}")
-            logger.error("Make sure to run: ~/war_room/chrome-debug.sh first")
-            return 1
+            logger.warning(f"CDP not available ({e}) — falling back to Playwright persistent context")
+            use_cdp = False
+            # Copy / reuse Chrome profile so Google cookies are present
+            profile_dir = ensure_chrome_profile(force_refresh=refresh_profile)
+            context = await p.chromium.launch_persistent_context(
+                str(profile_dir),
+                headless=headless,
+                args=[
+                    "--no-sandbox",
+                    "--disable-blink-features=AutomationControlled",
+                    "--disable-dev-shm-usage",
+                    "--start-minimized",
+                ],
+                no_viewport=True,
+            )
 
         generated = 0
         failed = 0
@@ -571,6 +586,8 @@ async def run(
                 await asyncio.sleep(DELAY_BETWEEN_REQUESTS)
 
         await context.close()
+        if use_cdp:
+            await browser.close()
 
     # Save updated state back
     state_file.write_text(json.dumps(state, ensure_ascii=False, indent=2))

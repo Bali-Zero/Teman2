@@ -1,9 +1,11 @@
 import asyncio
-import logging
 import json
+import logging
 import time
 from pathlib import Path
+
 import asyncpg
+
 from backend.app.core.config import settings
 
 logging.basicConfig(level=logging.INFO)
@@ -66,7 +68,7 @@ async def sync_postgres():
             async with pool.acquire() as conn:
                 row = await conn.fetchrow("SELECT properties FROM kg_nodes WHERE entity_id = $1", entity_id)
                 current_props = json.loads(row['properties']) if row and row['properties'] else {}
-                
+
                 updated_props = {
                     **current_props,
                     "intel_2026": {
@@ -80,7 +82,7 @@ async def sync_postgres():
                     },
                     "is_enriched": True
                 }
-                
+
                 await conn.execute(
                     "UPDATE kg_nodes SET properties = $1, updated_at = NOW() WHERE entity_id = $2",
                     json.dumps(updated_props), entity_id
@@ -95,17 +97,17 @@ def sync_json():
     if not data_path.exists():
         logger.error(f"JSON source not found at {data_path.absolute()}!")
         return
-        
-    with open(data_path, 'r') as f:
+
+    with open(data_path) as f:
         full_data = json.load(f)
-        
+
     updated = 0
     for item in full_data['data']:
         code = item.get('kode_kbli_2025')
         if code in HOSPITALITY_INTELLIGENCE:
             item['intel_2026'] = HOSPITALITY_INTELLIGENCE[code]
             updated += 1
-            
+
     with open(data_path, 'w') as f:
         json.dump(full_data, f, indent=2)
     logger.info(f"✅ [JSON] Updated {updated} codes in KBLI_2025_FINAL_CLEAN.json")

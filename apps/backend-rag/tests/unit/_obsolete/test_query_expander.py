@@ -134,7 +134,7 @@ class TestQueryExpander:
         assert result["original"] == "investor visa"
         assert "expanded" in result
         assert "expansion_applied" in result
-        assert result["expansion_applied"] == True
+        assert result["expansion_applied"]
 
     @pytest.mark.asyncio
     @patch("backend.services.search.query_expander.settings")

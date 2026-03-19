@@ -88,10 +88,10 @@ def test_function_name_success_case():
     # Arrange
     input_data = ...
     expected = ...
-    
+
     # Act
     result = function_to_test(input_data)
-    
+
     # Assert
     assert result == expected
 
@@ -263,9 +263,9 @@ describe('ComponentName', () => {
   it('should handle user interaction', async () => {
     const user = userEvent.setup();
     render(<Component />);
-    
+
     await user.click(screen.getByRole('button'));
-    
+
     await waitFor(() => {
       expect(screen.getByText('Result')).toBeInTheDocument();
     });
@@ -273,9 +273,9 @@ describe('ComponentName', () => {
 
   it('should handle error case', async () => {
     vi.mocked(fetchData).mockRejectedValue(new Error('API Error'));
-    
+
     render(<Component />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('Error message')).toBeInTheDocument();
     });

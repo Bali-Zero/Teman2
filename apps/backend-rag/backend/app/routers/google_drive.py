@@ -138,6 +138,76 @@ async def oauth_callback(
             status_code=302,
         )
 
+    # Handle system user OAuth (state=system from admin auth endpoint)
+    if state == "system":
+        import os
+        from datetime import datetime, timedelta
+
+        import asyncpg
+        import httpx
+
+        from backend.app.core.config import settings
+
+        client_id = settings.google_drive_client_id
+        client_secret = settings.google_drive_client_secret
+        redirect_uri = settings.google_drive_redirect_uri
+
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(
+                    "https://oauth2.googleapis.com/token",
+                    data={
+                        "client_id": client_id,
+                        "client_secret": client_secret,
+                        "code": code,
+                        "grant_type": "authorization_code",
+                        "redirect_uri": redirect_uri,
+                    },
+                )
+
+                if resp.status_code != 200:
+                    logger.error(f"[GDRIVE] System token exchange failed: {resp.text}")
+                    return RedirectResponse(
+                        url=f"{frontend_url}/settings/integrations?error=system_token_failed",
+                        status_code=302,
+                    )
+
+                data = resp.json()
+                access_token = data["access_token"]
+                refresh_token = data.get("refresh_token")
+                expires_in = data.get("expires_in", 3600)
+
+            conn = await asyncpg.connect(os.environ["DATABASE_URL"])
+            try:
+                await conn.execute(
+                    """
+                    INSERT INTO google_drive_tokens (user_id, access_token, refresh_token, expires_at, updated_at)
+                    VALUES ('SYSTEM', $1, $2, $3, NOW())
+                    ON CONFLICT (user_id) DO UPDATE SET
+                        access_token = EXCLUDED.access_token,
+                        refresh_token = COALESCE(EXCLUDED.refresh_token, google_drive_tokens.refresh_token),
+                        expires_at = EXCLUDED.expires_at,
+                        updated_at = NOW()
+                    """,
+                    access_token,
+                    refresh_token,
+                    datetime.now() + timedelta(seconds=expires_in),
+                )
+            finally:
+                await conn.close()
+
+            logger.info("[GDRIVE] System user OAuth token renewed successfully")
+            return RedirectResponse(
+                url=f"{frontend_url}/settings/integrations?success=system_drive_connected",
+                status_code=302,
+            )
+        except Exception as e:
+            logger.error(f"[GDRIVE] System token exchange error: {e}")
+            return RedirectResponse(
+                url=f"{frontend_url}/settings/integrations?error=system_token_error",
+                status_code=302,
+            )
+
     # Extract user_id from state
     try:
         user_id, _ = state.split(":", 1)

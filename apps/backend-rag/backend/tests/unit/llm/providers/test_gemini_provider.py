@@ -136,7 +136,7 @@ class TestGeminiProvider:
             LLMMessage(role="system", content="System prompt"),
             LLMMessage(role="user", content="User query"),
         ]
-        response = await provider.generate(messages)
+        await provider.generate(messages)
 
         # Should pass context to service
         call_args = mock_service.generate_response.call_args
@@ -158,7 +158,7 @@ class TestGeminiProvider:
             LLMMessage(role="assistant", content="Assistant response"),
             LLMMessage(role="user", content="Second message"),
         ]
-        response = await provider.generate(messages)
+        await provider.generate(messages)
 
         # Should pass history to service
         call_args = mock_service.generate_response.call_args
@@ -176,7 +176,7 @@ class TestGeminiProvider:
         provider = GeminiProvider()
 
         messages = [LLMMessage(role="user", content="Query")]
-        response = await provider.generate(messages, context="Additional context")
+        await provider.generate(messages, context="Additional context")
 
         call_args = mock_service.generate_response.call_args
         assert "Additional context" in call_args.kwargs.get("context", "")

@@ -535,9 +535,8 @@ class AutonomousExecutor:
     async def _request_approval(self, plan: ExecutionPlan, step: ExecutionStep) -> None:
         """Send Telegram notification requesting human approval."""
         approval_key = f"{plan['plan_id']}_{step['step_id']}"
-        if not self._persistent:
-            if approval_key not in self._memory_approvals:
-                self._memory_approvals[approval_key] = None
+        if not self._persistent and approval_key not in self._memory_approvals:
+            self._memory_approvals[approval_key] = None
 
         message = (
             f"🚨 **Approval Required**\n\n"

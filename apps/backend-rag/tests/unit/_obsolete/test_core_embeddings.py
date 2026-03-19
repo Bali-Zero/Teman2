@@ -227,7 +227,7 @@ class TestEmbeddingsGeneratorSentenceTransformers:
         """Test fallback to OpenAI when Sentence Transformers fails"""
         mock_st.side_effect = Exception("Model load error")
 
-        with patch("openai.OpenAI") as mock_openai:
+        with patch("openai.OpenAI"):
             generator = EmbeddingsGenerator(
                 api_key="test-key", provider="sentence-transformers", settings=None
             )
@@ -238,7 +238,7 @@ class TestEmbeddingsGeneratorSentenceTransformers:
     def test_sentence_transformers_import_error_fallback(self):
         """Test fallback when sentence-transformers not installed"""
         with patch.dict("sys.modules", {"sentence_transformers": None}):
-            with patch("openai.OpenAI") as mock_openai:
+            with patch("openai.OpenAI"):
                 generator = EmbeddingsGenerator(
                     api_key="test-key", provider="sentence-transformers", settings=None
                 )

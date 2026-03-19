@@ -710,12 +710,7 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
             r"^(ok|bene|good|great|thanks|grazie|terima kasih|cool|wow|haha|wkwk|lol)$",
         ]
 
-        for pattern in casual_patterns:
-            if re.search(pattern, query_lower):
-                return True
-
-        # Default: If in doubt, use RAG.
-        return False
+        return any(re.search(pattern, query_lower) for pattern in casual_patterns)
 
     def get_casual_response(self, query: str, context: dict[str, Any] = None) -> str | None:
         """
@@ -1079,8 +1074,8 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
 
         # Format memory strictly
         facts = context.get("facts", [])
-        tasks = context.get("tasks", [])  # Assumptions: these might come from context enrichment
-        unread_items = context.get("unread", [])  # Assumption
+        context.get("tasks", [])  # Assumptions: these might come from context enrichment
+        context.get("unread", [])  # Assumption
 
         # Flatten context for the prompt
         context_str = f"Event Context: {event_context}"

@@ -148,7 +148,7 @@ class CRMQueryOptimizer:
 
         async with self.db_pool.acquire() as conn:
             query = """
-                SELECT 
+                SELECT
                     c.*,
                     COALESCE(
                         jsonb_agg(
@@ -188,21 +188,21 @@ class CRMQueryOptimizer:
         """
         async with self.db_pool.acquire() as conn:
             # Normalizza query per tsvector
-            ts_query = " & ".join(query.split())
+            " & ".join(query.split())
 
             # Cerca con tsvector se disponibile, altrimenti LIKE
             sql = """
                 WITH results AS (
-                    SELECT 
+                    SELECT
                         c.*,
-                        CASE 
+                        CASE
                             WHEN c.full_name ILIKE $1 THEN 3
                             WHEN c.email ILIKE $1 THEN 2
                             WHEN c.phone ILIKE $1 THEN 1
                             ELSE 0
                         END as relevance
                     FROM clients c
-                    WHERE 
+                    WHERE
                         c.full_name ILIKE $1
                         OR c.email ILIKE $1
                         OR c.phone ILIKE $1
@@ -237,7 +237,7 @@ class CRMQueryOptimizer:
         """
         async with self.db_pool.acquire() as conn:
             base_query = """
-                SELECT 
+                SELECT
                     status,
                     priority,
                     COUNT(*) as count,
@@ -292,7 +292,7 @@ class CRMQueryOptimizer:
             threshold = datetime.utcnow() + timedelta(days=days)
 
             query = """
-                SELECT 
+                SELECT
                     p.*,
                     c.full_name as client_name,
                     c.email as client_email,
@@ -301,16 +301,16 @@ class CRMQueryOptimizer:
                 FROM practices p
                 JOIN clients c ON c.id = p.client_id
                 JOIN practice_types pt ON pt.id = p.practice_type_id
-                WHERE 
+                WHERE
                     p.status NOT IN ('completed', 'cancelled')
                     AND (
                         p.expiry_date < NOW()
                         OR p.next_renewal_date < $1
                     )
-                ORDER BY 
-                    CASE 
-                        WHEN p.expiry_date < NOW() THEN 0 
-                        ELSE 1 
+                ORDER BY
+                    CASE
+                        WHEN p.expiry_date < NOW() THEN 0
+                        ELSE 1
                     END,
                     p.expiry_date ASC
             """

@@ -9,7 +9,6 @@ Tests all endpoints in backend/app/routers/ingest.py:
 """
 
 from io import BytesIO
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 
 import pytest
@@ -103,7 +102,7 @@ class TestUploadEndpoint:
     def test_upload_pdf_success(self, client, mock_ingestion_service, sample_pdf_content):
         """Test successful PDF upload and ingestion"""
         with (
-            patch("backend.app.routers.ingest.open", mock_open()) as mock_file,
+            patch("backend.app.routers.ingest.open", mock_open()),
             patch("backend.app.routers.ingest.os.remove") as mock_remove,
             patch("backend.app.routers.ingest.Path") as mock_path,
         ):
@@ -144,8 +143,8 @@ class TestUploadEndpoint:
     def test_upload_epub_success(self, client, mock_ingestion_service):
         """Test successful EPUB upload"""
         with (
-            patch("backend.app.routers.ingest.open", mock_open()) as mock_file,
-            patch("backend.app.routers.ingest.os.remove") as mock_remove,
+            patch("backend.app.routers.ingest.open", mock_open()),
+            patch("backend.app.routers.ingest.os.remove"),
             patch("backend.app.routers.ingest.Path") as mock_path,
         ):
             # Mock Path operations
@@ -251,8 +250,8 @@ class TestUploadEndpoint:
         mock_ingestion_service.ingest_book.side_effect = Exception("Processing failed")
 
         with (
-            patch("backend.app.routers.ingest.open", mock_open()) as mock_file,
-            patch("backend.app.routers.ingest.os.remove") as mock_remove,
+            patch("backend.app.routers.ingest.open", mock_open()),
+            patch("backend.app.routers.ingest.os.remove"),
             patch("backend.app.routers.ingest.Path") as mock_path,
         ):
             # Mock Path operations

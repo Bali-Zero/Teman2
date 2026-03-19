@@ -720,7 +720,7 @@ class TestComplexWorkflowSuccess:
                 interaction_ids.append(interaction_id)
 
             # Step 4: Store shared memory
-            memory_id = await conn.fetchval(
+            await conn.fetchval(
                 """
                 INSERT INTO shared_memory (
                     client_id, memory_type, content, tags, created_by, created_at, updated_at

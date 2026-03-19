@@ -77,7 +77,7 @@ class TestAgentsComprehensiveIntegration:
                 mock_search_instance = MagicMock()
                 mock_search.return_value = mock_search_instance
 
-                orchestrator = ClientJourneyOrchestrator(
+                ClientJourneyOrchestrator(
                     db_pool=db_pool, search_service=mock_search_instance
                 )
 
@@ -182,7 +182,7 @@ class TestAgentsComprehensiveIntegration:
                 mock_search_instance = MagicMock()
                 mock_search.return_value = mock_search_instance
 
-                monitor = ProactiveComplianceMonitor(db_pool=db_pool)
+                ProactiveComplianceMonitor(db_pool=db_pool)
 
                 # Create compliance alert
                 alert_id = await conn.fetchval(
@@ -261,7 +261,7 @@ class TestAgentsComprehensiveIntegration:
                 mock_search_instance = MagicMock()
                 mock_search.return_value = mock_search_instance
 
-                builder = KnowledgeGraphBuilder(
+                KnowledgeGraphBuilder(
                     db_pool=db_pool, search_service=mock_search_instance
                 )
 
@@ -347,7 +347,7 @@ class TestAgentsComprehensiveIntegration:
                 mock_ai_instance.generate_response = AsyncMock(return_value="Research results...")
                 mock_ai.return_value = mock_ai_instance
 
-                service = AutonomousResearchService(
+                AutonomousResearchService(
                     db_pool=db_pool, search_service=mock_search_instance, ai_client=mock_ai_instance
                 )
 
@@ -421,7 +421,7 @@ class TestAgentsComprehensiveIntegration:
                 )
                 mock_ai.return_value = mock_ai_instance
 
-                service = CrossOracleSynthesisService(
+                CrossOracleSynthesisService(
                     db_pool=db_pool, search_service=mock_search_instance, ai_client=mock_ai_instance
                 )
 

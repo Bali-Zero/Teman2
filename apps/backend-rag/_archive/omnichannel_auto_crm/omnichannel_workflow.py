@@ -1,13 +1,12 @@
 """
 Omnichannel Workflow Router - Business Intelligence & Actions
 """
-import json
 import logging
-from typing import List, Optional
-from datetime import datetime
-from pydantic import BaseModel
+
 from asyncpg import Pool
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+
 from backend.app.dependencies import get_database
 
 logger = logging.getLogger(__name__)
@@ -24,7 +23,7 @@ class StatusRequest(BaseModel):
 class NoteRequest(BaseModel):
     content: str
     author_id: str
-    author_name: Optional[str] = "Team Member"
+    author_name: str | None = "Team Member"
 
 # --- UTILS ---
 
@@ -39,7 +38,7 @@ async def ensure_schema(db: Pool):
                 ALTER TABLE conversations ADD COLUMN IF NOT EXISTS assigned_to VARCHAR(255);
                 ALTER TABLE conversations ADD COLUMN IF NOT EXISTS tags JSONB DEFAULT '[]'::jsonb;
                 ALTER TABLE conversations ADD COLUMN IF NOT EXISTS unread_count INTEGER DEFAULT 0;
-                
+
                 CREATE TABLE IF NOT EXISTS conversation_notes (
                     id SERIAL PRIMARY KEY,
                     conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
@@ -66,11 +65,11 @@ async def get_conversation_enrichment(id: int, db: Pool = Depends(get_database))
         conv = await conn.fetchrow("SELECT session_id, user_id FROM conversations WHERE id = $1", id)
         if not conv:
             raise HTTPException(status_code=404, detail="Conversation not found")
-        
+
         # Extract phone from session_id (wa_session_62xxx) or user_id
         session_id = conv["session_id"] or ""
         phone = session_id.replace("wa_session_", "").replace("tg_session_", "").replace("ig_session_", "")
-        
+
         # 2. Lookup in CRM
         # We try to match by phone or whatsapp
         client = await conn.fetchrow(
@@ -79,7 +78,7 @@ async def get_conversation_enrichment(id: int, db: Pool = Depends(get_database))
             "WHERE phone LIKE $1 OR whatsapp LIKE $1 OR phone LIKE $2 OR whatsapp LIKE $2 LIMIT 1",
             f"%{phone}%", phone[-8:] # Match last 8 digits for flexibility
         )
-        
+
         # 3. Lookup Practice/Deal info
         practices = []
         if client:
@@ -93,7 +92,7 @@ async def get_conversation_enrichment(id: int, db: Pool = Depends(get_database))
             practices = [dict(r) for r in practices_rows]
 
         return {
-            "exists_in_crm": True if client else False,
+            "exists_in_crm": bool(client),
             "profile": dict(client) if client else None,
             "practices": practices,
             "suggested_actions": ["Create Deal", "Assign to Sales"] if not client else ["Follow up on Practice"]

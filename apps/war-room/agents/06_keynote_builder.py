@@ -63,7 +63,7 @@ BD_Y, BD_H, BD_S = 550, 620, 22   # body Montserrat-Regular 22pt
 BD_Y_NOSUB        = 690            # 30px sotto fine headline (550+110+30)
 BD_Y_SUB          = 760            # 15px sotto subhead (680+65+15)
 
-LOGO = Path.home() / "war_room" / "assets" / "bz_logo_clear.png"
+LOGO = Path(__file__).parent.parent / "assets" / "bz_logo_clear.png"
 
 
 # -- PIL: genera sfondo -------------------------------------------------------

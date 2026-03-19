@@ -281,7 +281,7 @@ async def run_auto_practice_creator(db_pool) -> dict:
         async with db_pool.acquire() as conn:
             visas = await conn.fetch(
                 """
-                SELECT 
+                SELECT
                     vr.id as visa_record_id,
                     vr.client_id,
                     vr.visa_type,
