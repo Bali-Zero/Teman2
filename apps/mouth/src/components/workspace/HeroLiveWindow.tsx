@@ -30,7 +30,7 @@ export function HeroLiveWindow() {
   );
 
   const articles: (HeroArticle | undefined)[] =
-    data?.articles?.slice(0, 7) ?? Array(7).fill(undefined);
+    data?.articles?.slice(0, 4) ?? Array(4).fill(undefined);
   const [main, ...rest] = articles;
 
   return (
@@ -98,7 +98,7 @@ export function HeroLiveWindow() {
       <div
         className="absolute inset-0 grid gap-[2px]"
         style={{
-          gridTemplateColumns: "1.5fr 1fr 1fr",
+          gridTemplateColumns: "1.5fr 1fr",
           gridTemplateRows: "1fr 1fr 1fr",
           background: "rgba(0,0,0,0.3)",
         }}
@@ -109,7 +109,7 @@ export function HeroLiveWindow() {
           isMain
           style={{ gridRow: "1 / 4" }}
         />
-        {rest.slice(0, 6).map((article, i) => (
+        {rest.slice(0, 3).map((article, i) => (
           <HeroCard
             key={i}
             article={article}

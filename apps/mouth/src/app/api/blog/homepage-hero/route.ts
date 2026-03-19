@@ -38,11 +38,15 @@ export async function GET() {
 
     const pinnedSlugs = new Set(pinned.map((a) => a.slug));
 
+    const pinnedWithImage = pinned.filter((a) => a.coverImage);
+
     const fillers = articles
       .filter((a) => a.coverImage && !pinnedSlugs.has(a.slug))
-      .slice(0, 7 - pinned.length);
+      .slice(0, 4 - pinnedWithImage.length);
 
-    const heroArticles = [...pinned, ...fillers].slice(0, 7).map(toHeroItem);
+    const heroArticles = [...pinnedWithImage, ...fillers]
+      .slice(0, 4)
+      .map(toHeroItem);
 
     return NextResponse.json(
       { articles: heroArticles },
