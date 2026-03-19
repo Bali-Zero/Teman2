@@ -1345,6 +1345,22 @@ async def publish_staging_item(
                 extra={"type": type, "item_id": item_id},
             )
 
+        # Step 4b: Enqueue for post-processing (translate + image) — non-blocking
+        try:
+            async with _post_publish_lock:
+                if not any(item["slug"] == item_id for item in _post_publish_queue):
+                    _post_publish_queue.append({
+                        "slug": item_id,
+                        "category": category,
+                        "queued_at": datetime.utcnow().isoformat(),
+                    })
+            logger.info(
+                "📥 Enqueued for post-processing",
+                extra={"slug": item_id, "category": category},
+            )
+        except Exception as e:
+            logger.warning(f"Failed to enqueue post-processing (non-blocking): {e}")
+
         # Step 5: Update staging file with publish timestamp
         data["published_at"] = datetime.utcnow().isoformat()
         data["published_url"] = published_url
@@ -1387,6 +1403,59 @@ async def publish_staging_item(
             f"Publish failed: {e}", exc_info=True, extra={"type": type, "item_id": item_id}
         )
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+# ─── Post-publish queue ───────────────────────────────────────────────────────
+# In-memory queue (persists across requests, resets on deploy — acceptable for
+# this use case since the poller runs every 5 minutes and deploy is rare).
+_post_publish_queue: list[dict] = []
+_post_publish_lock = asyncio.Lock()
+
+
+@router.post("/api/intel/post-publish-queue")
+async def enqueue_post_publish(request: Request) -> dict:
+    """Internal: add a slug to the post-processing queue (translate + image)."""
+    body = await request.json()
+    slug = body.get("slug", "")
+    category = body.get("category", "business")
+    if not slug:
+        raise HTTPException(status_code=400, detail="slug required")
+    async with _post_publish_lock:
+        # avoid duplicates
+        if not any(item["slug"] == slug for item in _post_publish_queue):
+            _post_publish_queue.append({"slug": slug, "category": category, "queued_at": datetime.utcnow().isoformat()})
+    logger.info("📥 Post-publish queue: added", extra={"slug": slug, "category": category})
+    return {"ok": True, "slug": slug}
+
+
+@router.get("/api/intel/post-publish-queue/pending")
+async def get_pending_queue(x_api_key: str | None = None, request: Request = None) -> dict:
+    """Poller endpoint: returns pending slugs for post-processing."""
+    # Simple API key auth
+    api_key = (request.headers.get("X-API-Key") if request else None) or x_api_key
+    if api_key != "internal-scraper-key":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    async with _post_publish_lock:
+        pending = list(_post_publish_queue)
+    return {"pending": pending, "count": len(pending)}
+
+
+@router.post("/api/intel/post-publish-queue/done")
+async def mark_queue_done(request: Request) -> dict:
+    """Poller endpoint: mark slugs as processed and remove from queue."""
+    api_key = request.headers.get("X-API-Key")
+    if api_key != "internal-scraper-key":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    body = await request.json()
+    slugs = body.get("slugs", [])
+    async with _post_publish_lock:
+        global _post_publish_queue
+        _post_publish_queue = [item for item in _post_publish_queue if item["slug"] not in slugs]
+    logger.info("✅ Post-publish queue: marked done", extra={"slugs": slugs})
+    return {"ok": True, "removed": slugs}
+
+
+# ─── System metrics ───────────────────────────────────────────────────────────
 
 
 @router.get("/api/intel/metrics")
