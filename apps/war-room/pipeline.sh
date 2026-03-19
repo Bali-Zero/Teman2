@@ -198,6 +198,7 @@ log "━━━ FASE 3: GENERAZIONE IMMAGINI ComfyUI/Flux (T+05:00) ━━━"
 if ! $DRY_RUN; then
   $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/05_comfyui_images.py" \
     --slides "$OUTPUT/strategy/claude_slides.json" \
+    --topic  "$TOPIC" \
     --output "$OUTPUT/images/" \
     || log "⚠️  Immagini fallite — continuo con placeholder"
   log "✅ Step immagini completato"

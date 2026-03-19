@@ -14,11 +14,12 @@ import sys
 import argparse
 from pathlib import Path
 
-# Reuse the ComfyUI client from intel scraper
+# Reuse the ComfyUI/Pollinations client from intel scraper
 SCRIPT_DIR = Path(__file__).parent
 INTEL_SCRIPTS = SCRIPT_DIR.parent.parent / "bali-intel-scraper" / "scripts"
 sys.path.insert(0, str(INTEL_SCRIPTS))
-from comfyui_image_generator import check_comfyui, generate_image
+from comfyui_image_generator import check_comfyui, generate_image, generate_image_pollinations
+from bz_image_style import build_slide_prompt
 
 
 def generate_caption_ig(topic: str, slides: list, tone: str) -> str:
@@ -66,15 +67,9 @@ def main():
     output_dir = Path(args.output)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    if not check_comfyui():
-        print("ComfyUI not running — skipping image generation", file=sys.stderr)
-        # Still generate captions
-        caption_ig = generate_caption_ig(args.topic, slides, tone)
-        caption_x = generate_caption_x(args.topic, slides)
-        (output_dir / "caption_instagram.txt").write_text(caption_ig)
-        (output_dir / "caption_x.txt").write_text(caption_x)
-        print(f"Captions generated (no images — ComfyUI offline)", file=sys.stderr)
-        sys.exit(0)
+    use_comfyui = check_comfyui()
+    if not use_comfyui:
+        print("ComfyUI not running — will use Pollinations.ai fallback", file=sys.stderr)
 
     manifest = {"topic": args.topic, "images": [], "captions": {}}
     generated = 0
@@ -85,17 +80,23 @@ def main():
         layout = slide.get("layout", "content")
         style = slide.get("image_prompt_suffix", "")
 
-        # Build editorial prompt using Bali Zero brand style
-        from bz_image_style import build_slide_prompt
         prompt = build_slide_prompt(title, body, style)
-
         img_path = output_dir / f"slide_{i+1:02d}.png"
         print(f"\n[{i+1}/{len(slides)}] {title[:60]}...", file=sys.stderr)
 
         # Carousel = 1080x1080, cover = 1080x1350
         w, h = (1080, 1350) if i == 0 else (1080, 1080)
 
-        if generate_image(prompt, img_path, width=w, height=h, timeout=180):
+        ok = False
+        if use_comfyui:
+            ok = generate_image(prompt, img_path, width=w, height=h, timeout=180)
+            if not ok:
+                print(f"  ComfyUI failed — trying Pollinations fallback", file=sys.stderr)
+                ok = generate_image_pollinations(prompt, img_path, width=w, height=h)
+        else:
+            ok = generate_image_pollinations(prompt, img_path, width=w, height=h)
+
+        if ok:
             manifest["images"].append({
                 "slide": i + 1,
                 "title": title,

@@ -7,17 +7,11 @@ import json, argparse, sys, subprocess
 from pathlib import Path
 
 def run_gemini(prompt: str) -> str:
-    """Call Gemini 3.1 Pro via CLI with Deep Think."""
+    """Call Gemini via CLI (gemini -p "prompt")."""
     result = subprocess.run(
-        ["gemini", "--model", "gemini-3.1-pro", "--prompt", prompt],
+        ["gemini", "-p", prompt],
         capture_output=True, text=True, timeout=300
     )
-    if result.returncode != 0:
-        # Fallback to default model
-        result = subprocess.run(
-            ["gemini", prompt],
-            capture_output=True, text=True, timeout=300
-        )
     if result.returncode != 0:
         raise RuntimeError(f"Gemini error: {result.stderr}")
     return result.stdout.strip()
